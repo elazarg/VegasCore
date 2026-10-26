@@ -58,9 +58,25 @@ contract.
 
 ## Checked results
 
-[Paper.lean](Paper.lean) states every theorem below, in the namespace
-`Vegas.Paper`. Each statement is pinned to the axioms `propext`,
-`Classical.choice` and `Quot.sound`.
+[Paper.lean](Paper.lean) audits every result below. Main preservation statements
+are in `Vegas.Paper`; prose invariants and examples are pinned at their owning
+declarations. Each pin checks the exact standard axiom dependencies.
+Every mathematical result claimed as checked in the maintained manuscript has
+a pin, independently of whether another theorem uses it. Technical import
+exceptions require an explicit reason and a separately checked audit.
+
+The source invariant `Vegas.SourceProgram.Setup.terminal_guards_hold` covers
+every source profile and supported terminal state: a guard's subject or a
+required input failed, or its code holds on the published values. Completion
+alone is the separate invariant `Vegas.SourceProgram.Setup.revealed`.
+
+For every source profile, the joint typed readout and realized settlement of
+its raw clients is within the deferral error `δ` of the source law
+(`Vegas.AsyncServiceSpec.clientSettlementLaw_withinTV`). An event probability
+lower bound `p` transfers as `p - δ`; a bounded observable expectation lower
+bound `b` transfers as `b - δ * R`, where `R` is its range width on both laws'
+supports. Both corollaries are pinned, need no equilibrium assumption, and
+retain unfinished results and audit settlement in the compared joint law.
 
 The *intended game* of a program is the analysis view in which nothing fails.
 The *forfeit utility* charges a fixed amount for each failed reveal, and the

@@ -11,9 +11,13 @@
 | Vegas.Pending | Runtime packet submission, inclusion, deadlines and pending-message laws. |
 | Vegas.Compile | Source-to-graph compiler and correspondence. |
 | Vegas.Game | Strategic composition, source equilibrium extension, runtime preservation and obstruction proofs. |
-| Test libraries and Paper | Regressions and checked capstone axiom guards. |
+| Test libraries and Paper | Regressions and axiom guards for results stated in the paper. |
 
 [Paper](../Paper.lean) states the paper-facing theorems and pins their axioms.
+Every mathematical result or invariant stated in the maintained manuscript is
+pinned, including prose claims and examples. Dependency reachability does not
+determine paper coverage. Technical import exceptions require an explicit
+reason and a separately checked audit.
 The [consolidation ledger](consolidation.md) records the target of the
 development, its remaining steps, and the index of results retired to the
 `research-tree` tag.
@@ -128,6 +132,7 @@ directory's aggregator imports every module in it.
 
 ## Vegas/Source
 
+- [Terminal guard safety for every source profile and initial law](../Vegas/Source/Safety.lean)
 - [Actual value-history representations of unilateral failed-binding deviations](../Vegas/Source/BindingRepairTrace.lean)
 - [Commit Attempt Observation](../Vegas/Source/CommitAttemptObservation.lean)
 - [Commit Attempt Ranks](../Vegas/Source/CommitAttemptRanks.lean)
@@ -420,6 +425,7 @@ directory's aggregator imports every module in it.
 
 ## Vegas/Game
 
+- [Client joint laws and observable probability/expectation guarantees](../Vegas/Game/AsyncClientObservables.lean)
 - [Actual public initial inputs at late-key sites](../Vegas/Game/OnePacketPublicInitialSignal.lean)
 - [Owner-prior transport within observed public fibers](../Vegas/Game/OnePacketConditionalPrior.lean)
 - [Clean-owner silence and strict count-audit support exclusion](../Vegas/Game/RecoveryCountIncentives.lean)

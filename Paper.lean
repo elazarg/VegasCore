@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import GameTheoryExtensions
+import Vegas.Source.Safety
 import Interaction.ReactiveImplementation
 import Interaction.ReactivePolicyMenuInvariant
 import Interaction.ReactiveProvenance
@@ -3143,3 +3144,71 @@ open GameTheory.Math.Probability in
 #guard_msgs (whitespace := lax) in
 open GameTheory.Protocol.PrivateStrategy in
 #print axioms runBehavioral_joint_readout_eq_of_certificate
+
+/-! Mathematical results cited in the maintained manuscript, including prose invariants. -/
+
+/-- info: 'Vegas.SourceProgram.Setup.terminal_guards_hold' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SourceProgram.Setup in
+#print axioms terminal_guards_hold
+
+/-- info: 'Vegas.sourceObserve_privateInput' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms sourceObserve_privateInput
+
+/-- info: 'Vegas.SourceProgram.Setup.revealed' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.SourceProgram.Setup in
+#print axioms revealed
+
+/-- info: 'Vegas.canonical_setup_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms canonical_setup_law
+
+/-- info: 'Vegas.scheduled_setup_deviation_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms scheduled_setup_deviation_law
+
+/-- info: 'Vegas.rosterScheduler_asyncContract' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas in
+#print axioms rosterScheduler_asyncContract
+
+/-- info: 'Vegas.Examples.CommitRevealAuction.truthful_not_dominant' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.CommitRevealAuction in
+#print axioms truthful_not_dominant
+
+/-- info: 'Vegas.Examples.CommitRevealAuction.translated_truthful_not_dominant' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.CommitRevealAuction in
+#print axioms translated_truthful_not_dominant
+
+/-- info: 'Vegas.AsyncServiceSpec.clientSettlementLaw_withinTV' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.AsyncServiceSpec in
+#print axioms clientSettlementLaw_withinTV
+
+/-- info: 'Vegas.AsyncServiceSpec.clientSettlementLaw_event_lower_bound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.AsyncServiceSpec in
+#print axioms clientSettlementLaw_event_lower_bound
+
+/-- info: 'Vegas.AsyncServiceSpec.clientSettlementLaw_expect_lower_bound' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.AsyncServiceSpec in
+#print axioms clientSettlementLaw_expect_lower_bound

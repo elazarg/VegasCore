@@ -19,6 +19,11 @@ compatibility. When renaming or refactoring, update all callers and docs.
 
 # Notes
 
+* Every mathematical result or invariant stated in the maintained paper must
+  have an exact guarded axiom pin in Paper.lean, whether or not another theorem
+  uses it. A technical import or dependency exception must identify the result,
+  explain the obstacle, and document its separate checked audit. Definitions
+  used to describe a model do not by themselves require theorem pins.
 * Before adding definitions or general proof machinery, search the owning layers
   with `rg` and inspect their declaration surfaces with `lean-defs.py`. Consult
   `docs/module-architecture.md` for reusable APIs and their scope; instantiate

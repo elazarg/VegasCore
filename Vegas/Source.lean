@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Source.Accounting
+import Vegas.Source.Safety
 import Vegas.Source.Basic
 import Vegas.Source.BindingRepairInformation
 import Vegas.Source.BindingRepairTrace

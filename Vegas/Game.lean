@@ -941,3 +941,4 @@ import Vegas.Game.StoppedHonestResponseCount
 import Vegas.Game.OnePacketHonestTerminalApproximation
 
 import Vegas.Game.StoppedHonestWeightedComparison
+import Vegas.Game.AsyncClientObservables
