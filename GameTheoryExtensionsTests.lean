@@ -47,3 +47,4 @@ import GameTheoryExtensionsTests.PowerNormalizerPaths
 import GameTheoryExtensionsTests.UnequalPowerEquilibrium
 import GameTheoryExtensionsTests.StoppedResidual
 import GameTheoryExtensionsTests.PowerExtraction
+import GameTheoryExtensionsTests.ConditionalObservableTensor

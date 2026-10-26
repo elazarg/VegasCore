@@ -107,3 +107,5 @@ import GameTheoryExtensions.Analysis.Protocol.LogReach
 import GameTheoryExtensions.Analysis.Protocol.BayesLogLimits
 import GameTheoryExtensions.Analysis.Protocol.LogRateCertificate
 import GameTheoryExtensions.Analysis.Protocol.PowerCompleteness
+import GameTheoryExtensions.Analysis.PrivateTranscriptWeights
+import GameTheoryExtensions.Analysis.ConditionalObservableTensor

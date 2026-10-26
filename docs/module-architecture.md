@@ -38,6 +38,9 @@ directory's aggregator imports every module in it.
 
 ## GameTheoryExtensions
 
+- [Conditional tensor certificates with unequal observation masses](../GameTheoryExtensions/Analysis/ConditionalObservableTensor.lean)
+- [Actual adaptive transcript moments and Bayes normalization](../GameTheoryExtensions/Analysis/PrivateTranscriptWeights.lean)
+
 - [Integrable optional-readout domination and residual laws](../GameTheoryExtensions/Math/Probability/OptionalDomination.lean)
 - [Conditioning cost from excluded probability and payoff oscillation](../GameTheoryExtensions/Math/Probability/ConditioningCost.lean)
 

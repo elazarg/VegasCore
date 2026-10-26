@@ -18,7 +18,7 @@ namespace GameTheory.Protocol.PrivateStrategy
 
 open GameTheory.Math.Probability GameTheory.Math.InvariantObservables
 
-variable {State Input Output : Type} [Finite State] [Finite Input] [Finite Output]
+variable {State Input Output : Type*} [Finite State] [Finite Input] [Finite Output]
 
 open Classical in
 /-- An unnormalized observed branch of the actual action kernel. -/
@@ -105,7 +105,7 @@ theorem expect_runBehavioral_eq_of_closed_observables
 open Classical in
 /-- Including the joint readout indicators upgrades moment transport to the
 entire law of the selected readout and the player's full transcript. -/
-theorem runBehavioral_joint_readout_eq_of_closed_observables {Readout : Type}
+theorem runBehavioral_joint_readout_eq_of_closed_observables {Readout : Type*}
     (observe : State → Input) (advance : State → Output → PMF State)
     (space : Submodule ℝ (State → ℝ))
     (closed : ∀ label value, value ∈ space → observedOperator observe advance label value ∈ space)
@@ -147,7 +147,7 @@ theorem runBehavioral_joint_readout_eq_of_closed_observables {Readout : Type}
 open Classical in
 /-- A certificate on supplied columns suffices for every adaptive policy's
 selected joint law. The only operator checks are on those columns. -/
-theorem runBehavioral_joint_readout_eq_of_certificate {Readout Index : Type}
+theorem runBehavioral_joint_readout_eq_of_certificate {Readout Index : Type*}
     (observe : State → Input) (advance : State → Output → PMF State)
     (basis : Index → State → ℝ)
     (closed : ∀ label index, observedOperator observe advance label (basis index) ∈

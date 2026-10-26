@@ -3242,3 +3242,21 @@ open GameTheory.Protocol.InformationModel.BehavioralAssessment.IsSequentiallyCon
 #guard_msgs (whitespace := lax) in
 open GameTheory.Protocol.InformationModel.BehavioralAssessment.IsSequentiallyConsistent in
 #print axioms exists_power_certificate
+
+/-- info: 'GameTheory.Protocol.PrivateStrategy.expect_posterior_runBehavioral_transcript' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.PrivateStrategy in
+#print axioms expect_posterior_runBehavioral_transcript
+
+/-- info: 'GameTheory.Protocol.PrivateStrategy.observedTensor_certificate_conditional_eq' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.PrivateStrategy in
+#print axioms observedTensor_certificate_conditional_eq
+
+/-- info: 'GameTheory.Protocol.PrivateStrategy.expect_posterior_runBehavioral_eq_of_tensor_certificate' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.PrivateStrategy in
+#print axioms expect_posterior_runBehavioral_eq_of_tensor_certificate
