@@ -28,11 +28,15 @@ local notation "app" => phaseApplication runtime leaks
 handler and its dynamically normalized shadow. -/
 theorem PhaseStateFrame.repair_owned_binding_of_history
     (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs)
-    (horizon : Nat) (scheduler : (app).Scheduler) (left right : (app).Control)
+    (horizon : Nat) (scheduler : (app).Scheduler)
+    {rightPlan : RuntimePhasePlan graph} {rightInputs : PMF graph.Inputs}
+    {rightHorizon : Nat} {rightScheduler : (app).Scheduler}
+    (left right : (app).Control)
     (leftTrace : ((app).protocol
       (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some left))
     (rightTrace : ((app).protocol
-      (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some right))
+      (rightInputs.map (PhaseRuntimeState.initial rightPlan)) rightHorizon rightScheduler).Trace
+        (some right))
     {memory : BindingShadow graph} {owner : Player}
     (frame : PhaseStateFrame memory owner left.execution.application right.execution.application)
     (owned : memory.OwnBindings owner)
@@ -134,8 +138,8 @@ theorem PhaseStateFrame.repair_owned_binding_of_history
       right.execution.application.allows message.payload.packet.call &&
       !right.execution.application.current.excludedCall message.payload.packet.call) = true := by
     rwa [attempts, allows, excluded] at admitted
-  have stored := phaseStoredCheckpoint_history runtime leaks plan inputs horizon scheduler
-    rightTrace
+  have stored := phaseStoredCheckpoint_history runtime leaks rightPlan rightInputs rightHorizon
+    rightScheduler rightTrace
   have savedMissing := PhaseBindingRepair.saved_uncompleted_of_ready
     right.execution.application stored event rightReady
   obtain ⟨nextMemory, first, image, firstHandled, imageHandled, nextOwned, candidates,

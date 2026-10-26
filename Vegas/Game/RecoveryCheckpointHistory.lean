@@ -52,6 +52,26 @@ private theorem phase_source_invariant
       subst next
       exact ⟨witness⟩
 
+/-- Actual initialized histories retain the full existing source witness,
+including its physical receipt, archive and semantic checkpoint invariants. -/
+theorem recoverySourceWitness_history
+    (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
+    (runtime : EventGraphRuntime ((toEventGraph setup.program).withMode mode))
+    (leaks : MessageNetwork.ObservationRule Player
+      (CommitAttemptPacket ((toEventGraph setup.program).withMode mode)))
+    (plan : RuntimePhasePlan ((toEventGraph setup.program).withMode mode))
+    (maximal : plan.phases.IsChain fun before after =>
+      before.kind ≠ after.kind ∨ before.kind = .sample)
+    (horizon : Nat) (scheduler : (phaseApplication runtime leaks).Scheduler) {control}
+    (trace : ((phaseApplication runtime leaks).protocol
+      (setup.initialLaw.map fun draw => PhaseRuntimeState.initial plan (encodeInputs draw))
+      horizon scheduler).Trace (some control)) :
+    Nonempty (RecoverySourceWitness setup mode plan control.execution.application) := by
+  have invariant := phase_source_invariant setup mode runtime leaks plan maximal
+  apply invariant.history _ horizon scheduler (fun state supported => ?_) trace
+  obtain ⟨draw, drawSupport, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+  exact ⟨RecoverySourceWitness.initialized setup mode plan draw drawSupport⟩
+
 /-- Every actual initialized phased history has a saved typed source
 checkpoint reached in the actual auxiliary recovery protocol. This includes
 arbitrary legal player behavior, native schedules and every reset. No source
@@ -72,11 +92,8 @@ theorem recoverySourceCheckpoint_history
       checkpoint.ArchivedRecall ∧ checkpoint.PublicChronology plan ∧
       ArchivedSourceOrigins setup mode control.execution.application.retired
         ⟨_, checkpoint.trace⟩ := by
-  have invariant := phase_source_invariant setup mode runtime leaks plan maximal
-  have valid := invariant.history _ horizon scheduler (fun state supported => ?_) trace
-  · obtain ⟨witness⟩ := valid
-    exact ⟨witness.checkpoint, witness.aligned, witness.chronology, witness.origins⟩
-  · obtain ⟨draw, drawSupport, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
-    exact ⟨RecoverySourceWitness.initialized setup mode plan draw drawSupport⟩
+  obtain ⟨witness⟩ := recoverySourceWitness_history setup mode runtime leaks plan maximal
+    horizon scheduler trace
+  exact ⟨witness.checkpoint, witness.aligned, witness.chronology, witness.origins⟩
 
 end Vegas

@@ -594,4 +594,95 @@ theorem privateInputs_focal_policy_coupling (execution : (app).Execution) (focal
     exact ⟨privateInputs_respond runtime leaks first second execution focal response,
       phaseTraffic_focal_response runtime leaks _ _ focal same response⟩
 
+/-- Map only physical private data in a raw protocol state. Scheduling,
+remaining fuel and the selected actor are unchanged. -/
+def privateInputs_state (before : (app).ProtocolState) : (app).ProtocolState :=
+  before.map fun control => { control with execution := (swap).phaseExecution control.execution }
+
+/-- The actual raw transition uses the same scheduler and literal joint action.
+Its initial distribution is transported as a whole, not replaced by independent
+input marginals. -/
+theorem privateInputs_transition (initial : PMF (app).State) (horizon : Nat)
+    (scheduler : (app).Scheduler) (before : (app).ProtocolState)
+    (joint : Player → Option (app).Action) :
+    ((app).transition initial horizon scheduler before joint).map
+      (privateInputs_state runtime leaks first second) =
+    (app).transition (initial.map (PhaseRuntimeState.swap swap)) horizon scheduler
+      (privateInputs_state runtime leaks first second before) joint := by
+  cases before with
+  | none =>
+      simp only [ReactiveApplication.transition, privateInputs_state, Option.map_none,
+        PMF.map_comp]
+      rfl
+  | some control =>
+      rcases control with ⟨remaining, actor, execution⟩
+      cases actor with
+      | some who =>
+          simp only [ReactiveApplication.transition, privateInputs_state, Option.map_some,
+            PMF.pure_map]
+          exact congrArg (fun next => PMF.pure (some
+            (ReactiveApplication.Control.mk remaining none next)))
+            (privateInputs_respond runtime leaks first second execution who
+              ((joint who).getD ⟨none⟩)).symm
+      | none =>
+          cases remaining with
+          | zero =>
+              simp only [ReactiveApplication.transition, privateInputs_state, Option.map_some,
+                PMF.pure_map]
+          | succ remaining =>
+              simp only [ReactiveApplication.transition, privateInputs_state, Option.map_some,
+                PMF.map_bind, privateInputs_observeEnvironment]
+              congr 1
+              funext command
+              rw [privateInputs_environmentStep, PMF.map_comp, PMF.map_comp]
+              rfl
+
+/-- Every complete raw trace has a counterpart under the immutable input
+transformation. This is a structural legal-history witness: no compiler policy
+or preservation of the original prior under the transposition is assumed. -/
+def privateInputs_trace (initial : PMF (app).State) (horizon : Nat)
+    (scheduler : (app).Scheduler) :
+    ∀ {before}, ((app).protocol initial horizon scheduler).Trace before →
+      ((app).protocol (initial.map (PhaseRuntimeState.swap swap)) horizon scheduler).Trace
+        (privateInputs_state runtime leaks first second before)
+  | _, .start => .start
+  | before, .extend prior joint legal reached =>
+      .extend (privateInputs_trace initial horizon scheduler prior) joint
+        (by
+          rename_i source
+          cases source <;> exact legal)
+        (by
+          rename_i source
+          have mapped : privateInputs_state runtime leaks first second before ∈
+              (((app).transition initial horizon scheduler source joint).map
+                (privateInputs_state runtime leaks first second)).support := by
+            rw [PMF.support_map]
+            exact ⟨before, reached, rfl⟩
+          rw [privateInputs_transition runtime leaks first second initial horizon scheduler]
+            at mapped
+          exact mapped)
+
+/-- The transported legal history has exactly the same full focal information,
+including its real before-response recall. The initial law is transported
+jointly and is not assumed invariant under the input change. -/
+theorem privateInputs_trace_info (initial : PMF (app).State) (horizon : Nat)
+    (scheduler : (app).Scheduler) {before : (app).ProtocolState}
+    (trace : ((app).protocol initial horizon scheduler).Trace before)
+    (focal : Player)
+    (agree : ∀ input, graph.fieldVisibleTo focal (.inl input) → first input = second input) :
+    ((app).signals (initial.map (PhaseRuntimeState.swap swap)) horizon scheduler).infoOf focal
+      (privateInputs_trace runtime leaks first second initial horizon scheduler trace) =
+    ((app).signals initial horizon scheduler).infoOf focal trace := by
+  rw [ReactiveApplication.info, ReactiveApplication.info]
+  cases before with
+  | none => rfl
+  | some control =>
+      change (if control.actor = some focal then
+        some (((swap).phaseExecution control.execution).recall focal,
+          ((swap).phaseExecution control.execution).observe (app) focal) else none) = _
+      rw [privateInputs_recall_history runtime leaks first second initial horizon scheduler
+        control trace focal agree, privateInputs_observe runtime leaks first second
+          control.execution focal agree]
+      rfl
+
 end Vegas.EventGraphRuntime.HiddenSwap

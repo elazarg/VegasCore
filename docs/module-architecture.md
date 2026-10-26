@@ -285,6 +285,8 @@ directory's aggregator imports every module in it.
 
 - [Complete focal phase traffic and arbitrary responses](../Vegas/Pending/PhaseTraffic.lean)
 - [Ordinary private-input transport through actual execution and focal observations](../Vegas/Pending/PhaseInitialInputObservation.lean)
+- [First-response deadline bounds from the actual service opportunity contract](../Vegas/Pending/PhaseFirstOpportunity.lean)
+- [Stopped request windows and their actual final environment transitions](../Vegas/Pending/PhaseRequestWindow.lean)
 - [Hidden foreign binding laws at a shared physical slot](../Vegas/Pending/PhaseForeignTraffic.lean)
 - [Raw candidate provenance and canonical fresh slots](../Vegas/Pending/PhaseCandidateInputs.lean)
 - [Actual binding delivery under a private binding frame](../Vegas/Pending/PhaseTrafficBinding.lean)
@@ -472,6 +474,8 @@ directory's aggregator imports every module in it.
 - [Locally validated opening encoders](../Vegas/Game/SourcePhaseClientOpening.lean)
 - [Suppressed ineffective openings preserve foreign full information](../Vegas/Game/SourcePhaseDisclosure.lean)
 - [Original source continuation laws from surviving full information](../Vegas/Game/SourcePhaseSurvivingContinuation.lean)
+- [One actual source cursor for every surviving player's full binding information](../Vegas/Game/SourcePhaseCurrentInformation.lean)
+- [Accepting binding windows and exact original source install-and-close steps](../Vegas/Game/SourcePhaseBindingWindow.lean)
 - [Ineffective opening suppression preserves continuation readout and cash laws](../Vegas/Game/SourcePhaseDisclosureContinuation.lean)
 
 - [Physical integer phase cash and audited monetary utility](../Vegas/Game/PhaseCash.lean)

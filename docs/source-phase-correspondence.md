@@ -167,6 +167,31 @@ the exact original install-and-close step, including final-slot rollback and
 retry. These local kernels do not yet supply a joint law at every macro
 boundary with all surviving information preserved.
 
+## Actual binding information and service windows
+
+[Current binding information](../Vegas/Game/SourcePhaseCurrentInformation.lean)
+constructs one legal original source history at an actual raw binding request.
+Every surviving player's complete decoded information agrees with that same
+history, including inactive players. The first-callback consumer uses this
+witness to identify the actual compiled response law for every original source
+policy. These results require neither prior independence nor complete pending
+observation.
+
+[Request windows](../Vegas/Pending/PhaseRequestWindow.lean) stop actual bounded
+raw play at the first loss of a ready request. The full physical completion
+condition rules out horizon truncation and exposes the final environment
+command and its genuine predecessor. [First-response timing](../Vegas/Pending/PhaseFirstOpportunity.lean)
+derives the reaction bound from the opportunity contract at the callback's
+idle predecessor; the supplied deadline margin then leaves room for the full
+inclusion budget. No reserved calendar is assumed.
+
+[Binding-window readback](../Vegas/Game/SourcePhaseBindingWindow.lean) turns
+an actual timely request loss into the accepting packet, receipt, typed binding
+meaning, and exact original source install-and-close step. Its source cursor
+is the local input to the comparison. Connecting every window to its successor
+cursor, including omitted bindings and retries, and proving both policy-law
+marginals remain obligations of the full execution comparison.
+
 ## Source continuations after ineffective openings
 
 [Surviving continuation](../Vegas/Game/SourcePhaseSurvivingContinuation.lean)
@@ -204,6 +229,16 @@ prior independence.
 This result does not transport initial commitment values or establish the
 conditional traffic-noise factorization needed for arbitrary native deviations.
 Those remain separate obligations of the initialized law comparison.
+
+The same input transformation transports a complete legal raw history under
+the jointly mapped initial distribution, with the same literal actions and
+scheduler and equal full focal information. This does not assert that the
+original prior is invariant under the transformation. Separately,
+[binding delivery couplings](../Vegas/Pending/PhaseTrafficBinding.lean) retain
+the actual accepted or rejected successor relation as well as focal traffic;
+the two genuine prefixes may have different initialization laws. That relation
+covers one hidden owner. Iteration across several hidden owners and transport
+of initial commitment values still need concrete adapters.
 
 ## Remaining strategy obligations
 

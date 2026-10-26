@@ -3,6 +3,8 @@
 import Vegas.Pending.AcceptedEventOwnership
 import Vegas.Pending.PhaseTraffic
 import Vegas.Pending.PhaseInitialInputObservation
+import Vegas.Pending.PhaseFirstOpportunity
+import Vegas.Pending.PhaseRequestWindow
 import Vegas.Pending.PhaseForeignTraffic
 import Vegas.Pending.PhaseCandidateInputs
 import Vegas.Pending.PhaseTrafficBinding

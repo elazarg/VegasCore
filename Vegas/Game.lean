@@ -14,6 +14,8 @@ import Vegas.Game.SourcePhaseClient
 import Vegas.Game.SourcePhaseAutomatic
 import Vegas.Game.SourcePhaseAutomaticWindow
 import Vegas.Game.SourcePhaseBindingStep
+import Vegas.Game.SourcePhaseBindingWindow
+import Vegas.Game.SourcePhaseCurrentInformation
 import Vegas.Game.SourcePhaseClientLaw
 import Vegas.Game.SourcePhaseClientBinding
 import Vegas.Game.SourcePhaseClientOpening
