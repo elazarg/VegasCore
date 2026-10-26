@@ -1,17 +1,34 @@
 # Private-mempool SE preservation: compiler and incentive choices
 
+The current concurrent runtime's preservation theorem has not been proved or
+refuted with complete pending observation removed. This document does not
+resolve that gap. It gives conditional finite-game mathematics and alternative
+compiler specifications; the required operational separation, observation,
+raw-action and continuation comparisons have not been established for the
+current runtime. It also supplies no concurrent result under the adaptive
+service used by the recovery theorem.
+
 Rollback is a compiler recovery policy. It is not imposed by the ledger or the
 existence of private mempools. Replacing recovery with an absorbing failure
 outcome can remove the need to reason about survivor equilibria, remembered
 voided values and retry archives. This does not create public knowledge:
 failure becomes public only when the ledger records it.
 
-The strongest positive design direction is to separate source choices from
+One candidate redesign separates source choices from
 source-blind execution mechanics, with successful execution paying the source
 utility and failure paying a fixed floor. The mathematical product theorem
 below explains why those two incentive problems can separate. Its conditions
-are structural properties of a compiler, not a hypothesis that every player
-sees the pending queue.
+are substantial unproved obligations for an actual compiler. A fixed padded
+layout, source-independent service effects and observations, suitable phase
+barriers, a success-one operational profile, and classification of every raw
+alternative cannot be inferred from the product calculation.
+
+The private-noise result applies only when extra observations reveal no new
+source information at semantic decisions. The staged product extension can
+allow informative private openings during mechanical work, but only after all
+dependent source choices are irrevocably fixed and before the next semantic
+choice crosses a public barrier. Neither result handles arbitrary informative
+leaks or establishes that the present runtime meets those timing conditions.
 
 These are hand proofs and proposed compiler specifications. They do not change
 the implementation, the existing theorem contract or the preservation checklist.
@@ -24,6 +41,14 @@ proves a source-level extension using only a first-quitter utility cap, with
 arbitrary bounded survivor continuations. This can avoid an all-player abort
 floor, but general handlers replace the common-interest operational proof with
 handler-aware incentive and attribution obligations.
+
+| Object | Result established here | Runtime conclusion |
+|---|---|---|
+| Current concurrent compiler, private pending observations | No preservation theorem or admissible counterexample | Open, even with the reserved-service assumptions retained. |
+| Independent source/operational product | Finite hand proof under explicit separation | Not an instantiation for the current compiler. |
+| Global-abort compiler proposal | Sufficient mathematical specification | Changes failure semantics; its concrete implementation obligations remain. |
+| Quit-handler extension | Source-level hand proof with a first-quitter cap | Private observations and timeout attribution still need a runtime proof. |
+| Retained rollback | Directed policy-comparison argument | Actual coupling and baseline continuation comparisons remain unproved. |
 
 | Design | Benefit | Obligation or cost |
 |---|---|---|
@@ -391,7 +416,7 @@ along the prescribed honest path is weaker than what the theorem needs.
 Rollback is a recovery design choice. [CommitPhaseRecovery.lean](../Vegas/Source/CommitPhaseRecovery.lean) explicitly
 retries surviving owners after a missed commitment, retains their private
 histories, and bounds retries by the number of newly excluded owners.
-the [phase application](../Vegas/Pending/PhaseApplication.lean) implements that choice. Guard well-formedness does not
+The [phase application](../Vegas/Pending/PhaseApplication.lean) implements that choice. Guard well-formedness does not
 mathematically require retrying: it ensures intended source actions can satisfy
 the guards, whereas rollback describes what happens after a runtime failure.
 
@@ -402,14 +427,25 @@ Do not manufacture a complete source terminal on abort: expose an abort outcome,
 which has probability zero in the selected preserved law. On honest paths the
 existing timely service must ensure that every required action completes before
 its deadline, so this change has no effect on the selected source joint law.
+Here the selected source is the intended game, whose paths contain no failed
+owned moves. This does not preserve the full quit-enabled program's equilibria
+or its specified failure settlement. In particular, replacing a handler that
+pays an honest survivor 200 by a global floor changes that off-path behavior,
+even when both implementations agree on the selected no-failure outcome law.
 
-Suppose global abort gives every player \(i\) payoff \(F_i\), with
-\(F_i\le u_i(z)\) for every source terminal and \(F_i\le0\). These are the same
-numerical floor conditions already imposed on the individual exclusion payoff;
-the semantic change is applying them to everybody on a global abort. Every abort
-branch is then pointwise dominated by every successful source payoff, rather than
-entering an arbitrary survivor continuation. The delay comparison in the delay theorem below
-can treat abort as a genuine absorbing dominated outcome. There are no retry
+Suppose global abort gives every player \(i\) utility \(F_i\), with
+\(F_i\le u_i(z)\) for every successful source terminal. This is the floor
+condition of the product theorem. That theorem does not additionally require
+\(F_i\le0\). The existing concurrent capstone does impose a nonpositive
+exclusion utility, in a model that also includes a default-zero readout.
+That extra condition must not be silently transferred to a different compiler
+whose terminal cases are successful settlement and its explicit abort outcome.
+If an additional zero-utility outcome remains relevant to a proposed comparison,
+its bound must be included separately.
+
+Every abort branch in the proposed compiler is pointwise dominated by every
+successful source utility. The delay theorem below can therefore use abort as
+a dominated outcome. There are no retry
 archives, retired plaintext effects, or future survivor choices to reconstruct.
 The clean private-view likelihood and legal source-deviation adapters are still
 needed; global abort does not prove those automatically.
@@ -472,17 +508,32 @@ abort amount is a concrete implementation of the same condition. In a game with
 unbounded external benefits or nonmonetary utilities, no finite collateral amount
 follows from the current finite-payoff argument.
 
-There is also an exact budget constraint. In a constant-sum payout game with pot
-\(C\), write \(m_i=\min_z u_i(z)\). If each abort payout satisfies \(F_i\le m_i\),
-then the amount removed from participant payouts must satisfy
+There is also an exact budget constraint. Distinguish currency payouts \(P_i(z)\)
+on success and \(A_i\) on abort from utilities \(u_i(z)\) and \(F_i\). In a
+payout-only game, utility can be the amount received, or consistently be that
+amount minus the fixed initial stake. In either convention the product floor
+requires \(A_i\le m_i^P:=\min_z P_i(z)\). For a constant-sum pot \(C\), the
+amount removed from participant payouts must satisfy
 \[
- C-\sum_iF_i\ge C-\sum_i m_i.
+ C-\sum_i A_i\ge C-\sum_i m_i^P.
 \]
-Strict budget balance is impossible whenever \(\sum_i m_i<C\). In the 126/74
-example, global floors require burning at least \(200-74-74=52\); refunding 74 to
-each player attains the weak floor, while refunding 100 to each does not. Thus
-the simple global-floor theorem requires permission for a burn or another
-payoff sink in this example. It cannot promise both all-player floors and full
+Strict budget balance is impossible whenever \(\sum_i m_i^P<C\). For successful
+payouts 126/74 and a pot of 200, the product-floor redesign requires removing at
+least \(200-74-74=52\). Paying 74 to each player on abort attains this bound.
+With utility equal to payout this means \(F_i=74\); with utility net of a stake
+of 100 it means \(F_i=-26\). Neither convention licenses identifying the payout
+74 with a nonpositive utility in the same calculation.
+
+If instead one retains the existing capstone's \(F_i\le0\) condition while
+using nonnegative raw payouts as utilities, every global-abort payout must be
+zero and the whole 200-unit pot is removed. The 52 bound is not an instantiation
+of that stronger specification. Changing utility normalization also requires
+changing every terminal outcome consistently, including any default outcome;
+one cannot subtract stakes only on successful paths to evade a hypothesis.
+
+Thus the proposed product-floor compiler needs permission for a burn or another
+payoff sink in this example, but its amount depends on the actual failure
+specification. It cannot promise both all-player payout floors and full
 redistribution of the pot to the participants.
 
 The maintained paper already separates computed payouts from executed transfers,

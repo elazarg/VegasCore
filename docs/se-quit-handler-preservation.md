@@ -1,5 +1,10 @@
 # Intended-game equilibria and quit handlers
 
+The theorem below is a source-level extension result. It does not prove
+concurrent runtime preservation with private pending observations or under an
+adaptive builder. Its handler, information and attribution conditions still
+need a runtime implementation proof.
+
 Quit handlers can substantially weaken the global-abort proposal. Preserving an
 intended-game SE does not require every survivor to receive an abort floor.
 A sufficient source-level construction caps the first quitter's utility and

@@ -1,5 +1,10 @@
 # Sequential equilibrium with private mempools: mathematical foundations
 
+Preservation for the current concurrent runtime under private pending
+observations remains unproved and unrefuted here. The results below are finite
+hand proofs and conditional construction lemmas, not a discharge of that
+runtime's information or continuation obligations.
+
 Complete pending observation is not necessary for SE preservation in general.
 The private-noise theorem below preserves every selected source SE, including
 the entire initialized outcome law, without making any reception public.

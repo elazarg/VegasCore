@@ -1,14 +1,17 @@
 # Concurrent SE preservation with private mempool observations
 
-The most promising replacement for complete pending observation is to keep
+Concurrent preservation without complete pending observation remains unproved
+and unrefuted here, even with the current reserved-service assumptions retained.
+The finite results in this survey do not establish a weakening of the current
+runtime theorem.
+
+One proposed replacement for complete pending observation is to keep
 unseen submissions **latent**, aggregate their probabilities inside each actual
 player information set, and compare the resulting deviation gains with mixtures
 of legal source deviations. The existing SE limit theorem already accepts such
 mixtures. A second route is to prove that a complete-observation construction,
 including its perturbations, factors through the smaller actual observations.
 
-Neither route is a checked weakening of the concurrent capstone. There is also
-no counterexample here to that capstone with only complete observation removed.
 The deductions and diagnostics below establish narrower facts, identify exact
 missing adapters, and specify how a genuine counterexample could be found.
 
