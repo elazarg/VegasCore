@@ -3131,3 +3131,15 @@ open GameTheory.Protocol.InformationModel in
 #guard_msgs (whitespace := lax) in
 open GameTheory.Protocol.InformationModel in
 #print axioms expect_runBehavioralUntil_sub_eq_expectedCharge
+
+/-- info: 'GameTheory.Math.Probability.expect_eq_on_observable_span' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.Probability in
+#print axioms expect_eq_on_observable_span
+
+/-- info: 'GameTheory.Protocol.PrivateStrategy.runBehavioral_joint_readout_eq_of_certificate' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.PrivateStrategy in
+#print axioms runBehavioral_joint_readout_eq_of_certificate

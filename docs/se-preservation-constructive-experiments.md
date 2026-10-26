@@ -22,6 +22,15 @@ power. [PowerCertificate](../GameTheoryExtensions/Analysis/Protocol/PowerCertifi
 constructs one common fully mixed Bayes sequence and proves consistency of
 the exact supplied assessment from its support orders and coefficient ratios.
 There is no premise assuming convergence of the Bayesian beliefs.
+The public exact-assessment certificate theorem chooses its own canonical
+positive vanishing sequence; callers supply only the certificate constraints.
+The explicit leading-assessment theorem also accepts any such common sequence.
+
+[PowerNormalizerPaths](../GameTheoryExtensionsTests/PowerNormalizerPaths.lean)
+checks two actual histories in the same information fiber with reaches
+`t/(1+2t)` and `t/((1+2t)(1+t+t²))`. Their ratio is not the coefficient ratio
+at any positive parameter, but the general evaluator theorem proves its
+correct limit. Thus this regression exercises the noncancelling denominators.
 
 The assumptions are finite players, finite local choice sets, finite decision
 information fibers, the existing decision-information antichain, positive
@@ -63,7 +72,13 @@ the Lean certificate theorem is the soundness boundary. The
 [finite example](../GameTheoryExtensionsTests/ObservableClosure.lean) checks
 the actual observation-filtered operators and proves the adaptive joint-law
 conclusion for the computed two-dimensional space in a four-state system.
-Five Python checks include direct reconstruction of matrix identities,
+It also checks one symbolic certificate for a disjoint pair of different
+hidden kernels: two columns in eight states, valid for **every** pair of real
+mixing parameters in `[0,1]`. The adaptive joint-law equality is therefore
+uniform along arbitrary parameter sequences. The column-certificate adapter
+derives full-space closure and initial moment agreement from checks on the
+supplied columns, reusing the shared moment-span theorem.
+Six Python checks include direct reconstruction of matrix identities,
 dependent and zero seeds, rational transitions, and a distinguishing trace
 for an unclosed terminal observable.
 

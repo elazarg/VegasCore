@@ -2,6 +2,7 @@
 
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.Support
+import Mathlib.LinearAlgebra.Span.Basic
 
 /-! # Signed observable moments under continuation kernels
 
@@ -14,6 +15,26 @@ from equality of terminal moments alone.
 noncomputable section
 
 namespace GameTheory.Math.Probability
+
+/-- Checking initial expectations on generators checks their whole span.
+Finiteness of the state carrier supplies the linearity guards. -/
+theorem expect_eq_on_observable_span {State Index : Type*} [Finite State]
+    (source target : PMF State) (basis : Index → State → ℝ)
+    (moments : ∀ index, expect source (basis index) = expect target (basis index))
+    {value : State → ℝ} (member : value ∈ Submodule.span ℝ (Set.range basis)) :
+    expect source value = expect target value := by
+  refine Submodule.span_induction ?_ ?_ ?_ ?_ member
+  · rintro _ ⟨index, rfl⟩; exact moments index
+  · change expect source (fun _ => 0) = expect target (fun _ => 0)
+    rw [expect_zero, expect_zero]
+  · intro first second _ _ firstEqual secondEqual
+    change expect source (fun state => first state + second state) =
+      expect target (fun state => first state + second state)
+    rw [expect_add_of_finite, expect_add_of_finite, firstEqual, secondEqual]
+  · intro scalar value _ equal
+    change expect source (fun state => scalar * value state) =
+      expect target (fun state => scalar * value state)
+    rw [expect_const_mul, expect_const_mul, equal]
 
 /-- Agreement on an integrable finite observable basis identifies the means
 of represented payoffs, even on different hidden carriers. -/

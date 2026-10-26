@@ -132,9 +132,7 @@ theorem powerCertificate_consistent
           M.powerHistoryCoefficient coefficient (reference who site).1.trace =
         (assessment.belief who site history).toReal /
           (assessment.belief who site (reference who site)).toReal)
-    (antichain : M.DecisionInformationAntichain)
-    {parameter : Nat → ℝ} (parameterPositive : ∀ n, 0 < parameter n)
-    (vanishes : Tendsto parameter atTop (nhds 0)) :
+    (antichain : M.DecisionInformationAntichain) :
     assessment.IsSequentiallyConsistent antichain := by
   let : ∀ who (site : M.InformationSite who), Fintype (M.InformationHistory who site.1) :=
     fun who site => Fintype.ofFinite _
@@ -151,7 +149,10 @@ theorem powerCertificate_consistent
         (fun member => M.powerHistoryOrder order member.1.trace) (reference who site)
         (support who site) (ratios who site)
   rw [← same]
-  exact M.powerAssessment_consistent assessment.strategy coefficient positive order constantTerm
-    reference minimal antichain parameterPositive vanishes
+  apply M.powerAssessment_consistent assessment.strategy coefficient positive order constantTerm
+    reference minimal antichain (parameter := fun n => 1 / ((n : ℝ) + 1))
+  · intro n
+    positivity
+  · exact tendsto_one_div_add_atTop_nhds_zero_nat
 
 end GameTheory.Protocol.InformationModel

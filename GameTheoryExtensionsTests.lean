@@ -43,3 +43,4 @@ import GameTheoryExtensionsTests.CyclicBeliefsCompletion
 import GameTheoryExtensionsTests.StoppedCharge
 
 import GameTheoryExtensionsTests.ObservableClosure
+import GameTheoryExtensionsTests.PowerNormalizerPaths

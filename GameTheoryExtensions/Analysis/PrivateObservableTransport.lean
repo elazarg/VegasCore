@@ -2,7 +2,7 @@
 
 import GameTheory.Protocol.PrivateStrategy
 import GameTheoryExtensions.Math.InvariantObservables
-import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheoryExtensions.Math.Probability.ObservableMoments
 
 /-! # Closed observables for transcript-local adaptive policies
 
@@ -143,5 +143,29 @@ theorem runBehavioral_joint_readout_eq_of_closed_observables {Readout : Type}
     (by intro final; split <;> norm_num) terminal count past
   convert transported using 1 <;>
     apply expect_congr_on_support <;> intro final _ <;> split <;> simp_all
+
+open Classical in
+/-- A certificate on supplied columns suffices for every adaptive policy's
+selected joint law. The only operator checks are on those columns. -/
+theorem runBehavioral_joint_readout_eq_of_certificate {Readout Index : Type}
+    (observe : State → Input) (advance : State → Output → PMF State)
+    (basis : Index → State → ℝ)
+    (closed : ∀ label index, observedOperator observe advance label (basis index) ∈
+      Submodule.span ℝ (Set.range basis))
+    (source target : PMF State)
+    (moments : ∀ index, expect source (basis index) = expect target (basis index))
+    (readout : State → Readout)
+    (indicators : ∀ outcome, (fun state => if readout state = outcome then (1 : ℝ) else 0) ∈
+      Submodule.span ℝ (Set.range basis))
+    (policy : Transcript Input Output → Input → PMF Output)
+    (count : Nat) (past : Transcript Input Output) :
+    ((source.bind (runBehavioral policy observe advance count past)).map
+        (fun result => (readout result.1, result.2))) =
+      ((target.bind (runBehavioral policy observe advance count past)).map
+        (fun result => (readout result.1, result.2))) :=
+  runBehavioral_joint_readout_eq_of_closed_observables observe advance _
+    (fun label _ => map_mem_span _ basis (closed label)) source target
+    (fun _ => expect_eq_on_observable_span source target basis moments)
+    readout indicators policy count past
 
 end GameTheory.Protocol.PrivateStrategy

@@ -46,6 +46,31 @@ class ObservableSpaceTests(unittest.TestCase):
                          {"word": ["next"], "seed": 0, "value": 1})
         self.assert_certificate(data, result)
 
+    def test_disjoint_hidden_kernels(self):
+        states = [(component, visible, hidden) for component in (False, True)
+                  for visible in (False, True) for hidden in (False, True)]
+        rates = {False: F(1, 3), True: F(2, 3)}
+        operators = {}
+        for observed in (False, True):
+            for action in (False, True):
+                rows = []
+                for component, visible, hidden in states:
+                    row = [F(0)] * len(states)
+                    if visible == observed:
+                        row[states.index((component, action, not hidden))] = rates[component]
+                        row[states.index((component, action, hidden))] = 1 - rates[component]
+                    rows.append(row)
+                operators[f"{observed}_{action}"] = rows
+        data = {"operators": operators,
+                "seeds": [[F(not visible) for _, visible, _ in states]],
+                "comparison": [int(state == (False, False, False)) -
+                               int(state == (True, False, True)) for state in states]}
+        result = SEARCH.construct(data)
+        self.assertEqual(result["dimension"], 2)
+        self.assertEqual(result["ambient_dimension"], 8)
+        self.assertEqual(result["initial_moments"], [0, 0])
+        self.assert_certificate(data, result)
+
     def test_rational_and_dependent_seeds(self):
         data = {"operators": {"mix": [["1/3", "2/3"], ["1/2", "1/2"]]},
                 "seeds": [[1, 0], [2, 0], [0, 0]], "comparison": [0, 1]}
