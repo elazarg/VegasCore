@@ -26,7 +26,7 @@ def requestedEvent (who : Player) (view : PhasePublicView (serviceGraph setup mo
     some offered.choose else none
 
 omit [Fintype Player] in
-private theorem requestedEvent_of_request
+theorem requestedEvent_of_request
     (state : PhaseRuntimeState (serviceGraph setup mode)) {inputs}
     (valid : state.Invariant inputs) (who : Player) (event : (serviceGraph setup mode).EventId)
     (request : state.SeedRequest who ⟨state.attempt, event⟩) :

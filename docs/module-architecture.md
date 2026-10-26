@@ -447,6 +447,9 @@ directory's aggregator imports every module in it.
 - [Declared monetary source game on the existing exit/retry kernel](../Vegas/Game/SourcePhaseGame.lean)
 - [Common source monetary observations and exact source Nash recoding](../Vegas/Game/SourcePhaseObservation.lean)
 - [Actual completed phase histories, source readout and integer cash](../Vegas/Game/SourcePhaseOperational.lean)
+- [Current source binding cursors with actual in-phase omissions](../Vegas/Game/SourcePhaseCursor.lean)
+- [Current source disclosure cursors and public chronology](../Vegas/Game/SourcePhaseRevealCursor.lean)
+- [Complete source-information reconstruction and physical first-opportunity clients](../Vegas/Game/SourcePhaseClient.lean)
 
 - [Physical integer phase cash and audited monetary utility](../Vegas/Game/PhaseCash.lean)
 

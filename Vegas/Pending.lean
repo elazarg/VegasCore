@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.AcceptedEventOwnership
+import Vegas.Pending.PhaseTraffic
+import Vegas.Pending.PhaseForeignTraffic
+import Vegas.Pending.PhaseCandidateInputs
 import Vegas.Pending.ArchiveBindingRecord
 import Vegas.Pending.AttemptNamespace
 import Vegas.Pending.BindingReceiptOrder

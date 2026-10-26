@@ -8,6 +8,9 @@ import Vegas.Game.PhaseCash
 import Vegas.Game.SourcePhaseGame
 import Vegas.Game.SourcePhaseObservation
 import Vegas.Game.SourcePhaseOperational
+import Vegas.Game.SourcePhaseCursor
+import Vegas.Game.SourcePhaseRevealCursor
+import Vegas.Game.SourcePhaseClient
 import Vegas.Game.AnchoredFirstTurnLaw
 import Vegas.Game.AnchoredHonestLaw
 import Vegas.Game.AnchoredOpeningClients
