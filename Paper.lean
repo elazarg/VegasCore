@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.PublicScheduling
 import Vegas.Source.Safety
 import Vegas.Compile
 import Vegas.Game
@@ -107,86 +106,6 @@ theorem intended_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.intended_sequential_equilibrium
-
-open Vegas.SourceProgram GameTheory.Protocol in
-theorem exclusion_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
-    (setup : Setup (Player := Player) (L := L))
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
-    (wellFormed : setup.WellFormed) {Parameter : Type}
-    (parameter : State L setup.context → Parameter)
-    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-    (excludedPayoff : Player → ℝ)
-    (below : ∀ (final : setup.intendedProtocol.History) terminal,
-      setup.protocolReadout final.state = some terminal →
-        ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
-    (intended : setup.intendedModel.BehavioralAssessment)
-    (equilibrium : intended.IsSequentialEquilibrium setup.intended_decision_antichain
-      setup.intended_bounded.wellFoundedHistories
-      (fun who final => (setup.protocolReadout final.state).elim 0
-        (fun state => utility (setup.parameterOutcome parameter state) who))) :
-    ∃ target : setup.exclusionModel.BehavioralAssessment,
-      target.IsSequentialEquilibrium setup.exclusion_decisionRecall.decisionInformationAntichain
-        setup.exclusion_bounded.wellFoundedHistories
-        (fun who final => (setup.protocolReadout final.state).elim 0
-          (fun state => exclusionUtility setup.program excludedPayoff utility
-            (setup.parameterOutcome parameter state) who)) ∧
-      (setup.exclusionRestriction wellFormed).ExtendsProfile intended.strategy
-        target.strategy ∧
-      (∀ who site, target.belief who ((setup.exclusionRestriction wellFormed).site who site) =
-        (intended.belief who site).map
-          ((setup.exclusionRestriction wellFormed).informationHistory who site)) ∧
-      (setup.exclusionModel.runBehavioralTerminalFrom setup.exclusion_bounded.wellFoundedHistories
-          target.strategy setup.exclusionProtocol.initHistory).map
-          (fun final => (setup.protocolReadout final.state,
-            fun who => (setup.protocolReadout final.state).elim 0
-              (fun state => exclusionUtility setup.program excludedPayoff utility
-                (setup.parameterOutcome parameter state) who))) =
-        (setup.intendedModel.runBehavioralTerminalFrom setup.intended_bounded.wellFoundedHistories
-            intended.strategy setup.intendedProtocol.initHistory).map
-          (fun final => (setup.protocolReadout final.state,
-            fun who => (setup.protocolReadout final.state).elim 0
-              (fun state => utility (setup.parameterOutcome parameter state) who))) :=
-  setup.intended_sequentialEquilibrium_extends_to_exclusion finite wellFormed parameter utility
-    excludedPayoff below _ _ intended equilibrium
-
-/-- info: 'Vegas.Paper.exclusion_sequential_equilibrium' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.exclusion_sequential_equilibrium
-
-open GameTheory.Protocol in
-theorem public_scheduling_sequential_equilibrium {ι : Type} [Fintype ι] [DecidableEq ι]
-    {E : ExecutionProtocol ι} {Pub Token View : Type} (S : PublicScheduler E Pub Token View)
-    (M : InformationModel E) [Finite E.History] {bound : ℕ} (bounded : E.BoundedHorizon bound)
-    (sourceRecall : M.DecisionRecall)
-    (nonterminal : ∀ i (site : M.InformationSite i), site.AllNonterminal)
-    (recoverable : ∀ i (site : M.InformationSite i)
-      (h h' : M.InformationHistory i site.1), S.pubTrace h.1.trace = S.pubTrace h'.1.trace)
-    (actors : ∀ i (h h' : E.History), S.pub h = S.pub h' →
-      (E.active h.state i ↔ E.active h'.state i))
-    (finiteKernel : ∀ pub τ p, (S.kernel pub τ p).support.Finite)
-    {Outcome : Type*} (observe : E.History → Outcome) (utility : Outcome → ι → ℝ)
-    (source : M.BehavioralAssessment)
-    (equilibrium : source.IsSequentialEquilibrium sourceRecall.decisionInformationAntichain
-      bounded.wellFoundedHistories (fun i h => utility (observe h) i)) :
-    ∃ target : (S.model M).BehavioralAssessment,
-      target.IsSequentialEquilibrium
-        (S.decisionRecall M sourceRecall recoverable actors).decisionInformationAntichain
-        (S.boundedHorizon bounded).wellFoundedHistories
-        (fun i x => utility (observe (S.erase x)) i) ∧
-      ((S.model M).runBehavioralTerminalFrom (S.boundedHorizon bounded).wellFoundedHistories
-          target.strategy S.protocol.initHistory).map (fun x => observe (S.erase x)) =
-        (M.runBehavioralTerminalFrom bounded.wellFoundedHistories source.strategy
-          E.initHistory).map observe ∧
-      ∀ i (site : (S.model M).InformationSite i),
-        target.strategy i site.1 = S.liftProfile M source.strategy i site.1 :=
-  S.expanded_sequentialEquilibrium M bounded sourceRecall nonterminal recoverable actors
-    finiteKernel observe utility source equilibrium
-
-/-- info: 'Vegas.Paper.public_scheduling_sequential_equilibrium' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.public_scheduling_sequential_equilibrium
 
 open Vegas.SourceProgram Vegas.EventGraphRuntime
   GameTheory.Protocol GameTheory.Enforcement in
@@ -539,84 +458,6 @@ theorem intended_async_first_turn_nash [Fintype Player] [IExpr.ResultTypes L]
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.intended_async_first_turn_nash
-
-open Vegas.SourceProgram Vegas.EventGraphRuntime
-  GameTheory.Protocol GameTheory.Enforcement in
-theorem intended_opening_client_nash [Fintype Player] [IExpr.ResultTypes L]
-    {Parameter : Type} (service : AsyncServiceSpec Player L)
-    (wellFormed : service.setup.WellFormed)
-    (parameter : State L service.setup.context → Parameter)
-    (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
-    (forfeit : ℝ) (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode)))
-    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
-    (deposit : Player → ℝ) (nonnegative : ∀ who, 0 ≤ deposit who)
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
-    (low : Player → ℝ) (spread : ℝ)
-    (within : ∀ who (output : Option (State L service.setup.program.terminalCtx))
-      (charged : Bool),
-      low who ≤ output.elim 0 (fun state => forfeitUtility service.setup.program forfeit utility
-          (service.setup.parameterOutcome parameter state) who) -
-            (if charged then deposit who else 0) ∧
-        output.elim 0 (fun state => forfeitUtility service.setup.program forfeit utility
-          (service.setup.parameterOutcome parameter state) who) -
-            (if charged then deposit who else 0) ≤ low who + spread)
-    (intended : Profile service.setup.intendedModel.behavioralSignature)
-    (ε : ℝ)
-    (equilibrium : IsεNash (service.setup.intendedModel.toBehavioralGameForm
-        (instructionCount service.setup.program + 1))
-      (fun final who => (service.setup.protocolReadout final.state).elim 0
-        (fun state => utility (service.setup.parameterOutcome parameter state) who)) ε
-      intended) :
-    let forfeited := forfeitUtility service.setup.program forfeit utility
-    let base := serviceBaseUtility service.setup service.mode service.deadline service.leaks
-      (fun state => forfeited (service.setup.parameterOutcome parameter state))
-    let payoff := TerminalAudit.utility base
-      ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
-        service.leaks)
-      (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
-    let settle := TerminalAudit.settlement base
-      ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
-        service.leaks)
-      (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
-    ∃ source : Profile (service.sourceModel (CommitmentInterface.values
-      service.setup.program)).behavioralSignature,
-      (service.setup.intendedRestriction (CommitmentInterface.values
-        service.setup.program)).ExtendsProfile intended source ∧
-      (∀ player, Disclosing service.setup.program
-        (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
-          source player)) ∧
-      IsεNash ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
-        service.horizon
-          service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
-          (fun history who => payoff history.state who)
-          (ε + 2 * timing.deferralError * spread)
-          (service.clientProfile (CommitmentInterface.values service.setup.program)
-            service.rawMenu timing source) ∧
-        PMF.WithinTV timing.deferralError
-          (((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
-            service.horizon
-            service.scheduler).runBehavioral (service.clientProfile (CommitmentInterface.values
-              service.setup.program) service.rawMenu timing source)
-              (2 * service.horizon + 1)).bind (fun final =>
-                (settle final.state).map fun payoffs =>
-                  (serviceSourceReadout service.setup service.mode service.deadline service.leaks
-                    final.state, payoffs)))
-          ((service.setup.intendedModel.runBehavioral intended
-              (instructionCount service.setup.program + 1)).map
-            (fun final => (service.setup.protocolReadout final.state,
-              fun who => (service.setup.protocolReadout final.state).elim 0
-                (fun state => utility (service.setup.parameterOutcome parameter state) who)))) :=
-  service.intended_openingExtension_isεNash wellFormed parameter utility forfeit range
-    sample authentic deposit nonnegative service.rawMenu timing (service.rawMenu_admits
-      (CommitmentInterface.values service.setup.program) timing)
-    low spread within intended ε equilibrium
-
-/-- info: 'Vegas.Paper.intended_opening_client_nash' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.intended_opening_client_nash
 
 open Vegas.SourceProgram in
 theorem scheduled_terminal_state_law [IExpr.ResultTypes L]

@@ -95,9 +95,7 @@ The *forfeit utility* charges a fixed amount for each failed reveal, and the
 | Theorem | Statement |
 | --- | --- |
 | `intended_sequential_equilibrium` | A sequential equilibrium of the intended game extends to one of the source game whose forfeit is at least the utility range. No reveal fails on its path, and the joint law of outcome and payoffs is unchanged. |
-| `intended_nash` | The same for ε-Nash equilibria. |
-| `exclusion_sequential_equilibrium` | As the first row, with an exclusion payoff at most every intended payoff in place of the forfeit. The strategies and beliefs extend those of the intended equilibrium. |
-| `public_scheduling_sequential_equilibrium` | A sequential equilibrium of a finite game lifts to the game in which a finitely branching public scheduler interleaves the moves. The scheduler reads only public data that each player's information determines. The outcome law is unchanged. |
+| `intended_nash` | Every source profile extending an intended ε-Nash equilibrium is an ε-Nash equilibrium of the source game under the same forfeit, with no failed reveal on its path and the same joint law of outcome and payoffs. |
 
 ### Nash preservation on the plain contract
 
@@ -119,7 +117,6 @@ have finite message forms, and the initial law has finite support.
 | `async_client_nash_reflection` | The source direction, on every response menu that admits the clients. |
 | `intended_async_first_turn_nash` | Take a source profile extending an intended ε-Nash equilibrium. Its first-turn clients are an ε-Nash equilibrium under the forfeit utility, with the intended joint law of outcome and payoffs. |
 | `intended_async_client_nash` | The same for deferring clients, with the slack above. The joint law is within the total deferral weight in total variation. |
-| `intended_opening_client_nash` | Some source profile that extends an intended ε-Nash equilibrium and opens every commitment has clients as in the previous row. |
 
 ### Sequential-equilibrium preservation
 
@@ -159,13 +156,14 @@ resolve.
 - The assumptions of the concurrent theorem are sufficient, not minimal.
   [These counterexamples](docs/consolidation.md#why-the-concurrent-theorem-assumes-what-it-does)
   show why several of them are needed.
-- Seven theorems have no concrete program as an instance: `intended_nash`,
-  `public_scheduling_sequential_equilibrium`, the three intended asynchronous
-  Nash forms, and the one-packet and turn-based SE theorems. The concurrent
-  theorem's hypotheses are discharged only for a program without strategic
-  content ([test](VegasTests/ConcurrentRawHypotheses.lean)). A two-player
-  late-opening program instantiates the intended-to-source and exclusion
-  extensions ([source](Vegas/Examples/LateOpeningRuntimeSourcePreservation.lean))
+- Five theorems have no concrete program as an instance: `intended_nash`, the
+  two intended asynchronous Nash forms, and the one-packet and turn-based SE
+  theorems. The concurrent theorem's hypotheses are discharged only for a
+  program without strategic content
+  ([test](VegasTests/ConcurrentRawHypotheses.lean)). A two-player
+  late-opening program instantiates the intended-to-source extension and its
+  exclusion variant `Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_extends_to_exclusion`
+  ([source](Vegas/Examples/LateOpeningRuntimeSourcePreservation.lean))
   and three Nash forms on a concrete builder
   ([runtime](Vegas/Examples/LateOpeningRuntimeNash.lean)).
 - Cryptographic commitments, signatures and the EVM are ideal interfaces here;

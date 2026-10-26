@@ -101,8 +101,8 @@ still be specified beside any broader claim.
   extension for the actual bounded raw menu and gives the same
   deferral-dependent Nash and law-error bounds in every dependency mode.
   At zero deferral these are exact. The full raw-menu capstone is
-  `Vegas.Paper.intended_opening_client_nash` in [Paper.lean](../Paper.lean),
-  delegating to [IntendedOpeningNash.lean](../Vegas/Game/IntendedOpeningNash.lean).
+  `AsyncServiceSpec.intended_openingExtension_isεNash` in
+  [IntendedOpeningNash.lean](../Vegas/Game/IntendedOpeningNash.lean).
 - **Concrete source binding and publication failure:** every intended SE of the
   three-instruction Boolean-opening/answer-commitment/answer-opening source
   extends to a source SE permitting both failed bindings and failed

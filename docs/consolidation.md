@@ -771,7 +771,7 @@ Exit: size within the target, or the excess explained in
   `CommitSeedSignalling*`) at tags.
 - **D6. Tags or branches.** Proposed: annotated tags for retired results;
   branches only for a result to be maintained against the evolving core.
-- **D7. `public_scheduling_sequential_equilibrium`.** Keep (about 2k lines
+- **D7. Public scheduling (`GameTheory.Protocol.PublicScheduler.expanded_sequentialEquilibrium`).** Keep (about 2k lines
   beyond the concurrent cone) or tag.
 - **D8. Naming scheme.** Settle before Step 2 renames anything, so every name
   changes once. Proposed: "contract" for compiled output, never "runtime";

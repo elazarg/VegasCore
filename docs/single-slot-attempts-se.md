@@ -423,8 +423,7 @@ The single-phase sharper bound $q(D-R)\le(1-q)c$ from the
 **Checked:** the public-scheduling theorem, for the abstract bounded public
 scheduler of the [public-scheduling note](public-scheduling-se-preservation.md)
 (section "The checked expansion"):
-`GameTheory.Protocol.PublicScheduler.expanded_sequentialEquilibrium`, pinned as
-`Vegas.Paper.public_scheduling_sequential_equilibrium` with standard axioms.
+`GameTheory.Protocol.PublicScheduler.expanded_sequentialEquilibrium`, with standard axioms.
 Its hypotheses are the source model's decision recall, nonterminal decision
 fibers, recoverability of the public projection and of the actors from every
 player's information at its decisions, and finitely supported draws. Each

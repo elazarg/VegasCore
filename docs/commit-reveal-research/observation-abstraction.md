@@ -407,8 +407,7 @@ number `draws`, and kernel reading public projection, full token transcript
 and pending count. Its `view : player → Token → View` determines each player's
 observed part of each token. The information model remembers
 `transcript.map (view player)` and the pending count alongside source information.
-`PublicScheduler.expanded_sequentialEquilibrium` and the Paper pin
-`Vegas.Paper.public_scheduling_sequential_equilibrium` establish the bounded
+`PublicScheduler.expanded_sequentialEquilibrium` establishes the bounded
 token-view case, including the fully public identity view. This is the checked
 construction described in
 [public scheduling](../public-scheduling-se-preservation.md).
