@@ -18,6 +18,13 @@ the implementation, the existing theorem contract or the preservation checklist.
 The [mathematical foundations](se-private-mempool-mathematics.md) prove the
 observation, consistency, completion and finite-refutation results used here.
 
+The [intended-game and quit-handler analysis](se-quit-handler-preservation.md)
+separates intended-game SE from SE of a game already exposing Quit. It also
+proves a source-level extension using only a first-quitter utility cap, with
+arbitrary bounded survivor continuations. This can avoid an all-player abort
+floor, but general handlers replace the common-interest operational proof with
+handler-aware incentive and attribution obligations.
+
 | Design | Benefit | Obligation or cost |
 |---|---|---|
 | Retain rollback | Survivors can continue. | Private-memory simulation and source-compatible continuation incentives. |
