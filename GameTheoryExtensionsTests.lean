@@ -28,3 +28,6 @@ import GameTheoryExtensionsTests.OptionalDomination
 
 import GameTheoryExtensionsTests.TotalVariation
 import GameTheoryExtensionsTests.NormalizedWeights
+import GameTheoryExtensionsTests.ForwardPathCoherence
+import GameTheoryExtensionsTests.SignedKernelPullback
+import GameTheoryExtensionsTests.InformationTiming
