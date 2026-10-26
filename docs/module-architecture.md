@@ -287,6 +287,7 @@ directory's aggregator imports every module in it.
 - [Ordinary private-input transport through actual execution and focal observations](../Vegas/Pending/PhaseInitialInputObservation.lean)
 - [First-response deadline bounds from the actual service opportunity contract](../Vegas/Pending/PhaseFirstOpportunity.lean)
 - [Stopped request windows and their actual final environment transitions](../Vegas/Pending/PhaseRequestWindow.lean)
+- [Protected binding acceptance through actual stopped execution windows](../Vegas/Pending/PhaseProtectedBindingWindow.lean)
 - [Hidden foreign binding laws at a shared physical slot](../Vegas/Pending/PhaseForeignTraffic.lean)
 - [Raw candidate provenance and canonical fresh slots](../Vegas/Pending/PhaseCandidateInputs.lean)
 - [Actual binding delivery under a private binding frame](../Vegas/Pending/PhaseTrafficBinding.lean)

@@ -5,7 +5,7 @@ import Vegas.Pending.PhaseCountMenu
 import Vegas.Pending.PhaseReadyResolution
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
 
-/-! # Actual raw stopping windows for a physical request
+/-! # Actual stopping windows for a physical request
 
 The completion contract prevents a bounded horizon from cutting off a still-ready
 request. The existing stopped evaluator supplies its first absent-request endpoint,
@@ -24,16 +24,17 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
   (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
-  (bounds : MessageBounds graph) (initial : PMF (PhaseRuntimeState graph)) (horizon : Nat)
+  (menu : (phaseApplication runtime leaks).ResponseMenu)
+  (initial : PMF (PhaseRuntimeState graph)) (horizon : Nat)
   (scheduler : (phaseApplication runtime leaks).Scheduler)
 
 local notation "app" => phaseApplication runtime leaks
-local notation "RawMenu" => PhaseCount.rawMenu runtime leaks bounds
+local notation "RawMenu" => menu
 local notation "P" => ReactiveApplication.ResponseMenu.protocol (RawMenu) initial horizon scheduler
 local notation "M" => ReactiveApplication.ResponseMenu.information (RawMenu) initial horizon
   scheduler
 
-/-- Actual bounded raw play reaches the first loss of an original ready request.
+/-- Actual bounded play reaches the first loss of an original ready request.
 Horizon termination cannot truncate that request, by the physical completion
 contract. The entire initialized history and a strict prefix are retained. -/
 theorem request_window_reaches_loss
@@ -100,7 +101,7 @@ theorem request_window_last_environment
   let stopped : (P).History → Prop := fun history => ∀ current,
     history.state = some current → ¬ current.execution.application.SeedRequest owner coordinate
   let certificate := ((RawMenu).bounded initial horizon scheduler).wellFoundedHistories
-  obtain ⟨lost, retained, longer⟩ := request_window_reaches_loss runtime leaks bounds initial
+  obtain ⟨lost, retained, longer⟩ := request_window_reaches_loss runtime leaks menu initial
     horizon scheduler completes profile start control atStart owner coordinate requested final
       supported
   obtain ⟨previousState, prior, joint, legal, moved, priorPrefix, finalTrace⟩ :=

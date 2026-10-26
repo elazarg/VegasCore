@@ -169,6 +169,11 @@ boundary with all surviving information preserved.
 
 ## Actual binding information and service windows
 
+Implementation of the consolidation port is paused while alternative routes to
+sequential-equilibrium preservation are researched. The checked results below
+remain available; the full initialized execution law and native Nash port are
+not established.
+
 [Current binding information](../Vegas/Game/SourcePhaseCurrentInformation.lean)
 constructs one legal original source history at an actual raw binding request.
 Every surviving player's complete decoded information agrees with that same
@@ -178,12 +183,22 @@ policy. These results require neither prior independence nor complete pending
 observation.
 
 [Request windows](../Vegas/Pending/PhaseRequestWindow.lean) stop actual bounded
-raw play at the first loss of a ready request. The full physical completion
+play in any response menu at the first loss of a ready request, including the
+raw and counted menus. The full physical completion
 condition rules out horizon truncation and exposes the final environment
 command and its genuine predecessor. [First-response timing](../Vegas/Pending/PhaseFirstOpportunity.lean)
 derives the reaction bound from the opportunity contract at the callback's
 idle predecessor; the supplied deadline margin then leaves room for the full
 inclusion budget. No reserved calendar is assumed.
+
+[Protected binding delivery](../Vegas/Pending/PhaseProtectedBindingWindow.lean)
+uses the actual remembered response, pending packet, readiness stamp and
+first-response inclusion margin. Under full protected inclusion and completion,
+every counted policy's request window ends with a true receipt for that same
+binding packet. The proof derives timeliness throughout the pending interval
+and retains the actual last predecessor and inclusion transition, including
+phase retirement and rollback. This is a delivery result for counted play;
+arbitrary raw unilateral deviations still require their separate simulation.
 
 [Binding-window readback](../Vegas/Game/SourcePhaseBindingWindow.lean) turns
 an actual timely request loss into the accepting packet, receipt, typed binding
