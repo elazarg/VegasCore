@@ -3224,3 +3224,21 @@ open GameTheory.Math in
 #guard_msgs (whitespace := lax) in
 open GameTheory.Math in
 #print axioms exists_integer_strict_direction
+
+/-- info: 'GameTheory.Protocol.InformationModel.BehavioralAssessment.IsSequentiallyConsistent.exists_everywhere_full' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel.BehavioralAssessment.IsSequentiallyConsistent in
+#print axioms exists_everywhere_full
+
+/-- info: 'GameTheory.Protocol.InformationModel.BehavioralAssessment.IsSequentiallyConsistent.exists_integral_log_certificate' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel.BehavioralAssessment.IsSequentiallyConsistent in
+#print axioms exists_integral_log_certificate
+
+/-- info: 'GameTheory.Protocol.InformationModel.BehavioralAssessment.IsSequentiallyConsistent.exists_power_certificate' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel.BehavioralAssessment.IsSequentiallyConsistent in
+#print axioms exists_power_certificate

@@ -102,3 +102,8 @@ import GameTheoryExtensions.Math.Probability.PowerPosterior
 import GameTheoryExtensions.Analysis.Protocol.PowerReach
 import GameTheoryExtensions.Analysis.Protocol.PowerCertificate
 import GameTheoryExtensions.Analysis.Protocol.StoppedResidual
+import GameTheoryExtensions.Analysis.Protocol.FullSupportApproximation
+import GameTheoryExtensions.Analysis.Protocol.LogReach
+import GameTheoryExtensions.Analysis.Protocol.BayesLogLimits
+import GameTheoryExtensions.Analysis.Protocol.LogRateCertificate
+import GameTheoryExtensions.Analysis.Protocol.PowerCompleteness
