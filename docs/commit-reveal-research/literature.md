@@ -55,6 +55,10 @@ continuation residuals to proposed certificate producers and stronger consumers.
 The [constructive implementation ledger](../se-preservation-constructive-experiments.md)
 distinguishes the checked general results and concrete consumers from the
 remaining completeness and runtime representation work.
+The [correlated-prior analysis](../se-correlated-prior-research.md) traces the
+private-input independence hypothesis to supported history repairs and common
+prior ratios, then compares common-best incentives, joint-prior accounting,
+couplings, and common-information prescriptions as possible weakenings.
 
 Use papers, official protocol specifications or implementation documentation.
 Record the precise property supported: cryptographic confidentiality, finality,

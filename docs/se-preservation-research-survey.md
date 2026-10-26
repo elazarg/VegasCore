@@ -22,6 +22,11 @@ and runtime adapter obligations. The [constructive follow-up](se-constructive-fo
 records finite-history power completeness, unequal-mass adaptive posterior
 certificates, payoff-aligned stopping, and the rejected compiled-runtime pilot.
 
+[Correlated initial priors](se-correlated-prior-research.md) separates the
+independence hypothesis's support and likelihood uses, identifies the existing
+common-best consumer as a weaker target, and examines joint-prior accounting,
+relation-supported couplings, and information-based alternatives.
+
 The most direct simplification opportunity is to transport only the
 continuation gains needed for rationality. Information compression supplies a
 broader generalization route, while power-sequence consistency offers finite
