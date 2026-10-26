@@ -15,8 +15,10 @@ applications below remain research proposals where those adapters are missing.
 [Constructive directions](se-preservation-constructive-directions.md) develops
 further targets: an affine-ray route to general power certificates, computed
 observable spaces and conditional cross-product certificates, and signed
-stopped residuals. It separates these proposed results from the accepted
-experiments and specifies game and runtime acceptance criteria.
+stopped residuals. The
+[constructive implementation ledger](se-preservation-constructive-experiments.md)
+records the checked general results and consumers, and the remaining game
+and runtime adapter obligations.
 
 The most direct simplification opportunity is to transport only the
 continuation gains needed for rationality. Information compression supplies a

@@ -52,6 +52,9 @@ implementations, with explicit package boundaries and missing hypotheses.
 The [constructive directions](../se-preservation-constructive-directions.md)
 connect Reny's affine-ray lemma, weighted-automata equivalence, and signed
 continuation residuals to proposed certificate producers and stronger consumers.
+The [constructive implementation ledger](../se-preservation-constructive-experiments.md)
+distinguishes the checked general results and concrete consumers from the
+remaining completeness and runtime representation work.
 
 Use papers, official protocol specifications or implementation documentation.
 Record the precise property supported: cryptographic confidentiality, finality,

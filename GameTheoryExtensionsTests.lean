@@ -44,3 +44,5 @@ import GameTheoryExtensionsTests.StoppedCharge
 
 import GameTheoryExtensionsTests.ObservableClosure
 import GameTheoryExtensionsTests.PowerNormalizerPaths
+import GameTheoryExtensionsTests.UnequalPowerEquilibrium
+import GameTheoryExtensionsTests.StoppedResidual

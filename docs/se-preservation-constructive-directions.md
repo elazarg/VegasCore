@@ -165,9 +165,11 @@ They do not affect reach to the observer's decision. This describes a
 nonzero-payoff sequential equilibrium with unequal tremble orders and genuine
 off-path incentive comparisons, rather than relying on zero-utility rationality.
 
-This witness is proposed mathematics, not a modification or checked extension
-of the existing fixture. Its purpose is to exercise the general certificate
-interpreter and the existing sequential-rationality predicates together.
+This witness is checked in
+[UnequalPowerEquilibrium](../GameTheoryExtensionsTests/UnequalPowerEquilibrium.lean),
+a separate payoff-retaining game. It exercises the general certificate,
+whole-policy sequential rationality, and the actual initialized joint law.
+The existing cyclic-belief fixture is unchanged.
 
 ## Observable spaces: construct a certificate instead of assuming closure
 

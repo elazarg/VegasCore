@@ -10,8 +10,10 @@ This ledger does not change the [SE target](se-async-checklist.md), its boxes,
 runtime semantics, or the quantifiers of existing preservation results.
 
 [Constructive directions](se-preservation-constructive-directions.md) describes
-further proposed results and their acceptance tests. Those proposals are not
-accepted results of this ledger.
+the certificate-producer targets and their acceptance tests. The separate
+[constructive implementation ledger](se-preservation-constructive-experiments.md)
+records checked general power soundness, affine rays, constructed observable
+spaces, signed residuals, and their concrete consumers and remaining limits.
 
 | Proposal | Experiment and acceptance criterion | Disposition |
 | --- | --- | --- |
@@ -24,7 +26,7 @@ accepted results of this ledger.
 | Affine debt and error transport | Compare a potential implementation with the existing recurrence, charging all adapter costs | Actual stopped-runner recurrence accepted; quitting-game debt interface retained separately |
 | Scheduler noninterference | Reuse the stopped relational theorem while retaining observable metadata | Existing concrete paired-step consumers retained |
 | Adapted information | Check a decision-timing boundary and assess the cost of a player-specific abstraction | Boundary accepted; general filtration interface deferred |
-| Power-sequence certificates | Connect shared behavioral rates to actual Bayes consistency; separate soundness from completeness | Concrete normalized-power completion accepted; general characterization not added |
+| Power-sequence certificates | Connect shared behavioral rates to actual Bayes consistency; separate soundness from completeness | Concrete completions and general certificate soundness accepted; full characterization remains open |
 | Finite obstruction certificates | Check a finite obstruction with game meaning and a consistent alternative assessment | Shared-choice obstruction and same-profile SE accepted |
 | Forward-path coherence | Check the acyclic parallel-path boundary for cycle-only criteria | Boundary accepted; no cycle-only runtime criterion |
 | External package reuse | Inspect package ownership and dependencies before importing or extracting machinery | Finite signed prototype checked; dependency not adopted |
@@ -239,6 +241,9 @@ solver, integer-exponent characterization and completeness theorem are not
 added. The checked positive construction and universal obstruction exercise
 the semantic obligations directly; an arithmetic-only formatter would not
 replace them or simplify the current component-based completion proof.
+General certificate **soundness** is a separate checked result in the
+[constructive ledger](se-preservation-constructive-experiments.md), together
+with an unequal-order nonzero-payoff SE and an unequal-normalizer regression.
 
 ## Observable and information boundaries
 
