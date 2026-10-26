@@ -117,3 +117,5 @@ interpretation. They do not identify the continuing-source analysis game with
 it. Existing intended-SE preservation is a different claim from preservation
 of every equilibrium of this full source phase game. The complete operational
 and information correspondence needed for that further port remains explicit.
+The [correspondence status](source-phase-correspondence.md) gives checked
+endpoint and source Nash-recoding results and the remaining policy-law work.

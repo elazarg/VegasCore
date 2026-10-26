@@ -445,6 +445,8 @@ directory's aggregator imports every module in it.
 ## Vegas/Game
 
 - [Declared monetary source game on the existing exit/retry kernel](../Vegas/Game/SourcePhaseGame.lean)
+- [Common source monetary observations and exact source Nash recoding](../Vegas/Game/SourcePhaseObservation.lean)
+- [Actual completed phase histories, source readout and integer cash](../Vegas/Game/SourcePhaseOperational.lean)
 
 - [Physical integer phase cash and audited monetary utility](../Vegas/Game/PhaseCash.lean)
 
@@ -823,6 +825,9 @@ the concrete terminal-state interpretation.
 - [Funded sequential raw equilibrium preserving program-declared cash](../Vegas/Examples/SequentialPhasePayments.lean)
 
 - [Actual initialized source exit with declared cash and retained valuation](../Vegas/Examples/SourcePhaseFailureContinuation.lean)
+- [Concurrent callback and source omission-information distinction](../Vegas/Examples/SourcePhaseInformation.lean)
+- [Actual maximal-source retry and singleton phase partition distinction](../Vegas/Examples/SourcePhasePartition.lean)
+- [Full source history valuation requiring terminal factorization](../Vegas/Examples/SourcePhaseValuation.lean)
 
 - [Continuing-source and phase decision-interface obstruction](../Vegas/Examples/FailureContinuationScope.lean)
 

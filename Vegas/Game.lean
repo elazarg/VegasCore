@@ -6,6 +6,8 @@ import Vegas.Game.PhasePaymentReadout
 import Vegas.Game.SequentialPhasePaymentPreservation
 import Vegas.Game.PhaseCash
 import Vegas.Game.SourcePhaseGame
+import Vegas.Game.SourcePhaseObservation
+import Vegas.Game.SourcePhaseOperational
 import Vegas.Game.AnchoredFirstTurnLaw
 import Vegas.Game.AnchoredHonestLaw
 import Vegas.Game.AnchoredOpeningClients

@@ -2,6 +2,9 @@
 
 import Vegas.Examples.FailureContinuationScope
 import Vegas.Examples.SourcePhaseFailureContinuation
+import Vegas.Examples.SourcePhaseInformation
+import Vegas.Examples.SourcePhasePartition
+import Vegas.Examples.SourcePhaseValuation
 import Vegas.Examples.SequentialPhasePayments
 import Vegas.Examples.CommitRevealAuction
 import Vegas.Examples.BoundedPaymentAuction

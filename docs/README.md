@@ -27,6 +27,8 @@ code, which is checked at that tag only.
   pilots, accepted common observations and cash laws, and rejected replacements.
 - [Common semantic contract](common-semantics-contract.md): the chosen exit,
   retry and declared-payment policy and its remaining source/contract adapters.
+- [Source phase correspondence](source-phase-correspondence.md): checked endpoint
+  and payoff recoding, interface distinctions and the native Nash obligations.
 - [Proof review and mathematical mining](proof-review.md): codebase coverage,
   checked experiments, compression candidates and stronger nearby results.
 
