@@ -81,7 +81,7 @@ code, which is checked at that tag only.
 - [What equilibrium preservation can support](equilibrium-preservation-landscape.md)
   and [how close general preservation is](general-se-preservation.md).
 - [Public stochastic scheduling](public-scheduling-se-preservation.md): the
-  argument behind `Vegas.Paper.public_scheduling_sequential_equilibrium`.
+  argument behind `GameTheory.Protocol.PublicScheduler.expanded_sequentialEquilibrium`.
 - [Weak PBE across a clean restriction](weak-pbe-restriction-preservation.md),
   [approximate SE under vanishing noise](noisy-runtime-approximate-se-preservation.md)
   and [failing honest publication](probabilistic-runtime-preservation.md).

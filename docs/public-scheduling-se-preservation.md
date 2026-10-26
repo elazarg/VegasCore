@@ -3,8 +3,7 @@
 Analysis by Codex. This document gives a mathematical construction of a useful
 source-to-runtime adapter. The general preservation theorem below is now
 checked for the bounded public scheduler of the section "The checked
-expansion" (`GameTheory.Protocol.PublicScheduler.expanded_sequentialEquilibrium`,
-pinned as `Vegas.Paper.public_scheduling_sequential_equilibrium`); the
+expansion" (`GameTheory.Protocol.PublicScheduler.expanded_sequentialEquilibrium`); the
 realization of a Vegas runtime as such an expansion remains compiler work. It
 does not change the asynchronous target, checklist, or semantics.
 

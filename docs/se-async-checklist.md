@@ -516,8 +516,7 @@ joint law. It is not pursued.
   Evidence: the source-game form on every barrier-ordered service graph, the
   concurrent-binding graph included, is the five asynchronous Nash pins (see
   C2). The intended-game form in every dependency mode, the concurrent-reveal
-  mode included, is `Vegas.Paper.intended_opening_client_nash` (from
-  `AsyncServiceSpec.intended_openingExtension_isεNash` and
+  mode included, is `AsyncServiceSpec.intended_openingExtension_isεNash` (with
   `AsyncServiceSpec.intended_openingClientProfile_isεNash`, standard axioms),
   with no existence premise: every intended `ε`-Nash equilibrium extends to a
   source profile that discloses at every reveal (`Setup.openingExtension`,
@@ -637,9 +636,9 @@ joint law. It is not pursued.
   intended sequential equilibrium preserved by the bounded raw runtime, with the
   intended joint law and no charge on paths; pinned with standard axioms.
   Partial evidence: the public-scheduling step is checked for an abstract
-  bounded public scheduler: `Vegas.Paper.public_scheduling_sequential_equilibrium`
-  (the instance of `GameTheory.Protocol.PublicScheduler.expanded_sequentialEquilibrium`,
-  standard axioms). For a finite source model with decision recall, nonterminal
+  bounded public scheduler:
+  `GameTheory.Protocol.PublicScheduler.expanded_sequentialEquilibrium`
+  (standard axioms). For a finite source model with decision recall, nonterminal
   decision fibers, a public projection recoverable together with the actors
   from every player's information at its decisions, and finitely supported
   draws, every source sequential equilibrium has a sequential equilibrium of

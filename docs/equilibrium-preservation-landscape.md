@@ -75,8 +75,8 @@ The exact Nash statements are pinned as `async_first_turn_nash_iff` and
 `intended_async_first_turn_nash` in [Paper](../Paper.lean). The comparison is
 against the full bounded raw deviation space, rather than just other clients.
 The equivalence concerns the specified compiled profiles; it does not classify
-all native Nash equilibria. `intended_opening_client_nash` covers all dependency
-modes, including concurrent reveals: a source epsilon-Nash profile produces
+all native Nash equilibria. `AsyncServiceSpec.intended_openingExtension_isεNash` covers all
+dependency modes, including concurrent reveals: a source epsilon-Nash profile produces
 error at most epsilon plus `2 delta R`, with joint-law error at most delta.
 First-turn timing has delta zero. These hypotheses should accompany any
 headline about Nash preservation on an arbitrary builder.
