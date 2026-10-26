@@ -59,6 +59,13 @@ directory's aggregator imports every module in it.
 - [Whole-policy deviations under a restriction](../GameTheoryExtensions/Analysis/Protocol/RetainedDeviation.lean)
 - [Stopped History Atom](../GameTheoryExtensions/Analysis/Protocol/StoppedHistoryAtom.lean)
 - [Stopped laws from paired actual kernels](../GameTheoryExtensions/Analysis/Protocol/StoppedKernelComparison.lean)
+- [Stopped comparison errors paid by integrable potentials](../GameTheoryExtensions/Analysis/Protocol/StoppedContinuationComparison.lean)
+- [Automatic potentials for bounded history charges](../GameTheoryExtensions/Analysis/Protocol/StoppedCharge.lean)
+- [Observation likelihoods, posterior gains and continuation mismatch](../GameTheoryExtensions/Math/Probability/KernelPosteriorGain.lean)
+- [Local context optimality after an observation](../GameTheoryExtensions/Analysis/Protocol/ObservableGainTransport.lean)
+- [Closed finite spans of signed continuation observables](../GameTheoryExtensions/Math/Probability/ObservableMoments.lean)
+- [Shared reach-product constraints on consistent beliefs](../GameTheoryExtensions/Analysis/Protocol/BeliefMonomial.lean)
+- [Ignoring independent public randomization in a mixed game](../GameTheoryExtensions/Analysis/PublicRandomization.lean)
 - [Finite-deposit SE extension under a terminal audit](../GameTheoryExtensions/Analysis/Protocol/TerminalAudit.lean)
 - [Affine payoff decorrelation bounds](../GameTheoryExtensions/Math/Probability/AffineDecorrelation.lean)
 - [Nested Posterior](../GameTheoryExtensions/Math/Probability/NestedPosterior.lean)
@@ -72,6 +79,8 @@ directory's aggregator imports every module in it.
 
 - [Complete authentic evidence observation and delivery](../Interaction/CompleteEvidenceService.lean)
 - [Fixed-policy continuation under a response menu](../Interaction/ReactivePolicyMenuInvariant.lean)
+- [Actual response budgets and exact environment steps](../Interaction/ReactiveDecisionBudget.lean)
+- [Recorded response counts and their conditional stopped expectation](../Interaction/ReactiveResponseCount.lean)
 
 - [Immutable-seed likelihood of actual scheduler traces](../Interaction/ReactiveSchedulerDensity.lean)
 
@@ -672,6 +681,9 @@ directory's aggregator imports every module in it.
 - [Decoded failures in existing terminal readouts](../Vegas/Game/SourceServiceFailureReadout.lean)
 - [Fixed service specification](../Vegas/Game/SourceServiceSpec.lean)
 - [Bounded stopped expectations under honest choice retention](../Vegas/Game/StoppedHonestComparison.lean)
+- [Conditional stopped-history TV from actual expected responses](../Vegas/Game/StoppedHonestResponseCount.lean)
+- [History-dependent retention and legal information-dependent mixtures](../Vegas/Game/StoppedHonestWeightedComparison.lean)
+- [Terminal and initialized joint-readout approximation](../Vegas/Game/OnePacketHonestTerminalApproximation.lean)
 
 The [sequential phase plan](../Vegas/Game/SequentialRuntimePhases.lean) is an
 adapter into the existing phase executor. Singleton drain and rebuild facts live

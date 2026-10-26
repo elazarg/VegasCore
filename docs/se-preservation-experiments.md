@@ -15,10 +15,10 @@ runtime semantics, or the quantifiers of existing preservation results.
 | Continuation-gain equivalence | Produce a gain comparison with explicit integration and deviation scope | Conditional context and closed-span results accepted |
 | Sufficient information | Test what local sufficiency supplies and identify the additional joint-law and strategy quantifiers | Policy-quantifier boundaries and static public-signal extension accepted |
 | Coarsening at random | Derive posterior transport from an actual observation channel | Likelihood producer accepted; runtime fibers remain a client obligation |
-| Stopped potentials | Prove the arbitrary-carrier stopped estimate and recover the uniform-depth theorem without stronger premises | In progress |
-| Quantitative abstraction | Supply a runtime producer of state-dependent charges and assess conditional uniformity | In progress |
-| Affine debt and error transport | Compare a potential implementation with the existing recurrence, charging all adapter costs | In progress |
-| Scheduler noninterference | Reuse the stopped relational theorem while retaining observable metadata | In progress |
+| Stopped potentials | Prove the arbitrary-carrier stopped estimate and recover the uniform-depth theorem without stronger premises | Comparison and automatic charge producer accepted |
+| Quantitative abstraction | Supply a runtime producer of state-dependent charges and assess conditional uniformity | Conditional response-count and weighted-retention estimates accepted |
+| Affine debt and error transport | Compare a potential implementation with the existing recurrence, charging all adapter costs | Actual stopped-runner recurrence accepted; quitting-game debt interface retained separately |
+| Scheduler noninterference | Reuse the stopped relational theorem while retaining observable metadata | Existing concrete paired-step consumers retained |
 | Adapted information | Check a decision-timing boundary and assess the cost of a player-specific abstraction | Boundary accepted; general filtration interface deferred |
 | Power-sequence certificates | Connect shared behavioral rates to actual Bayes consistency; separate soundness from completeness | Concrete normalized-power completion accepted; general characterization not added |
 | Finite obstruction certificates | Check a finite obstruction with game meaning and a consistent alternative assessment | Shared-choice obstruction and same-profile SE accepted |
@@ -28,6 +28,128 @@ runtime semantics, or the quantifiers of existing preservation results.
 Accepted declarations, concrete consumers, measured costs, and reasons to retain
 an existing proof are recorded here as each experiment is checked. Boundary
 examples refute only their stated criterion, not SE preservation.
+
+## Stopped errors and actual runtime consumers
+
+[StoppedContinuationComparison](../GameTheoryExtensions/Analysis/Protocol/StoppedContinuationComparison.lean)
+bounds a stopped expectation difference by a nonnegative potential satisfying
+the local comparison and expected-drift inequalities. Only reference steps
+must preserve the region; the target may leave it. Integration is explicit,
+and neither the history carrier nor the potential must be finite or globally
+bounded. The uniform step-TV/decreasing-depth result follows with exactly its
+original assumptions. The interval-payoff version charges the interval width
+times step-TV, avoiding an unnecessary factor two for event indicators.
+
+[StoppedCharge](../GameTheoryExtensions/Analysis/Protocol/StoppedCharge.lean)
+constructs a potential rather than requiring the client to guess one. It sums
+bounded nonnegative charges over actual prefix histories and subtracts the
+current cumulative charge from its conditional stopped expectation. A bounded
+horizon supplies integrability; the potential has exact one-step drift. It
+uses the existing stopped runner, without finite-Nature or finite-history
+assumptions. The
+[merging-history fixture](../GameTheoryExtensionsTests/StoppedCharge.lean)
+has two reachable histories at the same current state with future charges one
+quarter and three quarters. An endpoint-state-only fold cannot express that
+charge. This justifies the prefix-history carrier.
+
+The actual runtime producers are
+[ReactiveDecisionBudget](../Interaction/ReactiveDecisionBudget.lean) and
+[ReactiveResponseCount](../Interaction/ReactiveResponseCount.lean). Each player
+callback, including silence, increments the physical response count by one.
+Initialization, environment and Nature steps increment it by zero. The
+recorded count plus remaining response budget is at most the scheduler horizon.
+An exact identity with the generic cumulative charge supplies the stopped
+drift and integrability proofs, while the runtime retains its sharper
+remaining-response bounds.
+
+Write \(B\) for the payoff absolute bound, \(r\in[0,1]\) for retained honest
+choice mass, and \(A(h)\) for the expected actual honest responses before the
+chosen stop, conditional on the entire current history \(h\). The concrete
+[stopped comparison](../Vegas/Game/StoppedHonestResponseCount.lean) proves
+
+\[
+ \operatorname{TV}(P_{\mathrm{honest}},P_{\mathrm{target}})
+ \le (1-r)A(h),\qquad
+ |\mathbb E_{\mathrm{honest}}u-\mathbb E_{\mathrm{target}}u|
+ \le 2B(1-r)A(h).
+\]
+
+This compares complete stopped history laws at every starting history under
+the stated reference-support retention condition. It is not a root-weighted
+regret estimate. Padding steps themselves cost zero; changing a scheduler may
+still change future response opportunities and therefore the expectation.
+
+[StoppedHonestWeightedComparison](../Vegas/Game/StoppedHonestWeightedComparison.lean)
+allows genuinely history-dependent retention. Its second producer constructs
+legal target policies as mixtures with rates depending on each player's
+actual information. The rate at an active history is read from that actor's
+information; inactive steps have zero charge. The automatic potential pays
+the actual varying losses. The runtime supplies its own bounded horizon,
+rather than asking for another horizon premise. This addition does not by
+itself construct a uniform vanishing SE error for an arbitrary rate family.
+
+For uniform retention, the native initialized bound is
+
+\[
+ \min(|\mathrm{Player}|,1)\,H(1-r)
+\]
+
+for scheduler horizon \(H\), in place of
+\(|\mathrm{Player}|(2H+1)(1-r)\). It improves to \(H(1-r)\) when players are
+present and retains exact zero for an empty player type. The
+[terminal/readout adapter](../Vegas/Game/OnePacketHonestTerminalApproximation.lean)
+maps the bound to the actual joint typed readout and original
+parameter-dependent exclusion payoff, using the exact honest readout law.
+The initialized recovery and phase consumers use this estimate in their
+existing clearance and common-assessment limit arguments.
+
+The retained-honest payoff-error multiplier loses the ambient player count in
+25 concrete source-value and gain modules. Those comparisons retain their
+information-site, deviation and common-sequence quantifiers. The preservation
+statements, physical service premises, consistency construction, funding
+conditions and selected joint-law conclusions are unchanged. Other physical,
+cubic, observation, decorrelation and enforcement errors remain separate.
+
+The [repeated-activation fixture](../VegasTests/RepeatedActivation.lean) has
+two legal silent callbacks while its single source event is unfinished.
+Thus source-event count is not a general engine bound on callbacks. The
+fixture does not refute an additional honest-path or service-specific bound,
+and is not a counterexample to preservation under the full service contract.
+
+## Preserving generic theorem scope
+
+Tightening both a quantitative callback premise and its resulting estimate
+does not, by itself, strengthen the generic implication. The boundary-value
+adapters therefore accept arbitrary nonnegative error budgets. The higher
+keyed-value callback accepts a nonnegative retention multiplier; concrete
+producers use one.
+
+Five isolated Lean probes prove the exact original complete statements from
+the generalized APIs with the original player-count budgets. They preserve
+all callback domains, physical and clock terms, payoff hypotheses and
+conclusions. This includes the higher existential vanishing-error theorem,
+whose numerical premise is inside its callback rather than its conclusion.
+The concrete service theorems supply the sharper budgets; no compatibility
+aliases or duplicate semantic definitions are needed.
+
+## Retained interfaces and rejected replacements
+
+The [paired-step stopped comparison](../GameTheoryExtensions/Analysis/Protocol/StoppedKernelComparison.lean)
+already has eight concrete consumers across Interaction and Vegas, including
+the sequential phase route. Their actual relations and summary maps remain
+the scheduler/noninterference interface. A second abstract relation would
+repeat the same kernel, stopping and observation obligations. No clock,
+activation, traffic or receipt information is erased by choosing a smaller
+comparison graph, and no blanket scheduler noninterference result is claimed.
+
+The quitting-game debt equalities in UniformEquilibrium are not instantiated
+as arbitrary-game best-response debts. The accepted exact recurrence is for
+actual stopped cumulative charges. A general filtration interface, complete
+USI/MSI transport, full power-sequence characterization, new LP solver and
+wholesale external package imports do not simplify an identified consumer
+enough to justify their additional semantic obligations here. Their proposed
+scope remains in the survey. Rejected scaffolds have no production clients or
+imports; the checked boundary examples retain the reasons for those decisions.
 
 ## Gain comparisons and sufficient observables
 
@@ -148,8 +270,8 @@ An isolated source prototype checks the pinned Multitubes `EdgeGraph`,
 `WalkLabel`, `Basic` and `Morphism` modules under the central VegasCore options,
 together with a signed finite-carrier kernel pullback using the existing
 GameTheory expectation. Its monotonicity and lax-section walk bound check.
-The four external modules total 2,173 source lines; the signed adapter adds
-34 lines. This is a source experiment, not a build of either complete external
+The four external modules total 2,205 source lines; the signed adapter adds
+29 lines. This is a source experiment, not a build of either complete external
 package or a change to their dependency pins.
 
 The prototype demonstrates that the algebra can express the comparison. It
@@ -166,3 +288,45 @@ selects Lean/Mathlib 4.35.0, while the
 selects its own GameTheory package and external maths dependency. The survey's
 package-resolution obligations remain applicable. Importing either package
 wholesale offers no demonstrated reduction for these consumers.
+
+## Cost and verification
+
+Physical Lean-line changes, including comments, imports and theorem statements,
+are measured against the checked evaluation baseline:
+
+| Area | Affected files | Net lines |
+| --- | ---: | ---: |
+| Libraries and actual runtime consumers | 52 | +1,882 |
+| Regression and boundary games | 11 | +1,474 |
+| Paper imports and axiom guards | 1 | +427 |
+
+This is a mathematical strengthening and reuse result, not a net proof-size
+reduction. The three likelihood/context/moment owners contribute 501 library
+lines, the independent-public-signal extension 84, and the shared reach-product
+lemma 67. The finite consistency game and its preserving power construction
+contribute 594 test lines. The generic charge, variable-retention runtime
+adapter and merging fixture contribute 492 lines across their layers.
+
+Local reuse still matters: the constant-response consumer is 197 lines with
+two factual links to the generic charge, versus 203 with its independent drift
+and integration proofs. The terminal/no-stop law is shared with the actual
+proposal-recovery continuation consumer; its private duplicate is removed.
+The uniform-depth comparison is a specialization of the potential estimate.
+These savings are included in the complete costs rather than reported as
+global compression.
+
+Acceptance checks cover the ordinary complete build, including the recovery,
+sequential-phase and concurrent capstones, 105 tooling tests, strict source policy,
+module boundaries, documentation references and whitespace. There are 142
+distinct affected or supporting theorem roots with explicit standard-axiom
+audits, including the game boundaries. Production guards live in `Paper.lean`;
+test-library roots are audited in isolated modules, preserving the prohibition
+on audit imports from game-theory tests. Five exact full-statement scope probes
+check the generalized callback interfaces separately.
+
+The full build replays the pre-existing optional symbol-frequency metadata
+recursion diagnostic for `Vegas.Examples.CommitTimingInformationAudit`. Proof
+checking and the axiom guards pass; the central Lean options are unchanged.
+GameTheory's source and gitlink, the fixed SE target and checklist, existing
+language and runtime semantics, and preservation funding/service hypotheses
+remain unchanged.
