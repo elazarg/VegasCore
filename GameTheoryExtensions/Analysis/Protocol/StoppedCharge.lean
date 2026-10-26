@@ -54,6 +54,31 @@ theorem cumulative_bounds (charge : E.History → ℝ) {bound : ℝ}
       simp only [cumulativeCharge, traceCharge, Trace.length, Nat.cast_add, Nat.cast_one] at *
       constructor <;> nlinarith
 
+/-- Absolute prefix charges remain integrable even when their increments change sign. -/
+theorem cumulative_abs_le (charge : E.History → ℝ) {bound : ℝ}
+    (atMost : ∀ history, |charge history| ≤ bound) (history : E.History) :
+    |cumulativeCharge charge history| ≤ bound * history.trace.length := by
+  rcases history with ⟨state, trace⟩
+  induction trace with
+  | start => simp [cumulativeCharge, traceCharge, Trace.length]
+  | @extend source target prior joint legal realized ih =>
+      change |traceCharge charge prior + charge ⟨source, prior⟩| ≤ _
+      calc
+        _ ≤ |traceCharge charge prior| + |charge ⟨source, prior⟩| := abs_add_le _ _
+        _ ≤ bound * prior.length + bound := add_le_add ih (atMost _)
+        _ = _ := by simp only [Trace.length, Nat.cast_add, Nat.cast_one]; ring
+
+theorem cumulative_integrable_of_abs_le {horizon : Nat} (bounded : E.BoundedHorizon horizon)
+    (charge : E.History → ℝ) {bound : ℝ}
+    (atMost : ∀ history, |charge history| ≤ bound) (law : PMF E.History) :
+    PayoffIntegrable law (cumulativeCharge charge) := by
+  have boundNonnegative : 0 ≤ bound := (abs_nonneg _).trans (atMost E.initHistory)
+  apply payoffIntegrable_of_bounded law _ (C := bound * horizon)
+  intro history
+  exact (cumulative_abs_le charge atMost history).trans
+    (mul_le_mul_of_nonneg_left (by exact_mod_cast trace_length_le bounded history)
+      boundNonnegative)
+
 theorem cumulative_mono (charge : E.History → ℝ)
     (nonnegative : ∀ history, 0 ≤ charge history) {first last : E.History}
     (priorPath : TracePrefix first.trace last.trace) :
@@ -135,11 +160,36 @@ theorem expectedCharge_integrable {horizon : Nat} (bounded : E.BoundedHorizon ho
     nonnegative atMost history
   rwa [abs_of_nonneg lower]
 
-theorem expectedCharge_drift {horizon : Nat} (bounded : E.BoundedHorizon horizon)
+theorem expectedCharge_abs_le {horizon : Nat} (bounded : E.BoundedHorizon horizon)
     (certificate : E.WellFoundedHistories) (profile : ∀ who, M.BehavioralPolicy who)
     (stopped : E.History → Prop) (charge : E.History → ℝ) {bound : ℝ}
-    (nonnegative : ∀ history, 0 ≤ charge history)
-    (atMost : ∀ history, charge history ≤ bound) (history : E.History)
+    (atMost : ∀ history, |charge history| ≤ bound) (history : E.History) :
+    |M.expectedCharge certificate profile stopped charge history| ≤ 2 * (bound * horizon) := by
+  have boundNonnegative : 0 ≤ bound := (abs_nonneg _).trans (atMost E.initHistory)
+  have totalBounded : ∀ current, |cumulativeCharge charge current| ≤ bound * horizon :=
+    fun current => (cumulative_abs_le charge atMost current).trans
+      (mul_le_mul_of_nonneg_left (by exact_mod_cast trace_length_le bounded current)
+        boundNonnegative)
+  have subBound := abs_sub_le
+    (expect (M.runBehavioralUntil certificate profile stopped history) (cumulativeCharge charge))
+    0 (cumulativeCharge charge history)
+  simp only [sub_zero, zero_sub, abs_neg] at subBound
+  exact subBound.trans ((add_le_add
+    (expect_abs_le_of_bounded (mul_nonneg boundNonnegative (Nat.cast_nonneg _)) totalBounded)
+    (totalBounded history)).trans (by ring_nf; exact le_rfl))
+
+theorem expectedCharge_integrable_of_abs_le {horizon : Nat} (bounded : E.BoundedHorizon horizon)
+    (certificate : E.WellFoundedHistories) (profile : ∀ who, M.BehavioralPolicy who)
+    (stopped : E.History → Prop) (charge : E.History → ℝ) {bound : ℝ}
+    (atMost : ∀ history, |charge history| ≤ bound) (law : PMF E.History) :
+    PayoffIntegrable law (M.expectedCharge certificate profile stopped charge) :=
+  payoffIntegrable_of_bounded law _ (M.expectedCharge_abs_le bounded certificate profile stopped
+    charge atMost)
+
+theorem expectedCharge_drift_of_abs_le {horizon : Nat} (bounded : E.BoundedHorizon horizon)
+    (certificate : E.WellFoundedHistories) (profile : ∀ who, M.BehavioralPolicy who)
+    (stopped : E.History → Prop) (charge : E.History → ℝ) {bound : ℝ}
+    (atMost : ∀ history, |charge history| ≤ bound) (history : E.History)
     (going : ¬ stopped history) (running : ¬ E.terminal history.state) :
     charge history + expect (M.runBehavioralFrom profile 1 history)
       (expectedCharge M certificate profile stopped charge) =
@@ -149,18 +199,16 @@ theorem expectedCharge_drift {horizon : Nat} (bounded : E.BoundedHorizon horizon
   let law := M.runBehavioralFrom profile 1 history
   let value := fun current => expect
     (M.runBehavioralUntil certificate profile stopped current) total
-  have totalIntegrable := cumulative_integrable bounded charge nonnegative atMost
+  have totalIntegrable := cumulative_integrable_of_abs_le bounded charge atMost
   have valueIntegrable (distribution : PMF E.History) : PayoffIntegrable distribution value := by
     apply payoffIntegrable_of_bounded distribution _ (C := bound * horizon)
     intro current
     apply expect_abs_le_of_bounded (mul_nonneg
-      ((nonnegative E.initHistory).trans (atMost E.initHistory)) (Nat.cast_nonneg _))
+      ((abs_nonneg _).trans (atMost E.initHistory)) (Nat.cast_nonneg _))
     intro final
-    obtain ⟨lower, upper⟩ := cumulative_bounds charge nonnegative atMost final
-    rw [abs_of_nonneg lower]
-    exact upper.trans (mul_le_mul_of_nonneg_left
+    exact (cumulative_abs_le charge atMost final).trans (mul_le_mul_of_nonneg_left
       (by exact_mod_cast trace_length_le bounded final)
-      ((nonnegative E.initHistory).trans (atMost E.initHistory)))
+      ((abs_nonneg _).trans (atMost E.initHistory)))
   have tower : value history = expect law value := by
     dsimp only [value]
     rw [M.runBehavioralUntil_of_running certificate profile going running]
@@ -183,5 +231,19 @@ theorem expectedCharge_drift {horizon : Nat} (bounded : E.BoundedHorizon horizon
     value history - total history
   rw [expect_sub (valueIntegrable _) (totalIntegrable _), ← tower, stepTotal]
   ring
+
+/-- Nonnegative bounded charges are a specialization of signed exact drift. -/
+theorem expectedCharge_drift {horizon : Nat} (bounded : E.BoundedHorizon horizon)
+    (certificate : E.WellFoundedHistories) (profile : ∀ who, M.BehavioralPolicy who)
+    (stopped : E.History → Prop) (charge : E.History → ℝ) {bound : ℝ}
+    (nonnegative : ∀ history, 0 ≤ charge history)
+    (atMost : ∀ history, charge history ≤ bound) (history : E.History)
+    (going : ¬ stopped history) (running : ¬ E.terminal history.state) :
+    charge history + expect (M.runBehavioralFrom profile 1 history)
+      (expectedCharge M certificate profile stopped charge) =
+        expectedCharge M certificate profile stopped charge history :=
+  M.expectedCharge_drift_of_abs_le bounded certificate profile stopped charge (bound := bound)
+    (fun current => by simpa only [abs_of_nonneg (nonnegative current)] using atMost current)
+    history going running
 
 end GameTheory.Protocol.InformationModel

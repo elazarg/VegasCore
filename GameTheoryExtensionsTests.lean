@@ -41,3 +41,5 @@ import GameTheoryExtensionsTests.PublicRandomization
 import GameTheoryExtensionsTests.CyclicBeliefsCompletion
 
 import GameTheoryExtensionsTests.StoppedCharge
+
+import GameTheoryExtensionsTests.ObservableClosure

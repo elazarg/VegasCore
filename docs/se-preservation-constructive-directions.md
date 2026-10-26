@@ -6,10 +6,13 @@ mathematical opportunities. In particular, checking a hand-built witness is
 different from producing witnesses for a class of games, and declining a
 production dependency does not settle the value of its underlying theory.
 
-The strongest further targets are a general power-certificate interpretation,
+The [implementation ledger](se-preservation-constructive-experiments.md) records
+which parts have checked Lean implementations and their precise scope.
+The strongest targets are a general power-certificate interpretation,
 construction of closed observable spaces, and signed continuation-error
-identities. The statements and derivations below are research proposals, not
-checked Lean additions or changes to the SE target. They use the existing
+identities. The statements and derivations below describe the mathematical
+targets; the linked ledger distinguishes checked additions from open proposals.
+None changes the SE target. They use the existing
 probability and game semantics. None requires adopting an external package.
 
 ## Power certificates: separate the linear algebra from the game
@@ -36,6 +39,9 @@ The finite equations concern the intercept; the homogeneous strict constraints
 concern the direction. This is an attractive Multitubes theory result in its
 own right, using finite alternatives and closedness of finite-dimensional
 linear images. It needs neither game semantics nor a new LP solver.
+The real statement is checked locally in
+[AffineRay](../GameTheoryExtensions/Math/AffineRay.lean), using a continuous
+right inverse on the closed image. Integer extraction remains separate.
 
 The game interpretation can be split into independently useful results.
 
@@ -99,8 +105,9 @@ The proof divides all reach weights in a fiber by the reference leading power.
 The higher-order terms disappear; the coefficient ratios and normalization
 identify the complete limiting belief. Choosing one common positive sequence
 \(t_n\to0\) therefore supplies consistency of the prescribed assessment.
-This is a mathematical derivation of a proposed soundness theorem; it is not
-yet a theorem of the Lean library.
+This soundness construction is implemented in
+[PowerCertificate](../GameTheoryExtensions/Analysis/Protocol/PowerCertificate.lean),
+using the actual evaluator factorization and finite-fiber posterior limits.
 It preserves the prescribed limiting strategy, not automatically the extra
 mixture or coupling identities of an existing runtime approximation family.
 A production replacement must retain those premises as well.
@@ -294,8 +301,9 @@ terminal payoffs there is an additional expected boundary discrepancy.
 [StoppedCharge](../GameTheoryExtensions/Analysis/Protocol/StoppedCharge.lean)
 already constructs expectations of nonnegative charges. A signed charge can
 be split into its positive and negative parts; the existing drift laws then
-provide the algebra. The missing work is the arbitrary-start, stopped-runner
-adapter and its actual gain consumer, not a new expectation library. The
+provide the algebra. The arbitrary-start stopped-runner identity is checked in
+[StoppedResidual](../GameTheoryExtensions/Analysis/Protocol/StoppedResidual.lean).
+Its actual gain consumer is a separate acceptance obligation. The
 [current potential proof](../GameTheoryExtensions/Analysis/Protocol/StoppedContinuationComparison.lean)
 already contains the one-step signed decomposition before taking absolute values.
 

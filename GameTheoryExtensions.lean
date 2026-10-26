@@ -92,3 +92,12 @@ import GameTheoryExtensions.Math.Probability.ObservableMoments
 import GameTheoryExtensions.Analysis.PublicRandomization
 
 import GameTheoryExtensions.Analysis.Protocol.StoppedCharge
+
+import GameTheoryExtensions.Math.InvariantObservables
+import GameTheoryExtensions.Analysis.PrivateObservableTransport
+import GameTheoryExtensions.Math.AffineRay
+import GameTheoryExtensions.Math.Probability.NormalizedPower
+import GameTheoryExtensions.Math.Probability.PowerPosterior
+import GameTheoryExtensions.Analysis.Protocol.PowerReach
+import GameTheoryExtensions.Analysis.Protocol.PowerCertificate
+import GameTheoryExtensions.Analysis.Protocol.StoppedResidual

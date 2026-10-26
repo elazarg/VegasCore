@@ -3053,3 +3053,81 @@ open VegasTests.RepeatedActivation in
 #guard_msgs (whitespace := lax) in
 open VegasTests.RepeatedActivation in
 #print axioms responses_exceed_source_events
+
+/-- info: 'GameTheory.Math.exists_affine_ray' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math in
+#print axioms exists_affine_ray
+
+/-- info: 'GameTheory.Math.InvariantObservables.orbitSpan_le' depends on axioms:
+[propext, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.InvariantObservables in
+#print axioms orbitSpan_le
+
+/-- info: 'GameTheory.Math.InvariantObservables.comparison_word_eq_zero' depends on axioms:
+[propext, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.InvariantObservables in
+#print axioms comparison_word_eq_zero
+
+/-- info: 'GameTheory.Math.InvariantObservables.exists_finite_closed_basis' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math.InvariantObservables in
+#print axioms exists_finite_closed_basis
+
+/-- info: 'GameTheory.Protocol.PrivateStrategy.runBehavioral_value_mem' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.PrivateStrategy in
+#print axioms runBehavioral_value_mem
+
+/-- info: 'GameTheory.Protocol.PrivateStrategy.expect_runBehavioral_eq_of_closed_observables' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.PrivateStrategy in
+#print axioms expect_runBehavioral_eq_of_closed_observables
+
+/-- info: 'GameTheory.Protocol.PrivateStrategy.runBehavioral_joint_readout_eq_of_closed_observables' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.PrivateStrategy in
+#print axioms runBehavioral_joint_readout_eq_of_closed_observables
+
+/-- info: 'GameTheory.Protocol.InformationModel.powerProfile_historyReachWeight' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms powerProfile_historyReachWeight
+
+/-- info: 'GameTheory.Protocol.InformationModel.powerProfile_history_scaled_tendsto' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms powerProfile_history_scaled_tendsto
+
+/-- info: 'GameTheory.Protocol.InformationModel.powerAssessment_consistent' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms powerAssessment_consistent
+
+/-- info: 'GameTheory.Protocol.InformationModel.powerCertificate_consistent' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms powerCertificate_consistent
+
+/-- info: 'GameTheory.Protocol.InformationModel.expectedCharge_drift_of_abs_le' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms expectedCharge_drift_of_abs_le
+
+/-- info: 'GameTheory.Protocol.InformationModel.expect_runBehavioralUntil_sub_eq_expectedCharge' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms expect_runBehavioralUntil_sub_eq_expectedCharge
