@@ -2626,3 +2626,21 @@ open Vegas.Examples.SequentialPhaseService in
 #guard_msgs (whitespace := lax) in
 open Vegas.Examples.SequentialPhaseService in
 #print axioms funded_raw_equilibrium_exists
+
+/-- info: 'GameTheory.Protocol.InformationModel.abs_expect_runBehavioralUntil_sub_le_of_potential' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms abs_expect_runBehavioralUntil_sub_le_of_potential
+
+/-- info: 'GameTheory.Protocol.InformationModel.abs_expect_runBehavioralUntil_sub_le_of_stepTV_potential' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms abs_expect_runBehavioralUntil_sub_le_of_stepTV_potential
+
+/-- info: 'GameTheory.Protocol.InformationModel.abs_expect_runBehavioralUntil_sub_le_of_stepTV' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Protocol.InformationModel in
+#print axioms abs_expect_runBehavioralUntil_sub_le_of_stepTV
