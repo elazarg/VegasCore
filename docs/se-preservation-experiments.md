@@ -9,6 +9,10 @@ separate benefits. GameTheory remains unchanged; extensions belong locally.
 This ledger does not change the [SE target](se-async-checklist.md), its boxes,
 runtime semantics, or the quantifiers of existing preservation results.
 
+[Constructive directions](se-preservation-constructive-directions.md) describes
+further proposed results and their acceptance tests. Those proposals are not
+accepted results of this ledger.
+
 | Proposal | Experiment and acceptance criterion | Disposition |
 | --- | --- | --- |
 | Signed observable transport | Reuse real expectations; compare selected observables without asserting equality of laws | Integration boundary checked; guarded interface retained |

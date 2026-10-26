@@ -12,6 +12,12 @@ implementations, concrete consumers, boundary examples and decisions to retain
 existing interfaces. Its results have their stated scopes; the broader
 applications below remain research proposals where those adapters are missing.
 
+[Constructive directions](se-preservation-constructive-directions.md) develops
+further targets: an affine-ray route to general power certificates, computed
+observable spaces and conditional cross-product certificates, and signed
+stopped residuals. It separates these proposed results from the accepted
+experiments and specifies game and runtime acceptance criteria.
+
 The most direct simplification opportunity is to transport only the
 continuation gains needed for rationality. Information compression supplies a
 broader generalization route, while power-sequence consistency offers finite
