@@ -15,6 +15,7 @@ import Vegas.Game.CommitRecoveryGlobalWordDensity
 import Vegas.Source.CommitRecoveryInitialInputs
 import Vegas.Source.CommitRecoveryPublicScan
 import Vegas.Game.CommitRecoveryAncillaryBelief
+import Vegas.EventGraph.Validation
 
 /-! # Full surviving source information for physical phase clients
 
@@ -242,6 +243,17 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 local notation "app" => phaseApplication runtime leaks
 
+/-- Prevalidate a requested disclosure on the actual owner-local masked store.
+Only a successful guarded publication emits its opening; rejected values stay
+private even when the original source intention was to disclose. -/
+def effectiveOpening {who : Player} {payload : L.Ty}
+    (binding : FieldRef (serviceGraph setup .sequential).layout (.binding who payload))
+    (checks : List (GuardCheck (serviceGraph setup .sequential).layout payload))
+    (view : (app).PlayerView) (disclose : Bool) : Bool :=
+  match EventCode.resolveOutput? binding checks disclose view.application.1.observation.store with
+  | some (.success _) => true
+  | _ => false
+
 /-- Encode one queried source move using the original guarded physical binding
 and opening encoders. A source omission emits silence. Malformed observations
 are completed by legal silence without changing either source or runtime menus. -/
@@ -255,11 +267,12 @@ def moveResponse (who : Player) (event : (serviceGraph setup .sequential).EventI
             (fun _ _ => PMF.pure (phaseRecoveryBindingData setup .sequential event who payload
               (by simpa only [same] using outputEq) move).1) past view
       else PMF.pure ⟨none⟩
-  | .resolve owner payload binding _ _ _ =>
+  | .resolve owner payload binding checks _ _ =>
       if same : owner = who then
         PhaseCount.phaseOpeningPolicy runtime leaks bounds who event payload
           (same ▸ binding)
-          (fun _ _ => PMF.pure (OwnAction.disclosure (move.map (·.action)))) past view
+          (fun _ localView => PMF.pure (effectiveOpening setup runtime leaks (same ▸ binding)
+            checks localView (OwnAction.disclosure (move.map (·.action))))) past view
       else PMF.pure ⟨none⟩
   | .sample .. => PMF.pure ⟨none⟩
 

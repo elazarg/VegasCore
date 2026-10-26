@@ -17,21 +17,21 @@ namespace Vegas.EventGraphRuntime.BindingShadow
 
 open EventGraph Interaction GameTheory.Math.Probability
 
-variable {Player : Type} [DecidableEq Player] [Fintype Player]
+variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
   (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
 
 local notation "app" => phaseApplication runtime leaks
 
-/-- Original counted acceptance constructs the actual repaired accepting
+/-- Acceptance on actual raw histories constructs the repaired accepting
 handler and its dynamically normalized shadow. -/
 theorem PhaseStateFrame.repair_owned_binding_of_history
-    (bounds : MessageBounds graph) (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs)
+    (plan : RuntimePhasePlan graph) (inputs : PMF graph.Inputs)
     (horizon : Nat) (scheduler : (app).Scheduler) (left right : (app).Control)
-    (leftTrace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
+    (leftTrace : ((app).protocol
       (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some left))
-    (rightTrace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
+    (rightTrace : ((app).protocol
       (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler).Trace (some right))
     {memory : BindingShadow graph} {owner : Player}
     (frame : PhaseStateFrame memory owner left.execution.application right.execution.application)
@@ -60,10 +60,6 @@ theorem PhaseStateFrame.repair_owned_binding_of_history
         next.entry.native.config.store.BindingRefines image.entry.native.config.store ∧
         next.current.native.config.store.BindingRefines image.current.native.config.store) := by
   classical
-  have rawLeft := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace
-    (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler leftTrace
-  have rawRight := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace
-    (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler rightTrace
   have admitted : (message.payload.tokenValid left.execution.application.attempt &&
       left.execution.application.allows message.payload.packet.call &&
       !left.execution.application.current.excludedCall message.payload.packet.call) = true := by
@@ -87,12 +83,12 @@ theorem PhaseStateFrame.repair_owned_binding_of_history
   subst typeEq
   let owner := actor
   let payload := ty
-  have count := PhaseCount.countRecall_history runtime leaks rawLeft
+  have count := PhaseCount.countRecall_history runtime leaks leftTrace
   have output : message ∈ (app).outputs (left.execution.recall owner) := by
     rw [← count.1 owner]
     exact List.mem_filter.mpr ⟨member, by simp only [Message.sender, sender, owner, decide_true]⟩
   have signed := phaseOwnCommitmentsFixed_history runtime leaks
-    (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler rawLeft
+    (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler leftTrace
   change PhaseOwnCommitmentsFixed runtime leaks left.execution at signed
   have originalFixed : left.execution.application.current.native.candidates.lookup candidate ≠
       .fresh := by
@@ -138,7 +134,8 @@ theorem PhaseStateFrame.repair_owned_binding_of_history
       right.execution.application.allows message.payload.packet.call &&
       !right.execution.application.current.excludedCall message.payload.packet.call) = true := by
     rwa [attempts, allows, excluded] at admitted
-  have stored := phaseStoredCheckpoint_history runtime leaks plan inputs horizon scheduler rawRight
+  have stored := phaseStoredCheckpoint_history runtime leaks plan inputs horizon scheduler
+    rightTrace
   have savedMissing := PhaseBindingRepair.saved_uncompleted_of_ready
     right.execution.application stored event rightReady
   obtain ⟨nextMemory, first, image, firstHandled, imageHandled, nextOwned, candidates,

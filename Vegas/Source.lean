@@ -60,6 +60,7 @@ import Vegas.Source.CommitRecoveryContinuingMenu
 import Vegas.Source.CommitRecoveryControl
 import Vegas.Source.CommitRecoveryCursor
 import Vegas.Source.CommitRecoveryDebt
+import Vegas.Source.CommitRecoveryDisclosureAliases
 import Vegas.Source.CommitRecoveryDeviation
 import Vegas.Source.CommitRecoveryErasedContinuation
 import Vegas.Source.CommitRecoveryErasedModel
@@ -69,6 +70,7 @@ import Vegas.Source.CommitRecoveryFailureCoverage
 import Vegas.Source.CommitRecoveryFiniteness
 import Vegas.Source.CommitRecoveryFrontier
 import Vegas.Source.CommitRecoveryInformation
+import Vegas.Source.CommitRecoveryInformationPredecessor
 import Vegas.Source.CommitRecoveryInitialInputs
 import Vegas.Source.CommitRecoveryInstructions
 import Vegas.Source.CommitRecoveryIntended

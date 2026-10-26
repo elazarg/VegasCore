@@ -61,7 +61,10 @@ theorem sourceCurrentAddressWord_congr (plan : RuntimePhasePlan graph)
 
 end EventGraphRuntime.PhaseRuntimeState
 
-private theorem current_prefix_trace_sequential
+/-- The actual completed binding prefix has its literal source install,
+source joint recall and legal source trace, including all in-phase omissions.
+The saved checkpoint is retained until the real source close. -/
+theorem RecoverySourceCheckpoint.current_binding_prefix_trace
     {setup : Setup (Player := Player) (L := L)}
     {state : PhaseRuntimeState (serviceGraph setup .sequential)}
     (checkpoint : RecoverySourceCheckpoint setup .sequential state)
@@ -85,8 +88,17 @@ private theorem current_prefix_trace_sequential
         program) reconstruct.symm) checkpoint.embedding
     let filled := fillCommitPrefix setup.program earlier (.commit name owner fresh guard next)
       embedding state.current.native.config.store checkpoint.source
+    let suffix : SourceProgram Player L Δ P := .commit name owner fresh guard next
+    let decoded := decodeCommitAttempt setup.program .sequential earlier suffix embedding
+      state.current.native checkpoint.source state.entry.excluded
+    let first := CommitRecoveryState.atPoint (checkpoint.residual.lift
+      (ProtocolState.entry checkpoint.residual.tail checkpoint.source)) state.entry.excluded
+        state.generation
+    let target := checkpoint.residual.lift (cast (congrArg ProtocolState reconstruct)
+      (earlier.liftPoint suffix (ProtocolState.entry suffix decoded.1)))
     ∃ (source : CommitRecoveryState setup.program)
       (sourceTrace : setup.commitRecoveryProtocol.Trace (some source)),
+      source = first.install (target, decoded.2.1) decoded.2.2.excluded_subset ∧
       TracePrefix checkpoint.trace sourceTrace ∧
       source.excluded = state.current.excluded ∧ source.generation = state.generation ∧
       setup.commitRecoveryPublic (some source) =
@@ -106,7 +118,9 @@ private theorem current_prefix_trace_sequential
           (some (state.attempt.phase + index + 1),
             PhaseRuntimeState.archivedFailureOwners state.retired ∪
               state.current.native.failureOwnersBefore (state.attempt.phase + index + 1),
-            state.generation, state.attempt.phase)) := by
+            state.generation, state.attempt.phase)) ∧
+      setup.recoveryJointRecall sourceTrace = decoded.2.2.joints.reverse ++
+        setup.recoveryJointRecall checkpoint.trace := by
   classical
   have savedPosition := checkpoint.saved_position
   have low : phase.low = state.attempt.phase := by
@@ -208,7 +222,7 @@ private theorem current_prefix_trace_sequential
       (fun point who => menus who point) steps first rfl rfl committing beforeEnd
   change CommitRecoveryState.InstructionPath setup.program _ decoded.2.2.joints _ first after
     at instructions
-  obtain ⟨sourceTrace, sourcePrefix, _sourceLength, _joints, numeric⟩ :=
+  obtain ⟨sourceTrace, sourcePrefix, _sourceLength, joints, numeric⟩ :=
     setup.recoveryInstructionPath_information _ instructions initialized
   have addressLength : addresses.length = earlier.length :=
     instructions.addresses_length.trans decoded.2.2.joints_length
@@ -302,9 +316,9 @@ private theorem current_prefix_trace_sequential
   have sameWord : decoded.1.history owner =
       (fillCommitPrefix setup.program earlier suffix embedding
         state.current.native.config.store entry).history owner := congrArg Prod.snd sameView
-  refine ⟨after, sourceTrace, sourcePrefix.tracePrefix, excluded, rfl, publicSignal, actor,
+  refine ⟨after, sourceTrace, rfl, sourcePrefix.tracePrefix, excluded, rfl, publicSignal, actor,
     commitRecovery_isDecisionInfo_of_surviving_actor setup after sourceTrace owner active actor,
-    sameWord.symm.trans sourceWord.symm, ?_, ?_⟩
+    sameWord.symm.trans sourceWord.symm, ?_, ?_, joints⟩
   · rw [sourceWord]
     exact wholeView
   · rw [numeric, exactAddresses]
@@ -381,8 +395,9 @@ theorem phase_ready_binding_current_source
   obtain ⟨selected, selectedEq, Δ, P, name, fresh, guard, next, earlier, atEnd, reconstruct⟩ :=
     checkpoint.ready_binding_prefix exclusion.frontier phase remaining installed kind event inside
       request.2.2.1 who payload binding
-  obtain ⟨source, sourceTrace, _prefix, excluded, generation, publicSignal, actor, played,
-      word, decoded, numeric⟩ := current_prefix_trace_sequential checkpoint phase remaining
+  obtain ⟨source, sourceTrace, _installedSource, _prefix, excluded, generation, publicSignal, actor,
+      played, word, decoded, numeric, _joints⟩ :=
+    checkpoint.current_binding_prefix_trace phase remaining
     installed kind stored receipts bindingRecord.active archiveExclusions savedFailures fresh guard
     next earlier reconstruct selected atEnd (selectedEq.symm ▸ request.2.2.1) request.2.2.2.2
   have saved : control.execution.application.entry.native.config.cut.IsPrefix

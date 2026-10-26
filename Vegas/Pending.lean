@@ -4,6 +4,8 @@ import Vegas.Pending.AcceptedEventOwnership
 import Vegas.Pending.PhaseTraffic
 import Vegas.Pending.PhaseForeignTraffic
 import Vegas.Pending.PhaseCandidateInputs
+import Vegas.Pending.PhaseTrafficBinding
+import Vegas.Pending.PhaseTrafficEnvironment
 import Vegas.Pending.ArchiveBindingRecord
 import Vegas.Pending.AttemptNamespace
 import Vegas.Pending.BindingReceiptOrder

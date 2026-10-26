@@ -90,9 +90,33 @@ and raw menus at every input. Own recall records silence as well as packets, so
 the same attempt/event is sampled once. Playerwise compilation preserves
 unilateral profile updates. The checked response law binds the source choice
 law to the guarded physical encoder; adequate wire coverage and persistent
-candidate capacity are still needed to prove that encoding is untruncated.
+candidate capacity are required for untruncated encoding. The checked
+[binding encoders](../Vegas/Game/SourcePhaseClientBinding.lean) derive an
+actual fresh serial below the physical horizon from every supported first
+callback. Horizon at most candidate capacity and coverage of every typed value
+then make the encoder exact, including omission and accepted failure. The
+candidate reserve is persistent across retries; an event-count bound alone
+does not establish this condition.
 The decoder is a mathematical representative construction, not an executable
 decoder implementation.
+
+The [opening encoder](../Vegas/Game/SourcePhaseClientOpening.lean) validates
+publication using the owner's actual masked store. An intention whose deferred
+guard rejects the publication emits silence, even if its binding stores a
+successful value. Otherwise sending that value would disclose information
+that the source's failed publication keeps private. The checked local
+validation agrees with source effective disclosure under the existing failure
+extension and reference-agreement hypotheses. Suppressing an ineffective
+opening preserves the typed successor, exclusions and every foreign player's
+[entire source information](../Vegas/Game/SourcePhaseDisclosure.lean).
+The exited owner's original intention remains in its source recall.
+
+[Actual raw client play](../Vegas/Game/SourcePhaseClientLaw.lean) has the same
+whole control law as its representation in the one-packet menu at every
+prefix length. Each supported raw control therefore has a genuine counted
+history, and its count-audit charge is zero for every player. These facts
+include omissions and retries; they do not establish native/source law
+equality or transport arbitrary native deviations.
 
 The lower [phase traffic projection](../Vegas/Pending/PhaseTraffic.lean)
 retains the complete network, environment recall, receipts, focal recall and
@@ -104,6 +128,44 @@ foreign binding-result laws have the same
 derives canonical slot equality from the public input word on arbitrary raw
 histories, including rollback. These are factual transport lemmas, not a
 conditional-noise or deviation-realization theorem.
+
+The [binding-delivery adapter](../Vegas/Pending/PhaseTrafficBinding.lean)
+derives candidate meanings and handler compatibility from actual raw
+histories. The [environment adapter](../Vegas/Pending/PhaseTrafficEnvironment.lean)
+couples both actual environment kernels and retains a successor binding frame
+on every support pair, as well as focal traffic equality. Its ownership and
+completion guards remain explicit. In particular, this binding frame does
+not cover arbitrary differences in initial inputs.
+
+## Checked initialization and continuation kernels
+
+[Initialization](../Vegas/Game/SourcePhaseInitialization.lean) couples the
+actual first source and raw runtime steps under arbitrary profiles using the
+original setup draw. It retains the genuine extended histories on both sides.
+[Initial noise factorization](../Vegas/Game/SourcePhaseInitialNoise.lean)
+shows that the complete initialized focal traffic depends only on that
+player's source observation, allowing a correlated original prior. This is
+an initial-step statement, not a future conditional-noise theorem.
+
+[Automatic continuation](../Vegas/Game/SourcePhaseAutomatic.lean) and its
+[stopping-window consumer](../Vegas/Game/SourcePhaseAutomaticWindow.lean)
+give exact original source laws through excluded-owner instructions, for
+arbitrary source policies. The stopping proof rules out an earlier frontier;
+it is stronger than merely identifying a fixed-length endpoint.
+[Fresh normalization](../Vegas/Game/SourcePhaseNormalization.lean) applies
+these laws to an actual generated source path. Its endpoint is the saved
+checkpoint; a current physical cursor can be farther ahead within an
+excluded prefix.
+
+[Sample-command couplings](../Vegas/Game/SourcePhaseStep.lean) retain the
+original expression draw, actual physical normalization and environment
+recall. The [raw stopped sample law](../Vegas/Game/SourcePhaseSampleWindow.lean)
+derives that draw's marginal for every raw profile under physical completion,
+without a reserved calendar or a finite Nature assumption.
+[Binding receipt kernels](../Vegas/Game/SourcePhaseBindingStep.lean) retain
+the exact original install-and-close step, including final-slot rollback and
+retry. These local kernels do not yet supply a joint law at every macro
+boundary with all surviving information preserved.
 
 ## Remaining strategy obligations
 

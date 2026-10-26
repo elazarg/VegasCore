@@ -193,6 +193,8 @@ directory's aggregator imports every module in it.
 - [Finite recovery source menus](../Vegas/Source/CommitRecoveryFiniteness.lean)
 - [Actual saved and live commitment-block frontiers](../Vegas/Source/CommitRecoveryFrontier.lean)
 - [Its observed transcripts and perfect recall](../Vegas/Source/CommitRecoveryInformation.lean)
+- [Local predecessor of complete source information](../Vegas/Source/CommitRecoveryInformationPredecessor.lean)
+- [Ineffective disclosure aliases and permanent exit](../Vegas/Source/CommitRecoveryDisclosureAliases.lean)
 - [Original input retention](../Vegas/Source/CommitRecoveryInitialInputs.lean)
 - [Commit Recovery Instructions](../Vegas/Source/CommitRecoveryInstructions.lean)
 - [Exact intended recovery source steps](../Vegas/Source/CommitRecoveryIntended.lean)
@@ -280,6 +282,12 @@ directory's aggregator imports every module in it.
 - [Canonical source-view and named-action suffix certificates](../Vegas/Compile/ProtocolViewSuffix.lean)
 
 ## Vegas/Pending
+
+- [Complete focal phase traffic and arbitrary responses](../Vegas/Pending/PhaseTraffic.lean)
+- [Hidden foreign binding laws at a shared physical slot](../Vegas/Pending/PhaseForeignTraffic.lean)
+- [Raw candidate provenance and canonical fresh slots](../Vegas/Pending/PhaseCandidateInputs.lean)
+- [Actual binding delivery under a private binding frame](../Vegas/Pending/PhaseTrafficBinding.lean)
+- [Environment couplings retaining the successor binding frame](../Vegas/Pending/PhaseTrafficEnvironment.lean)
 
 - [Completion in dependency-height deadline windows](../Vegas/Pending/CompletionService.lean)
 
@@ -450,6 +458,18 @@ directory's aggregator imports every module in it.
 - [Current source binding cursors with actual in-phase omissions](../Vegas/Game/SourcePhaseCursor.lean)
 - [Current source disclosure cursors and public chronology](../Vegas/Game/SourcePhaseRevealCursor.lean)
 - [Complete source-information reconstruction and physical first-opportunity clients](../Vegas/Game/SourcePhaseClient.lean)
+- [Actual original setup-draw coupling](../Vegas/Game/SourcePhaseInitialization.lean)
+- [Correlated initial traffic factors through source observations](../Vegas/Game/SourcePhaseInitialNoise.lean)
+- [Automatic excluded-player source continuation](../Vegas/Game/SourcePhaseAutomatic.lean)
+- [Exact original source stopping windows](../Vegas/Game/SourcePhaseAutomaticWindow.lean)
+- [Fresh normalization and saved source continuations](../Vegas/Game/SourcePhaseNormalization.lean)
+- [Original source and physical sample-command couplings](../Vegas/Game/SourcePhaseStep.lean)
+- [Raw stopped sample law under actual physical completion](../Vegas/Game/SourcePhaseSampleWindow.lean)
+- [Actual binding receipts determine the original source kernel](../Vegas/Game/SourcePhaseBindingStep.lean)
+- [Whole raw client control laws, counted histories and zero count charges](../Vegas/Game/SourcePhaseClientLaw.lean)
+- [Nontruncated actual first binding encoders](../Vegas/Game/SourcePhaseClientBinding.lean)
+- [Locally validated opening encoders](../Vegas/Game/SourcePhaseClientOpening.lean)
+- [Suppressed ineffective openings preserve foreign full information](../Vegas/Game/SourcePhaseDisclosure.lean)
 
 - [Physical integer phase cash and audited monetary utility](../Vegas/Game/PhaseCash.lean)
 

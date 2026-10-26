@@ -26,6 +26,19 @@ variable {Player : Type} [DecidableEq Player]
 
 local notation "app" => phaseApplication runtime leaks
 
+/-- An arbitrary other-owner submission preserves the existing private frame.
+Its packet, preparation data and evidence request are unrestricted. -/
+theorem PhaseStateFrame.submit_foreign {memory : BindingShadow graph} {hidden : Player}
+    {left right : PhaseRuntimeState graph} (frame : PhaseStateFrame memory hidden left right)
+    (actor : Player) (different : actor ≠ hidden) (material : WitnessedSubmission graph) :
+    PhaseStateFrame memory hidden (left.submit actor material) (right.submit actor material) := by
+  refine ⟨frame.phases, frame.generation, frame.entry, ?_, frame.retired⟩
+  change left.current.submit actor material = memory.recovery hidden
+    (right.current.submit actor material)
+  rw [frame.current]
+  simp only [RecoveryState.submit, recovery]
+  rw [native_foreign_submission memory hidden actor different right.current.native material.call]
+
 /-- The same arbitrary other-owner raw response preserves the general
 normalized frame and every nonrepairing player's entire recorded input. -/
 theorem respond_foreign_external (memory : BindingShadow graph) (owner actor : Player)
@@ -68,14 +81,7 @@ theorem respond_foreign_external (memory : BindingShadow graph) (owner actor : P
     | mk transmission =>
         cases transmission with
         | none => exact frame
-        | some material =>
-            refine ⟨frame.phases, frame.generation, frame.entry, ?_, frame.retired⟩
-            change left.application.current.submit actor material =
-              memory.recovery owner (right.application.current.submit actor material)
-            rw [frame.current]
-            simp only [RecoveryState.submit, recovery]
-            rw [native_foreign_submission memory owner actor different
-              right.application.current.native material.call]
+        | some material => exact frame.submit_foreign actor different material
   have nextSupport : memory.CompletedAt second.application.current.native.config := by
     cases response with
     | mk transmission =>

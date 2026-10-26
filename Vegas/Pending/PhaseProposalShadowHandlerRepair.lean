@@ -89,8 +89,13 @@ theorem PhaseStateFrame.handler_repair
         let owner := actor
         obtain ⟨nextMemory, image, handled, nextOwned, _candidates, nextValid, paired,
             nextSupport, refinement⟩ :=
-          frame.repair_owned_binding_of_history runtime leaks bounds plan inputs horizon scheduler
-            left right leftTrace rightTrace owned valid supported message member event payload
+          frame.repair_owned_binding_of_history runtime leaks plan inputs horizon scheduler
+            left right
+              ((PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace
+                (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler leftTrace)
+              ((PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace
+                (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler rightTrace)
+            owned valid supported message member event payload
               outputEq candidate call next accepted
         have typed :=
           prepared message member sender event candidate call payload outputEq codeEq node
