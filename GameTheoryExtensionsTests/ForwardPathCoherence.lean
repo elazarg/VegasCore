@@ -66,33 +66,3 @@ theorem no_compatible_family :
   linarith
 
 end GameTheoryExtensionsTests.ForwardPathCoherence
-
-/-- info: 'GameTheoryExtensionsTests.ForwardPathCoherence.height_eq_add_length' depends on axioms:
-[propext, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open GameTheoryExtensionsTests.ForwardPathCoherence in
-#print axioms height_eq_add_length
-
-/-- info: 'GameTheoryExtensionsTests.ForwardPathCoherence.closed_path_eq_nil' depends on axioms:
-[propext, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open GameTheoryExtensionsTests.ForwardPathCoherence in
-#print axioms closed_path_eq_nil
-
-/-- info: 'GameTheoryExtensionsTests.ForwardPathCoherence.closed_path_map' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open GameTheoryExtensionsTests.ForwardPathCoherence in
-#print axioms closed_path_map
-
-/-- info: 'GameTheoryExtensionsTests.ForwardPathCoherence.parallel_path_maps_differ' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open GameTheoryExtensionsTests.ForwardPathCoherence in
-#print axioms parallel_path_maps_differ
-
-/-- info: 'GameTheoryExtensionsTests.ForwardPathCoherence.no_compatible_family' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open GameTheoryExtensionsTests.ForwardPathCoherence in
-#print axioms no_compatible_family

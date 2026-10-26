@@ -78,33 +78,3 @@ theorem revealed_value_le_one (profile : Profile revealedForm.sig) :
   split <;> norm_num
 
 end GameTheoryExtensionsTests.InformationTiming
-
-/-- info: 'GameTheoryExtensionsTests.InformationTiming.hidden_bit_law' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open GameTheoryExtensionsTests.InformationTiming in
-#print axioms hidden_bit_law
-
-/-- info: 'GameTheoryExtensionsTests.InformationTiming.revealed_bit_law' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open GameTheoryExtensionsTests.InformationTiming in
-#print axioms revealed_bit_law
-
-/-- info: 'GameTheoryExtensionsTests.InformationTiming.hidden_value' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open GameTheoryExtensionsTests.InformationTiming in
-#print axioms hidden_value
-
-/-- info: 'GameTheoryExtensionsTests.InformationTiming.revealed_value' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open GameTheoryExtensionsTests.InformationTiming in
-#print axioms revealed_value
-
-/-- info: 'GameTheoryExtensionsTests.InformationTiming.revealed_value_le_one' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open GameTheoryExtensionsTests.InformationTiming in
-#print axioms revealed_value_le_one

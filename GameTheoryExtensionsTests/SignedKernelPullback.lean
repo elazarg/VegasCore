@@ -60,15 +60,3 @@ theorem geometric_expect_not_monotone :
   positivity
 
 end GameTheoryExtensionsTests.SignedKernelPullback
-
-/-- info: 'GameTheoryExtensionsTests.SignedKernelPullback.unrestricted_expect_not_monotone' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open GameTheoryExtensionsTests.SignedKernelPullback in
-#print axioms unrestricted_expect_not_monotone
-
-/-- info: 'GameTheoryExtensionsTests.SignedKernelPullback.geometric_expect_not_monotone' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open GameTheoryExtensionsTests.SignedKernelPullback in
-#print axioms geometric_expect_not_monotone

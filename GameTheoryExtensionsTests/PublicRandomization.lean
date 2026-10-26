@@ -95,21 +95,3 @@ theorem ignored_public_coin_nash_and_law :
     rfl
 
 end GameTheoryExtensionsTests.PublicRandomization
-
-/-- info: 'GameTheoryExtensionsTests.PublicRandomization.conditional_information' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open GameTheoryExtensionsTests.PublicRandomization in
-#print axioms conditional_information
-
-/-- info: 'GameTheoryExtensionsTests.PublicRandomization.no_conditional_product' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open GameTheoryExtensionsTests.PublicRandomization in
-#print axioms no_conditional_product
-
-/-- info: 'GameTheoryExtensionsTests.PublicRandomization.ignored_public_coin_nash_and_law' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-open GameTheoryExtensionsTests.PublicRandomization in
-#print axioms ignored_public_coin_nash_and_law

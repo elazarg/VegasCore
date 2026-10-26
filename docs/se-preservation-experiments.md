@@ -46,7 +46,7 @@ conditions. The denominator remains explicit; small unconditioned errors are
 not treated as uniform conditional errors.
 
 [ObservableGainTransport](../GameTheoryExtensions/Analysis/Protocol/ObservableGainTransport.lean)
-uses that producer in the existing `Context.ofBelief` and local-optimality
+uses that producer in the existing `GameTheory.Protocol.Context.ofBelief` and local-optimality
 predicate. Every allowed alternative is compared as one choice across the
 hidden-state expectation. If choices are whole policies, their information
 restrictions and branch interpretation must be supplied by the client. The
