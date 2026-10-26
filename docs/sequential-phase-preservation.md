@@ -1,8 +1,11 @@
 # Sequential equilibrium on the phase runtime
 
 The intended-game preservation theorem applies on
-`phaseApplication`, instantiated with the sequential compiled graph and singleton
-phases. The phase executor exposes packet observations, a retirement archive
+`phaseApplication`, instantiated with the sequential compiled graph, singleton
+phases and the default rank-plus-one relative deadline durations. Configurable
+deadlines are not quantified over by this SE theorem; see the
+[deadline scope assessment](se-deadline-scope.md) for the high-priority repair.
+The phase executor exposes packet observations, a retirement archive
 and permanent exclusion. The concurrent reserved-tape theorem uses a maximal
 phase plan.
 
@@ -33,7 +36,9 @@ actual phase runtime. Their primitive definitions already live in
 [native service adapter](../Vegas/Game/SequentialPhaseNativeService.lean)
 derives the clear counted-prefix guards used by the one-packet comparisons.
 Completion covers all legal horizon-terminal states. The reaction and inclusion
-bounds must sum to strictly less than each owned event's deadline.
+bounds must sum to strictly less than each owned event's fixed duration
+`event.val + 1`, not an arbitrary configurable deadline. In particular, an
+owned rank-zero event allows only zero reaction and inclusion bounds.
 
 Applying the theorem requires proofs of the entire physical service contract,
 in addition to the timing inequality and finite-nature instance. Opportunity,
