@@ -16,8 +16,9 @@ It uses the original assessment sequence and selected law.
 [SourceTerminalIndifference](../Vegas/Game/SourceTerminalIndifference.lean)
 derives completion throughout the actual information fiber from the current
 public completion view. For every hidden history all continuation profiles
-have the same original readout payoff. The signed residual and conditional
-whole-policy gain are therefore zero, for every belief and every deviation.
+have the same original readout payoff. The signed residual is therefore zero for every continuation profile.
+With finite actual histories, the conditional whole-policy gain is zero for
+every belief and every deviation.
 This uses exact cancellation before taking absolute values.
 
 [SourceTerminalCallbacks](../VegasTests/SourceTerminalCallbacks.lean) constructs
@@ -29,8 +30,8 @@ no physical-service or equilibrium certificate is claimed for that scheduler.
 
 The [native prefix owner](../Vegas/Examples/ProgramPaymentsNativeRepresentation.lean)
 also proves a useful obstruction to a literal Config-only runtime projection:
-reachable second callbacks can share Config and differ in private accepted
-handles, and the same admitted opening succeeds in one and fails in the other.
+reachable second callbacks can share Config and differ in public accepted
+handles and actual player observations, and the same admitted opening succeeds in one and fails in the other.
 This does not rule out richer finite encodings or coherent handle renamings.
 The compiled observable-space prototype is retained separately on
 [its experiment branch](https://github.com/elazarg/VegasCore/blob/research/vegas-observable-representation/docs/experiments/program-payments-observable-representation.md).

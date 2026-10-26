@@ -18,7 +18,9 @@ observable spaces and conditional cross-product certificates, and signed
 stopped residuals. The
 [constructive implementation ledger](se-preservation-constructive-experiments.md)
 records the checked general results and consumers, and the remaining game
-and runtime adapter obligations.
+and runtime adapter obligations. The [constructive follow-up](se-constructive-followup.md)
+records finite-history power completeness, unequal-mass adaptive posterior
+certificates, payoff-aligned stopping, and the rejected compiled-runtime pilot.
 
 The most direct simplification opportunity is to transport only the
 continuation gains needed for rationality. Information compression supplies a
@@ -694,9 +696,13 @@ belong in GameTheory or a game-generic extension.
 An information-compression theorem is a further optional addition. It must
 state its strategy quantifiers, permitted information loss, and whether it
 preserves expected payoff profiles or the stronger selected joint law. The
-published USI result does not already supply the latter guarantee. Neither
-this theorem nor the full power-sequence characterization is claimed to be
-present in the protocol interfaces listed here.
+published USI result does not already supply the latter guarantee. General
+information-compression preservation is not supplied by these
+interfaces. Local certificate soundness and necessity for finite actual
+histories and local menus are checked in the
+[constructive follow-up](se-constructive-followup.md); an executable
+game-to-constraint compiler and automated support infeasibility checker are
+separate obligations. The upstream GameTheory repository remains unchanged.
 
 ### GameTheoryExtensions: the bridge and quantitative refinement
 

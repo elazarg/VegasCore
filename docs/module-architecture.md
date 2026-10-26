@@ -39,6 +39,7 @@ directory's aggregator imports every module in it.
 ## GameTheoryExtensions
 
 - [Conditional tensor certificates with unequal observation masses](../GameTheoryExtensions/Analysis/ConditionalObservableTensor.lean)
+
 - [Actual adaptive transcript moments and Bayes normalization](../GameTheoryExtensions/Analysis/PrivateTranscriptWeights.lean)
 
 - [Integrable optional-readout domination and residual laws](../GameTheoryExtensions/Math/Probability/OptionalDomination.lean)
@@ -80,7 +81,8 @@ directory's aggregator imports every module in it.
 - [Actual behavioral history power factorization](../GameTheoryExtensions/Analysis/Protocol/PowerReach.lean)
 - [Exact-assessment power-certificate soundness](../GameTheoryExtensions/Analysis/Protocol/PowerCertificate.lean)
 - [Actual common approximants with full support at unused coordinates](../GameTheoryExtensions/Analysis/Protocol/FullSupportApproximation.lean)
-- [Shared-coordinate occurrence counts and actual log reach weights](../GameTheoryExtensions/Analysis/Protocol/LogReach.lean)
+- [Finite factual trace-coordinate covers and power/log identities](../GameTheoryExtensions/Analysis/Protocol/FiniteTraceCoordinates.lean)
+- [Global coordinate sums without finite-history assumptions](../GameTheoryExtensions/Analysis/Protocol/LogReach.lean)
 - [Bayesian finite and divergent history log-ratio limits](../GameTheoryExtensions/Analysis/Protocol/BayesLogLimits.lean)
 - [Integral log certificates from actual consistency](../GameTheoryExtensions/Analysis/Protocol/LogRateCertificate.lean)
 - [Finite-game power-certificate completeness](../GameTheoryExtensions/Analysis/Protocol/PowerCompleteness.lean)
@@ -434,11 +436,9 @@ directory's aggregator imports every module in it.
 
 ## Vegas/Game
 
-- [Actual completed-source signed residual and whole-policy indifference](../Vegas/Game/SourceTerminalIndifference.lean)
-
-- [Response budgets stopped at source completion](../Vegas/Game/SourceTerminalComparison.lean)
-
 - [Typed source readout stability after completion](../Vegas/Game/SourceTerminalReadout.lean)
+- [Response budgets stopped at source completion](../Vegas/Game/SourceTerminalComparison.lean)
+- [Actual completed-source signed residual and whole-policy indifference](../Vegas/Game/SourceTerminalIndifference.lean)
 
 - [Client joint laws and observable probability/expectation guarantees](../Vegas/Game/AsyncClientObservables.lean)
 - [Actual public initial inputs at late-key sites](../Vegas/Game/OnePacketPublicInitialSignal.lean)

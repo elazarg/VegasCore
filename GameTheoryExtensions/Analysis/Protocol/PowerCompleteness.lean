@@ -19,10 +19,10 @@ open GameTheory.Math.Probability ExecutionProtocol Filter
 
 variable {ι : Type*} [Fintype ι] {E : ExecutionProtocol ι} (M : InformationModel E)
 
-/-- In a game with finitely many global behavioral coordinates and legal
+/-- In a game with finite local menus and finitely many actual legal
 histories, consistency produces a power certificate for the exact assessment. -/
 theorem BehavioralAssessment.IsSequentiallyConsistent.exists_power_certificate
-    [∀ who, Finite (M.InfoState who)] [∀ who info, Finite (M.Choice who info)]
+    [∀ who info, Finite (M.Choice who info)]
     [Finite E.History] {assessment : M.BehavioralAssessment}
     {antichain : M.DecisionInformationAntichain}
     (consistent : assessment.IsSequentiallyConsistent antichain) :
@@ -47,8 +47,6 @@ theorem BehavioralAssessment.IsSequentiallyConsistent.exists_power_certificate
           (assessment.belief who site history).toReal /
             (assessment.belief who site (reference who site)).toReal) := by
   classical
-  let : ∀ who, Fintype (M.InfoState who) := fun who => Fintype.ofFinite _
-  let : ∀ who info, Fintype (M.Choice who info) := fun who info => Fintype.ofFinite _
   let reference := fun who (site : M.InformationSite who) =>
     (assessment.belief who site).support_nonempty.choose
   have referenceNonzero (who : ι) (site : M.InformationSite who) :
@@ -72,12 +70,13 @@ theorem BehavioralAssessment.IsSequentiallyConsistent.exists_power_certificate
     exact_mod_cast Int.toNat_of_nonneg (integerNonnegative coordinate)
   have orderDifference (who : ι) (site : M.InformationSite who)
       (history : M.InformationHistory who site.1) :
-      (∑ coordinate, ((M.historyActionCount history.1.trace coordinate : ℚ) -
-          (M.historyActionCount (reference who site).1.trace coordinate : ℚ)) *
-            (integer coordinate : ℚ)) =
+      (∑ coordinate : M.RealizedCoordinate,
+        ((M.historyActionCount history.1.trace coordinate.1 : ℚ) -
+          (M.historyActionCount (reference who site).1.trace coordinate.1 : ℚ)) *
+            (integer coordinate.1 : ℚ)) =
         (M.powerHistoryOrder order history.1.trace : ℚ) -
           (M.powerHistoryOrder order (reference who site).1.trace : ℚ) := by
-    rw [M.powerHistoryOrder_cast_eq_sum, M.powerHistoryOrder_cast_eq_sum]
+    rw [M.powerHistoryOrder_cast_eq_sum_realized, M.powerHistoryOrder_cast_eq_sum_realized]
     simp only [orderCast, sub_mul, Finset.sum_sub_distrib]
   have equalOrder (who : ι) (site : M.InformationSite who)
       (history : M.InformationHistory who site.1)
@@ -97,9 +96,9 @@ theorem BehavioralAssessment.IsSequentiallyConsistent.exists_power_certificate
     exact_mod_cast sub_pos.mp strict
   have coefficientLog (history : E.History) :
       Real.log (M.powerHistoryCoefficient coefficient history.trace) =
-        historyNatureLog history.trace - ∑ coordinate,
-          (M.historyActionCount history.trace coordinate : ℝ) * intercept coordinate := by
-    rw [M.powerHistoryCoefficient_log_eq coefficient coefficientPositive]
+        historyNatureLog history.trace - ∑ coordinate : M.RealizedCoordinate,
+          (M.historyActionCount history.trace coordinate.1 : ℝ) * intercept coordinate.1 := by
+    rw [M.powerHistoryCoefficient_log_eq_realized coefficient coefficientPositive]
     simp only [coefficient, Real.log_exp, mul_neg, Finset.sum_neg_distrib, sub_eq_add_neg]
   refine ⟨coefficient, order, reference, coefficientPositive, ?_, ?_, ?_, ?_⟩
   · intro who info choice

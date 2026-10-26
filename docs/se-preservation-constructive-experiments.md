@@ -61,7 +61,9 @@ give an exact intercept and a kernel direction strictly positive on every
 divergent row. Its proof uses a continuous linear right inverse on the closed
 finite-dimensional image. It adds no solver or dependency. This is the real
 direction lemma; rational approximation, integer scaling, logarithmic game
-interpretation, and power-certificate completeness are not conclusions.
+interpretation, and power-certificate completeness are not conclusions of
+this linear lemma alone. The [follow-up](se-constructive-followup.md) derives
+these consequences for finite actual histories and finite local menus.
 
 ## Closed observable spaces
 
@@ -98,10 +100,11 @@ for an unclosed terminal observable.
 
 This pilot has a finite, fixed all-action interface. It does not compile a
 Vegas runtime or transport a dependent legal-action menu. It does not prove
-the general tensor/cross-product conditional certificate, parameter-uniform
-runtime certificates, or SE preservation from observable closure alone.
+the native runtime adapters or SE preservation from observable closure alone.
+The general unequal-mass conditional certificate has its separate actual
+adaptive-runner consumer in the [follow-up](conditional-observable-certificates.md).
 
-The bounded Vegas candidate was
+A bounded Vegas candidate is
 [SequentialPhaseService](../Vegas/Examples/SequentialPhaseService.lean).
 Its phase-history finiteness instance is proof-level; an executable rational
 labelled representation is not provided. Connecting one would require checked
@@ -162,8 +165,10 @@ search tooling and Python tests. These counts include the adapters and fixtures,
 not just the small abstract certificate statements.
 
 The additions provide reusable constructions and stronger checked examples;
-they are not a net proof-compression result. General power completeness and
-integer extraction, a Vegas labelled-representation compiler, conditional
-tensor/cross-product certificates with unequal observation masses, and
-gain-only SE preservation remain open. The existing coupling along a common
-sequence and selected-law arguments remain necessary in runtime preservation.
+they are not a net proof-compression result. The [follow-up](se-constructive-followup.md)
+supplies integer extraction, power-certificate completeness for finite actual
+histories and local menus, actual adaptive unequal-mass conditional
+certificates, and payoff-aligned production stopping. A general native Vegas
+labelled-representation compiler and gain-only SE preservation remain open.
+The existing common-sequence coupling and selected-law arguments remain
+necessary in runtime preservation.
