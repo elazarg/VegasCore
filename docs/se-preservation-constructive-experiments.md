@@ -4,6 +4,9 @@ This ledger records the checked scope of the
 [constructive directions](se-preservation-constructive-directions.md).
 These additions leave GameTheory, runtime semantics, the preservation target,
 and its checklist unchanged. Supporting results do not close target boxes.
+The [follow-up experiments](se-constructive-followup.md) track completeness,
+actual finite representations, conditional certificates, and production ports
+on dedicated branches, including documented rejection decisions.
 
 ## Power-certificate soundness
 

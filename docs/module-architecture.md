@@ -71,6 +71,7 @@ directory's aggregator imports every module in it.
 - [Constructed invariant observable spaces and labelled certificates](../GameTheoryExtensions/Math/InvariantObservables.lean)
 - [Adaptive transcript-local observable transport and joint readout laws](../GameTheoryExtensions/Analysis/PrivateObservableTransport.lean)
 - [Finite real affine-ray constraints](../GameTheoryExtensions/Math/AffineRay.lean)
+- [Rational and integer directions for homogeneous strict constraints](../GameTheoryExtensions/Math/RationalStrictDirection.lean)
 - [Positive normalized power profiles](../GameTheoryExtensions/Math/Probability/NormalizedPower.lean)
 - [Finite leading-power posterior limits](../GameTheoryExtensions/Math/Probability/PowerPosterior.lean)
 - [Actual behavioral history power factorization](../GameTheoryExtensions/Analysis/Protocol/PowerReach.lean)

@@ -22,7 +22,7 @@ open scoped Topology
 exact intercept and a homogeneous strict direction. The resulting affine ray
 preserves the finite equations and diverges along every strict row. -/
 theorem exists_affine_ray
-    {Coordinate Equation Inequality : Type} [Finite Coordinate] [Finite Equation]
+    {Coordinate Equation Inequality : Type*} [Finite Coordinate] [Finite Equation]
     [Finite Inequality]
     (equations : (Coordinate → ℝ) →ₗ[ℝ] (Equation → ℝ))
     (inequalities : (Coordinate → ℝ) →ₗ[ℝ] (Inequality → ℝ))

@@ -3212,3 +3212,15 @@ open Vegas.AsyncServiceSpec in
 #guard_msgs (whitespace := lax) in
 open Vegas.AsyncServiceSpec in
 #print axioms clientSettlementLaw_expect_lower_bound
+
+/-- info: 'GameTheory.Math.exists_rational_strict_direction' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math in
+#print axioms exists_rational_strict_direction
+
+/-- info: 'GameTheory.Math.exists_integer_strict_direction' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open GameTheory.Math in
+#print axioms exists_integer_strict_direction

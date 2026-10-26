@@ -96,6 +96,7 @@ import GameTheoryExtensions.Analysis.Protocol.StoppedCharge
 import GameTheoryExtensions.Math.InvariantObservables
 import GameTheoryExtensions.Analysis.PrivateObservableTransport
 import GameTheoryExtensions.Math.AffineRay
+import GameTheoryExtensions.Math.RationalStrictDirection
 import GameTheoryExtensions.Math.Probability.NormalizedPower
 import GameTheoryExtensions.Math.Probability.PowerPosterior
 import GameTheoryExtensions.Analysis.Protocol.PowerReach
