@@ -63,6 +63,12 @@ The [private-mempool analysis](../se-private-mempool-research.md) separates the
 concurrent proof's archive and deterministic-observation dependencies, compares
 real observation interfaces, and develops mixture-based preservation routes
 and precisely scoped impossibility tests.
+Its [mathematical companion](../se-private-mempool-mathematics.md) proves finite
+private-observation preservation and coarsening obstructions, develops common
+consistency constructions, and relates exact obstruction search to
+semialgebraic equilibrium theory. The
+[compiler analysis](../se-private-mempool-compilation.md) compares rollback
+with absorbing failure and explains the incentive and payout requirements.
 
 Use papers, official protocol specifications or implementation documentation.
 Record the precise property supported: cryptographic confidentiality, finality,

@@ -12,6 +12,15 @@ no counterexample here to that capstone with only complete observation removed.
 The deductions and diagnostics below establish narrower facts, identify exact
 missing adapters, and specify how a genuine counterexample could be found.
 
+The [mathematical foundations](se-private-mempool-mathematics.md) give full finite
+proofs: private-noise preservation, the obstruction to limit-only coarsening,
+sharp posterior transport, conditional error control, simultaneous completion
+and exact finite decision procedures. The
+[compiler and incentive analysis](se-private-mempool-compilation.md) separates
+rollback from the runtime observation model and examines absorbing-abort
+compilation, waiting, penalties and the cost of payoff floors. These are
+mathematical research results, not newly checked runtime preservation theorems.
+
 ## Keep the target and information boundary explicit
 
 The first comparison should keep the source game, selected source SE, joint
