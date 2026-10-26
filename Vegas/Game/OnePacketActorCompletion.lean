@@ -27,7 +27,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {profile : BehavioralProfile setup.program}
+  {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)} {profile : BehavioralProfile setup.program}
 
 /-- **A completion with an actor is a deterministic source step.** At a
 configuration with a source residual, the source step of the decoded action of
@@ -71,8 +72,8 @@ residual, when the other players' factor of the replayed step is the unsettled
 content before the completion. -/
 theorem replayStepMatches_actor (assessment : setup.intendedModel.BehavioralAssessment)
     (who : Player) (history : setup.intendedProtocol.History) (pending : ℝ)
-    (before after : (application setup leaks).Control) (idle : before.actor = none)
-    (joint : Player → Option (application setup leaks).Action) {rank : Nat}
+    (before after : (application setup runtime leaks).Control) (idle : before.actor = none)
+    (joint : Player → Option (application setup runtime leaks).Action) {rank : Nat}
     (residual : SourceResidual setup profile rank before.execution.application.config)
     (current : history.state =
       some (residual.lift (ProtocolState.entry residual.program residual.source)))
@@ -85,10 +86,11 @@ theorem replayStepMatches_actor (assessment : setup.intendedModel.BehavioralAsse
         (actingJoint setup history.state (decodeEventAction setup.program event action)),
       setup.intendedModel.opponentsStepProb assessment.strategy who history.trace
         ⟨_, legal⟩ = pending) :
-    ReplayStepMatches setup leaks assessment who history pending (some before) joint
+    ReplayStepMatches setup runtime leaks assessment who history pending (some before) joint
       (some after) := by
   have mass := residual.actorStepMass event ready action _ member acts
-  refine replayStepMatches_completion assessment who history pending before after idle joint
+  refine replayStepMatches_completion (runtime := runtime) assessment who history pending before
+    after idle joint
     ready member fun legal => ?_
   simp only [acts, Option.isSome_some, ↓reduceIte]
   rw [completionMass_of_actor _ _ ready member acts]

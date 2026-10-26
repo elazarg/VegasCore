@@ -19,6 +19,7 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)}
   {initial : PMF (RecoveryState (graph setup))}
@@ -26,22 +27,22 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
     state = (RecoveryState.mk (State.initial inputs) ∅ : RecoveryState (graph setup)))
   (nativeLaw : initial.map RecoveryState.native = initialLaw setup)
   {horizon : Nat}
-  {recoveryScheduler : (recoveryApplication (runtime setup) leaks).Scheduler}
+  {recoveryScheduler : (recoveryApplication runtime leaks).Scheduler}
   {delay bound : (graph setup).EventId → Nat}
-  (opportunity : Recovery.Opportunity (runtime setup) leaks initial horizon recoveryScheduler delay)
-  (timely : (runtime setup).AsyncTimely delay bound)
+  (opportunity : Recovery.Opportunity runtime leaks initial horizon recoveryScheduler delay)
+  (timely : runtime.AsyncTimely delay bound)
 
-local notation "scheduler" => RecoveryProjection.nativeScheduler (runtime setup) leaks
+local notation "scheduler" => RecoveryProjection.nativeScheduler runtime leaks
   recoveryScheduler
-local notation "menu" => bounds.onePacketMenu (runtime setup) leaks
-local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+local notation "menu" => bounds.onePacketMenu runtime leaks
+local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
   scheduler
 
 variable
-  (inclusion : Recovery.ProtectedInclusion (runtime setup) leaks initial horizon recoveryScheduler
+  (inclusion : Recovery.ProtectedInclusion runtime leaks initial horizon recoveryScheduler
     bound)
-  (completes : Recovery.CompletesPlay (runtime setup) leaks initial horizon recoveryScheduler)
+  (completes : Recovery.CompletesPlay runtime leaks initial horizon recoveryScheduler)
 
 include initialized nativeLaw opportunity timely inclusion completes in
 /-- Honest play from an intended recovery boundary has no unanswered earlier
@@ -51,20 +52,25 @@ theorem recovery_honest_reached_not_late
     (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (E).WellFoundedHistories)
-    (rank : Nat) (start : (E).History) (anchor : (application setup leaks).Execution)
+    (rank : Nat) (start : (E).History) (anchor : (application setup runtime leaks).Execution)
     (state : start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩)
-    (boundary : ReachedBoundary setup leaks horizon scheduler rank anchor)
+    (boundary : ReachedBoundary setup runtime leaks horizon scheduler rank anchor)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank anchor.application.config = some point)
     (intended : ProtocolState.Intended setup.program point) :
     ∀ fuel (history : (E).History), history ∈ ((N).runBehavioralFrom
-      (honestProfile setup leaks bounds (initialLaw setup) horizon scheduler source) fuel
-        start).support → ∀ who, ¬ LateDelivery setup leaks who ((N).infoOf who history.trace) := by
-  exact counted_honest_reached_not_late (setup := setup) (leaks := leaks) (bounds := bounds)
-    (opportunity := Recovery.Opportunity.clear_counted_native bounds initialized nativeLaw
-    opportunity) (inclusion := Recovery.ProtectedInclusion.clear_counted_native bounds initialized
+      (honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler source) fuel
+        start).support → ∀ who, ¬ LateDelivery setup runtime leaks who ((N).infoOf who
+          history.trace) := by
+  exact counted_honest_reached_not_late (runtime := runtime) (setup := setup) (leaks := leaks)
+    (bounds := bounds)
+    (opportunity := Recovery.Opportunity.clear_counted_native (runtime := runtime) bounds
+      initialized nativeLaw
+    opportunity) (inclusion := Recovery.ProtectedInclusion.clear_counted_native (runtime :=
+      runtime) bounds initialized
     nativeLaw inclusion) (timely := timely) (completes :=
-    Recovery.CompletesPlay.clear_counted_native bounds initialized nativeLaw completes) wellFormed
+    Recovery.CompletesPlay.clear_counted_native (runtime := runtime) bounds initialized nativeLaw
+      completes) wellFormed
     covers capacity source certificate rank start anchor state boundary point decoded intended
 
 end Vegas

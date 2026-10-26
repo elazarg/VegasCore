@@ -63,15 +63,4 @@ theorem completionMass_swap (swap : HiddenSwap (graph setup))
         · rfl
   · rfl
 
-variable [Fintype Player]
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
-  {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
-  {profiles : ℕ → ∀ player,
-    (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player}
-  {who : Player} {steps : OperationalSteps setup leaks bounds horizon scheduler sequence
-    profiles who}
-  {allowed : Set (graph setup).Inputs}
-
 end Vegas

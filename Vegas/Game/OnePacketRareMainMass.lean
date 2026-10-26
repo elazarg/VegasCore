@@ -21,12 +21,4 @@ theorem slotMainRetention_ge {scale : ℝ} (nonnegative : 0 ≤ scale) (le_one :
       (1 - (scale ^ 2 + scale)) = scale ^ 4 * (1 + scale * (1 - scale)) := by ring
   linarith
 
-variable {Player : Type} [DecidableEq Player] [Fintype Player]
-  {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup))
-  (initial : PMF (application setup leaks).State) (horizon : Nat)
-  (scheduler : (application setup leaks).Scheduler)
-
 end Vegas

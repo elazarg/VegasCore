@@ -14,6 +14,7 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {profile : BehavioralProfile setup.program}
 
 private theorem failed_completed {config : (graph setup).Config}
@@ -301,13 +302,13 @@ responses, packet handling, scheduler commands, and automatic completion. -/
 theorem recoveryFailureRecord_history
     (profile : BehavioralProfile setup.program)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (horizon : Nat) (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
-    (control : (recoveryApplication (runtime setup) leaks).Control)
-    (trace : ((recoveryApplication (runtime setup) leaks).protocol
+    (horizon : Nat) (scheduler : (recoveryApplication runtime leaks).Scheduler)
+    (control : (recoveryApplication runtime leaks).Control)
+    (trace : ((recoveryApplication runtime leaks).protocol
       ((initialLaw setup).map fun native => (⟨native, ∅⟩ : RecoveryState (graph setup)))
       horizon scheduler).Trace (some control)) :
     RecoveryFailureRecord profile control.execution.application := by
-  let app := recoveryApplication (runtime setup) leaks
+  let app := recoveryApplication runtime leaks
   have preserved : app.Invariant (RecoveryFailureRecord profile) :=
     ⟨fun _ who material valid => valid.submit who material,
       fun _ message next valid accepted => valid.handle _ message next accepted,

@@ -24,7 +24,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {profile : BehavioralProfile setup.program}
+  {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)} {profile : BehavioralProfile setup.program}
 
 /-- **A chance completion has the source chance mass.** At a configuration with
 a source residual, completing a chance event decodes to no action, and reaches
@@ -75,8 +76,8 @@ variable [Fintype Player]
 history at the decoded point of a configuration with a source residual. -/
 theorem replayStepMatches_chance (assessment : setup.intendedModel.BehavioralAssessment)
     (who : Player) (history : setup.intendedProtocol.History) (pending : ℝ)
-    (before after : (application setup leaks).Control) (idle : before.actor = none)
-    (joint : Player → Option (application setup leaks).Action) {rank : Nat}
+    (before after : (application setup runtime leaks).Control) (idle : before.actor = none)
+    (joint : Player → Option (application setup runtime leaks).Action) {rank : Nat}
     (residual : SourceResidual setup profile rank before.execution.application.config)
     (current : history.state =
       some (residual.lift (ProtocolState.entry residual.program residual.source)))
@@ -85,10 +86,11 @@ theorem replayStepMatches_chance (assessment : setup.intendedModel.BehavioralAss
     (member : after.execution.application.config ∈
       (before.execution.application.config.step event ready action).support)
     (chance : (graph setup).actor? event = none) :
-    ReplayStepMatches setup leaks assessment who history pending (some before) joint
+    ReplayStepMatches setup runtime leaks assessment who history pending (some before) joint
       (some after) := by
   obtain ⟨decoded, mass⟩ := residual.chanceMass event ready action _ member chance
-  refine replayStepMatches_completion assessment who history pending before after idle joint
+  refine replayStepMatches_completion (runtime := runtime) assessment who history pending before
+    after idle joint
     ready member fun legal => ?_
   have nobody : ∀ player, (⟨actingJoint setup history.state
       (decodeEventAction setup.program event action), legal⟩ :

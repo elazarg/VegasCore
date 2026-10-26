@@ -31,9 +31,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 omit [Fintype Player] in
 /-- **The replayed step moves the actor.** At a replayed intended history whose
@@ -127,37 +128,42 @@ history of the one-packet game ending in a forced state of `who`, every
 completion of an event with an actor matches in the intended replay. -/
 theorem actorCompletionsMatch_of_forced (assessment : setup.intendedModel.BehavioralAssessment)
     (who : Player) :
-    ∀ {state} (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state)
-      (control : (application setup leaks).Control), state = some control →
-      ForcedState setup leaks who (some control) →
-      ActorCompletionsMatch setup leaks bounds horizon scheduler assessment who trace
+    ∀ {state} (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
+      (control : (application setup runtime leaks).Control), state = some control →
+      ForcedState setup runtime leaks who (some control) →
+      ActorCompletionsMatch setup runtime leaks bounds horizon scheduler assessment who trace
   | _, .start, _, current, _ => by cases current
   | _, .extend (source := before) (target := after) prior joint legal realized, control,
       current, forced => by
       have recursive := fun next same forcedNext =>
-        actorCompletionsMatch_of_forced assessment who prior next same forcedNext
+        actorCompletionsMatch_of_forced assessment who prior next same
+          forcedNext
       subst current
-      change some control ∈ ((application setup leaks).transition (initialLaw setup) horizon
+      change some control ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
         scheduler before joint).support at realized
       refine ⟨?_, ?_⟩
       · cases before with
         | none =>
-            obtain rfl := trace_eq_start_of_none prior
+            obtain rfl := trace_eq_start_of_none (runtime := runtime) prior
             trivial
         | some current =>
-            exact recursive current rfl (forcedState_of_transition prior joint realized forced)
+            exact recursive current rfl (forcedState_of_transition (runtime := runtime) prior
+              joint realized forced)
       · intro history replayed current next beforeEq afterEq idle event ready action member actor
           acts intendedLegal
         subst beforeEq
         cases afterEq
-        have forcedCurrent := forcedState_of_transition prior joint realized forced
-        have invariant := periodInvariant assessment who prior current rfl forcedCurrent
-        obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
-          (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler prior current rfl
+        have forcedCurrent := forcedState_of_transition (runtime := runtime) prior joint realized
+          forced
+        have invariant := periodInvariant (runtime := runtime) assessment who prior current rfl
+          forcedCurrent
+        obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+          setup.program)
+          (bounds.onePacketMenu runtime leaks) horizon scheduler prior current rfl
         have decoded := decodedPoint_eq residual
         have currentState : history.state =
             some (residual.lift (ProtocolState.entry residual.program residual.source)) :=
-          (intendedHistory?_state prior replayed).trans decoded
+          (intendedHistory?_state (runtime := runtime) prior replayed).trans decoded
         rw [opponentsStepProb_actingJoint assessment who history ready acts decoded currentState _
           intendedLegal]
         split_ifs with same
@@ -169,23 +175,28 @@ theorem actorCompletionsMatch_of_forced (assessment : setup.intendedModel.Behavi
           cases otherActs
           exact same
         · have notFailing := not_failing_of_legal ready acts decoded currentState intendedLegal
-          rcases transition_idle_cases (initialLaw setup) horizon scheduler current idle joint
+          rcases transition_idle_cases (runtime := runtime) (initialLaw setup) horizon scheduler
+            current idle joint
               realized with sameExecution | ⟨command, moved⟩
           · exact (config_ne_of_step member (by rw [sameExecution])).elim
           · obtain ⟨message, onLedger, sender, named, content, owned⟩ := completion_content
+              (runtime := runtime)
               current.execution _ command moved ready action member acts notFailing
-            have rawTrace := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace
+            have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace
               (initialLaw setup) horizon scheduler (prior.extend joint legal realized)
             have facts := settledFacts_history (initialLaw setup) horizon scheduler rawTrace
-            have inputsEq := transition_idle_inputs (initialLaw setup) horizon scheduler current
+            have inputsEq := transition_idle_inputs (runtime := runtime) (initialLaw setup)
+              horizon scheduler current
               idle joint realized
             have present : message ∈ current.execution.network.inputs := by
               rw [← inputsEq]
               exact facts.carried.ledger message onLedger
-            rcases invariant.settled event ready actor acts same with ⟨_, nothing⟩ |
+            rcases invariant.settled event ready actor acts same with ⟨_,
+              nothing⟩ |
                 ⟨recorded, recordedPresent, recordedSender, recordedNamed, sent, keep, fixed, eq⟩
             · exact (nothing message present sender named).elim
-            · have sameMessage := invariant.unique recorded recordedPresent message present
+            · have sameMessage := invariant.unique recorded recordedPresent
+                message present
                 (recordedSender ▸ same) (recordedSender.trans sender.symm) event recordedNamed
                 named
               subst sameMessage

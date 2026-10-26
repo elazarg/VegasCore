@@ -16,9 +16,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
   [DecidableEq (CellTy Player L)]
 
 omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L]
@@ -150,16 +151,16 @@ variable {p q : ProtocolState setup.program}
   (who : Player)
   (sameView : ProtocolState.observe who setup.program p =
     ProtocolState.observe who setup.program q)
-  {final : (application setup leaks).Control}
-  (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some final))
+  {final : (application setup runtime leaks).Control}
+  (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some final))
   (decodedP : decodedPoint setup final.execution.application.config = some p)
   (staticQ : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context) q)
   (readyOwn : ∀ event, final.execution.application.config.cut.Ready event →
     ∀ owner payload binding checks outputEq codeEq,
       nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
         owner = who)
-  {before : (application setup leaks).Control}
-  (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some before))
+  {before : (application setup runtime leaks).Control}
+  (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some before))
   (isPrefix : TracePrefix prior trace)
 
 include wellFormed secondState who sameView trace decodedP staticQ readyOwn prior isPrefix
@@ -191,13 +192,16 @@ theorem binding_success_of_tracePrefix {event : (graph setup).EventId}
     (binding.get?_isSome before.execution.application.config.store available)
   have finalRead := binding.get?_preserved before.execution.application.config.store
     final.execution.application.config.store
-    (fun field value stored => storedValue_of_tracePrefix prior isPrefix field value stored)
+    (fun field value stored => storedValue_of_tracePrefix (runtime := runtime) prior isPrefix
+      field value stored)
     result read
   have found := decodedPoint_binding_cell decodedP binding result finalRead
-  obtain ⟨after, finalEq, active⟩ := readyOrCompleted_of_tracePrefix prior isPrefix
+  obtain ⟨after, finalEq, active⟩ := readyOrCompleted_of_tracePrefix (runtime := runtime) prior
+    isPrefix
     (Or.inl ready)
   cases Option.some.inj finalEq
-  have agree := bindingCellsAgree_of_decoded wellFormed secondState who sameView trace decodedP
+  have agree := bindingCellsAgree_of_decoded (runtime := runtime) wellFormed secondState who
+    sameView trace decodedP
     staticQ readyOwn active view
   obtain ⟨value, resultEq⟩ := ProtocolState.cell?_commitment_success
     (intended_of_history wellFormed second.trace q secondState) (agree.symm.trans found)

@@ -47,37 +47,40 @@ open SourceProgram GameTheory.Protocol.InformationModel EventGraphRuntime Recove
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
+  (scheduler : (recoveryApplication runtime leaks).Scheduler)
 
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
-local notation "NativeScheduler" => nativeScheduler (runtime setup) leaks scheduler
-local notation "R" => model setup leaks bounds Initial horizon scheduler
-local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horizon (NativeScheduler)
+local notation "NativeScheduler" => nativeScheduler runtime leaks scheduler
+local notation "R" => model setup runtime leaks bounds Initial horizon scheduler
+local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  (NativeScheduler)
 local notation "RP" => ReactiveApplication.ResponseMenu.protocol
-  (Recovery.onePacketMenu (runtime setup) leaks bounds) Initial horizon scheduler
-local notation "RMenu" => Recovery.onePacketMenu (runtime setup) leaks bounds
-local notation "NMenu" => bounds.onePacketMenu (runtime setup) leaks
+  (Recovery.onePacketMenu runtime leaks bounds) Initial horizon scheduler
+local notation "RMenu" => Recovery.onePacketMenu runtime leaks bounds
+local notation "NMenu" => bounds.onePacketMenu runtime leaks
 
-variable (who : Player) (reference : (application setup leaks).Control)
+variable (who : Player) (reference : (application setup runtime leaks).Control)
   (active : reference.actor = some who)
   (valid : ExclusionEvidence 0 ∅ (RecoveryState.mk reference.execution.application ∅))
-  (nativeDecision : (onePacketModel setup leaks bounds (initialLaw setup) horizon
-    (nativeScheduler (runtime setup) leaks scheduler)).IsDecisionInfo who
-      ((application setup leaks).observe who (some reference)))
-  (recoveryDecision : (model setup leaks bounds
+  (nativeDecision : (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+    (nativeScheduler runtime leaks scheduler)).IsDecisionInfo who
+      ((application setup runtime leaks).observe who (some reference)))
+  (recoveryDecision : (model setup runtime leaks bounds
     (PMF.map (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup)))
       (initialLaw setup)) horizon scheduler).IsDecisionInfo who
-        (liftInformation (runtime setup) leaks
-          ((application setup leaks).observe who (some reference))))
+        (liftInformation runtime leaks
+          ((application setup runtime leaks).observe who (some reference))))
 
-local notation "Input" => ReactiveApplication.observe (application setup leaks) who (some reference)
+local notation "Input" => ReactiveApplication.observe (application setup runtime leaks) who (some
+  reference)
 local notation "NSite" => Subtype.mk (p := InformationModel.IsDecisionInfo (N) who) (Input)
   nativeDecision
 local notation "RSite" => Subtype.mk (p := InformationModel.IsDecisionInfo (R) who)
-  (liftInformation (runtime setup) leaks (Input)) recoveryDecision
+  (liftInformation runtime leaks (Input)) recoveryDecision
 
 /-- An entire actual clear recovery information history projects to an actual
 finite native history at the canonical compiled initial law. -/
@@ -87,7 +90,7 @@ def comparisonInformationHistory
   Equiv.cast (congrArg (fun initial : PMF (EventGraphRuntime.State (graph setup)) =>
       ((NMenu).information initial horizon (NativeScheduler)).InformationHistory who (Input))
         (initialLaw_native setup))
-    (boundedInformationHistory (runtime setup) leaks bounds Initial
+    (boundedInformationHistory runtime leaks bounds Initial
       (initialLaw_initialized setup) horizon scheduler who reference active valid
       (Eq.mpr (congrArg (fun initial : PMF (EventGraphRuntime.State (graph setup)) =>
         ((NMenu).information initial horizon (NativeScheduler)).IsDecisionInfo who (Input))
@@ -99,12 +102,13 @@ of the existing complete raw-history projection. -/
 theorem comparisonInformationHistory_raw
     (history : (R).InformationHistory who RSite.1) :
     (NMenu).toRawHistory (initialLaw setup) horizon (NativeScheduler)
-        (comparisonInformationHistory setup leaks bounds horizon scheduler who reference active
+        (comparisonInformationHistory setup runtime leaks bounds horizon scheduler who reference
+          active
           valid nativeDecision recoveryDecision history).1 =
       Equiv.cast (congrArg (fun initial : PMF (EventGraphRuntime.State (graph setup)) =>
-        ((application setup leaks).protocol initial horizon (NativeScheduler)).History)
+        ((application setup runtime leaks).protocol initial horizon (NativeScheduler)).History)
           (initialLaw_native setup))
-        (informationHistoryEquiv (runtime setup) leaks Initial (initialLaw_initialized setup)
+        (informationHistoryEquiv runtime leaks Initial (initialLaw_initialized setup)
           horizon scheduler who reference active valid
           ((RMenu).rawInformationHistory Initial horizon scheduler who RSite history)).1 := by
   unfold comparisonInformationHistory
@@ -114,37 +118,41 @@ theorem comparisonInformationHistory_raw
 /-- Projection retains the complete native state, not just its public record. -/
 theorem comparisonInformationHistory_state
     (history : (R).InformationHistory who RSite.1) :
-    (comparisonInformationHistory setup leaks bounds horizon scheduler who reference active valid
+    (comparisonInformationHistory setup runtime leaks bounds horizon scheduler who reference
+      active valid
       nativeDecision recoveryDecision history).1.state =
-        protocolState (runtime setup) leaks history.1.state := by
+        protocolState runtime leaks history.1.state := by
   unfold comparisonInformationHistory
   exact (informationHistory_cast_state (NMenu) (initialLaw_native setup) horizon (NativeScheduler)
-    who (Input) _).trans (boundedInformationHistory_state (runtime setup) leaks bounds Initial
+    who (Input) _).trans (boundedInformationHistory_state runtime leaks bounds Initial
       (initialLaw_initialized setup) horizon scheduler who reference active valid _ recoveryDecision
         history)
 
 /-- Complete finite recovery beliefs have exactly the same projected law as
 the native comparison assessment using the unchanged completion weights. -/
 theorem recovery_belief_eq_comparisonInformationHistory [Fintype (RP).History]
-    [(application setup leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
+    [(application setup runtime leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [∀ player, DecidableEq ((R).InfoState player)]
     [∀ player, DecidableEq ((N).InfoState player)]
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (Part setup leaks bounds Initial horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (Part setup runtime leaks bounds Initial horizon scheduler slots p))
     (n : ℕ) (fallback : ∀ player, (R).Policy player)
     (assessment : (R).BehavioralAssessment)
     (assembled : assessment.strategy = (R).agentBehavior (R).playedInformation fallback
-      (fun agent => (weights n (pool setup leaks bounds Initial horizon scheduler agent)).bind
-        (component setup leaks bounds Initial horizon scheduler (sequence n) (scale n)
+      (fun agent => (weights n (pool setup runtime leaks bounds Initial horizon scheduler
+        agent)).bind
+        (component setup runtime leaks bounds Initial horizon scheduler (sequence n) (scale n)
           (positive n).le (le_one n) agent)))
     (bayes : BehavioralAssessment.IsBayesConsistent (R) assessment
       ((RMenu).decisionInformationAntichain Initial horizon scheduler)) :
     (assessment.belief who RSite).map
-      (comparisonInformationHistory setup leaks bounds horizon scheduler who reference active valid
+      (comparisonInformationHistory setup runtime leaks bounds horizon scheduler who reference
+        active valid
         nativeDecision recoveryDecision) =
-      (nativeComparisonSequence setup leaks bounds horizon scheduler sequence scale positive le_one
+      (nativeComparisonSequence setup runtime leaks bounds horizon scheduler sequence scale
+        positive le_one
         weights n).belief who NSite := by
   let embed := fun history : (N).InformationHistory who NSite.1 =>
     (NMenu).toRawHistory (initialLaw setup) horizon (NativeScheduler) history.1
@@ -155,12 +163,13 @@ theorem recovery_belief_eq_comparisonInformationHistory [Fintype (RP).History]
   apply pmf_map_injective injective
   rw [PMF.map_comp]
   have composed : embed ∘
-      comparisonInformationHistory setup leaks bounds horizon scheduler who reference active valid
+      comparisonInformationHistory setup runtime leaks bounds horizon scheduler who reference
+        active valid
         nativeDecision recoveryDecision = fun history =>
       Equiv.cast (congrArg (fun initial : PMF (EventGraphRuntime.State (graph setup)) =>
-        ((application setup leaks).protocol initial horizon (NativeScheduler)).History)
+        ((application setup runtime leaks).protocol initial horizon (NativeScheduler)).History)
           (initialLaw_native setup))
-        (informationHistoryEquiv (runtime setup) leaks Initial (initialLaw_initialized setup)
+        (informationHistoryEquiv runtime leaks Initial (initialLaw_initialized setup)
           horizon scheduler who reference active valid
           ((RMenu).rawInformationHistory Initial horizon scheduler who RSite history)).1 := by
     funext history
@@ -169,7 +178,8 @@ theorem recovery_belief_eq_comparisonInformationHistory [Fintype (RP).History]
       informationHistory_cast_raw (NMenu) (initialLaw_native setup) horizon (NativeScheduler) who
         (Input), boundedInformationHistory_raw]
   rw [composed]
-  exact recovery_belief_eq_nativeComparison setup leaks bounds horizon scheduler sequence scale
+  exact recovery_belief_eq_nativeComparison setup runtime leaks bounds horizon scheduler sequence
+    scale
     positive le_one weights n fallback assessment assembled bayes who reference active valid
       nativeDecision recoveryDecision
 

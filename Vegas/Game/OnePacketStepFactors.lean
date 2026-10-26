@@ -26,71 +26,75 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 namespace LateKey
 
 open Classical in
 /-- The key's pending event: its turn, unless one of its envelopes names it. -/
-def pending (key : LateKey setup leaks) : Option (graph setup).EventId :=
-  key.turn.filter fun event => !decide (key.Recorded event)
+def pending (key : LateKey setup runtime leaks) : Option (graph setup).EventId :=
+  key.turn.filter fun event => !decide (key.Recorded
+    event)
 
 /-- The key is a late delivery: its pending event was its turn at a recalled
 view. -/
-def IsLate (key : LateKey setup leaks) : Prop :=
+def IsLate (key : LateKey setup runtime leaks) : Prop :=
   ∃ event, key.pending = some event ∧
-    ∃ entry ∈ key.recalled, entry.1.1.ownTurn? key.owner = some event
+    ∃ entry ∈ key.recalled, entry.1.1.ownTurn? key.owner
+      = some event
 
 end LateKey
 
 /-- The factor of a law sending the disclosure at a reveal: one when the
 response transmits, zero when it is silent. -/
-def transmitFactor (after : LateKey setup leaks) : ℝ :=
-  1 - silenceFactor after
+def transmitFactor (after : LateKey setup runtime leaks) : ℝ :=
+  1 - silenceFactor (runtime := runtime) after
 
 /-- **The as-if-honest factor.** One without a pending event; at a pending
 binding, the commitment at the canonical slot; at a pending reveal, the
 disclosure. -/
-def honestFactor (before after : LateKey setup leaks) : ℝ :=
+def honestFactor (before after : LateKey setup runtime leaks) : ℝ :=
   match before.pending with
   | none => 1
   | some event =>
       match nodeView (graph setup) event with
-      | .bind .. => pendingBindingHonestFactor before after
-      | _ => transmitFactor after
+      | .bind .. => pendingBindingHonestFactor (runtime := runtime) before after
+      | _ => transmitFactor (runtime := runtime) after
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup))
 
 /-- **The slot-tier factor.** One without a pending event; at a pending binding,
 the uniform tremble slot; at a pending reveal, the disclosure. -/
-def slotTierFactor (before after : LateKey setup leaks) : ℝ :=
+def slotTierFactor (before after : LateKey setup runtime leaks) : ℝ :=
   match before.pending with
   | none => 1
   | some event =>
       match nodeView (graph setup) event with
-      | .bind .. => pendingBindingSlotFactor bounds before after event
-      | _ => transmitFactor after
+      | .bind .. => pendingBindingSlotFactor (runtime := runtime) bounds before after event
+      | _ => transmitFactor (runtime := runtime) after
 
 open Classical in
 /-- **The factor of a late option.** Waiting is silence. Sending at a slot is
 silence without a pending event; at a pending binding it commits at that slot,
 and is silence when the slot is beyond the capacity or rejected; at a pending
 reveal it sends the disclosure. -/
-def lateOptionFactor {slots : Nat} (before after : LateKey setup leaks) :
+def lateOptionFactor {slots : Nat} (before after : LateKey setup runtime leaks) :
     LateOption slots → ℝ
-  | none => silenceFactor after
+  | none => silenceFactor (runtime := runtime) after
   | some slot =>
       match before.pending with
-      | none => silenceFactor after
+      | none => silenceFactor (runtime := runtime) after
       | some event =>
           match nodeView (graph setup) event with
           | .bind .. =>
-              match (after.lastEmitted.map fun message => message.payload.call :
+              match (after.lastEmitted.map fun message =>
+                message.payload.call :
                   Option (Payload (graph setup))) with
               | some (.commitment _ (_, .prepared committed)) =>
                   if committed = slot.val then 1 else 0
               | _ => if slot.val < bounds.candidateCount ∧
                   before.slotPermitted event slot.val = true then 0 else 1
-          | _ => transmitFactor after
+          | _ => transmitFactor (runtime := runtime) after
 
 end Vegas

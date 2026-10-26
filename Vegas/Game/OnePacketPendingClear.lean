@@ -15,11 +15,12 @@ open SourceProgram GameTheory.Protocol Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
-local notation "menu" => bounds.onePacketMenu (runtime setup) leaks
+local notation "menu" => bounds.onePacketMenu runtime leaks
 local notation "protocol" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup)
   horizon scheduler
 local notation "model" => ReactiveApplication.ResponseMenu.information menu (initialLaw setup)
@@ -31,21 +32,23 @@ This is independent of service, timing and the later response policies. -/
 theorem pending_publicClear_of_acceptanceInvariant
     (certificate : (protocol).WellFoundedHistories)
     (profile : ∀ who, (model).BehavioralPolicy who) (stopped : (protocol).History → Prop)
-    (who : Player) (entry : (application setup leaks).PlayerEntry)
+    (who : Player) (entry : (application setup runtime leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup)))
     (event : (graph setup).EventId) (sent : (graph setup).Config)
-    (start : (protocol).History) (current : (application setup leaks).Control)
+    (start : (protocol).History) (current : (application setup runtime leaks).Control)
     (state : start.state = some current)
     (clear : ExclusionEvidence 0 ∅
       (RecoveryState.mk current.execution.application ∅))
-    (invariant : AcceptanceInvariant setup leaks bounds horizon scheduler who entry message event
+    (invariant : AcceptanceInvariant setup runtime leaks bounds horizon scheduler who entry
+      message event
       sent (some current)) :
     ∀ final ∈ ((model).runBehavioralUntil certificate profile stopped start).support,
       ∀ control, final.state = some control →
         event ∉ control.execution.application.config.cut.completed →
           ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) := by
-  let property := fun state : (application setup leaks).ProtocolState =>
-    AcceptanceInvariant setup leaks bounds horizon scheduler who entry message event sent state ∧
+  let property := fun state : (application setup runtime leaks).ProtocolState =>
+    AcceptanceInvariant setup runtime leaks bounds horizon scheduler who entry message event sent
+      state ∧
       match state with
       | none => False
       | some control => event ∉ control.execution.application.config.cut.completed →
@@ -54,9 +57,11 @@ theorem pending_publicClear_of_acceptanceInvariant
       property before → after ∈ ((protocol).step before ⟨joint, legal⟩).support → property after :=
       by
     intro before joint legal after holds reached
-    have nextInvariant := acceptanceInvariant_transition bounds horizon scheduler who entry
+    have nextInvariant := acceptanceInvariant_transition (runtime := runtime) bounds horizon
+      scheduler who entry
       message event sent before after joint legal holds.1 reached
-    change after ∈ ((application setup leaks).transition (initialLaw setup) horizon scheduler
+    change after ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+      scheduler
       before joint).support at reached
     cases before with
     | none => exact holds.1.elim
@@ -65,7 +70,7 @@ theorem pending_publicClear_of_acceptanceInvariant
       | none => exact nextInvariant.elim
       | some next =>
         refine ⟨nextInvariant, fun pending => ?_⟩
-        have step := (reactiveApplication_completionStep (runtime setup) leaks).transition
+        have step := (reactiveApplication_completionStep runtime leaks).transition
           (initialLaw setup) horizon scheduler current next joint reached
         have beforePending : event ∉ current.execution.application.config.cut.completed :=
           fun completed => pending (step.completed_mono completed)

@@ -14,24 +14,27 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
+  (scheduler : (recoveryApplication runtime leaks).Scheduler)
 
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
-local notation "NativeScheduler" => nativeScheduler (runtime setup) leaks scheduler
-local notation "R" => model setup leaks bounds Initial horizon scheduler
-local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horizon (NativeScheduler)
+local notation "NativeScheduler" => nativeScheduler runtime leaks scheduler
+local notation "R" => model setup runtime leaks bounds Initial horizon scheduler
+local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  (NativeScheduler)
 local notation "RP" => ReactiveApplication.ResponseMenu.protocol
-  (Recovery.onePacketMenu (runtime setup) leaks bounds) Initial horizon scheduler
-local notation "RApp" => recoveryApplication (runtime setup) leaks
-local notation "RawNative" => ReactiveApplication.protocol (application setup leaks)
+  (Recovery.onePacketMenu runtime leaks bounds) Initial horizon scheduler
+local notation "RApp" => recoveryApplication runtime leaks
+local notation "RawNative" => ReactiveApplication.protocol (application setup runtime leaks)
   (PMF.map RecoveryState.native (Initial)) horizon (NativeScheduler)
 local notation "ClearState" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
-local notation "RMenu" => Recovery.onePacketMenu (runtime setup) leaks bounds
-local notation "NMenu" => bounds.onePacketMenu (runtime setup) leaks
+  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
+    native ∅))
+local notation "RMenu" => Recovery.onePacketMenu runtime leaks bounds
+local notation "NMenu" => bounds.onePacketMenu runtime leaks
 
 open Classical in
 /-- Expected utility of the existing concrete native debt-stopped law. -/
@@ -40,12 +43,13 @@ def nativeDebtStoppedValue {Parameter : Type}
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ) (certificate : (RawNative).WellFoundedHistories)
     (profile : ∀ who, (R).BehavioralPolicy who) (focal : Player) (history : (RP).History) : ℝ :=
-  expect (nativeDebtStoppedLaw setup leaks bounds horizon scheduler certificate profile focal
+  expect (nativeDebtStoppedLaw setup runtime leaks bounds horizon scheduler certificate profile
+    focal
     history)
     (Sum.elim (fun _ : Finset Player => excludedPayoff focal)
       (fun final : (RawNative).History =>
-        if DecodedState setup leaks (failureProfile setup.program)
+        if DecodedState setup runtime leaks (failureProfile setup.program)
             (ProtocolState.OwesFailure focal setup.program) final.state then excludedPayoff focal
-        else exclusionBase setup parameter utility excludedPayoff leaks final.state focal))
+        else exclusionBase setup runtime parameter utility excludedPayoff leaks final.state focal))
 
 end Vegas.RecoveryOnePacket

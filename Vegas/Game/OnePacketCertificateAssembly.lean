@@ -26,19 +26,20 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup leaks).Scheduler)
-  [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  (scheduler : (application setup runtime leaks).Scheduler)
+  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
 
 local notation "onePacketN" =>
-  onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 
 open Classical in
 /-- **The open inputs by value blindness.** The base inputs, a gap bound above
@@ -47,51 +48,59 @@ bounded slots, value blindness of the completion value at forced late
 deliveries and at the other forced sites, and value-blind late commitments. -/
 structure OnePacketBlindInputs (upperUtility : Player → ℝ)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment) (slots : Nat) extends
-    OnePacketBaseInputs setup leaks bounds horizon scheduler sequence slots where
+    OnePacketBaseInputs setup runtime leaks bounds horizon scheduler sequence slots where
   /-- The gap bound is at least the spread of the utility over the exclusion
   payoff. -/
   gap_le : ∀ who, upperUtility who - excludedPayoff who ≤ gapBound
   /-- The late options cover the bounded prepared slots. -/
   slotsCover : bounds.candidateCount ≤ slots
   /-- **Value blindness away from late deliveries.** -/
-  nonLateValueBlind : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler
+  nonLateValueBlind : ∀ (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon
+    scheduler
         slots p)) (targetSequence : ℕ → (onePacketN).BehavioralAssessment),
-      OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+      OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale scale_pos
         scale_le_one weights targetSequence →
       (∀ n, (targetSequence n).IsFullyMixed) →
       (∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-        ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
+        ((bounds.onePacketMenu runtime leaks).decisionRecall
           (initialLaw setup) horizon scheduler).decisionInformationAntichain) →
       ∃ blindError : ℕ → ℝ, Tendsto blindError atTop (nhds 0) ∧
         ∀ n who (site : (onePacketN).InformationSite who),
-          ¬ FreeAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-          ¬ OwingAgent setup leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-          ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
-            (LateDeliveryAgent setup leaks bounds (initialLaw setup) horizon scheduler)
+          ¬ FreeAgent setup runtime leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+          ¬ OwingAgent setup runtime leaks bounds horizon scheduler ((onePacketN).agentAt site) →
+          ¬ ownedKeyed (FreeAgent setup runtime leaks bounds horizon scheduler)
+            (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
             ((onePacketN).agentAt site) →
-          pendingEvent setup leaks who site.1 ≠ none →
-          (∀ choice, onePacketCompared setup leaks bounds horizon scheduler who site choice →
-            |siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+          pendingEvent setup runtime leaks who site.1 ≠ none →
+          (∀ choice, onePacketCompared setup runtime leaks bounds horizon scheduler who site
+            choice →
+            |siteStopValue setup runtime leaks bounds horizon scheduler parameter utility
+              excludedPayoff
                 (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site
                 (PMF.pure choice) -
-              (1 - onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n)
+              (1 - onePacketSiteFailure setup runtime leaks bounds horizon scheduler
+                (targetSequence n)
                 site (PMF.pure choice)) *
-              siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+              siteValue setup runtime leaks bounds horizon scheduler parameter utility
+                excludedPayoff
                 (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site| ≤
               blindError n) ∧
-          |siteStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+          |siteStopValue setup runtime leaks bounds horizon scheduler parameter utility
+            excludedPayoff
               (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site
-              (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale scale_pos
+              (onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale
+                scale_pos
                 scale_le_one n ((onePacketN).agentAt site)) -
-            (1 - onePacketSiteFailure setup leaks bounds horizon scheduler (targetSequence n)
-              site (onePacketPrescribed setup leaks bounds horizon scheduler sequence scale
+            (1 - onePacketSiteFailure setup runtime leaks bounds horizon scheduler (targetSequence
+              n)
+              site (onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale
                 scale_pos scale_le_one n ((onePacketN).agentAt site))) *
-            siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+            siteValue setup runtime leaks bounds horizon scheduler parameter utility excludedPayoff
               (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site| ≤
             blindError n
 
 omit [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
 /-- **The exclusion payoffs are bounded** by the sum over players of the spread
 between the exclusion payoff, zero and the utility bounds. -/

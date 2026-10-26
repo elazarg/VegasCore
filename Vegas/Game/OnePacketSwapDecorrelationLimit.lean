@@ -46,19 +46,22 @@ theorem beliefDecorrelated_two {H R T : Type*} (law : PMF H) (record : H → R)
     _ ≤ 2 := by linarith
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} [Fintype Player]
+  {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)} [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
   {who : Player}
-  {site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
+  {site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who}
   {sourceSite : setup.intendedModel.InformationSite who}
-  {past : List (application setup leaks).PlayerEntry} {view : (application setup leaks).PlayerView}
+  {past : List (application setup runtime leaks).PlayerEntry} {view : (application setup runtime
+    leaks).PlayerView}
   {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
   {profiles : ℕ → ∀ player,
-    (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player}
-  {steps : OperationalSteps setup leaks bounds horizon scheduler sequence profiles who}
-  [Fintype ((onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
+    (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player}
+  {steps : OperationalSteps setup runtime leaks bounds horizon scheduler sequence profiles who}
+  [Fintype ((onePacketInformation setup runtime leaks bounds horizon scheduler).InformationHistory
+    who
     site.1)]
   [DecidableEq (setup.intendedModel.InformationHistory who sourceSite.1)]
   {scale floors : ℕ → ℝ} {depth : ℕ} {slack : ℝ}
@@ -73,21 +76,23 @@ decoded point up to a vanishing bound. -/
 theorem tendsto_beliefDecorrelated
     [Finite (setup.intendedModel.InformationHistory who sourceSite.1)]
     (wellFormed : setup.WellFormed) (decision : site.1 = some (past, view))
-    (projected : sourceSite.1 = projectView setup leaks who site.1)
-    (inputs : ∀ n, ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps
-      site sourceSite (replayProjection setup leaks bounds horizon scheduler sourceSite site
+    (projected : sourceSite.1 = projectView setup runtime leaks who site.1)
+    (inputs : ∀ n, ForcedBeliefInputs setup runtime leaks bounds horizon scheduler sequence
+      profiles steps
+      site sourceSite (replayProjection setup runtime leaks bounds horizon scheduler sourceSite site
         decision projected) scale floors depth slack n)
-    (ownIntended : ∀ n, ∀ history : (onePacketInformation setup leaks bounds horizon
+    (ownIntended : ∀ n, ∀ history : (onePacketInformation setup runtime leaks bounds horizon
         scheduler).InformationHistory who site.1,
-      RegularTrace setup leaks bounds horizon scheduler (sequence n) who history.1.trace →
-      OwnCompletionsIntended (bounds := bounds) (horizon := horizon) (scheduler := scheduler)
+      RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who history.1.trace →
+      OwnCompletionsIntended (runtime := runtime) (bounds := bounds) (horizon := horizon)
+        (scheduler := scheduler)
         who history.1.trace)
     (mixed : ∀ n, (sequence n).IsFullyMixed) {event : (graph setup).EventId}
     (turn : view.application.publicView.ownTurn? who = some event)
     (covered : BindingFieldsCovered bounds)
     {targetSequence : ℕ →
-      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralAssessment}
-    {antichain : (onePacketInformation setup leaks bounds horizon
+      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralAssessment}
+    {antichain : (onePacketInformation setup runtime leaks bounds horizon
       scheduler).DecisionInformationAntichain}
     (played : ∀ n, (targetSequence n).strategy = profiles n)
     (targetMixed : ∀ n, (targetSequence n).IsFullyMixed)
@@ -97,13 +102,16 @@ theorem tendsto_beliefDecorrelated
     (slackNonneg : 0 ≤ slack) :
     ∃ bound : ℕ → ℝ, Tendsto bound atTop (nhds 0) ∧ ∀ n,
       BeliefDecorrelated ((targetSequence n).belief who site)
-        (fun history => operationalRecord setup leaks bounds horizon scheduler history.1.trace)
-        (fun history => nativeDecodedState setup leaks history.1.state) (bound n) := by
-  set error := fun n => (1 + steps.error n) ^ (2 * horizon + 1) - 1 with errorEq
-  set ratio := fun n => (Fintype.card ((onePacketInformation setup leaks bounds horizon
+        (fun history => operationalRecord setup runtime leaks bounds horizon scheduler
+          history.1.trace)
+        (fun history => nativeDecodedState setup runtime leaks history.1.state) (bound n) := by
+  set error := fun n => (1 + steps.error n) ^ (2 * horizon + 1) - 1 with
+    errorEq
+  set ratio := fun n => (Fintype.card ((onePacketInformation setup runtime leaks bounds horizon
       scheduler).InformationHistory who site.1) : ℝ) * (slack * scale n / floors n ^ depth)
     with ratioEq
-  have errorLimit : Tendsto error atTop (nhds 0) := (onePacketReachFactorization steps).1
+  have errorLimit : Tendsto error atTop (nhds 0) := (onePacketReachFactorization (runtime :=
+    runtime) steps).1
   have ratioLimit : Tendsto ratio atTop (nhds 0) := tendsto_irregularRatio negligible _
   let formula := fun n => 3 * (2 * (error n + ratio n * (1 + error n)) / (1 - error n))
   have formulaLimit : Tendsto formula atTop (nhds 0) := by
@@ -123,7 +131,8 @@ theorem tendsto_beliefDecorrelated
     simp only [smallAt, ↓reduceIte]
   · by_cases smallAt : error n < 1
     · simp only [smallAt, ↓reduceIte]
-      exact (inputs n).beliefDecorrelated wellFormed decision projected (ownIntended n)
+      exact (inputs n).beliefDecorrelated wellFormed decision projected
+        (ownIntended n)
         (mixed n) turn covered (played n) (bayes n)
         (InformationModel.informationMass_pos_of_fullSupport _ _ (targetMixed n) who site)
         (floorPos n) (scaleNonneg n) slackNonneg smallAt

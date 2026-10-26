@@ -18,26 +18,28 @@ open GameTheory
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 namespace DirectedBindingFrame
 
-variable {memory : BindingMemory (runtime setup) leaks} {owner : Player}
-  {original repaired : (application setup leaks).Execution}
+variable {memory : BindingMemory runtime leaks} {owner : Player}
+  {original repaired : (application setup runtime leaks).Execution}
 
 /-- The same actual pending-identifier sample extends both executions. No
 independence or restriction on the pending-message observation law is needed. -/
-theorem activate_step (frame : DirectedBindingFrame memory owner original repaired)
-    (actor : Player) (nextOriginal : (application setup leaks).Execution)
-    (left : nextOriginal ∈ (original.environmentStep (application setup leaks)
+theorem activate_step (frame : DirectedBindingFrame (runtime := runtime) memory owner original
+  repaired)
+    (actor : Player) (nextOriginal : (application setup runtime leaks).Execution)
+    (left : nextOriginal ∈ (original.environmentStep (application setup runtime leaks)
       (.activate actor)).support) :
-    ∃ nextRepaired : (application setup leaks).Execution,
-      nextRepaired ∈ (repaired.environmentStep (application setup leaks)
+    ∃ nextRepaired : (application setup runtime leaks).Execution,
+      nextRepaired ∈ (repaired.environmentStep (application setup runtime leaks)
         (.activate actor)).support ∧
-      DirectedBindingFrame memory owner nextOriginal nextRepaired := by
+      DirectedBindingFrame (runtime := runtime) memory owner nextOriginal nextRepaired := by
   rw [ReactiveApplication.Execution.activation_samples, PMF.support_map] at left
   obtain ⟨selected, supported, rfl⟩ := left
-  refine ⟨repaired.sampledActivation (application setup leaks) actor selected, ?_,
+  refine ⟨repaired.sampledActivation (application setup runtime leaks) actor selected, ?_,
     frame.activate actor selected⟩
   rw [ReactiveApplication.Execution.activation_samples, PMF.support_map]
   refine ⟨selected, ?_, rfl⟩
@@ -46,19 +48,20 @@ theorem activate_step (frame : DirectedBindingFrame memory owner original repair
 
 /-- Waiting records the same actual scheduler input and preserves all private
 recalls. Its paired successor is determined by the runtime. -/
-theorem wait_step (frame : DirectedBindingFrame memory owner original repaired)
-    (nextOriginal : (application setup leaks).Execution)
-    (left : nextOriginal ∈ (original.environmentStep (application setup leaks) .wait).support) :
-    ∃ nextRepaired : (application setup leaks).Execution,
-      nextRepaired ∈ (repaired.environmentStep (application setup leaks) .wait).support ∧
-      DirectedBindingFrame memory owner nextOriginal nextRepaired := by
+theorem wait_step (frame : DirectedBindingFrame (runtime := runtime) memory owner original repaired)
+    (nextOriginal : (application setup runtime leaks).Execution)
+    (left : nextOriginal ∈ (original.environmentStep (application setup runtime leaks)
+      .wait).support) :
+    ∃ nextRepaired : (application setup runtime leaks).Execution,
+      nextRepaired ∈ (repaired.environmentStep (application setup runtime leaks) .wait).support ∧
+      DirectedBindingFrame (runtime := runtime) memory owner nextOriginal nextRepaired := by
   have leftEq : nextOriginal = { original with environmentRecall := original.environmentRecall ++
-      [⟨original.observeEnvironment (application setup leaks), .wait⟩] } := by
+      [⟨original.observeEnvironment (application setup runtime leaks), .wait⟩] } := by
     simpa only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
       PMF.mem_support_pure_iff _ _] using left
   subst nextOriginal
   refine ⟨{ repaired with environmentRecall := repaired.environmentRecall ++
-    [⟨repaired.observeEnvironment (application setup leaks), .wait⟩] }, ?_, ?_⟩
+    [⟨repaired.observeEnvironment (application setup runtime leaks), .wait⟩] }, ?_, ?_⟩
   · simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
       PMF.mem_support_pure_iff _ _]
   · refine ⟨{ frame.toFrame with service := ?_ }, frame.recalled⟩
@@ -66,24 +69,27 @@ theorem wait_step (frame : DirectedBindingFrame memory owner original repaired)
     rw [frame.service, frame.toFrame.environment]
 
 /-- Advancing the actual public clock has a paired deterministic successor. -/
-theorem advanceClock_step (frame : DirectedBindingFrame memory owner original repaired)
-    (nextOriginal : (application setup leaks).Execution)
-    (left : nextOriginal ∈ (original.environmentStep (application setup leaks)
+theorem advanceClock_step (frame : DirectedBindingFrame (runtime := runtime) memory owner original
+  repaired)
+    (nextOriginal : (application setup runtime leaks).Execution)
+    (left : nextOriginal ∈ (original.environmentStep (application setup runtime leaks)
       (.application .advanceClock)).support) :
-    ∃ nextRepaired : (application setup leaks).Execution,
-      nextRepaired ∈ (repaired.environmentStep (application setup leaks)
+    ∃ nextRepaired : (application setup runtime leaks).Execution,
+      nextRepaired ∈ (repaired.environmentStep (application setup runtime leaks)
         (.application .advanceClock)).support ∧
-      DirectedBindingFrame memory owner nextOriginal nextRepaired := by
-  let next (execution : (application setup leaks).Execution) :
-      (application setup leaks).Execution :=
+      DirectedBindingFrame (runtime := runtime) memory owner nextOriginal nextRepaired := by
+  let next (execution : (application setup runtime leaks).Execution) :
+      (application setup runtime leaks).Execution :=
     { execution with
       application := { execution.application with clock := execution.application.clock + 1 }
       environmentRecall := execution.environmentRecall ++
-        [⟨execution.observeEnvironment (application setup leaks), .application .advanceClock⟩] }
-  have law (execution : (application setup leaks).Execution) :
-      execution.environmentStep (application setup leaks) (.application .advanceClock) =
+        [⟨execution.observeEnvironment (application setup runtime leaks), .application
+          .advanceClock⟩] }
+  have law (execution : (application setup runtime leaks).Execution) :
+      execution.environmentStep (application setup runtime leaks) (.application .advanceClock) =
         PMF.pure (next execution) := by
-    have appLaw : (application setup leaks).environment execution.application .advanceClock =
+    have appLaw : (application setup runtime leaks).environment execution.application
+      .advanceClock =
         PMF.pure { execution.application with clock := execution.application.clock + 1 } := rfl
     simp only [ReactiveApplication.Execution.environmentStep, appLaw, PMF.pure_map]
     rfl

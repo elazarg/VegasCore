@@ -23,31 +23,32 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
+  (scheduler : (phaseApplication runtime leaks).Scheduler)
+  [(phaseApplication runtime leaks).FiniteNature (phaseInitialLaw setup) scheduler]
 
-local notation "app" => phaseApplication (runtime setup) leaks
-local notation "canonicalMenu" => menu setup leaks bounds
-local notation "counted" => PhaseCount.onePacketMenu (runtime setup) leaks bounds
-local notation "raw" => PhaseCount.rawMenu (runtime setup) leaks bounds
-local notation "normal" => PhaseCount.normalization (runtime setup) leaks
-local notation "M" => model setup leaks bounds horizon scheduler
+local notation "app" => phaseApplication runtime leaks
+local notation "canonicalMenu" => menu setup runtime leaks bounds
+local notation "counted" => PhaseCount.onePacketMenu runtime leaks bounds
+local notation "raw" => PhaseCount.rawMenu runtime leaks bounds
+local notation "normal" => PhaseCount.normalization runtime leaks
+local notation "M" => model setup runtime leaks bounds horizon scheduler
 local notation "C" => ReactiveApplication.ResponseMenu.information
-  (PhaseCount.onePacketMenu (runtime setup) leaks bounds) (phaseInitialLaw setup) horizon scheduler
+  (PhaseCount.onePacketMenu runtime leaks bounds) (phaseInitialLaw setup) horizon scheduler
 local notation "R" => ReactiveApplication.ResponseMenu.information
-  (PhaseCount.rawMenu (runtime setup) leaks bounds) (phaseInitialLaw setup) horizon scheduler
+  (PhaseCount.rawMenu runtime leaks bounds) (phaseInitialLaw setup) horizon scheduler
 
 variable {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
 
 local notation "base" => phaseExclusionBase setup EventGraph.ExecutionMode.sequential
-  (runtime setup) leaks
+  runtime leaks
   (fun terminal => utility (setup.parameterOutcome parameter terminal)) excludedPayoff
 local notation "read" => phaseSourceReadout setup EventGraph.ExecutionMode.sequential
-  (runtime setup) leaks
+  runtime leaks
 
 /-- A canonical phase equilibrium with its actual initialized law extends to
 the audited raw phase game. Multiplicative funding suffices even at zero rates;
@@ -78,7 +79,7 @@ theorem canonical_raw_sequentialEquilibrium
           min 0 (min (excludedPayoff who) (lowerUtility who)) ≤
         observationRate who * deliveryRate who * deposit who) :
     let observe := (app).stateTraffic
-    let audit := PhaseCount.audit (runtime setup) leaks service.sample
+    let audit := PhaseCount.audit runtime leaks service.sample
     let payoff := TerminalAudit.utility base observe audit deposit
     let settle := TerminalAudit.settlement base observe audit deposit
     ∃ target : (R).BehavioralAssessment,
@@ -106,7 +107,7 @@ theorem canonical_raw_sequentialEquilibrium
   have normalizedRead (state : (app).ProtocolState) : read ((normal).state state) = read state := by
     cases state <;> rfl
   obtain ⟨aliases, _aliasStrategy, aliasSE, _aliasBeliefs, aliasStates⟩ :=
-    PhaseCount.onePacket_alias_sequentialEquilibrium (runtime setup) leaks bounds (phaseInitialLaw
+    PhaseCount.onePacket_alias_sequentialEquilibrium runtime leaks bounds (phaseInitialLaw
         setup)
       horizon scheduler canonical (fun who state => base state who)
       (fun who state => congrFun (normalized state) who) equilibrium
@@ -119,18 +120,18 @@ theorem canonical_raw_sequentialEquilibrium
     countedCertificate ((counted).bounded (phaseInitialLaw setup) horizon scheduler)
     (fun who final => base final.state who)).mpr aliasSE
   obtain ⟨target, targetSE, _extends, _beliefs, terminalLaw, _settled, clean⟩ :=
-    PhaseCount.onePacket_raw_sequentialEquilibrium (runtime := runtime setup) (leaks := leaks)
+    PhaseCount.onePacket_raw_sequentialEquilibrium (runtime := runtime) (leaks := leaks)
       (bounds := bounds) (initial := phaseInitialLaw setup) (horizon := horizon) (scheduler :=
           scheduler)
       service observationRate deliveryRate delivery_nonnegative coverage base
       (fun who => min 0 (min (excludedPayoff who) (lowerUtility who)))
       (fun who => max 0 (max (excludedPayoff who) (upperUtility who))) deposit
-      (fun state who => (phaseExclusionBase_mem_Icc setup .sequential (runtime setup) leaks
+      (fun state who => (phaseExclusionBase_mem_Icc setup .sequential runtime leaks
         (fun terminal => utility (setup.parameterOutcome parameter terminal)) excludedPayoff
         lowerUtility upperUtility (fun terminal => lower_le (setup.parameterOutcome parameter
           terminal)) (fun terminal => le_upper (setup.parameterOutcome parameter terminal))
         state who).1)
-      (fun state who => (phaseExclusionBase_mem_Icc setup .sequential (runtime setup) leaks
+      (fun state who => (phaseExclusionBase_mem_Icc setup .sequential runtime leaks
         (fun terminal => utility (setup.parameterOutcome parameter terminal)) excludedPayoff
         lowerUtility upperUtility (fun terminal => lower_le (setup.parameterOutcome parameter
           terminal)) (fun terminal => le_upper (setup.parameterOutcome parameter terminal))

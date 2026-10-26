@@ -36,18 +36,20 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup))
-  (initial : PMF (application setup leaks).State) (horizon : Nat)
-  (scheduler : (application setup leaks).Scheduler)
+  (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
+  (scheduler : (application setup runtime leaks).Scheduler)
 
 section Law
 
 /-- **As-if-honest play.** Every player plays the as-if-honest choice at every
 information state of the one-packet game. -/
 def honestProfile (assessment : setup.intendedModel.BehavioralAssessment) :
-    ∀ who, (onePacketModel setup leaks bounds initial horizon scheduler).BehavioralPolicy who :=
-  fun who => honestChoice setup leaks bounds initial horizon scheduler assessment who
+    ∀ who, (onePacketModel setup runtime leaks bounds initial horizon scheduler).BehavioralPolicy
+      who :=
+  fun who => honestChoice setup runtime leaks bounds initial horizon scheduler assessment who
 
 /-- A profile of the one-packet game dominates as-if-honest play from `start`
 with retention `retention` when at every history the as-if-honest continuation
@@ -56,18 +58,21 @@ times its as-if-honest mass. -/
 def DominatesHonestFrom (assessment : setup.intendedModel.BehavioralAssessment)
     (retention : ℝ)
     (profile : ∀ who,
-      (onePacketModel setup leaks bounds initial horizon scheduler).BehavioralPolicy who)
-    (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
+      (onePacketModel setup runtime leaks bounds initial horizon scheduler).BehavioralPolicy who)
+    (start : ((bounds.onePacketMenu runtime leaks).protocol initial horizon
       scheduler).History) : Prop :=
   ∀ fuel history,
-    history ∈ ((onePacketModel setup leaks bounds initial horizon scheduler).runBehavioralFrom
-      (honestProfile setup leaks bounds initial horizon scheduler assessment) fuel start).support →
+    history ∈ ((onePacketModel setup runtime leaks bounds initial horizon
+      scheduler).runBehavioralFrom
+      (honestProfile setup runtime leaks bounds initial horizon scheduler assessment) fuel
+        start).support →
     ∀ who choice,
       retention *
-          ((honestProfile setup leaks bounds initial horizon scheduler assessment who
-            ((onePacketModel setup leaks bounds initial horizon scheduler).infoOf who
+          ((honestProfile setup runtime leaks bounds initial horizon scheduler assessment who
+            ((onePacketModel setup runtime leaks bounds initial horizon scheduler).infoOf who
               history.trace)) choice).toReal ≤
-        ((profile who ((onePacketModel setup leaks bounds initial horizon scheduler).infoOf who
+        ((profile who ((onePacketModel setup runtime leaks bounds initial horizon
+          scheduler).infoOf who
           history.trace)) choice).toReal
 
 /-- **Continuations near as-if-honest play.** From every history, a profile
@@ -78,18 +83,19 @@ theorem onePacket_continuation_withinTV_honest
     (assessment : setup.intendedModel.BehavioralAssessment) {retention : ℝ}
     (nonnegative : 0 ≤ retention) (le_one : retention ≤ 1)
     (profile : ∀ who,
-      (onePacketModel setup leaks bounds initial horizon scheduler).BehavioralPolicy who)
-    (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
+      (onePacketModel setup runtime leaks bounds initial horizon scheduler).BehavioralPolicy who)
+    (start : ((bounds.onePacketMenu runtime leaks).protocol initial horizon
       scheduler).History)
-    (dominates : DominatesHonestFrom setup leaks bounds initial horizon scheduler assessment
+    (dominates : DominatesHonestFrom setup runtime leaks bounds initial horizon scheduler assessment
       retention profile start) (fuel : Nat) :
     PMF.WithinTV ((Fintype.card Player * fuel : ℕ) * (1 - retention))
-      ((onePacketModel setup leaks bounds initial horizon scheduler).runBehavioralFrom
-        (honestProfile setup leaks bounds initial horizon scheduler assessment) fuel start)
-      ((onePacketModel setup leaks bounds initial horizon scheduler).runBehavioralFrom
+      ((onePacketModel setup runtime leaks bounds initial horizon scheduler).runBehavioralFrom
+        (honestProfile setup runtime leaks bounds initial horizon scheduler assessment) fuel start)
+      ((onePacketModel setup runtime leaks bounds initial horizon scheduler).runBehavioralFrom
         profile fuel start) :=
   (InformationModel.runBehavioralFrom_withinTV_of_supported_choices
-    (onePacketModel setup leaks bounds initial horizon scheduler) _ profile retention nonnegative
+    (onePacketModel setup runtime leaks bounds initial horizon scheduler) _ profile retention
+      nonnegative
     le_one start dominates fuel).mono (one_sub_pow_le_mul nonnegative _)
 
 /-- **The whole run near as-if-honest play.** From initialization, a profile
@@ -100,16 +106,17 @@ theorem onePacket_withinTV_honest
     (assessment : setup.intendedModel.BehavioralAssessment) {retention : ℝ}
     (nonnegative : 0 ≤ retention) (le_one : retention ≤ 1)
     (profile : ∀ who,
-      (onePacketModel setup leaks bounds initial horizon scheduler).BehavioralPolicy who)
-    (dominates : DominatesHonestFrom setup leaks bounds initial horizon scheduler assessment
-      retention profile ((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
+      (onePacketModel setup runtime leaks bounds initial horizon scheduler).BehavioralPolicy who)
+    (dominates : DominatesHonestFrom setup runtime leaks bounds initial horizon scheduler assessment
+      retention profile ((bounds.onePacketMenu runtime leaks).protocol initial horizon
         scheduler).initHistory) (fuel : Nat) :
     PMF.WithinTV ((Fintype.card Player * fuel : ℕ) * (1 - retention))
-      ((onePacketModel setup leaks bounds initial horizon scheduler).runBehavioral
-        (honestProfile setup leaks bounds initial horizon scheduler assessment) fuel)
-      ((onePacketModel setup leaks bounds initial horizon scheduler).runBehavioral
+      ((onePacketModel setup runtime leaks bounds initial horizon scheduler).runBehavioral
+        (honestProfile setup runtime leaks bounds initial horizon scheduler assessment) fuel)
+      ((onePacketModel setup runtime leaks bounds initial horizon scheduler).runBehavioral
         profile fuel) :=
-  onePacket_continuation_withinTV_honest setup leaks bounds initial horizon scheduler assessment
+  onePacket_continuation_withinTV_honest setup runtime leaks bounds initial horizon scheduler
+    assessment
     nonnegative le_one profile _ dominates fuel
 
 end Law
@@ -123,11 +130,11 @@ variable {Parameter : Type} (parameter : State L setup.context → Parameter)
 /-- The typed readout of a terminal history of the one-packet game, with the
 exclusion payoff it determines. -/
 def readoutExclusion
-    (final : ((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
+    (final : ((bounds.onePacketMenu runtime leaks).protocol initial horizon
       scheduler).History) :
     Option (State L setup.program.terminalCtx) × (Player → ℝ) :=
-  (sourceReadout setup leaks final.state,
-    exclusionBase setup parameter utility excludedPayoff leaks final.state)
+  (sourceReadout setup runtime leaks final.state,
+    exclusionBase setup runtime parameter utility excludedPayoff leaks final.state)
 
 /-- The intended typed readout of an intended history, with the exclusion
 payoff it determines. -/
@@ -145,33 +152,35 @@ variation of the intended joint law of typed readout and exclusion payoff. -/
 theorem onePacket_readout_exclusion_withinTV
     (assessment : setup.intendedModel.BehavioralAssessment)
     (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) (sourceFuel targetFuel : Nat)
-    (honestLaw : ((onePacketModel setup leaks bounds initial horizon scheduler).runBehavioral
-        (honestProfile setup leaks bounds initial horizon scheduler assessment)
-        targetFuel).map (fun final => sourceReadout setup leaks final.state) =
+    (honestLaw : ((onePacketModel setup runtime leaks bounds initial horizon
+      scheduler).runBehavioral
+        (honestProfile setup runtime leaks bounds initial horizon scheduler assessment)
+        targetFuel).map (fun final => sourceReadout setup runtime leaks final.state) =
       (setup.intendedModel.runBehavioral intended sourceFuel).map
         (fun final => setup.protocolReadout final.state))
     {retention : ℝ} (nonnegative : 0 ≤ retention) (le_one : retention ≤ 1)
     (profile : ∀ who,
-      (onePacketModel setup leaks bounds initial horizon scheduler).BehavioralPolicy who)
-    (dominates : DominatesHonestFrom setup leaks bounds initial horizon scheduler assessment
-      retention profile ((bounds.onePacketMenu (runtime setup) leaks).protocol initial horizon
+      (onePacketModel setup runtime leaks bounds initial horizon scheduler).BehavioralPolicy who)
+    (dominates : DominatesHonestFrom setup runtime leaks bounds initial horizon scheduler assessment
+      retention profile ((bounds.onePacketMenu runtime leaks).protocol initial horizon
         scheduler).initHistory) :
     PMF.WithinTV ((Fintype.card Player * targetFuel : ℕ) * (1 - retention))
-      (((onePacketModel setup leaks bounds initial horizon scheduler).runBehavioral profile
+      (((onePacketModel setup runtime leaks bounds initial horizon scheduler).runBehavioral profile
         targetFuel).map
-          (readoutExclusion setup leaks bounds initial horizon scheduler parameter utility
+          (readoutExclusion setup runtime leaks bounds initial horizon scheduler parameter utility
             excludedPayoff))
       ((setup.intendedModel.runBehavioral intended sourceFuel).map
         (intendedReadoutExclusion setup parameter utility excludedPayoff)) := by
   let attach := fun readout : Option (State L setup.program.terminalCtx) =>
     (readout, exclusionReadoutUtility setup parameter utility excludedPayoff readout)
-  have native : readoutExclusion setup leaks bounds initial horizon scheduler parameter utility
-      excludedPayoff = attach ∘ fun final => sourceReadout setup leaks final.state := rfl
+  have native : readoutExclusion setup runtime leaks bounds initial horizon scheduler parameter
+    utility
+      excludedPayoff = attach ∘ fun final => sourceReadout setup runtime leaks final.state := rfl
   have source : intendedReadoutExclusion setup parameter utility excludedPayoff =
       attach ∘ fun final => setup.protocolReadout final.state := rfl
   rw [native, source, ← PMF.map_comp, ← PMF.map_comp, ← honestLaw, PMF.map_comp,
     PMF.map_comp]
-  exact ((onePacket_withinTV_honest setup leaks bounds initial horizon scheduler assessment
+  exact ((onePacket_withinTV_honest setup runtime leaks bounds initial horizon scheduler assessment
     nonnegative le_one profile dominates targetFuel).map _).symm
 
 end Readout

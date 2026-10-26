@@ -23,6 +23,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 section Effective
@@ -78,18 +79,20 @@ end Effective
 section Repeated
 
 /-- Every transmitting recall entry emitted the packet of its submission. -/
-def TransmissionsEmitted (execution : (application setup leaks).Execution) : Prop :=
+def TransmissionsEmitted (execution : (application setup runtime leaks).Execution) : Prop :=
   ∀ who, ∀ entry ∈ execution.recall who, ∀ material, entry.action.transmission = some material →
     ∃ message, entry.emitted = some message ∧ message.payload.call = material.call.packet
 
 /-- Transmissions are emitted at every history, under arbitrary responses and
 scheduler choices. -/
-theorem transmissionsEmitted_serviceInvariant (scheduler : (application setup leaks).Scheduler) :
-    (application setup leaks).ServiceInvariant scheduler (TransmissionsEmitted (leaks := leaks))
+theorem transmissionsEmitted_serviceInvariant (scheduler : (application setup runtime
+  leaks).Scheduler) :
+    (application setup runtime leaks).ServiceInvariant scheduler (TransmissionsEmitted (runtime :=
+      runtime) (leaks := leaks))
     where
   respond execution responder action valid := by
     intro who entry member material transmits
-    rw [(runtime setup).respond_recall leaks execution responder who action] at member
+    rw [runtime.respond_recall leaks execution responder who action] at member
     split at member
     · rename_i same
       subst same
@@ -101,7 +104,8 @@ theorem transmissionsEmitted_serviceInvariant (scheduler : (application setup le
     · exact valid who entry member material transmits
   environment execution next command valid _ moved := by
     intro who entry member
-    rw [(application setup leaks).environmentStep_recall execution next command moved] at member
+    rw [(application setup runtime leaks).environmentStep_recall
+      execution next command moved] at member
     exact valid who entry member
 
 end Repeated

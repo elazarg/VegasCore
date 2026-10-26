@@ -15,7 +15,7 @@ approval (see the [checklist](se-async-checklist.md)). In particular:
 | Operation | Meaning |
 | --- | --- |
 | Readiness | Dependencies complete; readiness starts the event's timer. There is no grant cursor. |
-| Clock | Only explicit clock commands advance time. The deadline is the configured event deadline, currently its index plus one. |
+| Clock | Only explicit clock commands advance time. Each event has a configured duration measured from readiness; the concrete roster calendar uses its index plus one. |
 | Binding | Submit an opaque handle. Acceptance records the handle and its immutable typed value or source failure. |
 | Resolution | Source withholding is a legal move whose consequences the program's failure branch prices; it is not honest play forced on the owner. Canonical TRUE sends the authentic opening when owner-local validation succeeds. Canonical FALSE, and TRUE whose validation fails, stay silent. There is no withholding call: the packet language has no withholding payload. |
 | Silence | WAIT. Resolution expiry executes source FALSE with publication failure; it is neither charged nor a miss. |

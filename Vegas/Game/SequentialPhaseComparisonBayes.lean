@@ -17,19 +17,20 @@ open SourceProgram Interaction EventGraphRuntime GameTheory GameTheory.Protocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
+  (scheduler : (phaseApplication runtime leaks).Scheduler)
+  [(phaseApplication runtime leaks).FiniteNature (phaseInitialLaw setup) scheduler]
 
-local notation "P" => phaseApplication (runtime setup) leaks
-local notation "A" => recoveryApplication (runtime setup) (recoveryLeaks setup leaks)
-local notation "M" => model setup leaks bounds horizon scheduler
-local notation "R" => recoveryModel setup leaks bounds horizon scheduler
+local notation "P" => phaseApplication runtime leaks
+local notation "A" => recoveryApplication runtime (recoveryLeaks setup leaks)
+local notation "M" => model setup runtime leaks bounds horizon scheduler
+local notation "R" => recoveryModel setup runtime leaks bounds horizon scheduler
 local notation "RecoveryLeaks" => recoveryLeaks setup leaks
 local notation "RecoveryPrior" => recoveryInitialLaw setup
-local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
-local notation "RecoveryMenu" => Recovery.onePacketMenu (runtime setup) (RecoveryLeaks) bounds
+local notation "RecoveryScheduler" => recoveryScheduler setup runtime leaks scheduler
+local notation "RecoveryMenu" => Recovery.onePacketMenu runtime (RecoveryLeaks) bounds
 local notation "rawModel" => ReactiveApplication.information (A) (RecoveryPrior) horizon
     (RecoveryScheduler)
 local notation "RecoveryProtocol" => ReactiveApplication.ResponseMenu.protocol (RecoveryMenu)
@@ -37,9 +38,9 @@ local notation "RecoveryProtocol" => ReactiveApplication.ResponseMenu.protocol (
   horizon (RecoveryScheduler)
 local notation "rawProtocol" => ReactiveApplication.protocol (A) (RecoveryPrior) horizon
     (RecoveryScheduler)
-local notation "projection" => PhaseRecoveryProjection.protocolState (runtime setup) leaks
+local notation "projection" => PhaseRecoveryProjection.protocolState runtime leaks
     RecoveryLeaks
-local notation "projectInfo" => PhaseRecoveryProjection.information (runtime setup) leaks
+local notation "projectInfo" => PhaseRecoveryProjection.information runtime leaks
     RecoveryLeaks
 local notation "phaseClear" => ReactiveApplication.stateInvariant (app := P)
   (fun state => RecoveryState.excluded (PhaseRuntimeState.current state) = ∅)
@@ -56,23 +57,25 @@ theorem component_comparison_bayes_state_eq
     (fallback : ∀ who, (M).Policy who)
     (assessment : setup.intendedModel.BehavioralAssessment)
     {slots : Nat} (scale : ℝ) (positiveScale : 0 < scale) (le_one : scale ≤ 1)
-    (weights : ∀ p, PMF (Part setup leaks bounds horizon scheduler slots p))
+    (weights : ∀ p, PMF (Part setup runtime leaks bounds horizon scheduler slots p))
     (who : Player) (site : (M).InformationSite who)
     (past : List (P).PlayerEntry) (view : (P).PlayerView)
     (siteInput : site.1 = some (past, view)) (clear : view.application.2.excluded = ∅)
     (positive : 0 < (M).informationMass
-      (componentStrategy setup leaks bounds horizon scheduler fallback assessment scale
+      (componentStrategy setup runtime leaks bounds horizon scheduler fallback assessment scale
         positiveScale.le le_one weights) who site) :
-    let phaseProfile := componentStrategy setup leaks bounds horizon scheduler fallback assessment
+    let phaseProfile := componentStrategy setup runtime leaks bounds horizon scheduler fallback
+      assessment
       scale positiveScale.le le_one weights
-    let recoveryProfile := recoveryComparisonStrategy setup leaks bounds horizon scheduler
+    let recoveryProfile := recoveryComparisonStrategy setup runtime leaks bounds horizon scheduler
         assessment
       scale positiveScale.le le_one weights
     ∃ (recoverySite : (R).InformationSite who)
       (recoveryPositive : 0 < (R).informationMass recoveryProfile who recoverySite),
       recoverySite.1 = projectInfo site.1 ∧
       (((M).bayesBelief phaseProfile who site
-        ((menu setup leaks bounds).decisionInformationAntichain (phaseInitialLaw setup) horizon
+        ((menu setup runtime leaks bounds).decisionInformationAntichain (phaseInitialLaw setup)
+          horizon
             scheduler
           who site) positive).map (fun history => projection history.1.state)) =
       (((R).bayesBelief recoveryProfile who recoverySite
@@ -82,28 +85,30 @@ theorem component_comparison_bayes_state_eq
   classical
   dsimp only
   let : DecidableEq ((R).InfoState who) :=
-    recoveryInfoDecidableEq setup leaks bounds horizon scheduler who
-  let phaseProfile := componentStrategy setup leaks bounds horizon scheduler fallback assessment
+    recoveryInfoDecidableEq setup runtime leaks bounds horizon scheduler who
+  let phaseProfile := componentStrategy setup runtime leaks bounds horizon scheduler fallback
+    assessment
     scale positiveScale.le le_one weights
-  let recoveryProfile := recoveryComparisonStrategy setup leaks bounds horizon scheduler assessment
+  let recoveryProfile := recoveryComparisonStrategy setup runtime leaks bounds horizon scheduler
+    assessment
     scale positiveScale.le le_one weights
   let embedded := fun player => (RecoveryMenu).embedPolicy (RecoveryPrior) horizon
       (RecoveryScheduler) player
     (recoveryProfile player)
-  let recoveryPast := past.map (PhaseRecoveryProjection.playerEntry (runtime setup) leaks
+  let recoveryPast := past.map (PhaseRecoveryProjection.playerEntry runtime leaks
       (RecoveryLeaks))
-  let recoveryView := PhaseRecoveryProjection.playerView (runtime setup) leaks (RecoveryLeaks) view
+  let recoveryView := PhaseRecoveryProjection.playerView runtime leaks (RecoveryLeaks) view
   have recoveryInput : projectInfo site.1 = some (recoveryPast, recoveryView) := by
     simp only [siteInput, PhaseRecoveryProjection.information, Option.map_some, recoveryPast,
         recoveryView]
   have recoveryClearView : recoveryView.application.2 = ∅ := clear
   let agent := (M).agentAt site
-  have agentClear : ClearInput setup leaks agent.2.1 := by
-    change ClearInput setup leaks site.1
+  have agentClear : ClearInput setup runtime leaks agent.2.1 := by
+    change ClearInput setup runtime leaks site.1
     rw [siteInput]
     exact clear
   have played : projectInfo site.1 ∈ (R).playedInformation who :=
-    projected_input_played setup leaks bounds horizon scheduler agent agentClear
+    projected_input_played setup runtime leaks bounds horizon scheduler agent agentClear
   have recoveryDecision : (R).IsDecisionInfo who (projectInfo site.1) := by
     unfold InformationModel.playedInformation at played
     obtain ⟨history, member, seen⟩ := Finset.mem_image.mp played
@@ -117,7 +122,8 @@ theorem component_comparison_bayes_state_eq
   let recoverySite : (R).InformationSite who := ⟨projectInfo site.1, recoveryDecision⟩
   have recoveryPositive : 0 < (R).informationMass recoveryProfile who recoverySite :=
     (R).informationMass_pos_of_fullSupport recoveryProfile
-      (recoveryComparisonStrategy_fullSupport setup leaks bounds horizon scheduler assessment
+      (recoveryComparisonStrategy_fullSupport setup runtime leaks bounds horizon scheduler
+        assessment
         positiveScale le_one weights) who recoverySite
   refine ⟨recoverySite, recoveryPositive, rfl, ?_⟩
   let rawSite := (RecoveryMenu).rawSite (RecoveryPrior) horizon (RecoveryScheduler) who recoverySite
@@ -125,7 +131,7 @@ theorem component_comparison_bayes_state_eq
     rw [← (RecoveryMenu).informationMass_rawSite (RecoveryPrior) horizon (RecoveryScheduler)
         recoveryProfile]
     exact recoveryPositive
-  let phaseCertificate := ((menu setup leaks bounds).bounded (phaseInitialLaw setup) horizon
+  let phaseCertificate := ((menu setup runtime leaks bounds).bounded (phaseInitialLaw setup) horizon
     scheduler).wellFoundedHistories
   let recoveryCertificate := ((RecoveryMenu).bounded (RecoveryPrior) horizon
       (RecoveryScheduler)).wellFoundedHistories
@@ -136,7 +142,8 @@ theorem component_comparison_bayes_state_eq
   let phaseStopped := (M).runBehavioralUntil phaseCertificate phaseProfile
     (fun history => ¬ phaseClear history.state ∨
       (A).observe who (projection history.state) = projectInfo site.1)
-    ((menu setup leaks bounds).protocol (phaseInitialLaw setup) horizon scheduler).initHistory
+    ((menu setup runtime leaks bounds).protocol (phaseInitialLaw setup) horizon
+      scheduler).initHistory
   let recoveryStopped := (R).runBehavioralUntil recoveryCertificate recoveryProfile
     (fun history => stop ((RecoveryMenu).toRawHistory (RecoveryPrior) horizon (RecoveryScheduler)
         history))
@@ -145,7 +152,7 @@ theorem component_comparison_bayes_state_eq
     (rawProtocol).initHistory
   have phaseLaw : phaseStopped.map (fun history => projection history.state) =
       recoveryStopped.map History.state :=
-    component_comparison_run_until_exclusion_or_guard_map_state setup leaks bounds horizon
+    component_comparison_run_until_exclusion_or_guard_map_state setup runtime leaks bounds horizon
       scheduler fallback assessment scale positiveScale.le le_one weights
       (fun state => (A).observe who state = projectInfo site.1) _ _ rfl
   have embeddedLaw := congrArg (PMF.map History.state)
@@ -156,8 +163,8 @@ theorem component_comparison_bayes_state_eq
   have laws : phaseStopped.map (fun history => projection history.state) =
       rawStopped.map History.state := phaseLaw.trans embeddedLaw
   have phasePosterior := SequentialPhaseRecoveryPolicy.phase_bayesBelief_eq_stopped_recovery_state
-    setup.program (runtime setup) leaks (menu setup leaks bounds) bounds
-    (PhaseCount.normalized_onePacket_included (runtime setup) leaks bounds)
+    setup.program runtime leaks (menu setup runtime leaks bounds) bounds
+    (PhaseCount.normalized_onePacket_included runtime leaks bounds)
     (setup.initialLaw.map setup.eventInputs) horizon scheduler phaseProfile who site past view
     siteInput clear positive
   have priorEq : (setup.initialLaw.map setup.eventInputs).map
@@ -166,7 +173,7 @@ theorem component_comparison_bayes_state_eq
     simp only [recoveryInitialLaw, Vegas.initialLaw, serviceInitialLaw, PMF.map_comp,
       Function.comp_def]
   have rawProducer := SequentialPhaseRecoveryPolicy.recovery_bayesBelief_eq_stopped_state
-    setup.program (runtime setup) leaks (setup.initialLaw.map setup.eventInputs) horizon scheduler
+    setup.program runtime leaks (setup.initialLaw.map setup.eventInputs) horizon scheduler
   erw [priorEq] at rawProducer
   have rawPosterior := rawProducer embedded who rawSite recoveryPast recoveryView recoveryInput
       recoveryClearView

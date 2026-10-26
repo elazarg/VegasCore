@@ -26,9 +26,10 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {initial : PMF (application setup leaks).State}
-  {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+  {bounds : MessageBounds (graph setup)} {initial : PMF (application setup runtime leaks).State}
+  {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
 
 omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
 /-- A function within `ε` of a factor times a centered bounded function has
@@ -85,9 +86,10 @@ private theorem abs_expect_le_of_support {α : Type*} (law : PMF α) (value : α
     exact nonnegative
 
 /-- The response a one-packet choice performs. -/
-abbrev choiceResponse {who : Player} {info : (application setup leaks).Info}
-    (choice : (onePacketModel setup leaks bounds initial horizon scheduler).Choice who info) :
-    (application setup leaks).Action :=
+abbrev choiceResponse {who : Player} {info : (application setup runtime leaks).Info}
+    (choice : (onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who
+      info) :
+    (application setup runtime leaks).Action :=
   choice.1.getD ⟨none⟩
 
 /-- **Value-free sending of a late component.** At the player's turn `event`
@@ -102,60 +104,70 @@ times `bound` plus `ε`. -/
 theorem abs_expect_slotTrembled_lateChoice_le
     (assessment : setup.intendedModel.BehavioralAssessment) {scale : ℝ} (nonnegative : 0 ≤ scale)
     (le_one : scale ≤ 1) {slots : Nat} (options : PMF (LateOption slots)) (who : Player)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
+    (past : List (application setup runtime leaks).PlayerEntry)
+    (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId)
     (turn : view.application.publicView.ownTurn? who = some event)
-    (value : (application setup leaks).Action → ℝ) (centered : Option (OwnAction Player L) → ℝ)
+    (value : (application setup runtime leaks).Action → ℝ) (centered : Option (OwnAction Player L)
+      → ℝ)
     {bound ε : ℝ} (valueBounded : ∀ response, |value response| ≤ bound)
     (centeredBounded : ∀ choice, |centered choice| ≤ bound)
-    (mean : expect (asIfHonestProfile setup leaks assessment who (some (past, view))) centered = 0)
+    (mean : expect (asIfHonestProfile setup runtime leaks assessment who (some (past, view)))
+      centered = 0)
     (silent : value ⟨none⟩ = 0) (slotLimit : Nat)
     (tierBelow : ∀ slot ∈ trembleSlots setup bounds, slot < slotLimit)
     (optionsBelow : ∀ slot : Fin slots, some slot ∈ options.support → slot.val < slotLimit)
-    (sending : ∀ slot < slotLimit, ∃ factor : ℝ, ∀ choice ∈ (asIfHonestProfile setup leaks
+    (sending : ∀ slot < slotLimit, ∃ factor : ℝ, ∀ choice ∈ (asIfHonestProfile setup runtime leaks
         assessment who (some (past, view))).support,
-      |value (choiceResponse (responseChoice setup leaks bounds initial horizon scheduler who
-          (some (past, view)) (slotResponse setup leaks who past view event slot choice))) -
+      |value (choiceResponse (runtime := runtime) (responseChoice setup runtime leaks bounds
+        initial horizon scheduler who
+          (some (past, view)) (slotResponse setup runtime leaks who past view event slot choice))) -
         factor * centered choice| ≤ ε) :
-    |expect (slotTrembledChoice setup leaks bounds initial horizon scheduler scale nonnegative
+    |expect (slotTrembledChoice setup runtime leaks bounds initial horizon scheduler scale
+      nonnegative
         le_one who (some (past, view))
-        (options.bind (lateChoice setup leaks bounds initial horizon scheduler assessment who
+        (options.bind (lateChoice setup runtime leaks bounds initial horizon scheduler assessment
+          who
           (some (past, view))))
-        (PMF.pure (silenceChoice setup leaks bounds initial horizon scheduler who
+        (PMF.pure (silenceChoice setup runtime leaks bounds initial horizon scheduler who
           (some (past, view))))
-        (slotChoice setup leaks bounds initial horizon scheduler assessment who
+        (slotChoice setup runtime leaks bounds initial horizon scheduler assessment who
           (some (past, view))))
-      (fun choice => value (choiceResponse choice))| ≤ scale ^ 3 * bound + ε := by
-  let honest := asIfHonestProfile setup leaks assessment who (some (past, view))
+      (fun choice => value (choiceResponse (runtime := runtime) choice))| ≤ scale ^ 3 * bound + ε
+        := by
+  let honest := asIfHonestProfile setup runtime leaks assessment who (some (past, view))
   let committed := fun (slot : Nat) (choice : Option (OwnAction Player L)) =>
-    value (choiceResponse (responseChoice setup leaks bounds initial horizon scheduler who
-      (some (past, view)) (slotResponse setup leaks who past view event slot choice)))
+    value (choiceResponse (runtime := runtime) (responseChoice setup runtime leaks bounds initial
+      horizon scheduler who
+      (some (past, view)) (slotResponse setup runtime leaks who past view event slot choice)))
   have boundNonneg : 0 ≤ bound := (abs_nonneg _).trans (valueBounded ⟨none⟩)
   have εNonneg : 0 ≤ ε := by
     obtain ⟨factor, near⟩ := sending 0 (tierBelow 0 (Finset.mem_range.mpr
       (lt_of_lt_of_le zero_lt_one (le_max_left _ _))))
     obtain ⟨witness, witnessed⟩ := honest.support_nonempty
     exact (abs_nonneg _).trans (near witness witnessed)
-  have choiceBounded : ∀ choice : (onePacketModel setup leaks bounds initial horizon
-      scheduler).Choice who (some (past, view)), |value (choiceResponse choice)| ≤ bound :=
+  have choiceBounded : ∀ choice : (onePacketModel setup runtime leaks bounds initial horizon
+      scheduler).Choice who (some (past, view)), |value (choiceResponse (runtime := runtime)
+        choice)| ≤ bound :=
     fun choice => valueBounded _
   have perSlot : ∀ slot < slotLimit, |expect honest (committed slot)| ≤ ε := by
     intro slot below
     obtain ⟨factor, near⟩ := sending slot below
     exact abs_expect_le_of_centered honest (committed slot) centered factor
       (fun choice => valueBounded _) centeredBounded mean near
-  have silentChoice : ∀ response, response = (⟨none⟩ : (application setup leaks).Action) →
-      value (choiceResponse (responseChoice setup leaks bounds initial horizon scheduler who
+  have silentChoice : ∀ response, response = (⟨none⟩ : (application setup runtime leaks).Action) →
+      value (choiceResponse (runtime := runtime) (responseChoice setup runtime leaks bounds
+        initial horizon scheduler who
         (some (past, view)) response)) = 0 := by
     intro response same
     subst same
-    by_cases member : (⟨none⟩ : (application setup leaks).Action) ∈
-      bounds.onePacketActions (runtime setup) leaks who past view
+    by_cases member : (⟨none⟩ : (application setup runtime leaks).Action) ∈
+      bounds.onePacketActions runtime leaks who past view
     · simp only [responseChoice, member, ↓reduceDIte, choiceResponse, Option.getD_some, silent]
     · simp only [responseChoice, member, ↓reduceDIte, choiceResponse, Option.getD_some, silent]
   -- The late options.
-  have mainBound : |expect (options.bind (lateChoice setup leaks bounds initial horizon
-      scheduler assessment who (some (past, view)))) (fun choice => value (choiceResponse choice))|
+  have mainBound : |expect (options.bind (lateChoice setup runtime leaks bounds initial horizon
+      scheduler assessment who (some (past, view)))) (fun choice => value (choiceResponse (runtime
+        := runtime) choice))|
       ≤ ε := by
     rw [expect_bind_tower_bounded _ _ _ choiceBounded]
     apply abs_expect_le_of_support
@@ -170,9 +182,12 @@ theorem abs_expect_slotTrembled_lateChoice_le
         rw [PMF.map_comp, expect_map]
         exact perSlot slot.val (optionsBelow slot member)
   -- The slot tier.
-  have slotBound : |expect (slotChoice setup leaks bounds initial horizon scheduler assessment
-      who (some (past, view))) (fun choice => value (choiceResponse choice))| ≤ ε := by
-    change |expect ((slotTierResponse setup leaks bounds assessment who past view).map _) _| ≤ ε
+  have slotBound : |expect (slotChoice setup runtime leaks bounds initial horizon scheduler
+    assessment
+      who (some (past, view))) (fun choice => value (choiceResponse (runtime := runtime) choice))|
+        ≤ ε := by
+    change |expect ((slotTierResponse setup runtime leaks bounds assessment who past view).map _)
+      _| ≤ ε
     unfold slotTierResponse
     rw [turn]
     dsimp only
@@ -183,19 +198,22 @@ theorem abs_expect_slotTrembled_lateChoice_le
     intro slot member
     rw [expect_map]
     exact perSlot slot (tierBelow slot ((PMF.mem_support_uniformOfFinset_iff _ _).mp member))
-  have silenceZero : value (choiceResponse (silenceChoice setup leaks bounds initial horizon
+  have silenceZero : value (choiceResponse (runtime := runtime) (silenceChoice setup runtime leaks
+    bounds initial horizon
       scheduler who (some (past, view)))) = 0 := silentChoice _ rfl
-  have uniformBound := expect_abs_le_of_bounded (μ := (bounds.onePacketMenu (runtime setup)
+  have uniformBound := expect_abs_le_of_bounded (μ := (bounds.onePacketMenu runtime
     leaks).uniformPolicy initial horizon scheduler who (some (past, view))) boundNonneg
     choiceBounded
   unfold slotTrembledChoice
   rw [expect_mix_of_finite, expect_mix_of_finite, expect_mix_of_finite, expect_pure, silenceZero]
-  set uniform := expect ((bounds.onePacketMenu (runtime setup) leaks).uniformPolicy initial
-    horizon scheduler who (some (past, view))) fun choice => value (choiceResponse choice)
-  set main := expect (options.bind (lateChoice setup leaks bounds initial horizon scheduler
-    assessment who (some (past, view)))) fun choice => value (choiceResponse choice)
-  set tier := expect (slotChoice setup leaks bounds initial horizon scheduler assessment who
-    (some (past, view))) fun choice => value (choiceResponse choice)
+  set uniform := expect ((bounds.onePacketMenu runtime leaks).uniformPolicy initial
+    horizon scheduler who (some (past, view))) fun choice => value (choiceResponse (runtime :=
+      runtime) choice)
+  set main := expect (options.bind (lateChoice setup runtime leaks bounds initial horizon scheduler
+    assessment who (some (past, view)))) fun choice => value (choiceResponse (runtime := runtime)
+      choice)
+  set tier := expect (slotChoice setup runtime leaks bounds initial horizon scheduler assessment who
+    (some (past, view))) fun choice => value (choiceResponse (runtime := runtime) choice)
   have cube : 0 ≤ scale ^ 3 := pow_nonneg nonnegative 3
   have cubeLe : scale ^ 3 ≤ 1 := pow_le_one₀ nonnegative le_one
   have square : 0 ≤ scale ^ 2 := sq_nonneg scale

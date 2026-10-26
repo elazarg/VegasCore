@@ -16,18 +16,19 @@ open SourceProgram Interaction EventGraphRuntime GameTheory GameTheory.Protocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
+  (scheduler : (phaseApplication runtime leaks).Scheduler)
 
-local notation "P" => phaseApplication (runtime setup) leaks
-local notation "A" => recoveryApplication (runtime setup) (recoveryLeaks setup leaks)
-local notation "M" => model setup leaks bounds horizon scheduler
-local notation "R" => recoveryModel setup leaks bounds horizon scheduler
+local notation "P" => phaseApplication runtime leaks
+local notation "A" => recoveryApplication runtime (recoveryLeaks setup leaks)
+local notation "M" => model setup runtime leaks bounds horizon scheduler
+local notation "R" => recoveryModel setup runtime leaks bounds horizon scheduler
 local notation "RecoveryLeaks" => recoveryLeaks setup leaks
 local notation "RecoveryPrior" => recoveryInitialLaw setup
-local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
-local notation "RecoveryMenu" => Recovery.onePacketMenu (runtime setup) (RecoveryLeaks) bounds
+local notation "RecoveryScheduler" => recoveryScheduler setup runtime leaks scheduler
+local notation "RecoveryMenu" => Recovery.onePacketMenu runtime (RecoveryLeaks) bounds
 local notation "rawModel" => ReactiveApplication.information (A) (RecoveryPrior) horizon
     (RecoveryScheduler)
 local notation "RecoveryProtocol" => ReactiveApplication.ResponseMenu.protocol (RecoveryMenu)
@@ -35,9 +36,9 @@ local notation "RecoveryProtocol" => ReactiveApplication.ResponseMenu.protocol (
   horizon (RecoveryScheduler)
 local notation "rawProtocol" => ReactiveApplication.protocol (A) (RecoveryPrior) horizon
     (RecoveryScheduler)
-local notation "projection" => PhaseRecoveryProjection.protocolState (runtime setup) leaks
+local notation "projection" => PhaseRecoveryProjection.protocolState runtime leaks
     RecoveryLeaks
-local notation "projectInfo" => PhaseRecoveryProjection.information (runtime setup) leaks
+local notation "projectInfo" => PhaseRecoveryProjection.information runtime leaks
     RecoveryLeaks
 local notation "phaseClear" => ReactiveApplication.stateInvariant (app := P)
   (fun state => RecoveryState.excluded (PhaseRuntimeState.current state) = ∅)

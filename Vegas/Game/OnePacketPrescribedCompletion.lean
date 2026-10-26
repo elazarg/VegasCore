@@ -124,9 +124,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
 /-- A mixture of two values bounded by left and right is bounded by the
@@ -149,18 +150,21 @@ slot-trembled mixture gives a function bounded by bound the expectation
 target, with target bounded by bound, the mixture gives it an expectation
 within six times the scale times bound of target. -/
 theorem abs_expect_slotTrembledChoice_sub_le {scale : ℝ} (nonnegative : 0 ≤ scale)
-    (le_one : scale ≤ 1) (who : Player) (info : (application setup leaks).Info)
+    (le_one : scale ≤ 1) (who : Player) (info : (application setup runtime leaks).Info)
     (main alternative slot :
-      PMF ((onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).Choice who
+      PMF ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler).Choice
+        who
         info))
-    (value : (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).Choice who
+    (value : (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+      scheduler).Choice who
       info → ℝ) {target bound : ℝ} (bounded : ∀ choice, |value choice| ≤ bound)
     (targetBounded : |target| ≤ bound) (mainEq : expect main value = target) :
-    |expect (slotTrembledChoice setup leaks bounds (initialLaw setup) horizon scheduler scale
+    |expect (slotTrembledChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
+      scale
         nonnegative le_one who info main alternative slot) value - target| ≤
       6 * scale * bound := by
   have boundNonneg : 0 ≤ bound := (abs_nonneg _).trans targetBounded
-  have gap : ∀ law : PMF ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+  have gap : ∀ law : PMF ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
       scheduler).Choice who info), |expect law value - target| ≤ 2 * bound := by
     intro law
     have inside := abs_le.mp (expect_abs_le_of_bounded (μ := law) boundNonneg bounded)
@@ -176,13 +180,13 @@ theorem abs_expect_slotTrembledChoice_sub_le {scale : ℝ} (nonnegative : 0 ≤ 
   have middle := abs_mix_le (sq_nonneg scale) (pow_le_one₀ nonnegative le_one) (gap slot)
     innermost
   have outer := abs_mix_le (pow_nonneg nonnegative 3) (pow_le_one₀ nonnegative le_one)
-    (gap ((bounds.onePacketMenu (runtime setup) leaks).uniformPolicy (initialLaw setup) horizon
+    (gap ((bounds.onePacketMenu runtime leaks).uniformPolicy (initialLaw setup) horizon
       scheduler who info)) middle
-  have regroup : scale ^ 3 * expect ((bounds.onePacketMenu (runtime setup) leaks).uniformPolicy
+  have regroup : scale ^ 3 * expect ((bounds.onePacketMenu runtime leaks).uniformPolicy
         (initialLaw setup) horizon scheduler who info) value +
       (1 - scale ^ 3) * (scale ^ 2 * expect slot value +
         (1 - scale ^ 2) * (scale * expect alternative value + (1 - scale) * target)) - target =
-      scale ^ 3 * (expect ((bounds.onePacketMenu (runtime setup) leaks).uniformPolicy
+      scale ^ 3 * (expect ((bounds.onePacketMenu runtime leaks).uniformPolicy
         (initialLaw setup) horizon scheduler who info) value - target) +
       (1 - scale ^ 3) * (scale ^ 2 * (expect slot value - target) +
         (1 - scale ^ 2) * (scale * (expect alternative value - target) +
@@ -199,15 +203,15 @@ law of an intended assessment, for any recall, is the behavioral step there of
 the assessment's intended effective opening. -/
 theorem asIfHonest_bind_step_eq_behavioralStateStep
     (source : setup.intendedModel.BehavioralAssessment) (who : Player)
-    (execution : (application setup leaks).Execution) {rank : Nat}
+    (execution : (application setup runtime leaks).Execution) {rank : Nat}
     (ordered : execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
     (intendedPoint : ProtocolState.Intended setup.program point) {event : (graph setup).EventId}
     (turn : execution.application.publicView.ownTurn? who = some event)
-    (past : List (application setup leaks).PlayerEntry) :
-    (asIfHonestProfile setup leaks source who
-        (some (past, execution.observe (application setup leaks) who))).bind
+    (past : List (application setup runtime leaks).PlayerEntry) :
+    (asIfHonestProfile setup runtime leaks source who
+        (some (past, execution.observe (application setup runtime leaks) who))).bind
         (fun choice => ProtocolState.step setup.program point (fun _ => choice)) =
       ProtocolState.behavioralStateStep setup.program
         (setup.intendedOpeningProfile source.strategy) point := by
@@ -238,28 +242,28 @@ theorem asIfHonest_bind_step_eq_behavioralStateStep
     rw [PMF.map_comp]
     rfl
   rw [ProtocolState.behavioralStateStep_eq_bind_of_actor setup.program _ point who acts,
-    actionLaw, asIfHonestProfile_observe setup leaks source who execution rank ordered point
+    actionLaw, asIfHonestProfile_observe setup runtime leaks source who execution rank ordered point
       decoded past]
 
 /-- **Canonical decisions at a binding transmit.** Along every history of the
 one-packet game, at a binding of who, the canonical decision of every encoded
 source action transmits. -/
-theorem canonicalTransmitsAt_of_binding {control : (application setup leaks).Control}
-    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+theorem canonicalTransmitsAt_of_binding {control : (application setup runtime leaks).Control}
+    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId) {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding who payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq) :
-    CanonicalTransmitsAt setup leaks who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who) event := by
+    CanonicalTransmitsAt setup runtime leaks who (control.execution.recall who)
+      (control.execution.observe (application setup runtime leaks) who) event := by
   intro action graphAction _ _ _
-  obtain ⟨serial, selected⟩ := onePacket_canonicalFreshSlot_exists trace who
+  obtain ⟨serial, selected⟩ := onePacket_canonicalFreshSlot_exists (runtime := runtime) trace who
   obtain ⟨choice, rfl⟩ : ∃ choice : PublicationResult (L.Val payload),
       graphAction = cast (congrArg EventGraph.EventField.Action outputEq.symm) choice :=
     ⟨cast (congrArg EventGraph.EventField.Action outputEq) graphAction, by simp⟩
-  rw [(runtime setup).canonicalServiceDecision_binding leaks who _ _ event payload outputEq
+  rw [runtime.canonicalServiceDecision_binding leaks who _ _ event payload outputEq
     codeEq node serial selected choice]
   exact Option.some_ne_none _
 

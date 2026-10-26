@@ -46,6 +46,7 @@ theorem map_apply_eq_zero_of_forall_ne {α β : Type} (law : PMF α) (f : α →
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
 
 /-- **Source choices are determined by their encoding at an event.** -/
 theorem encode_injective (event : (graph setup).EventId)
@@ -108,26 +109,26 @@ player's turn, a response of the one-packet menu committing at a fresh prepared
 slot with an opening of the bound type is the slot tier's response, at that
 slot, to the source choice decoded from the opened value. -/
 theorem onePacket_commitment_eq_slotResponse (who : Player)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
+    (past : List (application setup runtime leaks).PlayerEntry)
+    (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId)
     {owner : Player} {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding owner payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind owner payload}
     (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
-    (response : (application setup leaks).Action)
-    (member : response ∈ bounds.onePacketActions (runtime setup) leaks who past view)
-    (material : (application setup leaks).Submission)
+    (response : (application setup runtime leaks).Action)
+    (member : response ∈ bounds.onePacketActions runtime leaks who past view)
+    (material : (application setup runtime leaks).Submission)
     (sends : response.transmission = some material) (serial : Nat)
     (packet : material.call.packet = .commitment event (who, .prepared serial))
     (fresh : view.application.candidates (.prepared serial) = .fresh) (value : L.Val payload)
     (opened : material.call.opening = some ⟨payload, value⟩) :
-    response = slotResponse setup leaks who past view event serial
+    response = slotResponse setup runtime leaks who past view event serial
       (sourceOfValue setup event outputEq value) := by
-  obtain ⟨effective, permits⟩ := (bounds.mem_onePacketActions (runtime setup) leaks who past view
+  obtain ⟨effective, permits⟩ := (bounds.mem_onePacketActions runtime leaks who past view
     response).mp member
-  have normal := ((runtime setup).reactiveNormalization leaks).menu_normal
-    (bounds.rawMenu (runtime setup) leaks) who past view response effective
+  have normal := (runtime.reactiveNormalization leaks).menu_normal
+    (bounds.rawMenu runtime leaks) who past view response effective
   rcases response with ⟨transmission⟩
   change transmission = some material at sends
   subst sends
@@ -143,7 +144,7 @@ theorem onePacket_commitment_eq_slotResponse (who : Player)
     · change some material = some other at otherSends
       cases Option.some.inj otherSends
       have verdict := ((countPermits_eq_true_iff _ _).mp permitted).2.1
-      have callEq : ((runtime setup).localEnvelope leaks who past view
+      have callEq : (runtime.localEnvelope leaks who past view
           material).payload.call = .commitment event (who, .prepared serial) := packet
       unfold CountCallCorrect at verdict
       simp only [callEq] at verdict
@@ -155,9 +156,9 @@ theorem onePacket_commitment_eq_slotResponse (who : Player)
         (ReactiveApplication.ResponseMenu.knownPackets past view)) = material.evidence at evidence
     rw [resolved] at evidence
     exact evidence.symm
-  rw [slotResponse_of_bind setup leaks who past view event node serial _ _
+  rw [slotResponse_of_bind setup runtime leaks who past view event node serial _ _
       (sourceOfValue_encoded setup event outputEq codeEq value),
-    (runtime setup).reactiveBinding_normal_of_fresh leaks who past view event payload _ serial
+    runtime.reactiveBinding_normal_of_fresh leaks who past view event payload _ serial
       fresh]
   rcases material with ⟨⟨materialPacket, materialOpening⟩, materialEvidence⟩
   change materialPacket = _ at packet

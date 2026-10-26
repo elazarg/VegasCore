@@ -18,29 +18,31 @@ section CountedCompletion
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
-local notation "menu" => bounds.onePacketMenu (runtime setup) leaks
-local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+local notation "menu" => bounds.onePacketMenu runtime leaks
+local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
+  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
+    native ∅))
 
 /-- Counted clear terminal completeness settles the current pending source
 event at its next scheduler boundary under every whole behavioral profile. -/
 theorem pending_stop_completed
-    (terminalCompletes : ∀ (final : (application setup leaks).Control),
+    (terminalCompletes : ∀ (final : (application setup runtime leaks).Control),
       ((menu).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
       ExclusionEvidence 0 ∅ (⟨final.execution.application, ∅⟩ : RecoveryState (graph setup)) →
-      (application setup leaks).terminal (some final) →
+      (application setup runtime leaks).terminal (some final) →
       final.execution.application.config.cut.Terminal)
     (stopAtPublicFailure : Bool)
     (certificate : (E).WellFoundedHistories)
     (players : ∀ player, (N).BehavioralPolicy player)
-    (start : (E).History) {control : (application setup leaks).Control}
+    (start : (E).History) {control : (application setup runtime leaks).Control}
     (current : start.state = some control) {rank : Nat}
     (ordered : control.execution.application.config.cut.IsPrefix rank)
     (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅))
@@ -48,26 +50,26 @@ theorem pending_stop_completed
     (ready : control.execution.application.config.cut.Ready event) :
     ∀ final ∈ ((N).runBehavioralUntil certificate players
       (fun stop => if stopAtPublicFailure then
-        LateStopped setup leaks bounds horizon scheduler rank stop ∨ ¬ Clear stop.state
-        else LateStopped setup leaks bounds horizon scheduler rank stop) start).support,
-      ∃ anchor : (application setup leaks).Execution,
+        LateStopped setup runtime leaks bounds horizon scheduler rank stop ∨ ¬ Clear stop.state
+        else LateStopped setup runtime leaks bounds horizon scheduler rank stop) start).support,
+      ∃ anchor : (application setup runtime leaks).Execution,
         final.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ ∧
         event ∈ anchor.application.config.cut.completed ∧
         anchor.application.config.cut.IsPrefix (rank + 1) ∧
         ReadySeen setup leaks rank anchor := by
   classical
   let stopped : (E).History → Prop := fun stop => if stopAtPublicFailure then
-    LateStopped setup leaks bounds horizon scheduler rank stop ∨ ¬ Clear stop.state
-    else LateStopped setup leaks bounds horizon scheduler rank stop
+    LateStopped setup runtime leaks bounds horizon scheduler rank stop ∨ ¬ Clear stop.state
+    else LateStopped setup runtime leaks bounds horizon scheduler rank stop
   let property : (E).History → Prop := fun history =>
-    ∃ next : (application setup leaks).Control, history.state = some next ∧
-      ((PendingAt setup leaks rank next.execution ∧
+    ∃ next : (application setup runtime leaks).Control, history.state = some next ∧
+      ((PendingAt setup runtime leaks rank next.execution ∧
         next.execution.application.config = control.execution.application.config ∧
         ExclusionEvidence 0 ∅ (RecoveryState.mk next.execution.application ∅)) ∨
         (next.actor = none ∧ next.execution.application.config.cut.IsPrefix (rank + 1) ∧
           ReadySeen setup leaks rank next.execution))
-  have pending : PendingAt setup leaks rank control.execution := by
-    obtain ⟨found, foundOrdered, seen⟩ := pendingAt_history
+  have pending : PendingAt setup runtime leaks rank control.execution := by
+    obtain ⟨found, foundOrdered, seen⟩ := pendingAt_history (runtime := runtime)
       ((menu).toRawTrace (initialLaw setup) horizon scheduler (current ▸ start.trace))
     have same := isPrefix_unique foundOrdered ordered
     subst same
@@ -77,19 +79,22 @@ theorem pending_stop_completed
         property next := by
     intro history going running ⟨before, state, cases⟩ after member
     rcases cases with ⟨pending, equal, beforeClear⟩ | completed
-    · obtain ⟨joint, realized⟩ := onePacket_step_transition bounds players running member
+    · obtain ⟨joint, realized⟩ := onePacket_step_transition (runtime := runtime) bounds players
+        running member
       rw [state] at realized
-      obtain ⟨next, nextState, nextCases⟩ := pendingTransition pending joint realized
+      obtain ⟨next, nextState, nextCases⟩ := pendingTransition (runtime := runtime) pending joint
+        realized
       rcases nextCases with pendingNext | completed
       · have sameConfig : next.execution.application.config =
             before.execution.application.config := by
-          rcases transition_configStep (initialLaw setup) horizon scheduler before next joint
+          rcases transition_configStep (initialLaw setup) horizon scheduler
+            before next joint
               (nextState ▸ realized) with same | ⟨completed, completedReady, action, sampled⟩
           · exact same
           · have nextPrefix := isPrefix_succ_of_mem_step pending.1 completedReady sampled
             have := isPrefix_unique pendingNext.1 nextPrefix
             omega
-        have physical := (reactiveApplication_completionStep (runtime setup) leaks).transition
+        have physical := (reactiveApplication_completionStep runtime leaks).transition
           (initialLaw setup) horizon scheduler before next joint (nextState ▸ realized)
         exact ⟨next, nextState, Or.inl ⟨pendingNext, sameConfig.trans equal,
           beforeClear.completionStep_sameConfig physical sameConfig⟩⟩
@@ -108,7 +113,7 @@ theorem pending_stop_completed
     rcases cases with ⟨pendingNext, equal, nextClear⟩ | completed
     · have ends := (N).mem_support_runBehavioralUntil certificate players stopped start final
         supported
-      have endCases : LateStopped setup leaks bounds horizon scheduler rank final ∨
+      have endCases : LateStopped setup runtime leaks bounds horizon scheduler rank final ∨
           ¬ Clear final.state ∨ (E).terminal final.state := by
         cases stopAtPublicFailure
         · exact ends.elim Or.inl (fun ended => Or.inr (Or.inr ended))
@@ -136,7 +141,8 @@ theorem pending_stop_completed
   change actor = none at idle
   subst idle
   have trace := (menu).toRawTrace (initialLaw setup) horizon scheduler (state ▸ final.trace)
-  have accounted := (application setup leaks).raw_trace_horizon (initialLaw setup) horizon scheduler
+  have accounted := (application setup runtime leaks).raw_trace_horizon (initialLaw setup) horizon
+    scheduler
     trace
   change anchor.environmentRecall.length + remaining = horizon at accounted
   refine ⟨anchor, ?_, ?_, prefixed, seen⟩
@@ -150,6 +156,7 @@ end CountedCompletion
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)}
   {initial : PMF (RecoveryState (graph setup))}
@@ -157,17 +164,18 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
     state = (RecoveryState.mk (State.initial inputs) ∅ : RecoveryState (graph setup)))
   (nativeLaw : initial.map RecoveryState.native = initialLaw setup)
   {horizon : Nat}
-  {recoveryScheduler : (recoveryApplication (runtime setup) leaks).Scheduler}
-  (completes : Recovery.CompletesPlay (runtime setup) leaks initial horizon recoveryScheduler)
+  {recoveryScheduler : (recoveryApplication runtime leaks).Scheduler}
+  (completes : Recovery.CompletesPlay runtime leaks initial horizon recoveryScheduler)
 
-local notation "scheduler" => RecoveryProjection.nativeScheduler (runtime setup) leaks
+local notation "scheduler" => RecoveryProjection.nativeScheduler runtime leaks
   recoveryScheduler
-local notation "menu" => bounds.onePacketMenu (runtime setup) leaks
-local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+local notation "menu" => bounds.onePacketMenu runtime leaks
+local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
+  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
+    native ∅))
 
 include initialized nativeLaw completes in
 /-- From a clear sequential prefix, the current event completes at the next
@@ -177,7 +185,7 @@ theorem recovery_pending_stop_completed
     (stopAtPublicFailure : Bool)
     (certificate : (E).WellFoundedHistories)
     (players : ∀ player, (N).BehavioralPolicy player)
-    (start : (E).History) {control : (application setup leaks).Control}
+    (start : (E).History) {control : (application setup runtime leaks).Control}
     (current : start.state = some control) {rank : Nat}
     (ordered : control.execution.application.config.cut.IsPrefix rank)
     (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅))
@@ -185,16 +193,17 @@ theorem recovery_pending_stop_completed
     (ready : control.execution.application.config.cut.Ready event) :
     ∀ final ∈ ((N).runBehavioralUntil certificate players
       (fun stop => if stopAtPublicFailure then
-        LateStopped setup leaks bounds horizon scheduler rank stop ∨ ¬ Clear stop.state
-        else LateStopped setup leaks bounds horizon scheduler rank stop) start).support,
-      ∃ anchor : (application setup leaks).Execution,
+        LateStopped setup runtime leaks bounds horizon scheduler rank stop ∨ ¬ Clear stop.state
+        else LateStopped setup runtime leaks bounds horizon scheduler rank stop) start).support,
+      ∃ anchor : (application setup runtime leaks).Execution,
         final.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ ∧
         event ∈ anchor.application.config.cut.completed ∧
         anchor.application.config.cut.IsPrefix (rank + 1) ∧
         ReadySeen setup leaks rank anchor := by
-  apply pending_stop_completed ?_ stopAtPublicFailure
+  apply pending_stop_completed (runtime := runtime) ?_ stopAtPublicFailure
     certificate players start current ordered clear event ready
-  exact Recovery.CompletesPlay.clear_counted_native bounds initialized nativeLaw completes
+  exact Recovery.CompletesPlay.clear_counted_native (runtime := runtime) bounds initialized
+    nativeLaw completes
 
 
 end Vegas

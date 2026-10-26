@@ -17,17 +17,19 @@ open SourceProgram Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 namespace DirectedBindingFrame
 
-variable {memory : BindingMemory (runtime setup) leaks} {owner : Player}
-  {original repaired : (application setup leaks).Execution}
+variable {memory : BindingMemory runtime leaks} {owner : Player}
+  {original repaired : (application setup runtime leaks).Execution}
 
 /-- Advancing the actual clock preserves the repaired owner's recorded inputs. -/
-theorem advanceClock (frame : DirectedBindingFrame memory owner original repaired) :
-    let app := application setup leaks
-    DirectedBindingFrame memory owner
+theorem advanceClock (frame : DirectedBindingFrame (runtime := runtime) memory owner original
+  repaired) :
+    let app := application setup runtime leaks
+    DirectedBindingFrame (runtime := runtime) memory owner
       { original with
         application := { original.application with clock := original.application.clock + 1 }
         environmentRecall := original.environmentRecall ++
@@ -42,7 +44,7 @@ theorem advanceClock (frame : DirectedBindingFrame memory owner original repaire
 operational frame. Its remembered original result and successful-value
 agreement are exactly the candidate facts retained by the repair frame. -/
 theorem pending_binding_inclusion
-    (frame : DirectedBindingFrame memory owner original repaired)
+    (frame : DirectedBindingFrame (runtime := runtime) memory owner original repaired)
     (event : (graph setup).EventId) (payload : L.Ty)
     (outputEq : (graph setup).outputLayout event = .binding owner payload)
     (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
@@ -53,7 +55,7 @@ theorem pending_binding_inclusion
     (found : original.network.lookup id =
       some ⟨id, ⟨.commitment event candidate, none, some ⟨event⟩⟩⟩)
     (ready : original.application.config.cut.Ready event)
-    (timely : original.application.WithinDeadline (runtime setup) event)
+    (timely : original.application.WithinDeadline runtime event)
     (vacant : original.application.accepted (.inr event) = none)
     (unused : original.application.HandleUnused candidate)
     (leftFixed : original.application.candidates.lookup candidate ≠ .fresh)
@@ -66,22 +68,25 @@ theorem pending_binding_inclusion
         (original.application.bindingResult candidate payload)))
     (successful : ∀ value, original.application.bindingResult candidate payload = .success value →
       repaired.application.bindingResult candidate payload = .success value) :
-    let app := application setup leaks
-    DirectedBindingFrame memory owner
+    let app := application setup runtime leaks
+    DirectedBindingFrame (runtime := runtime) memory owner
       { original.includePending app id with environmentRecall := original.environmentRecall ++
         [⟨original.observeEnvironment app, .include id⟩] }
       { repaired.includePending app id with environmentRecall := repaired.environmentRecall ++
         [⟨repaired.observeEnvironment app, .include id⟩] } := by
-  refine ⟨frame.toFrame.pending_binding_inclusion event payload outputEq codeEq node id candidate
+  refine ⟨frame.toFrame.pending_binding_inclusion event payload outputEq
+    codeEq node id candidate
     sender owned found ready timely vacant unused leftFixed rightFixed rememberedAction
     rememberedValue successful, ?_⟩
-  have unchanged (execution : (application setup leaks).Execution) :
-      (execution.includePending (application setup leaks) id).recall = execution.recall := by
+  have unchanged (execution : (application setup runtime leaks).Execution) :
+      (execution.includePending (application setup runtime leaks) id).recall = execution.recall :=
+        by
     simp only [ReactiveApplication.Execution.includePending]
     split <;> rfl
-  change operationalRecall
-      ((original.includePending (application setup leaks) id).recall owner) =
-    operationalRecall ((repaired.includePending (application setup leaks) id).recall owner)
+  change operationalRecall (runtime := runtime)
+      ((original.includePending (application setup runtime leaks) id).recall owner) =
+    operationalRecall (runtime := runtime) ((repaired.includePending (application setup runtime
+      leaks) id).recall owner)
   rw [unchanged original, unchanged repaired]
   exact frame.recalled
 

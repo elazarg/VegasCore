@@ -185,6 +185,7 @@ theorem decodeSourcePrefix?_staticAt {Field : Type} [DecidableEq Field]
       exact decodeSourcePrefix?_staticAt count next _ _ _ _ store history rest read
 
 variable {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
 
 /-- A decoded point is the source prefix decoding at the configuration's
 completed prefix. -/
@@ -210,37 +211,39 @@ variable {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph 
 executions whose decoded points `who` sees through the same projected view agree
 on whether `who` owes a failure there. -/
 theorem owesFailure_iff_of_projectView_eq (who : Player)
-    {first second : (application setup leaks).Execution}
-    {firstPast secondPast : List (application setup leaks).PlayerEntry}
+    {first second : (application setup runtime leaks).Execution}
+    {firstPast secondPast : List (application setup runtime leaks).PlayerEntry}
     {firstPoint secondPoint : ProtocolState setup.program}
     (firstDecoded : decodedPoint setup first.application.config = some firstPoint)
     (secondDecoded : decodedPoint setup second.application.config = some secondPoint)
-    (same : projectView setup leaks who
-        (some (firstPast, first.observe (application setup leaks) who)) =
-      projectView setup leaks who
-        (some (secondPast, second.observe (application setup leaks) who))) :
+    (same : projectView setup runtime leaks who
+        (some (firstPast, first.observe (application setup runtime leaks) who)) =
+      projectView setup runtime leaks who
+        (some (secondPast, second.observe (application setup runtime leaks) who))) :
     ProtocolState.OwesFailure who setup.program firstPoint ↔
       ProtocolState.OwesFailure who setup.program secondPoint := by
   obtain ⟨firstRank, firstOrdered, firstRead⟩ := decodedPoint_isPrefix firstDecoded
   obtain ⟨secondRank, secondOrdered, secondRead⟩ := decodedPoint_isPrefix secondDecoded
-  rw [projectView_observe setup leaks who first firstRank firstOrdered firstPoint firstRead,
-    projectView_observe setup leaks who second secondRank secondOrdered secondPoint secondRead]
+  rw [projectView_observe setup runtime leaks who first firstRank firstOrdered firstPoint firstRead,
+    projectView_observe setup runtime leaks who second secondRank secondOrdered secondPoint
+      secondRead]
     at same
   exact ProtocolState.owesFailure_iff_of_observe_eq who setup.program []
     (Revelations.initial setup.context) firstPoint secondPoint (decodedPoint_staticAt firstDecoded)
     (decodedPoint_staticAt secondDecoded) (Option.some.inj same)
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 private theorem control_of_infoOf {who : Player}
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView}
-    (native : (onePacketProtocol setup leaks bounds horizon scheduler).History)
-    (seen : (onePacketInformation setup leaks bounds horizon scheduler).infoOf who native.trace =
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView}
+    (native : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
+    (seen : (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf who
+      native.trace =
       some (past, view)) :
-    ∃ control : (application setup leaks).Control, native.state = some control ∧
-      control.execution.observe (application setup leaks) who = view := by
+    ∃ control : (application setup runtime leaks).Control, native.state = some control ∧
+      control.execution.observe (application setup runtime leaks) who = view := by
   obtain ⟨state, trace⟩ := native
   rw [onePacket_infoOf] at seen
   cases state with
@@ -255,41 +258,48 @@ private theorem control_of_infoOf {who : Player}
 the one-packet game at the same decision input of `who` agree on whether `who`
 owes a failure at their decoded points. -/
 theorem owesFailure_iff_of_infoOf {who : Player}
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView}
-    (first second : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView}
+    (first second : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationHistory
       who (some (past, view)))
     {firstPoint secondPoint : ProtocolState setup.program}
-    (firstDecoded : nativeDecodedState setup leaks first.1.state = some firstPoint)
-    (secondDecoded : nativeDecodedState setup leaks second.1.state = some secondPoint) :
+    (firstDecoded : nativeDecodedState setup runtime leaks first.1.state = some firstPoint)
+    (secondDecoded : nativeDecodedState setup runtime leaks second.1.state = some secondPoint) :
     ProtocolState.OwesFailure who setup.program firstPoint ↔
       ProtocolState.OwesFailure who setup.program secondPoint := by
-  obtain ⟨firstControl, firstState, firstView⟩ := control_of_infoOf first.1 first.2
-  obtain ⟨secondControl, secondState, secondView⟩ := control_of_infoOf second.1 second.2
+  obtain ⟨firstControl, firstState, firstView⟩ := control_of_infoOf (runtime := runtime) first.1
+    first.2
+  obtain ⟨secondControl, secondState, secondView⟩ := control_of_infoOf (runtime := runtime)
+    second.1 second.2
   rw [firstState] at firstDecoded
   rw [secondState] at secondDecoded
-  refine owesFailure_iff_of_projectView_eq (firstPast := past) (secondPast := past) who
+  refine owesFailure_iff_of_projectView_eq (runtime := runtime) (firstPast := past) (secondPast :=
+    past) who
     firstDecoded secondDecoded ?_
   rw [firstView, secondView]
 
 /-- **Debt-freedom reaches back along native transitions.** If nobody owes a
 failure at the decoded point after a native transition of the one-packet game,
 nobody owes one at the decoded point before it. -/
-theorem debtFree_of_transition {before after : (application setup leaks).Control}
-    (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some before))
-    (joint : Player → Option (application setup leaks).Action)
-    (realized : some after ∈ ((application setup leaks).transition (initialLaw setup) horizon
+theorem debtFree_of_transition {before after : (application setup runtime leaks).Control}
+    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some before))
+    (joint : Player → Option (application setup runtime leaks).Action)
+    (realized : some after ∈ ((application setup runtime leaks).transition (initialLaw setup)
+      horizon
       scheduler (some before) joint).support)
     (free : ∀ point, decodedPoint setup after.execution.application.config = some point →
       ∀ player, ¬ ProtocolState.OwesFailure player setup.program point) :
     ∀ point, decodedPoint setup before.execution.application.config = some point →
       ∀ player, ¬ ProtocolState.OwesFailure player setup.program point := by
   intro point decoded player owes
-  rcases transition_configStep (initialLaw setup) horizon scheduler before after joint realized
+  rcases transition_configStep (initialLaw setup) horizon scheduler before
+    after joint realized
       with same | ⟨event, ready, action, member⟩
   · exact free point (by rw [same]; exact decoded) player owes
-  · obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
-      (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler prior before rfl
+  · obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+      setup.program)
+      (bounds.onePacketMenu runtime leaks) horizon scheduler prior before rfl
     obtain ⟨current, target, beforeEq, afterEq, supported⟩ :=
       decodedPoint_step residual event ready action _ member
     rw [beforeEq, Option.some.injEq] at decoded
@@ -301,25 +311,26 @@ theorem debtFree_of_transition {before after : (application setup leaks).Control
 well-formed setup, along a native history of the one-packet game whose decoded
 point leaves nobody owing a failure, the intended replay exists. -/
 theorem intendedHistory?_isSome_of_debtFree (wellFormed : setup.WellFormed) : ∀ {state}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state)
-    (control : (application setup leaks).Control), state = some control →
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
+    (control : (application setup runtime leaks).Control), state = some control →
     (∀ point, decodedPoint setup control.execution.application.config = some point →
       ∀ player, ¬ ProtocolState.OwesFailure player setup.program point) →
-      ∃ history, intendedHistory? setup leaks bounds horizon scheduler trace = some history
+      ∃ history, intendedHistory? setup runtime leaks bounds horizon scheduler trace = some history
   | _, .start, _, current, _ => by cases current
   | _, .extend (source := before) (target := after) prior joint legal realized, control,
       current, free => by
       have recursive := fun next same freeNext =>
         intendedHistory?_isSome_of_debtFree wellFormed prior next same freeNext
       subst current
-      have realizedRaw : some control ∈ ((application setup leaks).transition (initialLaw setup)
+      have realizedRaw : some control ∈ ((application setup runtime leaks).transition (initialLaw
+        setup)
           horizon scheduler before joint).support := realized
       cases before with
       | none =>
-          obtain rfl := trace_eq_start_of_none prior
+          obtain rfl := trace_eq_start_of_none (runtime := runtime) prior
           change some control ∈ ((initialLaw setup).map fun state => some
-            (⟨horizon, none, ReactiveApplication.Execution.initial (application setup leaks)
-              state⟩ : (application setup leaks).Control)).support at realizedRaw
+            (⟨horizon, none, ReactiveApplication.Execution.initial (application setup runtime leaks)
+              state⟩ : (application setup runtime leaks).Control)).support at realizedRaw
           obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realizedRaw
           cases Option.some.inj same
           obtain ⟨initial, initialSupported, rfl⟩ := PMF.support_map .. ▸ supported
@@ -337,38 +348,45 @@ theorem intendedHistory?_isSome_of_debtFree (wellFormed : setup.WellFormed) : �
             exact (PMF.mem_support_map_iff _ _ _).mpr ⟨initial, initialSupported, rfl⟩
           exact extendIntended?_isSome legalStart reachedStart
       | some current =>
-          have freeCurrent := debtFree_of_transition prior joint realizedRaw free
+          have freeCurrent := debtFree_of_transition (runtime := runtime) prior joint realizedRaw
+            free
           obtain ⟨previous, previousReplay⟩ :=
             recursive current rfl freeCurrent
-          change ∃ history, (intendedHistory? setup leaks bounds horizon scheduler prior).bind
-            (fun history => advanceIntended? setup leaks history (some current) (some control)) =
+          change ∃ history, (intendedHistory? setup runtime leaks bounds horizon scheduler
+            prior).bind
+            (fun history => advanceIntended? setup runtime leaks history (some current) (some
+              control)) =
               some history
           rw [previousReplay, Option.bind_some]
           cases acting : current.actor with
           | some actor =>
-              rw [transition_respond current acting joint, PMF.mem_support_pure_iff]
+              rw [transition_respond (runtime := runtime) current acting joint,
+                PMF.mem_support_pure_iff]
                 at realizedRaw
               cases Option.some.inj realizedRaw
-              have kept := ((runtime setup).reactive_respond_application leaks current.execution
+              have kept := (runtime.reactive_respond_application leaks current.execution
                 actor ((joint actor).getD ⟨none⟩)).1
               refine ⟨previous, ?_⟩
-              change (match (current.execution.respond (application setup leaks) actor
+              change (match (current.execution.respond (application setup runtime leaks) actor
                   ((joint actor).getD ⟨none⟩)).application.config.history.drop
                     current.execution.application.config.history.length with
                 | [] => some previous
                 | [⟨event, action⟩] => extendIntended? setup previous
                     (decodeEventAction setup.program event action)
-                    (decodedPoint setup (current.execution.respond (application setup leaks) actor
+                    (decodedPoint setup (current.execution.respond (application setup runtime
+                      leaks) actor
                       ((joint actor).getD ⟨none⟩)).application.config)
                 | _ => none) = some previous
               rw [kept, List.drop_length]
           | none =>
-              obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
-                (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler prior current rfl
+              obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime)
+                (failureProfile setup.program)
+                (bounds.onePacketMenu runtime leaks) horizon scheduler prior current rfl
               have previousState : previous.state =
                   decodedPoint setup current.execution.application.config :=
-                intendedHistory?_state prior previousReplay
-              rcases transition_configStep (initialLaw setup) horizon scheduler current control
+                intendedHistory?_state (runtime := runtime) prior previousReplay
+              rcases transition_configStep (initialLaw setup) horizon
+                scheduler current control
                   joint realizedRaw with same | ⟨event, ready, action, member⟩
               · refine ⟨previous, ?_⟩
                 change (match control.execution.application.config.history.drop
@@ -396,8 +414,9 @@ theorem intendedHistory?_isSome_of_debtFree (wellFormed : setup.WellFormed) : �
                 have currentState : previous.state = some point :=
                   previousState.trans decodedCurrent
                 obtain ⟨intendedRank, ⟨intendedResidual⟩, intendedHolds⟩ :=
-                  decodedState_intended_or_owes wellFormed (failureProfile setup.program)
-                    (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler prior current
+                  decodedState_intended_or_owes (runtime := runtime) wellFormed (failureProfile
+                    setup.program)
+                    (bounds.onePacketMenu runtime leaks) horizon scheduler prior current
                     rfl
                 have intendedPoint : ProtocolState.Intended setup.program point := by
                   have holds := intendedHolds _ intendedResidual.decode
@@ -432,18 +451,21 @@ shows `who`'s own ready event, a history in a forced state of `who` at whose
 decoded point `who` owes no failure makes the projected view a decision site
 of the intended game. -/
 theorem projectedDecision_of_debtFree (wellFormed : setup.WellFormed) {who : Player}
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView}
-    (native : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView}
+    (native : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationHistory who
       (some (past, view)))
     {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
-    (forced : ForcedState setup leaks who native.1.state)
-    (notOwed : ∀ point, nativeDecodedState setup leaks native.1.state = some point →
+    (forced : ForcedState setup runtime leaks who native.1.state)
+    (notOwed : ∀ point, nativeDecodedState setup runtime leaks native.1.state = some point →
       ¬ ProtocolState.OwesFailure who setup.program point) :
-    setup.intendedModel.IsDecisionInfo who (projectView setup leaks who (some (past, view))) := by
-  obtain ⟨control, stateEq, viewEq⟩ := control_of_infoOf native.1 native.2
+    setup.intendedModel.IsDecisionInfo who (projectView setup runtime leaks who (some (past,
+      view))) := by
+  obtain ⟨control, stateEq, viewEq⟩ := control_of_infoOf (runtime := runtime) native.1 native.2
   rw [stateEq] at forced notOwed
-  obtain ⟨point, decoded, forcedPoint⟩ := (forcedState_iff_decodedPoint control).mp forced
+  obtain ⟨point, decoded, forcedPoint⟩ := (forcedState_iff_decodedPoint (runtime := runtime)
+    control).mp forced
   have free : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ∀ player, ¬ ProtocolState.OwesFailure player setup.program point := by
     intro found found_decoded player
@@ -453,11 +475,14 @@ theorem projectedDecision_of_debtFree (wellFormed : setup.WellFormed) {who : Pla
     · subst same
       exact notOwed point decoded
     · exact (forcedPoint.2 player same).2
-  obtain ⟨history, replayed⟩ := intendedHistory?_isSome_of_debtFree wellFormed native.1.trace
+  obtain ⟨history, replayed⟩ := intendedHistory?_isSome_of_debtFree (runtime := runtime)
+    wellFormed native.1.trace
     control stateEq free
   have historyState : history.state = some point :=
-    (intendedHistory?_state native.1.trace replayed).trans (by rw [stateEq]; exact decoded)
-  have seen := intendedHistory?_infoOf native.1 native.2 replayed
+    (intendedHistory?_state (runtime := runtime) native.1.trace replayed).trans (by
+      rw [stateEq]
+      exact decoded)
+  have seen := intendedHistory?_infoOf (runtime := runtime) native.1 native.2 replayed
   subst viewEq
   obtain ⟨publicReady, owned⟩ := PublicView.ownTurn?_spec _ who event turn
   have ready : control.execution.application.config.cut.Ready event :=
@@ -489,21 +514,23 @@ if `who` owes no failure at the decoded point of any history of the input, the
 projected view is a decision site of the intended game. By
 `Vegas.owesFailure_iff_of_infoOf` one history suffices. -/
 theorem projectedDecision_of_forcedAgent (wellFormed : setup.WellFormed) {who : Player}
-    {info : (onePacketInformation setup leaks bounds horizon scheduler).InfoState who}
-    (forced : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
+    {info : (onePacketInformation setup runtime leaks bounds horizon scheduler).InfoState who}
+    (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
+      setup) horizon
       scheduler who info)
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView}
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView}
     (decision : info = some (past, view)) {event : (graph setup).EventId}
     (turn : view.application.publicView.ownTurn? who = some event)
-    (notOwed : ∀ history : (onePacketInformation setup leaks bounds horizon
+    (notOwed : ∀ history : (onePacketInformation setup runtime leaks bounds horizon
         scheduler).InformationHistory who info,
-      ∀ point, nativeDecodedState setup leaks history.1.state = some point →
+      ∀ point, nativeDecodedState setup runtime leaks history.1.state = some point →
         ¬ ProtocolState.OwesFailure who setup.program point) :
-    setup.intendedModel.IsDecisionInfo who (projectView setup leaks who info) := by
+    setup.intendedModel.IsDecisionInfo who (projectView setup runtime leaks who info) := by
   subst decision
   obtain ⟨native, seen, forcedNative⟩ := forced
-  exact projectedDecision_of_debtFree wellFormed ⟨native, seen⟩ turn forcedNative
+  exact projectedDecision_of_debtFree (runtime := runtime) wellFormed ⟨native, seen⟩ turn
+    forcedNative
     (notOwed ⟨native, seen⟩)
 
 end Vegas

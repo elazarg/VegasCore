@@ -18,7 +18,7 @@ open EventGraphRuntime Interaction GameTheory.Math.Probability
 open GameTheory.Protocol
 
 abbrev nativeGraph := Vegas.graph (setup 2)
-abbrev app := application (setup 2) (leaks 2)
+abbrev app := application (setup 2) (Vegas.runtime (setup 2)) (leaks 2)
 
 private instance : NeZero nativeGraph.order.eventCount := ⟨by decide⟩
 

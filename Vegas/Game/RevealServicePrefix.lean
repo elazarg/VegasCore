@@ -90,7 +90,8 @@ def PrefixCheckpoint (setup : Setup (Player := Player) (L := L))
     (program : SourceProgram Player L Γ openNames) →
     ContextRefs (graph setup).layout Γ → Revelations Γ →
     (∀ event, EventGraph.FieldRef (graph setup).layout (outputLayout program event)) →
-    Nat → Nat → ProtocolState program → (application setup leaks).Execution → Prop
+    Nat → Nat → ProtocolState program → (application setup (Vegas.runtime setup)
+      leaks).Execution → Prop
   | _, _, program, refs, revelations, _, offset, 0, state, execution =>
       ∃ source, state = ProtocolState.entry program source ∧
         @source.revelations = @revelations ∧
@@ -120,7 +121,7 @@ theorem PrefixCheckpoint.decode
       (outputs : ∀ event, EventGraph.FieldRef (graph setup).layout
         (outputLayout program event))
       (offset count : Nat) (state : ProtocolState program)
-      (execution : (application setup leaks).Execution),
+      (execution : (application setup (Vegas.runtime setup) leaks).Execution),
       PrefixCheckpoint setup leaks initial program refs revelations outputs
         offset count state execution →
       decodePrefix? program refs revelations outputs count execution.application.config.store
@@ -178,7 +179,8 @@ def PublicPrefixCheckpoint (setup : Setup (Player := Player) (L := L))
     (program : SourceProgram Player L Γ openNames) →
     ContextRefs (graph setup).layout Γ → Revelations Γ →
     (∀ event, EventGraph.FieldRef (graph setup).layout (outputLayout program event)) →
-    Nat → Nat → ProtocolState program → (application setup leaks).Execution → Prop
+    Nat → Nat → ProtocolState program → (application setup (Vegas.runtime setup)
+      leaks).Execution → Prop
   | _, _, program, refs, revelations, _, offset, 0, state, execution =>
       ∃ source, state = ProtocolState.entry program source ∧
         @source.revelations = @revelations ∧
@@ -205,7 +207,7 @@ theorem PublicPrefixCheckpoint.checkpoint
       (refs : ContextRefs (graph setup).layout Γ) (revelations : Revelations Γ)
       (outputs : ∀ event, EventGraph.FieldRef (graph setup).layout (outputLayout program event))
       (offset count : Nat) (state : ProtocolState program)
-      (execution : (application setup leaks).Execution),
+      (execution : (application setup (Vegas.runtime setup) leaks).Execution),
       PublicPrefixCheckpoint setup leaks initial program refs revelations outputs
         offset count state execution →
       ∃ context : SourceCtx Player L, ∃ source : Config Player L context,
@@ -239,7 +241,7 @@ theorem PublicPrefixCheckpoint.ready
     {revelations : Revelations Γ}
     {outputs : ∀ event, EventGraph.FieldRef (graph setup).layout (outputLayout program event)}
     {offset count : Nat} {state : ProtocolState program}
-    {execution : (application setup leaks).Execution}
+    {execution : (application setup (Vegas.runtime setup) leaks).Execution}
     (related : PublicPrefixCheckpoint setup leaks initial program refs revelations outputs
       offset count state execution)
     (event : (graph setup).EventId) (rank : event.val = offset + count) :
@@ -263,7 +265,7 @@ theorem PublicPrefixCheckpoint.decode
       (outputs : ∀ event, EventGraph.FieldRef (graph setup).layout
         (outputLayout program event))
       (offset count : Nat) (state : ProtocolState program)
-      (execution : (application setup leaks).Execution),
+      (execution : (application setup (Vegas.runtime setup) leaks).Execution),
       PublicPrefixCheckpoint setup leaks initial program refs revelations outputs
         offset count state execution →
       decodePrefix? program refs revelations outputs count execution.application.config.store
@@ -324,7 +326,7 @@ theorem PrefixCheckpoint.toPublic
       (refs : ContextRefs (graph setup).layout Γ) (revelations : Revelations Γ)
       (outputs : ∀ event, EventGraph.FieldRef (graph setup).layout (outputLayout program event))
       (offset count : Nat) (state : ProtocolState program)
-      (execution : (application setup leaks).Execution),
+      (execution : (application setup (Vegas.runtime setup) leaks).Execution),
       PrefixCheckpoint setup leaks initial program refs revelations outputs
         offset count state execution →
       PublicPrefixCheckpoint setup leaks initial program refs revelations outputs
@@ -359,7 +361,7 @@ theorem PublicPrefixCheckpoint.actor
       (outputs : ∀ event, EventGraph.FieldRef (graph setup).layout
         (outputLayout program event))
       (offset count : Nat) (state : ProtocolState program)
-      (execution : (application setup leaks).Execution),
+      (execution : (application setup (Vegas.runtime setup) leaks).Execution),
       PublicPrefixCheckpoint setup leaks initial program refs revelations outputs
         offset count state execution →
       (inside : count < eventCount program) →

@@ -102,16 +102,17 @@ theorem phaseExclusionBase_add (setup : Setup (Player := Player) (L := L))
 /-- The nonconcurrent recovery base also separates into valuation and cash,
 including runtime exclusion before a terminal store and failed source reveals. -/
 theorem recoveryExclusionBase_add {setup : Setup (Player := Player) (L := L)}
+    {runtime : EventGraphRuntime (graph setup)}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (valuation transfer : Parameter × PublicOutcome setup.program → Player → ℝ)
     (exitValuation exitTransfer : Player → ℝ)
-    (state : (recoveryApplication (runtime setup) leaks).ProtocolState) (who : Player) :
-    recoveryExclusionBase parameter
+    (state : (recoveryApplication runtime leaks).ProtocolState) (who : Player) :
+    recoveryExclusionBase (runtime := runtime) parameter
         (fun outcome owner => valuation outcome owner + transfer outcome owner)
         (fun owner => exitValuation owner + exitTransfer owner) state who =
-      recoveryExclusionBase parameter valuation exitValuation state who +
-        recoveryExclusionBase parameter transfer exitTransfer state who := by
+      recoveryExclusionBase (runtime := runtime) parameter valuation exitValuation state who +
+        recoveryExclusionBase (runtime := runtime) parameter transfer exitTransfer state who := by
   cases state with
   | none => simp only [recoveryExclusionBase, add_zero]
   | some control =>
@@ -121,8 +122,8 @@ theorem recoveryExclusionBase_add {setup : Setup (Player := Player) (L := L)}
     · rfl
     · rw [exclusionBase_eq_readout, exclusionBase_eq_readout, exclusionBase_eq_readout]
       unfold exclusionReadoutUtility
-      cases sourceReadout setup leaks
-          (some (RecoveryProjection.control (runtime setup) leaks control)) with
+      cases sourceReadout setup runtime leaks
+          (some (RecoveryProjection.control runtime leaks control)) with
       | none => simp only [Option.elim_none, add_zero]
       | some terminal =>
         exact exclusionUtility_add setup.program valuation transfer exitValuation exitTransfer
@@ -164,21 +165,24 @@ theorem phaseExclusionBase_expect_monetaryUtility
 valuation plus actual audited cash, including its existing exclusion branches. -/
 theorem recoveryExclusionBase_expect_monetaryUtility
     {setup : Setup (Player := Player) (L := L)}
+    {runtime : EventGraphRuntime (graph setup)}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)
     (exitValuation exitTransfer : Player → ℝ) {Observation : Type}
-    (observe : (recoveryApplication (runtime setup) leaks).ProtocolState → Observation)
+    (observe : (recoveryApplication runtime leaks).ProtocolState → Observation)
     (audit : Observation → PMF (Player → Bool)) (deposit : Player → ℝ)
-    (state : (recoveryApplication (runtime setup) leaks).ProtocolState) (who : Player) :
+    (state : (recoveryApplication runtime leaks).ProtocolState) (who : Player) :
     expect (TerminalAudit.settlement
-        (recoveryExclusionBase parameter
+        (recoveryExclusionBase (runtime := runtime) parameter
           (fun outcome owner => setup.program.publicTransfers outcome.2 owner) exitTransfer)
         observe audit deposit state)
       (fun receipts => monetaryUtility
-        (recoveryExclusionBase parameter valuation exitValuation) (state, receipts) who) =
+        (recoveryExclusionBase (runtime := runtime) parameter valuation exitValuation) (state,
+          receipts) who) =
       TerminalAudit.utility
-        (recoveryExclusionBase parameter (setup.program.parameterPaymentUtility valuation)
+        (recoveryExclusionBase (runtime := runtime) parameter
+          (setup.program.parameterPaymentUtility valuation)
           (fun owner => exitValuation owner + exitTransfer owner))
         observe audit deposit state who := by
   rw [TerminalAudit.settlement_expect_monetaryUtility]

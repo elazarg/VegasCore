@@ -20,18 +20,20 @@ open SourceProgram Interaction EventGraphRuntime GameTheory GameTheory.Protocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
+  (scheduler : (phaseApplication runtime leaks).Scheduler)
+  [(phaseApplication runtime leaks).FiniteNature (phaseInitialLaw setup) scheduler]
 
 local notation "RecoveryLeaks" => recoveryLeaks setup leaks
 local notation "RecoveryPrior" => recoveryInitialLaw setup
-local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
-local notation "nativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup)
+local notation "RecoveryScheduler" => recoveryScheduler setup runtime leaks scheduler
+local notation "nativeScheduler" => RecoveryProjection.nativeScheduler runtime
     (RecoveryLeaks)
   (RecoveryScheduler)
-local notation "N" => onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
+local notation "N" => onePacketModel (runtime := runtime) setup (RecoveryLeaks) bounds
+  (Vegas.initialLaw setup) horizon
   (nativeScheduler)
 
 attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
@@ -41,49 +43,59 @@ attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeIn
 recovery-to-native factory, with no transferred optimality claim. -/
 def nativeComparisonSequence (source : ℕ → setup.intendedModel.BehavioralAssessment)
     {slots : Nat} (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
-    (weights : ℕ → ∀ p, PMF (Part setup leaks bounds horizon scheduler slots p)) (n : ℕ) :
+    (weights : ℕ → ∀ p, PMF (Part setup runtime leaks bounds horizon scheduler slots p)) (n : ℕ) :
     (N).BehavioralAssessment :=
-  RecoveryOnePacket.nativeComparisonSequence setup (RecoveryLeaks) bounds horizon
+  RecoveryOnePacket.nativeComparisonSequence (runtime := runtime) setup (RecoveryLeaks) bounds
+    horizon
       (RecoveryScheduler)
     source scale positive le_one
-    (fun n => recoveryComparisonWeights setup leaks bounds horizon scheduler (weights n)) n
+    (fun n => recoveryComparisonWeights setup runtime leaks bounds horizon scheduler (weights n)) n
 
 theorem nativeComparisonSequence_assembled
     (source : ℕ → setup.intendedModel.BehavioralAssessment)
     {slots : Nat} (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
-    (weights : ℕ → ∀ p, PMF (Part setup leaks bounds horizon scheduler slots p)) :
-    OnePacketAssembled setup (RecoveryLeaks) bounds horizon (nativeScheduler) source scale
+    (weights : ℕ → ∀ p, PMF (Part setup runtime leaks bounds horizon scheduler slots p)) :
+    OnePacketAssembled (runtime := runtime) setup (RecoveryLeaks) bounds horizon (nativeScheduler)
+      source scale
       positive le_one
-      (fun n => RecoveryOnePacket.nativeComparisonWeights setup (RecoveryLeaks) bounds horizon
-        (RecoveryScheduler) (recoveryComparisonWeights setup leaks bounds horizon scheduler (weights
+      (fun n => RecoveryOnePacket.nativeComparisonWeights (runtime := runtime) setup
+        (RecoveryLeaks) bounds horizon
+        (RecoveryScheduler) (recoveryComparisonWeights setup runtime leaks bounds horizon
+          scheduler (weights
             n)))
-      (nativeComparisonSequence setup leaks bounds horizon scheduler source scale positive le_one
+      (nativeComparisonSequence setup runtime leaks bounds horizon scheduler source scale positive
+        le_one
         weights) :=
-  RecoveryOnePacket.nativeComparisonSequence_assembled setup (RecoveryLeaks) bounds horizon
+  RecoveryOnePacket.nativeComparisonSequence_assembled (runtime := runtime) setup (RecoveryLeaks)
+    bounds horizon
     (RecoveryScheduler) source scale positive le_one
-    (fun n => recoveryComparisonWeights setup leaks bounds horizon scheduler (weights n))
+    (fun n => recoveryComparisonWeights setup runtime leaks bounds horizon scheduler (weights n))
 
 theorem nativeComparisonSequence_fullyMixed
     (source : ℕ → setup.intendedModel.BehavioralAssessment)
     {slots : Nat} (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
-    (weights : ℕ → ∀ p, PMF (Part setup leaks bounds horizon scheduler slots p)) (n : ℕ) :
-    (nativeComparisonSequence setup leaks bounds horizon scheduler source scale positive le_one
+    (weights : ℕ → ∀ p, PMF (Part setup runtime leaks bounds horizon scheduler slots p)) (n : ℕ) :
+    (nativeComparisonSequence setup runtime leaks bounds horizon scheduler source scale positive
+      le_one
       weights n).IsFullyMixed :=
-  RecoveryOnePacket.nativeComparisonSequence_fullyMixed setup (RecoveryLeaks) bounds horizon
+  RecoveryOnePacket.nativeComparisonSequence_fullyMixed (runtime := runtime) setup (RecoveryLeaks)
+    bounds horizon
     (RecoveryScheduler) source scale positive le_one
-    (fun n => recoveryComparisonWeights setup leaks bounds horizon scheduler (weights n)) n
+    (fun n => recoveryComparisonWeights setup runtime leaks bounds horizon scheduler (weights n)) n
 
 theorem nativeComparisonSequence_bayes
     (source : ℕ → setup.intendedModel.BehavioralAssessment)
     {slots : Nat} (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
-    (weights : ℕ → ∀ p, PMF (Part setup leaks bounds horizon scheduler slots p)) (n : ℕ) :
+    (weights : ℕ → ∀ p, PMF (Part setup runtime leaks bounds horizon scheduler slots p)) (n : ℕ) :
     BehavioralAssessment.IsBayesConsistent (N)
-      (nativeComparisonSequence setup leaks bounds horizon scheduler source scale positive le_one
+      (nativeComparisonSequence setup runtime leaks bounds horizon scheduler source scale positive
+        le_one
         weights n)
-      ((bounds.onePacketMenu (runtime setup) (RecoveryLeaks)).decisionInformationAntichain
+      ((bounds.onePacketMenu runtime (RecoveryLeaks)).decisionInformationAntichain
         (Vegas.initialLaw setup) horizon (nativeScheduler)) :=
-  RecoveryOnePacket.nativeComparisonSequence_bayes setup (RecoveryLeaks) bounds horizon
+  RecoveryOnePacket.nativeComparisonSequence_bayes (runtime := runtime) setup (RecoveryLeaks)
+    bounds horizon
     (RecoveryScheduler) source scale positive le_one
-    (fun n => recoveryComparisonWeights setup leaks bounds horizon scheduler (weights n)) n
+    (fun n => recoveryComparisonWeights setup runtime leaks bounds horizon scheduler (weights n)) n
 
 end Vegas.SequentialPhase

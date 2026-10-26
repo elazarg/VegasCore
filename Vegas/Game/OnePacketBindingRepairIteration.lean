@@ -23,9 +23,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
 private theorem bindingRefines_trans {Field : Type}
@@ -61,9 +62,9 @@ private theorem outputSucceeded_of_bindingRefines
 
 omit [Fintype Player] in
 private theorem completed_iff_of_frame
-    {memory : BindingMemory (runtime setup) leaks} {owner : Player}
-    {original repaired : (application setup leaks).Execution}
-    (frame : BindingMemory.Frame (runtime setup) leaks memory owner original repaired)
+    {memory : BindingMemory runtime leaks} {owner : Player}
+    {original repaired : (application setup runtime leaks).Execution}
+    (frame : BindingMemory.Frame runtime leaks memory owner original repaired)
     (event : (graph setup).EventId) :
     event ∈ original.application.config.cut.completed ↔
       event ∈ repaired.application.config.cut.completed := by
@@ -86,29 +87,30 @@ binding owned by its repaired player when the focal public record rules out
 missed foreign bindings. -/
 theorem directedRepair_completed_outputs_succeeded
     {focal owner : Player} (foreign : owner ≠ focal)
-    {original repaired : (application setup leaks).Control}
-    (first : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some original))
-    (last : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some repaired))
-    {memory : BindingMemory (runtime setup) leaks}
-    (frame : DirectedBindingFrame memory owner original.execution repaired.execution)
-    (recorded : memory.RecordsSubmittedBindings (runtime setup) leaks owner
+    {original repaired : (application setup runtime leaks).Control}
+    (first : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some original))
+    (last : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some repaired))
+    {memory : BindingMemory runtime leaks}
+    (frame : DirectedBindingFrame (runtime := runtime) memory owner original.execution
+      repaired.execution)
+    (recorded : memory.RecordsSubmittedBindings runtime leaks owner
       original.execution repaired.execution)
-    (record : PublicRecord setup focal original)
+    (record : PublicRecord setup runtime focal original)
     (event : (graph setup).EventId) (payload : L.Ty)
     (layoutEq : (graph setup).outputLayout event = .binding owner payload)
     (completed : event ∈ repaired.execution.application.config.cut.completed) :
     OutputSucceeded repaired.execution.application.config.store event := by
-  have rawFirst := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
+  have rawFirst := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
     horizon scheduler first
-  have rawLast := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
+  have rawLast := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
     horizon scheduler last
-  have signed := signedCommitments_history (runtime setup) leaks (initialLaw setup)
+  have signed := signedCommitments_history runtime leaks (initialLaw setup)
     (fun state member => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
       exact ⟨_, rfl⟩) horizon scheduler rawFirst
-  have count := (runtime setup).countRecall_history leaks rawFirst
+  have count := runtime.countRecall_history leaks rawFirst
   have valid : repaired.execution.application.BindingInvariant :=
-    ((runtime setup).reactiveBindingInvariant leaks).history (initialLaw setup) horizon
+    (runtime.reactiveBindingInvariant leaks).history (initialLaw setup) horizon
       scheduler (fun state member => by
         obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
         exact State.initial_bindingInvariant _) rawLast
@@ -118,18 +120,20 @@ theorem directedRepair_completed_outputs_succeeded
   apply recorded.accepted_output_succeeded signed count valid acceptedEq event payload layoutEq
   rw [acceptedEq]
   exact record.1 event owner payload layoutEq foreign
-    ((completed_iff_of_frame frame.toFrame event).mpr completed)
+    ((completed_iff_of_frame (runtime := runtime) frame.toFrame event).mpr
+      completed)
 
 private theorem infoOf_eq_of_frame
     {focal owner : Player} (foreign : focal ≠ owner)
-    {original repaired : (application setup leaks).Control}
-    (first : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some original))
-    (last : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some repaired))
-    {memory : BindingMemory (runtime setup) leaks}
-    (frame : DirectedBindingFrame memory owner original.execution repaired.execution)
+    {original repaired : (application setup runtime leaks).Control}
+    (first : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some original))
+    (last : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some repaired))
+    {memory : BindingMemory runtime leaks}
+    (frame : DirectedBindingFrame (runtime := runtime) memory owner original.execution
+      repaired.execution)
     (actor : repaired.actor = original.actor) :
-    (onePacketInformation setup leaks bounds horizon scheduler).infoOf focal last =
-      (onePacketInformation setup leaks bounds horizon scheduler).infoOf focal first := by
+    (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf focal last =
+      (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf focal first := by
   rw [onePacket_infoOf, onePacket_infoOf]
   simp only [ReactiveApplication.observe, actor]
   rw [frame.toFrame.decisionInput foreign]
@@ -139,38 +143,47 @@ information of every excluded player and every previously successful binding.
 The callback constructs an actual trace and its submitted-binding record. -/
 theorem exists_bindingRepairs_for_owners
     (focal : Player)
-    (info : (onePacketInformation setup leaks bounds horizon scheduler).InfoState focal)
-    (original : (application setup leaks).Control)
-    (first : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some original))
-    (seen : (onePacketInformation setup leaks bounds horizon scheduler).infoOf focal first = info)
+    (info : (onePacketInformation setup runtime leaks bounds horizon scheduler).InfoState focal)
+    (original : (application setup runtime leaks).Control)
+    (first : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some original))
+    (seen : (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf focal first
+      = info)
     (record : ∀ current
-      (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some current)),
-      (onePacketInformation setup leaks bounds horizon scheduler).infoOf focal trace = info →
-        PublicRecord setup focal current)
+      (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+        current)),
+      (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf focal trace =
+        info →
+        PublicRecord setup runtime focal current)
     (owners : Finset Player) (focalNotIn : focal ∉ owners)
     (repair : ∀ owner ∈ owners, ∀ current
-      (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some current)),
-      (onePacketInformation setup leaks bounds horizon scheduler).infoOf focal trace = info →
-      ∃ repaired : (application setup leaks).Control,
-        ∃ image : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some repaired),
-        ∃ memory : BindingMemory (runtime setup) leaks,
+      (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+        current)),
+      (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf focal trace =
+        info →
+      ∃ repaired : (application setup runtime leaks).Control,
+        ∃ image : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+          repaired),
+        ∃ memory : BindingMemory runtime leaks,
           repaired.remaining = current.remaining ∧ repaired.actor = current.actor ∧
-          DirectedBindingFrame memory owner current.execution repaired.execution ∧
-          operationalRecord setup leaks bounds horizon scheduler trace =
-            operationalRecord setup leaks bounds horizon scheduler image ∧
-          memory.RecordsSubmittedBindings (runtime setup) leaks owner
+          DirectedBindingFrame (runtime := runtime) memory owner current.execution
+            repaired.execution ∧
+          operationalRecord setup runtime leaks bounds horizon scheduler trace =
+            operationalRecord setup runtime leaks bounds horizon scheduler image ∧
+          memory.RecordsSubmittedBindings runtime leaks owner
             current.execution repaired.execution) :
-    ∃ repaired : (application setup leaks).Control,
-      ∃ image : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some repaired),
-        (onePacketInformation setup leaks bounds horizon scheduler).infoOf focal image = info ∧
+    ∃ repaired : (application setup runtime leaks).Control,
+      ∃ image : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+        repaired),
+        (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf focal image =
+          info ∧
         repaired.remaining = original.remaining ∧ repaired.actor = original.actor ∧
-        operationalRecord setup leaks bounds horizon scheduler first =
-          operationalRecord setup leaks bounds horizon scheduler image ∧
+        operationalRecord setup runtime leaks bounds horizon scheduler first =
+          operationalRecord setup runtime leaks bounds horizon scheduler image ∧
         (∀ player, player ∉ owners →
           (original.execution.recall player,
-            original.execution.observe (application setup leaks) player) =
+            original.execution.observe (application setup runtime leaks) player) =
           (repaired.execution.recall player,
-            repaired.execution.observe (application setup leaks) player)) ∧
+            repaired.execution.observe (application setup runtime leaks) player)) ∧
         original.execution.application.config.store.BindingRefines
           repaired.execution.application.config.store ∧
         ∀ owner ∈ owners, ∀ event payload,
@@ -197,7 +210,8 @@ theorem exists_bindingRepairs_for_owners
         intro same
         subst owner
         exact focalNotIn (Finset.mem_insert_self focal owners)
-      refine ⟨repaired, image, (infoOf_eq_of_frame foreign.symm middleTrace image frame actor).trans
+      refine ⟨repaired, image, (infoOf_eq_of_frame (runtime := runtime) foreign.symm middleTrace
+        image frame actor).trans
         middleSeen, remaining.trans middleRemaining, actor.trans middleActor,
         middleRecord.trans sameRecord, ?_, bindingRefines_trans middleRefined frame.successful, ?_⟩
       · intro player excluded
@@ -211,10 +225,12 @@ theorem exists_bindingRepairs_for_owners
       · intro player member event payload layoutEq completed
         rcases Finset.mem_insert.mp member with same | prior
         · subst player
-          exact directedRepair_completed_outputs_succeeded foreign middleTrace image frame
+          exact directedRepair_completed_outputs_succeeded (runtime := runtime) foreign
+            middleTrace image frame
             recorded (record middle middleTrace middleSeen) event payload layoutEq completed
         · exact outputSucceeded_of_bindingRefines frame.successful event layoutEq
             (middleSuccessful player prior event payload layoutEq
-              ((completed_iff_of_frame frame.toFrame event).mpr completed))
+              ((completed_iff_of_frame (runtime := runtime) frame.toFrame
+                event).mpr completed))
 
 end Vegas

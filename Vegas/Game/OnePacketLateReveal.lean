@@ -27,9 +27,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 omit [Fintype Player] in
 /-- A configuration step of a reveal stores the resolution of the disclosure its
@@ -59,49 +60,51 @@ from a history whose configuration `sent` is a prefix of `rank` events with
 `event` ready, every stop of play of any profile until the event completes is
 one step of the event from `sent`. -/
 theorem lateStop_mem_step
-    (certificate : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+    (certificate : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).WellFoundedHistories)
-    (players : ∀ player, ((bounds.onePacketMenu (runtime setup) leaks).information
+    (players : ∀ player, ((bounds.onePacketMenu runtime leaks).information
       (initialLaw setup) horizon scheduler).BehavioralPolicy player)
     {sent : (graph setup).Config} {rank : Nat} (ordered : sent.cut.IsPrefix rank)
     {event : (graph setup).EventId} (ready : sent.cut.Ready event)
-    (terminalCompleted : ∀ (final : (application setup leaks).Control),
-      ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    (terminalCompleted : ∀ (final : (application setup runtime leaks).Control),
+      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some final) →
-      (application setup leaks).terminal (some final) →
+      (application setup runtime leaks).terminal (some final) →
       final.execution.application.config = sent →
       event ∈ final.execution.application.config.cut.completed)
-    (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).History) {control : (application setup leaks).Control}
+    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).History) {control : (application setup runtime leaks).Control}
     (current : start.state = some control)
     (atSent : control.execution.application.config = sent) :
-    ∀ stop ∈ (((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
+    ∀ stop ∈ (((bounds.onePacketMenu runtime leaks).information (initialLaw setup)
         horizon scheduler).runBehavioralUntil certificate players
-        (LateStopped setup leaks bounds horizon scheduler rank) start).support,
+        (LateStopped setup runtime leaks bounds horizon scheduler rank) start).support,
       ∃ final, stop.state = some final ∧
         ∃ action, final.execution.application.config ∈ (sent.step event ready action).support := by
   intro stop member
-  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let menu := bounds.onePacketMenu runtime leaks
   let model := menu.information (initialLaw setup) horizon scheduler
-  let held := fun reachedState : (application setup leaks).ProtocolState =>
+  let held := fun reachedState : (application setup runtime leaks).ProtocolState =>
     ∃ reachedControl, reachedState = some reachedControl ∧
       (reachedControl.execution.application.config = sent ∨
         ∃ action, reachedControl.execution.application.config ∈
           (sent.step event ready action).support)
   have closed := model.runBehavioralUntil_support_closed certificate players
-    (LateStopped setup leaks bounds horizon scheduler rank) held
+    (LateStopped setup runtime leaks bounds horizon scheduler rank) held
     (fun history going _ joint legal target holds reached => by
       obtain ⟨before, beforeState, atBefore⟩ := holds
-      have reached' : target ∈ ((application setup leaks).transition (initialLaw setup) horizon
+      have reached' : target ∈ ((application setup runtime leaks).transition (initialLaw setup)
+        horizon
           scheduler history.state joint).support := reached
       rw [beforeState] at reached'
       clear reached
       have reached := reached'
-      obtain ⟨next, rfl, _⟩ := (application setup leaks).transition_recall_prefix
+      obtain ⟨next, rfl, _⟩ := (application setup runtime leaks).transition_recall_prefix
         (initialLaw setup) horizon scheduler before target joint reached
       refine ⟨next, rfl, ?_⟩
       rcases atBefore with same | ⟨action, inStep⟩
-      · rcases transition_configStep (initialLaw setup) horizon scheduler before next joint
+      · rcases transition_configStep (initialLaw setup) horizon scheduler
+          before next joint
             reached with stays | ⟨completed, completedReady, action, inStep⟩
         · exact Or.inl (stays.trans same)
         · right
@@ -141,23 +144,23 @@ theorem isFailure_cast_publication_failure {kind : EventGraph.EventField Player 
 /-- Disclosing completes the source reveal at its unique intended successor; every
 runtime completion reaches that successor or records a failed publication. -/
 theorem disclosure_sourceKernel
-    [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
       scheduler).InfoState who)]
     (source : setup.intendedModel.BehavioralAssessment)
-    (assessment : (onePacketModel setup leaks bounds (initialLaw setup) horizon
+    (assessment : (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
       scheduler).BehavioralAssessment) {who : Player}
-    (site : (onePacketModel setup leaks bounds (initialLaw setup) horizon
+    (site : (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
       scheduler).InformationSite who)
     {event : (graph setup).EventId}
-    (pending : pendingEvent setup leaks who site.1 = some event)
-    (law : PMF ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    (pending : pendingEvent setup runtime leaks who site.1 = some event)
+    (law : PMF ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
       scheduler).Choice who site.1))
-    (history : (onePacketModel setup leaks bounds (initialLaw setup) horizon
+    (history : (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
       scheduler).InformationHistory who site.1)
-    {remaining : Nat} {execution : (application setup leaks).Execution}
+    {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
     (turn : execution.application.publicView.ownTurn? who = some event)
-    (ordered : execution.application.config.cut.IsPrefix (siteRank site.1))
+    (ordered : execution.application.config.cut.IsPrefix (siteRank (runtime := runtime) site.1))
     {payload : L.Ty}
     {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}
     {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
@@ -165,42 +168,46 @@ theorem disclosure_sourceKernel
     (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .resolve who payload binding checks)
     {point : ProtocolState setup.program}
-    (decoded : sourceServicePrefix? setup (siteRank site.1) execution.application.config =
+    (decoded : sourceServicePrefix? setup (siteRank (runtime := runtime) site.1)
+      execution.application.config =
       some point)
     (intendedPoint : ProtocolState.Intended setup.program point)
-    (terminalCompleted : ∀ (final : (application setup leaks).Control),
-      ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    (terminalCompleted : ∀ (final : (application setup runtime leaks).Control),
+      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some final) →
-      (application setup leaks).terminal (some final) →
+      (application setup runtime leaks).terminal (some final) →
       final.execution.application.config = execution.application.config →
       event ∈ final.execution.application.config.cut.completed) :
-    let installed := Profile.update (sig := (onePacketModel setup leaks bounds
+    let installed := Profile.update (sig := (onePacketModel setup runtime leaks bounds
       (initialLaw setup) horizon scheduler).behavioralSignature) assessment.strategy who
       ((assessment.strategy who).withLaw site.1 law)
-    let phase := (onePacketModel setup leaks bounds (initialLaw setup) horizon
-      scheduler).runBehavioralUntil ((bounds.onePacketMenu (runtime setup) leaks).bounded
+    let phase := (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+      scheduler).runBehavioralUntil ((bounds.onePacketMenu runtime leaks).bounded
         (initialLaw setup) horizon scheduler).wellFoundedHistories installed
-        (LateStopped setup leaks bounds horizon scheduler (siteRank site.1)) history.1
+        (LateStopped setup runtime leaks bounds horizon scheduler (siteRank (runtime := runtime)
+          site.1)) history.1
     ∃ target, ProtocolState.behavioralStateStep setup.program
         (setup.intendedOpeningProfile source.strategy) point = PMF.pure target ∧
       ProtocolState.Intended setup.program target ∧
       ∀ stop ∈ phase.support, ∃ final, stop.state = some final ∧
-        (completionPoint setup leaks bounds horizon scheduler (siteRank site.1)
-            (siteFresh who site.1) stop = some target ∨
-          (completionPoint setup leaks bounds horizon scheduler (siteRank site.1)
-              (siteFresh who site.1) stop = none ∧
+        (completionPoint setup runtime leaks bounds horizon scheduler (siteRank (runtime :=
+          runtime) site.1)
+            (siteFresh (runtime := runtime) who site.1) stop = some target ∨
+          (completionPoint setup runtime leaks bounds horizon scheduler (siteRank (runtime :=
+            runtime) site.1)
+              (siteFresh (runtime := runtime) who site.1) stop = none ∧
             StoreEventFailed final.execution.application.config.store event)) := by
   classical
   intro installed phase
-  let menu := bounds.onePacketMenu (runtime setup) leaks
-  let model := onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+  let menu := bounds.onePacketMenu runtime leaks
+  let model := onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
   have horizonBound := menu.bounded (initialLaw setup) horizon scheduler
   let certificate := horizonBound.wellFoundedHistories
   let profile := setup.intendedOpeningProfile source.strategy
-  let rank := siteRank site.1
-  let stopped := LateStopped setup leaks bounds horizon scheduler rank
+  let rank := siteRank (runtime := runtime) site.1
+  let stopped := LateStopped setup runtime leaks bounds horizon scheduler rank
   let untilLaw := model.runBehavioralUntil certificate installed stopped history.1
-  let fresh := siteFresh (setup := setup) (leaks := leaks) who site.1
+  let fresh := siteFresh (runtime := runtime) (setup := setup) (leaks := leaks) who site.1
   have freshIff : ∀ control, fresh control ↔
       ¬ StoreEventFailed control.execution.application.config.store event := by
     intro control
@@ -222,11 +229,13 @@ theorem disclosure_sourceKernel
   obtain ⟨target, stepEq⟩ := ProtocolState.step_eq_pure_of_actor who who setup.program point
     (fun _ => decodeEventAction setup.program event disclose) (acts who)
   -- Every as-if-honest choice at the reveal is the disclosing one.
-  have honestDiscloses : ∀ choice ∈ (asIfHonestProfile setup leaks source who
-      (some (execution.recall who, execution.observe (application setup leaks) who))).support,
+  have honestDiscloses : ∀ choice ∈ (asIfHonestProfile setup runtime leaks source who
+      (some (execution.recall who, execution.observe (application setup runtime leaks)
+        who))).support,
       choice = decodeEventAction setup.program event disclose := by
     intro choice member
-    have encodes := asIfHonestProfile_encodes source who execution rank ordered point decoded
+    have encodes := asIfHonestProfile_encodes (runtime := runtime) source who execution rank
+      ordered point decoded
       (execution.recall who) event turn choice member
     obtain ⟨action, encoded⟩ := Option.isSome_iff_exists.mp encodes
     cases choice with
@@ -234,7 +243,8 @@ theorem disclosure_sourceKernel
     | some sourceAction =>
     have back := decodeEventAction_encodeEventAction?_eq_some setup.program event sourceAction
       action encoded
-    obtain ⟨noFailure, noWithholding⟩ := asIfHonestProfile_success source who execution rank
+    obtain ⟨noFailure, noWithholding⟩ := asIfHonestProfile_success (runtime := runtime) source who
+      execution rank
       ordered point decoded (execution.recall who) sourceAction member
     generalize resultEq : (cast (congrArg EventGraph.EventField.Action outputEq) action :
       Bool) = result
@@ -258,25 +268,28 @@ theorem disclosure_sourceKernel
             have withheldEq : withheld = false := failing.2
             subst withheldEq
             exact noWithholding sourceOwner name rfl
-  have stepLaw := asIfHonest_bind_step_eq_behavioralStateStep source who execution ordered
+  have stepLaw := asIfHonest_bind_step_eq_behavioralStateStep (runtime := runtime) source who
+    execution ordered
     decoded intendedPoint turn (execution.recall who)
   have stepPure : ProtocolState.behavioralStateStep setup.program profile point =
       PMF.pure target := by
     rw [← stepLaw, ← stepEq]
-    have constant : (asIfHonestProfile setup leaks source who
-        (some (execution.recall who, execution.observe (application setup leaks) who))).bind
+    have constant : (asIfHonestProfile setup runtime leaks source who
+        (some (execution.recall who, execution.observe (application setup runtime leaks) who))).bind
           (fun choice => ProtocolState.step setup.program point (fun _ => choice)) =
-        (asIfHonestProfile setup leaks source who
-          (some (execution.recall who, execution.observe (application setup leaks) who))).bind
+        (asIfHonestProfile setup runtime leaks source who
+          (some (execution.recall who, execution.observe (application setup runtime leaks)
+            who))).bind
           (fun _ => ProtocolState.step setup.program point
             (fun _ => decodeEventAction setup.program event disclose)) :=
       bind_congr_on_support _ fun choice member => by rw [honestDiscloses choice member]
     rw [constant, PMF.bind_const]
   have targetIntended : ProtocolState.Intended setup.program target := by
-    obtain ⟨choice, member⟩ := (asIfHonestProfile setup leaks source who
+    obtain ⟨choice, member⟩ := (asIfHonestProfile setup runtime leaks source who
       (some (execution.recall who,
-        execution.observe (application setup leaks) who))).support_nonempty
-    obtain ⟨intended, _, same⟩ := (mem_support_asIfHonestProfile_observe setup leaks source who
+        execution.observe (application setup runtime leaks) who))).support_nonempty
+    obtain ⟨intended, _, same⟩ := (mem_support_asIfHonestProfile_observe setup runtime leaks
+      source who
       execution rank ordered point decoded (execution.recall who) _).mp member
     have legal := intended.2
     change ProtocolView.intendedMenu who setup.program
@@ -295,16 +308,17 @@ theorem disclosure_sourceKernel
             exact ⟨action, rfl, legal.2⟩)
       (by rw [stepEq]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
   -- Every stop completes the reveal at the target, or fails.
-  obtain ⟨found, ⟨residualFound⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
+  obtain ⟨found, ⟨residualFound⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+    setup.program)
     menu horizon scheduler traceHere _ rfl
   have foundEq : found = rank := isPrefix_unique residualFound.checkpoint.ordered ordered
   have residual := foundEq ▸ residualFound
   have stops : ∀ stop ∈ untilLaw.support, ∃ final, stop.state = some final ∧
-      (completionPoint setup leaks bounds horizon scheduler rank fresh stop = some target ∨
-        (completionPoint setup leaks bounds horizon scheduler rank fresh stop = none ∧
+      (completionPoint setup runtime leaks bounds horizon scheduler rank fresh stop = some target ∨
+        (completionPoint setup runtime leaks bounds horizon scheduler rank fresh stop = none ∧
           StoreEventFailed final.execution.application.config.store event)) := by
     intro stop member
-    obtain ⟨final, finalState, action, inStep⟩ := lateStop_mem_step certificate
+    obtain ⟨final, finalState, action, inStep⟩ := lateStop_mem_step (runtime := runtime) certificate
       installed ordered ready terminalCompleted history.1 current rfl stop member
     refine ⟨final, finalState, ?_⟩
     have done : event ∈ final.execution.application.config.cut.completed := by
@@ -318,7 +332,8 @@ theorem disclosure_sourceKernel
     cases result with
     | true =>
         rw [actionEq] at inStep
-        have pointEq := completionPoint_of_mem_step (fresh := fresh) residual decoded ready stepEq
+        have pointEq := completionPoint_of_mem_step (runtime := runtime) (fresh := fresh) residual
+          decoded ready stepEq
           finalState inStep
         by_cases freshHere : fresh final
         · left
@@ -347,7 +362,8 @@ theorem disclosure_sourceKernel
                 rw [Option.map_some, Option.some.injEq] at output
                 first | rw [← output] | rw [output]
                 exact isFailure_cast_publication_failure outputEq⟩
-            exact ⟨completionPoint_eq_none_of_not_fresh finalState fun freshHere =>
+            exact ⟨completionPoint_eq_none_of_not_fresh (runtime := runtime) finalState fun
+              freshHere =>
               (freshIff final).mp freshHere failedHere, failedHere⟩
   exact ⟨target, stepPure, targetIntended, stops⟩
 

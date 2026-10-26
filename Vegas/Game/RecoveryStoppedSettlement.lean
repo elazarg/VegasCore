@@ -18,25 +18,27 @@ open SourceProgram GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Int
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   (bounds : MessageBounds (graph setup))
   {initial : PMF (RecoveryState (graph setup))}
   (initialized : ∀ state ∈ initial.support, ∃ inputs,
     state = (⟨State.initial inputs, ∅⟩ : RecoveryState (graph setup)))
   (nativeLaw : initial.map RecoveryState.native = initialLaw setup)
-  {horizon : Nat} {scheduler : ((runtime setup).recoveryApplication leaks).Scheduler}
+  {horizon : Nat} {scheduler : (runtime.recoveryApplication leaks).Scheduler}
   {bound : (graph setup).EventId → Nat}
-  (inclusion : Recovery.ProtectedInclusion (runtime setup) leaks initial horizon scheduler bound)
+  (inclusion : Recovery.ProtectedInclusion runtime leaks initial horizon scheduler bound)
 
-local notation "nativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup) leaks
+local notation "nativeScheduler" => RecoveryProjection.nativeScheduler runtime leaks
   scheduler
-local notation "menu" => bounds.onePacketMenu (runtime setup) leaks
+local notation "menu" => bounds.onePacketMenu runtime leaks
 local notation "protocol" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup)
   horizon nativeScheduler
 local notation "model" => ReactiveApplication.ResponseMenu.information menu (initialLaw setup)
   horizon nativeScheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun state => ExclusionEvidence 0 ∅ (RecoveryState.mk state ∅))
+  (app := application setup runtime leaks) (fun state => ExclusionEvidence 0 ∅ (RecoveryState.mk
+    state ∅))
 
 include initialized nativeLaw inclusion in
 /-- Actual recovery inclusion settles recorded fresh one-packet calls at every
@@ -46,22 +48,25 @@ theorem recovery_stopped_freshCall_receipt
     (certificate : (protocol).WellFoundedHistories)
     (profile : ∀ who, (model).BehavioralPolicy who)
     (extraStop : (protocol).History → Prop)
-    (start : (protocol).History) (current : (application setup leaks).Control)
+    (start : (protocol).History) (current : (application setup runtime leaks).Control)
     (state : start.state = some current)
     (clear : ExclusionEvidence 0 ∅
       (⟨current.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (who : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some who)
-    (entry : (application setup leaks).PlayerEntry)
+    (entry : (application setup runtime leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup)))
     (call : FreshCall setup leaks who event bound entry message) :
     ∀ stopped ∈ ((model).runBehavioralUntil certificate profile
         (fun history => ¬ Clear history.state ∨ extraStop history) start).support,
-      ∀ final, stopped.state = some final → RecordsEntry setup leaks who entry (some final) →
+      ∀ final, stopped.state = some final → RecordsEntry setup runtime leaks who entry (some
+        final) →
         event ∈ final.execution.application.config.cut.completed →
           (message.id, true) ∈ final.execution.receipts := by
-  exact counted_stopped_freshCall_receipt (setup := setup) (leaks := leaks) (bounds := bounds)
-    (inclusion := Recovery.ProtectedInclusion.clear_counted_native bounds initialized nativeLaw
+  exact counted_stopped_freshCall_receipt (runtime := runtime) (setup := setup) (leaks := leaks)
+    (bounds := bounds)
+    (inclusion := Recovery.ProtectedInclusion.clear_counted_native (runtime := runtime) bounds
+      initialized nativeLaw
     inclusion) certificate profile extraStop start current state clear who event owned entry
     message call
 

@@ -58,9 +58,8 @@ code, which is checked at that tag only.
 
 ## Asynchronous service and turn-based play
 
-- [Deadline scope and high-priority repair](se-deadline-scope.md): the
-  turn-based SE pins fix rank-plus-one durations, unlike configurable Nash;
-  the manuscript must state this restriction until the proof is generalized.
+- [Deadline scope](se-deadline-scope.md): supplied durations for turn-based SE,
+  strict timing margins and a checked positive-latency equilibrium instance.
 - [Arbitrary-builder checklist](se-async-checklist.md): obligations and evidence
   for preservation under timely builders.
 - [Preservation under asynchronous service](se-schedule-generalization.md):

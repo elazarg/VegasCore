@@ -73,7 +73,7 @@ abbrev rankDeadline (setup : Setup (Player := Player) (L := L))
 /-- The service runtime of a dependency mode with a configured deadline duration
 per event. The runtime counts each duration from the clock at which the event
 became ready (`EventGraphRuntime.State.WithinDeadline`). -/
-def serviceRuntime (setup : Setup (Player := Player) (L := L))
+abbrev serviceRuntime (setup : Setup (Player := Player) (L := L))
     (mode : EventGraph.ExecutionMode)
     (deadline : (serviceGraph setup mode).EventId → Nat) :
     EventGraphRuntime (serviceGraph setup mode) where
@@ -154,19 +154,23 @@ theorem serviceInitialLaw_support_finite [setup.FiniteInitialLaw] :
 end Configured
 
 variable (setup : Setup (Player := Player) (L := L))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-/-- The application of the default runtime. -/
-abbrev application := serviceApplication setup .sequential (rankDeadline setup .sequential) leaks
+/-- The sequential compiled application with its supplied runtime. -/
+abbrev application (runtime : EventGraphRuntime (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))) :=
+  runtime.reactiveApplication leaks
 
 /-- The initial law of the default sequential graph. -/
 abbrev initialLaw : PMF (EventGraphRuntime.State (graph setup)) :=
   serviceInitialLaw setup .sequential
 
+variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+
 /-- The fixed service consults only its own public command recall. Its network
 slot is idle: it includes nothing beyond the reserved inclusion of each owner's
 latest packet. Private sampling remains the given rule. -/
-def scheduler (watcher : Player) : (application setup leaks).Scheduler := fun history view =>
+def scheduler (watcher : Player) : (application setup (runtime setup) leaks).Scheduler :=
+  fun history view =>
   match (plan setup watcher)[history.length]? with
   | none => PMF.pure .wait
   | some instruction => (runtime setup).interactionInstruction leaks
@@ -177,7 +181,8 @@ the fixed service's nature branches finitely: its own instructions are
 deterministic. -/
 instance scheduler_finiteNature [setup.FiniteInitialLaw] [leaks.FiniteSupport]
     (watcher : Player) :
-    (application setup leaks).FiniteNature (initialLaw setup) (scheduler setup leaks watcher) where
+    (application setup (runtime setup) leaks).FiniteNature (initialLaw setup)
+      (scheduler setup leaks watcher) where
   initial_finite := serviceInitialLaw_support_finite setup .sequential
   scheduler_finite history view := by
     unfold scheduler
@@ -192,8 +197,9 @@ abbrev horizon (watcher : Player) : Nat := (plan setup watcher).length
 
 /-- A local view determines the sole canonical opening, when the player's turn
 is an owned, successfully openable resolution. No private global state is read. -/
-def opening? (who : Player) (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) : Option (application setup leaks).Action := do
+def opening? (who : Player) (past : List (application setup (runtime setup) leaks).PlayerEntry)
+    (view : (application setup (runtime setup) leaks).PlayerView) :
+    Option (application setup (runtime setup) leaks).Action := do
   let event ← view.application.publicView.ownTurn? who
   if (graph setup).actor? event ≠ some who then none else
     match nodeView (graph setup) event with
@@ -211,22 +217,26 @@ def opening? (who : Player) (past : List (application setup leaks).PlayerEntry)
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup))
 
-theorem silence_effective (who : Player) (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) :
-    (⟨none⟩ : (application setup leaks).Action) ∈
+theorem silence_effective (who : Player)
+    (past : List (application setup (runtime setup) leaks).PlayerEntry)
+    (view : (application setup (runtime setup) leaks).PlayerView) :
+    (⟨none⟩ : (application setup (runtime setup) leaks).Action) ∈
       (bounds.menu (runtime setup) leaks).actions who past view := by
   rw [bounds.menu_mem]
   exact ⟨trivial, rfl⟩
 
 open Classical in
-def ordinaryActions (who : Player) (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) : Finset (application setup leaks).Action :=
+def ordinaryActions (who : Player)
+    (past : List (application setup (runtime setup) leaks).PlayerEntry)
+    (view : (application setup (runtime setup) leaks).PlayerView) :
+    Finset (application setup (runtime setup) leaks).Action :=
   (insert ⟨none⟩ (opening? setup leaks who past view).toList.toFinset) ∩
     (bounds.menu (runtime setup) leaks).actions who past view
 
-theorem silence_ordinary (who : Player) (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) :
-    (⟨none⟩ : (application setup leaks).Action) ∈
+theorem silence_ordinary (who : Player)
+    (past : List (application setup (runtime setup) leaks).PlayerEntry)
+    (view : (application setup (runtime setup) leaks).PlayerView) :
+    (⟨none⟩ : (application setup (runtime setup) leaks).Action) ∈
       ordinaryActions setup leaks bounds who past view := by
   classical
   exact Finset.mem_inter.mpr ⟨Finset.mem_insert_self _ _,
@@ -236,7 +246,7 @@ open Classical in
 /-- This restricts the existing native menu to silence and a supported opening.
 Source value coverage remains a proof obligation.
 The watcher only observes: it transmits nothing at every local input. -/
-def menu (watcher : Player) : (application setup leaks).ResponseMenu where
+def menu (watcher : Player) : (application setup (runtime setup) leaks).ResponseMenu where
   actions who past view := if who = watcher then {⟨none⟩}
     else ordinaryActions setup leaks bounds who past view
   nonempty who past view := by

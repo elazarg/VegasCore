@@ -27,31 +27,33 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- **The own disclosure resolves at debt-free forced states.** For a
 well-formed setup, along every history of the one-packet game at a state forced
 for a player at which the player owes no failure at the decoded point, the
 player's canonical disclosure at its pending reveal transmits. -/
 theorem disclosureResolves_of_debtFree (wellFormed : setup.WellFormed)
-    {control : (application setup leaks).Control}
-    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    {control : (application setup runtime leaks).Control}
+    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who : Player) (forced : ForcedState setup leaks who (some control))
+    (who : Player) (forced : ForcedState setup runtime leaks who (some control))
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure who setup.program point) :
-    DisclosureResolves setup leaks who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who) := by
+    DisclosureResolves setup runtime leaks who (control.execution.recall who)
+      (control.execution.observe (application setup runtime leaks) who) := by
   intro event pending owner payload binding checks outputEq codeEq node
-  obtain ⟨turn, _, owned, _⟩ := pendingEvent_spec (setup := setup) pending
+  obtain ⟨turn, _, owned, _⟩ := pendingEvent_spec (runtime := runtime) (setup := setup) pending
   have ownerEq : owner = who :=
     Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
   subst ownerEq
-  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+    scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
   have facts := legalFacts setup leaks horizon scheduler control rawTrace
   have ready : control.execution.application.config.cut.Ready event :=
@@ -71,18 +73,19 @@ theorem disclosureResolves_of_debtFree (wellFormed : setup.WellFormed)
   cases result with
   | success value =>
       obtain ⟨_, _, _, _, packet⟩ := EventGraphRuntime.reactiveResolutionPacket_provenance
-        (runtime setup) leaks control.execution.application facts.binding owner event payload
+        runtime leaks control.execution.application facts.binding owner event payload
         binding checks outputEq _ discloses value resolved
       simp only [EventGraphRuntime.canonicalServiceDecision,
         EventGraphRuntime.canonicalReactiveDecision, node]
-      change ((EventGraphRuntime.reactiveNormalization (runtime setup) leaks).action owner
-        (control.execution.recall owner) (control.execution.observe (application setup leaks)
+      change ((EventGraphRuntime.reactiveNormalization runtime leaks).action owner
+        (control.execution.recall owner) (control.execution.observe (application setup runtime
+          leaks)
           owner)
         ⟨(EventGraphRuntime.reactiveResolutionPacket owner event payload binding checks
-          outputEq _ ((runtime setup).reactiveApplication leaks |>.observePlayer
+          outputEq _ (runtime.reactiveApplication leaks |>.observePlayer
             control.execution.application owner)).map fun packet =>
           (disclosureSubmission packet).normalizeReactive owner
-            ((runtime setup).reactiveApplication leaks |>.observePlayer
+            (runtime.reactiveApplication leaks |>.observePlayer
               control.execution.application owner) []⟩).transmission ≠ none
       rw [packet]
       simp only [Option.map_some, ReactiveApplication.SubmissionNormalization.action, ne_eq,
@@ -90,7 +93,8 @@ theorem disclosureResolves_of_debtFree (wellFormed : setup.WellFormed)
   | failure =>
       exfalso
       -- The decoded point is intended for the player and shows no failed reveal of it.
-      obtain ⟨rank, ⟨residual⟩, holds⟩ := decodedState_intendedFor_or_owes wellFormed owner
+      obtain ⟨rank, ⟨residual⟩, holds⟩ := decodedState_intendedFor_or_owes (runtime := runtime)
+        wellFormed owner
         (failureProfile setup.program) _ horizon scheduler trace
         control rfl
       obtain ⟨forcedRank, point, ordered, decoded, forcedPoint⟩ := forced
@@ -145,10 +149,11 @@ theorem disclosureResolves_of_debtFree (wellFormed : setup.WellFormed)
 one-packet menu that opens an event opens a reveal of the responder: the count
 verdict checks the call. -/
 theorem onePacket_opening_node {who : Player}
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} {response : (application setup leaks).Action}
-    (member : response ∈ bounds.onePacketActions (runtime setup) leaks who past view)
-    {material : (application setup leaks).Submission}
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} {response : (application setup runtime
+      leaks).Action}
+    (member : response ∈ bounds.onePacketActions runtime leaks who past view)
+    {material : (application setup runtime leaks).Submission}
     (sends : response.transmission = some material) {event : (graph setup).EventId}
     {handle : Handle (graph setup)} {raw : Raw L}
     (packet : material.call.packet = .opening event handle raw) :
@@ -158,7 +163,7 @@ theorem onePacket_opening_node {who : Player}
       (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
         ((graph setup).nodes event) = .resolve who payload binding checks),
       nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq := by
-  obtain ⟨_, either⟩ := (bounds.mem_onePacketActions (runtime setup) leaks who past view
+  obtain ⟨_, either⟩ := (bounds.mem_onePacketActions runtime leaks who past view
     response).mp member
   rcases either with silent | ⟨material', transmits, permitted⟩
   · rw [silent] at sends
@@ -167,7 +172,7 @@ theorem onePacket_opening_node {who : Player}
   subst same
   obtain ⟨_, correct, _⟩ := (countPermits_eq_true_iff _ _).mp permitted
   unfold CountCallCorrect at correct
-  have callEq : ((runtime setup).localEnvelope leaks who past view material').payload.call =
+  have callEq : (runtime.localEnvelope leaks who past view material').payload.call =
       .opening event handle raw := packet
   rw [callEq] at correct
   obtain ⟨_, opens⟩ := correct

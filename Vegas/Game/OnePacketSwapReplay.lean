@@ -83,6 +83,7 @@ theorem decodeSourcePrefix?_available (who : Player) {Field : Type} [DecidableEq
             restDecoded (by simpa [eventCount] using inside)
 
 variable {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
 
 /-- **A completion's decoded action is addressed to its decoded point**: it is
 available there to every active player under the forfeiture interface. -/
@@ -136,6 +137,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
 /-- A nonempty history extends a shorter one by one step. -/
@@ -162,8 +164,8 @@ theorem TracePrefix.of_extend {ι : Type*} {E : ExecutionProtocol ι} {source ta
 theorem tracePrefix_of_advanceIntended? {leaks : MessageNetwork.ObservationRule Player
       (WitnessedPacket (graph setup))}
     {history result : setup.intendedProtocol.History}
-    {before after : (application setup leaks).ProtocolState}
-    (advanced : advanceIntended? setup leaks history before after = some result) :
+    {before after : (application setup runtime leaks).ProtocolState}
+    (advanced : advanceIntended? setup runtime leaks history before after = some result) :
     TracePrefix history.trace result.trace := by
   have extended : ∀ {choice target}, extendIntended? setup history choice target = some result →
       TracePrefix history.trace result.trace := by
@@ -245,10 +247,11 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
   EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} [Fintype Player]
+  {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)} [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
   [DecidableEq (CellTy Player L)]
 
 omit [Fintype Player] [DecidableEq (CellTy Player L)] in
@@ -261,19 +264,19 @@ theorem drop_history_swap (swap : (graph setup).ValueSwap) (before after : (grap
 
 omit [Fintype Player] [DecidableEq (CellTy Player L)] in
 theorem advanceIntended?_of_drop_nil (history : setup.intendedProtocol.History)
-    (before after : (application setup leaks).Control)
+    (before after : (application setup runtime leaks).Control)
     (dropped : after.execution.application.config.history.drop
       before.execution.application.config.history.length = []) :
-    advanceIntended? setup leaks history (some before) (some after) = some history := by
+    advanceIntended? setup runtime leaks history (some before) (some after) = some history := by
   simp only [advanceIntended?, dropped]
 
 omit [Fintype Player] [DecidableEq (CellTy Player L)] in
 theorem advanceIntended?_of_drop_single (history : setup.intendedProtocol.History)
-    (before after : (application setup leaks).Control) (event : (graph setup).EventId)
+    (before after : (application setup runtime leaks).Control) (event : (graph setup).EventId)
     (action : (graph setup).Action event)
     (dropped : after.execution.application.config.history.drop
       before.execution.application.config.history.length = [⟨event, action⟩]) :
-    advanceIntended? setup leaks history (some before) (some after) =
+    advanceIntended? setup runtime leaks history (some before) (some after) =
       extendIntended? setup history (decodeEventAction setup.program event action)
         (decodedPoint setup after.execution.application.config) := by
   simp only [advanceIntended?, dropped]
@@ -293,14 +296,14 @@ theorem intendedHistory?_mapTrace {first second : setup.intendedProtocol.History
     (bounded : ∀ handle raw, raw ∈ bounds.values →
       (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs).raw handle raw ∈
         bounds.values) :
-    ∀ {state} (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state)
-      (guarded : SwapGuardState setup
+    ∀ {state} (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
+      (guarded : SwapGuardState setup runtime
         (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) allowed state)
       {replay : setup.intendedProtocol.History},
-      intendedHistory? setup leaks bounds horizon scheduler trace = some replay →
+      intendedHistory? setup runtime leaks bounds horizon scheduler trace = some replay →
       TracePrefix replay.trace first.trace →
-      ∃ image, intendedHistory? setup leaks bounds horizon scheduler
-          ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler
+      ∃ image, intendedHistory? setup runtime leaks bounds horizon scheduler
+          ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
             (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
             bounded).mapTrace trace guarded) = some image ∧
         TracePrefix image.trace second.trace ∧ image.trace.length = replay.trace.length ∧
@@ -311,31 +314,37 @@ theorem intendedHistory?_mapTrace {first second : setup.intendedProtocol.History
       exact ⟨setup.intendedProtocol.initHistory, rfl, TracePrefix.start second.trace, rfl, rfl⟩
   | _, .extend (source := before) (target := after) prior joint legal realized, guarded, replay,
       replayed, firstPrefix => by
-      have priorGuard := (onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler
+      have priorGuard := (onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup)
+        horizon scheduler
         (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
         bounded).guard_source prior legal realized guarded
-      change (intendedHistory? setup leaks bounds horizon scheduler prior).bind
-        (fun history => advanceIntended? setup leaks history before after) = some replay
+      change (intendedHistory? setup runtime leaks bounds horizon scheduler prior).bind
+        (fun history => advanceIntended? setup runtime leaks history before after) = some replay
         at replayed
       obtain ⟨previous, previousReplay, advanced⟩ := Option.bind_eq_some_iff.mp replayed
-      have previousPrefix := (tracePrefix_of_advanceIntended? advanced).trans firstPrefix
+      have previousPrefix := (tracePrefix_of_advanceIntended? (runtime := runtime) advanced).trans
+        firstPrefix
       obtain ⟨previous', previousImage, previousPrefix', previousLength, previousState⟩ :=
-        intendedHistory?_mapTrace firstState secondState sameLength handlePairs initialClosed
+        intendedHistory?_mapTrace firstState secondState sameLength
+          handlePairs initialClosed
           bounded prior priorGuard previousReplay previousPrefix
-      have mappedEq : intendedHistory? setup leaks bounds horizon scheduler
-          ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler
+      have mappedEq : intendedHistory? setup runtime leaks bounds horizon scheduler
+          ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
             (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
             bounded).mapTrace (.extend prior joint legal realized) guarded) =
-          advanceIntended? setup leaks previous'
+          advanceIntended? setup runtime leaks previous'
             ((HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs).protocolState
+              (runtime := runtime)
               before)
             ((HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs).protocolState
+              (runtime := runtime)
               after) := by
         rw [StateSymmetry.mapTrace_extend]
-        change (intendedHistory? setup leaks bounds horizon scheduler _).bind _ = _
+        change (intendedHistory? setup runtime leaks bounds horizon scheduler _).bind _ = _
         rw [previousImage]
         rfl
-      have realizedImage := (onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler
+      have realizedImage := (onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup)
+        horizon scheduler
         (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
         bounded).realized prior legal realized guarded
       rw [mappedEq]
@@ -357,13 +366,15 @@ theorem intendedHistory?_mapTrace {first second : setup.intendedProtocol.History
         have replayStateEq := extendIntended?_state advanced
         have previousNone : previous'.state = none := by
           rw [previousState]
-          obtain rfl := trace_eq_start_of_none prior
+          obtain rfl := trace_eq_start_of_none (runtime := runtime) prior
           cases previousReplay
           rfl
-        change some (HiddenSwap.control (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
-          handlePairs) next) ∈ ((application setup leaks).transition
+        change some (HiddenSwap.control (runtime := runtime) (HiddenSwap.ofPairs (betweenPairs
+          publicAgree succeed)
+          handlePairs) next) ∈ ((application setup runtime leaks).transition
           (initialLaw setup) horizon scheduler none
-          ((HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs).joint
+          ((HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs).joint (runtime :=
+            runtime)
             joint)).support at realizedImage
         rw [ReactiveApplication.transition, PMF.support_map] at realizedImage
         obtain ⟨initialState, initialMember, initialEq⟩ := realizedImage
@@ -373,7 +384,7 @@ theorem intendedHistory?_mapTrace {first second : setup.intendedProtocol.History
         have swappedConfig : next.execution.application.config.swap
             (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)) =
             initialState.config := by
-          have := congrArg (fun control : Option (application setup leaks).Control =>
+          have := congrArg (fun control : Option (application setup runtime leaks).Control =>
             control.map fun current => current.execution.application.config) initialEq
           exact (Option.some.inj this).symm
         have swappedDecoded : (decodedPoint setup next.execution.application.config).map
@@ -402,38 +413,46 @@ theorem intendedHistory?_mapTrace {first second : setup.intendedProtocol.History
         · exact extendIntended?_state extended
       · cases advanced
       · -- A scheduler round or a response between initialized states.
-        have previousStateEq := intendedHistory?_state prior previousReplay
+        have previousStateEq := intendedHistory?_state (runtime := runtime) prior previousReplay
         change previous.state = decodedPoint setup current.execution.application.config
           at previousStateEq
         simp only [advanceIntended?] at advanced
         have droppedImage := drop_history_swap
           (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed))
           current.execution.application.config next.execution.application.config
-        change some (HiddenSwap.control (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
-            handlePairs) next) ∈ ((application setup leaks).transition
+        change some (HiddenSwap.control (runtime := runtime) (HiddenSwap.ofPairs (betweenPairs
+          publicAgree succeed)
+            handlePairs) next) ∈ ((application setup runtime leaks).transition
             (initialLaw setup) horizon scheduler
-            (some (HiddenSwap.control (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
+            (some (HiddenSwap.control (runtime := runtime) (HiddenSwap.ofPairs (betweenPairs
+              publicAgree succeed)
               handlePairs) current))
-            ((HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs).joint
+            ((HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs).joint (runtime :=
+              runtime)
               joint)).support at realizedImage
         rcases dropped : List.drop current.execution.application.config.history.length
             next.execution.application.config.history with
           _ | ⟨⟨event, action⟩, _ | ⟨_, _⟩⟩
         · rw [dropped] at advanced droppedImage
           cases advanced
-          exact ⟨previous', advanceIntended?_of_drop_nil (leaks := leaks) previous'
-            (HiddenSwap.control (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
+          exact ⟨previous', advanceIntended?_of_drop_nil (runtime := runtime) (leaks := leaks)
+            previous'
+            (HiddenSwap.control (runtime := runtime) (HiddenSwap.ofPairs (betweenPairs publicAgree
+              succeed)
               handlePairs) current)
-            (HiddenSwap.control (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
+            (HiddenSwap.control (runtime := runtime) (HiddenSwap.ofPairs (betweenPairs publicAgree
+              succeed)
               handlePairs) next) droppedImage, previousPrefix', previousLength, previousState⟩
         · rw [dropped] at advanced droppedImage
           have replayStateEq := extendIntended?_state advanced
-          obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
-            (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler
-            ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler
+          obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime)
+            (failureProfile setup.program)
+            (bounds.onePacketMenu runtime leaks) horizon scheduler
+            ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
               (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
               bounded).mapTrace prior priorGuard) _ rfl
-          rcases transition_configStep (initialLaw setup) horizon scheduler _ _ _ realizedImage
+          rcases transition_configStep (initialLaw setup) horizon scheduler _
+            _ _ realizedImage
             with same | ⟨stepEvent, stepReady, stepAction, member⟩
           · exfalso
             have sameHistory := congrArg EventGraph.Config.history same
@@ -488,10 +507,13 @@ theorem intendedHistory?_mapTrace {first second : setup.intendedProtocol.History
                 exact decoded_addressed stepReady decodedCurrent _)
               reaches
             refine ⟨image, ?_, imagePrefix, imageLength, ?_⟩
-            · refine (advanceIntended?_of_drop_single (leaks := leaks) previous'
-                (HiddenSwap.control (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
+            · refine (advanceIntended?_of_drop_single (runtime := runtime) (leaks := leaks)
+                previous'
+                (HiddenSwap.control (runtime := runtime) (HiddenSwap.ofPairs (betweenPairs
+                  publicAgree succeed)
                   handlePairs) current)
-                (HiddenSwap.control (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
+                (HiddenSwap.control (runtime := runtime) (HiddenSwap.ofPairs (betweenPairs
+                  publicAgree succeed)
                   handlePairs) next) stepEvent _ droppedStep).trans ?_
               change extendIntended? setup previous' _ (decodedPoint setup
                 (next.execution.application.config.swap (EventGraph.ValueSwap.ofPairs

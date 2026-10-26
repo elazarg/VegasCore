@@ -22,19 +22,20 @@ open SourceProgram Interaction EventGraphRuntime GameTheory GameTheory.Protocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
+  (scheduler : (phaseApplication runtime leaks).Scheduler)
+  [(phaseApplication runtime leaks).FiniteNature (phaseInitialLaw setup) scheduler]
 
-local notation "P" => phaseApplication (runtime setup) leaks
-local notation "A" => recoveryApplication (runtime setup) (recoveryLeaks setup leaks)
-local notation "M" => model setup leaks bounds horizon scheduler
-local notation "R" => recoveryModel setup leaks bounds horizon scheduler
+local notation "P" => phaseApplication runtime leaks
+local notation "A" => recoveryApplication runtime (recoveryLeaks setup leaks)
+local notation "M" => model setup runtime leaks bounds horizon scheduler
+local notation "R" => recoveryModel setup runtime leaks bounds horizon scheduler
 local notation "RecoveryLeaks" => recoveryLeaks setup leaks
 local notation "RecoveryPrior" => recoveryInitialLaw setup
-local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
-local notation "RecoveryMenu" => Recovery.onePacketMenu (runtime setup) (RecoveryLeaks) bounds
+local notation "RecoveryScheduler" => recoveryScheduler setup runtime leaks scheduler
+local notation "RecoveryMenu" => Recovery.onePacketMenu runtime (RecoveryLeaks) bounds
 local notation "rawModel" => ReactiveApplication.information (A) (RecoveryPrior) horizon
     (RecoveryScheduler)
 local notation "RecoveryProtocol" => ReactiveApplication.ResponseMenu.protocol (RecoveryMenu)
@@ -42,7 +43,7 @@ local notation "RecoveryProtocol" => ReactiveApplication.ResponseMenu.protocol (
   horizon (RecoveryScheduler)
 local notation "rawProtocol" => ReactiveApplication.protocol (A) (RecoveryPrior) horizon
     (RecoveryScheduler)
-local notation "projection" => PhaseRecoveryProjection.protocolState (runtime setup) leaks
+local notation "projection" => PhaseRecoveryProjection.protocolState runtime leaks
     RecoveryLeaks
 local notation "phaseClear" => ReactiveApplication.stateInvariant (app := P)
   (fun state => RecoveryState.excluded (PhaseRuntimeState.current state) = ∅)
@@ -55,12 +56,13 @@ attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeIn
 omit [(P).FiniteNature (phaseInitialLaw setup) scheduler] in
 private theorem phase_unclear_terminal
     (profile : ∀ who, (M).BehavioralPolicy who)
-    (history : ((menu setup leaks bounds).protocol (phaseInitialLaw setup) horizon
+    (history : ((menu setup runtime leaks bounds).protocol (phaseInitialLaw setup) horizon
         scheduler).History)
     (unclear : ¬ phaseClear history.state)
-    (final : ((menu setup leaks bounds).protocol (phaseInitialLaw setup) horizon scheduler).History)
+    (final : ((menu setup runtime leaks bounds).protocol (phaseInitialLaw setup) horizon
+      scheduler).History)
     (supported : final ∈ ((M).runBehavioralTerminalFrom
-      ((menu setup leaks bounds).bounded (phaseInitialLaw setup) horizon
+      ((menu setup runtime leaks bounds).bounded (phaseInitialLaw setup) horizon
           scheduler).wellFoundedHistories
       profile history).support) : ¬ phaseClear final.state := by
   cases state : history.state with
@@ -70,11 +72,11 @@ private theorem phase_unclear_terminal
       simpa only [state, ReactiveApplication.stateInvariant] using unclear
     obtain ⟨who, excluded⟩ := Finset.nonempty_iff_ne_empty.mpr nonempty
     have retained := (M).runBehavioralTerminalFrom_support_closed
-      ((menu setup leaks bounds).bounded (phaseInitialLaw setup) horizon
+      ((menu setup runtime leaks bounds).bounded (phaseInitialLaw setup) horizon
           scheduler).wellFoundedHistories
-      profile (PhaseExcluded setup .sequential (runtime setup) leaks who)
+      profile (PhaseExcluded setup .sequential runtime leaks who)
       (fun before joint _ after valid reached => phaseExcluded_transition setup .sequential
-        (runtime setup) leaks (phaseInitialLaw setup) horizon scheduler before after joint valid
+        runtime leaks (phaseInitialLaw setup) horizon scheduler before after joint valid
             reached)
       history (by simpa only [state, PhaseExcluded] using excluded) final supported
     intro clear
@@ -101,8 +103,8 @@ private theorem recovery_unclear_terminal
     have retained := (R).runBehavioralTerminalFrom_support_closed
       ((RecoveryMenu).bounded (RecoveryPrior) horizon (RecoveryScheduler)).wellFoundedHistories
           profile
-      (RecoveryExcluded (setup := setup) (leaks := RecoveryLeaks) who)
-      (fun before joint _ after valid reached => recoveryExcluded_transition
+      (RecoveryExcluded (runtime := runtime) (setup := setup) (leaks := RecoveryLeaks) who)
+      (fun before joint _ after valid reached => recoveryExcluded_transition (runtime := runtime)
         (RecoveryPrior) horizon (RecoveryScheduler) before after joint valid reached)
       history (by simpa only [state, RecoveryExcluded] using excluded) final supported
     intro clear
@@ -120,56 +122,65 @@ theorem component_initialized_masked_state_law
     (fallback : ∀ who, (M).Policy who)
     (assessment : setup.intendedModel.BehavioralAssessment)
     {slots : Nat} (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (weights : ∀ p, PMF (Part setup leaks bounds horizon scheduler slots p)) :
+    (weights : ∀ p, PMF (Part setup runtime leaks bounds horizon scheduler slots p)) :
     (((M).runBehavioral
-      (componentStrategy setup leaks bounds horizon scheduler fallback assessment scale nonnegative
+      (componentStrategy setup runtime leaks bounds horizon scheduler fallback assessment scale
+        nonnegative
         le_one weights) (2 * horizon + 1)).map
       (fun final => if RecoveryClear (projection final.state) then some (projection final.state)
         else none)) =
     (((R).runBehavioral
-      (recoveryComparisonStrategy setup leaks bounds horizon scheduler assessment scale nonnegative
+      (recoveryComparisonStrategy setup runtime leaks bounds horizon scheduler assessment scale
+        nonnegative
         le_one weights) (2 * horizon + 1)).map
       (fun final => if RecoveryClear final.state then some final.state else none)) := by
   classical
-  let phaseProfile := componentStrategy setup leaks bounds horizon scheduler fallback assessment
+  let phaseProfile := componentStrategy setup runtime leaks bounds horizon scheduler fallback
+    assessment
     scale nonnegative le_one weights
-  let recoveryProfile := recoveryComparisonStrategy setup leaks bounds horizon scheduler assessment
+  let recoveryProfile := recoveryComparisonStrategy setup runtime leaks bounds horizon scheduler
+    assessment
     scale nonnegative le_one weights
   let mask : (A).ProtocolState → Option (A).ProtocolState := fun state =>
     if RecoveryClear state then some state else none
   have clearEq (state : (P).ProtocolState) :
       phaseClear state ↔ RecoveryClear (projection state) := by cases state <;> rfl
   have phaseLaw := (M).runBehavioralTerminalFrom_map_eq_until_of_stable_readout
-    ((menu setup leaks bounds).bounded (phaseInitialLaw setup) horizon
+    ((menu setup runtime leaks bounds).bounded (phaseInitialLaw setup) horizon
         scheduler).wellFoundedHistories
     phaseProfile (fun history => ¬ phaseClear history.state)
     (fun history => mask (projection history.state)) (by
       intro history unclear final supported
-      have later := phase_unclear_terminal setup leaks bounds horizon scheduler phaseProfile
+      have later := phase_unclear_terminal setup runtime leaks bounds horizon scheduler phaseProfile
         history unclear final supported
       have first : ¬ RecoveryClear (projection history.state) := by
         exact fun clear => unclear ((clearEq history.state).mpr clear)
       have last : ¬ RecoveryClear (projection final.state) := by
         exact fun clear => later ((clearEq final.state).mpr clear)
       simp only [mask, ite_eq_right first, ite_eq_right last])
-    ((menu setup leaks bounds).protocol (phaseInitialLaw setup) horizon scheduler).initHistory
+    ((menu setup runtime leaks bounds).protocol (phaseInitialLaw setup) horizon
+      scheduler).initHistory
   have recoveryLaw := (R).runBehavioralTerminalFrom_map_eq_until_of_stable_readout
     ((RecoveryMenu).bounded (RecoveryPrior) horizon (RecoveryScheduler)).wellFoundedHistories
         recoveryProfile
     (fun history => ¬ RecoveryClear history.state) (fun history => mask history.state) (by
       intro history unclear final supported
-      have later := recovery_unclear_terminal setup leaks bounds horizon scheduler recoveryProfile
+      have later := recovery_unclear_terminal setup runtime leaks bounds horizon scheduler
+        recoveryProfile
         history final unclear supported
       simp only [mask, ite_eq_right unclear, ite_eq_right later]) (RecoveryProtocol).initHistory
-  have exactStop := component_comparison_run_until_exclusion_or_guard_map_state setup leaks bounds
+  have exactStop := component_comparison_run_until_exclusion_or_guard_map_state setup runtime
+    leaks bounds
     horizon scheduler fallback assessment scale nonnegative le_one weights (fun _ => False)
-    ((menu setup leaks bounds).protocol (phaseInitialLaw setup) horizon scheduler).initHistory
+    ((menu setup runtime leaks bounds).protocol (phaseInitialLaw setup) horizon
+      scheduler).initHistory
     (RecoveryProtocol).initHistory rfl
   simp only [or_false] at exactStop
   have masked := congrArg (PMF.map mask) exactStop
   simp only [PMF.map_comp, Function.comp_def] at masked
   rw [(M).runBehavioralTerminalFrom_initHistory _ phaseProfile
-    ((menu setup leaks bounds).bounded (phaseInitialLaw setup) horizon scheduler)] at phaseLaw
+    ((menu setup runtime leaks bounds).bounded
+      (phaseInitialLaw setup) horizon scheduler)] at phaseLaw
   rw [(R).runBehavioralTerminalFrom_initHistory _ recoveryProfile
     ((RecoveryMenu).bounded (RecoveryPrior) horizon (RecoveryScheduler))] at recoveryLaw
   exact phaseLaw.trans (masked.trans recoveryLaw.symm)
@@ -181,57 +192,65 @@ theorem component_initialized_masked_native_readout_withinTV
     (fallback : ∀ who, (M).Policy who)
     (assessment : setup.intendedModel.BehavioralAssessment)
     {slots : Nat} (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (weights : ∀ p, PMF (Part setup leaks bounds horizon scheduler slots p))
-    {Outcome : Type} (nativeRead : (application setup (RecoveryLeaks)).ProtocolState → Outcome) :
+    (weights : ∀ p, PMF (Part setup runtime leaks bounds horizon scheduler slots p))
+    {Outcome : Type} (nativeRead : (application (runtime := runtime) setup
+      (RecoveryLeaks)).ProtocolState → Outcome) :
     PMF.WithinTV
-      (((onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
-        (RecoveryProjection.nativeScheduler (runtime setup) (RecoveryLeaks)
+      (((onePacketModel (runtime := runtime) setup (RecoveryLeaks) bounds (Vegas.initialLaw setup)
+        horizon
+        (RecoveryProjection.nativeScheduler runtime (RecoveryLeaks)
           (RecoveryScheduler))).runBehavioral
-        (RecoveryOnePacket.sourceNativeProfile setup (RecoveryLeaks) bounds horizon
+        (RecoveryOnePacket.sourceNativeProfile (runtime := runtime) setup (RecoveryLeaks) bounds
+          horizon
             (RecoveryScheduler)
-          (recoveryComparisonStrategy setup leaks bounds horizon scheduler assessment scale
+          (recoveryComparisonStrategy setup runtime leaks bounds horizon scheduler assessment scale
             nonnegative le_one weights)) (2 * horizon + 1)).toOuterMeasure
         {history | ¬ ReactiveApplication.stateInvariant
-          (app := application setup (RecoveryLeaks))
+          (app := application (runtime := runtime) setup (RecoveryLeaks))
           (fun state => ExclusionEvidence 0 ∅ (RecoveryState.mk state ∅)) history.state}).toReal
       (((M).runBehavioral
-        (componentStrategy setup leaks bounds horizon scheduler fallback assessment scale
+        (componentStrategy setup runtime leaks bounds horizon scheduler fallback assessment scale
           nonnegative le_one weights) (2 * horizon + 1)).map (fun final => if
             ReactiveApplication.stateInvariant
           (app := A) (fun state => state.excluded = ∅) (projection final.state) then
-            some (nativeRead (RecoveryProjection.protocolState (runtime setup) (RecoveryLeaks)
+            some (nativeRead (RecoveryProjection.protocolState runtime (RecoveryLeaks)
               (projection final.state))) else none))
-      (((onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
-        (RecoveryProjection.nativeScheduler (runtime setup) (RecoveryLeaks)
+      (((onePacketModel (runtime := runtime) setup (RecoveryLeaks) bounds (Vegas.initialLaw setup)
+        horizon
+        (RecoveryProjection.nativeScheduler runtime (RecoveryLeaks)
           (RecoveryScheduler))).runBehavioral
-        (RecoveryOnePacket.sourceNativeProfile setup (RecoveryLeaks) bounds horizon
+        (RecoveryOnePacket.sourceNativeProfile (runtime := runtime) setup (RecoveryLeaks) bounds
+          horizon
             (RecoveryScheduler)
-          (recoveryComparisonStrategy setup leaks bounds horizon scheduler assessment scale
+          (recoveryComparisonStrategy setup runtime leaks bounds horizon scheduler assessment scale
             nonnegative le_one weights)) (2 * horizon + 1)).map (fun final => some
               (nativeRead final.state)))
         := by
   classical
   let mask : (A).ProtocolState → Option Outcome := fun state =>
     if RecoveryClear state then
-      some (nativeRead (RecoveryProjection.protocolState (runtime setup) (RecoveryLeaks) state))
+      some (nativeRead (RecoveryProjection.protocolState runtime (RecoveryLeaks) state))
     else none
-  have exactMask := component_initialized_masked_state_law setup leaks bounds horizon scheduler
+  have exactMask := component_initialized_masked_state_law setup runtime leaks bounds horizon
+    scheduler
     fallback assessment scale nonnegative le_one weights
   have mapped := congrArg (PMF.map (Option.map fun state =>
-    nativeRead (RecoveryProjection.protocolState (runtime setup) (RecoveryLeaks) state))) exactMask
+    nativeRead (RecoveryProjection.protocolState runtime (RecoveryLeaks) state))) exactMask
   simp only [PMF.map_comp, Function.comp_def] at mapped
   have masked :
       (((M).runBehavioral
-        (componentStrategy setup leaks bounds horizon scheduler fallback assessment scale
+        (componentStrategy setup runtime leaks bounds horizon scheduler fallback assessment scale
           nonnegative le_one weights) (2 * horizon + 1)).map
           (fun final => mask (projection final.state))) =
       (((R).runBehavioral
-        (recoveryComparisonStrategy setup leaks bounds horizon scheduler assessment scale
+        (recoveryComparisonStrategy setup runtime leaks bounds horizon scheduler assessment scale
           nonnegative le_one weights) (2 * horizon + 1)).map (fun final => mask final.state)) := by
     simpa only [mask, apply_ite (Option.map _), Option.map_some, Option.map_none] using mapped
-  have close := RecoveryOnePacket.recovery_initialized_projection_withinTV setup (RecoveryLeaks)
+  have close := RecoveryOnePacket.recovery_initialized_projection_withinTV (runtime := runtime)
+    setup (RecoveryLeaks)
     bounds horizon (RecoveryScheduler)
-    (recoveryComparisonStrategy setup leaks bounds horizon scheduler assessment scale nonnegative
+    (recoveryComparisonStrategy setup runtime leaks bounds horizon scheduler assessment scale
+      nonnegative
       le_one weights) (fun state => some (nativeRead state)) mask (by
       intro state clear
       have valid : RecoveryClear state := by
@@ -249,46 +268,53 @@ theorem component_initialized_projection_withinTV
     (fallback : ∀ who, (M).Policy who)
     (assessment : setup.intendedModel.BehavioralAssessment)
     {slots : Nat} (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (weights : ∀ p, PMF (Part setup leaks bounds horizon scheduler slots p))
-    {Outcome : Type} (nativeRead : (application setup (RecoveryLeaks)).ProtocolState → Outcome)
+    (weights : ∀ p, PMF (Part setup runtime leaks bounds horizon scheduler slots p))
+    {Outcome : Type} (nativeRead : (application (runtime := runtime) setup
+      (RecoveryLeaks)).ProtocolState → Outcome)
     (phaseRead : (P).ProtocolState → Outcome)
-    (agree : ∀ history : ((menu setup leaks bounds).protocol (phaseInitialLaw setup) horizon
+    (agree : ∀ history : ((menu setup runtime leaks bounds).protocol (phaseInitialLaw setup) horizon
       scheduler).History, phaseClear history.state →
       phaseRead history.state = nativeRead
-        (RecoveryProjection.protocolState (runtime setup) (RecoveryLeaks) (projection
+        (RecoveryProjection.protocolState runtime (RecoveryLeaks) (projection
             history.state))) :
     PMF.WithinTV
-      (((onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
-        (RecoveryProjection.nativeScheduler (runtime setup) (RecoveryLeaks)
+      (((onePacketModel (runtime := runtime) setup (RecoveryLeaks) bounds (Vegas.initialLaw setup)
+        horizon
+        (RecoveryProjection.nativeScheduler runtime (RecoveryLeaks)
           (RecoveryScheduler))).runBehavioral
-        (RecoveryOnePacket.sourceNativeProfile setup (RecoveryLeaks) bounds horizon
+        (RecoveryOnePacket.sourceNativeProfile (runtime := runtime) setup (RecoveryLeaks) bounds
+          horizon
             (RecoveryScheduler)
-          (recoveryComparisonStrategy setup leaks bounds horizon scheduler assessment scale
+          (recoveryComparisonStrategy setup runtime leaks bounds horizon scheduler assessment scale
             nonnegative le_one weights)) (2 * horizon + 1)).toOuterMeasure
         {history | ¬ ReactiveApplication.stateInvariant
-          (app := application setup (RecoveryLeaks))
+          (app := application (runtime := runtime) setup (RecoveryLeaks))
           (fun state => ExclusionEvidence 0 ∅ (RecoveryState.mk state ∅)) history.state}).toReal
       (((M).runBehavioral
-        (componentStrategy setup leaks bounds horizon scheduler fallback assessment scale
+        (componentStrategy setup runtime leaks bounds horizon scheduler fallback assessment scale
           nonnegative le_one weights) (2 * horizon + 1)).map (fun final => phaseRead final.state))
-      (((onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
-        (RecoveryProjection.nativeScheduler (runtime setup) (RecoveryLeaks)
+      (((onePacketModel (runtime := runtime) setup (RecoveryLeaks) bounds (Vegas.initialLaw setup)
+        horizon
+        (RecoveryProjection.nativeScheduler runtime (RecoveryLeaks)
           (RecoveryScheduler))).runBehavioral
-        (RecoveryOnePacket.sourceNativeProfile setup (RecoveryLeaks) bounds horizon
+        (RecoveryOnePacket.sourceNativeProfile (runtime := runtime) setup (RecoveryLeaks) bounds
+          horizon
             (RecoveryScheduler)
-          (recoveryComparisonStrategy setup leaks bounds horizon scheduler assessment scale
+          (recoveryComparisonStrategy setup runtime leaks bounds horizon scheduler assessment scale
             nonnegative le_one weights)) (2 * horizon + 1)).map (fun final => nativeRead
               final.state))
          := by
   classical
   let mask : (A).ProtocolState → Option Outcome := fun state =>
     if RecoveryClear state then
-      some (nativeRead (RecoveryProjection.protocolState (runtime setup) (RecoveryLeaks) state))
+      some (nativeRead (RecoveryProjection.protocolState runtime (RecoveryLeaks) state))
     else none
-  have close := component_initialized_masked_native_readout_withinTV setup leaks bounds horizon
+  have close := component_initialized_masked_native_readout_withinTV setup runtime leaks bounds
+    horizon
     scheduler fallback assessment scale nonnegative le_one weights nativeRead
   have classified : ∀ history ∈ (((M).runBehavioral
-      (componentStrategy setup leaks bounds horizon scheduler fallback assessment scale nonnegative
+      (componentStrategy setup runtime leaks bounds horizon scheduler fallback assessment scale
+        nonnegative
         le_one weights) (2 * horizon + 1))).support, ∀ value,
       mask (projection history.state) = some value → phaseRead history.state = value := by
     intro history supported value reading
@@ -299,16 +325,19 @@ theorem component_initialized_projection_withinTV
           phaseClear state ↔ RecoveryClear (projection state) := by cases state <;> rfl
       exact agree history ((clearEq history.state).mpr clear)
   let reference : PMF Outcome :=
-    ((onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
-      (RecoveryProjection.nativeScheduler (runtime setup) (RecoveryLeaks)
+    ((onePacketModel (runtime := runtime) setup (RecoveryLeaks) bounds (Vegas.initialLaw setup)
+      horizon
+      (RecoveryProjection.nativeScheduler runtime (RecoveryLeaks)
           (RecoveryScheduler))).runBehavioral
-      (RecoveryOnePacket.sourceNativeProfile setup (RecoveryLeaks) bounds horizon
+      (RecoveryOnePacket.sourceNativeProfile (runtime := runtime) setup (RecoveryLeaks) bounds
+        horizon
           (RecoveryScheduler)
-        (recoveryComparisonStrategy setup leaks bounds horizon scheduler assessment scale
+        (recoveryComparisonStrategy setup runtime leaks bounds horizon scheduler assessment scale
           nonnegative le_one weights)) (2 * horizon + 1)).map (fun final => nativeRead final.state)
   have estimate := withinTV_map_of_partial_classes
     ((M).runBehavioral
-      (componentStrategy setup leaks bounds horizon scheduler fallback assessment scale nonnegative
+      (componentStrategy setup runtime leaks bounds horizon scheduler fallback assessment scale
+        nonnegative
         le_one weights) (2 * horizon + 1))
     (fun final => phaseRead final.state) (fun final => mask (projection final.state)) id reference
     classified (by

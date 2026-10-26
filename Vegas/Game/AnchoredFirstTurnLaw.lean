@@ -5,7 +5,7 @@ import Vegas.Game.SourceServiceDecidedCompletion
 
 /-! # First-turn clients from executions reached by any players
 
-The first-turn clients of a source profile on the default runtime
+The first-turn clients of a source profile on a supplied sequential runtime
 (`Vegas.firstTurnClients`) can continue an execution that any players reached
 through the anchored profile, which replays the reaching players up to the
 anchor and is the clients from there on
@@ -26,33 +26,36 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-variable (setup leaks) in
-/-- The first-turn clients of a source profile on the default runtime. -/
+variable (setup runtime leaks) in
+/-- The first-turn clients of a source profile on a supplied sequential runtime. -/
 abbrev firstTurnClients (bound : (graph setup).EventId → Nat) (turns : Nat)
-    (profile : BehavioralProfile setup.program) : Player → (application setup leaks).Policy :=
-  serviceTurnPolicy setup .sequential (rankDeadline setup .sequential) leaks bound turns
+    (profile : BehavioralProfile setup.program) : Player → (application setup runtime
+      leaks).Policy :=
+  serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
     (firstTurnTiming setup turns .sequential) profile
 
-variable (setup leaks) in
+variable (setup runtime leaks) in
 /-- An execution continuing an anchor: every recall extends the anchor's, and
 every own submission was made at its author's turn. -/
-def ContinuesAnchor (anchor execution : (application setup leaks).Execution) : Prop :=
+def ContinuesAnchor (anchor execution : (application setup runtime leaks).Execution) : Prop :=
   (∀ who, anchor.recall who <+: execution.recall who) ∧
     ∀ who, OwnSubmissionsAtTurn setup leaks execution who
 
 /-- A round of the anchored first-turn clients keeps an execution continuing
 its anchor. -/
-theorem ContinuesAnchor.round {scheduler : (application setup leaks).Scheduler}
+theorem ContinuesAnchor.round {scheduler : (application setup runtime leaks).Scheduler}
     {bound : (graph setup).EventId → Nat} {turns : Nat} {profile : BehavioralProfile setup.program}
-    {anchor execution next : (application setup leaks).Execution}
-    (holds : ContinuesAnchor setup leaks anchor execution)
-    (moved : next ∈ ((application setup leaks).round scheduler
-      (ReactiveApplication.anchoredPolicy anchor (firstTurnClients setup leaks bound turns profile))
+    {anchor execution next : (application setup runtime leaks).Execution}
+    (holds : ContinuesAnchor setup runtime leaks anchor execution)
+    (moved : next ∈ ((application setup runtime leaks).round scheduler
+      (ReactiveApplication.anchoredPolicy anchor (firstTurnClients setup runtime leaks bound
+        turns profile))
       execution).support) :
-    ContinuesAnchor setup leaks anchor next := by
-  let app := application setup leaks
+    ContinuesAnchor setup runtime leaks anchor next := by
+  let app := application setup runtime leaks
   obtain ⟨command, _, middle, stepped, cases⟩ := round_cases setup leaks moved
   have recallEq := app.environmentStep_recall execution middle command stepped
   rcases cases with ⟨_, rfl⟩ | ⟨responder, _, response, chosen, rfl⟩
@@ -62,9 +65,10 @@ theorem ContinuesAnchor.round {scheduler : (application setup leaks).Scheduler}
     · rw [recallEq] at member
       exact holds.2 who entry member
   · have follows : ReactiveApplication.anchoredPolicy anchor
-        (firstTurnClients setup leaks bound turns profile) responder (middle.recall responder)
+        (firstTurnClients setup runtime leaks bound turns profile) responder (middle.recall
+          responder)
         (middle.observe app responder) =
-        firstTurnClients setup leaks bound turns profile responder (middle.recall responder)
+        firstTurnClients setup runtime leaks bound turns profile responder (middle.recall responder)
           (middle.observe app responder) :=
       ReactiveApplication.anchoredPolicy_of_extends anchor _ responder _ _
         (by rw [recallEq]; exact holds.1 responder)
@@ -93,15 +97,15 @@ theorem ContinuesAnchor.round {scheduler : (application setup leaks).Scheduler}
 
 /-- Rounds of the anchored first-turn clients keep an execution continuing its
 anchor. -/
-theorem ContinuesAnchor.runRounds {scheduler : (application setup leaks).Scheduler}
+theorem ContinuesAnchor.runRounds {scheduler : (application setup runtime leaks).Scheduler}
     {bound : (graph setup).EventId → Nat} {turns : Nat} {profile : BehavioralProfile setup.program}
-    {anchor : (application setup leaks).Execution} :
-    ∀ (count : Nat) (execution : (application setup leaks).Execution),
-      ContinuesAnchor setup leaks anchor execution →
-      ∀ final ∈ ((application setup leaks).runRounds scheduler
+    {anchor : (application setup runtime leaks).Execution} :
+    ∀ (count : Nat) (execution : (application setup runtime leaks).Execution),
+      ContinuesAnchor setup runtime leaks anchor execution →
+      ∀ final ∈ ((application setup runtime leaks).runRounds scheduler
           (ReactiveApplication.anchoredPolicy anchor
-            (firstTurnClients setup leaks bound turns profile)) count execution).support,
-        ContinuesAnchor setup leaks anchor final := by
+            (firstTurnClients setup runtime leaks bound turns profile)) count execution).support,
+        ContinuesAnchor setup runtime leaks anchor final := by
   intro count
   induction count with
   | zero =>

@@ -39,20 +39,21 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup leaks).Scheduler)
-  [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+  (scheduler : (application setup runtime leaks).Scheduler)
+  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
 
 local notation "onePacketN" =>
-  onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 
-variable {setup leaks} in
+variable {setup runtime leaks} in
 /-- **The rank of a site**: the number of events its public completion order
 records. -/
-def siteRank : (application setup leaks).Info → Nat
+def siteRank : (application setup runtime leaks).Info → Nat
   | none => 0
   | some (_, view) => view.application.publicView.observation.completionOrder.length
 
@@ -71,7 +72,7 @@ open Classical in
 at the point the history's configuration decodes to after `rank` events, when
 that point is a point of the intended game; the exclusion payoff otherwise. -/
 def decodedPointValue (profile : BehavioralProfile setup.program) (who : Player) (rank : Nat)
-    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+    (history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).History) : ℝ :=
   match history.state with
   | none => excludedPayoff who
@@ -90,14 +91,14 @@ def siteValue (assessment : (onePacketN).BehavioralAssessment)
     (profile : BehavioralProfile setup.program) {who : Player}
     (site : (onePacketN).InformationSite who) : ℝ :=
   expect (assessment.belief who site) fun history =>
-    decodedPointValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-      profile who (siteRank site.1) history.1
+    decodedPointValue setup runtime leaks bounds horizon scheduler parameter utility excludedPayoff
+      profile who (siteRank (runtime := runtime) site.1) history.1
 
-variable {setup leaks} in
+variable {setup runtime leaks} in
 /-- The site's pending event, if any, has not failed. -/
-def siteFresh (who : Player) (info : (application setup leaks).Info)
-    (control : (application setup leaks).Control) : Prop :=
-  match pendingEvent setup leaks who info with
+def siteFresh (who : Player) (info : (application setup runtime leaks).Info)
+    (control : (application setup runtime leaks).Control) : Prop :=
+  match pendingEvent setup runtime leaks who info with
   | some event => ¬ StoreEventFailed control.execution.application.config.store event
   | none => True
 
@@ -111,20 +112,24 @@ site's failure set otherwise. -/
 def historyStopValue (assessment : (onePacketN).BehavioralAssessment)
     (profile : BehavioralProfile setup.program) {who : Player}
     (site : (onePacketN).InformationSite who) (law : PMF ((onePacketN).Choice who site.1))
-    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+    (history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).History) : ℝ :=
-  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let menu := bounds.onePacketMenu runtime leaks
   let certificate := (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
   let installed := Profile.update (sig := (onePacketN).behavioralSignature) assessment.strategy
     who ((assessment.strategy who).withLaw site.1 law)
   let payoff := fun final : (menu.protocol (initialLaw setup) horizon scheduler).History =>
-    if final ∈ onePacketFailed setup leaks bounds horizon scheduler ((onePacketN).agentAt site)
-    then 0 else exclusionBase setup parameter utility excludedPayoff leaks final.state who
+    if final ∈ onePacketFailed setup runtime leaks bounds horizon scheduler ((onePacketN).agentAt
+      site)
+    then 0 else exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who
   expect ((onePacketN).runBehavioralUntil certificate installed
-      (LateStopped setup leaks bounds horizon scheduler (siteRank site.1)) history)
-    (fun stop => if LateStopped setup leaks bounds horizon scheduler (siteRank site.1) stop then
-      completionValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
-        profile (siteRank site.1) (siteFresh who site.1) who
+      (LateStopped setup runtime leaks bounds horizon scheduler (siteRank (runtime := runtime)
+        site.1)) history)
+    (fun stop => if LateStopped setup runtime leaks bounds horizon scheduler (siteRank (runtime :=
+      runtime) site.1) stop then
+      completionValue setup runtime leaks bounds horizon scheduler parameter utility excludedPayoff
+        profile (siteRank (runtime := runtime) site.1) (siteFresh (runtime := runtime) who site.1)
+          who
         (fun later => expect ((onePacketN).runBehavioralTerminalFrom certificate installed later)
           payoff) stop
       else payoff stop)
@@ -136,7 +141,7 @@ def siteStopValue (assessment : (onePacketN).BehavioralAssessment)
     (site : (onePacketN).InformationSite who) (law : PMF ((onePacketN).Choice who site.1)) :
     ℝ :=
   expect (assessment.belief who site) fun history =>
-    historyStopValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+    historyStopValue setup runtime leaks bounds horizon scheduler parameter utility excludedPayoff
       assessment profile site law history.1
 
 end Values
@@ -209,8 +214,8 @@ theorem sourcePointValue_mem_Icc (profile : BehavioralProfile setup.program) (wh
     exact within terminal member
   · exact ⟨le_rfl, le_max_left _ _⟩
 
-omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+omit [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
 /-- **The continuation value of a site is between the exclusion payoff and the
 upper utility.** Under the hypotheses of `Vegas.sourcePointValue_mem_Icc` for
@@ -223,9 +228,9 @@ theorem siteValue_mem_Icc (assessment : (onePacketN).BehavioralAssessment)
     (below : ∀ point, IntendedReached setup point →
       ∀ terminal ∈ (ProtocolState.continuationLaw setup.program profile point).support,
         excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who) :
-    excludedPayoff who ≤ siteValue setup leaks bounds horizon scheduler parameter utility
+    excludedPayoff who ≤ siteValue setup runtime leaks bounds horizon scheduler parameter utility
         excludedPayoff assessment profile site ∧
-      siteValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+      siteValue setup runtime leaks bounds horizon scheduler parameter utility excludedPayoff
         assessment profile site ≤ max (excludedPayoff who) upper := by
   apply expect_mem_Icc
   intro history
@@ -240,8 +245,8 @@ theorem siteValue_mem_Icc (assessment : (onePacketN).BehavioralAssessment)
           le_upper below _ reachedPoint
       · exact ⟨le_rfl, le_max_left _ _⟩
 
-omit [Fintype Player] [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+omit [Fintype Player] [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
 /-- **Exclusion is a punishment on reached continuations.** If the exclusion
 payoff of every player is at most its utility at every terminal readout of the

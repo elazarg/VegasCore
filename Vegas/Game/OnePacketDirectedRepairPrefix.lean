@@ -19,31 +19,32 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- Every initialized prefix's ready or completed event remains ready or
 completed at every later actual history state. -/
-theorem readyOrCompleted_of_tracePrefix {before : (application setup leaks).Control}
-    (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some before))
-    {state : (application setup leaks).ProtocolState}
-    {trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state}
+theorem readyOrCompleted_of_tracePrefix {before : (application setup runtime leaks).Control}
+    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some before))
+    {state : (application setup runtime leaks).ProtocolState}
+    {trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state}
     (isPrefix : TracePrefix prior trace) {event : (graph setup).EventId}
     (active : before.execution.application.config.cut.Ready event ∨
       event ∈ before.execution.application.config.cut.completed) :
-    ∃ after : (application setup leaks).Control, state = some after ∧
+    ∃ after : (application setup runtime leaks).Control, state = some after ∧
       (after.execution.application.config.cut.Ready event ∨
         event ∈ after.execution.application.config.cut.completed) := by
   have carry : ∀ {first final :
-      (onePacketProtocol setup leaks bounds horizon scheduler).State}
-      (firstTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace first)
-      (lastTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace final),
+      (onePacketProtocol setup runtime leaks bounds horizon scheduler).State}
+      (firstTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace first)
+      (lastTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace final),
       TracePrefix firstTrace lastTrace → ∀ current,
       first = some current →
       (current.execution.application.config.cut.Ready event ∨
         event ∈ current.execution.application.config.cut.completed) →
-      ∃ next : (application setup leaks).Control, final = some next ∧
+      ∃ next : (application setup runtime leaks).Control, final = some next ∧
         (next.execution.application.config.cut.Ready event ∨
           event ∈ next.execution.application.config.cut.completed) := by
     intro first final firstTrace lastTrace
@@ -59,31 +60,32 @@ theorem readyOrCompleted_of_tracePrefix {before : (application setup leaks).Cont
         | extend isEarlier _ _ _ =>
             obtain ⟨middle, sourceEq, activeMiddle⟩ := ih isEarlier current same activeNow
             subst sourceEq
-            obtain ⟨next, targetEq, _⟩ := (application setup leaks).transition_recall_prefix
+            obtain ⟨next, targetEq, _⟩ := (application setup runtime leaks).transition_recall_prefix
               (initialLaw setup) horizon scheduler middle target joint realized
             refine ⟨next, targetEq, ?_⟩
             subst targetEq
             exact readyOrCompleted_of_configStep
-              (transition_configStep (initialLaw setup) horizon scheduler middle next joint
+              (transition_configStep (initialLaw setup) horizon scheduler
+                middle next joint
                 realized) event activeMiddle
   exact carry prior trace isPrefix before rfl active
 
 /-- An available typed field keeps its value through every actual history
 extension, including arbitrary admitted responses and environment commands. -/
-theorem storedValue_of_tracePrefix {before after : (application setup leaks).Control}
-    (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some before))
-    {trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some after)}
+theorem storedValue_of_tracePrefix {before after : (application setup runtime leaks).Control}
+    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some before))
+    {trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some after)}
     (isPrefix : TracePrefix prior trace) (field : (graph setup).Field)
     (value : ((graph setup).layout field).Value)
     (stored : before.execution.application.config.store field = some value) :
     after.execution.application.config.store field = some value := by
   have carry : ∀ {first final :
-      (onePacketProtocol setup leaks bounds horizon scheduler).State}
-      (firstTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace first)
-      (lastTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace final),
+      (onePacketProtocol setup runtime leaks bounds horizon scheduler).State}
+      (firstTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace first)
+      (lastTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace final),
       TracePrefix firstTrace lastTrace → ∀ current,
       first = some current → current.execution.application.config.store field = some value →
-      ∃ next : (application setup leaks).Control, final = some next ∧
+      ∃ next : (application setup runtime leaks).Control, final = some next ∧
         next.execution.application.config.store field = some value := by
     intro first final firstTrace lastTrace
     induction lastTrace with
@@ -98,11 +100,12 @@ theorem storedValue_of_tracePrefix {before after : (application setup leaks).Con
         | extend isEarlier _ _ _ =>
             obtain ⟨middle, sourceEq, storedMiddle⟩ := ih isEarlier current same present
             subst sourceEq
-            obtain ⟨next, targetEq, _⟩ := (application setup leaks).transition_recall_prefix
+            obtain ⟨next, targetEq, _⟩ := (application setup runtime leaks).transition_recall_prefix
               (initialLaw setup) horizon scheduler middle target joint realized
             refine ⟨next, targetEq, ?_⟩
             subst targetEq
-            rcases transition_configStep (initialLaw setup) horizon scheduler middle next joint
+            rcases transition_configStep (initialLaw setup) horizon scheduler
+              middle next joint
                 realized with stutter | ⟨event, ready, action, supported⟩
             · rw [stutter]
               exact storedMiddle

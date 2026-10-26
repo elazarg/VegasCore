@@ -722,10 +722,11 @@ open Classical in
 open Vegas.SourceProgram Vegas.EventGraphRuntime GameTheory.Protocol GameTheory.Enforcement in
 theorem recovery_intended_raw_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
     (setup : Setup (Player := Player) (L := L))
+    (runtime : EventGraphRuntime (graph setup))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (horizon : Nat)
-    (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
-    [(recoveryApplication (runtime setup) leaks).FiniteNature
+    (scheduler : (recoveryApplication runtime leaks).Scheduler)
+    [(recoveryApplication runtime leaks).FiniteNature
       (PMF.map (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup)))
         (initialLaw setup)) scheduler]
     [Finite setup.intendedProtocol.History]
@@ -736,16 +737,16 @@ theorem recovery_intended_raw_sequential_equilibrium [Fintype Player] [IExpr.Res
     (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal) {delay bound : (graph setup).EventId → Nat}
-    (opportunity : Recovery.Opportunity (runtime setup) leaks
+    (opportunity : Recovery.Opportunity runtime leaks
       (PMF.map (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup)))
         (initialLaw setup)) horizon scheduler delay)
-    (inclusion : Recovery.ProtectedInclusion (runtime setup) leaks
+    (inclusion : Recovery.ProtectedInclusion runtime leaks
       (PMF.map (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup)))
         (initialLaw setup)) horizon scheduler bound)
-    (completes : Recovery.CompletesPlay (runtime setup) leaks
+    (completes : Recovery.CompletesPlay runtime leaks
       (PMF.map (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup)))
         (initialLaw setup)) horizon scheduler)
-    (timely : AsyncTimely (runtime setup) delay bound)
+    (timely : AsyncTimely runtime delay bound)
     (lowerUtility upperUtility : Player → ℝ)
     (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
     (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
@@ -770,10 +771,10 @@ theorem recovery_intended_raw_sequential_equilibrium [Fintype Player] [IExpr.Res
         observationRate who * deliveryRate who * deposit who) :
     let initial := PMF.map
       (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
-    let raw := Recovery.rawMenu (runtime setup) leaks bounds
-    let observe := (recoveryApplication (runtime setup) leaks).stateTraffic
-    let audit := Recovery.countAudit (runtime setup) leaks service.sample
-    let base := recoveryExclusionBase parameter utility excludedPayoff
+    let raw := Recovery.rawMenu runtime leaks bounds
+    let observe := (recoveryApplication runtime leaks).stateTraffic
+    let audit := Recovery.countAudit runtime leaks service.sample
+    let base := recoveryExclusionBase (runtime := runtime) parameter utility excludedPayoff
     let payoff := TerminalAudit.utility base observe audit deposit
     let settle := TerminalAudit.settlement base observe audit deposit
     ∃ target : (raw.information initial horizon scheduler).BehavioralAssessment,
@@ -790,14 +791,15 @@ theorem recovery_intended_raw_sequential_equilibrium [Fintype Player] [IExpr.Res
       ((raw.information initial horizon scheduler).runBehavioral target.strategy
           (2 * horizon + 1)).bind
           (fun final => (settle final.state).map fun payoffs =>
-            (sourceReadout setup leaks (RecoveryProjection.protocolState (runtime setup) leaks
+            (sourceReadout setup runtime leaks (RecoveryProjection.protocolState runtime leaks
               final.state), payoffs)) =
         (setup.intendedModel.runBehavioral intended.strategy
           (instructionCount setup.program + 1)).map
           (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
   intro initial raw observe audit base payoff settle
   obtain ⟨target, truncated, clean⟩ :=
-    Vegas.recovery_intended_raw_sequentialEquilibrium_preserved parameter utility excludedPayoff
+    Vegas.recovery_intended_raw_sequentialEquilibrium_preserved (runtime := runtime) parameter
+      utility excludedPayoff
       wellFormed independent observable opportunity inclusion completes timely lowerUtility
       upperUtility lower_le le_upper below intended equilibrium covers coversInputs capacity service
       observationRate deliveryRate delivery_nonnegative coverage deposit deposit_nonnegative
@@ -814,10 +816,11 @@ open Classical in
 open Vegas.SourceProgram Vegas.EventGraphRuntime GameTheory.Protocol GameTheory.Enforcement in
 theorem sequential_phase_intended_raw_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
     (setup : Setup (Player := Player) (L := L))
+    (runtime : EventGraphRuntime (graph setup))
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (horizon : Nat)
-    (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-    [(phaseApplication (runtime setup) leaks).FiniteNature
+    (scheduler : (phaseApplication runtime leaks).Scheduler)
+    [(phaseApplication runtime leaks).FiniteNature
       (SequentialPhase.phaseInitialLaw setup) scheduler]
     [Finite setup.intendedProtocol.History]
     {Parameter : Type} (parameter : State L setup.context → Parameter)
@@ -827,13 +830,13 @@ theorem sequential_phase_intended_raw_sequential_equilibrium [Fintype Player] [I
     (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal) {delay bound : (graph setup).EventId → Nat}
-    (opportunity : PhaseService.Opportunity (runtime setup) leaks
+    (opportunity : PhaseService.Opportunity runtime leaks
       (SequentialPhase.phaseInitialLaw setup) horizon scheduler delay)
-    (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks
+    (inclusion : PhaseService.ProtectedInclusion runtime leaks
       (SequentialPhase.phaseInitialLaw setup) horizon scheduler bound)
-    (completes : PhaseService.CompletesPlay (runtime setup) leaks
+    (completes : PhaseService.CompletesPlay runtime leaks
       (SequentialPhase.phaseInitialLaw setup) horizon scheduler)
-    (timely : AsyncTimely (runtime setup) delay bound)
+    (timely : AsyncTimely runtime delay bound)
     (lowerUtility upperUtility : Player → ℝ)
     (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
     (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
@@ -857,10 +860,10 @@ theorem sequential_phase_intended_raw_sequential_equilibrium [Fintype Player] [I
           min 0 (min (excludedPayoff who) (lowerUtility who)) ≤
         observationRate who * deliveryRate who * deposit who) :
     let initial := SequentialPhase.phaseInitialLaw setup
-    let raw := PhaseCount.rawMenu (runtime setup) leaks bounds
-    let observe := (phaseApplication (runtime setup) leaks).stateTraffic
-    let audit := PhaseCount.audit (runtime setup) leaks service.sample
-    let base := phaseExclusionBase setup .sequential (runtime setup) leaks
+    let raw := PhaseCount.rawMenu runtime leaks bounds
+    let observe := (phaseApplication runtime leaks).stateTraffic
+    let audit := PhaseCount.audit runtime leaks service.sample
+    let base := phaseExclusionBase setup .sequential runtime leaks
       (fun terminal => utility (setup.parameterOutcome parameter terminal)) excludedPayoff
     let payoff := TerminalAudit.utility base observe audit deposit
     let settle := TerminalAudit.settlement base observe audit deposit
@@ -879,13 +882,14 @@ theorem sequential_phase_intended_raw_sequential_equilibrium [Fintype Player] [I
       ((raw.information initial horizon scheduler).runBehavioral target.strategy
           (2 * horizon + 1)).bind
           (fun final => (settle final.state).map fun payoffs =>
-            (phaseSourceReadout setup .sequential (runtime setup) leaks final.state, payoffs)) =
+            (phaseSourceReadout setup .sequential runtime leaks final.state, payoffs)) =
         (setup.intendedModel.runBehavioral intended.strategy
           (instructionCount setup.program + 1)).map
           (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
   intro initial raw observe audit base payoff settle
   obtain ⟨target, truncated, clean⟩ :=
-    Vegas.SequentialPhase.intended_raw_sequentialEquilibrium_preserved setup leaks bounds horizon
+    Vegas.SequentialPhase.intended_raw_sequentialEquilibrium_preserved setup runtime leaks
+      bounds horizon
       scheduler parameter utility excludedPayoff
       wellFormed independent observable opportunity inclusion completes timely lowerUtility
       upperUtility lower_le le_upper below intended equilibrium covers coversInputs capacity service

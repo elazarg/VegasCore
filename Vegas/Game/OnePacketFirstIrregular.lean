@@ -26,11 +26,12 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
-  [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+  {scheduler : (application setup runtime leaks).Scheduler}
+  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
 
 /-- **Irregular responses from forced states are cube-small.** At a response of a
@@ -41,33 +42,39 @@ theorem certificate_responseMass_le_cube
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
-    (who : Player) (n : ℕ) {before after : (application setup leaks).ProtocolState}
-    (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace before)
-    (joint : Player → Option (application setup leaks).Action)
-    (legal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal before joint)
-    (realized : after ∈ ((onePacketProtocol setup leaks bounds horizon scheduler).step before
-      ⟨joint, legal⟩).support) (control next : (application setup leaks).Control)
+    (who : Player) (n : ℕ) {before after : (application setup runtime leaks).ProtocolState}
+    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace before)
+    (joint : Player → Option (application setup runtime leaks).Action)
+    (legal : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Legal before joint)
+    (realized : after ∈ ((onePacketProtocol setup runtime leaks bounds horizon scheduler).step
+      before
+      ⟨joint, legal⟩).support) (control next : (application setup runtime leaks).Control)
     (actor : Player) (initialized : before = some control) (reached : after = some next)
     (acting : control.actor = some actor) (other : actor ≠ who)
-    (forcedWho : ForcedState setup leaks who (some control))
-    (forcedActor : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup)
-      horizon scheduler actor ((application setup leaks).observe actor (some control)))
-    (irregular : ¬ RegularStep setup leaks bounds horizon scheduler (sequence n) who before joint
+    (forcedWho : ForcedState setup runtime leaks who (some control))
+    (forcedActor : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks)
+      (initialLaw setup)
+      horizon scheduler actor ((application setup runtime leaks).observe actor (some control)))
+    (irregular : ¬ RegularStep setup runtime leaks bounds horizon scheduler (sequence n) who
+      before joint
       after) :
-    responseMass setup leaks bounds horizon scheduler
-        (certificateProfile setup leaks bounds horizon scheduler sequence scale scale_pos
+    responseMass setup runtime leaks bounds horizon scheduler
+        (certificateProfile setup runtime leaks bounds horizon scheduler sequence scale scale_pos
           scale_le_one weights n) control joint ≤ scale n ^ 3 := by
   obtain ⟨response, chosenJoint, member, nextEq, infoEq⟩ :=
-    onePacket_response_step prior joint legal realized control next initialized reached acting
+    onePacket_response_step (runtime := runtime) prior joint legal realized control next
+      initialized reached acting
   subst initialized reached
   -- The response has content factor zero.
-  have zero : contentFactor setup leaks (sequence n) actor control.execution
-      (control.execution.respond (application setup leaks) actor response) response = 0 := by
-    rcases (contentFactor_nonneg (setup := setup) (leaks := leaks) (sequence n) actor
-      control.execution (control.execution.respond (application setup leaks) actor response)
+  have zero : contentFactor setup runtime leaks (sequence n) actor control.execution
+      (control.execution.respond (application setup runtime leaks) actor response) response = 0 :=
+        by
+    rcases (contentFactor_nonneg (runtime := runtime) (setup := setup) (leaks := leaks) (sequence
+      n) actor
+      control.execution (control.execution.respond (application setup runtime leaks) actor response)
       response).lt_or_eq with positive | zero
     · exfalso
       apply irregular
@@ -87,7 +94,8 @@ theorem certificate_responseMass_le_cube
     rw [silence, contentFactor_silence] at zero
     exact one_ne_zero zero
   -- The responder owes no failure.
-  obtain ⟨point, decoded, forcedPoint⟩ := (forcedState_iff_decodedPoint control).mp forcedWho
+  obtain ⟨point, decoded, forcedPoint⟩ := (forcedState_iff_decodedPoint (runtime := runtime)
+    control).mp forcedWho
   have notOwed : ∀ found, decodedPoint setup control.execution.application.config = some found →
       ¬ ProtocolState.OwesFailure actor setup.program found := by
     intro found foundDecoded
@@ -97,32 +105,38 @@ theorem certificate_responseMass_le_cube
   obtain ⟨remaining, controlActor, execution⟩ := control
   change controlActor = some actor at acting
   subst acting
-  obtain ⟨event, payload, outputEq, codeEq, turn, node⟩ := zeroContent_binding (sequence n) prior
+  obtain ⟨event, payload, outputEq, codeEq, turn, node⟩ := zeroContent_binding (runtime :=
+    runtime) (sequence n) prior
     notOwed response member transmits zero
   have capacityOne : 1 ≤ bounds.candidateCount :=
     Nat.one_le_iff_ne_zero.mpr fun none => by
       have := capacity actor
       omega
-  have site := onePacket_coveredPendingBinding (sequence n) covers capacityOne prior actor event
+  have site := onePacket_coveredPendingBinding (runtime := runtime) (sequence n) covers
+    capacityOne prior actor event
     turn node
   -- The certificate's component at the responder's information.
-  have played : (onePacketInformation setup leaks bounds horizon scheduler).infoOf actor prior ∈
-      (onePacketModel setup leaks bounds (initialLaw setup) horizon
+  have played : (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf actor
+    prior ∈
+      (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
         scheduler).playedInformation actor :=
-    (onePacketModel setup leaks bounds (initialLaw setup) horizon
+    (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
       scheduler).mem_playedInformation (history := ⟨_, prior⟩) legal.1
   rw [infoEq] at played
-  have observed : (application setup leaks).observe actor
+  have observed : (application setup runtime leaks).observe actor
       (some ⟨remaining, some actor, execution⟩) =
-      some (execution.recall actor, execution.observe (application setup leaks) actor) := by
+      some (execution.recall actor, execution.observe (application setup runtime leaks) actor) := by
     simp [ReactiveApplication.observe]
   rw [observed] at forcedActor
-  obtain ⟨main, mainForm, profileEq⟩ := certificateProfile_eq_slotTrembled sequence scale
+  obtain ⟨main, mainForm, profileEq⟩ := certificateProfile_eq_slotTrembled (runtime := runtime)
+    sequence scale
     scale_pos scale_le_one weights n _ played forcedActor
-  refine responseMass_le_of_slotTrembled _ ⟨remaining, some actor, execution⟩ rfl joint
+  refine responseMass_le_of_slotTrembled (runtime := runtime) _ ⟨remaining, some actor, execution⟩
+    rfl joint
     (scale_pos n).le (scale_le_one n) main _ _ profileEq fun choice chosen => ?_
   rw [chosenJoint] at chosen
-  obtain ⟨honestZero, slotZero, lateZero, silenceZero⟩ := tierMasses_of_zeroContent (sequence n)
+  obtain ⟨honestZero, slotZero, lateZero, silenceZero⟩ := tierMasses_of_zeroContent (runtime :=
+    runtime) (sequence n)
     prior actor event site response transmits zero choice chosen
   refine ⟨?_, silenceZero, slotZero⟩
   rcases mainForm with rfl | ⟨late, rfl⟩

@@ -26,6 +26,7 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   (bounds : MessageBounds (graph setup))
 
@@ -34,36 +35,37 @@ forced state of `who`, while an event is ready, every one-packet response of a
 player other than `who` keeps silence, if that player is not the event's actor
 or has already emitted a packet naming the event. -/
 theorem onePacket_silent_of_forcedObserver (horizon : Nat)
-    (scheduler : (application setup leaks).Scheduler) (who : Player)
-    {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
-    (forced : ForcedState setup leaks who (some control))
+    (scheduler : (application setup runtime leaks).Scheduler) (who : Player)
+    {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    (forced : ForcedState setup runtime leaks who (some control))
     {event : (graph setup).EventId} (ready : control.execution.application.config.cut.Ready event)
     (other : Player) (notWho : other ≠ who)
     (emitted : (graph setup).actor? event = some other →
-      ∃ message ∈ (application setup leaks).outputs (control.execution.recall other),
+      ∃ message ∈ (application setup runtime leaks).outputs (control.execution.recall other),
         message.payload.call.event? (graph setup) = some event)
-    (response : (application setup leaks).Action)
-    (member : response ∈ bounds.onePacketActions (runtime setup) leaks other
+    (response : (application setup runtime leaks).Action)
+    (member : response ∈ bounds.onePacketActions runtime leaks other
       (control.execution.recall other)
-      (control.execution.observe (application setup leaks) other)) :
+      (control.execution.observe (application setup runtime leaks) other)) :
     response.transmission = none := by
-  let app := application setup leaks
-  rcases ((bounds.mem_onePacketActions (runtime setup) leaks other _ _ response).mp member).2 with
+  let app := application setup runtime leaks
+  rcases ((bounds.mem_onePacketActions runtime leaks other _ _ response).mp member).2 with
     silent | ⟨material, _, permitted⟩
   · exact silent
   exfalso
   have rawTrace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control) :=
-    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon
+    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
       scheduler trace
   obtain ⟨rank, point, ordered, decoded, forcedPoint⟩ := forced
-  obtain ⟨inputRecall, serialRecall, _⟩ := (runtime setup).countRecall_history leaks rawTrace
+  obtain ⟨inputRecall, serialRecall, _⟩ := runtime.countRecall_history leaks rawTrace
   have facts := settledFacts_history (initialLaw setup) horizon scheduler rawTrace
   obtain ⟨recordRank, ⟨residual⟩, record⟩ :=
-    actorRecord_history (failureProfile setup.program) horizon scheduler rawTrace
+    actorRecord_history (runtime := runtime) (failureProfile setup.program) horizon scheduler
+      rawTrace
   have sameRank := isPrefix_unique ordered residual.checkpoint.ordered
   subst sameRank
-  set envelope := (runtime setup).localEnvelope leaks other (control.execution.recall other)
+  set envelope := runtime.localEnvelope leaks other (control.execution.recall other)
     (control.execution.observe app other) material with envelopeEq
   obtain ⟨tokenValid, correct, first⟩ := (countPermits_eq_true_iff _ _).mp permitted
   obtain ⟨named, namedEvent, tokenEq⟩ := (WitnessedPacket.tokenValid_iff _).mp tokenValid
@@ -112,34 +114,35 @@ of the one-packet game in a forced state of `who`, every transmitting
 one-packet response of a player other than `who` names a ready event, of which
 that player is the actor. -/
 theorem onePacket_named_of_forcedObserver (horizon : Nat)
-    (scheduler : (application setup leaks).Scheduler) (who : Player)
-    {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
-    (forced : ForcedState setup leaks who (some control))
+    (scheduler : (application setup runtime leaks).Scheduler) (who : Player)
+    {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    (forced : ForcedState setup runtime leaks who (some control))
     (other : Player) (notWho : other ≠ who)
-    {material : (application setup leaks).Submission}
-    (member : (⟨some material⟩ : (application setup leaks).Action) ∈
-      bounds.onePacketActions (runtime setup) leaks other (control.execution.recall other)
-        (control.execution.observe (application setup leaks) other)) :
+    {material : (application setup runtime leaks).Submission}
+    (member : (⟨some material⟩ : (application setup runtime leaks).Action) ∈
+      bounds.onePacketActions runtime leaks other (control.execution.recall other)
+        (control.execution.observe (application setup runtime leaks) other)) :
     ∃ event, control.execution.application.config.cut.Ready event ∧
       material.call.packet.event? (graph setup) = some event ∧
       (graph setup).actor? event = some other := by
-  let app := application setup leaks
-  rcases ((bounds.mem_onePacketActions (runtime setup) leaks other _ _ _).mp member).2 with
+  let app := application setup runtime leaks
+  rcases ((bounds.mem_onePacketActions runtime leaks other _ _ _).mp member).2 with
     silent | ⟨material', transmitted, permitted⟩
   · cases silent
   cases transmitted
   have rawTrace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control) :=
-    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon
+    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
       scheduler trace
   obtain ⟨rank, point, ordered, decoded, forcedPoint⟩ := forced
-  obtain ⟨inputRecall, serialRecall, _⟩ := (runtime setup).countRecall_history leaks rawTrace
+  obtain ⟨inputRecall, serialRecall, _⟩ := runtime.countRecall_history leaks rawTrace
   have facts := settledFacts_history (initialLaw setup) horizon scheduler rawTrace
   obtain ⟨recordRank, ⟨residual⟩, record⟩ :=
-    actorRecord_history (failureProfile setup.program) horizon scheduler rawTrace
+    actorRecord_history (runtime := runtime) (failureProfile setup.program) horizon scheduler
+      rawTrace
   have sameRank := isPrefix_unique ordered residual.checkpoint.ordered
   subst sameRank
-  set envelope := (runtime setup).localEnvelope leaks other (control.execution.recall other)
+  set envelope := runtime.localEnvelope leaks other (control.execution.recall other)
     (control.execution.observe app other) material with envelopeEq
   obtain ⟨tokenValid, correct, first⟩ := (countPermits_eq_true_iff _ _).mp permitted
   obtain ⟨named, namedEvent, tokenEq⟩ := (WitnessedPacket.tokenValid_iff _).mp tokenValid

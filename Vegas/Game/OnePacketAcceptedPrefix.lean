@@ -18,28 +18,29 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- Completion makes the accepted handle immutable along an actual history,
 including the case where no handle was accepted. -/
 theorem completed_accepted_of_tracePrefix
-    {before after : (application setup leaks).Control}
-    (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some before))
-    {trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some after)}
+    {before after : (application setup runtime leaks).Control}
+    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some before))
+    {trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some after)}
     (isPrefix : TracePrefix prior trace) (event : (graph setup).EventId)
     (completed : event ∈ before.execution.application.config.cut.completed) :
     event ∈ after.execution.application.config.cut.completed ∧
       after.execution.application.accepted (.inr event) =
         before.execution.application.accepted (.inr event) := by
   have carry : ∀ {first final :
-      (onePacketProtocol setup leaks bounds horizon scheduler).State}
-      (firstTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace first)
-      (lastTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace final),
+      (onePacketProtocol setup runtime leaks bounds horizon scheduler).State}
+      (firstTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace first)
+      (lastTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace final),
       TracePrefix firstTrace lastTrace → ∀ current,
       first = some current → event ∈ current.execution.application.config.cut.completed →
-      ∃ next : (application setup leaks).Control, final = some next ∧
+      ∃ next : (application setup runtime leaks).Control, final = some next ∧
         event ∈ next.execution.application.config.cut.completed ∧
           next.execution.application.accepted (.inr event) =
             current.execution.application.accepted (.inr event) := by
@@ -56,13 +57,15 @@ theorem completed_accepted_of_tracePrefix
         | extend isEarlier _ _ _ =>
             obtain ⟨middle, sourceEq, completedMiddle, table⟩ := ih isEarlier current same done
             subst sourceEq
-            obtain ⟨next, targetEq, _⟩ := (application setup leaks).transition_recall_prefix
+            obtain ⟨next, targetEq, _⟩ := (application setup runtime leaks).transition_recall_prefix
               (initialLaw setup) horizon scheduler middle target joint realized
             refine ⟨next, targetEq, ?_, ?_⟩
             · subst targetEq
-              exact completed_transition (horizon := horizon) leaks joint realized completedMiddle
+              exact completed_transition (runtime := runtime) (horizon := horizon) leaks joint
+                realized completedMiddle
             · subst targetEq
-              rcases acceptedKept_transition leaks (initialLaw setup) horizon scheduler middle
+              rcases acceptedKept_transition (runtime := runtime) leaks (initialLaw setup) horizon
+                scheduler middle
                   next joint realized event with unchanged | ⟨ready, _, _⟩
               · exact unchanged.trans table
               · exact (ready.1 completedMiddle).elim
@@ -73,19 +76,21 @@ theorem completed_accepted_of_tracePrefix
 /-- Every binding completed at a prefix has already been accepted if the final
 public record and focal debt-free state rule out missing bindings. -/
 theorem completedBinding_accepted_at_tracePrefix
-    {who : Player} {before after : (application setup leaks).Control}
-    (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some before))
-    {trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some after)}
-    (isPrefix : TracePrefix prior trace) (record : PublicRecord setup who after)
-    (debtFree : ∀ point, nativeDecodedState setup leaks (some after) = some point →
+    {who : Player} {before after : (application setup runtime leaks).Control}
+    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some before))
+    {trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some after)}
+    (isPrefix : TracePrefix prior trace) (record : PublicRecord setup runtime who after)
+    (debtFree : ∀ point, nativeDecodedState setup runtime leaks (some after) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
     (event : (graph setup).EventId) (owner : Player) (payload : L.Ty)
     (layoutEq : (graph setup).outputLayout event = .binding owner payload)
     (completed : event ∈ before.execution.application.config.cut.completed) :
     before.execution.application.accepted (.inr event) ≠ none := by
-  obtain ⟨persists, sameTable⟩ := completed_accepted_of_tracePrefix prior isPrefix event completed
+  obtain ⟨persists, sameTable⟩ := completed_accepted_of_tracePrefix (runtime := runtime) prior
+    isPrefix event completed
   rw [← sameTable]
-  exact completedBinding_accepted_of_publicRecord trace record debtFree event owner payload
+  exact completedBinding_accepted_of_publicRecord (runtime := runtime) trace record debtFree event
+    owner payload
     layoutEq persists
 
 end Vegas

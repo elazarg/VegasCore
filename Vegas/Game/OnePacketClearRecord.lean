@@ -14,6 +14,7 @@ open SourceProgram GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 private theorem cast_option_none {A B : Type} (same : A = B) :
@@ -82,16 +83,16 @@ theorem not_revealFailed_of_exclusionEvidence
   exact Finset.notMem_empty owner excluded
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- At an actual native one-packet prefix, clear permanent public evidence gives
 accepted completed bindings and absence of source failed reveals. -/
 theorem publicRecord_of_exclusionEvidence
-    {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
-    (who : Player) : PublicRecord setup who control := by
+    (who : Player) : PublicRecord setup runtime who control := by
   refine ⟨?_, ?_⟩
   · intro event owner payload outputEq _other completed absent
     have missed := (control.execution.application.publicView_missedBinding event owner payload
@@ -101,8 +102,9 @@ theorem publicRecord_of_exclusionEvidence
       ⟨event, actor_of_binding outputEq, evidence⟩
     exact Finset.notMem_empty owner excluded
   · intro other _different point decoded
-    obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
-      (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler trace control rfl
+    obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+      setup.program)
+      (bounds.onePacketMenu runtime leaks) horizon scheduler trace control rfl
     have same := Option.some.inj ((decodedPoint_eq residual).symm.trans decoded)
     subst point
     exact not_revealFailed_of_exclusionEvidence control.execution.application clear rank _

@@ -18,34 +18,35 @@ open SourceProgram EventGraph Interaction GameTheory.Protocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (Vegas.graph setup)))
   (bounds : MessageBounds (Vegas.graph setup))
 
 local notation "inputs" => PMF.map setup.eventInputs setup.initialLaw
 local notation "plan" => sequentialRuntimePhasePlan setup.program
 local notation "recoveryLeaks" => PhaseNativeProjection.nativeLeaks leaks plan
-local notation "P" => phaseApplication (Vegas.runtime setup) leaks
-local notation "R" => recoveryApplication (Vegas.runtime setup) recoveryLeaks
-local notation "N" => application setup recoveryLeaks
+local notation "P" => phaseApplication runtime leaks
+local notation "R" => recoveryApplication runtime recoveryLeaks
+local notation "N" => application (runtime := runtime) setup recoveryLeaks
 local notation "phaseInitial" => PMF.map (PhaseRuntimeState.initial plan) (inputs)
 local notation "recoveryInitial" => PMF.map (fun native => RecoveryState.mk native ∅)
   (initialLaw setup)
-local notation "RecoveryMenu" => Recovery.onePacketMenu (Vegas.runtime setup) recoveryLeaks bounds
-local notation "nativeMenu" => MessageBounds.onePacketMenu (Vegas.runtime setup)
+local notation "RecoveryMenu" => Recovery.onePacketMenu runtime recoveryLeaks bounds
+local notation "nativeMenu" => MessageBounds.onePacketMenu runtime
   recoveryLeaks bounds
 local notation "recoveryScheduler" => SequentialPhaseSchedulerInformation.scheduler setup.program
-  (Vegas.runtime setup) leaks recoveryLeaks
-local notation "nativeScheduler" => RecoveryProjection.nativeScheduler (Vegas.runtime setup)
+  runtime leaks recoveryLeaks
+local notation "nativeScheduler" => RecoveryProjection.nativeScheduler runtime
   recoveryLeaks
 
 private theorem exists_recovery_of_clear_native_onePacket
     (horizon : Nat) (scheduler : (P).Scheduler) {current : (N).Control}
-    (trace : (onePacketProtocol setup recoveryLeaks bounds horizon
+    (trace : (onePacketProtocol (runtime := runtime) setup recoveryLeaks bounds horizon
       (nativeScheduler (recoveryScheduler scheduler))).Trace (some current))
     (clear : ExclusionEvidence 0 ∅
       (⟨current.execution.application, ∅⟩ : RecoveryState (Vegas.graph setup))) :
     Nonempty (((RecoveryMenu).protocol recoveryInitial horizon (recoveryScheduler scheduler)).Trace
-      (some (RecoveryProjection.liftControl (Vegas.runtime setup) recoveryLeaks current))) := by
+      (some (RecoveryProjection.liftControl runtime recoveryLeaks current))) := by
   have initialized : ∀ value ∈ (recoveryInitial).support, ∃ draw,
       value = (⟨State.initial draw, ∅⟩ : RecoveryState (Vegas.graph setup)) := by
     intro value supported
@@ -71,33 +72,35 @@ private theorem exists_recovery_of_clear_native_onePacket
     cases Option.some.inj same
     exact clear
   obtain ⟨recovered, rawEq⟩ := RecoveryProjection.exists_recoveryBoundedHistory
-    (Vegas.runtime setup) recoveryLeaks bounds recoveryInitial initialized horizon
+    runtime recoveryLeaks bounds recoveryInitial initialized horizon
       (recoveryScheduler scheduler) native publicClear
   have endpoint := congrArg (fun history : ((R).protocol recoveryInitial horizon
       (recoveryScheduler scheduler)).History => history.state) rawEq
   change recovered.state =
-    some (RecoveryProjection.liftControl (Vegas.runtime setup) recoveryLeaks current) at endpoint
+    some (RecoveryProjection.liftControl runtime recoveryLeaks current) at endpoint
   exact ⟨endpoint ▸ recovered.trace⟩
 
 /-- Physical phase opportunity holds pointwise at every actual public-clear
 native source counted prefix under the derived native scheduler. -/
 theorem Opportunity.clear_native_counted
     (horizon : Nat) (scheduler : (P).Scheduler) (delay : (Vegas.graph setup).EventId → Nat)
-    (opportunity : Opportunity (Vegas.runtime setup) leaks phaseInitial horizon scheduler delay)
+    (opportunity : Opportunity runtime leaks phaseInitial horizon scheduler delay)
     {current : (N).Control}
-    (trace : (onePacketProtocol setup recoveryLeaks bounds horizon
+    (trace : (onePacketProtocol (runtime := runtime) setup recoveryLeaks bounds horizon
       (nativeScheduler (recoveryScheduler scheduler))).Trace (some current))
     (clear : ExclusionEvidence 0 ∅
       (⟨current.execution.application, ∅⟩ : RecoveryState (Vegas.graph setup))) :
-    Vegas.EventGraphRuntime.OpportunityAt (Vegas.runtime setup) recoveryLeaks current.execution
+    Vegas.EventGraphRuntime.OpportunityAt runtime recoveryLeaks current.execution
       delay := by
-  obtain ⟨lifted⟩ := exists_recovery_of_clear_native_onePacket setup leaks bounds horizon scheduler
+  obtain ⟨lifted⟩ := exists_recovery_of_clear_native_onePacket setup runtime leaks bounds horizon
+    scheduler
     trace clear
-  have actual := Opportunity.clear_recovery_onePacket setup leaks bounds horizon scheduler delay
+  have actual := Opportunity.clear_recovery_onePacket setup runtime leaks bounds horizon scheduler
+    delay
     opportunity lifted rfl
-  change Vegas.EventGraphRuntime.OpportunityAt (Vegas.runtime setup) recoveryLeaks
-    (RecoveryProjection.execution (Vegas.runtime setup) recoveryLeaks
-      (RecoveryProjection.liftExecution (Vegas.runtime setup) recoveryLeaks current.execution))
+  change Vegas.EventGraphRuntime.OpportunityAt runtime recoveryLeaks
+    (RecoveryProjection.execution runtime recoveryLeaks
+      (RecoveryProjection.liftExecution runtime recoveryLeaks current.execution))
         delay at actual
   simpa only [RecoveryProjection.execution_liftExecution] using actual
 
@@ -105,22 +108,24 @@ theorem Opportunity.clear_native_counted
 at every actual public-clear counted source prefix, for every retained owner packet. -/
 theorem ProtectedInclusion.clear_native_counted
     (horizon : Nat) (scheduler : (P).Scheduler) (bound : (Vegas.graph setup).EventId → Nat)
-    (inclusion : ProtectedInclusion (Vegas.runtime setup) leaks phaseInitial horizon scheduler
+    (inclusion : ProtectedInclusion runtime leaks phaseInitial horizon scheduler
       bound)
     {current : (N).Control}
-    (trace : (onePacketProtocol setup recoveryLeaks bounds horizon
+    (trace : (onePacketProtocol (runtime := runtime) setup recoveryLeaks bounds horizon
       (nativeScheduler (recoveryScheduler scheduler))).Trace (some current))
     (clear : ExclusionEvidence 0 ∅
       (⟨current.execution.application, ∅⟩ : RecoveryState (Vegas.graph setup))) :
-    Vegas.EventGraphRuntime.ProtectedInclusionAt (Vegas.runtime setup) recoveryLeaks
+    Vegas.EventGraphRuntime.ProtectedInclusionAt runtime recoveryLeaks
       current.execution bound := by
-  obtain ⟨lifted⟩ := exists_recovery_of_clear_native_onePacket setup leaks bounds horizon scheduler
+  obtain ⟨lifted⟩ := exists_recovery_of_clear_native_onePacket setup runtime leaks bounds horizon
+    scheduler
     trace clear
-  have actual := ProtectedInclusion.clear_recovery_onePacket setup leaks bounds horizon scheduler
+  have actual := ProtectedInclusion.clear_recovery_onePacket setup runtime leaks bounds horizon
+    scheduler
     bound inclusion lifted rfl
-  change Vegas.EventGraphRuntime.ProtectedInclusionAt (Vegas.runtime setup) recoveryLeaks
-    (RecoveryProjection.execution (Vegas.runtime setup) recoveryLeaks
-      (RecoveryProjection.liftExecution (Vegas.runtime setup) recoveryLeaks current.execution))
+  change Vegas.EventGraphRuntime.ProtectedInclusionAt runtime recoveryLeaks
+    (RecoveryProjection.execution runtime recoveryLeaks
+      (RecoveryProjection.liftExecution runtime recoveryLeaks current.execution))
         bound at actual
   simpa only [RecoveryProjection.execution_liftExecution] using actual
 
@@ -128,17 +133,19 @@ theorem ProtectedInclusion.clear_native_counted
 phase completion, including endpoints reached by physical horizon exhaustion. -/
 theorem CompletesPlay.clear_native_counted
     (horizon : Nat) (scheduler : (P).Scheduler)
-    (completes : CompletesPlay (Vegas.runtime setup) leaks phaseInitial horizon scheduler)
+    (completes : CompletesPlay runtime leaks phaseInitial horizon scheduler)
     {current : (N).Control}
-    (trace : (onePacketProtocol setup recoveryLeaks bounds horizon
+    (trace : (onePacketProtocol (runtime := runtime) setup recoveryLeaks bounds horizon
       (nativeScheduler (recoveryScheduler scheduler))).Trace (some current))
     (clear : ExclusionEvidence 0 ∅
       (⟨current.execution.application, ∅⟩ : RecoveryState (Vegas.graph setup)))
     (terminal : (N).terminal (some current)) :
     current.execution.application.config.cut.Terminal := by
-  obtain ⟨lifted⟩ := exists_recovery_of_clear_native_onePacket setup leaks bounds horizon scheduler
+  obtain ⟨lifted⟩ := exists_recovery_of_clear_native_onePacket setup runtime leaks bounds horizon
+    scheduler
     trace clear
-  exact CompletesPlay.clear_recovery_onePacket setup leaks bounds horizon scheduler completes
+  exact CompletesPlay.clear_recovery_onePacket setup runtime leaks bounds horizon scheduler
+    completes
     lifted rfl terminal
 
 end Vegas.EventGraphRuntime.PhaseService

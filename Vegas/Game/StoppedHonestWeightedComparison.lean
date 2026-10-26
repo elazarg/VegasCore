@@ -20,13 +20,15 @@ open SourceProgram GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [Fintype Player] [DecidableEq Player]
     {L : IExpr} [IExpr.ResultTypes L]
     (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (bounds : MessageBounds (graph setup)) (initial : PMF (application setup leaks).State)
-    (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
+    (bounds : MessageBounds (graph setup)) (initial : PMF (application setup runtime leaks).State)
+    (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
 
-local notation "N" => onePacketModel setup leaks bounds initial horizon scheduler
+local notation "N" =>
+  onePacketModel (runtime := runtime) setup leaks bounds initial horizon scheduler
 local notation "P" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu (runtime setup) leaks) initial horizon scheduler
+  (bounds.onePacketMenu runtime leaks) initial horizon scheduler
 
 /-- Every callback may have its own retained fraction, depending on the full
 actual history. The cost is the honest expected sum of those callback losses. -/
@@ -39,31 +41,34 @@ theorem onePacket_stopped_withinTV_of_history_retention
     (le_one : ∀ history, retention history ≤ 1)
     (lower : ∀ elapsed history,
       history ∈ ((N).runBehavioralFrom
-        (honestProfile setup leaks bounds initial horizon scheduler assessment) elapsed
+        (honestProfile (runtime := runtime) setup leaks bounds initial horizon
+          scheduler assessment) elapsed
         start).support →
       ∀ who, (P).active history.state who → ∀ choice,
         retention history *
-          ((honestProfile setup leaks bounds initial horizon scheduler assessment who
+          ((honestProfile (runtime := runtime) setup leaks bounds initial horizon
+            scheduler assessment who
             ((N).infoOf who history.trace)) choice).toReal ≤
           ((profile who ((N).infoOf who history.trace)) choice).toReal) :
-    let honest := honestProfile setup leaks bounds initial horizon scheduler assessment
+    let honest := honestProfile (runtime := runtime) setup leaks bounds initial
+      horizon scheduler assessment
     let charge := fun history : (P).History => (1 - retention history) *
-      (application setup leaks).responseCharge history.state
+      (application setup runtime leaks).responseCharge history.state
     PMF.WithinTV (expectedCharge (N) certificate honest stopped charge start)
       ((N).runBehavioralUntil certificate honest stopped start)
       ((N).runBehavioralUntil certificate profile stopped start) := by
   classical
   intro honest charge
-  have bounded := (bounds.onePacketMenu (runtime setup) leaks).bounded initial horizon scheduler
+  have bounded := (bounds.onePacketMenu runtime leaks).bounded initial horizon scheduler
   have chargeNonnegative (history : (P).History) : 0 ≤ charge history :=
     mul_nonneg (sub_nonneg.mpr (le_one history)) (Nat.cast_nonneg _)
   have chargeBounded (history : (P).History) : charge history ≤ 1 := by
     calc
-      _ ≤ 1 * ((application setup leaks).responseCharge history.state : ℝ) :=
+      _ ≤ 1 * ((application setup runtime leaks).responseCharge history.state : ℝ) :=
         mul_le_mul_of_nonneg_right (by linarith [nonnegative history]) (Nat.cast_nonneg _)
       _ ≤ 1 := by
         simpa only [one_mul, Nat.cast_le_one] using
-          (application setup leaks).responseCharge_le_one history.state
+          (application setup runtime leaks).responseCharge_le_one history.state
   let inside := fun history => ∃ elapsed,
     history ∈ ((N).runBehavioralFrom honest elapsed start).support
   have closed : ∀ history next, inside history → ¬ stopped history →
@@ -89,7 +94,8 @@ theorem onePacket_stopped_withinTV_of_history_retention
       simpa only [one_mul] using drift.le)
     (by
       rintro history ⟨elapsed, reached⟩ _ _
-      exact onePacket_step_withinTV_honest setup leaks bounds initial horizon scheduler assessment
+      exact onePacket_step_withinTV_honest (runtime := runtime) setup leaks bounds initial
+        horizon scheduler assessment
         profile history (nonnegative history) (le_one history) (lower elapsed history reached))
     start ⟨0, by simp [InformationModel.runBehavioralFrom]⟩
   simpa only [expect_indicator] using estimate
@@ -104,33 +110,35 @@ theorem onePacket_mixture_stopped_withinTV_honest
     (rate : ∀ who, (N).InfoState who → ℝ)
     (nonnegative : ∀ who info, 0 ≤ rate who info)
     (le_one : ∀ who info, rate who info ≤ 1) :
-    let honest := honestProfile setup leaks bounds initial horizon scheduler assessment
+    let honest := honestProfile (runtime := runtime) setup leaks bounds initial
+      horizon scheduler assessment
     let profile := fun who info => mix (rate who info) (nonnegative who info) (le_one who info)
       (honest who info) (other who info)
     let retention := fun history : (P).History =>
-      ((application setup leaks).actor history.state).elim 1
+      ((application setup runtime leaks).actor history.state).elim 1
         (fun who => rate who ((N).infoOf who history.trace))
     let charge := fun history : (P).History => (1 - retention history) *
-      (application setup leaks).responseCharge history.state
+      (application setup runtime leaks).responseCharge history.state
     PMF.WithinTV (expectedCharge (N) certificate honest stopped charge start)
       ((N).runBehavioralUntil certificate honest stopped start)
       ((N).runBehavioralUntil certificate profile stopped start) := by
   classical
   intro honest profile retention charge
-  apply onePacket_stopped_withinTV_of_history_retention setup leaks bounds initial horizon scheduler
+  apply onePacket_stopped_withinTV_of_history_retention (runtime := runtime) setup leaks bounds
+    initial horizon scheduler
     assessment certificate stopped profile start retention
   · intro history
     dsimp only [retention]
-    cases (application setup leaks).actor history.state with
+    cases (application setup runtime leaks).actor history.state with
     | none => exact zero_le_one
     | some who => exact nonnegative who _
   · intro history
     dsimp only [retention]
-    cases (application setup leaks).actor history.state with
+    cases (application setup runtime leaks).actor history.state with
     | none => exact le_rfl
     | some who => exact le_one who _
   · intro elapsed history _ who active choice
-    change (application setup leaks).actor history.state = some who at active
+    change (application setup runtime leaks).actor history.state = some who at active
     dsimp only [retention]
     rw [active]
     change rate who ((N).infoOf who history.trace) * _ ≤ _

@@ -16,28 +16,33 @@ open SourceProgram Interaction EventGraphRuntime GameTheory GameTheory.Protocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
+  (scheduler : (phaseApplication runtime leaks).Scheduler)
+  [(phaseApplication runtime leaks).FiniteNature (phaseInitialLaw setup) scheduler]
 
 local notation "RecoveryLeaks" => recoveryLeaks setup leaks
 local notation "RecoveryPrior" => recoveryInitialLaw setup
-local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
-local notation "NativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup)
+local notation "RecoveryScheduler" => recoveryScheduler setup runtime leaks scheduler
+local notation "NativeScheduler" => RecoveryProjection.nativeScheduler runtime
     (RecoveryLeaks)
   (RecoveryScheduler)
-local notation "R" => recoveryModel setup leaks bounds horizon scheduler
-local notation "RMenu" => Recovery.onePacketMenu (runtime setup) (RecoveryLeaks) bounds
-local notation "NMenu" => bounds.onePacketMenu (runtime setup) (RecoveryLeaks)
-local notation "N" => onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
+local notation "R" => recoveryModel setup runtime leaks bounds horizon scheduler
+local notation "RMenu" => Recovery.onePacketMenu runtime (RecoveryLeaks) bounds
+local notation "NMenu" => bounds.onePacketMenu runtime (RecoveryLeaks)
+local notation "N" => onePacketModel (runtime := runtime) setup (RecoveryLeaks) bounds
+  (Vegas.initialLaw setup) horizon
   (NativeScheduler)
 local notation "RP" => ReactiveApplication.ResponseMenu.protocol (RMenu) RecoveryPrior horizon
   (RecoveryScheduler)
-local notation "NP" => onePacketProtocol setup (RecoveryLeaks) bounds horizon (NativeScheduler)
-local notation "RawNative" => ReactiveApplication.protocol (application setup (RecoveryLeaks))
+local notation "NP" => onePacketProtocol (runtime := runtime) setup (RecoveryLeaks) bounds horizon
+  (NativeScheduler)
+local notation "RawNative" => ReactiveApplication.protocol (application (runtime := runtime) setup
+  (RecoveryLeaks))
   (PMF.map RecoveryState.native (RecoveryPrior)) horizon (NativeScheduler)
-local notation "Clear" => ReactiveApplication.stateInvariant (app := application setup
+local notation "Clear" => ReactiveApplication.stateInvariant (app := application (runtime :=
+  runtime) setup
     (RecoveryLeaks))
   (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
 
@@ -46,9 +51,9 @@ variable {Public : Type*} {signal : State L setup.context → Public}
 attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
   phaseHistoryFintype recoveryHistoryFintype nativeHistoryFintype nativeNature
 
-private local instance : (recoveryApplication (runtime setup) (RecoveryLeaks)).FiniteNature
+private local instance : (recoveryApplication runtime (RecoveryLeaks)).FiniteNature
     ((Vegas.initialLaw setup).map fun native => (⟨native, ∅⟩ : RecoveryState (graph setup)))
-    (RecoveryScheduler) := recoveryNature setup leaks scheduler
+    (RecoveryScheduler) := recoveryNature setup runtime leaks scheduler
 
 open Classical in
 /-- Physical phase opportunity and inclusion give uniformly vanishing foreign
@@ -61,71 +66,86 @@ theorem recovery_comparison_foreign_exit_bounds [Finite setup.intendedProtocol.H
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     (scaleEq : ∀ n, scale n = trembleScale
-      (combinedFloor setup (RecoveryLeaks) bounds horizon (NativeScheduler) (sequence n))
+      (combinedFloor (runtime := runtime) setup (RecoveryLeaks) bounds horizon (NativeScheduler)
+        (sequence n))
       (2 * horizon + 2) n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     (weights : ℕ → ∀ p,
-      PMF (Part setup leaks bounds horizon scheduler bounds.candidateCount p))
+      PMF (Part setup runtime leaks bounds horizon scheduler bounds.candidateCount p))
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : PhaseService.Opportunity (runtime setup) leaks (phaseInitialLaw setup) horizon
+    (opportunity : PhaseService.Opportunity runtime leaks (phaseInitialLaw setup) horizon
       scheduler delay)
-    (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks (phaseInitialLaw setup)
+    (inclusion : PhaseService.ProtectedInclusion runtime leaks (phaseInitialLaw setup)
       horizon scheduler bound)
-    (timely : (runtime setup).AsyncTimely delay bound)
+    (timely : runtime.AsyncTimely delay bound)
     (certificate : (NP).WellFoundedHistories) (rawCertificate : (RawNative).WellFoundedHistories) :
     ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧
       ∀ n who (site : (R).InformationSite who),
-        ¬ RecoveryOnePacket.FreeAgent setup (RecoveryLeaks) bounds RecoveryPrior horizon
+        ¬ RecoveryOnePacket.FreeAgent (runtime := runtime) setup (RecoveryLeaks) bounds
+          RecoveryPrior horizon
             (RecoveryScheduler)
           ((R).agentAt site) →
-        ¬ RecoveryOnePacket.OwingAgent setup (RecoveryLeaks) bounds RecoveryPrior horizon
+        ¬ RecoveryOnePacket.OwingAgent (runtime := runtime) setup (RecoveryLeaks) bounds
+          RecoveryPrior horizon
             (RecoveryScheduler)
           ((R).agentAt site) →
-        ∀ {past : List (recoveryApplication (runtime setup) (RecoveryLeaks)).PlayerEntry}
-          {view : (recoveryApplication (runtime setup) (RecoveryLeaks)).PlayerView},
+        ∀ {past : List (recoveryApplication runtime (RecoveryLeaks)).PlayerEntry}
+          {view : (recoveryApplication runtime (RecoveryLeaks)).PlayerView},
         site.1 = some (past, view) →
         ∀ {event : (graph setup).EventId},
         view.application.1.publicView.ownTurn? who = some event →
         ∀ alternative : (R).BehavioralPolicy who,
-        (((((recoveryComparisonSequence setup leaks bounds horizon scheduler sequence scale positive
+        (((((recoveryComparisonSequence setup runtime leaks bounds horizon scheduler sequence
+          scale positive
           le_one weights n).belief who site).map Subtype.val).bind
-          (RecoveryOnePacket.nativeDebtStoppedLaw setup (RecoveryLeaks) bounds horizon
+          (RecoveryOnePacket.nativeDebtStoppedLaw (runtime := runtime) setup (RecoveryLeaks)
+            bounds horizon
               (RecoveryScheduler)
             rawCertificate (Profile.update (sig := (R).behavioralSignature)
-              (recoveryComparisonStrategy setup leaks bounds horizon scheduler (sequence n)
+              (recoveryComparisonStrategy setup runtime leaks bounds horizon scheduler (sequence n)
                 (scale n) (positive n).le (le_one n) (weights n)) who alternative)
             who)).toOuterMeasure {label | ForeignExclusionLabel who label}).toReal ≤ error n := by
   classical
-  let assessments := recoveryComparisonSequence setup leaks bounds horizon scheduler sequence scale
+  let assessments := recoveryComparisonSequence setup runtime leaks bounds horizon scheduler
+    sequence scale
     positive le_one weights
-  let recoveryWeights := fun n => recoveryComparisonWeights setup leaks bounds horizon scheduler
+  let recoveryWeights := fun n => recoveryComparisonWeights setup runtime leaks bounds horizon
+    scheduler
     (weights n)
-  let fallback := fun _ : ℕ => recoveryComparisonFallback setup leaks bounds horizon scheduler
+  let fallback := fun _ : ℕ => recoveryComparisonFallback setup runtime leaks bounds horizon
+    scheduler
   have assembled (n) : (assessments n).strategy =
       (R).agentBehavior (R).playedInformation (fallback n) (fun agent =>
-        (recoveryWeights n (RecoveryOnePacket.pool setup (RecoveryLeaks) bounds RecoveryPrior
+        (recoveryWeights n (RecoveryOnePacket.pool (runtime := runtime) setup (RecoveryLeaks)
+          bounds RecoveryPrior
             horizon
           (RecoveryScheduler) agent)).bind
-          (RecoveryOnePacket.component setup (RecoveryLeaks) bounds RecoveryPrior horizon
+          (RecoveryOnePacket.component (runtime := runtime) setup (RecoveryLeaks) bounds
+            RecoveryPrior horizon
               (RecoveryScheduler)
             (sequence n) (scale n) (positive n).le (le_one n) agent)) := rfl
-  have bayes (n) := recoveryComparisonSequence_bayes setup leaks bounds horizon scheduler sequence
+  have bayes (n) := recoveryComparisonSequence_bayes setup runtime leaks bounds horizon scheduler
+    sequence
     scale positive le_one weights n
-  obtain ⟨drift, driftLimit, irregular⟩ := RecoveryOnePacket.recovery_irregular_belief_bounds setup
+  obtain ⟨drift, driftLimit, irregular⟩ := RecoveryOnePacket.recovery_irregular_belief_bounds
+    (runtime := runtime) setup
     (RecoveryLeaks) bounds horizon (RecoveryScheduler) wellFormed independent observable sequence
         sourceMixed
     scale positive le_one scaleEq covers coversInputs capacity recoveryWeights assessments fallback
     assembled bayes
   have scaleIdentity : scale = (fun n => trembleScale
-      (combinedFloor setup (RecoveryLeaks) bounds horizon (NativeScheduler) (sequence n))
+      (combinedFloor (runtime := runtime) setup (RecoveryLeaks) bounds horizon (NativeScheduler)
+        (sequence n))
         (2 * horizon + 2) n) := funext scaleEq
   have scaleLimit : Tendsto scale atTop (nhds 0) := by
     rw [scaleIdentity]
     exact tendsto_trembleScale _
-      (fun n => combinedFloor_pos setup (RecoveryLeaks) bounds horizon (NativeScheduler) (sequence
+      (fun n => combinedFloor_pos (runtime := runtime) setup (RecoveryLeaks) bounds horizon
+        (NativeScheduler) (sequence
           n))
-      (fun n => combinedFloor_le_one setup (RecoveryLeaks) bounds horizon (NativeScheduler)
+      (fun n => combinedFloor_le_one (runtime := runtime) setup (RecoveryLeaks) bounds horizon
+        (NativeScheduler)
           (sequence n))
   have deltaLimit : Tendsto (fun n => (scale n) ^ 2 + scale n) atTop (nhds 0) := by
     simpa using (scaleLimit.pow 2).add scaleLimit
@@ -139,14 +159,16 @@ theorem recovery_comparison_foreign_exit_bounds [Finite setup.intendedProtocol.H
   let posterior := (assessments n).belief who site
   let updated := Profile.update (sig := (R).behavioralSignature) (assessments n).strategy who
     alternative
-  let kernel := RecoveryOnePacket.nativeDebtStoppedLaw setup (RecoveryLeaks) bounds horizon
+  let kernel := RecoveryOnePacket.nativeDebtStoppedLaw (runtime := runtime) setup (RecoveryLeaks)
+    bounds horizon
     (RecoveryScheduler) rawCertificate updated who
   let exits := {label : Finset Player ⊕ (RawNative).History | ForeignExclusionLabel who label}
   let indicator := fun label => @ite ℝ (label ∈ exits) (Classical.propDecidable _) 1 0
   let forget := fun history : (R).InformationHistory who site.1 => (project history).1
   let bad := {history :
       ((NMenu).protocol (Vegas.initialLaw setup) horizon (NativeScheduler)).History |
-    ¬ RegularTrace setup (RecoveryLeaks) bounds horizon (NativeScheduler) (sequence n) who
+    ¬ RegularTrace (runtime := runtime) setup (RecoveryLeaks) bounds horizon (NativeScheduler)
+      (sequence n) who
         history.trace}
   let badIndicator := fun history => @ite ℝ (history ∈ bad) (Classical.propDecidable _) 1 0
   let badPayoff := badIndicator ∘ forget
@@ -165,50 +187,59 @@ theorem recovery_comparison_foreign_exit_bounds [Finite setup.intendedProtocol.H
   have pointwise : ∀ history ∈ posterior.support,
       future history ≤ badPayoff history + cost := by
     intro history _member
-    by_cases regular : RegularTrace setup (RecoveryLeaks) bounds horizon (NativeScheduler)
+    by_cases regular : RegularTrace (runtime := runtime) setup (RecoveryLeaks) bounds horizon
+      (NativeScheduler)
         (sequence n) who
         (project history).1.trace
-    · have same := RecoveryOnePacket.nativeClearHistory_eq_of_raw setup (RecoveryLeaks) bounds
+    · have same := RecoveryOnePacket.nativeClearHistory_eq_of_raw (runtime := runtime) setup
+        (RecoveryLeaks) bounds
         horizon
         (RecoveryScheduler) history.1
         (clear history) (project history).1 (projection history).choose_spec
-      have nativeRegular : RegularTrace setup (RecoveryLeaks) bounds horizon (NativeScheduler)
+      have nativeRegular : RegularTrace (runtime := runtime) setup (RecoveryLeaks) bounds horizon
+        (NativeScheduler)
           (sequence n)
-          who (RecoveryOnePacket.nativeClearHistory setup (RecoveryLeaks) bounds horizon
+          who (RecoveryOnePacket.nativeClearHistory (runtime := runtime) setup (RecoveryLeaks)
+            bounds horizon
               (RecoveryScheduler)
             history.1 (clear history)).trace :=
         Eq.mp (congrArg (fun prior :
-          (onePacketProtocol setup (RecoveryLeaks) bounds horizon (NativeScheduler)).History =>
-            RegularTrace setup (RecoveryLeaks) bounds horizon (NativeScheduler) (sequence n) who
+          (onePacketProtocol (runtime := runtime) setup (RecoveryLeaks) bounds horizon
+            (NativeScheduler)).History =>
+            RegularTrace (runtime := runtime) setup (RecoveryLeaks) bounds horizon
+              (NativeScheduler) (sequence n) who
               prior.trace)
           same.symm) regular
       let normalized : (R).InformationHistory who (some (past, view)) :=
         ⟨history.1, history.2.trans atSite⟩
       obtain ⟨control, state, currentTurn⟩ :=
-        RecoveryOnePacket.informationHistory_control_turn setup (RecoveryLeaks) bounds horizon
+        RecoveryOnePacket.informationHistory_control_turn (runtime := runtime) setup
+          (RecoveryLeaks) bounds horizon
         (RecoveryScheduler) normalized turn
-      have row := recovery_nativeDebtStopped_foreign_mass_le_rank setup leaks bounds horizon
+      have row := recovery_nativeDebtStopped_foreign_mass_le_rank setup runtime leaks bounds horizon
         scheduler wellFormed covers capacity sequence scale positive le_one weights n who
         alternative opportunity inclusion timely certificate rawCertificate history.1
         (clear history)
         control state event currentTurn nativeRegular
-      have depth := (application setup (RecoveryLeaks)).trace_bound (Vegas.initialLaw setup) horizon
+      have depth := (application (runtime := runtime) setup (RecoveryLeaks)).trace_bound
+        (Vegas.initialLaw setup) horizon
         (NativeScheduler) ((NMenu).toRawTrace (Vegas.initialLaw setup) horizon (NativeScheduler)
           (project history).1.trace)
-      have rankBound : (application setup (RecoveryLeaks)).rank horizon
-          (protocolState (runtime setup) (RecoveryLeaks) history.1.state) ≤ 2 * horizon + 1 := by
+      have rankBound : (application (runtime := runtime) setup (RecoveryLeaks)).rank horizon
+          (protocolState runtime (RecoveryLeaks) history.1.state) ≤ 2 * horizon + 1 := by
         rw [← states history]
         omega
-      have rankReal : ((application setup (RecoveryLeaks)).rank horizon
-          (protocolState (runtime setup) (RecoveryLeaks) history.1.state) : ℝ) ≤ 2 * horizon + 1 :=
+      have rankReal : ((application (runtime := runtime) setup (RecoveryLeaks)).rank horizon
+          (protocolState runtime (RecoveryLeaks) history.1.state) : ℝ) ≤ 2 * horizon + 1 :=
               by
         exact_mod_cast rankBound
       have value : future history ≤ cost := by
         calc
           future history = ((kernel history.1).toOuterMeasure exits).toReal :=
             expect_indicator (kernel history.1) exits
-          _ ≤ ((scale n) ^ 2 + scale n) * (application setup (RecoveryLeaks)).rank horizon
-              (protocolState (runtime setup) (RecoveryLeaks) history.1.state) := row
+          _ ≤ ((scale n) ^ 2 + scale n) * (application (runtime := runtime) setup
+            (RecoveryLeaks)).rank horizon
+              (protocolState runtime (RecoveryLeaks) history.1.state) := row
           _ ≤ cost := mul_le_mul_of_nonneg_left rankReal
             (add_nonneg (sq_nonneg _) (positive n).le)
       have badFalse : badPayoff history = 0 := by

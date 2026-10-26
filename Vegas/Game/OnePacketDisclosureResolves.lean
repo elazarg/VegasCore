@@ -199,6 +199,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- Being intended for a player or owing a failed reveal is closed under every
@@ -210,27 +211,28 @@ theorem intendedForOrOwes_stepClosed (who : Player) :
     ProtocolState.intendedForOrOwes_step who setup.program state joint target holds reached
 
 /-- **Intended for a player or owing along every history.** For a well-formed
-setup, along every history of a response menu of the default runtime, under any
+setup, along every history of a response menu of the supplied runtime, under any
 scheduler, the configuration decodes to a point intended for the player or at
 which the player owes a failed reveal. -/
 theorem decodedState_intendedFor_or_owes (wellFormed : setup.WellFormed) (who : Player)
     (profile : BehavioralProfile setup.program)
-    (menu : (application setup leaks).ResponseMenu) (horizon : Nat)
-    (scheduler : (application setup leaks).Scheduler) :
+    (menu : (application setup runtime leaks).ResponseMenu) (horizon : Nat)
+    (scheduler : (application setup runtime leaks).Scheduler) :
     ∀ {state} (_ : (menu.protocol (initialLaw setup) horizon scheduler).Trace state)
-      (control : (application setup leaks).Control), state = some control →
-      DecodedState setup leaks profile (fun point =>
+      (control : (application setup runtime leaks).Control), state = some control →
+      DecodedState setup runtime leaks profile (fun point =>
         ProtocolState.IntendedFor who setup.program point ∨
           ProtocolState.OwesFailure who setup.program point) (some control) := by
   intro state trace control current
-  refine decodedState_history_of_stepClosed (intendedForOrOwes_stepClosed who) ?_
+  refine decodedState_history_of_stepClosed (intendedForOrOwes_stepClosed
+    who) ?_
     menu horizon scheduler trace control current
   intro initial member
   exact Or.inl (ProtocolState.intendedFor_entry setup.program _
     ((setup.initialConfig_intended wellFormed member).intendedFor who))
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- **Disclosures resolve at states forced for the observer.** For a
 well-formed setup, along every history of the one-packet game at a state forced
@@ -238,21 +240,22 @@ for the observer, every other player's canonical disclosure at its pending
 reveal transmits: the player owes no failed reveal, so the decoded point is
 intended for it, and its disclosure there publishes a value. -/
 theorem disclosureResolves_of_forced (wellFormed : setup.WellFormed)
-    {control : (application setup leaks).Control}
-    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    {control : (application setup runtime leaks).Control}
+    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    (who actor : Player) (forced : ForcedState setup leaks who (some control))
+    (who actor : Player) (forced : ForcedState setup runtime leaks who (some control))
     (other : actor ≠ who) :
-    DisclosureResolves setup leaks actor (control.execution.recall actor)
-      (control.execution.observe (application setup leaks) actor) := by
+    DisclosureResolves setup runtime leaks actor (control.execution.recall actor)
+      (control.execution.observe (application setup runtime leaks) actor) := by
   intro event pending owner payload binding checks outputEq codeEq node
-  obtain ⟨turn, _, owned, _⟩ := pendingEvent_spec (setup := setup) pending
+  obtain ⟨turn, _, owned, _⟩ := pendingEvent_spec (runtime := runtime) (setup := setup) pending
   have ownerEq : owner = actor :=
     Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
   subst ownerEq
-  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+    scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
   have facts := legalFacts setup leaks horizon scheduler control rawTrace
   have ready : control.execution.application.config.cut.Ready event :=
@@ -272,18 +275,19 @@ theorem disclosureResolves_of_forced (wellFormed : setup.WellFormed)
   cases result with
   | success value =>
       obtain ⟨_, _, _, _, packet⟩ := EventGraphRuntime.reactiveResolutionPacket_provenance
-        (runtime setup) leaks control.execution.application facts.binding owner event payload
+        runtime leaks control.execution.application facts.binding owner event payload
         binding checks outputEq _ discloses value resolved
       simp only [EventGraphRuntime.canonicalServiceDecision,
         EventGraphRuntime.canonicalReactiveDecision, node]
-      change ((EventGraphRuntime.reactiveNormalization (runtime setup) leaks).action owner
-        (control.execution.recall owner) (control.execution.observe (application setup leaks)
+      change ((EventGraphRuntime.reactiveNormalization runtime leaks).action owner
+        (control.execution.recall owner) (control.execution.observe (application setup runtime
+          leaks)
           owner)
         ⟨(EventGraphRuntime.reactiveResolutionPacket owner event payload binding checks
-          outputEq _ ((runtime setup).reactiveApplication leaks |>.observePlayer
+          outputEq _ (runtime.reactiveApplication leaks |>.observePlayer
             control.execution.application owner)).map fun packet =>
           (disclosureSubmission packet).normalizeReactive owner
-            ((runtime setup).reactiveApplication leaks |>.observePlayer
+            (runtime.reactiveApplication leaks |>.observePlayer
               control.execution.application owner) []⟩).transmission ≠ none
       rw [packet]
       simp only [Option.map_some, ReactiveApplication.SubmissionNormalization.action, ne_eq,
@@ -291,7 +295,8 @@ theorem disclosureResolves_of_forced (wellFormed : setup.WellFormed)
   | failure =>
       exfalso
       -- The decoded point is intended for the actor and shows no failed reveal of it.
-      obtain ⟨rank, ⟨residual⟩, holds⟩ := decodedState_intendedFor_or_owes wellFormed owner
+      obtain ⟨rank, ⟨residual⟩, holds⟩ := decodedState_intendedFor_or_owes (runtime := runtime)
+        wellFormed owner
         (failureProfile setup.program) _ horizon scheduler trace
         control rfl
       obtain ⟨forcedRank, point, ordered, decoded, forcedPoint⟩ := forced

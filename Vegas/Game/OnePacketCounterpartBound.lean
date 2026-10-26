@@ -27,31 +27,35 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
   {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
   {profiles : ℕ → ∀ player,
-    (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player}
+    (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player}
 
 variable [DecidableEq (CellTy Player L)]
-  [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History]
+  [Finite (onePacketProtocol setup runtime leaks bounds horizon scheduler).History]
 
 omit [DecidableEq (CellTy Player L)]
-  [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History] in
+  [Finite (onePacketProtocol setup runtime leaks bounds horizon scheduler).History] in
 /-- Own completions are intended and the public record holds along every prefix
 of a history where they hold. -/
 theorem ownCompletionsIntended_and_publicRecord_of_tracePrefix
-    {who : Player} {first : (application setup leaks).ProtocolState}
-    (prefixTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace first) :
-    ∀ {final} {trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace final},
+    {who : Player} {first : (application setup runtime leaks).ProtocolState}
+    (prefixTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace first) :
+    ∀ {final} {trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+      final},
       TracePrefix prefixTrace trace →
-      OwnCompletionsIntended (bounds := bounds) (horizon := horizon) (scheduler := scheduler)
+      OwnCompletionsIntended (runtime := runtime) (bounds := bounds) (horizon := horizon)
+        (scheduler := scheduler)
         who trace →
-      (∀ control, final = some control → PublicRecord setup who control) →
-      OwnCompletionsIntended (bounds := bounds) (horizon := horizon) (scheduler := scheduler)
+      (∀ control, final = some control → PublicRecord setup runtime who control) →
+      OwnCompletionsIntended (runtime := runtime) (bounds := bounds) (horizon := horizon)
+        (scheduler := scheduler)
           who prefixTrace ∧
-        ∀ control, first = some control → PublicRecord setup who control := by
+        ∀ control, first = some control → PublicRecord setup runtime who control := by
   intro final trace isPrefix
   induction isPrefix with
   | refl => exact fun own record => ⟨own, record⟩
@@ -59,8 +63,9 @@ theorem ownCompletionsIntended_and_publicRecord_of_tracePrefix
       intro own record
       refine ih own.1 fun control same => ?_
       subst same
-      obtain ⟨next, rfl, _⟩ := (application setup leaks).transition_recall_prefix (initialLaw setup)
+      obtain ⟨next, rfl, _⟩ := (application setup runtime leaks).transition_recall_prefix
+        (initialLaw setup)
         horizon scheduler control target joint realized
-      exact publicRecord_of_transition prior joint realized (record next rfl)
+      exact publicRecord_of_transition (runtime := runtime) prior joint realized (record next rfl)
 
 end Vegas

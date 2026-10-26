@@ -132,17 +132,19 @@ have finite message forms, and the initial law has finite support.
 | Theorem | Contract and environment | Statement |
 | --- | --- | --- |
 | `concurrent_source_raw_sequential_equilibrium` | Phase contract on the concurrent graph with a count audit. A reserved-epoch service runs it, processing every pending packet each cycle on one tape drawn from a fixed prior, independent of the inputs. Activation and processing gaps are bounded, and every player sees every pending packet. | Every sequential equilibrium of the intended game is matched by one of the raw contract. The two have the same joint law of initial inputs, terminal state, public result and realized payoff vector, and nobody is excluded or charged on its path. |
-| `recovery_intended_raw_sequential_equilibrium` | Forced-exit contract on the sequential graph with a count audit and fixed relative deadlines `event.val + 1`, under any finitely branching builder meeting the asynchronous contract for that runtime. Private inputs are independent across players. | Every sequential equilibrium of the intended game is matched by one of the raw contract. The joint law of outcome and payoffs is the same, and nobody is charged on its path. |
+| `recovery_intended_raw_sequential_equilibrium` | Forced-exit contract on the sequential graph with a count audit and supplied per-event relative deadline durations, under any finitely branching builder meeting the asynchronous contract for that runtime. Private inputs are independent conditional on an observable public initial signal. | Every sequential equilibrium of the intended game is matched by one of the raw contract. The joint law of outcome and payoffs is the same, and nobody is charged on its path. |
 | `one_packet_raw_sequential_equilibrium` | Plain contract with a count audit, under any finitely branching builder. | In a sequential equilibrium of the game where each player sends at most one permitted packet per event, the extension to all raw responses is one too. The law is the same and nobody is charged. |
 
 Both raw contracts charge deposits through the count audit. Each deposit,
 multiplied by the rates at which evidence against its owner is observed and
 delivered, must cover that owner's payoff spread.
 
-The sequential singleton-phase SE pin uses the same fixed deadline schedule.
-The general Nash service instead takes configurable deadlines. The
-[deadline scope assessment](docs/se-deadline-scope.md) records the manuscript
-scope mismatch and the high-priority artifact generalization still required.
+The sequential singleton-phase SE pin also takes supplied deadline durations.
+Both retain the full service contract and require reaction and inclusion bounds
+to fit strictly within each owned event's duration. A
+[positive-latency equilibrium](Vegas/Examples/SequentialPhaseDelayedEquilibrium.lean)
+instantiates this contract; the [deadline scope](docs/se-deadline-scope.md)
+describes its timing and clock assumptions.
 
 ### Limits of preservation
 

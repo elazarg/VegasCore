@@ -16,31 +16,34 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (initial : PMF (application setup leaks).State)
-  (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
+  (bounds : MessageBounds (graph setup)) (initial : PMF (application setup runtime leaks).State)
+  (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
 
-local notation "menu" => bounds.onePacketMenu (runtime setup) leaks
-local notation "N" => onePacketModel setup leaks bounds initial horizon scheduler
+local notation "menu" => bounds.onePacketMenu runtime leaks
+local notation "N" => onePacketModel setup runtime leaks bounds initial horizon scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu (runtime setup) leaks) initial horizon scheduler
+  (bounds.onePacketMenu runtime leaks) initial horizon scheduler
 
 theorem onePacket_terminal_withinTV_honest
     (assessment : setup.intendedModel.BehavioralAssessment)
     (certificate : (E).WellFoundedHistories)
     (profile : ∀ who, (N).BehavioralPolicy who) (start : (E).History)
     {retention : ℝ} (nonnegative : 0 ≤ retention) (le_one : retention ≤ 1)
-    (dominates : DominatesHonestFrom setup leaks bounds initial horizon scheduler assessment
+    (dominates : DominatesHonestFrom setup runtime leaks bounds initial horizon scheduler assessment
       retention profile start) :
     PMF.WithinTV ((1 - retention) * (menu).expectedResponses initial horizon scheduler certificate
-        (honestProfile setup leaks bounds initial horizon scheduler assessment) (fun _ => False)
+        (honestProfile setup runtime leaks bounds initial horizon scheduler assessment) (fun _ =>
+          False)
         start)
       ((N).runBehavioralTerminalFrom certificate
-        (honestProfile setup leaks bounds initial horizon scheduler assessment) start)
+        (honestProfile setup runtime leaks bounds initial horizon scheduler assessment) start)
       ((N).runBehavioralTerminalFrom certificate profile start) := by
   rw [(N).runBehavioralTerminalFrom_eq_until_false,
     (N).runBehavioralTerminalFrom_eq_until_false]
-  exact onePacket_stopped_withinTV_honest setup leaks bounds initial horizon scheduler assessment
+  exact onePacket_stopped_withinTV_honest setup runtime leaks bounds initial horizon
+    scheduler assessment
     certificate (fun _ => False) profile start nonnegative le_one dominates
 
 /-- The uniform initialized error has one possible response per scheduler
@@ -49,16 +52,18 @@ theorem onePacket_bounded_withinTV_honest
     (assessment : setup.intendedModel.BehavioralAssessment)
     (profile : ∀ who, (N).BehavioralPolicy who)
     {retention : ℝ} (nonnegative : 0 ≤ retention) (le_one : retention ≤ 1)
-    (dominates : DominatesHonestFrom setup leaks bounds initial horizon scheduler assessment
+    (dominates : DominatesHonestFrom setup runtime leaks bounds initial horizon scheduler assessment
       retention profile (E).initHistory) :
     PMF.WithinTV ((min (Fintype.card Player) 1 * horizon : ℕ) * (1 - retention))
       ((N).runBehavioral
-        (honestProfile setup leaks bounds initial horizon scheduler assessment) (2 * horizon + 1))
+        (honestProfile setup runtime leaks bounds initial horizon scheduler assessment) (2 *
+          horizon + 1))
       ((N).runBehavioral profile (2 * horizon + 1)) := by
   classical
   by_cases inhabited : Nonempty Player
   · let certificate := ((menu).bounded initial horizon scheduler).wellFoundedHistories
-    have close := onePacket_terminal_withinTV_honest setup leaks bounds initial horizon scheduler
+    have close := onePacket_terminal_withinTV_honest setup runtime leaks bounds initial horizon
+      scheduler
       assessment certificate profile (E).initHistory nonnegative le_one dominates
     rw [(N).runBehavioralTerminalFrom_initHistory certificate _
         ((menu).bounded initial horizon scheduler),
@@ -69,12 +74,13 @@ theorem onePacket_bounded_withinTV_honest
     simp only [activePopulation, one_mul]
     apply close.mono
     have budget := ((menu).expectedResponses_bounds initial horizon scheduler certificate
-      (honestProfile setup leaks bounds initial horizon scheduler assessment) (fun _ => False)
+      (honestProfile setup runtime leaks bounds initial horizon scheduler assessment) (fun _ =>
+        False)
       (E).initHistory).2
     change _ ≤ (horizon : ℝ) at budget
     nlinarith
   · have same : profile =
-        honestProfile setup leaks bounds initial horizon scheduler assessment := by
+        honestProfile setup runtime leaks bounds initial horizon scheduler assessment := by
       funext who
       exact (inhabited ⟨who⟩).elim
     rw [same]
@@ -89,27 +95,28 @@ theorem onePacket_bounded_readout_exclusion_withinTV
     (assessment : setup.intendedModel.BehavioralAssessment)
     (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) (sourceFuel : Nat)
     (honestLaw : ((N).runBehavioral
-        (honestProfile setup leaks bounds initial horizon scheduler assessment)
-        (2 * horizon + 1)).map (fun final => sourceReadout setup leaks final.state) =
+        (honestProfile setup runtime leaks bounds initial horizon scheduler assessment)
+        (2 * horizon + 1)).map (fun final => sourceReadout setup runtime leaks final.state) =
       (setup.intendedModel.runBehavioral intended sourceFuel).map
         (fun final => setup.protocolReadout final.state))
     {retention : ℝ} (nonnegative : 0 ≤ retention) (le_one : retention ≤ 1)
     (profile : ∀ who, (N).BehavioralPolicy who)
-    (dominates : DominatesHonestFrom setup leaks bounds initial horizon scheduler assessment
+    (dominates : DominatesHonestFrom setup runtime leaks bounds initial horizon scheduler assessment
       retention profile (E).initHistory) :
     PMF.WithinTV ((min (Fintype.card Player) 1 * horizon : ℕ) * (1 - retention))
       (((N).runBehavioral profile (2 * horizon + 1)).map
-        (readoutExclusion setup leaks bounds initial horizon scheduler parameter utility
+        (readoutExclusion setup runtime leaks bounds initial horizon scheduler parameter utility
           excludedPayoff))
       ((setup.intendedModel.runBehavioral intended sourceFuel).map
         (intendedReadoutExclusion setup parameter utility excludedPayoff)) := by
   classical
   let certificate := ((menu).bounded initial horizon scheduler).wellFoundedHistories
-  let honest := honestProfile setup leaks bounds initial horizon scheduler assessment
+  let honest := honestProfile setup runtime leaks bounds initial horizon scheduler assessment
   let complete := fun history : (E).History =>
-    NativeSourceTerminal (setup := setup) (leaks := leaks) history.state
-  have close := onePacket_sourceTerminal_readout_exclusion_withinTV_honest setup leaks bounds
-    initial horizon scheduler parameter utility excludedPayoff assessment certificate profile
+    NativeSourceTerminal (runtime := runtime) (setup := setup) (leaks := leaks) history.state
+  have close := onePacket_sourceTerminal_readout_exclusion_withinTV_honest setup runtime
+    leaks bounds initial horizon scheduler parameter utility excludedPayoff assessment
+      certificate profile
     (E).initHistory nonnegative le_one dominates
   have counted : (menu).expectedResponses initial horizon scheduler certificate honest complete
       (E).initHistory ≤ (min (Fintype.card Player) 1 * horizon : Nat) := by
@@ -118,10 +125,11 @@ theorem onePacket_bounded_readout_exclusion_withinTV
         honest complete (E).initHistory).2
       have playerCount : 1 ≤ Fintype.card Player := Fintype.card_pos_iff.mpr inhabited
       simpa only [Nat.min_eq_right playerCount, one_mul,
-        show (application setup leaks).remainingResponses horizon (E).initHistory.state = horizon
+        show (application setup runtime leaks).remainingResponses horizon (E).initHistory.state =
+          horizon
           from rfl] using countBound
     · have counts : ∀ history : (E).History,
-          (application setup leaks).responseCount history.state = 0 := by
+          (application setup runtime leaks).responseCount history.state = 0 := by
         intro history
         cases history.state with
         | none => rfl
@@ -143,12 +151,13 @@ theorem onePacket_bounded_readout_exclusion_withinTV
       ((menu).bounded initial horizon scheduler)] at coarse
   let attach := fun readout : Option (State L setup.program.terminalCtx) =>
     (readout, exclusionReadoutUtility setup parameter utility excludedPayoff readout)
-  have native : readoutExclusion setup leaks bounds initial horizon scheduler parameter utility
-      excludedPayoff = attach ∘ fun final => sourceReadout setup leaks final.state := rfl
+  have native : readoutExclusion setup runtime leaks bounds initial horizon scheduler parameter
+    utility
+      excludedPayoff = attach ∘ fun final => sourceReadout setup runtime leaks final.state := rfl
   have source : intendedReadoutExclusion setup parameter utility excludedPayoff =
       attach ∘ fun final => setup.protocolReadout final.state := rfl
   have jointLaw : ((N).runBehavioral honest (2 * horizon + 1)).map
-      (readoutExclusion setup leaks bounds initial horizon scheduler parameter utility
+      (readoutExclusion setup runtime leaks bounds initial horizon scheduler parameter utility
         excludedPayoff) =
         (setup.intendedModel.runBehavioral intended sourceFuel).map
           (intendedReadoutExclusion setup parameter utility excludedPayoff) := by

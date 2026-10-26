@@ -23,6 +23,7 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {profile : BehavioralProfile setup.program}
   {property : ProtocolState setup.program → Prop}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
@@ -129,21 +130,21 @@ end RecoveryDecoded
 /-- A decoded source property at an initialized recovery protocol state. -/
 def RecoveryDecodedState (profile : BehavioralProfile setup.program)
     (property : ProtocolState setup.program → Prop) :
-    (recoveryApplication (runtime setup) leaks).ProtocolState → Prop
+    (recoveryApplication runtime leaks).ProtocolState → Prop
   | none => False
   | some control => RecoveryDecoded profile property control.execution.application
 
 /-- Actual recovery transitions preserve every source step-closed decoded property. -/
 theorem recoveryDecoded_transition (closed : StepClosed setup property)
     (initial : PMF (RecoveryState (graph setup))) (horizon : Nat)
-    (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
-    (before after : (recoveryApplication (runtime setup) leaks).ProtocolState)
-    (joint : Player → Option (recoveryApplication (runtime setup) leaks).Action)
-    (valid : RecoveryDecodedState (leaks := leaks) profile property before)
-    (reached : after ∈ ((recoveryApplication (runtime setup) leaks).transition initial horizon
+    (scheduler : (recoveryApplication runtime leaks).Scheduler)
+    (before after : (recoveryApplication runtime leaks).ProtocolState)
+    (joint : Player → Option (recoveryApplication runtime leaks).Action)
+    (valid : RecoveryDecodedState (runtime := runtime) (leaks := leaks) profile property before)
+    (reached : after ∈ ((recoveryApplication runtime leaks).transition initial horizon
       scheduler before joint).support) :
-    RecoveryDecodedState (leaks := leaks) profile property after := by
-  let app := recoveryApplication (runtime setup) leaks
+    RecoveryDecodedState (runtime := runtime) (leaks := leaks) profile property after := by
+  let app := recoveryApplication runtime leaks
   have invariant : app.Invariant (RecoveryDecoded profile property) :=
     ⟨fun _ who material valid => valid.submit closed who material,
       fun _ message next valid accepted => valid.handle closed _ message next accepted,
@@ -172,15 +173,17 @@ theorem recovery_owesFailure_exclusionBase_of_complete {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ)
-    (control : (recoveryApplication (runtime setup) leaks).Control) (who : Player)
+    (control : (recoveryApplication runtime leaks).Control) (who : Player)
     (owed : RecoveryDecoded profile (ProtocolState.OwesFailure who setup.program)
       control.execution.application)
     (complete : control.execution.application.native.config.cut.Terminal) :
-    recoveryExclusionBase parameter utility excludedPayoff (some control) who =
+    recoveryExclusionBase (runtime := runtime) parameter utility excludedPayoff (some control) who =
       excludedPayoff who := by
   by_cases excluded : who ∈ control.execution.application.excluded
-  · exact recoveryExclusionBase_of_excluded parameter utility excludedPayoff control who excluded
-  · rw [recoveryExclusionBase_of_not_excluded parameter utility excludedPayoff control who excluded]
+  · exact recoveryExclusionBase_of_excluded (runtime := runtime) parameter utility excludedPayoff
+      control who excluded
+  · rw [recoveryExclusionBase_of_not_excluded (runtime := runtime) parameter utility
+      excludedPayoff control who excluded]
     obtain ⟨rank, ⟨residual⟩, holds⟩ := owed
     have full := isPrefix_eventCount_of_terminal residual.checkpoint.ordered complete
     subst rank
@@ -195,7 +198,7 @@ theorem recovery_owesFailure_exclusionBase_of_complete {Parameter : Type}
       (decodeSourcePrefix?_terminal setup.program _ _ _ _ _ _ _ decoded)
     have failed := ProtocolState.failedReveals_pos_of_owesFailure who setup.program _ pointOwed
       terminalRead
-    rw [exclusionBase_eq_readout, sourceReadout_eq_decode]
+    rw [exclusionBase_eq_readout, sourceReadout, serviceSourceReadout_eq_decode]
     change exclusionReadoutUtility setup parameter utility excludedPayoff
       (decodeState? (terminalRefs setup.program)
         control.execution.application.native.config.store) who = excludedPayoff who
@@ -215,25 +218,28 @@ theorem recovery_owesFailure_exclusionBase {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ)
-    (menu : (recoveryApplication (runtime setup) leaks).ResponseMenu)
+    (menu : (recoveryApplication runtime leaks).ResponseMenu)
     (initial : PMF (RecoveryState (graph setup))) (horizon : Nat)
-    (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
-    (completes : Recovery.CompletesPlay (runtime setup) leaks initial horizon scheduler)
+    (scheduler : (recoveryApplication runtime leaks).Scheduler)
+    (completes : Recovery.CompletesPlay runtime leaks initial horizon scheduler)
     (certificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)
     (players : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (who : Player) (history : (menu.protocol initial horizon scheduler).History)
-    (owed : RecoveryDecodedState (leaks := leaks) profile
+    (owed : RecoveryDecodedState (runtime := runtime) (leaks := leaks) profile
       (ProtocolState.OwesFailure who setup.program) history.state) :
     ∀ final ∈ ((menu.information initial horizon scheduler).runBehavioralTerminalFrom certificate
       players history).support,
-      recoveryExclusionBase parameter utility excludedPayoff final.state who = excludedPayoff who :=
+      recoveryExclusionBase (runtime := runtime) parameter utility excludedPayoff final.state who
+        = excludedPayoff who :=
     by
   intro final supported
   have remains := (menu.information initial horizon
     scheduler).runBehavioralTerminalFrom_support_closed certificate players
-      (RecoveryDecodedState (leaks := leaks) profile (ProtocolState.OwesFailure who setup.program))
+      (RecoveryDecodedState (runtime := runtime) (leaks := leaks) profile
+        (ProtocolState.OwesFailure who setup.program))
       (fun before joint _ after valid reached =>
-        recoveryDecoded_transition (owesFailure_stepClosed who) initial horizon scheduler
+        recoveryDecoded_transition (runtime := runtime) (owesFailure_stepClosed who) initial
+          horizon scheduler
           before after joint valid reached) history owed final supported
   have stopped := (menu.information initial horizon
     scheduler).runBehavioralTerminalFrom_support_terminal certificate players history final
@@ -243,7 +249,8 @@ theorem recovery_owesFailure_exclusionBase {Parameter : Type}
   | some control =>
       rw [state] at remains stopped
       have trace := state ▸ menu.toRawTrace initial horizon scheduler final.trace
-      exact recovery_owesFailure_exclusionBase_of_complete parameter utility excludedPayoff control
+      exact recovery_owesFailure_exclusionBase_of_complete (runtime := runtime) parameter utility
+        excludedPayoff control
         who remains (completes control trace stopped)
 
 
@@ -252,20 +259,22 @@ theorem recovery_owesFailure_expect_exclusionBase {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ)
-    (menu : (recoveryApplication (runtime setup) leaks).ResponseMenu)
+    (menu : (recoveryApplication runtime leaks).ResponseMenu)
     (initial : PMF (RecoveryState (graph setup))) (horizon : Nat)
-    (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
-    (completes : Recovery.CompletesPlay (runtime setup) leaks initial horizon scheduler)
+    (scheduler : (recoveryApplication runtime leaks).Scheduler)
+    (completes : Recovery.CompletesPlay runtime leaks initial horizon scheduler)
     (certificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)
     (players : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (who : Player) (history : (menu.protocol initial horizon scheduler).History)
-    (owed : RecoveryDecodedState (leaks := leaks) profile
+    (owed : RecoveryDecodedState (runtime := runtime) (leaks := leaks) profile
       (ProtocolState.OwesFailure who setup.program) history.state) :
     expect ((menu.information initial horizon scheduler).runBehavioralTerminalFrom certificate
-      players history) (fun final => recoveryExclusionBase parameter utility excludedPayoff
+      players history) (fun final => recoveryExclusionBase (runtime := runtime) parameter utility
+        excludedPayoff
         final.state who) = excludedPayoff who := by
   rw [expect_congr_on_support (g := fun _ => excludedPayoff who)
-    (recovery_owesFailure_exclusionBase parameter utility excludedPayoff menu initial horizon
+    (recovery_owesFailure_exclusionBase (runtime := runtime) parameter utility excludedPayoff menu
+      initial horizon
       scheduler completes certificate players who history owed)]
   exact expect_constant _ _
 

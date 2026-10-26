@@ -16,19 +16,20 @@ open SourceProgram Interaction EventGraphRuntime GameTheory GameTheory.Protocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
+  (scheduler : (phaseApplication runtime leaks).Scheduler)
+  [(phaseApplication runtime leaks).FiniteNature (phaseInitialLaw setup) scheduler]
 
-local notation "P" => phaseApplication (runtime setup) leaks
-local notation "A" => recoveryApplication (runtime setup) (recoveryLeaks setup leaks)
-local notation "M" => model setup leaks bounds horizon scheduler
-local notation "R" => recoveryModel setup leaks bounds horizon scheduler
+local notation "P" => phaseApplication runtime leaks
+local notation "A" => recoveryApplication runtime (recoveryLeaks setup leaks)
+local notation "M" => model setup runtime leaks bounds horizon scheduler
+local notation "R" => recoveryModel setup runtime leaks bounds horizon scheduler
 local notation "RecoveryLeaks" => recoveryLeaks setup leaks
 local notation "RecoveryPrior" => recoveryInitialLaw setup
-local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
-local notation "RecoveryMenu" => Recovery.onePacketMenu (runtime setup) (RecoveryLeaks) bounds
+local notation "RecoveryScheduler" => recoveryScheduler setup runtime leaks scheduler
+local notation "RecoveryMenu" => Recovery.onePacketMenu runtime (RecoveryLeaks) bounds
 local notation "rawModel" => ReactiveApplication.information (A) (RecoveryPrior) horizon
     (RecoveryScheduler)
 local notation "RecoveryProtocol" => ReactiveApplication.ResponseMenu.protocol (RecoveryMenu)
@@ -36,9 +37,9 @@ local notation "RecoveryProtocol" => ReactiveApplication.ResponseMenu.protocol (
   horizon (RecoveryScheduler)
 local notation "rawProtocol" => ReactiveApplication.protocol (A) (RecoveryPrior) horizon
     (RecoveryScheduler)
-local notation "projection" => PhaseRecoveryProjection.protocolState (runtime setup) leaks
+local notation "projection" => PhaseRecoveryProjection.protocolState runtime leaks
     RecoveryLeaks
-local notation "projectInfo" => PhaseRecoveryProjection.information (runtime setup) leaks
+local notation "projectInfo" => PhaseRecoveryProjection.information runtime leaks
     RecoveryLeaks
 local notation "phaseClear" => ReactiveApplication.stateInvariant (app := P)
   (fun state => RecoveryState.excluded (PhaseRuntimeState.current state) = ∅)
@@ -53,7 +54,8 @@ whole phase continuations under the chosen focal law. -/
 theorem phase_localValue_eq_bayes_terminal_expect
     (assessment : (M).BehavioralAssessment)
     (bayes : BehavioralAssessment.IsBayesConsistent (M) assessment
-      ((menu setup leaks bounds).decisionInformationAntichain (phaseInitialLaw setup) horizon
+      ((menu setup runtime leaks bounds).decisionInformationAntichain (phaseInitialLaw setup)
+        horizon
           scheduler))
     (payoff : (P).ProtocolState → Player → ℝ)
     (who : Player) (site : (M).InformationSite who)
@@ -61,21 +63,23 @@ theorem phase_localValue_eq_bayes_terminal_expect
     (law : PMF ((M).Choice who site.1)) :
     localValue (2 * horizon + 1) (fun final => final.state) payoff assessment site law =
       expect ((M).bayesBelief assessment.strategy who site
-        ((menu setup leaks bounds).decisionInformationAntichain (phaseInitialLaw setup) horizon
+        ((menu setup runtime leaks bounds).decisionInformationAntichain (phaseInitialLaw setup)
+          horizon
             scheduler
           who site) positive)
         (fun history => expect ((M).runBehavioralTerminalFrom
-          ((menu setup leaks bounds).bounded (phaseInitialLaw setup) horizon
+          ((menu setup runtime leaks bounds).bounded (phaseInitialLaw setup) horizon
             scheduler).wellFoundedHistories
           (Profile.update (sig := (M).behavioralSignature) assessment.strategy who
             ((assessment.strategy who).withLaw site.1 law)) history.1)
           (fun final => payoff final.state who)) := by
   rw [localValue_eq_continuationContext (2 * horizon + 1) (fun final => final.state)
-    payoff assessment site ((menu setup leaks bounds).bounded (phaseInitialLaw setup) horizon
+    payoff assessment site ((menu setup runtime leaks bounds).bounded (phaseInitialLaw setup)
+      horizon
         scheduler),
     BehavioralAssessment.continuationContext_value, expect_bind_of_finite]
   rw [(BehavioralAssessment.isBayesConsistentAt_iff (M) assessment who site
-    ((menu setup leaks bounds).decisionInformationAntichain (phaseInitialLaw setup) horizon
+    ((menu setup runtime leaks bounds).decisionInformationAntichain (phaseInitialLaw setup) horizon
         scheduler
       who site) positive).mp (bayes who site positive)]
 

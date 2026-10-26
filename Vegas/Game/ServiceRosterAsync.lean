@@ -455,7 +455,7 @@ structure RosterPhase (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
     (event : (graph setup).EventId) (offset : Nat)
-    (control : (application setup leaks).Control) : Prop where
+    (control : (application setup (Vegas.runtime setup) leaks).Control) : Prop where
   position : control.execution.environmentRecall.length =
     (rosterPlanPrefix setup rosters event.val).length + offset
   inside : offset < (rosterBlock setup rosters event).length
@@ -486,7 +486,8 @@ structure RosterPhase (setup : Setup (Player := Player) (L := L))
   inclusion : (rosters event).length < offset →
     control.execution.application.config.cut.IsPrefix event.val → ∀ owner,
       (graph setup).actor? event = some owner →
-      ∀ (earlier later : List (application setup leaks).PlayerEntry) entry message,
+      ∀ (earlier later : List (application setup (Vegas.runtime setup) leaks).PlayerEntry)
+        entry message,
         control.execution.recall owner = earlier ++ entry :: later →
         entry.emitted = some message → message.sender = owner →
         message.payload.call.event? (graph setup) = some event →
@@ -499,7 +500,7 @@ with every event completed. -/
 def RosterReach (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player) :
-    (application setup leaks).ProtocolState → Prop
+    (application setup (Vegas.runtime setup) leaks).ProtocolState → Prop
   | none => True
   | some control => (∃ event offset, RosterPhase setup leaks rosters event offset control) ∨
       (control.remaining = 0 ∧ control.actor = none ∧
@@ -508,7 +509,7 @@ def RosterReach (setup : Setup (Player := Player) (L := L))
 theorem RosterPhase.ordered_of_le {setup : Setup (Player := Player) (L := L)}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
     {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
-    {offset : Nat} {control : (application setup leaks).Control}
+    {offset : Nat} {control : (application setup (Vegas.runtime setup) leaks).Control}
     (phase : RosterPhase setup leaks rosters event offset control)
     (early : offset ≤ (rosters event).length) :
     control.execution.application.config.cut.IsPrefix event.val := by
@@ -523,7 +524,8 @@ theorem rosterReach_initial (setup : Setup (Player := Player) (L := L))
     (supported : state ∈ (initialLaw setup).support) :
     RosterReach setup leaks rosters
       (some ⟨(rosterPlan setup rosters).length, none,
-        ReactiveApplication.Execution.initial (application setup leaks) state⟩) := by
+        ReactiveApplication.Execution.initial (application setup (Vegas.runtime setup) leaks)
+          state⟩) := by
   obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
   have invariant := State.initial_invariant (setup.eventInputs initial)
   have empty : (State.initial (setup.eventInputs initial)).config.cut.IsPrefix 0 :=
@@ -579,20 +581,24 @@ table nor the scheduler recall, and it is recorded with the current view. -/
 theorem RosterPhase.respond {setup : Setup (Player := Player) (L := L)}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
     {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
-    {offset : Nat} {control : (application setup leaks).Control}
+    {offset : Nat} {control : (application setup (Vegas.runtime setup) leaks).Control}
     (phase : RosterPhase setup leaks rosters event offset control) (who : Player)
-    (active : control.actor = some who) (action : (application setup leaks).Action) :
+    (active : control.actor = some who) (action : (application setup (Vegas.runtime setup)
+      leaks).Action) :
     RosterPhase setup leaks rosters event offset
       { control with
         actor := none
-        execution := control.execution.respond (application setup leaks) who action } := by
+        execution := control.execution.respond (application setup (Vegas.runtime setup) leaks)
+          who action } := by
   obtain ⟨configEq, publicEq⟩ :=
     (runtime setup).reactive_respond_application leaks control.execution who action
   have clockEq := congrArg PublicView.clock publicEq
   have activatedEq := congrArg PublicView.activatedAt publicEq
   dsimp only [State.publicView] at clockEq activatedEq
-  have recallEq := (application setup leaks).respond_environmentRecall control.execution who action
-  have receiptsEq := (application setup leaks).respond_receipts control.execution who action
+  have recallEq := (application setup (Vegas.runtime setup) leaks).respond_environmentRecall
+    control.execution who action
+  have receiptsEq := (application setup (Vegas.runtime setup) leaks).respond_receipts
+    control.execution who action
   obtain ⟨_, early⟩ := phase.activation who active
   have ordered := phase.ordered_of_le early
   have startClock : control.execution.application.clock = clockAt event.val := by
@@ -633,7 +639,8 @@ theorem RosterPhase.respond {setup : Setup (Player := Player) (L := L)}
       exact phase.opportunity
     responses := by
       intro observer entry member ready seen
-      rcases (application setup leaks).respond_entry_origin control.execution who observer
+      rcases (application setup (Vegas.runtime setup) leaks).respond_entry_origin
+        control.execution who observer
           action entry member with prior | ⟨_, fresh⟩
       · exact phase.responses observer entry prior ready seen
       · rw [fresh] at seen ⊢
@@ -674,11 +681,12 @@ section Steps
 variable {setup : Setup (Player := Player) (L := L)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
-  {offset : Nat} {control : (application setup leaks).Control}
+  {offset : Nat} {control : (application setup (Vegas.runtime setup) leaks).Control}
 
 theorem RosterPhase.next_remaining
     (phase : RosterPhase setup leaks rosters event offset control) {remaining : Nat}
-    (counted : control.remaining = remaining + 1) {next : (application setup leaks).Execution}
+    (counted : control.remaining = remaining + 1) {next : (application setup (Vegas.runtime
+      setup) leaks).Execution}
     (length : next.environmentRecall.length = control.execution.environmentRecall.length + 1) :
     remaining + next.environmentRecall.length = (rosterPlan setup rosters).length := by
   have total := phase.remaining
@@ -692,12 +700,14 @@ theorem RosterPhase.activate_step
     (early : offset < (rosters event).length) (who : Player)
     (chosen : (rosters event)[offset]? = some who) (remaining : Nat)
     (counted : control.remaining = remaining + 1)
-    (next : (application setup leaks).Execution)
-    (reached : next ∈ (control.execution.environmentStep (application setup leaks)
+    (next : (application setup (Vegas.runtime setup) leaks).Execution)
+    (reached : next ∈ (control.execution.environmentStep (application setup (Vegas.runtime
+      setup) leaks)
       (.activate who)).support) :
     RosterPhase setup leaks rosters event (offset + 1) ⟨remaining, some who, next⟩ := by
   have appended := environmentStep_recall_append control.execution next _ reached
-  have recallEq := (application setup leaks).environmentStep_recall control.execution next _ reached
+  have recallEq := (application setup (Vegas.runtime setup) leaks).environmentStep_recall
+    control.execution next _ reached
   have applicationEq : next.application = control.execution.application := by
     obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
     obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
@@ -767,22 +777,26 @@ theorem RosterPhase.include_step
     (atInclusion : offset = (rosters event).length) (owner : Player)
     (owned : (graph setup).actor? event = some owner)
     {inputs : (graph setup).Inputs} (invariant : control.execution.application.Invariant inputs)
-    (origins : control.execution.Provenance (application setup leaks))
-    (recalled : control.execution.InputRecall (application setup leaks))
+    (origins : control.execution.Provenance (application setup (Vegas.runtime setup) leaks))
+    (recalled : control.execution.InputRecall (application setup (Vegas.runtime setup) leaks))
     (retained : control.execution.network.PendingOrPublished)
-    (sound : control.execution.ReceiptsSound (application setup leaks) (fun _ => True))
+    (sound : control.execution.ReceiptsSound (application setup (Vegas.runtime setup) leaks)
+      (fun _ => True))
     (remaining : Nat) (counted : control.remaining = remaining + 1)
-    (command : (application setup leaks).Command)
+    (command : (application setup (Vegas.runtime setup) leaks).Command)
     (selected : command = (runtime setup).reactiveLatest leaks event owner
-      (control.execution.observeEnvironment (application setup leaks)))
-    (next : (application setup leaks).Execution)
-    (reached : next ∈ (control.execution.environmentStep (application setup leaks)
+      (control.execution.observeEnvironment (application setup (Vegas.runtime setup) leaks)))
+    (next : (application setup (Vegas.runtime setup) leaks).Execution)
+    (reached : next ∈ (control.execution.environmentStep (application setup (Vegas.runtime
+      setup) leaks)
       command).support) :
     RosterPhase setup leaks rosters event (offset + 1)
-      ⟨remaining, command.actor? (application setup leaks), next⟩ := by
+      ⟨remaining, command.actor? (application setup (Vegas.runtime setup) leaks), next⟩ := by
   have appended := environmentStep_recall_append control.execution next _ reached
-  have recallEq := (application setup leaks).environmentStep_recall control.execution next _ reached
-  have receiptsPrefix := (application setup leaks).environmentStep_receipts_prefix
+  have recallEq := (application setup (Vegas.runtime setup) leaks).environmentStep_recall
+    control.execution next _ reached
+  have receiptsPrefix := (application setup (Vegas.runtime setup)
+    leaks).environmentStep_receipts_prefix
     control.execution next _ reached
   have commandCases : command = .wait ∨ ∃ id, command = .include id := by
     rw [selected]
@@ -790,7 +804,7 @@ theorem RosterPhase.include_step
     split
     · exact Or.inl rfl
     · exact Or.inr ⟨_, rfl⟩
-  have actorNone : command.actor? (application setup leaks) = none := by
+  have actorNone : command.actor? (application setup (Vegas.runtime setup) leaks) = none := by
     rcases commandCases with rfl | ⟨id, rfl⟩ <;> rfl
   have step : GraphStep control.execution.application next.application := by
     rcases commandCases with rfl | ⟨id, rfl⟩
@@ -867,7 +881,7 @@ theorem RosterPhase.include_step
       exact phase.responses
     activation := by
       intro who active
-      change command.actor? (application setup leaks) = some who at active
+      change command.actor? (application setup (Vegas.runtime setup) leaks) = some who at active
       rw [actorNone] at active
       cases active
     inclusion := by
@@ -957,7 +971,7 @@ section Completion
 variable {setup : Setup (Player := Player) (L := L)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
-  {offset : Nat} {control : (application setup leaks).Control}
+  {offset : Nat} {control : (application setup (Vegas.runtime setup) leaks).Control}
 
 /-- Sampling at the end of an actorless event's roster completes it. -/
 theorem RosterPhase.sample_step
@@ -966,12 +980,14 @@ theorem RosterPhase.sample_step
     (actorless : (graph setup).actor? event = none)
     {inputs : (graph setup).Inputs} (invariant : control.execution.application.Invariant inputs)
     (remaining : Nat) (counted : control.remaining = remaining + 1)
-    (next : (application setup leaks).Execution)
-    (reached : next ∈ (control.execution.environmentStep (application setup leaks)
+    (next : (application setup (Vegas.runtime setup) leaks).Execution)
+    (reached : next ∈ (control.execution.environmentStep (application setup (Vegas.runtime
+      setup) leaks)
       (.application (.executeSample event))).support) :
     RosterPhase setup leaks rosters event (offset + 1) ⟨remaining, none, next⟩ := by
   have appended := environmentStep_recall_append control.execution next _ reached
-  have recallEq := (application setup leaks).environmentStep_recall control.execution next _ reached
+  have recallEq := (application setup (Vegas.runtime setup) leaks).environmentStep_recall
+    control.execution next _ reached
   obtain ⟨member, receiptsEq⟩ := applicationStep_facts control.execution next _ reached
   have ordered := phase.ordered_of_le atInclusion.le
   have ready := (ready_iff_rank setup _ event.val ordered event).mpr rfl
@@ -1022,12 +1038,14 @@ theorem RosterPhase.tick_step
     (late : (rosters event).length < offset)
     (ticking : offset < (rosters event).length + event.val + 2)
     (remaining : Nat) (counted : control.remaining = remaining + 1)
-    (next : (application setup leaks).Execution)
-    (reached : next ∈ (control.execution.environmentStep (application setup leaks)
+    (next : (application setup (Vegas.runtime setup) leaks).Execution)
+    (reached : next ∈ (control.execution.environmentStep (application setup (Vegas.runtime
+      setup) leaks)
       (.application .advanceClock)).support) :
     RosterPhase setup leaks rosters event (offset + 1) ⟨remaining, none, next⟩ := by
   have appended := environmentStep_recall_append control.execution next _ reached
-  have recallEq := (application setup leaks).environmentStep_recall control.execution next _ reached
+  have recallEq := (application setup (Vegas.runtime setup) leaks).environmentStep_recall
+    control.execution next _ reached
   obtain ⟨member, receiptsEq⟩ := applicationStep_facts control.execution next _ reached
   simp only [environmentStep, PMF.mem_support_pure_iff] at member
   have length : next.environmentRecall.length =
@@ -1102,12 +1120,14 @@ theorem RosterPhase.expire_step
     (atExpiry : offset = (rosters event).length + event.val + 2)
     {inputs : (graph setup).Inputs} (invariant : control.execution.application.Invariant inputs)
     (remaining : Nat) (counted : control.remaining = remaining + 1)
-    (next : (application setup leaks).Execution)
-    (reached : next ∈ (control.execution.environmentStep (application setup leaks)
+    (next : (application setup (Vegas.runtime setup) leaks).Execution)
+    (reached : next ∈ (control.execution.environmentStep (application setup (Vegas.runtime
+      setup) leaks)
       (.application (.expire event))).support) :
     RosterReach setup leaks rosters (some ⟨remaining, none, next⟩) := by
   have appended := environmentStep_recall_append control.execution next _ reached
-  have recallEq := (application setup leaks).environmentStep_recall control.execution next _ reached
+  have recallEq := (application setup (Vegas.runtime setup) leaks).environmentStep_recall
+    control.execution next _ reached
   obtain ⟨member, _⟩ := applicationStep_facts control.execution next _ reached
   have nextInvariant := environmentStep_invariant (runtime setup) _ _ _ invariant member
   have length : next.environmentRecall.length =
@@ -1234,20 +1254,23 @@ theorem RosterPhase.environment
     (network : (runtime setup).NetworkPolicy leaks)
     (phase : RosterPhase setup leaks rosters event offset control)
     {inputs : (graph setup).Inputs} (invariant : control.execution.application.Invariant inputs)
-    (origins : control.execution.Provenance (application setup leaks))
-    (recalled : control.execution.InputRecall (application setup leaks))
+    (origins : control.execution.Provenance (application setup (Vegas.runtime setup) leaks))
+    (recalled : control.execution.InputRecall (application setup (Vegas.runtime setup) leaks))
     (retained : control.execution.network.PendingOrPublished)
-    (sound : control.execution.ReceiptsSound (application setup leaks) (fun _ => True))
+    (sound : control.execution.ReceiptsSound (application setup (Vegas.runtime setup) leaks)
+      (fun _ => True))
     (remaining : Nat) (counted : control.remaining = remaining + 1)
-    (command : (application setup leaks).Command)
+    (command : (application setup (Vegas.runtime setup) leaks).Command)
     (selected : command ∈ (rosterScheduler setup leaks rosters network
       control.execution.environmentRecall
-        (control.execution.observeEnvironment (application setup leaks))).support)
-    (next : (application setup leaks).Execution)
-    (reached : next ∈ (control.execution.environmentStep (application setup leaks)
+        (control.execution.observeEnvironment (application setup (Vegas.runtime setup)
+          leaks))).support)
+    (next : (application setup (Vegas.runtime setup) leaks).Execution)
+    (reached : next ∈ (control.execution.environmentStep (application setup (Vegas.runtime
+      setup) leaks)
       command).support) :
     RosterReach setup leaks rosters
-      (some ⟨remaining, command.actor? (application setup leaks), next⟩) := by
+      (some ⟨remaining, command.actor? (application setup (Vegas.runtime setup) leaks), next⟩) := by
   have found : (rosterPlan setup rosters)[control.execution.environmentRecall.length]? =
       (rosterBlock setup rosters event)[offset]? := by
     rw [phase.position]
@@ -1305,13 +1328,14 @@ theorem rosterReach_transition (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks)
-    (before after : (application setup leaks).ProtocolState)
-    (prior : ((application setup leaks).protocol (initialLaw setup)
+    (before after : (application setup (Vegas.runtime setup) leaks).ProtocolState)
+    (prior : ((application setup (Vegas.runtime setup) leaks).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         before)
     (valid : RosterReach setup leaks rosters before)
-    (joint : Player → Option (application setup leaks).Action)
-    (reached : after ∈ ((application setup leaks).transition (initialLaw setup)
+    (joint : Player → Option (application setup (Vegas.runtime setup) leaks).Action)
+    (reached : after ∈ ((application setup (Vegas.runtime setup) leaks).transition (initialLaw
+      setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network) before
         joint).support) :
     RosterReach setup leaks rosters after := by
@@ -1349,7 +1373,7 @@ theorem rosterReach_history (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks) :
-    ∀ {state} (_trace : ((application setup leaks).protocol (initialLaw setup)
+    ∀ {state} (_trace : ((application setup (Vegas.runtime setup) leaks).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         state), RosterReach setup leaks rosters state
   | _, .start => trivial

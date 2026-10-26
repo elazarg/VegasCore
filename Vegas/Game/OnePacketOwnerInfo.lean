@@ -4,7 +4,7 @@ import Vegas.Game.OnePacketOwnerSwap
 
 /-! # The owner swap between two settled states
 
-Take two application states of the default runtime and the owner swap between
+Take two application states of the supplied runtime and the owner swap between
 the views `who` has of them (`Vegas.ownerSwap`). Call a state *settled* for
 `who` (`Vegas.OwnerSettled`) when no field private to `who` stores a failure,
 every completed binding stores the value its action binds, every completed
@@ -37,6 +37,7 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
 
 section Candidates
 
@@ -473,7 +474,7 @@ envelope carrying its call, its evidence request is the canonical request of the
 emitted evidence among the known packets, and its preparation is recorded. -/
 def RecordedResponse (state : EventGraphRuntime.State (graph setup))
     (known : List (Message Player (WitnessedPacket (graph setup))))
-    (entry : (application setup leaks).PlayerEntry) : Prop :=
+    (entry : (application setup runtime leaks).PlayerEntry) : Prop :=
   match entry.action.transmission with
   | none => entry.emitted = none
   | some submission => ∃ message, entry.emitted = some message ∧
@@ -488,9 +489,9 @@ theorem EventGraphRuntime.HiddenSwap.action_ownerSwap {named : Nat → Prop}
     {first second : EventGraphRuntime.State (graph setup)}
     (firstSettled : OwnerSettled who named first) (secondSettled : OwnerSettled who named second)
     {known : List (Message Player (WitnessedPacket (graph setup)))}
-    {left right : (application setup leaks).PlayerEntry}
-    (leftRecorded : RecordedResponse who first known left)
-    (rightRecorded : RecordedResponse who second known right)
+    {left right : (application setup runtime leaks).PlayerEntry}
+    (leftRecorded : RecordedResponse (runtime := runtime) who first known left)
+    (rightRecorded : RecordedResponse (runtime := runtime) who second known right)
     (emitted : left.emitted = right.emitted)
     (namedOf : ∀ message event serial, left.emitted = some message →
       message.payload.call = .commitment event (who, .prepared serial) → named serial) :
@@ -582,10 +583,11 @@ theorem EventGraphRuntime.HiddenSwap.view_ownerSwap_of_settled {named named' : N
     (firstSettled : OwnerSettled who named first) (secondSettled : OwnerSettled who named second)
     (firstEarlier : OwnerEarlier who named' before first)
     (secondEarlier : OwnerEarlier who named' after second)
-    {left right : (application setup leaks).PlayerView}
+    {left right : (application setup runtime leaks).PlayerView}
     (leftApplication : left.application = before.playerView who)
     (rightApplication : right.application = after.playerView who)
-    (operational : operationalView setup leaks left = operationalView setup leaks right) :
+    (operational : operationalView setup runtime leaks left = operationalView setup runtime leaks
+      right) :
     (ownerSwap who (first.playerView who) (second.playerView who)).view left = right := by
   rcases left with ⟨leftMessages, leftApp, leftReceipts⟩
   rcases right with ⟨rightMessages, rightApp, rightReceipts⟩
@@ -596,7 +598,7 @@ theorem EventGraphRuntime.HiddenSwap.view_ownerSwap_of_settled {named named' : N
   obtain ⟨publicEq, messagesEq, receiptsEq⟩ := operational
   subst messagesEq receiptsEq
   change (⟨leftMessages, PlayerView.swap _ (before.playerView who), leftReceipts⟩ :
-    (application setup leaks).PlayerView) = _
+    (application setup runtime leaks).PlayerView) = _
   rw [EventGraphRuntime.PlayerView.swap_ownerSwap_of_settled who firstSettled secondSettled
     firstEarlier secondEarlier publicEq]
 

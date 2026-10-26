@@ -35,25 +35,28 @@ private theorem expect_stateUntil_prior_eq {Player : Type} [DecidableEq Player] 
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
+  (scheduler : (recoveryApplication runtime leaks).Scheduler)
 
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
-local notation "NativeScheduler" => nativeScheduler (runtime setup) leaks scheduler
-local notation "R" => model setup leaks bounds Initial horizon scheduler
-local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horizon (NativeScheduler)
-local notation "RMenu" => Recovery.onePacketMenu (runtime setup) leaks bounds
-local notation "NMenu" => bounds.onePacketMenu (runtime setup) leaks
+local notation "NativeScheduler" => nativeScheduler runtime leaks scheduler
+local notation "R" => model setup runtime leaks bounds Initial horizon scheduler
+local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  (NativeScheduler)
+local notation "RMenu" => Recovery.onePacketMenu runtime leaks bounds
+local notation "NMenu" => bounds.onePacketMenu runtime leaks
 local notation "RP" => ReactiveApplication.ResponseMenu.protocol
-  (Recovery.onePacketMenu (runtime setup) leaks bounds) Initial horizon scheduler
+  (Recovery.onePacketMenu runtime leaks bounds) Initial horizon scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon (NativeScheduler)
-local notation "RawNative" => ReactiveApplication.protocol (application setup leaks)
+  (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon (NativeScheduler)
+local notation "RawNative" => ReactiveApplication.protocol (application setup runtime leaks)
   (PMF.map RecoveryState.native Initial) horizon (NativeScheduler)
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
+  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
+    native ∅))
 
 open Classical in
 /-- The concrete raw classified projection has exactly its finite-menu stopped
@@ -68,37 +71,39 @@ theorem nativeDebtStoppedValue_eq_finite_continuation
     (clear : ∀ current, history.state = some current →
       current.execution.application.excluded = ∅) :
     let stopped := fun final : (NP).History => ¬ Clear final.state ∨
-      DecodedState setup leaks (failureProfile setup.program)
+      DecodedState setup runtime leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure focal setup.program) final.state
-    nativeDebtStoppedValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+    nativeDebtStoppedValue setup runtime leaks bounds horizon scheduler parameter utility
+      excludedPayoff
         rawCertificate profile focal history =
       expect ((N).runBehavioralUntil certificate
-        (sourceNativeProfile setup leaks bounds horizon scheduler profile) stopped
-        (nativeClearHistory setup leaks bounds horizon scheduler history clear))
+        (sourceNativeProfile setup runtime leaks bounds horizon scheduler profile) stopped
+        (nativeClearHistory setup runtime leaks bounds horizon scheduler history clear))
         (fun final => if stopped final then excludedPayoff focal else
-          exclusionBase setup parameter utility excludedPayoff leaks final.state focal) := by
+          exclusionBase setup runtime parameter utility excludedPayoff leaks final.state focal) :=
+            by
   intro stopped
   let genericInitial := (Initial).map RecoveryState.native
   let genericModel := (NMenu).information genericInitial horizon (NativeScheduler)
-  let genericProfile := boundedNativeProfile (runtime setup) leaks bounds Initial horizon scheduler
+  let genericProfile := boundedNativeProfile runtime leaks bounds Initial horizon scheduler
     profile
-  let genericStart := (exists_nativeBoundedHistory (runtime setup) leaks bounds Initial
+  let genericStart := (exists_nativeBoundedHistory runtime leaks bounds Initial
     (initialLaw_initialized setup) horizon scheduler history clear).choose
-  have rawStart := (exists_nativeBoundedHistory (runtime setup) leaks bounds Initial
+  have rawStart := (exists_nativeBoundedHistory runtime leaks bounds Initial
     (initialLaw_initialized setup) horizon scheduler history clear).choose_spec
   let genericCertificate : ((NMenu).protocol genericInitial horizon
       (NativeScheduler)).WellFoundedHistories :=
     Eq.mpr (congrArg (fun initial : PMF (EventGraphRuntime.State (graph setup)) =>
       ((NMenu).protocol initial horizon (NativeScheduler)).WellFoundedHistories)
         (initialLaw_native setup)) certificate
-  let stop : (application setup leaks).ProtocolState → Prop := fun state => ¬ Clear state ∨
-    DecodedState setup leaks (failureProfile setup.program)
+  let stop : (application setup runtime leaks).ProtocolState → Prop := fun state => ¬ Clear state ∨
+    DecodedState setup runtime leaks (failureProfile setup.program)
       (ProtocolState.OwesFailure focal setup.program) state
-  let payoff : (application setup leaks).ProtocolState → ℝ := fun state =>
+  let payoff : (application setup runtime leaks).ProtocolState → ℝ := fun state =>
     if stop state then excludedPayoff focal else
-      exclusionBase setup parameter utility excludedPayoff leaks state focal
+      exclusionBase setup runtime parameter utility excludedPayoff leaks state focal
   have clearIff (final : (RawNative).History) :
-      NativeClear (runtime setup) leaks Initial horizon scheduler final ↔ Clear final.state := by
+      NativeClear runtime leaks Initial horizon scheduler final ↔ Clear final.state := by
     unfold NativeClear
     cases state : final.state with
     | none => simp [ReactiveApplication.stateInvariant]
@@ -110,8 +115,8 @@ theorem nativeDebtStoppedValue_eq_finite_continuation
           cases Option.some.inj same
           exact holds
   have stopEq : (fun final : (RawNative).History =>
-      ¬ NativeClear (runtime setup) leaks Initial horizon scheduler final ∨
-        DecodedState setup leaks (failureProfile setup.program)
+      ¬ NativeClear runtime leaks Initial horizon scheduler final ∨
+        DecodedState setup runtime leaks (failureProfile setup.program)
           (ProtocolState.OwesFailure focal setup.program) final.state) =
       (fun final => stop final.state) := by
     funext final
@@ -119,12 +124,13 @@ theorem nativeDebtStoppedValue_eq_finite_continuation
   have readEq (final : (RawNative).History) :
       Sum.elim (fun _ : Finset Player => excludedPayoff focal)
         (fun ending : (RawNative).History =>
-          if DecodedState setup leaks (failureProfile setup.program)
+          if DecodedState setup runtime leaks (failureProfile setup.program)
               (ProtocolState.OwesFailure focal setup.program) ending.state then excludedPayoff focal
-          else exclusionBase setup parameter utility excludedPayoff leaks ending.state focal)
-        (nativeClassifiedReadout (runtime setup) leaks Initial horizon scheduler final) =
+          else exclusionBase setup runtime parameter utility excludedPayoff leaks ending.state
+            focal)
+        (nativeClassifiedReadout runtime leaks Initial horizon scheduler final) =
           payoff final.state := by
-    by_cases clearFinal : NativeClear (runtime setup) leaks Initial horizon scheduler final
+    by_cases clearFinal : NativeClear runtime leaks Initial horizon scheduler final
     · have valid := (clearIff final).mp clearFinal
       simp only [nativeClassifiedReadout, ite_eq_left clearFinal, Sum.elim_inr, payoff, stop,
         not_true_eq_false, valid, false_or]
@@ -142,10 +148,10 @@ theorem nativeDebtStoppedValue_eq_finite_continuation
     rawCertificate genericCertificate genericProfile (fun final => stop final.state) genericStart
   have profiles : (fun who => (NMenu).embedPolicy genericInitial horizon (NativeScheduler) who
       (genericProfile who)) =
-      nativeProfile (runtime setup) leaks Initial horizon scheduler
+      nativeProfile runtime leaks Initial horizon scheduler
         (fun who => (RMenu).embedPolicy Initial horizon scheduler who (profile who)) := by
     funext who
-    exact boundedNativeProfile_embed (runtime setup) leaks bounds Initial horizon scheduler
+    exact boundedNativeProfile_embed runtime leaks bounds Initial horizon scheduler
       profile who
   rw [profiles, rawStart] at rawLaw
   have rawValue := congrArg (fun law : PMF (RawNative).History =>
@@ -158,9 +164,10 @@ theorem nativeDebtStoppedValue_eq_finite_continuation
       (fun initial : PMF (EventGraphRuntime.State (graph setup)) =>
         ((NMenu).information initial horizon (NativeScheduler)).Choice who input)
           (initialLaw_native setup)))) =
-      sourceNativeProfile setup leaks bounds horizon scheduler profile := by
+      sourceNativeProfile setup runtime leaks bounds horizon scheduler profile := by
     funext who input
-    exact (sourceNativeProfile_eq_cast setup leaks bounds horizon scheduler profile who input).symm
+    exact (sourceNativeProfile_eq_cast setup runtime leaks bounds horizon scheduler profile who
+      input).symm
   have replaceProfile := congrArg (fun policies : ∀ who, (N).BehavioralPolicy who =>
     expect ((N).runBehavioralUntil certificate policies (fun next => stop next.state)
       (Equiv.cast (congrArg (fun initial : PMF (EventGraphRuntime.State (graph setup)) =>

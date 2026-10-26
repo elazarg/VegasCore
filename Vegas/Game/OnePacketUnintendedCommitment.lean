@@ -138,11 +138,12 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup leaks).Scheduler)
+  (scheduler : (application setup runtime leaks).Scheduler)
 
-variable (setup leaks) in
+variable (setup runtime leaks) in
 /-- **The unintended-commitment invariant** after `who` emits, from a recorded
 entry, the commitment of its binding event `event` to `candidate`, at a
 configuration `start` decoding to `point`: the history is legal, the entry is
@@ -151,17 +152,17 @@ action is intended at `who`'s view of `point`; until the event completes the
 configuration is `start`, and once it has completed `who` owes a failure at the
 decoded point. -/
 def UnintendedCommitmentInvariant (profile : BehavioralProfile setup.program) (who : Player)
-    (entry : (application setup leaks).PlayerEntry)
+    (entry : (application setup runtime leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup))) (event : (graph setup).EventId)
     (candidate : Handle (graph setup)) {payload : L.Ty}
     (outputEq : (graph setup).outputLayout event = .binding who payload)
     (start : (graph setup).Config) (point : ProtocolState setup.program) :
-    (application setup leaks).ProtocolState → Prop
+    (application setup runtime leaks).ProtocolState → Prop
   | none => False
   | some control =>
-      Nonempty (((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      Nonempty (((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
         horizon scheduler).Trace (some control)) ∧
-      RecordsEntry setup leaks who entry (some control) ∧ entry.emitted = some message ∧
+      RecordsEntry setup runtime leaks who entry (some control) ∧ entry.emitted = some message ∧
       message.sender = who ∧ message.payload.call = .commitment event candidate ∧
       control.execution.application.candidates.lookup candidate ≠ .fresh ∧
       (∀ value act, control.execution.application.candidates.lookup candidate =
@@ -174,7 +175,7 @@ def UnintendedCommitmentInvariant (profile : BehavioralProfile setup.program) (w
       (event ∉ control.execution.application.config.cut.completed →
         control.execution.application.config = start) ∧
       (event ∈ control.execution.application.config.cut.completed →
-        DecodedState setup leaks profile (ProtocolState.OwesFailure who setup.program)
+        DecodedState setup runtime leaks profile (ProtocolState.OwesFailure who setup.program)
           (some control))
 
 private theorem cast_some' {A B : Type} (same : A = B) (value : A) :
@@ -191,7 +192,7 @@ private theorem cast_cast_symm' {A B : Type} (same : A = B) (value : B) :
 the one-packet game, from a configuration decoding to a point intended for
 `who` at which `event` is ready. -/
 theorem unintendedCommitmentInvariant_transition (profile : BehavioralProfile setup.program)
-    {who : Player} {entry : (application setup leaks).PlayerEntry}
+    {who : Player} {entry : (application setup runtime leaks).PlayerEntry}
     {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
     {candidate : Handle (graph setup)} {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding who payload}
@@ -201,38 +202,42 @@ theorem unintendedCommitmentInvariant_transition (profile : BehavioralProfile se
     (decoded : decodedPoint setup start = some point)
     (intendedFor : ProtocolState.IntendedFor who setup.program point)
     (startReady : start.cut.Ready event)
-    (before after : (application setup leaks).ProtocolState)
-    (joint : Player → Option (application setup leaks).Action)
-    (legal : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    (before after : (application setup runtime leaks).ProtocolState)
+    (joint : Player → Option (application setup runtime leaks).Action)
+    (legal : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Legal before joint)
-    (holds : UnintendedCommitmentInvariant setup leaks bounds horizon scheduler profile who entry
+    (holds : UnintendedCommitmentInvariant setup runtime leaks bounds horizon scheduler profile
+      who entry
       message event candidate outputEq start point before)
-    (reached : after ∈ (((bounds.onePacketMenu (runtime setup) leaks).protocol
+    (reached : after ∈ (((bounds.onePacketMenu runtime leaks).protocol
       (initialLaw setup) horizon scheduler).step before ⟨joint, legal⟩).support) :
-    UnintendedCommitmentInvariant setup leaks bounds horizon scheduler profile who entry message
+    UnintendedCommitmentInvariant setup runtime leaks bounds horizon scheduler profile who entry
+      message
       event candidate outputEq start point after := by
   cases before with
   | none => exact holds.elim
   | some control =>
       obtain ⟨⟨trace⟩, records, emitted, sender, call, fixed, unintended, pending, settled⟩ :=
         holds
-      have afterRecords := recordsEntry_transition who entry (initialLaw setup) horizon scheduler
+      have afterRecords := recordsEntry_transition (runtime := runtime) who entry (initialLaw
+        setup) horizon scheduler
         _ after joint records reached
       cases after with
       | none => exact afterRecords.elim
       | some next =>
-          have nextTrace : ((bounds.onePacketMenu (runtime setup) leaks).protocol
+          have nextTrace : ((bounds.onePacketMenu runtime leaks).protocol
               (initialLaw setup) horizon scheduler).Trace (some next) :=
             .extend trace joint legal reached
-          have kept := (keepsFixedCandidates_step (runtime setup) leaks).transition
+          have kept := (keepsFixedCandidates_step runtime leaks).transition
             (initialLaw setup) horizon scheduler control next joint reached
-          have keptStore := (keepsStore_step (runtime setup) leaks).transition
+          have keptStore := (keepsStore_step runtime leaks).transition
             (initialLaw setup) horizon scheduler control next joint reached
           have lookupEq := kept candidate fixed
           have owned : (graph setup).actor? event = some who := nodeView_bind_actor outputEq codeEq
           by_cases old : event ∈ control.execution.application.config.cut.completed
           · have stillDone : event ∈ next.execution.application.config.cut.completed := by
-              rcases transition_configStep (initialLaw setup) horizon scheduler control next joint
+              rcases transition_configStep (initialLaw setup) horizon
+                scheduler control next joint
                   reached with same | ⟨completed, ready, action, member⟩
               · rw [same]
                 exact old
@@ -242,10 +247,12 @@ theorem unintendedCommitmentInvariant_transition (profile : BehavioralProfile se
             refine ⟨⟨nextTrace⟩, afterRecords, emitted, sender, call, by rw [lookupEq]; exact fixed,
               fun value act opened => unintended value act (by rw [← lookupEq]; exact opened),
               fun notDone => (notDone stillDone).elim, fun _ => ?_⟩
-            exact decodedHolds_transition (owesFailure_stepClosed who) (initialLaw setup)
+            exact decodedHolds_transition (owesFailure_stepClosed who)
+              (initialLaw setup)
               horizon scheduler (some control) (some next) joint (settled old) reached
           · have atStart := pending old
-            rcases transition_configStep (initialLaw setup) horizon scheduler control next joint
+            rcases transition_configStep (initialLaw setup) horizon scheduler
+              control next joint
                 reached with same | ⟨completed, ready, action, member⟩
             · refine ⟨⟨nextTrace⟩, afterRecords, emitted, sender, call,
                 by rw [lookupEq]; exact fixed,
@@ -268,13 +275,14 @@ theorem unintendedCommitmentInvariant_transition (profile : BehavioralProfile se
                 fun value act opened => unintended value act (by rw [← lookupEq]; exact opened),
                 fun notDone => (notDone done).elim, fun _ => ?_⟩
               have output := step_binding_output (outputEq := outputEq) (codeEq := codeEq) member
-              have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon
+              have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
                   scheduler).Trace (some control) :=
-                (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon
+                (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
                   scheduler trace
-              have nextRawTrace : ((application setup leaks).protocol (initialLaw setup) horizon
+              have nextRawTrace : ((application setup runtime leaks).protocol (initialLaw setup)
+                horizon
                   scheduler).Trace (some next) :=
-                (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon
+                (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
                   scheduler nextTrace
               have facts := legalFacts setup leaks horizon scheduler _ rawTrace
               have nextFacts := legalFacts setup leaks horizon scheduler _ nextRawTrace
@@ -285,8 +293,9 @@ theorem unintendedCommitmentInvariant_transition (profile : BehavioralProfile se
                 change cast _ (next.execution.application.config.outputs completed) = _
                 rw [output, cast_some' (congrArg EventGraph.EventField.Value outputEq),
                   cast_cast_symm']
-              obtain ⟨residualRank, ⟨residual⟩⟩ := protocol_sourceResidual profile
-                (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler trace control rfl
+              obtain ⟨residualRank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime)
+                profile
+                (bounds.onePacketMenu runtime leaks) horizon scheduler trace control rfl
               obtain ⟨successor, reachedPoint⟩ := residual.step completed ready action _ member
               have decodedBefore : decodedPoint setup control.execution.application.config =
                   some point := atStart ▸ decoded
@@ -324,7 +333,8 @@ theorem unintendedCommitmentInvariant_transition (profile : BehavioralProfile se
                       | some found =>
                           exact (old (facts.binding.toAssociationInvariant.accepted_complete
                             completed found present)).elim
-                    have sameCandidate := onePacket_accepted_new bounds horizon scheduler trace
+                    have sameCandidate := onePacket_accepted_new (runtime := runtime) bounds
+                      horizon scheduler trace
                       records emitted sender call owned vacant joint reached installed acceptedAt
                     subst sameCandidate
                     rw [lookupEq] at meaning
@@ -347,10 +357,11 @@ one-packet menu that commits an event commits a binding event of the
 responder to one of its own prepared slots: the count verdict checks the
 call. -/
 theorem onePacket_commitment_facts {who : Player}
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} {response : (application setup leaks).Action}
-    (member : response ∈ bounds.onePacketActions (runtime setup) leaks who past view)
-    {material : (application setup leaks).Submission}
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} {response : (application setup runtime
+      leaks).Action}
+    (member : response ∈ bounds.onePacketActions runtime leaks who past view)
+    {material : (application setup runtime leaks).Submission}
     (sends : response.transmission = some material) {event : (graph setup).EventId}
     {candidate : Handle (graph setup)}
     (packet : material.call.packet = .commitment event candidate) :
@@ -359,7 +370,7 @@ theorem onePacket_commitment_facts {who : Player}
         (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
           ((graph setup).nodes event) = .bind who payload),
         nodeView (graph setup) event = .bind who payload outputEq codeEq := by
-  obtain ⟨_, either⟩ := (bounds.mem_onePacketActions (runtime setup) leaks who past view
+  obtain ⟨_, either⟩ := (bounds.mem_onePacketActions runtime leaks who past view
     response).mp member
   rcases either with silent | ⟨material', transmits, permitted⟩
   · rw [silent] at sends
@@ -368,7 +379,7 @@ theorem onePacket_commitment_facts {who : Player}
   subst same
   obtain ⟨_, correct, _⟩ := (countPermits_eq_true_iff _ _).mp permitted
   unfold CountCallCorrect at correct
-  have callEq : ((runtime setup).localEnvelope leaks who past view material').payload.call =
+  have callEq : (runtime.localEnvelope leaks who past view material').payload.call =
       .commitment event candidate := packet
   rw [callEq] at correct
   obtain ⟨owned, _, candidateOwner, prepared, _⟩ := correct
@@ -387,18 +398,20 @@ theorem onePacket_commitment_facts {who : Player}
       rw [outputEq] at owned
       cases owned
 
-variable (setup leaks) in
+variable (setup runtime leaks) in
 /-- **A commitment of an intended value.** A choice at a decision input whose
 response commits an event to a prepared slot of the player, whose meaning after
 the submission opens a value whose decoded source action is in the intended
 menu at the projected view. -/
 def IntendedCommitment {who : Player}
-    (site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who)
-    (choice : (onePacketInformation setup leaks bounds horizon scheduler).Choice who site.1) :
+    (site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who)
+    (choice : (onePacketInformation setup runtime leaks bounds horizon scheduler).Choice who
+      site.1) :
     Prop :=
-  ∃ (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (response : (application setup leaks).Action)
-    (material : (application setup leaks).Submission) (event : (graph setup).EventId)
+  ∃ (past : List (application setup runtime leaks).PlayerEntry)
+    (view : (application setup runtime leaks).PlayerView) (response : (application setup runtime
+      leaks).Action)
+    (material : (application setup runtime leaks).Submission) (event : (graph setup).EventId)
     (serial : Nat) (payload : L.Ty)
     (outputEq : (graph setup).outputLayout event = .binding who payload) (value : L.Val payload),
     site.1 = some (past, view) ∧ choice.1 = some response ∧
@@ -407,6 +420,6 @@ def IntendedCommitment {who : Player}
       material.call.candidateAfter who view.application.candidates (.prepared serial) =
         .openable ⟨payload, value⟩ ∧
       sourceOfValue setup event outputEq value ∈
-        setup.intendedMenu who (projectView setup leaks who site.1)
+        setup.intendedMenu who (projectView setup runtime leaks who site.1)
 
 end Vegas

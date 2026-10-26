@@ -64,6 +64,7 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
 
 /-- **Completion content.** A scheduler round completing an event with an
 actor by a decoded action that is not failing includes an accepted packet of
@@ -72,9 +73,9 @@ call at the state it is included at, and a commitment's handle belongs to the
 actor. -/
 theorem completion_content
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    (execution next : (application setup leaks).Execution)
-    (command : (application setup leaks).Command)
-    (reached : next ∈ (execution.environmentStep (application setup leaks) command).support)
+    (execution next : (application setup runtime leaks).Execution)
+    (command : (application setup runtime leaks).Command)
+    (reached : next ∈ (execution.environmentStep (application setup runtime leaks) command).support)
     {event : (graph setup).EventId} (ready : execution.application.config.cut.Ready event)
     (action : (graph setup).Action event)
     (member : next.application.config ∈
@@ -87,10 +88,12 @@ theorem completion_content
         callContent setup execution.application message.payload.call ∧
       ∀ named candidate, message.payload.call = .commitment named candidate →
         candidate.1 = actor := by
-  rcases owned_completion_cases execution next command reached ready action member acts with
+  rcases owned_completion_cases (runtime := runtime) execution next command reached ready action
+    member acts with
     accepted | ⟨_, _, _, _, _, expired⟩
   · rcases accepted with ⟨accepted⟩
-    exact ⟨accepted.message, accepted.ledger, accepted.sender, accepted.named,
+    exact ⟨accepted.message, accepted.ledger,
+      accepted.sender, accepted.named,
       accepted.content, accepted.candidateOwner⟩
   · exact (notFailing (expiredAction_failing expired)).elim
 

@@ -22,23 +22,24 @@ open SourceProgram GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup))
 
-local notation "N" => application setup leaks
-local notation "nativeMenu" => MessageBounds.onePacketMenu (runtime setup) leaks bounds
+local notation "N" => application setup runtime leaks
+local notation "nativeMenu" => MessageBounds.onePacketMenu runtime leaks bounds
 
 /-- Every first actual native counted callback fits the original inclusion deadline
 under pointwise counted opportunity, including arbitrary prior source counterfactuals. -/
 theorem firstActivation_inclusionFits_of_counted_opportunity
     (horizon : Nat) (scheduler : (N).Scheduler) (delay bound : (graph setup).EventId → Nat)
     (opportunity : ∀ control : (N).Control,
-      (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control) →
+      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
       ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)) →
-      OpportunityAt (runtime setup) leaks control.execution delay)
-    (timely : (runtime setup).AsyncTimely delay bound)
+      OpportunityAt runtime leaks control.execution delay)
+    (timely : runtime.AsyncTimely delay bound)
     {state : (N).ProtocolState}
-    (trace : (onePacketProtocol setup leaks bounds horizon
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon
       scheduler).Trace state)
     {remaining : Nat} {who : Player} {execution : (N).Execution}
     (current : state = some ⟨remaining, some who, execution⟩)
@@ -46,8 +47,8 @@ theorem firstActivation_inclusionFits_of_counted_opportunity
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (never : ∀ entry ∈ execution.recall who,
-      ¬ ActivatedAt setup leaks who event entry) :
-    execution.application.publicView.InclusionFitsDeadline (runtime setup) bound event := by
+      ¬ ActivatedAt setup runtime leaks who event entry) :
+    execution.application.publicView.InclusionFitsDeadline runtime bound event := by
   let service := scheduler
   obtain ⟨previous, ⟨countedTrace⟩, applicationEq, recallEq⟩ :=
     (nativeMenu).decision_predecessor (initialLaw setup) horizon service trace current
@@ -64,12 +65,12 @@ theorem firstActivation_inclusionFits_of_counted_opportunity
     rw [applicationEq]
     exact clear
   have actual := opportunity ⟨remaining + 1, none, previous⟩ countedTrace previousClear
-  have fits := inclusionFitsDeadline_of_unrecalled_turn (runtime setup) leaks
+  have fits := inclusionFitsDeadline_of_unrecalled_turn runtime leaks
     (initialLaw setup) horizon service (serviceGraph_revealRelaxedOrdered setup .sequential)
     ⟨remaining + 1, none, previous⟩ previousTrace rfl delay bound timely actual event who spec.2
     (by rw [applicationEq]; exact spec.1) entered (by rw [applicationEq]; exact activated)
     (fun entry remembered => never entry (recallEq ▸ remembered))
-  change previous.application.publicView.InclusionFitsDeadline (runtime setup) bound event at fits
+  change previous.application.publicView.InclusionFitsDeadline runtime bound event at fits
   rwa [applicationEq] at fits
 
 
@@ -78,13 +79,13 @@ pointwise counted inclusion. Service is instantiated only at genuine counted pre
 theorem settlesFreshCalls_counted_clear_history
     (horizon : Nat) (scheduler : (N).Scheduler) (bound : (graph setup).EventId → Nat)
     (inclusion : ∀ control : (N).Control,
-      (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control) →
+      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
       ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)) →
-      ProtectedInclusionAt (runtime setup) leaks control.execution bound)
+      ProtectedInclusionAt runtime leaks control.execution bound)
     (owner : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner) :
     ∀ {state}
-      (_trace : (onePacketProtocol setup leaks bounds horizon
+      (_trace : (onePacketProtocol setup runtime leaks bounds horizon
         scheduler).Trace state),
       (∀ current, state = some current → ExclusionEvidence 0 ∅
         (⟨current.execution.application, ∅⟩ : RecoveryState (graph setup))) →
@@ -94,7 +95,7 @@ theorem settlesFreshCalls_counted_clear_history
   | _, .extend (source := before) prior joint _ reached, clear => by
       have rawPrior := (nativeMenu).toRawTrace (initialLaw setup) horizon
         scheduler prior
-      have beforeClear := native_clear_before_transition (runtime setup) leaks
+      have beforeClear := native_clear_before_transition runtime leaks
         (initialLaw setup) (by
           intro native supported
           change native ∈ (setup.initialLaw.map
@@ -103,7 +104,8 @@ theorem settlesFreshCalls_counted_clear_history
           obtain ⟨draw, _supported, rfl⟩ := PMF.support_map .. ▸ supported
           exact ⟨setup.eventInputs draw, rfl⟩) horizon
         scheduler rawPrior joint reached clear
-      have valid := settlesFreshCalls_counted_clear_history horizon scheduler bound inclusion
+      have valid := settlesFreshCalls_counted_clear_history horizon scheduler
+        bound inclusion
         owner event
         owned prior beforeClear
       cases before with
@@ -136,20 +138,21 @@ when this command creates the first public failure; no service is imposed after 
 theorem settlesFreshCalls_counted_clear_environment
     (horizon : Nat) (scheduler : (N).Scheduler) (bound : (graph setup).EventId → Nat)
     (inclusion : ∀ control : (N).Control,
-      (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control) →
+      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
       ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)) →
-      ProtectedInclusionAt (runtime setup) leaks control.execution bound)
+      ProtectedInclusionAt runtime leaks control.execution bound)
     (owner : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner)
     (remaining : Nat) (execution : (N).Execution)
-    (prior : (onePacketProtocol setup leaks bounds horizon
+    (prior : (onePacketProtocol setup runtime leaks bounds horizon
       scheduler).Trace
         (some ⟨remaining + 1, none, execution⟩))
     (clear : ExclusionEvidence 0 ∅ (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
     (command : (N).Command) (next : (N).Execution)
     (reached : next ∈ (execution.environmentStep (N) command).support) :
     SettlesFreshCalls setup leaks owner event bound next := by
-  have valid := settlesFreshCalls_counted_clear_history setup leaks bounds horizon scheduler bound
+  have valid := settlesFreshCalls_counted_clear_history setup runtime leaks bounds horizon
+    scheduler bound
     inclusion
     owner event owned prior (by intro current same; cases Option.some.inj same; exact clear)
   have atPrefix := inclusion ⟨remaining + 1, none, execution⟩ prior clear
@@ -163,11 +166,11 @@ protected fresh call, and once its original strict protected window has elapsed.
 theorem prescribed_packet_counted_clear_settles
     (horizon : Nat) (scheduler : (N).Scheduler) (bound : (graph setup).EventId → Nat)
     (inclusion : ∀ control : (N).Control,
-      (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control) →
+      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
       ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)) →
-      ProtectedInclusionAt (runtime setup) leaks control.execution bound)
+      ProtectedInclusionAt runtime leaks control.execution bound)
     (control : (N).Control)
-    (trace : (onePacketProtocol setup leaks bounds horizon
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon
       scheduler).Trace (some control))
     (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
@@ -178,12 +181,13 @@ theorem prescribed_packet_counted_clear_settles
     (split : control.execution.recall owner = earlier ++ entry :: later)
     (call : FreshCall setup leaks owner event bound entry message)
     (sole : ∀ other ∈ earlier ++ later,
-      ¬ EmitsOtherFor (runtime setup) leaks other event message.id) :
+      ¬ EmitsOtherFor runtime leaks other event message.id) :
     (entry.beforeView.application.publicView.clock + bound event <
         control.execution.application.clock → (message.id, true) ∈ control.execution.receipts) ∧
       (event ∈ control.execution.application.config.cut.completed →
         (message.id, true) ∈ control.execution.receipts) := by
-  have settled := settlesFreshCalls_counted_clear_history setup leaks bounds horizon scheduler bound
+  have settled := settlesFreshCalls_counted_clear_history setup runtime leaks bounds horizon
+    scheduler bound
     inclusion
     owner event owned trace (by intro current same; cases Option.some.inj same; exact clear)
     earlier entry later message split call sole

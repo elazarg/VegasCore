@@ -35,7 +35,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 actual native response. This definition introduces neither strategy memory nor
 an additional runtime step. -/
 def sourceServicePolicy (profile : BehavioralProfile setup.program) (who : Player) :
-    (application setup leaks).Policy := fun past view =>
+    (application setup (Vegas.runtime setup) leaks).Policy := fun past view =>
   if identity : view.application.who = who then
     match view.application.publicView.ownTurn? who with
     | none => PMF.pure ⟨none⟩

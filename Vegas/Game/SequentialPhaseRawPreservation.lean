@@ -20,16 +20,17 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
+  (scheduler : (phaseApplication runtime leaks).Scheduler)
+  [(phaseApplication runtime leaks).FiniteNature (phaseInitialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
 
-local notation "app" => phaseApplication (runtime setup) leaks
-local notation "raw" => PhaseCount.rawMenu (runtime setup) leaks bounds
+local notation "app" => phaseApplication runtime leaks
+local notation "raw" => PhaseCount.rawMenu runtime leaks bounds
 local notation "R" => ReactiveApplication.ResponseMenu.information
-  (PhaseCount.rawMenu (runtime setup) leaks bounds) (phaseInitialLaw setup) horizon scheduler
+  (PhaseCount.rawMenu runtime leaks bounds) (phaseInitialLaw setup) horizon scheduler
 
 variable {Public : Type*} {signal : State L setup.context → Public}
 
@@ -38,10 +39,10 @@ variable {Parameter : Type} (parameter : State L setup.context → Parameter)
   (excludedPayoff : Player → ℝ)
 
 local notation "base" => phaseExclusionBase setup EventGraph.ExecutionMode.sequential
-  (runtime setup) leaks
+  runtime leaks
   (fun terminal => utility (setup.parameterOutcome parameter terminal)) excludedPayoff
 local notation "read" => phaseSourceReadout setup EventGraph.ExecutionMode.sequential
-  (runtime setup) leaks
+  runtime leaks
 
 /-- Every intended sequential equilibrium has an audited raw phase implementation
 with the same joint typed readout and realized settled payoff law. Equilibrium
@@ -50,14 +51,14 @@ theorem intended_raw_sequentialEquilibrium_preserved
     (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal) {delay bound : (graph setup).EventId → Nat}
-    (opportunity : PhaseService.Opportunity (runtime setup) leaks (phaseInitialLaw setup) horizon
+    (opportunity : PhaseService.Opportunity runtime leaks (phaseInitialLaw setup) horizon
       scheduler delay)
-    (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks (phaseInitialLaw setup)
+    (inclusion : PhaseService.ProtectedInclusion runtime leaks (phaseInitialLaw setup)
         horizon
       scheduler bound)
-    (completes : PhaseService.CompletesPlay (runtime setup) leaks (phaseInitialLaw setup) horizon
+    (completes : PhaseService.CompletesPlay runtime leaks (phaseInitialLaw setup) horizon
       scheduler)
-    (timely : AsyncTimely (runtime setup) delay bound)
+    (timely : AsyncTimely runtime delay bound)
     (lowerUtility upperUtility : Player → ℝ)
     (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
     (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
@@ -81,7 +82,7 @@ theorem intended_raw_sequentialEquilibrium_preserved
           min 0 (min (excludedPayoff who) (lowerUtility who)) ≤
         observationRate who * deliveryRate who * deposit who) :
     let observe := (app).stateTraffic
-    let audit := PhaseCount.audit (runtime setup) leaks service.sample
+    let audit := PhaseCount.audit runtime leaks service.sample
     let payoff := TerminalAudit.utility base observe audit deposit
     let settle := TerminalAudit.settlement base observe audit deposit
     ∃ target : (R).BehavioralAssessment,
@@ -102,13 +103,14 @@ theorem intended_raw_sequentialEquilibrium_preserved
   classical
   intro observe audit payoff settle
   obtain ⟨canonical, canonicalSE, clear, law⟩ :=
-    intended_sequentialEquilibrium_preserved setup leaks bounds horizon scheduler parameter
+    intended_sequentialEquilibrium_preserved setup runtime leaks bounds horizon scheduler parameter
       utility excludedPayoff wellFormed independent observable opportunity inclusion completes
       timely
       lowerUtility upperUtility lower_le le_upper below intended equilibrium covers coversInputs
       capacity
   obtain ⟨target, targetSE, noExclusion, noCharges, _states, joint⟩ :=
-    canonical_raw_sequentialEquilibrium setup leaks bounds horizon scheduler parameter utility
+    canonical_raw_sequentialEquilibrium setup runtime leaks bounds horizon scheduler parameter
+      utility
       excludedPayoff intended canonical canonicalSE clear law service observationRate deliveryRate
       delivery_nonnegative coverage lowerUtility upperUtility lower_le le_upper deposit
       deposit_nonnegative sufficient

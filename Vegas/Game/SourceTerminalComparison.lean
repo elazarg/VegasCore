@@ -21,15 +21,18 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (initial : PMF (application setup leaks).State)
-  (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
+  (bounds : MessageBounds (graph setup)) (initial : PMF (application setup runtime leaks).State)
+  (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
 
-local notation "menu" => bounds.onePacketMenu (runtime setup) leaks
-local notation "N" => onePacketModel setup leaks bounds initial horizon scheduler
+local notation "menu" => bounds.onePacketMenu runtime leaks
+local notation "N" =>
+  onePacketModel (runtime := runtime) setup leaks bounds initial horizon scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol (menu) initial horizon scheduler
 local notation "complete" => (fun history : (E).History =>
-  NativeSourceTerminal (setup := setup) (leaks := leaks) (History.state history))
+  NativeSourceTerminal (runtime := runtime) (setup := setup) (leaks := leaks) (History.state
+    history))
 
 /-- Every legal continuation is compared at its actual readout-freeze time.
 The conditional budget counts honest callbacks only until source completion. -/
@@ -38,16 +41,20 @@ theorem onePacket_sourceTerminal_readout_withinTV_honest
     (certificate : (E).WellFoundedHistories)
     (profile : ∀ who, (N).BehavioralPolicy who) (start : (E).History)
     {retention : ℝ} (nonnegative : 0 ≤ retention) (le_one : retention ≤ 1)
-    (dominates : DominatesHonestFrom setup leaks bounds initial horizon scheduler assessment
+    (dominates : DominatesHonestFrom (runtime := runtime) setup leaks bounds
+      initial horizon scheduler assessment
       retention profile start) :
     PMF.WithinTV ((1 - retention) * (menu).expectedResponses initial horizon scheduler certificate
-        (honestProfile setup leaks bounds initial horizon scheduler assessment) complete start)
+        (honestProfile (runtime := runtime) setup leaks bounds initial horizon
+          scheduler assessment) complete start)
       (((N).runBehavioralTerminalFrom certificate
-        (honestProfile setup leaks bounds initial horizon scheduler assessment) start).map
-        (fun final => sourceReadout setup leaks final.state))
+        (honestProfile (runtime := runtime) setup leaks bounds initial horizon
+          scheduler assessment) start).map
+        (fun final => sourceReadout setup runtime leaks final.state))
       (((N).runBehavioralTerminalFrom certificate profile start).map
-        (fun final => sourceReadout setup leaks final.state)) := by
-  have close := onePacket_stopped_withinTV_honest setup leaks bounds initial horizon scheduler
+        (fun final => sourceReadout setup runtime leaks final.state)) := by
+  have close := onePacket_stopped_withinTV_honest (runtime := runtime) setup leaks bounds
+    initial horizon scheduler
     assessment certificate complete profile start nonnegative le_one dominates
   rw [sourceTerminal_readout_law (menu) initial horizon scheduler certificate,
     sourceTerminal_readout_law (menu) initial horizon scheduler certificate]
@@ -64,23 +71,31 @@ theorem onePacket_sourceTerminal_readout_exclusion_withinTV_honest
     (certificate : (E).WellFoundedHistories)
     (profile : ∀ who, (N).BehavioralPolicy who) (start : (E).History)
     {retention : ℝ} (nonnegative : 0 ≤ retention) (le_one : retention ≤ 1)
-    (dominates : DominatesHonestFrom setup leaks bounds initial horizon scheduler assessment
+    (dominates : DominatesHonestFrom (runtime := runtime) setup leaks bounds
+      initial horizon scheduler assessment
       retention profile start) :
     PMF.WithinTV ((1 - retention) * (menu).expectedResponses initial horizon scheduler certificate
-        (honestProfile setup leaks bounds initial horizon scheduler assessment) complete start)
+        (honestProfile (runtime := runtime) setup leaks bounds initial horizon
+          scheduler assessment) complete start)
       (((N).runBehavioralTerminalFrom certificate
-        (honestProfile setup leaks bounds initial horizon scheduler assessment) start).map
-        (readoutExclusion setup leaks bounds initial horizon scheduler parameter utility
+        (honestProfile (runtime := runtime) setup leaks bounds initial horizon
+          scheduler assessment) start).map
+        (readoutExclusion (runtime := runtime) setup leaks bounds initial horizon
+          scheduler parameter utility
           excludedPayoff))
       (((N).runBehavioralTerminalFrom certificate profile start).map
-        (readoutExclusion setup leaks bounds initial horizon scheduler parameter utility
+        (readoutExclusion (runtime := runtime) setup leaks bounds initial horizon
+          scheduler parameter utility
           excludedPayoff)) := by
   let attach := fun readout : Option (State L setup.program.terminalCtx) =>
     (readout, exclusionReadoutUtility setup parameter utility excludedPayoff readout)
-  have factor : readoutExclusion setup leaks bounds initial horizon scheduler parameter utility
-      excludedPayoff = attach ∘ fun final => sourceReadout setup leaks final.state := rfl
+  have factor : readoutExclusion (runtime := runtime) setup leaks bounds initial
+    horizon scheduler parameter utility
+      excludedPayoff = attach ∘ fun final => sourceReadout setup runtime leaks
+        final.state := rfl
   rw [factor, ← PMF.map_comp, ← PMF.map_comp]
-  exact (onePacket_sourceTerminal_readout_withinTV_honest setup leaks bounds initial horizon
+  exact (onePacket_sourceTerminal_readout_withinTV_honest (runtime := runtime) setup leaks
+    bounds initial horizon
     scheduler assessment certificate profile start nonnegative le_one dominates).map attach
 
 /-- Every utility of that typed readout, in particular each player's original
@@ -90,19 +105,23 @@ theorem onePacket_sourceTerminal_payoff_sub_le_honest
     (certificate : (E).WellFoundedHistories)
     (profile : ∀ who, (N).BehavioralPolicy who) (start : (E).History)
     {retention : ℝ} (nonnegative : 0 ≤ retention) (le_one : retention ≤ 1)
-    (dominates : DominatesHonestFrom setup leaks bounds initial horizon scheduler assessment
+    (dominates : DominatesHonestFrom (runtime := runtime) setup leaks bounds
+      initial horizon scheduler assessment
       retention profile start)
     (payoff : Option (State L setup.program.terminalCtx) → ℝ) {low width : ℝ}
     (payoffBounded : ∀ readout, low ≤ payoff readout ∧ payoff readout ≤ low + width) :
     |expect ((N).runBehavioralTerminalFrom certificate profile start)
-        (fun final => payoff (sourceReadout setup leaks final.state)) -
+        (fun final => payoff (sourceReadout setup runtime leaks final.state)) -
       expect ((N).runBehavioralTerminalFrom certificate
-        (honestProfile setup leaks bounds initial horizon scheduler assessment) start)
-        (fun final => payoff (sourceReadout setup leaks final.state))| ≤
+        (honestProfile (runtime := runtime) setup leaks bounds initial horizon
+          scheduler assessment) start)
+        (fun final => payoff (sourceReadout setup runtime leaks final.state))| ≤
       width * ((1 - retention) * (menu).expectedResponses initial horizon scheduler certificate
-        (honestProfile setup leaks bounds initial horizon scheduler assessment) complete
+        (honestProfile (runtime := runtime) setup leaks bounds initial horizon
+          scheduler assessment) complete
         start) := by
-  have close := onePacket_sourceTerminal_readout_withinTV_honest setup leaks bounds initial horizon
+  have close := onePacket_sourceTerminal_readout_withinTV_honest (runtime := runtime) setup
+    leaks bounds initial horizon
     scheduler assessment certificate profile start nonnegative le_one dominates
   have first := close.expect_sub_le payoff low width (fun readout _ => payoffBounded readout)
   have second := close.symm.expect_sub_le payoff low width (fun readout _ => payoffBounded readout)

@@ -30,7 +30,8 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+  {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)} {mode : EventGraph.ExecutionMode}
   {deadline : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
@@ -266,41 +267,46 @@ theorem canonical_freshCall {horizon : Nat}
 section OnePacket
 
 variable [Fintype Player] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   (bounds : MessageBounds (graph setup))
 
 /-- **One packet per event.** At a history of the one-packet game of the
-default runtime, under any scheduler, no entry of a player's recall emits a
+supplied runtime, under any scheduler, no entry of a player's recall emits a
 packet for an event other than a given own packet for that event. -/
 theorem onePacket_not_emitsOtherFor {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler} {control : (application setup leaks).Control}
-    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    {scheduler : (application setup runtime leaks).Scheduler} {control : (application setup
+      runtime leaks).Control}
+    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     (message : Message Player (WitnessedPacket (graph setup)))
-    (member : message ∈ (application setup leaks).outputs (control.execution.recall who))
+    (member : message ∈ (application setup runtime leaks).outputs (control.execution.recall who))
     (named : message.payload.call.event? (graph setup) = some event)
-    (entry : (application setup leaks).PlayerEntry) (_ : entry ∈ control.execution.recall who) :
-    ¬ EmitsOtherFor (runtime setup) leaks entry event message.id := by
+    (entry : (application setup runtime leaks).PlayerEntry) (_ : entry ∈ control.execution.recall
+      who) :
+    ¬ EmitsOtherFor runtime leaks entry event message.id := by
   rintro ⟨other, emitted, sender, otherNamed, different⟩
-  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+    scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
-  have clean := (bounds.onePacketMenu_countClean (runtime setup) leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => (runtime setup).countClean_initial leaks state)
+  have clean := (bounds.onePacketMenu_countClean runtime leaks scheduler).history
+    (initialLaw setup) horizon (fun state _ => runtime.countClean_initial leaks state)
     trace
   have recalled := clean.1
-  have signed := signedCommitments_history (runtime setup) leaks (initialLaw setup)
+  have signed := signedCommitments_history runtime leaks (initialLaw setup)
     (serviceInitialLaw_initialized setup) horizon scheduler rawTrace
   -- Both packets are inputs of the network, signed by `who`.
   have messageSender : message.sender = who := by
     obtain ⟨recorded, recordedMember, recordedEmitted⟩ := List.mem_filterMap.mp member
     exact (signed.emissions who recorded recordedMember message recordedEmitted).1
-  have otherMember : other ∈ (application setup leaks).outputs (control.execution.recall who) :=
+  have otherMember : other ∈ (application setup runtime leaks).outputs (control.execution.recall
+    who) :=
     List.mem_filterMap.mpr ⟨entry, by assumption, emitted⟩
   have inputOf (packet : Message Player (WitnessedPacket (graph setup)))
-      (output : packet ∈ (application setup leaks).outputs (control.execution.recall who)) :
+      (output : packet ∈ (application setup runtime leaks).outputs (control.execution.recall who)) :
       packet ∈ control.execution.network.inputs := by
     rw [← recalled.1 who] at output
     exact (List.mem_filter.mp output).1

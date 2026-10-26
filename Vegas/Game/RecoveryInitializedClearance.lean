@@ -20,34 +20,38 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
+  (scheduler : (recoveryApplication runtime leaks).Scheduler)
 
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
-local notation "NativeScheduler" => nativeScheduler (runtime setup) leaks scheduler
-local notation "R" => model setup leaks bounds Initial horizon scheduler
-local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horizon NativeScheduler
-local notation "RMenu" => Recovery.onePacketMenu (runtime setup) leaks bounds
+local notation "NativeScheduler" => nativeScheduler runtime leaks scheduler
+local notation "R" => model setup runtime leaks bounds Initial horizon scheduler
+local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  NativeScheduler
+local notation "RMenu" => Recovery.onePacketMenu runtime leaks bounds
 local notation "RP" => ReactiveApplication.ResponseMenu.protocol
-  (Recovery.onePacketMenu (runtime setup) leaks bounds) Initial horizon scheduler
+  (Recovery.onePacketMenu runtime leaks bounds) Initial horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
+  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
+    native ∅))
 
 private def exclusionFlag
-    (state : (recoveryApplication (runtime setup) leaks).ProtocolState) : Bool :=
+    (state : (recoveryApplication runtime leaks).ProtocolState) : Bool :=
   state.elim false fun control => decide (control.execution.application.excluded ≠ ∅)
 
 private theorem initialized_exclusion_mass_le_native_failure
     (profile : ∀ who, (R).BehavioralPolicy who) :
     (((((R).runBehavioral profile (2 * horizon + 1)).map
-      (fun final => exclusionFlag setup leaks final.state)) true).toReal) ≤
-      (((N).runBehavioral (sourceNativeProfile setup leaks bounds horizon scheduler profile)
+      (fun final => exclusionFlag setup runtime leaks final.state)) true).toReal) ≤
+      (((N).runBehavioral (sourceNativeProfile setup runtime leaks bounds horizon scheduler profile)
         (2 * horizon + 1)).toOuterMeasure {history | ¬ Clear history.state}).toReal := by
   classical
-  have close := recovery_initialized_projection_withinTV setup leaks bounds horizon scheduler
-    profile (fun _ => false) (exclusionFlag setup leaks) (by
+  have close := recovery_initialized_projection_withinTV setup runtime leaks bounds horizon
+    scheduler
+    profile (fun _ => false) (exclusionFlag setup runtime leaks) (by
       intro state clear
       cases state with
       | none => rfl
@@ -56,12 +60,12 @@ private theorem initialized_exclusion_mass_le_native_failure
     close.apply true
 
 variable [Fintype ((ReactiveApplication.ResponseMenu.protocol
-    (Recovery.onePacketMenu (runtime setup) leaks bounds)
+    (Recovery.onePacketMenu runtime leaks bounds)
     (PMF.map (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup)))
       (initialLaw setup)) horizon scheduler)).History]
-  [(application setup leaks).FiniteNature (initialLaw setup)
-    (nativeScheduler (runtime setup) leaks scheduler)]
-  [∀ who, DecidableEq ((model setup leaks bounds
+  [(application setup runtime leaks).FiniteNature (initialLaw setup)
+    (nativeScheduler runtime leaks scheduler)]
+  [∀ who, DecidableEq ((model setup runtime leaks bounds
     (PMF.map (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup)))
       (initialLaw setup)) horizon scheduler).InfoState who)]
 
@@ -74,19 +78,21 @@ theorem initialized_limit_no_exclusion
     (sourceSequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     (vanishes : Tendsto scale atTop (nhds 0)) {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (Part setup leaks bounds Initial horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (Part setup runtime leaks bounds Initial horizon scheduler slots p))
     (fallback : ∀ who, (R).Policy who)
     (assessments : ℕ → (R).BehavioralAssessment)
     (assembled : ∀ n, (assessments n).strategy =
       (R).agentBehavior (R).playedInformation fallback
-        (fun agent => (weights n (pool setup leaks bounds Initial horizon scheduler agent)).bind
-          (component setup leaks bounds Initial horizon scheduler (sourceSequence n) (scale n)
+        (fun agent => (weights n (pool setup runtime leaks bounds Initial horizon scheduler
+          agent)).bind
+          (component setup runtime leaks bounds Initial horizon scheduler (sourceSequence n)
+            (scale n)
             (positive n).le (le_one n) agent)))
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : Recovery.Opportunity (runtime setup) leaks Initial horizon scheduler delay)
-    (inclusion : Recovery.ProtectedInclusion (runtime setup) leaks Initial horizon scheduler bound)
-    (timely : (runtime setup).AsyncTimely delay bound)
-    (completes : Recovery.CompletesPlay (runtime setup) leaks Initial horizon scheduler)
+    (opportunity : Recovery.Opportunity runtime leaks Initial horizon scheduler delay)
+    (inclusion : Recovery.ProtectedInclusion runtime leaks Initial horizon scheduler bound)
+    (timely : runtime.AsyncTimely delay bound)
+    (completes : Recovery.CompletesPlay runtime leaks Initial horizon scheduler)
     (limit : (R).BehavioralAssessment) (index : ℕ → ℕ) (increasing : StrictMono index)
     (converges : ∀ who (site : (R).InformationSite who),
       PMFConvergesPointwise (fun n => (assessments (index n)).strategy who site.1)
@@ -97,11 +103,11 @@ theorem initialized_limit_no_exclusion
   let budget : ℝ := (min (Fintype.card Player) 1 * horizon : ℕ)
   have approximation (n : ℕ) :
       (((((R).runBehavioral (assessments n).strategy (2 * horizon + 1)).map
-        (fun final => exclusionFlag setup leaks final.state)) true).toReal) ≤
+        (fun final => exclusionFlag setup runtime leaks final.state)) true).toReal) ≤
         budget * (1 - slotRetention (scale n)) := by
-    exact (initialized_exclusion_mass_le_native_failure setup leaks bounds horizon scheduler
+    exact (initialized_exclusion_mass_le_native_failure setup runtime leaks bounds horizon scheduler
       (assessments n).strategy).trans
-      (sourceNativeProfile_initialized_failure_mass_le setup leaks bounds horizon scheduler
+      (sourceNativeProfile_initialized_failure_mass_le setup runtime leaks bounds horizon scheduler
         wellFormed covers capacity sourceSequence scale positive le_one weights n fallback
           (assessments n).strategy (assembled n) opportunity inclusion timely completes)
   let certificate := ((RMenu).bounded Initial horizon scheduler).wellFoundedHistories
@@ -117,7 +123,7 @@ theorem initialized_limit_no_exclusion
       ((R).runBehavioral limit.strategy (2 * horizon + 1)) := by
     simpa only [evaluation] using terminalConverges
   have atomConverges :=
-    (runConverges.map (fun final => exclusionFlag setup leaks final.state)).toReal true
+    (runConverges.map (fun final => exclusionFlag setup runtime leaks final.state)).toReal true
   have retained := tendsto_slotRetention (vanishes.comp increasing.tendsto_atTop)
   have negligible : Tendsto (fun n => budget * (1 - slotRetention (scale (index n))))
       atTop (nhds 0) := by

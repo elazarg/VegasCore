@@ -22,7 +22,7 @@ against the owner's earlier packets
 * no own earlier packet names the event, since the recall has not submitted for
   it.
 
-So, at a one-packet history of the default runtime, every canonical decision
+So, at a one-packet history of the supplied runtime, every canonical decision
 the canonical menu retains at a pending event lies in the one-packet menu
 (`Vegas.canonical_mem_onePacket_of_pending`).
 -/
@@ -37,7 +37,8 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+  (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup)) {mode : EventGraph.ExecutionMode}
   {deadline : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
@@ -48,7 +49,7 @@ theorem serviceInitialLaw_initialized (state : EventGraphRuntime.State (serviceG
   obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
   exact ⟨_, rfl⟩
 
-variable {setup leaks}
+variable {setup runtime leaks}
 
 /-- An own output is an earlier own packet of every packet the owner emits
 next. -/
@@ -314,34 +315,38 @@ theorem canonicalServiceDecision_countPermits {horizon : Nat}
 section OnePacket
 
 variable [Fintype Player] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   (bounds : MessageBounds (graph setup))
 
 /-- **Retained canonical decisions are one-packet responses.** At a history of
-the one-packet game of the default runtime, under any scheduler, a canonical
+the one-packet game of the supplied runtime, under any scheduler, a canonical
 decision of `who` at its turn `event`, for which its recall has not submitted,
 lies in the one-packet menu whenever the canonical menu retains it. -/
 theorem canonical_mem_onePacket_of_pending {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler} {control : (application setup leaks).Control}
-    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    {scheduler : (application setup runtime leaks).Scheduler} {control : (application setup
+      runtime leaks).Control}
+    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (unsent : (runtime setup).eventRecorded leaks (control.execution.recall who) event = false)
+    (unsent : runtime.eventRecorded leaks (control.execution.recall who) event = false)
     (action : (graph setup).Action event)
-    (retained : (runtime setup).canonicalServiceDecision leaks who (control.execution.recall who)
-        (control.execution.observe (application setup leaks) who) event action ∈
-      bounds.canonicalActions (runtime setup) leaks who (control.execution.recall who)
-        (control.execution.observe (application setup leaks) who)) :
-    (runtime setup).canonicalServiceDecision leaks who (control.execution.recall who)
-        (control.execution.observe (application setup leaks) who) event action ∈
-      bounds.onePacketActions (runtime setup) leaks who (control.execution.recall who)
-        (control.execution.observe (application setup leaks) who) := by
-  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    (retained : runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+        (control.execution.observe (application setup runtime leaks) who) event action ∈
+      bounds.canonicalActions runtime leaks who (control.execution.recall who)
+        (control.execution.observe (application setup runtime leaks) who)) :
+    runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+        (control.execution.observe (application setup runtime leaks) who) event action ∈
+      bounds.onePacketActions runtime leaks who (control.execution.recall who)
+        (control.execution.observe (application setup runtime leaks) who) := by
+  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+    scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
-  exact canonical_mem_onePacket setup leaks bounds who _ _ _ retained fun material submits =>
+  exact canonical_mem_onePacket setup runtime leaks bounds who _ _ _ retained fun material submits
+    =>
     canonicalServiceDecision_countPermits rawTrace who event turn unsent action material submits
 
 end OnePacket

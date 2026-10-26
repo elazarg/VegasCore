@@ -38,7 +38,8 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
   EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} [DecidableEq (CellTy Player L)]
+  {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)} [DecidableEq (CellTy Player L)]
 
 variable {Public : Type*} {signal : State L setup.context → Public}
 
@@ -134,19 +135,19 @@ section Native
 variable [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 omit [DecidableEq (CellTy Player L)] in
 /-- An initialized history is no prefix of the empty history. -/
-theorem not_tracePrefix_start {control : (application setup leaks).Control}
-    {prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control)}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace none) :
+theorem not_tracePrefix_start {control : (application setup runtime leaks).Control}
+    {prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control)}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace none) :
     ¬ TracePrefix prior trace := by
   intro isPrefix
   have length := isPrefix.length_le
-  rw [trace_eq_start_of_none trace] at length
+  rw [trace_eq_start_of_none (runtime := runtime) trace] at length
   have positive : ∀ {state}
-      (prefixTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state),
+      (prefixTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state),
       state = some control → 0 < prefixTrace.length := by
     intro state prefixTrace initialized
     cases prefixTrace with
@@ -165,22 +166,23 @@ theorem forcedState_image_of_tracePrefix (swap : HiddenSwap (graph setup))
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
-    (r : Player) {control : (application setup leaks).Control}
-    (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
-    {state} {trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state}
-    (isPrefix : TracePrefix prior trace) (guarded : SwapGuardState setup swap allowed state)
-    (forced : ForcedState setup leaks r (swap.protocolState state)) :
-    ForcedState setup leaks r (some (swap.control control)) := by
-  let symmetry := onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap
+    (r : Player) {control : (application setup runtime leaks).Control}
+    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    {state} {trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state}
+    (isPrefix : TracePrefix prior trace) (guarded : SwapGuardState setup runtime swap allowed state)
+    (forced : ForcedState setup runtime leaks r (swap.protocolState state)) :
+    ForcedState setup runtime leaks r (some (swap.control control)) := by
+  let symmetry := onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon
+    scheduler swap
     initialClosed bounded
   induction isPrefix with
   | refl => exact forced
   | @extend source target before earlier joint legal realized ih =>
       cases source with
-      | none => exact (not_tracePrefix_start before earlier).elim
+      | none => exact (not_tracePrefix_start (runtime := runtime) before earlier).elim
       | some previous =>
           have guardSource := symmetry.guard_source before legal realized guarded
-          exact ih guardSource (forcedState_of_transition
+          exact ih guardSource (forcedState_of_transition (runtime := runtime)
             (symmetry.mapTrace before guardSource) (symmetry.act (some previous) joint)
             (symmetry.realized before legal realized guarded) forced)
 
@@ -191,12 +193,14 @@ theorem swapGuardState_of_tracePrefix (swap : HiddenSwap (graph setup))
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
-    {first : (application setup leaks).ProtocolState}
-    {prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace first}
-    {state} {trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state}
-    (isPrefix : TracePrefix prior trace) (guarded : SwapGuardState setup swap allowed state) :
-    SwapGuardState setup swap allowed first := by
-  let symmetry := onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap
+    {first : (application setup runtime leaks).ProtocolState}
+    {prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace first}
+    {state} {trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state}
+    (isPrefix : TracePrefix prior trace) (guarded : SwapGuardState setup runtime swap allowed
+      state) :
+    SwapGuardState setup runtime swap allowed first := by
+  let symmetry := onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon
+    scheduler swap
     initialClosed bounded
   induction isPrefix with
   | refl => exact guarded
@@ -214,8 +218,8 @@ forced for it. -/
 theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal) (covered : BindingFieldsCovered bounds)
-    {who : Player} {current : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some current))
+    {who : Player} {current : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some current))
     {p w : ProtocolState setup.program}
     (decodedP : decodedPoint setup current.execution.application.config = some p)
     {second : setup.intendedProtocol.History} (secondState : second.state = some w)
@@ -228,11 +232,12 @@ theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
           owner = who)
     {r : Player}
     (succeed : CommitmentCellsSucceed setup p (ProtocolState.splicePoint setup.program r p w))
-    {control : (application setup leaks).Control}
-    (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    {control : (application setup runtime leaks).Control}
+    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     (isPrefix : TracePrefix prior trace) (different : r ≠ who) :
-    forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon scheduler
-      r ((application setup leaks).observe r (some control)) := by
+    forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw setup)
+      horizon scheduler
+      r ((application setup runtime leaks).observe r (some control)) := by
   have publicAgree := publicCellsAgree_of_observe sameView
   have shape := ProtocolState.sameShape_of_observe_eq who setup.program p w sameView
   let q := ProtocolState.splicePoint setup.program r p w
@@ -242,17 +247,19 @@ theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
     (betweenHandlePairs setup p q current.execution.application.accepted)
   -- The swap toward the splice is guarded at the end of the history.
   have drawnP : ∃ initial ∈ setup.initialLaw.support, InitialCellsAt initial p := by
-    obtain ⟨initial, member, _, point, pointEq, found⟩ := decoded_initialCellsAt trace current rfl
+    obtain ⟨initial, member, _, point, pointEq, found⟩ := decoded_initialCellsAt (runtime :=
+      runtime) trace current rfl
     rw [decodedP, Option.some.injEq] at pointEq
     subst pointEq
     exact ⟨initial, member, found⟩
   have drawn := drawn_splicePoint (r := r) independent observable publicAgree drawnP
     (exists_initialCellsAt second.trace secondState)
   have staticP := decodedPoint_staticAt decodedP
-  have guarded : SwapGuardState setup swap (swapAllowed swap) (some current) :=
-    swapGuardState_of_agree drawn trace decodedP
+  have guarded : SwapGuardState setup runtime swap (swapAllowed swap) (some current) :=
+    swapGuardState_of_agree (runtime := runtime) drawn trace decodedP
       (fun event active owner payload binding checks outputEq codeEq view =>
-        cell?_splicePoint_eq_of_agree (bindingCellsAgree_of_decoded (event := event)
+        cell?_splicePoint_eq_of_agree (bindingCellsAgree_of_decoded (runtime := runtime) (event :=
+          event)
           (owner := owner) (payload := payload) (binding := binding) (checks := checks)
           (outputEq := outputEq) (codeEq := codeEq) wellFormed secondState who sameView trace
           decodedP staticW readyOwn active view)) rfl
@@ -260,27 +267,32 @@ theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
     (betweenPairs publicAgreeQ succeedQ) current.execution.application.accepted covered
   have fixes : swap.Fixes r :=
     fixes_between_of_visible (fun name _ visible => cell?_splicePoint_of_visible publicAgree name
-      visible) (fun _ _ accepted => accepted_owner_of_trace trace accepted)
+      visible) (fun _ _ accepted => accepted_owner_of_trace (runtime := runtime) trace accepted)
   -- The image of the end of the history is forced for `r`.
-  have forcedEnd : ForcedState setup leaks r (some (swap.control current)) := by
-    refine (forcedState_iff_decodedPoint _).mpr ⟨_, ?_,
+  have forcedEnd : ForcedState setup runtime leaks r (some (swap.control
+    current)) := by
+    refine (forcedState_iff_decodedPoint (runtime := runtime) _).mpr ⟨_, ?_,
       forcedPoint_splice shape staticP staticW
         (intended_of_history wellFormed second.trace w secondState) (Ne.symm different)⟩
     change decodedPoint setup (current.execution.application.config.swap
       (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgreeQ succeedQ))) = _
     rw [decodedPoint_betweenPairs, decodedP, Option.map_some]
   -- So is the image of the prefix, which carries `r`'s information there.
-  have guardedPrior := swapGuardState_of_tracePrefix swap (initialClosed_swapAllowed swap) bounded
+  have guardedPrior := swapGuardState_of_tracePrefix (runtime := runtime) swap
+    (initialClosed_swapAllowed swap) bounded
     isPrefix guarded
-  have forcedPrior := forcedState_image_of_tracePrefix swap (initialClosed_swapAllowed swap)
+  have forcedPrior := forcedState_image_of_tracePrefix (runtime := runtime) swap
+    (initialClosed_swapAllowed swap)
     bounded r prior isPrefix guarded forcedEnd
-  let symmetry := onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap
+  let symmetry := onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon
+    scheduler swap
     (initialClosed_swapAllowed swap) bounded
   refine ⟨⟨_, symmetry.mapTrace prior guardedPrior⟩, ?_, forcedPrior⟩
-  change (onePacketInformation setup leaks bounds horizon scheduler).infoOf r
+  change (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf r
     (symmetry.mapTrace prior guardedPrior) = _
   rw [onePacket_infoOf]
-  exact observe_swap_of_fixes swap (initialClosed_swapAllowed swap) bounded fixes prior
+  exact observe_swap_of_fixes (runtime := runtime) swap (initialClosed_swapAllowed swap) bounded
+    fixes prior
     guardedPrior
 
 end Native

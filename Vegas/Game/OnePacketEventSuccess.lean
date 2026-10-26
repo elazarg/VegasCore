@@ -38,6 +38,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 omit [DecidableEq Player] in
@@ -51,7 +52,7 @@ theorem not_storeEventFailed_of_outputSucceeded {graph : EventGraph Player L}
   cases Option.some.inj otherStored
   exact notFailed failed
 
-variable (setup) in
+variable (setup runtime) in
 /-- **A certificate that acceptance succeeds.** The message commits to a
 handle of the event whose meaning is openable at the bound type, or opens a
 resolution of the event whose evaluation on the configuration `sent`
@@ -86,35 +87,35 @@ theorem AcceptanceWitness.output_success {event : (graph setup).EventId}
     {state next : EventGraphRuntime.State (graph setup)}
     (witness : AcceptanceWitness setup event message sent state)
     (sameConfig : state.config = sent) (valid : state.BindingInvariant)
-    (accepted : handle (runtime setup) state ⟨message.id, message.payload.call⟩ = some next) :
+    (accepted : handle runtime state ⟨message.id, message.payload.call⟩ = some next) :
     OutputSucceeded next.config.store event := by
   rcases witness with ⟨candidate, owner, payload, value, call, layout, fixed⟩ |
     ⟨candidate, raw, owner, payload, binding, checks, outputEq, codeEq, value, call, node,
       resolved⟩
   · rw [call] at accepted
-    exact handle_commitment_output_success (runtime setup) state next message.id event
+    exact handle_commitment_output_success runtime state next message.id event
       candidate accepted valid owner payload layout value fixed
   · rw [call] at accepted
     rw [← sameConfig] at resolved
-    exact handle_opening_output_success (runtime setup) state next message.id event candidate
+    exact handle_opening_output_success runtime state next message.id event candidate
       raw accepted owner payload binding checks outputEq codeEq node value resolved
 
 section Invariant
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup))
-  (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
+  (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
 
-variable (setup leaks) in
+variable (setup runtime leaks) in
 /-- **The acceptance invariant** after a recorded send of `message` for
 `event` from the configuration `sent`. -/
-def AcceptanceInvariant (who : Player) (entry : (application setup leaks).PlayerEntry)
+def AcceptanceInvariant (who : Player) (entry : (application setup runtime leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup))) (event : (graph setup).EventId)
-    (sent : (graph setup).Config) : (application setup leaks).ProtocolState → Prop
+    (sent : (graph setup).Config) : (application setup runtime leaks).ProtocolState → Prop
   | none => False
   | some control =>
-      Nonempty (((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      Nonempty (((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
         horizon scheduler).Trace (some control)) ∧
-      RecordsEntry setup leaks who entry (some control) ∧
+      RecordsEntry setup runtime leaks who entry (some control) ∧
       entry.emitted = some message ∧
       sent.cut.Ready event ∧
       AcceptanceWitness setup event message sent control.execution.application ∧
@@ -126,35 +127,38 @@ def AcceptanceInvariant (who : Player) (entry : (application setup leaks).Player
 /-- **The acceptance invariant persists** under every transition of the
 one-packet game. -/
 theorem acceptanceInvariant_transition (who : Player)
-    (entry : (application setup leaks).PlayerEntry)
+    (entry : (application setup runtime leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup))) (event : (graph setup).EventId)
-    (sent : (graph setup).Config) (before after : (application setup leaks).ProtocolState)
-    (joint : Player → Option (application setup leaks).Action)
-    (legal : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    (sent : (graph setup).Config) (before after : (application setup runtime leaks).ProtocolState)
+    (joint : Player → Option (application setup runtime leaks).Action)
+    (legal : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Legal before joint)
-    (holds : AcceptanceInvariant setup leaks bounds horizon scheduler who entry message event
+    (holds : AcceptanceInvariant setup runtime leaks bounds horizon scheduler who entry message
+      event
       sent before)
-    (reached : after ∈ (((bounds.onePacketMenu (runtime setup) leaks).protocol
+    (reached : after ∈ (((bounds.onePacketMenu runtime leaks).protocol
       (initialLaw setup) horizon scheduler).step before ⟨joint, legal⟩).support) :
-    AcceptanceInvariant setup leaks bounds horizon scheduler who entry message event sent
+    AcceptanceInvariant setup runtime leaks bounds horizon scheduler who entry message event sent
       after := by
   cases before with
   | none => exact holds.elim
   | some control =>
       obtain ⟨⟨trace⟩, records, emitted, sentReady, witness, stable, settled⟩ := holds
-      have afterRecords := recordsEntry_transition who entry (initialLaw setup) horizon scheduler
+      have afterRecords := recordsEntry_transition (runtime := runtime) who entry (initialLaw
+        setup) horizon scheduler
         _ after joint records reached
       cases after with
       | none => exact afterRecords.elim
       | some next =>
-          have nextTrace : ((bounds.onePacketMenu (runtime setup) leaks).protocol
+          have nextTrace : ((bounds.onePacketMenu runtime leaks).protocol
               (initialLaw setup) horizon scheduler).Trace (some next) :=
             .extend trace joint legal reached
-          have kept := (keepsFixedCandidates_step (runtime setup) leaks).transition
+          have kept := (keepsFixedCandidates_step runtime leaks).transition
             (initialLaw setup) horizon scheduler control next joint reached
-          have keptStore := (keepsStore_step (runtime setup) leaks).transition
+          have keptStore := (keepsStore_step runtime leaks).transition
             (initialLaw setup) horizon scheduler control next joint reached
-          have configStep := transition_configStep (initialLaw setup) horizon scheduler control
+          have configStep := transition_configStep (initialLaw setup) horizon
+            scheduler control
             next joint reached
           refine ⟨⟨nextTrace⟩, afterRecords, emitted, sentReady, witness.keep kept, ?_, ?_⟩
           · intro unfinished
@@ -176,9 +180,9 @@ theorem acceptanceInvariant_transition (who : Player)
           · intro receipt
             -- Which transition added the receipt, if any.
             rcases control with ⟨remaining, current, execution⟩
-            have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon
+            have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
                 scheduler).Trace (some ⟨remaining, current, execution⟩) :=
-              (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon
+              (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
                 scheduler trace
             have facts := legalFacts setup leaks horizon scheduler _ rawTrace
             cases current with
@@ -214,10 +218,10 @@ theorem acceptanceInvariant_transition (who : Player)
                           PMF.pure_map] at supported
                         cases (PMF.mem_support_pure_iff _ _).mp supported
                         change (message.id, true) ∈
-                          (execution.includePending (application setup leaks)
+                          (execution.includePending (application setup runtime leaks)
                             id).receipts at receipt
                         change OutputSucceeded
-                          (execution.includePending (application setup leaks)
+                          (execution.includePending (application setup runtime leaks)
                             id).application.config.store event
                         unfold ReactiveApplication.Execution.includePending
                           MessageNetwork.includePending at receipt ⊢
@@ -227,7 +231,7 @@ theorem acceptanceInvariant_transition (who : Player)
                             exact settled receipt
                         | some envelope =>
                             simp only [found] at receipt ⊢
-                            cases accepted : (application setup leaks).handle
+                            cases accepted : (application setup runtime leaks).handle
                                 execution.application envelope with
                             | none =>
                                 simp only [accepted, Option.getD_none] at receipt ⊢
@@ -238,17 +242,20 @@ theorem acceptanceInvariant_transition (who : Player)
                                 simp only [accepted, Option.getD_some] at receipt ⊢
                                 rcases List.mem_append.mp receipt with old | new
                                 · exact (settled old).mono fun field value stored =>
-                                    handle_store_of_some (runtime setup) _ _ _
+                                    handle_store_of_some runtime _ _ _
                                       (reactiveHandle_call accepted) field value stored
                                 · obtain ⟨idEq, -⟩ := Prod.mk.inj (List.mem_singleton.mp new)
                                   -- The included envelope is the message.
                                   obtain ⟨earlier, later, split⟩ := records
                                   change execution.recall who = _ at split
-                                  have output : message ∈ (application setup leaks).outputs
+                                  have output : message ∈ (application setup runtime leaks).outputs
                                       (execution.recall who) := by
                                     rw [split]
                                     exact List.mem_filterMap.mpr ⟨entry, by simp, emitted⟩
-                                  rw [← facts.inputs who] at output
+                                  have inputRecall : execution.InputRecall
+                                      (application setup runtime leaks) :=
+                                    facts.inputs
+                                  rw [← inputRecall who] at output
                                   have member := (List.mem_filter.mp output).1
                                   have named : envelope.id = id := by
                                     have spec := List.find?_some found
@@ -259,7 +266,7 @@ theorem acceptanceInvariant_transition (who : Player)
                                   subst same
                                   have call := reactiveHandle_call accepted
                                   obtain ⟨named', eventNamed, ready, _⟩ :=
-                                    handle_config_mem_step (runtime setup) _ _ _ call
+                                    handle_config_mem_step runtime _ _ _ call
                                   have eventEq : named' = event := by
                                     rcases witness with ⟨_, _, _, _, callEq, _⟩ |
                                       ⟨_, _, _, _, _, _, _, _, _, callEq, _⟩
@@ -272,7 +279,8 @@ theorem acceptanceInvariant_transition (who : Player)
                                       rw [callEq] at eventNamed
                                       exact (Option.some.inj eventNamed).symm
                                   subst eventEq
-                                  exact witness.output_success (stable ready.1) facts.binding call
+                                  exact witness.output_success (stable
+                                    ready.1) facts.binding call
 
 omit [DecidableEq Player] in
 private theorem exists_of_forall₂_mem {α β : Type} {relation : α → β → Prop} :
@@ -290,45 +298,48 @@ turn `event` in the one-packet game, the canonical decision of an action that
 is a successful binding value at a binding, transmitting `material`, leaves the
 acceptance invariant at the state it reaches. -/
 theorem acceptanceInvariant_respond {remaining : Nat} {who : Player}
-    {execution : (application setup leaks).Execution}
-    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    {execution : (application setup runtime leaks).Execution}
+    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
-    (action : (graph setup).Action event) (material : (application setup leaks).Submission)
-    (submits : ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
-      (execution.observe (application setup leaks) who) event action).transmission =
+    (action : (graph setup).Action event) (material : (application setup runtime leaks).Submission)
+    (submits : (runtime.canonicalServiceDecision leaks who (execution.recall who)
+      (execution.observe (application setup runtime leaks) who) event action).transmission =
         some material)
     (bindSuccess : ∀ owner payload outputEq codeEq,
       nodeView (graph setup) event = .bind owner payload outputEq codeEq →
         ∃ value, (cast (congrArg EventGraph.EventField.Action outputEq) action :
           PublicationResult (L.Val payload)) = .success value)
-    (after : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace (some ⟨remaining, none, execution.respond (application setup leaks) who
-        ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
-          (execution.observe (application setup leaks) who) event action)⟩)) :
-    AcceptanceInvariant setup leaks bounds horizon scheduler who
-      (respondEntry setup leaks execution who ((runtime setup).canonicalServiceDecision leaks who
-        (execution.recall who) (execution.observe (application setup leaks) who) event action))
-      (sentEnvelope setup leaks execution who material) event execution.application.config
-      (some ⟨remaining, none, execution.respond (application setup leaks) who
-        ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
-          (execution.observe (application setup leaks) who) event action)⟩) := by
-  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    (after : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some ⟨remaining, none, execution.respond (application setup runtime leaks)
+        who
+        (runtime.canonicalServiceDecision leaks who (execution.recall who)
+          (execution.observe (application setup runtime leaks) who) event action)⟩)) :
+    AcceptanceInvariant setup runtime leaks bounds horizon scheduler who
+      (respondEntry setup runtime leaks execution who (runtime.canonicalServiceDecision leaks who
+        (execution.recall who) (execution.observe (application setup runtime leaks) who) event
+          action))
+      (sentEnvelope setup runtime leaks execution who material) event execution.application.config
+      (some ⟨remaining, none, execution.respond (application setup runtime leaks) who
+        (runtime.canonicalServiceDecision leaks who (execution.recall who)
+          (execution.observe (application setup runtime leaks) who) event action)⟩) := by
+  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+    scheduler).Trace
       (some ⟨remaining, some who, execution⟩) :=
-    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
   have facts := legalFacts setup leaks horizon scheduler _ rawTrace
   have readyView := (PublicView.ownTurn?_spec _ who event turn).1
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
   have ready := (execution.application.publicView_eventReady event).mp readyView
-  have respondApplication : (execution.respond (application setup leaks) who
-      ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
-        (execution.observe (application setup leaks) who) event action)).application =
-      (application setup leaks).submit execution.application who material := by
+  have respondApplication : (execution.respond (application setup runtime leaks) who
+      (runtime.canonicalServiceDecision leaks who (execution.recall who)
+        (execution.observe (application setup runtime leaks) who) event action)).application =
+      (application setup runtime leaks).submit execution.application who material := by
     unfold ReactiveApplication.Execution.respond
     rw [submits]
-  have sameConfig : ((application setup leaks).submit execution.application who
+  have sameConfig : ((application setup runtime leaks).submit execution.application who
       material).config = execution.application.config := by
     change (submitStep (material.call.register execution.application who) who
       material.call.packet).config = _
@@ -337,13 +348,14 @@ theorem acceptanceInvariant_respond {remaining : Nat} {who : Player}
     split
     · split <;> rfl
     · rfl
-  refine ⟨⟨after⟩, recordsEntry_respond execution who _ remaining none,
-    by rw [respondEntry_of_transmission execution who _ material submits], ready, ?_, ?_, ?_⟩
+  refine ⟨⟨after⟩, recordsEntry_respond (runtime := runtime) execution who _ remaining none,
+    by rw [respondEntry_of_transmission (runtime := runtime) execution who _ material submits],
+      ready, ?_, ?_, ?_⟩
   · -- The witness.
-    change AcceptanceWitness setup event (sentEnvelope setup leaks execution who material)
-      execution.application.config (execution.respond (application setup leaks) who
-        ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
-          (execution.observe (application setup leaks) who) event action)).application
+    change AcceptanceWitness setup event (sentEnvelope setup runtime leaks execution who material)
+      execution.application.config (execution.respond (application setup runtime leaks) who
+        (runtime.canonicalServiceDecision leaks who (execution.recall who)
+          (execution.observe (application setup runtime leaks) who) event action)).application
     rw [respondApplication]
     cases node : nodeView (graph setup) event with
     | sample payload law outputEq codeEq =>
@@ -360,7 +372,8 @@ theorem acceptanceInvariant_respond {remaining : Nat} {who : Player}
           ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
         simp only [cast_cast, cast_eq] at successful
         subst successful
-        generalize hview : execution.observe (application setup leaks) actor = view at submits
+        generalize hview : execution.observe (application setup runtime leaks) actor =
+          view at submits
         cases selected : canonicalFreshSlot actor view.application with
         | none =>
             simp only [EventGraphRuntime.canonicalServiceDecision,
@@ -371,9 +384,9 @@ theorem acceptanceInvariant_respond {remaining : Nat} {who : Player}
             have fresh := canonicalFreshSlot_spec actor _ serial selected
             rw [← hview] at fresh selected
             rw [← hview] at submits
-            rw [(runtime setup).canonicalServiceDecision_binding leaks actor
+            rw [runtime.canonicalServiceDecision_binding leaks actor
               (execution.recall actor)
-              (execution.observe (application setup leaks) actor) event
+              (execution.observe (application setup runtime leaks) actor) event
               payload outputEq codeEq node serial selected (.success value)] at submits
             cases Option.some.inj submits
             have freshLookup : execution.application.candidates.lookup
@@ -390,17 +403,18 @@ theorem acceptanceInvariant_respond {remaining : Nat} {who : Player}
         have actorEq : actor = who :=
           Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
         subst actorEq
-        rw [(runtime setup).canonicalServiceDecision_eq_of_not_bind leaks actor
-          (execution.recall actor) (execution.observe (application setup leaks) actor) event
+        rw [runtime.canonicalServiceDecision_eq_of_not_bind leaks actor
+          (execution.recall actor) (execution.observe (application setup runtime leaks) actor) event
           action (fun _ _ _ _ bind => by rw [node] at bind; cases bind)] at submits
         unfold EventGraphRuntime.serviceDecision EventGraphRuntime.reactiveDecision at submits
         simp only [node] at submits
         rcases reactiveResolutionPacket_shape actor event payload binding checks outputEq action
-            (execution.observe (application setup leaks) actor).application with
+            (execution.observe (application setup runtime leaks) actor).application with
           ⟨candidate, raw, packet⟩ | packet
         · obtain ⟨_, value, localResolved, _, _, rawEq⟩ :=
             reactiveResolutionPacket_opening actor event payload binding checks outputEq action
-              (execution.observe (application setup leaks) actor).application event candidate
+              (execution.observe (application setup runtime leaks) actor).application event
+                candidate
               raw packet
           subst rawEq
           have resolved : EventGraph.EventCode.resolveOutput? binding checks true
@@ -419,9 +433,9 @@ theorem acceptanceInvariant_respond {remaining : Nat} {who : Player}
         · rw [packet] at submits
           cases submits
   · intro _
-    change (execution.respond (application setup leaks) who
-      ((runtime setup).canonicalServiceDecision leaks who (execution.recall who)
-        (execution.observe (application setup leaks) who) event
+    change (execution.respond (application setup runtime leaks) who
+      (runtime.canonicalServiceDecision leaks who (execution.recall who)
+        (execution.observe (application setup runtime leaks) who) event
           action)).application.config = _
     rw [respondApplication]
     exact sameConfig
@@ -435,13 +449,13 @@ theorem acceptanceInvariant_respond {remaining : Nat} {who : Player}
     rw [← sameId] at lower
     exact Nat.lt_irrefl _ lower
 
-variable (setup leaks) in
+variable (setup runtime leaks) in
 /-- **The event-level failed histories** of the one-packet game: those whose
 typed readout records a failure of `event` and a failed reveal of `who`. -/
 def EventFailedHistory (who : Player) (event : (graph setup).EventId) :
-    Set ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    Set ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).History :=
-  {history | sourceReadout setup leaks history.state ∈ EventFailedReadout setup who event}
+  {history | sourceReadout setup runtime leaks history.state ∈ EventFailedReadout setup who event}
 
 end Invariant
 

@@ -120,16 +120,17 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
   [DecidableEq (CellTy Player L)]
 
 /-- **The inputs of a native history** are those of a setup draw whose cells
 its decoded point finds. -/
 theorem decoded_initialCellsAt : ∀ {state}
-    (_ : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state)
-    (control : (application setup leaks).Control), state = some control →
+    (_ : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
+    (control : (application setup runtime leaks).Control), state = some control →
     ∃ initial ∈ setup.initialLaw.support,
       control.execution.application.config.inputs = setup.eventInputs initial ∧
       ∃ point, decodedPoint setup control.execution.application.config = some point ∧
@@ -138,7 +139,7 @@ theorem decoded_initialCellsAt : ∀ {state}
   | _, .extend (source := before) prior joint _ realized, control, current => by
       have recursive := fun next same => decoded_initialCellsAt prior next same
       subst current
-      change some control ∈ ((application setup leaks).transition (initialLaw setup) horizon
+      change some control ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
         scheduler before joint).support at realized
       cases before with
       | none =>
@@ -152,7 +153,8 @@ theorem decoded_initialCellsAt : ∀ {state}
             initialCellsAt_entry initial⟩
       | some current =>
           obtain ⟨initial, member, inputsEq, point, decoded, found⟩ := recursive current rfl
-          have step := transition_configStep (initialLaw setup) horizon scheduler current
+          have step := transition_configStep (initialLaw setup) horizon
+            scheduler current
             control joint realized
           have sameInputs : control.execution.application.config.inputs =
               current.execution.application.config.inputs := by
@@ -164,8 +166,9 @@ theorem decoded_initialCellsAt : ∀ {state}
           refine ⟨initial, member, sameInputs.trans inputsEq, ?_⟩
           rcases step with same | ⟨event, ready, action, completed⟩
           · exact ⟨point, by rw [same]; exact decoded, found⟩
-          · obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
-              (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler prior current rfl
+          · obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime)
+              (failureProfile setup.program)
+              (bounds.onePacketMenu runtime leaks) horizon scheduler prior current rfl
             obtain ⟨before, target, beforeEq, afterEq, reached⟩ :=
               decodedPoint_step residual event ready action _ completed
             rw [decoded, Option.some.injEq] at beforeEq
@@ -183,13 +186,13 @@ theorem inputs_mem_swapAllowed_of_drawn
     (handlePairs : Handle (graph setup) → Option (Raw L × Raw L))
     (compatible : (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
       handlePairs).InitialHandlesCompatible)
-    {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     (decodedP : decodedPoint setup control.execution.application.config = some p) :
     control.execution.application.config.inputs ∈
       swapAllowed (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) := by
   obtain ⟨initial, member, inputsEq, point, pointEq, found⟩ :=
-    decoded_initialCellsAt trace control rfl
+    decoded_initialCellsAt (runtime := runtime) trace control rfl
   rw [decodedP, Option.some.injEq] at pointEq
   subst pointEq
   obtain ⟨other, otherMember, otherFound⟩ := drawn
@@ -215,8 +218,8 @@ theorem bindingCellsAgree_of_decoded (wellFormed : setup.WellFormed)
     (who : Player)
     (sameView : ProtocolState.observe who setup.program p =
       ProtocolState.observe who setup.program q)
-    {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     (decodedP : decodedPoint setup control.execution.application.config = some p)
     (staticQ : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context) q)
     (readyOwn : ∀ event, control.execution.application.config.cut.Ready event →
@@ -245,8 +248,9 @@ theorem bindingCellsAgree_of_decoded (wellFormed : setup.WellFormed)
   · have revealedP := decodedPoint_revealedInto decodedP completed outputEq codeEq
     have staticP := decodedPoint_staticAt decodedP
     have intendedQ := intended_of_history wellFormed second.trace q secondState
-    obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
-      (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler trace control rfl
+    obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+      setup.program)
+      (bounds.onePacketMenu runtime leaks) horizon scheduler trace control rfl
     have revealedQ := (ProtocolState.revealedInto_iff_of_staticAt setup.program _ _ p q staticP
       staticQ (ProtocolState.sameShape_of_observe_eq who setup.program p q sameView)).mp revealedP
     have bindingQ := ProtocolState.cell?_eq_of_revealedInto intendedQ revealedQ
@@ -266,8 +270,8 @@ theorem bindingCellsAgree_of_decoded (wellFormed : setup.WellFormed)
     have publishedP : ProtocolState.cell? setup.program p (eventCell setup.program event).1
         (.publication payload) = some (.success value) := by
       rw [publishedSame, ← bindingQ, valueEq]
-    obtain ⟨holdsRank, ⟨holdsResidual⟩, holds⟩ := decodedState_publishesOrFails
-      (failureProfile setup.program) (bounds.onePacketMenu (runtime setup) leaks) horizon
+    obtain ⟨holdsRank, ⟨holdsResidual⟩, holds⟩ := decodedState_publishesOrFails (runtime := runtime)
+      (failureProfile setup.program) (bounds.onePacketMenu runtime leaks) horizon
       scheduler trace control rfl
     have publishesP : ProtocolState.PublishesOrFails setup.program p := by
       have point := holds _ holdsResidual.decode
@@ -284,8 +288,8 @@ supported setup draw, at the table of handles accepted at the end, is guarded
 when `p` and `q` agree on the commitment every ready or completed reveal reads. -/
 theorem swapGuardState_of_agree
     (drawn : ∃ other ∈ setup.initialLaw.support, InitialCellsAt other q)
-    {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     (decodedP : decodedPoint setup control.execution.application.config = some p)
     (agree : ∀ event, (control.execution.application.config.cut.Ready event ∨
         event ∈ control.execution.application.config.cut.completed) →
@@ -297,19 +301,19 @@ theorem swapGuardState_of_agree
               (.commitment owner payload))
     {table : AcceptedHandles (graph setup)}
     (tableEq : control.execution.application.accepted = table) :
-    SwapGuardState setup (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
+    SwapGuardState setup runtime (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
         (betweenHandlePairs setup p q table))
       (swapAllowed (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
         (betweenHandlePairs setup p q table))) (some control) := by
   subst tableEq
-  have injective := acceptedInjective_of_trace bounds trace
+  have injective := acceptedInjective_of_trace (runtime := runtime) bounds trace
   refine ⟨?_, fun event candidate accepted =>
     bindCompatible_betweenHandlePairs injective accepted, fun event active =>
     revealFixed_between injective _ (fun _ _ held => held) event (agree event active),
     fun player recalled member submission sent => ?_, HiddenSwap.expired_ofPairs _ _ _⟩
-  · exact inputs_mem_swapAllowed_of_drawn drawn _
+  · exact inputs_mem_swapAllowed_of_drawn (runtime := runtime) drawn _
       (initialHandlesCompatible_betweenHandlePairs injective
-        (fun _ _ _ layoutEq => accepted_initial_of_trace trace layoutEq))
+        (fun _ _ _ layoutEq => accepted_initial_of_trace (runtime := runtime) trace layoutEq))
       trace decodedP
   · cases owned : submission.evidence with
     | none | forward => trivial
@@ -317,7 +321,8 @@ theorem swapGuardState_of_agree
         change EventGraph.pairSwap (betweenHandlePairs setup p q
           control.execution.application.accepted fact.handle) fact.raw = fact.raw
         obtain ⟨event, owner, payload, binding, checks, outputEq, codeEq, view, active,
-          onlyField⟩ := certificate_field bounds trace player recalled member submission sent
+          onlyField⟩ := certificate_field (runtime := runtime) bounds trace player recalled member
+            submission sent
             fact owned
         by_cases found : ∃ field, control.execution.application.accepted field =
             some fact.handle
@@ -343,8 +348,8 @@ theorem swapGuardState_of_decoded (wellFormed : setup.WellFormed)
     (who : Player)
     (sameView : ProtocolState.observe who setup.program p =
       ProtocolState.observe who setup.program q)
-    {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     (decodedP : decodedPoint setup control.execution.application.config = some p)
     (staticQ : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context) q)
     (readyOwn : ∀ event, control.execution.application.config.cut.Ready event →
@@ -353,13 +358,15 @@ theorem swapGuardState_of_decoded (wellFormed : setup.WellFormed)
           owner = who)
     {table : AcceptedHandles (graph setup)}
     (tableEq : control.execution.application.accepted = table) :
-    SwapGuardState setup (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
+    SwapGuardState setup runtime (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
         (betweenHandlePairs setup p q table))
       (swapAllowed (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
         (betweenHandlePairs setup p q table))) (some control) :=
-  swapGuardState_of_agree (exists_initialCellsAt second.trace secondState) trace decodedP
+  swapGuardState_of_agree (runtime := runtime) (exists_initialCellsAt second.trace secondState)
+    trace decodedP
     (fun event active owner payload binding checks outputEq codeEq view =>
-      bindingCellsAgree_of_decoded (event := event) (owner := owner) (payload := payload)
+      bindingCellsAgree_of_decoded (runtime := runtime) (event := event) (owner := owner) (payload
+        := payload)
         (binding := binding) (checks := checks) (outputEq := outputEq) (codeEq := codeEq)
         wellFormed secondState who sameView trace decodedP staticQ readyOwn active view)
     tableEq

@@ -14,31 +14,32 @@ open SourceProgram Interaction EventGraphRuntime GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
+  (scheduler : (phaseApplication runtime leaks).Scheduler)
 
 local notation "RecoveryLeaks" => PhaseNativeProjection.nativeLeaks leaks
   (sequentialRuntimePhasePlan setup.program)
 local notation "RecoveryScheduler" => SequentialPhaseSchedulerInformation.scheduler setup.program
-  (runtime setup) leaks (RecoveryLeaks) scheduler
-local notation "nativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup)
+  runtime leaks (RecoveryLeaks) scheduler
+local notation "nativeScheduler" => RecoveryProjection.nativeScheduler runtime
     (RecoveryLeaks)
   (RecoveryScheduler)
-local notation "native" => application setup (RecoveryLeaks)
+local notation "native" => application (runtime := runtime) setup (RecoveryLeaks)
 local notation "phaseInitial" => PMF.map
   (PhaseRuntimeState.initial (sequentialRuntimePhasePlan setup.program))
   (PMF.map setup.eventInputs setup.initialLaw)
 
-local notation "Menu" => bounds.onePacketMenu (runtime setup) (RecoveryLeaks)
+local notation "Menu" => bounds.onePacketMenu runtime (RecoveryLeaks)
 
 /-- Physical singleton phase service reaches the first native owner callback
 from every actual clear source boundary, preserving configuration and own recall. -/
 theorem phase_boundary_firstActivation {delay bound : (graph setup).EventId → Nat}
-    (opportunity : PhaseService.Opportunity (runtime setup) leaks (phaseInitial) horizon scheduler
+    (opportunity : PhaseService.Opportunity runtime leaks (phaseInitial) horizon scheduler
       delay)
-    (timely : (runtime setup).AsyncTimely delay bound)
-    (completes : PhaseService.CompletesPlay (runtime setup) leaks (phaseInitial) horizon scheduler)
+    (timely : runtime.AsyncTimely delay bound)
+    (completes : PhaseService.CompletesPlay runtime leaks (phaseInitial) horizon scheduler)
     (certificate : ((Menu).protocol (initialLaw setup) horizon
       (nativeScheduler)).WellFoundedHistories)
     (players : ∀ player, ((Menu).information (initialLaw setup) horizon
@@ -47,7 +48,8 @@ theorem phase_boundary_firstActivation {delay bound : (graph setup).EventId → 
     {rank : Nat} {execution : (native).Execution}
     (current : start.state =
       some ⟨horizon - execution.environmentRecall.length, none, execution⟩)
-    (boundary : ReachedBoundary setup (RecoveryLeaks) horizon (nativeScheduler) rank execution)
+    (boundary : ReachedBoundary (runtime := runtime) setup (RecoveryLeaks) horizon
+      (nativeScheduler) rank execution)
     (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk execution.application ∅))
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
@@ -62,14 +64,17 @@ theorem phase_boundary_firstActivation {delay bound : (graph setup).EventId → 
         anchor.application.config = execution.application.config ∧
         ExclusionEvidence 0 ∅ (RecoveryState.mk anchor.application ∅) ∧
         anchor.recall owner = execution.recall owner ∧
-        pendingEvent setup (RecoveryLeaks) owner
+        pendingEvent (runtime := runtime) setup (RecoveryLeaks) owner
           (some (anchor.recall owner,
             anchor.observe (native) owner)) = some event ∧
-        ∀ entry ∈ anchor.recall owner, ¬ ActivatedAt setup (RecoveryLeaks) owner event entry := by
-  exact counted_boundary_firstActivation
-    (fun _ trace clear => PhaseService.Opportunity.clear_native_counted setup leaks bounds horizon
+        ∀ entry ∈ anchor.recall owner, ¬ ActivatedAt (runtime := runtime) setup (RecoveryLeaks)
+          owner event entry := by
+  exact counted_boundary_firstActivation (runtime := runtime)
+    (fun _ trace clear => PhaseService.Opportunity.clear_native_counted setup runtime leaks bounds
+      horizon
       scheduler delay opportunity trace clear) timely
-    (fun _ trace clear terminal => PhaseService.CompletesPlay.clear_native_counted setup leaks
+    (fun _ trace clear terminal => PhaseService.CompletesPlay.clear_native_counted setup runtime
+      leaks
       bounds horizon scheduler completes trace clear terminal) certificate players start current
     boundary clear decoded intendedPoint owner event atRank owned
 

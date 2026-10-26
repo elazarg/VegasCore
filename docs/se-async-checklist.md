@@ -109,8 +109,9 @@ joint law. It is not pursued.
   no grant cursor (`EventGraphRuntime.State`).
   Clock: a response never moves the clock (`reactive_respond_clock`) and a
   scheduler command moves it by one exactly for `EnvironmentCommand.advanceClock`
-  (`reactive_environmentStep_clock`); the source runtime's deadline is the
-  event index plus one ([`runtime_deadline`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RevealService.lean#L130)).
+  (`reactive_environmentStep_clock`). The concrete roster calendar uses the
+  event index plus one ([`runtime_deadline`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/RevealService.lean#L130)); the asynchronous SE capstones take a supplied runtime
+  ([deadline scope](se-deadline-scope.md)).
   Binding: acceptance records the submitted handle and its immutable typed
   meaning, failure for an unprepared or wrong-typed candidate
   (`handle_commitment_eq`, `submitStep_commitment_fixed`,

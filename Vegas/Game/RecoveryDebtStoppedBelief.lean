@@ -15,24 +15,27 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
+  (scheduler : (recoveryApplication runtime leaks).Scheduler)
 
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
-local notation "NativeScheduler" => nativeScheduler (runtime setup) leaks scheduler
-local notation "R" => model setup leaks bounds Initial horizon scheduler
-local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horizon (NativeScheduler)
+local notation "NativeScheduler" => nativeScheduler runtime leaks scheduler
+local notation "R" => model setup runtime leaks bounds Initial horizon scheduler
+local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  (NativeScheduler)
 local notation "RP" => ReactiveApplication.ResponseMenu.protocol
-  (Recovery.onePacketMenu (runtime setup) leaks bounds) Initial horizon scheduler
-local notation "RApp" => recoveryApplication (runtime setup) leaks
-local notation "RawNative" => ReactiveApplication.protocol (application setup leaks)
+  (Recovery.onePacketMenu runtime leaks bounds) Initial horizon scheduler
+local notation "RApp" => recoveryApplication runtime leaks
+local notation "RawNative" => ReactiveApplication.protocol (application setup runtime leaks)
   (PMF.map RecoveryState.native (Initial)) horizon (NativeScheduler)
 local notation "ClearState" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
-local notation "RMenu" => Recovery.onePacketMenu (runtime setup) leaks bounds
-local notation "NMenu" => bounds.onePacketMenu (runtime setup) leaks
+  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
+    native ∅))
+local notation "RMenu" => Recovery.onePacketMenu runtime leaks bounds
+local notation "NMenu" => bounds.onePacketMenu runtime leaks
 
 open Classical in
 /-- Averaged actual bounded recovery stopped utility is the existing native
@@ -43,45 +46,51 @@ theorem debt_stopped_belief_eq_native_and_foreign_mass_le [Finite (RP).History]
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ)
     (rawCertificate : (RawNative).WellFoundedHistories)
-    (recoveryCertificate : ((recoveryApplication (runtime setup) leaks).protocol Initial horizon
+    (recoveryCertificate : ((recoveryApplication runtime leaks).protocol Initial horizon
       scheduler).WellFoundedHistories)
     (menuCertificate : (RP).WellFoundedHistories)
     (profile : ∀ who, (R).BehavioralPolicy who) (focal : Player)
     (belief : PMF (RP).History)
     (controlled : ∀ history ∈ belief.support,
-      ∃ current : (recoveryApplication (runtime setup) leaks).Control,
+      ∃ current : (recoveryApplication runtime leaks).Control,
         history.state = some current ∧ current.execution.application.excluded = ∅) :
     let stop := fun history : (RP).History =>
       ¬ ReactiveApplication.stateInvariant (app := RApp)
         (fun state => state.excluded = ∅) history.state ∨
-      RecoveryDecodedState (leaks := leaks) (failureProfile setup.program)
+      RecoveryDecodedState (runtime := runtime) (leaks := leaks) (failureProfile setup.program)
         (ProtocolState.OwesFailure focal setup.program) history.state
     let kernel := (R).runBehavioralUntil menuCertificate profile stop
     let read := fun history : (RP).History =>
-      if RecoveryPublicExclusion (setup := setup) (leaks := leaks) history.state ∨
-          RecoveryDecodedState (leaks := leaks) (failureProfile setup.program)
+      if RecoveryPublicExclusion (runtime := runtime) (setup := setup) (leaks := leaks)
+        history.state ∨
+          RecoveryDecodedState (runtime := runtime) (leaks := leaks) (failureProfile setup.program)
             (ProtocolState.OwesFailure focal setup.program) history.state then
         excludedPayoff focal else
-        recoveryExclusionBase parameter utility excludedPayoff history.state focal
+        recoveryExclusionBase (runtime := runtime) parameter utility excludedPayoff history.state
+          focal
     let foreign := {history : (RP).History |
-      (RecoveryPublicExclusion (setup := setup) (leaks := leaks) history.state ∨
-        RecoveryDecodedState (leaks := leaks) (failureProfile setup.program)
+      (RecoveryPublicExclusion (runtime := runtime) (setup := setup) (leaks := leaks)
+        history.state ∨
+        RecoveryDecodedState (runtime := runtime) (leaks := leaks) (failureProfile setup.program)
           (ProtocolState.OwesFailure focal setup.program) history.state) ∧
-      ¬ RecoveryExcluded (setup := setup) (leaks := leaks) focal history.state ∧
-      ¬ RecoveryDecodedState (leaks := leaks) (failureProfile setup.program)
+      ¬ RecoveryExcluded (runtime := runtime) (setup := setup) (leaks := leaks) focal
+        history.state ∧
+      ¬ RecoveryDecodedState (runtime := runtime) (leaks := leaks) (failureProfile setup.program)
         (ProtocolState.OwesFailure focal setup.program) history.state}
-    let nativeKernel := nativeDebtStoppedLaw setup leaks bounds horizon scheduler rawCertificate
+    let nativeKernel := nativeDebtStoppedLaw setup runtime leaks bounds horizon scheduler
+      rawCertificate
       profile focal
     expect (belief.bind kernel) read = expect belief (fun history =>
-      nativeDebtStoppedValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+      nativeDebtStoppedValue setup runtime leaks bounds horizon scheduler parameter utility
+        excludedPayoff
         rawCertificate profile focal history) ∧
       ((belief.bind kernel).toOuterMeasure foreign).toReal ≤
         ((belief.bind nativeKernel).toOuterMeasure
           {label | ForeignExclusionLabel focal label}).toReal := by
   intro stop kernel read foreign nativeKernel
   have stopEq : stop = fun history =>
-      RecoveryPublicExclusion (setup := setup) (leaks := leaks) history.state ∨
-        RecoveryDecodedState (leaks := leaks) (failureProfile setup.program)
+      RecoveryPublicExclusion (runtime := runtime) (setup := setup) (leaks := leaks) history.state ∨
+        RecoveryDecodedState (runtime := runtime) (leaks := leaks) (failureProfile setup.program)
           (ProtocolState.OwesFailure focal setup.program) history.state := by
     funext history
     dsimp only [stop]
@@ -89,7 +98,8 @@ theorem debt_stopped_belief_eq_native_and_foreign_mass_le [Finite (RP).History]
       simp only [ReactiveApplication.stateInvariant, RecoveryPublicExclusion, not_true_eq_false]
   have pointwise (history) (supported : history ∈ belief.support) :
       expect (kernel history) read =
-        nativeDebtStoppedValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+        nativeDebtStoppedValue setup runtime leaks bounds horizon scheduler parameter utility
+          excludedPayoff
           rawCertificate profile focal history ∧
       ((kernel history).toOuterMeasure foreign).toReal ≤
         ((nativeKernel history).toOuterMeasure
@@ -99,11 +109,13 @@ theorem debt_stopped_belief_eq_native_and_foreign_mass_le [Finite (RP).History]
       intro next found
       cases Option.some.inj (state.symm.trans found)
       exact empty
-    have readout := recovery_debt_stopped_expect_eq_native parameter utility excludedPayoff
+    have readout := recovery_debt_stopped_expect_eq_native (runtime := runtime) parameter utility
+      excludedPayoff
       (failureProfile setup.program) Initial (initialLaw_initialized setup) horizon scheduler
       (RMenu) rawCertificate recoveryCertificate menuCertificate profile focal history current
       state empty
-    have mass := recovery_debt_foreign_exit_mass_le_native (failureProfile setup.program) Initial
+    have mass := recovery_debt_foreign_exit_mass_le_native (runtime := runtime) (failureProfile
+      setup.program) Initial
       (initialLaw_initialized setup) horizon scheduler (RMenu) rawCertificate recoveryCertificate
       menuCertificate profile focal history current state empty
     dsimp only [kernel]

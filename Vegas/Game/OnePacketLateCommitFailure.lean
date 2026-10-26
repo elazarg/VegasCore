@@ -33,36 +33,38 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- **A permitted commitment is the slot's envelope.** A transmitting response
 of the one-packet menu committing an event to a prepared slot of its sender
 makes the slot's envelope permitted. -/
 theorem slotEnvelope_permitted_of_commitment {who : Player}
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} {response : (application setup leaks).Action}
-    (member : response ∈ bounds.onePacketActions (runtime setup) leaks who past view)
-    {material : (application setup leaks).Submission}
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} {response : (application setup runtime
+      leaks).Action}
+    (member : response ∈ bounds.onePacketActions runtime leaks who past view)
+    {material : (application setup runtime leaks).Submission}
     (sends : response.transmission = some material) {event : (graph setup).EventId}
     {serial : Nat} (packet : material.call.packet = .commitment event (who, .prepared serial)) :
-    countPermits ((application setup leaks).outputs past)
-      (slotEnvelope setup leaks who past view event serial) = true := by
-  rcases ((bounds.mem_onePacketActions (runtime setup) leaks who past view response).mp
+    countPermits ((application setup runtime leaks).outputs past)
+      (slotEnvelope setup runtime leaks who past view event serial) = true := by
+  rcases ((bounds.mem_onePacketActions runtime leaks who past view response).mp
       member).2 with silent | ⟨other, transmits, permitted⟩
   · rw [sends] at silent
     cases silent
   rw [sends] at transmits
   cases Option.some.inj transmits
   have correct := ((countPermits_eq_true_iff _ _).mp permitted).2.1
-  have callEq : ((runtime setup).localEnvelope leaks who past view material).payload.call =
+  have callEq : (runtime.localEnvelope leaks who past view material).payload.call =
       .commitment event (who, .prepared serial) := packet
   unfold CountCallCorrect at correct
   rw [callEq] at correct
   obtain ⟨_, evidence, _⟩ := correct
-  have envelopeEq : (runtime setup).localEnvelope leaks who past view material =
-      slotEnvelope setup leaks who past view event serial := by
+  have envelopeEq : runtime.localEnvelope leaks who past view material =
+      slotEnvelope setup runtime leaks who past view event serial := by
     unfold slotEnvelope
     unfold EventGraphRuntime.localEnvelope at evidence ⊢
     rw [← evidence, ← packet]
@@ -94,72 +96,83 @@ the event, after a response of the menu committing the event to a prepared slot
 whose candidate succeeds, play of every option's profile fails within the
 horizon times `δ` of the lumped failure of the committed image. -/
 theorem lateCommit_failure_next
-    {target : (onePacketInformation setup leaks bounds horizon scheduler).BehavioralAssessment}
+    {target : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).BehavioralAssessment}
     {who : Player}
-    {relevant : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who →
+    {relevant : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationSite who →
       Prop} {LateOption' : Type}
-    {profileOf : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who →
+    {profileOf : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationSite who →
       LateOption' → ∀ player,
-        (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player}
+        (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player}
     {δ : ℝ} {Y : Type}
-    (lumping : PendingLumpingOn target who relevant profileOf DecisionFailed δ Y)
-    (site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who)
-    (isRelevant : relevant site) {key : LateKey setup leaks}
-    (siteKey : lateKey setup leaks who site.1 = some key) (option : LateOption')
+    (lumping : PendingLumpingOn (runtime := runtime) target who relevant profileOf
+      (DecisionFailed (runtime := runtime)) δ Y)
+    (site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who)
+    (isRelevant : relevant site) {key : LateKey setup runtime leaks}
+    (siteKey : lateKey setup runtime leaks who site.1 = some key) (option : LateOption')
     {event : (graph setup).EventId} {payload : L.Ty}
-    (imageOfBinding : BindingImage (setup := setup) (leaks := leaks) → Y)
+    (imageOfBinding : BindingImage (runtime := runtime) (setup := setup) (leaks := leaks) → Y)
     (imageBinding : ∀ state, lumping.image key state =
-      imageOfBinding (bindingImage event who payload state))
-    (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      imageOfBinding (bindingImage (runtime := runtime) event who payload state))
+    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).History)
-    {remaining : Nat} {execution : (application setup leaks).Execution}
+    {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (current : start.state = some ⟨remaining, some who, execution⟩)
-    (keptOf : ∀ (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol
+    (keptOf : ∀ (history : ((bounds.onePacketMenu runtime leaks).protocol
         (initialLaw setup) horizon scheduler).History)
-        (control : (application setup leaks).Control),
+        (control : (application setup runtime leaks).Control),
       history.state = some control →
       control.execution.application.config = execution.application.config →
       (∃ entry rest, control.execution.recall who = execution.recall who ++ entry :: rest) →
       history.state ∈ lumping.keep site key)
     (ready : execution.application.config.cut.Ready event)
-    (empty : commitStatuses event who payload execution.application execution.network.pending =
+    (empty : commitStatuses (runtime := runtime) event who payload execution.application
+      execution.network.pending =
       [])
-    (response : (application setup leaks).Action)
-    (member : response ∈ bounds.onePacketActions (runtime setup) leaks who
-      (execution.recall who) (execution.observe (application setup leaks) who))
-    {material : (application setup leaks).Submission}
+    (response : (application setup runtime leaks).Action)
+    (member : response ∈ bounds.onePacketActions runtime leaks who
+      (execution.recall who) (execution.observe (application setup runtime leaks) who))
+    {material : (application setup runtime leaks).Submission}
     (sends : response.transmission = some material) {serial : Nat}
     (packet : material.call.packet = .commitment event (who, .prepared serial))
-    (succeeds : candidateSucceeds ((application setup leaks).submit execution.application who
+    (succeeds : candidateSucceeds ((application setup runtime leaks).submit execution.application
+      who
       material) (who, .prepared serial) payload = true)
-    (next : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    (next : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).History)
     (nextState : next.state = some ⟨remaining, none,
-      execution.respond (application setup leaks) who response⟩) :
-    |expect ((onePacketInformation setup leaks bounds horizon scheduler).runBehavioralFrom
+      execution.respond (application setup runtime leaks) who response⟩) :
+    |expect ((onePacketInformation setup runtime leaks bounds horizon scheduler).runBehavioralFrom
         (profileOf site option) (2 * horizon + 1) next)
-        (fun final => if DecisionFailed key final.state then 1 else 0) -
-      expect ((fun law => law.bind (lumping.kernel key option))^[2 * horizon + 1]
-        (PMF.pure (imageOfBinding (committedImage event who (who, .prepared serial)
-          (operationalState setup leaks (some ⟨remaining, some who, execution⟩))))))
+        (fun final => if DecisionFailed (runtime := runtime) key final.state then 1 else 0) -
+      expect ((fun law => law.bind (lumping.kernel key option))^[2 * horizon
+        + 1]
+        (PMF.pure (imageOfBinding (committedImage (runtime := runtime) event who (who, .prepared
+          serial)
+          (operationalState setup runtime leaks (some ⟨remaining, some who, execution⟩))))))
         (lumping.failure key)| ≤ (2 * horizon + 1 : ℕ) * δ := by
-  have configEq := ((runtime setup).reactive_respond_application leaks execution who response).1
+  have configEq := (runtime.reactive_respond_application leaks execution who response).1
   have keptNext : next.state ∈ lumping.keep site key := by
     refine keptOf next _ nextState configEq ?_
-    have respondRecall : ∃ emitted, (execution.respond (application setup leaks) who
+    have respondRecall : ∃ emitted, (execution.respond (application setup runtime leaks) who
         response).recall who = execution.recall who ++
-          [⟨execution.observe (application setup leaks) who, response, emitted⟩] := by
+          [⟨execution.observe (application setup runtime leaks) who, response, emitted⟩] := by
       rcases response with ⟨transmission⟩
       cases transmission <;>
         simp only [ReactiveApplication.Execution.respond, ↓reduceIte] <;> exact ⟨_, rfl⟩
     obtain ⟨emitted, recallEq⟩ := respondRecall
     exact ⟨_, [], recallEq⟩
-  have imageNext : lumping.image key next.state = imageOfBinding (committedImage event who
-      (who, .prepared serial) (operationalState setup leaks
+  have imageNext : lumping.image key next.state = imageOfBinding
+    (committedImage (runtime := runtime) event who
+      (who, .prepared serial) (operationalState setup runtime leaks
         (some ⟨remaining, some who, execution⟩))) := by
-    rw [imageBinding, nextState, committed_bindingImage bounds start current ready.1 empty
+    rw [imageBinding, nextState, committed_bindingImage (runtime := runtime) bounds start current
+      ready.1 empty
       response member sends packet succeeds]
-  have lumped := lumping.abs_failure_sub_le_of_keep (2 * horizon + 1) site isRelevant key
+  have lumped := lumping.abs_failure_sub_le_of_keep (2 * horizon + 1) site
+    isRelevant key
     siteKey option next keptNext
   rw [imageNext] at lumped
   exact_mod_cast lumped
@@ -173,69 +186,77 @@ of an option wherever the recall of `who` is longer than at `start`. Then play
 of `installed` from `start` fails within the horizon times `δ` of the lumped
 failure of the committed image. -/
 theorem lateCommit_historyFailure
-    {target : (onePacketInformation setup leaks bounds horizon scheduler).BehavioralAssessment}
+    {target : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).BehavioralAssessment}
     {who : Player}
-    {relevant : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who →
+    {relevant : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationSite who →
       Prop} {LateOption' : Type}
-    {profileOf : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who →
+    {profileOf : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationSite who →
       LateOption' → ∀ player,
-        (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player}
+        (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player}
     {δ : ℝ} {Y : Type}
-    (lumping : PendingLumpingOn target who relevant profileOf DecisionFailed δ Y)
-    (site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who)
-    (isRelevant : relevant site) {key : LateKey setup leaks}
-    (siteKey : lateKey setup leaks who site.1 = some key) (option : LateOption')
+    (lumping : PendingLumpingOn (runtime := runtime) target who relevant profileOf
+      (DecisionFailed (runtime := runtime)) δ Y)
+    (site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who)
+    (isRelevant : relevant site) {key : LateKey setup runtime leaks}
+    (siteKey : lateKey setup runtime leaks who site.1 = some key) (option : LateOption')
     {event : (graph setup).EventId} {payload : L.Ty}
-    (imageOfBinding : BindingImage (setup := setup) (leaks := leaks) → Y)
+    (imageOfBinding : BindingImage (runtime := runtime) (setup := setup) (leaks := leaks) → Y)
     (imageBinding : ∀ state, lumping.image key state =
-      imageOfBinding (bindingImage event who payload state))
-    (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+      imageOfBinding (bindingImage (runtime := runtime) event who payload state))
+    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).History)
-    {remaining : Nat} {execution : (application setup leaks).Execution}
+    {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (current : start.state = some ⟨remaining, some who, execution⟩)
-    (keptOf : ∀ (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol
+    (keptOf : ∀ (history : ((bounds.onePacketMenu runtime leaks).protocol
         (initialLaw setup) horizon scheduler).History)
-        (control : (application setup leaks).Control),
+        (control : (application setup runtime leaks).Control),
       history.state = some control →
       control.execution.application.config = execution.application.config →
       (∃ entry rest, control.execution.recall who = execution.recall who ++ entry :: rest) →
       history.state ∈ lumping.keep site key)
     (ready : execution.application.config.cut.Ready event)
-    (empty : commitStatuses event who payload execution.application execution.network.pending =
+    (empty : commitStatuses (runtime := runtime) event who payload execution.application
+      execution.network.pending =
       [])
-    (installed : ∀ player, (onePacketInformation setup leaks bounds horizon
+    (installed : ∀ player, (onePacketInformation setup runtime leaks bounds horizon
       scheduler).BehavioralPolicy player)
-    (agreeLonger : ∀ history : ((bounds.onePacketMenu (runtime setup) leaks).protocol
+    (agreeLonger : ∀ history : ((bounds.onePacketMenu runtime leaks).protocol
         (initialLaw setup) horizon scheduler).History,
       (∀ control, history.state = some control →
         (execution.recall who).length < (control.execution.recall who).length) →
       ∀ player, installed player
-          ((onePacketInformation setup leaks bounds horizon scheduler).infoOf player
+          ((onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf player
             history.trace) =
         profileOf site option player
-          ((onePacketInformation setup leaks bounds horizon scheduler).infoOf player
+          ((onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf player
             history.trace))
-    (response : (application setup leaks).Action)
+    (response : (application setup runtime leaks).Action)
     (responseLaw : (installed who (some (execution.recall who,
-      execution.observe (application setup leaks) who))).map
+      execution.observe (application setup runtime leaks) who))).map
         (fun choice => choice.1.getD ⟨none⟩) = PMF.pure response)
-    (member : response ∈ bounds.onePacketActions (runtime setup) leaks who
-      (execution.recall who) (execution.observe (application setup leaks) who))
-    {material : (application setup leaks).Submission}
+    (member : response ∈ bounds.onePacketActions runtime leaks who
+      (execution.recall who) (execution.observe (application setup runtime leaks) who))
+    {material : (application setup runtime leaks).Submission}
     (sends : response.transmission = some material) {serial : Nat}
     (packet : material.call.packet = .commitment event (who, .prepared serial))
-    (succeeds : candidateSucceeds ((application setup leaks).submit execution.application who
+    (succeeds : candidateSucceeds ((application setup runtime leaks).submit execution.application
+      who
       material) (who, .prepared serial) payload = true) :
-    |expect ((onePacketInformation setup leaks bounds horizon scheduler).runBehavioralFrom
+    |expect ((onePacketInformation setup runtime leaks bounds horizon scheduler).runBehavioralFrom
         installed (2 * horizon + 1) start)
-        (fun final => if DecisionFailed key final.state then 1 else 0) -
-      expect ((fun law => law.bind (lumping.kernel key option))^[2 * horizon + 1]
-        (PMF.pure (imageOfBinding (committedImage event who (who, .prepared serial)
-          (operationalState setup leaks (some ⟨remaining, some who, execution⟩))))))
+        (fun final => if DecisionFailed (runtime := runtime) key final.state then 1 else 0) -
+      expect ((fun law => law.bind (lumping.kernel key option))^[2 * horizon
+        + 1]
+        (PMF.pure (imageOfBinding (committedImage (runtime := runtime) event who (who, .prepared
+          serial)
+          (operationalState setup runtime leaks (some ⟨remaining, some who, execution⟩))))))
         (lumping.failure key)| ≤ (2 * horizon + 1 : ℕ) * δ := by
   classical
-  let menu := bounds.onePacketMenu (runtime setup) leaks
-  let model := onePacketInformation setup leaks bounds horizon scheduler
+  let menu := bounds.onePacketMenu runtime leaks
+  let model := onePacketInformation setup runtime leaks bounds horizon scheduler
   have bounded := menu.bounded (initialLaw setup) horizon scheduler
   let certificate := bounded.wellFoundedHistories
   have stepStates := menu.run_one_response (initialLaw setup) horizon scheduler installed start
@@ -243,15 +264,16 @@ theorem lateCommit_historyFailure
   rw [decodeProfile_eq_map, responseLaw, PMF.pure_map] at stepStates
   have nextState : ∀ next ∈ (model.runBehavioralFrom installed 1 start).support,
       next.state = some ⟨remaining, none,
-        execution.respond (application setup leaks) who response⟩ := by
+        execution.respond (application setup runtime leaks) who response⟩ := by
     intro next nextMember
     have inStates : next.state ∈ ((model.runBehavioralFrom installed 1 start).map
         History.state).support := (PMF.mem_support_map_iff _ _ _).mpr ⟨next, nextMember, rfl⟩
     rw [stepStates, PMF.mem_support_pure_iff] at inStates
     exact inStates
   have nextRecall : (execution.recall who).length <
-      ((execution.respond (application setup leaks) who response).recall who).length := by
-    have longer := (application setup leaks).respond_recall_length execution who who response
+      ((execution.respond (application setup runtime leaks) who response).recall who).length := by
+    have longer := (application setup runtime leaks).respond_recall_length execution who who
+      response
     simp only [↓reduceIte] at longer
     omega
   have split : model.runBehavioralFrom installed (2 * horizon + 1) start =
@@ -267,19 +289,20 @@ theorem lateCommit_historyFailure
     apply agreeLonger later
     intro control laterState
     have rawPath := menu.reaches_raw (initialLaw setup) horizon scheduler path
-    have grown := (application setup leaks).reaches_recall_prefix (initialLaw setup) horizon
+    have grown := (application setup runtime leaks).reaches_recall_prefix (initialLaw setup) horizon
       scheduler rawPath _ control (nextState next nextMember) laterState who
     exact lt_of_lt_of_le nextRecall grown.length_le
   rw [split, expect_bind_tower_bounded _ _ _ (C := 1) (fun final => by
     split <;> norm_num)]
   refine abs_expect_sub_le_of_forall _ _ (bound := 1) (fun next => ?_) (fun next nextMember =>
-    lateCommit_failure_next lumping site isRelevant siteKey option imageOfBinding imageBinding
+    lateCommit_failure_next (runtime := runtime) lumping site isRelevant siteKey option
+      imageOfBinding imageBinding
       start current keptOf ready empty response member sends packet succeeds next
       (nextState next nextMember))
   refine abs_le.mpr ⟨?_, ?_⟩
   · have := expect_nonneg (model.runBehavioralFrom (profileOf site option)
       (2 * horizon + 1) next)
-      (fun final => if DecisionFailed key final.state then (1 : ℝ) else 0)
+      (fun final => if DecisionFailed (runtime := runtime) key final.state then (1 : ℝ) else 0)
       (fun final _ => by split <;> norm_num)
     linarith
   · exact expect_le_const _ _ (payoffIntegrable_of_bounded _ _ (C := 1) (fun final => by
@@ -287,12 +310,12 @@ theorem lateCommit_historyFailure
 
 section Certificate
 
-variable [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+variable [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
 
 local notation "onePacketN" =>
-  onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 
 /-- A choice's failure differs from a mixture's by at most `A + weight` when
 the mixture keeps `1 - weight` of a main law on whose support every choice
@@ -300,7 +323,7 @@ fails within `A` of the choice. -/
 theorem abs_localFailure_pure_sub_le_of_mass
     (assessment : (onePacketN).BehavioralAssessment) {who : Player}
     (site : (onePacketN).InformationSite who)
-    (failed : Set ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+    (failed : Set ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).History)
     (choice : (onePacketN).Choice who site.1) (law main : PMF ((onePacketN).Choice who site.1))
     {weight A : ℝ} (weightNonneg : 0 ≤ weight) (nonnegative : 0 ≤ A)
@@ -313,9 +336,9 @@ theorem abs_localFailure_pure_sub_le_of_mass
   have finiteChoice : Finite ((onePacketN).Choice who site.1) :=
     (onePacketN).finite_choice_of_played ((onePacketN).site_mem_playedInformation site)
   let := Fintype.ofFinite ((onePacketN).Choice who site.1)
-  have bounded := (bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup)
+  have bounded := (bounds.onePacketMenu runtime leaks).bounded (initialLaw setup)
     horizon scheduler
-  have actsOnce := ((bounds.onePacketMenu (runtime setup) leaks).decisionRecall
+  have actsOnce := ((bounds.onePacketMenu runtime leaks).decisionRecall
     (initialLaw setup) horizon scheduler).actsOnceWhereItMatters
   let failure := fun other : (onePacketN).Choice who site.1 =>
     localFailure (2 * horizon + 1) assessment site failed (PMF.pure other)
@@ -375,112 +398,121 @@ theorem abs_localFailure_pure_sub_le_of_mass
         ring
     _ ≤ A + weight := by nlinarith
 
-variable (setup leaks bounds horizon scheduler) in
+variable (setup runtime leaks bounds horizon scheduler) in
 /-- **The lumped failure of a late commitment** at a slot: the certificate's
 lumped failure, at a key, of the committed image of the slot at a state. -/
 def certificateCommitFailure (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat} (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
     (slotsLe : slots ≤ bounds.candidateCount)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
-      scale_le_one weights targetSequence) (n : ℕ) (who : Player) (key : LateKey setup leaks)
+    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+      scale_pos
+      scale_le_one weights targetSequence) (n : ℕ) (who : Player) (key : LateKey setup runtime
+        leaks)
     (event : (graph setup).EventId) (serial : Nat)
-    (state : (application setup leaks).ProtocolState) : ℝ :=
-  expect ((fun law => law.bind ((certificateLumping setup leaks bounds horizon scheduler
+    (state : (application setup runtime leaks).ProtocolState) : ℝ :=
+  expect ((fun law => law.bind ((certificateLumping setup runtime leaks bounds horizon scheduler
       sequence scale scale_pos scale_le_one covers capacity slotsLe weights targetSequence
       assembled n who).kernel key (none : LateOption slots)))^[2 * horizon + 1]
-    (PMF.pure (Sum.inr (committedImage event who (who, .prepared serial)
-      (operationalState setup leaks state)))))
-    ((certificateLumping setup leaks bounds horizon scheduler sequence scale scale_pos
+    (PMF.pure (Sum.inr (committedImage (runtime := runtime) event who (who, .prepared serial)
+      (operationalState setup runtime leaks state)))))
+    ((certificateLumping setup runtime leaks bounds horizon scheduler sequence scale scale_pos
       scale_le_one covers capacity slotsLe weights targetSequence assembled n who).failure key)
 
 open Classical in
 theorem certificate_commit_decisionFailure
-    [Finite ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    [Finite ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).History]
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+      scale_pos
       scale_le_one weights targetSequence) (n : ℕ)
     (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
     (slotsLe : slots ≤ bounds.candidateCount) {who : Player}
-    (site : (onePacketN).InformationSite who) (late : LateDelivery setup leaks who site.1)
-    (debtFree : SiteDebtFree setup leaks bounds horizon scheduler site)
-    {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
-    {event : (graph setup).EventId} (pending : pendingEvent setup leaks who site.1 = some event)
+    (site : (onePacketN).InformationSite who) (late : LateDelivery setup runtime leaks who site.1)
+    (debtFree : SiteDebtFree setup runtime leaks bounds horizon scheduler site)
+    {key : LateKey setup runtime leaks} (siteKey : lateKey setup runtime leaks who site.1 = some
+      key)
+    {event : (graph setup).EventId} (pending : pendingEvent setup runtime leaks who site.1 = some
+      event)
     {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
     (history : (onePacketN).InformationHistory who site.1)
-    {remaining : Nat} {execution : (application setup leaks).Execution}
+    {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
     (atSite : site.1 = some (execution.recall who,
-      execution.observe (application setup leaks) who))
-    (forced : ForcedState setup leaks who history.1.state)
-    (choice : (onePacketN).Choice who site.1) (response : (application setup leaks).Action)
+      execution.observe (application setup runtime leaks) who))
+    (forced : ForcedState setup runtime leaks who history.1.state)
+    (choice : (onePacketN).Choice who site.1) (response : (application setup runtime leaks).Action)
     (selected : choice.1 = some response)
-    (member : response ∈ bounds.onePacketActions (runtime setup) leaks who
-      (execution.recall who) (execution.observe (application setup leaks) who))
-    {material : (application setup leaks).Submission}
+    (member : response ∈ bounds.onePacketActions runtime leaks who
+      (execution.recall who) (execution.observe (application setup runtime leaks) who))
+    {material : (application setup runtime leaks).Submission}
     (sends : response.transmission = some material) {serial : Nat}
     (packet : material.call.packet = .commitment event (who, .prepared serial))
-    (succeeds : candidateSucceeds ((application setup leaks).submit execution.application who
+    (succeeds : candidateSucceeds ((application setup runtime leaks).submit execution.application
+      who
       material) (who, .prepared serial) payload = true) :
     |expect ((onePacketN).runBehavioralFrom
         (Profile.update (sig := (onePacketN).behavioralSignature) (targetSequence n).strategy who
           (((targetSequence n).strategy who).withLaw site.1 (PMF.pure choice)))
         (2 * horizon + 1) history.1)
-        (fun final => if DecisionFailed key final.state then (1 : ℝ) else 0) -
-      certificateCommitFailure setup leaks bounds horizon scheduler sequence scale scale_pos
+        (fun final => if DecisionFailed (runtime := runtime) key final.state then (1 : ℝ) else 0) -
+      certificateCommitFailure setup runtime leaks bounds horizon scheduler sequence scale scale_pos
         scale_le_one covers capacity slotsLe weights targetSequence assembled n who key event
         serial history.1.state| ≤
       (2 * horizon + 1 : ℕ) * (scale n ^ 3 + scale n ^ 3) := by
   classical
-  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let menu := bounds.onePacketMenu runtime leaks
   let model := onePacketN
-  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+    scheduler).Trace
       (some ⟨remaining, some who, execution⟩) :=
     menu.toRawTrace (initialLaw setup) horizon scheduler (current ▸ history.1.trace)
   have pendingHere := pending
   rw [atSite] at pendingHere
-  obtain ⟨turn, _, _, unrecorded⟩ := pendingEvent_spec pendingHere
+  obtain ⟨turn, _, _, unrecorded⟩ := pendingEvent_spec (runtime := runtime) pendingHere
   have siteKeyHere := siteKey
   rw [atSite] at siteKeyHere
-  obtain ⟨ownerEq, noPublication, binding, decided⟩ := lateKey_decides_binding setup leaks
+  obtain ⟨ownerEq, noPublication, binding, decided⟩ := lateKey_decides_binding setup runtime leaks
     horizon scheduler rawTrace rfl siteKeyHere turn unrecorded node
-  have unsent := (unsentFor_iff_unrecorded setup leaks horizon scheduler rawTrace rfl
+  have unsent := (unsentFor_iff_unrecorded setup runtime leaks horizon scheduler rawTrace rfl
     siteKeyHere event).mpr unrecorded
-  have empty := commitStatuses_nil_of_unsent siteKey history current unsent payload
+  have empty := commitStatuses_nil_of_unsent (runtime := runtime) siteKey history current unsent
+    payload
   have ready : execution.application.config.cut.Ready event :=
     (execution.application.publicView_eventReady event).mp
       (PublicView.ownTurn?_spec _ who event turn).1
-  let lumping := certificateLumping setup leaks bounds horizon scheduler sequence scale
+  let lumping := certificateLumping setup runtime leaks bounds horizon scheduler sequence scale
     scale_pos scale_le_one covers capacity slotsLe weights targetSequence assembled n who
   have imageBinding : ∀ state, lumping.image key state =
-      Sum.inr (bindingImage event who payload state) := by
+      Sum.inr (bindingImage (runtime := runtime) event who payload state) := by
     intro state
-    change decisionImage key state = _
+    change decisionImage (runtime := runtime) key state = _
     unfold decisionImage
     rw [noPublication, binding, ownerEq]
   let installed := Profile.update (sig := (onePacketN).behavioralSignature)
     (targetSequence n).strategy who
     (((targetSequence n).strategy who).withLaw site.1 (PMF.pure choice))
   have responseLaw : (installed who (some (execution.recall who,
-      execution.observe (application setup leaks) who))).map
+      execution.observe (application setup runtime leaks) who))).map
         (fun choice => choice.1.getD ⟨none⟩) = PMF.pure response := by
     rw [← atSite]
     simp only [installed, Profile.update_same, BehavioralPolicy.withLaw_self, PMF.pure_map,
       selected, Option.getD_some]
-  have through := siteThrough_of_history setup leaks bounds horizon scheduler late debtFree
+  have through := siteThrough_of_history setup runtime leaks bounds horizon scheduler late debtFree
     siteKey history
   rw [current] at through forced
-  have core := lateCommit_historyFailure lumping site ⟨Or.inl late, debtFree⟩ siteKey
+  have core := lateCommit_historyFailure (runtime := runtime) lumping site ⟨Or.inl late, debtFree⟩
+    siteKey
     (none : LateOption slots) Sum.inr imageBinding history.1 current
     (fun later control laterState sameConfig longer => by
       refine ⟨?_, ?_⟩
@@ -508,9 +540,9 @@ theorem certificate_commit_decisionFailure
         simp only [installed, Profile.update_same]
         have different : (onePacketN).infoOf player later.trace ≠ site.1 := by
           rw [atSite]
-          change ((bounds.onePacketMenu (runtime setup) leaks).signals (initialLaw setup) horizon
+          change ((bounds.onePacketMenu runtime leaks).signals (initialLaw setup) horizon
             scheduler).infoOf player later.trace ≠ _
-          rw [(bounds.onePacketMenu (runtime setup) leaks).info (initialLaw setup) horizon
+          rw [(bounds.onePacketMenu runtime leaks).info (initialLaw setup) horizon
             scheduler player later.trace]
           cases laterState : later.state with
           | none => simp [ReactiveApplication.observe]
@@ -519,7 +551,7 @@ theorem certificate_commit_decisionFailure
               simp only [ReactiveApplication.observe]
               split_ifs
               · intro infoEq
-                have recallEq := congrArg (fun info : (application setup leaks).Info =>
+                have recallEq := congrArg (fun info : (application setup runtime leaks).Info =>
                   (info.map Prod.fst).map List.length) infoEq
                 simp only [Option.map_some] at recallEq
                 have := Option.some.inj recallEq

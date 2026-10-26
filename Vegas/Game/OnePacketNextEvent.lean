@@ -21,15 +21,17 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- One protocol transition from an initialized state reaches an initialized
 state by one configuration step. -/
-theorem transition_some_configStep (initial : PMF (application setup leaks).State)
-    (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
-    (before : (application setup leaks).Control) (after : (application setup leaks).ProtocolState)
-    (joint : Player → Option (application setup leaks).Action)
-    (reached : after ∈ ((application setup leaks).transition initial horizon scheduler
+theorem transition_some_configStep (initial : PMF (application setup runtime leaks).State)
+    (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
+    (before : (application setup runtime leaks).Control) (after : (application setup runtime
+      leaks).ProtocolState)
+    (joint : Player → Option (application setup runtime leaks).Action)
+    (reached : after ∈ ((application setup runtime leaks).transition initial horizon scheduler
       (some before) joint).support) :
     ∃ next, after = some next ∧ ConfigStep setup before.execution.application.config
       next.execution.application.config := by
@@ -45,6 +47,7 @@ theorem transition_some_configStep (initial : PMF (application setup leaks).Stat
             obtain ⟨next, _, same⟩ := PMF.support_map .. ▸ moved
             exact ⟨_, same.symm⟩
   obtain ⟨next, rfl⟩ := stays
-  exact ⟨next, rfl, transition_configStep initial horizon scheduler before next joint reached⟩
+  exact ⟨next, rfl, transition_configStep initial horizon scheduler before
+    next joint reached⟩
 
 end Vegas

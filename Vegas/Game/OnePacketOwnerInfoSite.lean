@@ -31,17 +31,19 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 omit [Fintype Player] in
 /-- Recalls emitting the same envelopes have the same outputs. -/
 private theorem outputs_eq_of_emitted :
-    ∀ {first second : List (application setup leaks).PlayerEntry},
+    ∀ {first second : List (application setup runtime leaks).PlayerEntry},
       first.map ReactiveApplication.PlayerEntry.emitted =
         second.map ReactiveApplication.PlayerEntry.emitted →
-      (application setup leaks).outputs first = (application setup leaks).outputs second
+      (application setup runtime leaks).outputs first = (application setup runtime leaks).outputs
+        second
   | [], [], _ => rfl
   | [], _ :: _, same => by cases same
   | _ :: _, [], same => by cases same
@@ -56,30 +58,33 @@ one-packet game ending where `who` acts, with the same late-delivery key, at
 whose decoded points `who` owes no failure, and at each of which some ready
 event is named by none of `who`'s packets: the owner swap between the two views
 of `who` sends the first information state to the second. -/
-theorem ownerSwap_info_of_traces {first second : (application setup leaks).Control}
-    (firstTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some first))
-    (secondTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some second))
+theorem ownerSwap_info_of_traces {first second : (application setup runtime leaks).Control}
+    (firstTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+      first))
+    (secondTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+      second))
     {who : Player}
-    (sameKey : lateKey setup leaks who (some (first.execution.recall who,
-        first.execution.observe (application setup leaks) who)) =
-      lateKey setup leaks who (some (second.execution.recall who,
-        second.execution.observe (application setup leaks) who)))
-    (firstDebtFree : ∀ point, nativeDecodedState setup leaks (some first) = some point →
+    (sameKey : lateKey setup runtime leaks who (some (first.execution.recall who,
+        first.execution.observe (application setup runtime leaks) who)) =
+      lateKey setup runtime leaks who (some (second.execution.recall who,
+        second.execution.observe (application setup runtime leaks) who)))
+    (firstDebtFree : ∀ point, nativeDecodedState setup runtime leaks (some first) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
-    (secondDebtFree : ∀ point, nativeDecodedState setup leaks (some second) = some point →
+    (secondDebtFree : ∀ point, nativeDecodedState setup runtime leaks (some second) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
     (firstPending : ∃ event, first.execution.application.config.cut.Ready event ∧
-      ∀ message ∈ (application setup leaks).outputs (first.execution.recall who),
+      ∀ message ∈ (application setup runtime leaks).outputs (first.execution.recall who),
         message.payload.call.event? (graph setup) ≠ some event)
     (secondPending : ∃ event, second.execution.application.config.cut.Ready event ∧
-      ∀ message ∈ (application setup leaks).outputs (second.execution.recall who),
+      ∀ message ∈ (application setup runtime leaks).outputs (second.execution.recall who),
         message.payload.call.event? (graph setup) ≠ some event) :
-    (ownerSwap who (first.execution.observe (application setup leaks) who).application
-        (second.execution.observe (application setup leaks) who).application).info
+    (ownerSwap who (first.execution.observe (application setup runtime leaks) who).application
+        (second.execution.observe (application setup runtime leaks) who).application).info
+          (runtime := runtime)
         (some (first.execution.recall who,
-          first.execution.observe (application setup leaks) who)) =
+          first.execution.observe (application setup runtime leaks) who)) =
       some (second.execution.recall who,
-        second.execution.observe (application setup leaks) who) := by
+        second.execution.observe (application setup runtime leaks) who) := by
   simp only [lateKey, Option.some.injEq, LateKey.mk.injEq, true_and] at sameKey
   obtain ⟨currentEq, recalledEq, _⟩ := sameKey
   have lengthEq : (first.execution.recall who).length = (second.execution.recall who).length := by
@@ -89,9 +94,11 @@ theorem ownerSwap_info_of_traces {first second : (application setup leaks).Contr
     have mapped := congrArg (List.map Prod.snd) recalledEq
     rw [List.map_map, List.map_map] at mapped
     exact mapped
-  have outputsEq := outputs_eq_of_emitted emittedEq
-  have firstSettled := ownerSettled_of_trace firstTrace firstDebtFree firstPending
-  have secondSettled := ownerSettled_of_trace secondTrace secondDebtFree secondPending
+  have outputsEq := outputs_eq_of_emitted (runtime := runtime) emittedEq
+  have firstSettled := ownerSettled_of_trace (runtime := runtime) firstTrace firstDebtFree
+    firstPending
+  have secondSettled := ownerSettled_of_trace (runtime := runtime) secondTrace secondDebtFree
+    secondPending
   rw [← outputsEq] at secondSettled
   change some ((first.execution.recall who).map _, _) = _
   congr 2
@@ -104,14 +111,15 @@ theorem ownerSwap_info_of_traces {first second : (application setup leaks).Contr
       List.getElem?_eq_getElem secondInside, Option.map_some, Option.some.injEq,
       Prod.mk.injEq] at entryKey
     obtain ⟨operational, emitted⟩ := entryKey
-    have takeEq : (application setup leaks).outputs ((first.execution.recall who).take k) =
-        (application setup leaks).outputs ((second.execution.recall who).take k) := by
-      apply outputs_eq_of_emitted
+    have takeEq : (application setup runtime leaks).outputs ((first.execution.recall who).take k) =
+        (application setup runtime leaks).outputs ((second.execution.recall who).take k) := by
+      apply outputs_eq_of_emitted (runtime := runtime)
       rw [List.map_take, List.map_take, emittedEq]
     obtain ⟨firstBefore, firstView, firstGrows, firstFresh, firstInitial, firstRecorded⟩ :=
-      recallRecord_of_trace firstTrace first rfl who k firstInside
+      recallRecord_of_trace (runtime := runtime) firstTrace first rfl who k firstInside
     obtain ⟨secondBefore, secondView, secondGrows, secondFresh, secondInitial,
-      secondRecorded⟩ := recallRecord_of_trace secondTrace second rfl who k secondInside
+      secondRecorded⟩ := recallRecord_of_trace (runtime := runtime) secondTrace second rfl who k
+        secondInside
     rw [← takeEq] at secondFresh
     have knownEq : ReactiveApplication.ResponseMenu.knownPackets
         ((first.execution.recall who).take k) (first.execution.recall who)[k].beforeView =
@@ -131,55 +139,61 @@ theorem ownerSwap_info_of_traces {first second : (application setup leaks).Contr
         (second.execution.application.playerView who)).view firstBeforeView,
       (ownerSwap who (first.execution.application.playerView who)
         (second.execution.application.playerView who)).action firstAction, firstEmitted⟩ :
-          (application setup leaks).PlayerEntry) = ⟨secondBeforeView, secondAction, secondEmitted⟩
-    have actionEq := EventGraphRuntime.HiddenSwap.action_ownerSwap who firstSettled
+          (application setup runtime leaks).PlayerEntry) = ⟨secondBeforeView, secondAction,
+            secondEmitted⟩
+    have actionEq := EventGraphRuntime.HiddenSwap.action_ownerSwap (runtime := runtime) who
+      firstSettled
       secondSettled firstRecorded secondRecorded emitted
       (fun message event serial sent call => ⟨message,
         List.mem_filterMap.mpr ⟨(first.execution.recall who)[k], List.getElem_mem firstInside,
           by rw [firstEntry]; exact sent⟩, event, call⟩)
-    have viewEq := EventGraphRuntime.HiddenSwap.view_ownerSwap_of_settled who firstSettled
+    have viewEq := EventGraphRuntime.HiddenSwap.view_ownerSwap_of_settled (runtime := runtime) who
+      firstSettled
       secondSettled (firstGrows.ownerEarlier who firstFresh firstInitial)
       (secondGrows.ownerEarlier who secondFresh secondInitial) firstView secondView operational
     change firstEmitted = secondEmitted at emitted
     rw [viewEq, actionEq, emitted]
-  · exact EventGraphRuntime.HiddenSwap.view_ownerSwap_of_settled who firstSettled
+  · exact EventGraphRuntime.HiddenSwap.view_ownerSwap_of_settled (runtime := runtime) who
+      firstSettled
       secondSettled firstSettled.earlier secondSettled.earlier rfl rfl currentEq
 
 /-- A late delivery leaves a ready event named by none of the player's
 packets. -/
-theorem pending_of_lateDelivery {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+theorem pending_of_lateDelivery {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     {who : Player}
-    (late : LateDelivery setup leaks who (some (control.execution.recall who,
-      control.execution.observe (application setup leaks) who))) :
+    (late : LateDelivery setup runtime leaks who (some (control.execution.recall who,
+      control.execution.observe (application setup runtime leaks) who))) :
     ∃ event, control.execution.application.config.cut.Ready event ∧
-      ∀ message ∈ (application setup leaks).outputs (control.execution.recall who),
+      ∀ message ∈ (application setup runtime leaks).outputs (control.execution.recall who),
         message.payload.call.event? (graph setup) ≠ some event := by
   obtain ⟨past, view, event, infoEq, pending, _⟩ := late
   obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj infoEq)
-  obtain ⟨_, ready, _, unrecorded⟩ := pendingEvent_spec pending
+  obtain ⟨_, ready, _, unrecorded⟩ := pendingEvent_spec (runtime := runtime) pending
   refine ⟨event, (State.publicView_eventReady _ event).mp ready, fun message member named => ?_⟩
-  have rawTrace := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
     horizon scheduler trace
-  have recorded := (history_eventRecorded_iff rawTrace who event).mpr ⟨message, member, named⟩
+  have recorded := (history_eventRecorded_iff (runtime := runtime) rawTrace who event).mpr
+    ⟨message, member, named⟩
   rw [unrecorded] at recorded
   cases recorded
 
 /-- A site of `who` is reached at a history ending where `who` acts with the
 site's recall and view. -/
 private theorem site_realized {who : Player}
-    (site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who)
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
-    (debtFree : ∀ history : (onePacketInformation setup leaks bounds horizon
+    (site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who)
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} (atSite : site.1 = some (past, view))
+    (debtFree : ∀ history : (onePacketInformation setup runtime leaks bounds horizon
         scheduler).InformationHistory who site.1, ∀ point,
-      nativeDecodedState setup leaks history.1.state = some point →
+      nativeDecodedState setup runtime leaks history.1.state = some point →
         ¬ ProtocolState.OwesFailure who setup.program point) :
-    ∃ control : (application setup leaks).Control,
-      Nonempty ((onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control)) ∧
+    ∃ control : (application setup runtime leaks).Control,
+      Nonempty ((onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+        control)) ∧
       control.execution.recall who = past ∧
-      control.execution.observe (application setup leaks) who = view ∧
-      ∀ point, nativeDecodedState setup leaks (some control) = some point →
+      control.execution.observe (application setup runtime leaks) who = view ∧
+      ∀ point, nativeDecodedState setup runtime leaks (some control) = some point →
         ¬ ProtocolState.OwesFailure who setup.program point := by
   obtain ⟨⟨history, member⟩, -⟩ := site.2
   have info := member
@@ -189,7 +203,7 @@ private theorem site_realized {who : Player}
       rw [stateEq] at info
       cases info
   | some control =>
-      have trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
+      have trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
           (some control) := stateEq ▸ history.trace
       rw [stateEq] at info
       simp only [ReactiveApplication.observe] at info
@@ -206,29 +220,34 @@ history (the negation of `Vegas.OwingAgent` at the site's agent). The owner
 swap between the views of `who` at the two sites sends the information state of
 the first site to that of the second. -/
 theorem ownerSwap_info {who : Player}
-    {site₁ site₂ : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
-    {past₁ past₂ : List (application setup leaks).PlayerEntry}
-    {view₁ view₂ : (application setup leaks).PlayerView}
+    {site₁ site₂ : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationSite who}
+    {past₁ past₂ : List (application setup runtime leaks).PlayerEntry}
+    {view₁ view₂ : (application setup runtime leaks).PlayerView}
     (firstSite : site₁.1 = some (past₁, view₁)) (secondSite : site₂.1 = some (past₂, view₂))
-    (sameKey : lateKey setup leaks who site₁.1 = lateKey setup leaks who site₂.1)
-    (firstDebtFree : ∀ history : (onePacketInformation setup leaks bounds horizon
+    (sameKey : lateKey setup runtime leaks who site₁.1 = lateKey setup runtime leaks who site₂.1)
+    (firstDebtFree : ∀ history : (onePacketInformation setup runtime leaks bounds horizon
         scheduler).InformationHistory who site₁.1, ∀ point,
-      nativeDecodedState setup leaks history.1.state = some point →
+      nativeDecodedState setup runtime leaks history.1.state = some point →
         ¬ ProtocolState.OwesFailure who setup.program point)
-    (secondDebtFree : ∀ history : (onePacketInformation setup leaks bounds horizon
+    (secondDebtFree : ∀ history : (onePacketInformation setup runtime leaks bounds horizon
         scheduler).InformationHistory who site₂.1, ∀ point,
-      nativeDecodedState setup leaks history.1.state = some point →
+      nativeDecodedState setup runtime leaks history.1.state = some point →
         ¬ ProtocolState.OwesFailure who setup.program point)
-    (firstLate : LateDelivery setup leaks who site₁.1)
-    (secondLate : LateDelivery setup leaks who site₂.1) :
-    (ownerSwap who view₁.application view₂.application).info site₁.1 = site₂.1 := by
-  obtain ⟨first, ⟨firstTrace⟩, rfl, rfl, firstDebt⟩ := site_realized site₁ firstSite firstDebtFree
+    (firstLate : LateDelivery setup runtime leaks who site₁.1)
+    (secondLate : LateDelivery setup runtime leaks who site₂.1) :
+    (ownerSwap who view₁.application view₂.application).info site₁.1 =
+      site₂.1 := by
+  obtain ⟨first, ⟨firstTrace⟩, rfl, rfl, firstDebt⟩ := site_realized (runtime := runtime) site₁
+    firstSite firstDebtFree
   obtain ⟨second, ⟨secondTrace⟩, rfl, rfl, secondDebt⟩ :=
-    site_realized site₂ secondSite secondDebtFree
+    site_realized (runtime := runtime) site₂ secondSite secondDebtFree
   rw [firstSite] at sameKey firstLate
   rw [secondSite] at sameKey secondLate
   rw [firstSite, secondSite]
-  exact ownerSwap_info_of_traces firstTrace secondTrace sameKey firstDebt secondDebt
-    (pending_of_lateDelivery firstTrace firstLate) (pending_of_lateDelivery secondTrace secondLate)
+  exact ownerSwap_info_of_traces (runtime := runtime) firstTrace secondTrace sameKey firstDebt
+    secondDebt
+    (pending_of_lateDelivery (runtime := runtime) firstTrace firstLate) (pending_of_lateDelivery
+      (runtime := runtime) secondTrace secondLate)
 
 end Vegas

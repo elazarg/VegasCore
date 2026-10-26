@@ -16,32 +16,34 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)}
   {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
   {delay bound : (graph setup).EventId → Nat}
-  (opportunity : ∀ control : (application setup leaks).Control,
-    (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control) →
+  (opportunity : ∀ control : (application setup runtime leaks).Control,
+    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
     ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
-    OpportunityAt (runtime setup) leaks control.execution delay)
-  (inclusion : ∀ control : (application setup leaks).Control,
-    (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control) →
+    OpportunityAt runtime leaks control.execution delay)
+  (inclusion : ∀ control : (application setup runtime leaks).Control,
+    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
     ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
-    ProtectedInclusionAt (runtime setup) leaks control.execution bound)
-  (timely : (runtime setup).AsyncTimely delay bound)
-  (completes : ∀ control : (application setup leaks).Control,
-    (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control) →
+    ProtectedInclusionAt runtime leaks control.execution bound)
+  (timely : runtime.AsyncTimely delay bound)
+  (completes : ∀ control : (application setup runtime leaks).Control,
+    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
     ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
-    (application setup leaks).terminal (some control) →
+    (application setup runtime leaks).terminal (some control) →
     control.execution.application.config.cut.Terminal)
 
-local notation "menu" => bounds.onePacketMenu (runtime setup) leaks
-local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+local notation "menu" => bounds.onePacketMenu runtime leaks
+local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
+  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
+    native ∅))
 
 include opportunity inclusion timely completes in
 /-- Honest finite-menu play from an intended source boundary has the source
@@ -52,30 +54,32 @@ theorem counted_honest_boundary_readout_law
     (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (E).WellFoundedHistories) :
-    ∀ rank (start : (E).History) (execution : (application setup leaks).Execution),
+    ∀ rank (start : (E).History) (execution : (application setup runtime leaks).Execution),
       start.state = some ⟨horizon - execution.environmentRecall.length, none, execution⟩ →
-      ReachedBoundary setup leaks horizon scheduler rank execution →
+      ReachedBoundary setup runtime leaks horizon scheduler rank execution →
       ∀ point, sourceServicePrefix? setup rank execution.application.config = some point →
         ProtocolState.Intended setup.program point →
       ((N).runBehavioralTerminalFrom certificate
-        (honestProfile setup leaks bounds (initialLaw setup) horizon scheduler source) start).map
-          (fun final => sourceReadout setup leaks final.state) =
+        (honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler source)
+          start).map
+          (fun final => sourceReadout setup runtime leaks final.state) =
         sourceContinuation setup (setup.intendedOpeningProfile source.strategy) rank
           execution.application.config := by
   classical
-  let players := honestProfile setup leaks bounds (initialLaw setup) horizon scheduler source
+  let players := honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler
+    source
   let profile := setup.intendedOpeningProfile source.strategy
   let continuation := fun state : Option (ProtocolState setup.program) =>
     (setup.continuationLaw profile state).map some
   suffices remaining : ∀ gap rank (start : (E).History)
-      (execution : (application setup leaks).Execution),
+      (execution : (application setup runtime leaks).Execution),
       (graph setup).order.eventCount - rank = gap →
       start.state = some ⟨horizon - execution.environmentRecall.length, none, execution⟩ →
-      ReachedBoundary setup leaks horizon scheduler rank execution →
+      ReachedBoundary setup runtime leaks horizon scheduler rank execution →
       ∀ point, sourceServicePrefix? setup rank execution.application.config = some point →
         ProtocolState.Intended setup.program point →
       ((N).runBehavioralTerminalFrom certificate players start).map
-          (fun final => sourceReadout setup leaks final.state) =
+          (fun final => sourceReadout setup runtime leaks final.state) =
         sourceContinuation setup profile rank execution.application.config by
     intro rank start execution state boundary point decoded intended
     exact remaining _ rank start execution rfl state boundary point decoded intended
@@ -88,7 +92,8 @@ theorem counted_honest_boundary_readout_law
         change rank ≤ (graph setup).order.eventCount at within
         omega
       subst rank
-      exact terminalPrefix_readout_law bounds certificate players start _ state boundary.ordered
+      exact terminalPrefix_readout_law (runtime := runtime) bounds certificate players start _
+        state boundary.ordered
         profile
   | succ gap ih =>
       intro rank start execution gapEq state boundary point decoded intended
@@ -98,27 +103,29 @@ theorem counted_honest_boundary_readout_law
       have trace : (E).Trace
           (some ⟨horizon - execution.environmentRecall.length, none, execution⟩) :=
         state ▸ start.trace
-      have clear := exclusionEvidence_of_decodedIntended
+      have clear := exclusionEvidence_of_decodedIntended (runtime := runtime)
         ((menu).toRawTrace (initialLaw setup) horizon scheduler trace)
         ((decodedPoint_eq_of_isPrefix boundary.ordered).trans decoded) intended
       cases owned : (graph setup).actor? event with
       | none =>
-          obtain ⟨found, ⟨residual⟩⟩ := protocol_sourceResidual profile (menu) horizon scheduler
+          obtain ⟨found, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) profile
+            (menu) horizon scheduler
             start.trace _ state
           have rankEq := isPrefix_unique residual.checkpoint.ordered boundary.ordered
           subst found
           let action := ((graph setup).nodes event).actionOfActorNone owned
           let stopping := fun history : (E).History =>
-            LateStopped setup leaks bounds horizon scheduler rank history ∨
+            LateStopped setup runtime leaks bounds horizon scheduler rank history ∨
               ¬ Clear history.state
-          have configLaw := counted_chance_stopped_configLaw completes
+          have configLaw := counted_chance_stopped_configLaw (runtime := runtime) completes
             certificate players start state boundary.ordered event ready owned action decoded
             intended
           rw [(N).runBehavioralTerminalFrom_eq_bind_runBehavioralUntil certificate players stopping,
             PMF.map_bind]
           calc
             _ = ((N).runBehavioralUntil certificate players stopping start).bind
-                (fun final => continuation (nativeDecodedState setup leaks final.state)) := by
+                (fun final => continuation (nativeDecodedState setup runtime leaks final.state))
+                  := by
               refine bind_congr_on_support _ fun final supported => ?_
               have mapped : final.state.map (fun next => next.execution.application.config) ∈
                   ((execution.application.config.step event ready action).map some).support := by
@@ -151,12 +158,13 @@ theorem counted_honest_boundary_readout_law
                       intended (fun player active => ?_) stepped
                     rw [actors player] at active
                     cases active
-                  have decodedFinal : nativeDecodedState setup leaks final.state = some target := by
+                  have decodedFinal : nativeDecodedState setup runtime leaks final.state = some
+                    target := by
                     rw [finalState]
                     exact afterDecoded
                   obtain ⟨successor, successorState, _clear, _completed, nextDecoded,
                       nextBoundary⟩ :=
-                    counted_stopped_boundary_of_intended completes
+                    counted_stopped_boundary_of_intended (runtime := runtime) completes
                       certificate
                       players start state boundary.ordered event ready final supported decodedFinal
                       targetIntended
@@ -165,15 +173,15 @@ theorem counted_honest_boundary_readout_law
                   refine continued.trans ?_
                   change continuation (sourceServicePrefix? setup (rank + 1)
                     successor.application.config) = continuation
-                      (nativeDecodedState setup leaks (some control))
+                      (nativeDecodedState setup runtime leaks (some control))
                   exact (congrArg continuation nextDecoded).trans
                     (congrArg continuation afterDecoded).symm
             _ = sourceContinuation setup profile rank execution.application.config :=
-              counted_chance_stopped_sourceContinuation completes certificate
+              counted_chance_stopped_sourceContinuation (runtime := runtime) completes certificate
                 players start state event owned profile residual rfl decoded intended
       | some owner =>
           let waiting := fun history : (E).History =>
-            (application setup leaks).actor history.state = some owner
+            (application setup runtime leaks).actor history.state = some owner
           rw [(N).runBehavioralTerminalFrom_eq_bind_runBehavioralUntil certificate players waiting,
             PMF.map_bind]
           calc
@@ -182,21 +190,23 @@ theorem counted_honest_boundary_readout_law
               refine bind_congr_on_support _ fun callback supported => ?_
               obtain ⟨remaining, anchor, current, same, callbackClear, recalledEq, pending,
                   never⟩ :=
-                counted_boundary_firstActivation opportunity timely completes
+                counted_boundary_firstActivation (runtime := runtime) opportunity timely completes
                   certificate players start state boundary clear decoded intended owner event rfl
                   owned callback supported
               let stopping := fun history : (E).History =>
-                LateStopped setup leaks bounds horizon scheduler rank history ∨
+                LateStopped setup runtime leaks bounds horizon scheduler rank history ∨
                   ¬ Clear history.state
               have installed : Profile.update (sig := (N).behavioralSignature) players owner
                   ((players owner).withLaw ((N).infoOf owner callback.trace)
-                    (honestChoice setup leaks bounds (initialLaw setup) horizon scheduler source
+                    (honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
+                      source
                       owner ((N).infoOf owner callback.trace))) = players := by
                 change Profile.update (sig := (N).behavioralSignature) players owner
                   ((players owner).withLaw ((N).infoOf owner callback.trace)
                     (players owner ((N).infoOf owner callback.trace))) = players
                 rw [BehavioralPolicy.withLaw_eq_self, Profile.update_eq_self]
-              have sourceLaw := counted_firstActivation_honest_sourceLaw opportunity
+              have sourceLaw := counted_firstActivation_honest_sourceLaw (runtime := runtime)
+                opportunity
                 inclusion timely completes wellFormed covers capacity source
                 certificate
                 players callback current callbackClear event pending never (same ▸ boundary.ordered)
@@ -206,19 +216,21 @@ theorem counted_honest_boundary_readout_law
                 stopping, PMF.map_bind]
               calc
                 _ = ((N).runBehavioralUntil certificate players stopping callback).bind
-                    (fun final => continuation (nativeDecodedState setup leaks final.state)) := by
+                    (fun final => continuation (nativeDecodedState setup runtime leaks
+                      final.state)) := by
                   refine bind_congr_on_support _ fun final reached => ?_
                   have supportedInstalled : final ∈ ((N).runBehavioralUntil certificate
                       (Profile.update (sig := (N).behavioralSignature) players owner
                         ((players owner).withLaw ((N).infoOf owner callback.trace)
-                          (honestChoice setup leaks bounds (initialLaw setup) horizon scheduler
+                          (honestChoice setup runtime leaks bounds (initialLaw setup) horizon
+                            scheduler
                             source owner ((N).infoOf owner callback.trace))))
                       stopping callback).support := by
                     rw [installed]
                     exact reached
                   obtain ⟨target, successor, _step, targetIntended, finalState, _clear, _completed,
                       nextDecoded, nextBoundary⟩ :=
-                    counted_firstActivation_honest_successorBoundary completes
+                    counted_firstActivation_honest_successorBoundary (runtime := runtime) completes
                       opportunity inclusion timely wellFormed covers capacity source certificate
                       players callback current callbackClear event pending never
                       (same ▸ boundary.ordered) (same ▸ decoded) intended _ rfl final
@@ -226,12 +238,13 @@ theorem counted_honest_boundary_readout_law
                   have continued := ih (rank + 1) final successor (by omega) finalState nextBoundary
                     target nextDecoded targetIntended
                   refine continued.trans ?_
-                  have decodedFinal : nativeDecodedState setup leaks final.state = some target := by
+                  have decodedFinal : nativeDecodedState setup runtime leaks final.state = some
+                    target := by
                     rw [finalState]
                     exact (decodedPoint_eq_of_isPrefix nextBoundary.ordered).trans nextDecoded
                   change continuation (sourceServicePrefix? setup (rank + 1)
                     successor.application.config) = continuation
-                      (nativeDecodedState setup leaks final.state)
+                      (nativeDecodedState setup runtime leaks final.state)
                   exact (congrArg continuation nextDecoded).trans
                     (congrArg continuation decodedFinal).symm
                 _ = ((ProtocolState.behavioralStateStep setup.program profile point).map

@@ -23,10 +23,11 @@ open GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability EventGrap
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {Public : Type*} {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   (signal : State L setup.context → Public)
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 private theorem private_input_not_failed (wellFormed : setup.WellFormed)
     {draw : State L setup.context} (member : draw ∈ setup.initialLaw.support) (who : Player)
@@ -51,7 +52,7 @@ theorem ownerSwap_priorScaled (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
     (preserves : ∀ (who : Player) (mine others : State L setup.context),
       signal (splice who mine others) = signal others)
-    {who : Player} {view₁ view₂ : (application setup leaks).PlayerView}
+    {who : Player} {view₁ view₂ : (application setup runtime leaks).PlayerView}
     {base other : State L setup.context} (baseMember : base ∈ setup.initialLaw.support)
     (otherMember : other ∈ setup.initialLaw.support)
     (baseStore : ∀ input, PrivateTo who (setup := setup) (.inl input) →
@@ -103,28 +104,30 @@ The public-signal equality comes from actual public input observations. -/
 theorem site_hiddenPublicFiberInputs
     (observable : setup.PublicInitialSignal signal)
     {who : Player}
-    {site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} (decision : site.1 = some (past, view))
-    (anchor : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory
-      who site.1) {anchorControl : (application setup leaks).Control}
+    {site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who}
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} (decision : site.1 = some (past, view))
+    (anchor : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationHistory
+      who site.1) {anchorControl : (application setup runtime leaks).Control}
     {base : State L setup.context} (anchorState : anchor.1.state = some anchorControl)
     (anchorInputs : anchorControl.execution.application.config.inputs = setup.eventInputs base)
     (baseStore : ∀ input, PrivateTo who (setup := setup) (.inl input) →
       view.application.observation.store (.inl input) = some (setup.eventInputs base input)) :
-    ∀ history : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory
-      who site.1, ∃ control : (application setup leaks).Control,
+    ∀ history : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationHistory
+      who site.1, ∃ control : (application setup runtime leaks).Control,
       history.1.state = some control ∧ control.execution.application.config.inputs ∈
         hiddenPublicFiberInputs signal who base := by
   intro history
-  obtain ⟨control, draw, stateEq, member, inputsEq, drawStore⟩ := siteDraw decision history
+  obtain ⟨control, draw, stateEq, member, inputsEq, drawStore⟩ := siteDraw (runtime := runtime)
+    decision history
   refine ⟨control, stateEq, draw, member, inputsEq, ?_, ?_⟩
   · apply hiddenAgree_iff_inputs.mpr
     intro input privateTo
     exact Option.some.inj ((drawStore input privateTo).symm.trans (baseStore input privateTo))
   · apply observable draw base
     intro input publicField
-    exact same_key_public_initial_inputs decision decision rfl history anchor
+    exact same_key_public_initial_inputs (runtime := runtime) decision decision rfl history anchor
       stateEq anchorState inputsEq anchorInputs input publicField
 
 /-- The same-key bridge applies to all actual draws used by supported splice
@@ -133,30 +136,33 @@ theorem ownerSwap_priorClosed_given_public (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal)
     {who : Player}
-    {site₁ site₂ : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
-    {past₁ past₂ : List (application setup leaks).PlayerEntry}
-    {view₁ view₂ : (application setup leaks).PlayerView}
+    {site₁ site₂ : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationSite who}
+    {past₁ past₂ : List (application setup runtime leaks).PlayerEntry}
+    {view₁ view₂ : (application setup runtime leaks).PlayerView}
     (firstSite : site₁.1 = some (past₁, view₁)) (secondSite : site₂.1 = some (past₂, view₂))
-    (sameKey : lateKey setup leaks who site₁.1 = lateKey setup leaks who site₂.1) :
+    (sameKey : lateKey setup runtime leaks who site₁.1 = lateKey setup runtime leaks who site₂.1) :
     ∀ initial ∈ setup.initialLaw.support,
-      (∃ history : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory
-        who site₁.1, ∃ control : (application setup leaks).Control,
+      (∃ history : (onePacketInformation setup runtime leaks bounds horizon
+        scheduler).InformationHistory
+        who site₁.1, ∃ control : (application setup runtime leaks).Control,
         history.1.state = some control ∧
           control.execution.application.config.inputs = setup.eventInputs initial) →
       ∃ other ∈ setup.initialLaw.support, setup.eventInputs other =
         (ownerSwap who view₁.application view₂.application).inputs (setup.eventInputs initial) := by
   rintro initial member ⟨history, control, stateEq, inputsEq⟩
-  obtain ⟨control₁, draw₁, stateEq₁, -, inputsEq₁, firstStore⟩ := siteDraw firstSite history
+  obtain ⟨control₁, draw₁, stateEq₁, -, inputsEq₁, firstStore⟩ := siteDraw (runtime := runtime)
+    firstSite history
   rw [stateEq] at stateEq₁
   cases Option.some.inj stateEq₁
   obtain ⟨history₂, -⟩ := site₂.2
   obtain ⟨control₂, draw₂, stateEq₂, drawMember₂, inputsEq₂, secondStore⟩ :=
-    siteDraw secondSite history₂
+    siteDraw (runtime := runtime) secondSite history₂
   have firstStore' : ∀ input, PrivateTo who (setup := setup) (.inl input) →
       view₁.application.observation.store (.inl input) = some (setup.eventInputs initial input) :=
     fun input privateTo => by rw [firstStore input privateTo, ← inputsEq₁, inputsEq]
   have sameSignal : signal draw₂ = signal initial := observable draw₂ initial
-    (fun input publicField => same_key_public_initial_inputs
+    (fun input publicField => same_key_public_initial_inputs (runtime := runtime)
       secondSite firstSite sameKey.symm history₂ history stateEq₂ stateEq inputsEq₂ inputsEq
         input publicField)
   refine ⟨splice who draw₂ initial,

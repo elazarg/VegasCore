@@ -16,24 +16,25 @@ open SourceProgram Interaction EventGraphRuntime GameTheory GameTheory.Protocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
+  (scheduler : (phaseApplication runtime leaks).Scheduler)
+  [(phaseApplication runtime leaks).FiniteNature (phaseInitialLaw setup) scheduler]
 
-local notation "M" => model setup leaks bounds horizon scheduler
-local notation "R" => recoveryModel setup leaks bounds horizon scheduler
+local notation "M" => model setup runtime leaks bounds horizon scheduler
+local notation "R" => recoveryModel setup runtime leaks bounds horizon scheduler
 local notation "RecoveryLeaks" => recoveryLeaks setup leaks
 local notation "RecoveryPrior" => recoveryInitialLaw setup
-local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
-local notation "RecoveryMenu" => Recovery.onePacketMenu (runtime setup) (RecoveryLeaks) bounds
+local notation "RecoveryScheduler" => recoveryScheduler setup runtime leaks scheduler
+local notation "RecoveryMenu" => Recovery.onePacketMenu runtime (RecoveryLeaks) bounds
 local notation "project" => fun choice => Option.map
-  (PhaseRecoveryProjection.action (runtime setup) leaks (RecoveryLeaks)) (Subtype.val choice)
+  (PhaseRecoveryProjection.action runtime leaks (RecoveryLeaks)) (Subtype.val choice)
 
 attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
   phaseHistoryFintype recoveryHistoryFintype nativeHistoryFintype nativeNature
 
-omit [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler] in
+omit [(phaseApplication runtime leaks).FiniteNature (phaseInitialLaw setup) scheduler] in
 private theorem choice_cast_val {who : Player} {first second : (R).InfoState who}
     (same : first = second) (choice : (R).Choice who first) :
     (Equiv.cast (congrArg (fun input => (R).Choice who input) same) choice).1 = choice.1 := by
@@ -41,135 +42,153 @@ private theorem choice_cast_val {who : Player} {first second : (R).InfoState who
   rfl
 
 theorem liftedChoiceEquiv_val (agent : (R).InformationAgent (R).playedInformation)
-    (represented : Represented setup leaks bounds horizon scheduler agent)
+    (represented : Represented setup runtime leaks bounds horizon scheduler agent)
     (choice : (M).Choice agent.1
-      (liftedAgent setup leaks bounds horizon scheduler agent represented).2.1) :
-    (liftedChoiceEquiv setup leaks bounds horizon scheduler agent represented choice).1 =
+      (liftedAgent setup runtime leaks bounds horizon scheduler agent represented).2.1) :
+    (liftedChoiceEquiv setup runtime leaks bounds horizon scheduler agent represented choice).1 =
       project choice := by
   unfold liftedChoiceEquiv
   simp only [Equiv.trans_apply]
-  have same : PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks)
-      (liftedAgent setup leaks bounds horizon scheduler agent represented).2.1 = agent.2.1 :=
+  have same : PhaseRecoveryProjection.information runtime leaks (RecoveryLeaks)
+      (liftedAgent setup runtime leaks bounds horizon scheduler agent represented).2.1 = agent.2.1
+        :=
     congrArg (fun other : (R).InformationAgent (R).playedInformation => other.2.1)
-      (projected_liftedAgent setup leaks bounds horizon scheduler agent represented)
-  exact choice_cast_val setup leaks bounds horizon scheduler (who := agent.1)
-    (first := PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks)
-      (liftedAgent setup leaks bounds horizon scheduler agent represented).2.1)
+      (projected_liftedAgent setup runtime leaks bounds horizon scheduler agent represented)
+  exact choice_cast_val setup runtime leaks bounds horizon scheduler (who := agent.1)
+    (first := PhaseRecoveryProjection.information runtime leaks (RecoveryLeaks)
+      (liftedAgent setup runtime leaks bounds horizon scheduler agent represented).2.1)
     (second := agent.2.1) same _
 
 theorem uniform_phase_map (agent : (M).InformationAgent (M).playedInformation)
-    (clear : ClearInput setup leaks agent.2.1) :
-    (((menu setup leaks bounds).uniformPolicy (phaseInitialLaw setup) horizon scheduler agent.1
-        agent.2.1).map (choiceEquiv setup leaks bounds horizon scheduler agent clear)) =
+    (clear : ClearInput setup runtime leaks agent.2.1) :
+    (((menu setup runtime leaks bounds).uniformPolicy (phaseInitialLaw setup) horizon scheduler
+      agent.1
+        agent.2.1).map (choiceEquiv setup runtime leaks bounds horizon scheduler agent clear)) =
       (RecoveryMenu).uniformPolicy (RecoveryPrior) horizon (RecoveryScheduler) agent.1
-        (projectedAgent setup leaks bounds horizon scheduler agent clear).2.1 := by
-  rw [← uniform_recovery_map setup leaks bounds horizon scheduler agent clear, PMF.map_comp]
+        (projectedAgent setup runtime leaks bounds horizon scheduler agent clear).2.1 := by
+  rw [← uniform_recovery_map setup runtime leaks bounds horizon scheduler agent clear, PMF.map_comp]
   simp only [Function.comp_def, Equiv.apply_symm_apply]
   exact PMF.map_id _
 
 theorem prescribedComponent_recovery (assessment : setup.intendedModel.BehavioralAssessment)
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
     (agent : (M).InformationAgent (M).playedInformation)
-    (clear : ClearInput setup leaks agent.2.1) :
-    (prescribedComponent setup leaks bounds horizon scheduler assessment scale nonnegative le_one
+    (clear : ClearInput setup runtime leaks agent.2.1) :
+    (prescribedComponent setup runtime leaks bounds horizon scheduler assessment scale nonnegative
+      le_one
         agent).map project =
-      (RecoveryOnePacket.prescribedComponent setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+      (RecoveryOnePacket.prescribedComponent (runtime := runtime) setup (RecoveryLeaks) bounds
+        (RecoveryPrior) horizon
         (RecoveryScheduler) assessment scale nonnegative le_one
-        (projectedAgent setup leaks bounds horizon scheduler agent clear)).map Subtype.val := by
+        (projectedAgent setup runtime leaks bounds horizon scheduler agent clear)).map Subtype.val
+          := by
   unfold prescribedComponent
   rw [dite_eq_left clear, PMF.map_comp]
   congr 1
   funext choice
   exact congrArg Subtype.val
-    ((choiceEquiv setup leaks bounds horizon scheduler agent clear).apply_symm_apply choice)
+    ((choiceEquiv setup runtime leaks bounds horizon scheduler agent clear).apply_symm_apply choice)
 
 theorem keyedComponent_recovery (assessment : setup.intendedModel.BehavioralAssessment)
     {slots : Nat} (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
     (agent : (M).InformationAgent (M).playedInformation)
-    (clear : ClearInput setup leaks agent.2.1) (option : LateOption slots) :
-    (keyedComponent setup leaks bounds horizon scheduler assessment scale nonnegative le_one
+    (clear : ClearInput setup runtime leaks agent.2.1) (option : LateOption slots) :
+    (keyedComponent setup runtime leaks bounds horizon scheduler assessment scale nonnegative le_one
         agent option).map project =
-      (RecoveryOnePacket.keyedComponent setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+      (RecoveryOnePacket.keyedComponent (runtime := runtime) setup (RecoveryLeaks) bounds
+        (RecoveryPrior) horizon
         (RecoveryScheduler) assessment scale nonnegative le_one
-        (projectedAgent setup leaks bounds horizon scheduler agent clear) option).map
+        (projectedAgent setup runtime leaks bounds horizon scheduler agent clear) option).map
           Subtype.val := by
   unfold keyedComponent
   rw [dite_eq_left clear, PMF.map_comp]
   congr 1
   funext choice
   exact congrArg Subtype.val
-    ((choiceEquiv setup leaks bounds horizon scheduler agent clear).apply_symm_apply choice)
+    ((choiceEquiv setup runtime leaks bounds horizon scheduler agent clear).apply_symm_apply choice)
 
 theorem recoveryComparisonWeights_free {slots : Nat}
-    (weights : ∀ p, PMF (Part setup leaks bounds horizon scheduler slots p))
+    (weights : ∀ p, PMF (Part setup runtime leaks bounds horizon scheduler slots p))
     (agent : (M).InformationAgent (M).playedInformation)
-    (clear : ClearInput setup leaks agent.2.1)
-    (free : FreeAgent setup leaks bounds horizon scheduler agent) :
-    (recoveryComparisonWeights setup leaks bounds horizon scheduler weights
-        (.inl ⟨projectedAgent setup leaks bounds horizon scheduler agent clear,
-          (freeAgent_projected_iff setup leaks bounds horizon scheduler agent clear).mpr free⟩)).map
+    (clear : ClearInput setup runtime leaks agent.2.1)
+    (free : FreeAgent setup runtime leaks bounds horizon scheduler agent) :
+    (recoveryComparisonWeights setup runtime leaks bounds horizon scheduler weights
+        (.inl ⟨projectedAgent setup runtime leaks bounds horizon scheduler agent clear,
+          (freeAgent_projected_iff setup runtime leaks bounds horizon scheduler agent clear).mpr
+            free⟩)).map
             Subtype.val =
       (weights (.inl ⟨agent, free⟩)).map project := by
   classical
-  have represented : Represented setup leaks bounds horizon scheduler
-      (projectedAgent setup leaks bounds horizon scheduler agent clear) := ⟨agent, clear, rfl⟩
+  have represented : Represented setup runtime leaks bounds horizon scheduler
+      (projectedAgent setup runtime leaks bounds horizon scheduler agent clear) := ⟨agent, clear,
+        rfl⟩
   simp only [recoveryComparisonWeights, dite_eq_left represented, PMF.map_comp]
-  have same := lifted_projectedAgent setup leaks bounds horizon scheduler agent clear represented
+  have same := lifted_projectedAgent setup runtime leaks bounds horizon scheduler agent clear
+    represented
   have owner :
-      (⟨liftedAgent setup leaks bounds horizon scheduler
-          (projectedAgent setup leaks bounds horizon scheduler agent clear) represented,
+      (⟨liftedAgent setup runtime leaks bounds horizon scheduler
+          (projectedAgent setup runtime leaks bounds horizon scheduler agent clear) represented,
         same.symm ▸ free⟩ : {agent : (M).InformationAgent (M).playedInformation //
-          FreeAgent setup leaks bounds horizon scheduler agent}) = ⟨agent, free⟩ :=
+          FreeAgent setup runtime leaks bounds horizon scheduler agent}) = ⟨agent, free⟩ :=
     Subtype.ext same
   have erased := congrArg
     (fun owner : {agent : (M).InformationAgent (M).playedInformation //
-        FreeAgent setup leaks bounds horizon scheduler agent} =>
+        FreeAgent setup runtime leaks bounds horizon scheduler agent} =>
       (weights (.inl owner)).map project) owner
   refine Eq.trans ?_ erased
   congr 1
   funext choice
-  exact liftedChoiceEquiv_val setup leaks bounds horizon scheduler _ represented choice
+  exact liftedChoiceEquiv_val setup runtime leaks bounds horizon scheduler _ represented choice
 
 /-- Every actual clear phase component mixture has exactly the recovery
 comparison's optional-response law. No equality after exclusion is used. -/
 theorem recoveryComparisonMixture_at_clear
     (assessment : setup.intendedModel.BehavioralAssessment) {slots : Nat}
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (weights : ∀ p, PMF (Part setup leaks bounds horizon scheduler slots p))
+    (weights : ∀ p, PMF (Part setup runtime leaks bounds horizon scheduler slots p))
     (agent : (M).InformationAgent (M).playedInformation)
-    (clear : ClearInput setup leaks agent.2.1) :
-    ((recoveryComparisonWeights setup leaks bounds horizon scheduler weights
-        (RecoveryOnePacket.pool setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+    (clear : ClearInput setup runtime leaks agent.2.1) :
+    ((recoveryComparisonWeights setup runtime leaks bounds horizon scheduler weights
+        (RecoveryOnePacket.pool (runtime := runtime) setup (RecoveryLeaks) bounds (RecoveryPrior)
+          horizon
             (RecoveryScheduler)
-          (projectedAgent setup leaks bounds horizon scheduler agent clear))).bind
-      (RecoveryOnePacket.component setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+          (projectedAgent setup runtime leaks bounds horizon scheduler agent clear))).bind
+      (RecoveryOnePacket.component (runtime := runtime) setup (RecoveryLeaks) bounds
+        (RecoveryPrior) horizon
           (RecoveryScheduler)
         assessment scale nonnegative le_one
-        (projectedAgent setup leaks bounds horizon scheduler agent clear))).map Subtype.val =
-      ((weights (pool setup leaks bounds horizon scheduler agent)).bind
-        (component setup leaks bounds horizon scheduler assessment scale nonnegative le_one
+        (projectedAgent setup runtime leaks bounds horizon scheduler agent clear))).map
+          Subtype.val =
+      ((weights (pool setup runtime leaks bounds horizon scheduler agent)).bind
+        (component setup runtime leaks bounds horizon scheduler assessment scale nonnegative le_one
           agent)).map project := by
   classical
-  let recoveryAgent := projectedAgent setup leaks bounds horizon scheduler agent clear
-  let recoveryWeights := recoveryComparisonWeights setup leaks bounds horizon scheduler weights
-  let phaseFree := freeLaw setup leaks bounds horizon scheduler scale nonnegative le_one
-  let phasePrescribed := prescribedComponent setup leaks bounds horizon scheduler assessment scale
+  let recoveryAgent := projectedAgent setup runtime leaks bounds horizon scheduler agent clear
+  let recoveryWeights := recoveryComparisonWeights setup runtime leaks bounds horizon scheduler
+    weights
+  let phaseFree := freeLaw setup runtime leaks bounds horizon scheduler scale nonnegative le_one
+  let phasePrescribed := prescribedComponent setup runtime leaks bounds horizon scheduler
+    assessment scale
     nonnegative le_one
-  let phaseKeyed := keyedComponent setup leaks bounds horizon scheduler assessment scale
+  let phaseKeyed := keyedComponent setup runtime leaks bounds horizon scheduler assessment scale
     nonnegative le_one (slots := slots)
-  let recoveryFree := RecoveryOnePacket.freeLaw setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+  let recoveryFree := RecoveryOnePacket.freeLaw setup runtime (RecoveryLeaks) bounds
+    (RecoveryPrior) horizon
     (RecoveryScheduler) scale nonnegative le_one
-  let recoveryPrescribed := RecoveryOnePacket.prescribedComponent setup (RecoveryLeaks) bounds
+  let recoveryPrescribed := RecoveryOnePacket.prescribedComponent (runtime := runtime) setup
+    (RecoveryLeaks) bounds
       (RecoveryPrior)
     horizon (RecoveryScheduler) assessment scale nonnegative le_one
-  let recoveryKeyed := RecoveryOnePacket.keyedComponent setup (RecoveryLeaks) bounds (RecoveryPrior)
+  let recoveryKeyed := RecoveryOnePacket.keyedComponent (runtime := runtime) setup (RecoveryLeaks)
+    bounds (RecoveryPrior)
       horizon
     (RecoveryScheduler) assessment scale nonnegative le_one (slots := slots)
-  have freeIff := freeAgent_projected_iff setup leaks bounds horizon scheduler agent clear
-  by_cases free : FreeAgent setup leaks bounds horizon scheduler agent
+  have freeIff := freeAgent_projected_iff setup runtime leaks bounds horizon scheduler agent clear
+  by_cases free : FreeAgent setup runtime leaks bounds horizon scheduler agent
   · have recoveryIsFree := freeIff.mpr free
-    have phaseMix : (weights (pool setup leaks bounds horizon scheduler agent)).bind
-        (component setup leaks bounds horizon scheduler assessment scale nonnegative le_one agent) =
+    have phaseMix : (weights (pool setup runtime leaks bounds horizon scheduler agent)).bind
+        (component setup runtime leaks bounds horizon scheduler assessment scale nonnegative
+          le_one agent) =
         (weights (.inl ⟨agent, free⟩)).bind (phaseFree agent) := by
       change (weights (freeKeyedPool _ _ _ agent)).bind
         (freeKeyedComponent phaseFree phasePrescribed phaseKeyed agent) = _
@@ -178,10 +197,12 @@ theorem recoveryComparisonMixture_at_clear
       congr 1
       funext choice
       exact dite_eq_left rfl
-    have recoveryMixture : (recoveryWeights (RecoveryOnePacket.pool setup (RecoveryLeaks) bounds
+    have recoveryMixture : (recoveryWeights (RecoveryOnePacket.pool (runtime := runtime) setup
+      (RecoveryLeaks) bounds
         (RecoveryPrior) horizon
           (RecoveryScheduler) recoveryAgent)).bind
-        (RecoveryOnePacket.component setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+        (RecoveryOnePacket.component (runtime := runtime) setup (RecoveryLeaks) bounds
+          (RecoveryPrior) horizon
             (RecoveryScheduler)
           assessment scale nonnegative le_one recoveryAgent) =
         (recoveryWeights (.inl ⟨recoveryAgent, recoveryIsFree⟩)).bind (recoveryFree recoveryAgent)
@@ -193,10 +214,12 @@ theorem recoveryComparisonMixture_at_clear
       congr 1
       funext choice
       exact dite_eq_left rfl
-    change ((recoveryWeights (RecoveryOnePacket.pool setup (RecoveryLeaks) bounds (RecoveryPrior)
+    change ((recoveryWeights (RecoveryOnePacket.pool (runtime := runtime) setup (RecoveryLeaks)
+      bounds (RecoveryPrior)
         horizon
       (RecoveryScheduler) recoveryAgent)).bind
-        (RecoveryOnePacket.component setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+        (RecoveryOnePacket.component (runtime := runtime) setup (RecoveryLeaks) bounds
+          (RecoveryPrior) horizon
             (RecoveryScheduler)
           assessment scale nonnegative le_one recoveryAgent)).map Subtype.val = _
     rw [recoveryMixture, phaseMix]
@@ -206,26 +229,31 @@ theorem recoveryComparisonMixture_at_clear
             recoveryAgent.2.1)
         (PMF.pure choice))).map Subtype.val =
       ((weights (.inl ⟨agent, free⟩)).bind (fun choice => mix scale nonnegative le_one
-        ((menu setup leaks bounds).uniformPolicy (phaseInitialLaw setup) horizon scheduler agent.1
+        ((menu setup runtime leaks bounds).uniformPolicy (phaseInitialLaw setup) horizon scheduler
+          agent.1
           agent.2.1) (PMF.pure choice))).map project
     rw [bind_mix_pure, bind_mix_pure, mix_map, mix_map]
     congr 1
     · have same := congrArg (fun law => law.map Subtype.val)
-        (uniform_phase_map setup leaks bounds horizon scheduler agent clear)
+        (uniform_phase_map setup runtime leaks bounds horizon scheduler agent clear)
       rw [PMF.map_comp] at same
       exact same.symm
-    · exact recoveryComparisonWeights_free setup leaks bounds horizon scheduler weights agent
+    · exact recoveryComparisonWeights_free setup runtime leaks bounds horizon scheduler weights
+        agent
         clear free
-  · have recoveryNotFree : ¬ RecoveryOnePacket.FreeAgent setup (RecoveryLeaks) bounds
+  · have recoveryNotFree : ¬ RecoveryOnePacket.FreeAgent (runtime := runtime) setup
+      (RecoveryLeaks) bounds
       (RecoveryPrior) horizon
         (RecoveryScheduler) recoveryAgent := fun recoveryFree => free (freeIff.mp recoveryFree)
-    by_cases keyed : KeyedAgent setup leaks bounds horizon scheduler agent
-    · have phaseOwned : ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
-          (KeyedAgent setup leaks bounds horizon scheduler) agent := ⟨keyed, free⟩
+    by_cases keyed : KeyedAgent setup runtime leaks bounds horizon scheduler agent
+    · have phaseOwned : ownedKeyed (FreeAgent setup runtime leaks bounds horizon scheduler)
+          (KeyedAgent setup runtime leaks bounds horizon scheduler) agent := ⟨keyed, free⟩
       have recoveryOwned : ownedKeyed
-          (RecoveryOnePacket.FreeAgent setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+          (RecoveryOnePacket.FreeAgent (runtime := runtime) setup (RecoveryLeaks) bounds
+            (RecoveryPrior) horizon
               (RecoveryScheduler))
-          (RecoveryOnePacket.KeyedAgent setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+          (RecoveryOnePacket.KeyedAgent (runtime := runtime) setup (RecoveryLeaks) bounds
+            (RecoveryPrior) horizon
               (RecoveryScheduler))
           recoveryAgent := ⟨keyed, recoveryNotFree⟩
       have phaseMix := Vegas.freeKeyedMixture_of_keyed weights phaseFree phasePrescribed phaseKeyed
@@ -234,12 +262,14 @@ theorem recoveryComparisonMixture_at_clear
           recoveryPrescribed recoveryKeyed
         recoveryNotFree recoveryOwned
       have represented :
-          RecoveryOnePacket.agentKey setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+          RecoveryOnePacket.agentKey (runtime := runtime) setup (RecoveryLeaks) bounds
+            (RecoveryPrior) horizon
               (RecoveryScheduler) recoveryAgent ∈ Set.range
           (fun agent : {agent : (M).InformationAgent (M).playedInformation //
-            ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
-              (KeyedAgent setup leaks bounds horizon scheduler) agent} =>
-            agentKey setup leaks bounds horizon scheduler agent.1) := ⟨⟨agent, phaseOwned⟩, rfl⟩
+            ownedKeyed (FreeAgent setup runtime leaks bounds horizon scheduler)
+              (KeyedAgent setup runtime leaks bounds horizon scheduler) agent} =>
+            agentKey setup runtime leaks bounds horizon scheduler agent.1) := ⟨⟨agent,
+              phaseOwned⟩, rfl⟩
       change ((recoveryWeights (freeKeyedPool _ _ _ recoveryAgent)).bind
         (freeKeyedComponent recoveryFree recoveryPrescribed recoveryKeyed recoveryAgent)).map
             Subtype.val =
@@ -250,14 +280,17 @@ theorem recoveryComparisonMixture_at_clear
       rw [PMF.map_bind, PMF.map_bind]
       congr 1
       funext option
-      exact (keyedComponent_recovery setup leaks bounds horizon scheduler assessment scale
+      exact (keyedComponent_recovery setup runtime leaks bounds horizon scheduler assessment scale
         nonnegative le_one agent clear option).symm
-    · have phaseNotOwned : ¬ ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
-          (KeyedAgent setup leaks bounds horizon scheduler) agent := fun owned => keyed owned.1
+    · have phaseNotOwned : ¬ ownedKeyed (FreeAgent setup runtime leaks bounds horizon scheduler)
+          (KeyedAgent setup runtime leaks bounds horizon scheduler) agent := fun owned => keyed
+            owned.1
       have recoveryNotOwned : ¬ ownedKeyed
-          (RecoveryOnePacket.FreeAgent setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+          (RecoveryOnePacket.FreeAgent (runtime := runtime) setup (RecoveryLeaks) bounds
+            (RecoveryPrior) horizon
               (RecoveryScheduler))
-          (RecoveryOnePacket.KeyedAgent setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+          (RecoveryOnePacket.KeyedAgent (runtime := runtime) setup (RecoveryLeaks) bounds
+            (RecoveryPrior) horizon
               (RecoveryScheduler))
           recoveryAgent := fun owned => keyed owned.1
       have phaseMix := Vegas.freeKeyedMixture_of_not_keyed weights phaseFree phasePrescribed
@@ -271,30 +304,34 @@ theorem recoveryComparisonMixture_at_clear
           ((weights (freeKeyedPool _ _ _ agent)).bind
             (freeKeyedComponent phaseFree phasePrescribed phaseKeyed agent)).map project
       rw [recoveryMixture, phaseMix]
-      exact (prescribedComponent_recovery setup leaks bounds horizon scheduler assessment scale
+      exact (prescribedComponent_recovery setup runtime leaks bounds horizon scheduler assessment
+        scale
         nonnegative le_one agent clear).symm
 
 /-- Equality also holds in the actual recovery choice type, including menu proofs. -/
 theorem recoveryComparisonMixture_choice
     (assessment : setup.intendedModel.BehavioralAssessment) {slots : Nat}
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (weights : ∀ p, PMF (Part setup leaks bounds horizon scheduler slots p))
+    (weights : ∀ p, PMF (Part setup runtime leaks bounds horizon scheduler slots p))
     (agent : (M).InformationAgent (M).playedInformation)
-    (clear : ClearInput setup leaks agent.2.1) :
-    ((weights (pool setup leaks bounds horizon scheduler agent)).bind
-        (component setup leaks bounds horizon scheduler assessment scale nonnegative le_one
-          agent)).map (choiceEquiv setup leaks bounds horizon scheduler agent clear) =
-      (recoveryComparisonWeights setup leaks bounds horizon scheduler weights
-        (RecoveryOnePacket.pool setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+    (clear : ClearInput setup runtime leaks agent.2.1) :
+    ((weights (pool setup runtime leaks bounds horizon scheduler agent)).bind
+        (component setup runtime leaks bounds horizon scheduler assessment scale nonnegative le_one
+          agent)).map (choiceEquiv setup runtime leaks bounds horizon scheduler agent clear) =
+      (recoveryComparisonWeights setup runtime leaks bounds horizon scheduler weights
+        (RecoveryOnePacket.pool (runtime := runtime) setup (RecoveryLeaks) bounds (RecoveryPrior)
+          horizon
             (RecoveryScheduler)
-          (projectedAgent setup leaks bounds horizon scheduler agent clear))).bind
-      (RecoveryOnePacket.component setup (RecoveryLeaks) bounds (RecoveryPrior) horizon
+          (projectedAgent setup runtime leaks bounds horizon scheduler agent clear))).bind
+      (RecoveryOnePacket.component (runtime := runtime) setup (RecoveryLeaks) bounds
+        (RecoveryPrior) horizon
           (RecoveryScheduler)
         assessment scale nonnegative le_one
-        (projectedAgent setup leaks bounds horizon scheduler agent clear)) := by
+        (projectedAgent setup runtime leaks bounds horizon scheduler agent clear)) := by
   apply pmf_map_injective Subtype.val_injective
   rw [PMF.map_comp]
-  exact (recoveryComparisonMixture_at_clear setup leaks bounds horizon scheduler assessment scale
+  exact (recoveryComparisonMixture_at_clear setup runtime leaks bounds horizon scheduler
+    assessment scale
     nonnegative le_one weights agent clear).symm
 
 end Vegas.SequentialPhase

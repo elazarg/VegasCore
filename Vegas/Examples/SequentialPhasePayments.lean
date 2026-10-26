@@ -70,7 +70,8 @@ theorem funded_raw_cash_equilibrium_exists :
   have paymentEquilibrium := equilibrium
   rw [← paymentEq] at paymentEquilibrium
   obtain ⟨target, rational, clear, clean, _utilityLaw, cash⟩ :=
-    SequentialPhase.intended_raw_programPayments_preserved setup leaks bounds horizon scheduler
+    SequentialPhase.intended_raw_programPayments_preserved setup runtime leaks bounds horizon
+      scheduler
       (fun _ => (() : Unit))
       (fun (_ : Unit × PublicOutcome program) (_ : Player) => 0) (fun _ => 0)
       (fun who => (setup.exitTransfers who : ℝ))

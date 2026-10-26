@@ -29,21 +29,22 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
-variable (setup leaks bounds horizon scheduler) in
+variable (setup runtime leaks bounds horizon scheduler) in
 /-- After a recorded send of message for event from sent: the acceptance
 invariant, and, once the event has completed, the configuration is one step of
 the event from sent. -/
-private def AcceptedInvariant (who : Player) (entry : (application setup leaks).PlayerEntry)
+private def AcceptedInvariant (who : Player) (entry : (application setup runtime leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup))) (event : (graph setup).EventId)
     (sent : (graph setup).Config) (ready : sent.cut.Ready event) :
-    (application setup leaks).ProtocolState → Prop
+    (application setup runtime leaks).ProtocolState → Prop
   | none => False
   | some control =>
-      AcceptanceInvariant setup leaks bounds horizon scheduler who entry message event sent
+      AcceptanceInvariant setup runtime leaks bounds horizon scheduler who entry message event sent
           (some control) ∧
         (event ∈ control.execution.application.config.cut.completed →
           ∃ action, control.execution.application.config ∈
@@ -52,26 +53,30 @@ private def AcceptedInvariant (who : Player) (entry : (application setup leaks).
 /-- The invariant passes along every transition from a state where the event
 of rank rank has not completed. -/
 private theorem acceptedInvariant_transition {who : Player}
-    {entry : (application setup leaks).PlayerEntry}
+    {entry : (application setup runtime leaks).PlayerEntry}
     {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
     {sent : (graph setup).Config} {ready : sent.cut.Ready event} {rank : Nat}
-    (ordered : sent.cut.IsPrefix rank) (before after : (application setup leaks).ProtocolState)
+    (ordered : sent.cut.IsPrefix rank) (before after : (application setup runtime
+      leaks).ProtocolState)
     (going : ∀ control, before = some control →
       ¬ control.execution.application.config.cut.IsPrefix (rank + 1))
-    (joint : Player → Option (application setup leaks).Action)
-    (legal : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    (joint : Player → Option (application setup runtime leaks).Action)
+    (legal : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Legal before joint)
-    (holds : AcceptedInvariant setup leaks bounds horizon scheduler who entry message event sent
+    (holds : AcceptedInvariant setup runtime leaks bounds horizon scheduler who entry message
+      event sent
       ready before)
-    (reached : after ∈ (((bounds.onePacketMenu (runtime setup) leaks).protocol
+    (reached : after ∈ (((bounds.onePacketMenu runtime leaks).protocol
       (initialLaw setup) horizon scheduler).step before ⟨joint, legal⟩).support) :
-    AcceptedInvariant setup leaks bounds horizon scheduler who entry message event sent ready
+    AcceptedInvariant setup runtime leaks bounds horizon scheduler who entry message event sent
+      ready
       after := by
   cases before with
   | none => exact holds.elim
   | some control =>
       obtain ⟨invariant, completion⟩ := holds
-      have afterInvariant := acceptanceInvariant_transition bounds horizon scheduler who entry
+      have afterInvariant := acceptanceInvariant_transition (runtime := runtime) bounds horizon
+        scheduler who entry
         message event sent (some control) after joint legal invariant reached
       cases after with
       | none => exact afterInvariant.elim
@@ -85,7 +90,8 @@ private theorem acceptedInvariant_transition {who : Player}
             rw [sent.step_cut event ready action _ member]
             exact ordered.complete_at event ready rankEq
           have atSent := invariant.2.2.2.2.2.1 pending
-          rcases transition_configStep (initialLaw setup) horizon scheduler control next joint
+          rcases transition_configStep (initialLaw setup) horizon scheduler
+            control next joint
               reached with same | ⟨other, otherReady, action, member⟩
           · rw [same] at completedNext
             exact (pending completedNext).elim
@@ -103,32 +109,34 @@ private theorem acceptedInvariant_transition {who : Player}
 and every completed stopped endpoint performs its successful compiled event
 step. Settlement is required only on this actual stopped law. -/
 theorem accepted_until_config
-    (certificate : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+    (certificate : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).WellFoundedHistories)
-    (players : ∀ player, ((bounds.onePacketMenu (runtime setup) leaks).information
+    (players : ∀ player, ((bounds.onePacketMenu runtime leaks).information
       (initialLaw setup) horizon scheduler).BehavioralPolicy player)
-    (extraStop : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+    (extraStop : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).History → Prop)
-    {who : Player} {entry : (application setup leaks).PlayerEntry}
+    {who : Player} {entry : (application setup runtime leaks).PlayerEntry}
     {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
     {sent : (graph setup).Config} (ready : sent.cut.Ready event) {rank : Nat}
     (ordered : sent.cut.IsPrefix rank)
-    (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
-      scheduler).History) {control : (application setup leaks).Control}
+    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).History) {control : (application setup runtime leaks).Control}
     (current : start.state = some control)
-    (invariant : AcceptanceInvariant setup leaks bounds horizon scheduler who entry message event
+    (invariant : AcceptanceInvariant setup runtime leaks bounds horizon scheduler who entry
+      message event
       sent (some control))
     (atSent : control.execution.application.config = sent)
-    (settles : ∀ stopped ∈ (((bounds.onePacketMenu (runtime setup) leaks).information
+    (settles : ∀ stopped ∈ (((bounds.onePacketMenu runtime leaks).information
         (initialLaw setup) horizon scheduler).runBehavioralUntil certificate players
-        (fun history => LateStopped setup leaks bounds horizon scheduler rank history ∨
+        (fun history => LateStopped setup runtime leaks bounds horizon scheduler rank history ∨
           extraStop history) start).support,
-      ∀ final, stopped.state = some final → RecordsEntry setup leaks who entry (some final) →
+      ∀ final, stopped.state = some final → RecordsEntry setup runtime leaks who entry (some
+        final) →
         event ∈ final.execution.application.config.cut.completed →
           (message.id, true) ∈ final.execution.receipts) :
-    ∀ stop ∈ (((bounds.onePacketMenu (runtime setup) leaks).information (initialLaw setup)
+    ∀ stop ∈ (((bounds.onePacketMenu runtime leaks).information (initialLaw setup)
         horizon scheduler).runBehavioralUntil certificate players
-        (fun history => LateStopped setup leaks bounds horizon scheduler rank history ∨
+        (fun history => LateStopped setup runtime leaks bounds horizon scheduler rank history ∨
           extraStop history) start).support,
       ∃ final, stop.state = some final ∧
         (event ∉ final.execution.application.config.cut.completed →
@@ -137,20 +145,22 @@ theorem accepted_until_config
           ∃ action, final.execution.application.config ∈ (sent.step event ready action).support ∧
             OutputSucceeded final.execution.application.config.store event) := by
   intro stop member
-  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let menu := bounds.onePacketMenu runtime leaks
   let model := menu.information (initialLaw setup) horizon scheduler
-  have holds : AcceptedInvariant setup leaks bounds horizon scheduler who entry message event sent
+  have holds : AcceptedInvariant setup runtime leaks bounds horizon scheduler who entry message
+    event sent
       ready start.state := by
     rw [current]
     refine ⟨invariant, fun done => ?_⟩
     rw [atSent] at done
     exact (ready.1 done).elim
   have reachedInvariant := model.runBehavioralUntil_support_closed certificate players
-    (fun history => LateStopped setup leaks bounds horizon scheduler rank history ∨
+    (fun history => LateStopped setup runtime leaks bounds horizon scheduler rank history ∨
       extraStop history)
-    (AcceptedInvariant setup leaks bounds horizon scheduler who entry message event sent ready)
+    (AcceptedInvariant setup runtime leaks bounds horizon scheduler who entry message event sent
+      ready)
     (fun history going _ joint legal target holds reached =>
-      acceptedInvariant_transition ordered history.state target
+      acceptedInvariant_transition (runtime := runtime) ordered history.state target
         (fun control state prefixed => going (Or.inl ⟨control, state, prefixed⟩)) joint legal holds
         reached)
     start holds stop member

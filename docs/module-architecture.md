@@ -858,6 +858,9 @@ the concrete terminal-state interpretation.
 
 - [An all-history physical phase service for private publication](../Vegas/Examples/SequentialPhaseService.lean)
 - [A funded raw phase equilibrium from executable payments](../Vegas/Examples/SequentialPhaseServiceEquilibrium.lean)
+- [Shared private-publication source setup](../Vegas/Examples/SequentialPhaseServiceSetup.lean)
+- [All-history phase service with positive clock latency](../Vegas/Examples/SequentialPhaseDelayedService.lean)
+- [Funded raw equilibrium with positive reaction and inclusion latency](../Vegas/Examples/SequentialPhaseDelayedEquilibrium.lean)
 - [Executable second-price receipts and bounded-auction incentives](../Vegas/Examples/BoundedPaymentAuction.lean)
 - [Executable payments reverse a strict incentive](../Vegas/Examples/ProgramPayments.lean)
 - [Checked roster service for the conditional payment program](../Vegas/Examples/ProgramPaymentsRuntimeService.lean)

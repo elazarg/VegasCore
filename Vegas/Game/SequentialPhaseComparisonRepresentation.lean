@@ -15,20 +15,21 @@ open SourceProgram Interaction EventGraphRuntime GameTheory GameTheory.Protocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
+  (scheduler : (phaseApplication runtime leaks).Scheduler)
+  [(phaseApplication runtime leaks).FiniteNature (phaseInitialLaw setup) scheduler]
 
-local notation "P" => phaseApplication (runtime setup) leaks
-local notation "A" => recoveryApplication (runtime setup) (recoveryLeaks setup leaks)
-local notation "M" => model setup leaks bounds horizon scheduler
-local notation "R" => recoveryModel setup leaks bounds horizon scheduler
+local notation "P" => phaseApplication runtime leaks
+local notation "A" => recoveryApplication runtime (recoveryLeaks setup leaks)
+local notation "M" => model setup runtime leaks bounds horizon scheduler
+local notation "R" => recoveryModel setup runtime leaks bounds horizon scheduler
 local notation "RecoveryLeaks" => recoveryLeaks setup leaks
 local notation "RecoveryPrior" => recoveryInitialLaw setup
-local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
-local notation "RecoveryMenu" => Recovery.onePacketMenu (runtime setup) (RecoveryLeaks) bounds
-local notation "projection" => PhaseRecoveryProjection.protocolState (runtime setup) leaks
+local notation "RecoveryScheduler" => recoveryScheduler setup runtime leaks scheduler
+local notation "RecoveryMenu" => Recovery.onePacketMenu runtime (RecoveryLeaks) bounds
+local notation "projection" => PhaseRecoveryProjection.protocolState runtime leaks
     RecoveryLeaks
 
 attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
@@ -37,9 +38,9 @@ attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeIn
 /-- The actual clear recovery prefix lifts under the original complete prior.
 The inactive ghost input is excluded because it carries no player observation. -/
 theorem represented_of_clear (agent : (R).InformationAgent (R).playedInformation)
-    (clear : RecoveryProjection.ClearInput (runtime setup) (RecoveryLeaks) agent.2.1)
+    (clear : RecoveryProjection.ClearInput runtime (RecoveryLeaks) agent.2.1)
     (activeInput : agent.2.1 ≠ none) :
-    Represented setup leaks bounds horizon scheduler agent := by
+    Represented setup runtime leaks bounds horizon scheduler agent := by
   classical
   have played := agent.2.2
   unfold InformationModel.playedInformation at played
@@ -71,6 +72,7 @@ theorem represented_of_clear (agent : (R).InformationAgent (R).playedInformation
                 recoveryControl)) priors)
           (recoveryStateEq ▸ history.trace)
         obtain ⟨phase, matched, _length⟩ := exists_canonical_phase_of_clear_recovery_trace setup
+          runtime
           leaks bounds horizon scheduler recoveryTrace empty
         have phaseRunning : ¬ (P).terminal phase.state := by
           have recoveryRunning : ¬ (A).terminal (some recoveryControl) := by
@@ -85,17 +87,17 @@ theorem represented_of_clear (agent : (R).InformationAgent (R).playedInformation
         let phaseAgent : (M).InformationAgent (M).playedInformation :=
           ⟨agent.1, ⟨(M).infoOf agent.1 phase.trace, phasePlayed⟩⟩
         have phaseObserve : (M).infoOf agent.1 phase.trace = (P).observe agent.1 phase.state :=
-          (menu setup leaks bounds).info (phaseInitialLaw setup) horizon scheduler agent.1
+          (menu setup runtime leaks bounds).info (phaseInitialLaw setup) horizon scheduler agent.1
               phase.trace
-        have sameInput : PhaseRecoveryProjection.information (runtime setup) leaks (RecoveryLeaks)
+        have sameInput : PhaseRecoveryProjection.information runtime leaks (RecoveryLeaks)
             phaseAgent.2.1 = agent.2.1 := by
-          exact (congrArg (PhaseRecoveryProjection.information (runtime setup) leaks
+          exact (congrArg (PhaseRecoveryProjection.information runtime leaks
               (RecoveryLeaks))
-            phaseObserve).trans ((PhaseRecoveryProjection.observe_state (runtime setup) leaks
+            phaseObserve).trans ((PhaseRecoveryProjection.observe_state runtime leaks
               (RecoveryLeaks) agent.1 phase.state).symm.trans
                 ((congrArg ((A).observe agent.1) matched).trans atControl))
-        have phaseClear : ClearInput setup leaks phaseAgent.2.1 := by
-          change ClearInput setup leaks ((M).infoOf agent.1 phase.trace)
+        have phaseClear : ClearInput setup runtime leaks phaseAgent.2.1 := by
+          change ClearInput setup runtime leaks ((M).infoOf agent.1 phase.trace)
           rw [phaseObserve]
           cases phaseAt : phase.state with
           | none => rw [phaseAt] at matched; cases matched

@@ -21,29 +21,30 @@ open SourceProgram GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup))
 
 local notation "inputs" => PMF.map setup.eventInputs setup.initialLaw
 local notation "plan" => sequentialRuntimePhasePlan setup.program
 local notation "recoveryLeaks" => PhaseNativeProjection.nativeLeaks leaks plan
-local notation "P" => phaseApplication (runtime setup) leaks
-local notation "N" => application setup recoveryLeaks
+local notation "P" => phaseApplication runtime leaks
+local notation "N" => application (runtime := runtime) setup recoveryLeaks
 local notation "phaseInitial" => PMF.map (PhaseRuntimeState.initial plan) (inputs)
-local notation "nativeMenu" => MessageBounds.onePacketMenu (runtime setup) recoveryLeaks bounds
+local notation "nativeMenu" => MessageBounds.onePacketMenu runtime recoveryLeaks bounds
 local notation "recoveryScheduler" => SequentialPhaseSchedulerInformation.scheduler setup.program
-  (runtime setup) leaks recoveryLeaks
-local notation "nativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup) recoveryLeaks
+  runtime leaks recoveryLeaks
+local notation "nativeScheduler" => RecoveryProjection.nativeScheduler runtime recoveryLeaks
 
 /-- Every first actual native counted callback fits the original inclusion deadline
 under physical phase opportunity, including arbitrary prior source counterfactuals. -/
 theorem phase_firstActivation_inclusionFits
     (horizon : Nat) (scheduler : (P).Scheduler) (delay bound : (graph setup).EventId → Nat)
-    (opportunity : PhaseService.Opportunity (runtime setup) leaks phaseInitial horizon scheduler
+    (opportunity : PhaseService.Opportunity runtime leaks phaseInitial horizon scheduler
       delay)
-    (timely : (runtime setup).AsyncTimely delay bound)
+    (timely : runtime.AsyncTimely delay bound)
     {state : (N).ProtocolState}
-    (trace : (onePacketProtocol setup recoveryLeaks bounds horizon
+    (trace : (onePacketProtocol (runtime := runtime) setup recoveryLeaks bounds horizon
       (nativeScheduler (recoveryScheduler scheduler))).Trace state)
     {remaining : Nat} {who : Player} {execution : (N).Execution}
     (current : state = some ⟨remaining, some who, execution⟩)
@@ -51,11 +52,13 @@ theorem phase_firstActivation_inclusionFits
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (never : ∀ entry ∈ execution.recall who,
-      ¬ ActivatedAt setup recoveryLeaks who event entry) :
-    execution.application.publicView.InclusionFitsDeadline (runtime setup) bound event := by
-  exact firstActivation_inclusionFits_of_counted_opportunity setup recoveryLeaks bounds horizon
+      ¬ ActivatedAt (runtime := runtime) setup recoveryLeaks who event entry) :
+    execution.application.publicView.InclusionFitsDeadline runtime bound event := by
+  exact firstActivation_inclusionFits_of_counted_opportunity (runtime := runtime) setup
+    recoveryLeaks bounds horizon
     (nativeScheduler (recoveryScheduler scheduler)) delay bound
-    (fun control prior clear => PhaseService.Opportunity.clear_native_counted setup leaks bounds
+    (fun control prior clear => PhaseService.Opportunity.clear_native_counted setup runtime leaks
+      bounds
       horizon scheduler delay opportunity prior clear) timely trace current clear event turn never
 
 end Vegas

@@ -2,9 +2,9 @@
 
 The intended-game preservation theorem applies on
 `phaseApplication`, instantiated with the sequential compiled graph, singleton
-phases and the default rank-plus-one relative deadline durations. Configurable
-deadlines are not quantified over by this SE theorem; see the
-[deadline scope assessment](se-deadline-scope.md) for the high-priority repair.
+phases and supplied per-event relative deadline durations. See the
+[deadline scope](se-deadline-scope.md) for the timing contract and concrete
+positive-latency instance.
 The phase executor exposes packet observations, a retirement archive
 and permanent exclusion. The concurrent reserved-tape theorem uses a maximal
 phase plan.
@@ -36,9 +36,8 @@ actual phase runtime. Their primitive definitions already live in
 [native service adapter](../Vegas/Game/SequentialPhaseNativeService.lean)
 derives the clear counted-prefix guards used by the one-packet comparisons.
 Completion covers all legal horizon-terminal states. The reaction and inclusion
-bounds must sum to strictly less than each owned event's fixed duration
-`event.val + 1`, not an arbitrary configurable deadline. In particular, an
-owned rank-zero event allows only zero reaction and inclusion bounds.
+bounds must sum to strictly less than each owned event's supplied duration
+`runtime.deadline event`, measured from that event's readiness clock.
 
 Applying the theorem requires proofs of the entire physical service contract,
 in addition to the timing inequality and finite-nature instance. Opportunity,
@@ -74,6 +73,15 @@ obtain an actual whole-policy raw phase SE. It assumes neither equilibrium nor
 service witnesses. Utility is proved equal to the program's executable
 transfer; the exclusion payoff is minus one, the deposit is three, and complete
 authentic reporting supplies observation and delivery rates of one.
+
+[The delayed service](../Vegas/Examples/SequentialPhaseDelayedService.lean)
+uses the same source game with deadline duration six and reaction/inclusion
+bounds three and two. Its first event is player-owned; activation occurs at
+clock one and receipt at clock two. It proves the full all-raw-history service
+contract and finite nature, rather than only the inequality `3 + 2 < 6`.
+[Its equilibrium application](../Vegas/Examples/SequentialPhaseDelayedEquilibrium.lean)
+constructs a funded raw sequential equilibrium with no exits or charges and
+the exact intended joint readout and realized settled-payoff law.
 
 ## Checked interfaces
 

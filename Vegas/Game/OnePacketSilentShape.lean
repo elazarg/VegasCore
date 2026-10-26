@@ -32,26 +32,29 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup leaks).Scheduler)
-  [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+  (scheduler : (application setup runtime leaks).Scheduler)
+  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
 
 local notation "onePacketN" =>
-  onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 
-omit [Fintype Player] [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+omit [Fintype Player] [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
 /-- The entry recording a response at a view whose turn is `event` activates
 `event`. -/
-theorem respondEntry_activatedAt {who : Player} {execution : (application setup leaks).Execution}
+theorem respondEntry_activatedAt {who : Player} {execution : (application setup runtime
+  leaks).Execution}
     {event : (graph setup).EventId}
     (turn : execution.application.publicView.ownTurn? who = some event)
-    (response : (application setup leaks).Action) :
-    ActivatedAt setup leaks who event (respondEntry setup leaks execution who response) :=
+    (response : (application setup runtime leaks).Action) :
+    ActivatedAt setup runtime leaks who event (respondEntry setup runtime leaks execution who
+      response) :=
   turn
 
 /-- **The owner shape after a response at a first activation.** At a forced
@@ -64,35 +67,36 @@ theorem certificate_firstActivation_lateOwnerShape
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+      scale_pos
       scale_le_one weights targetSequence) (n : ℕ) {who : Player}
     (site : (onePacketN).InformationSite who) {event : (graph setup).EventId}
-    (pending : pendingEvent setup leaks who site.1 = some event)
+    (pending : pendingEvent setup runtime leaks who site.1 = some event)
     (law : PMF ((onePacketN).Choice who site.1))
     (history : (onePacketN).InformationHistory who site.1)
-    {remaining : Nat} {execution : (application setup leaks).Execution}
+    {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
     (atSite : site.1 = some (execution.recall who,
-      execution.observe (application setup leaks) who))
-    (forced : ForcedState setup leaks who history.1.state)
-    (response : (application setup leaks).Action) :
-    LateOwnerShape setup leaks bounds horizon scheduler (sequence n) (scale_pos n).le
+      execution.observe (application setup runtime leaks) who))
+    (forced : ForcedState setup runtime leaks who history.1.state)
+    (response : (application setup runtime leaks).Action) :
+    LateOwnerShape setup runtime leaks bounds horizon scheduler (sequence n) (scale_pos n).le
       (scale_le_one n) slots
       (Profile.update (sig := (onePacketN).behavioralSignature) (targetSequence n).strategy who
         (((targetSequence n).strategy who).withLaw site.1 law)) who event
       execution.application.config
-      (execution.recall who ++ [respondEntry setup leaks execution who response]) := by
+      (execution.recall who ++ [respondEntry setup runtime leaks execution who response]) := by
   intro later laterRemaining reached state holds
   obtain ⟨atSent, extends_, unrecordedHere⟩ := (by simpa only [state] using holds :
-    LateUnsent setup leaks who event execution.application.config
-      (execution.recall who ++ [respondEntry setup leaks execution who response])
+    LateUnsent setup runtime leaks who event execution.application.config
+      (execution.recall who ++ [respondEntry setup runtime leaks execution who response])
       (some ⟨laterRemaining, some who, reached⟩))
   rw [Profile.update_same]
   -- The later recall is longer than the site's, so the decision is not the site's.
-  have notSite : (some (reached.recall who, reached.observe (application setup leaks) who) :
-      (application setup leaks).Info) ≠ site.1 := by
+  have notSite : (some (reached.recall who, reached.observe (application setup runtime leaks) who) :
+      (application setup runtime leaks).Info) ≠ site.1 := by
     intro same
     rw [atSite, Option.some.injEq, Prod.mk.injEq] at same
     have longer := extends_.length_le
@@ -100,22 +104,22 @@ theorem certificate_firstActivation_lateOwnerShape
     omega
   rw [BehavioralPolicy.withLaw_of_ne _ _ _ notSite]
   left
-  have forcedHere : ForcedState setup leaks who later.state := by
+  have forcedHere : ForcedState setup runtime leaks who later.state := by
     rw [current] at forced
     obtain ⟨forcedRank, forcedPoint, forcedOrdered, forcedDecoded, forcedHolds⟩ := forced
     rw [state]
     exact ⟨forcedRank, forcedPoint, by rw [atSent]; exact forcedOrdered,
       by rw [atSent]; exact forcedDecoded, forcedHolds⟩
   rw [atSite] at pending
-  obtain ⟨turn, readyView, _, _⟩ := pendingEvent_spec pending
+  obtain ⟨turn, readyView, _, _⟩ := pendingEvent_spec (runtime := runtime) pending
   have ready : reached.application.config.cut.Ready event := by
     rw [atSent]
     exact (execution.application.publicView_eventReady event).mp readyView
-  have activated : ∃ entry ∈ reached.recall who, ActivatedAt setup leaks who event entry :=
-    ⟨respondEntry setup leaks execution who response,
+  have activated : ∃ entry ∈ reached.recall who, ActivatedAt setup runtime leaks who event entry :=
+    ⟨respondEntry setup runtime leaks execution who response,
       extends_.subset (List.mem_append_right _ (List.mem_singleton_self _)),
-      respondEntry_activatedAt setup leaks turn response⟩
-  exact ⟨_, (certificate_strategyShape setup leaks bounds horizon scheduler sequence scale
+      respondEntry_activatedAt setup runtime leaks turn response⟩
+  exact ⟨_, (certificate_strategyShape setup runtime leaks bounds horizon scheduler sequence scale
     scale_pos scale_le_one weights targetSequence assembled n who later laterRemaining reached
     event state forcedHere ready activated).1 unrecordedHere⟩
 
@@ -129,24 +133,26 @@ theorem certificate_firstActivation_lateOwnerShapeFrom
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+      scale_pos
       scale_le_one weights targetSequence) (n : ℕ) {who : Player}
     (site : (onePacketN).InformationSite who) {event : (graph setup).EventId}
-    (pending : pendingEvent setup leaks who site.1 = some event)
+    (pending : pendingEvent setup runtime leaks who site.1 = some event)
     (law : PMF ((onePacketN).Choice who site.1))
-    (lawShape : (∃ option : LateOption slots, law = onePacketLate setup leaks bounds horizon
+    (lawShape : (∃ option : LateOption slots, law = onePacketLate setup runtime leaks bounds horizon
         scheduler sequence scale scale_pos scale_le_one n ((onePacketN).agentAt site) option) ∨
-      law = PMF.pure (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+      law = PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon
+        scheduler who
         site.1))
     (history : (onePacketN).InformationHistory who site.1)
-    {remaining : Nat} {execution : (application setup leaks).Execution}
+    {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
     (atSite : site.1 = some (execution.recall who,
-      execution.observe (application setup leaks) who))
-    (forced : ForcedState setup leaks who history.1.state) :
-    LateOwnerShapeFrom setup leaks bounds horizon scheduler (sequence n) (scale_pos n).le
+      execution.observe (application setup runtime leaks) who))
+    (forced : ForcedState setup runtime leaks who history.1.state) :
+    LateOwnerShapeFrom setup runtime leaks bounds horizon scheduler (sequence n) (scale_pos n).le
       (scale_le_one n) slots
       (Profile.update (sig := (onePacketN).behavioralSignature) (targetSequence n).strategy who
         (((targetSequence n).strategy who).withLaw site.1 law)) who event execution := by
@@ -154,8 +160,8 @@ theorem certificate_firstActivation_lateOwnerShapeFrom
   by_cases sameRecall : reached.recall who = execution.recall who
   · -- The site itself: the installed late option or silence.
     rw [Profile.update_same]
-    have same : (some (reached.recall who, reached.observe (application setup leaks) who) :
-        (application setup leaks).Info) = site.1 := by
+    have same : (some (reached.recall who, reached.observe (application setup runtime leaks) who) :
+        (application setup runtime leaks).Info) = site.1 := by
       rw [atSite, sameRecall, sameView sameRecall]
     obtain ⟨siteInfo, decision⟩ := site
     change _ = siteInfo at same
@@ -170,12 +176,12 @@ theorem certificate_firstActivation_lateOwnerShapeFrom
       exact lawEq
   · -- Later: the late component, after a response at the site.
     obtain ⟨response, extends_⟩ := extended sameRecall
-    have unsent : LateUnsent setup leaks who event execution.application.config
-        (execution.recall who ++ [respondEntry setup leaks execution who response])
+    have unsent : LateUnsent setup runtime leaks who event execution.application.config
+        (execution.recall who ++ [respondEntry setup runtime leaks execution who response])
         later.state := by
       rw [state] at holds ⊢
       exact ⟨holds.1, extends_, holds.2.2⟩
-    exact certificate_firstActivation_lateOwnerShape setup leaks bounds horizon scheduler
+    exact certificate_firstActivation_lateOwnerShape setup runtime leaks bounds horizon scheduler
       sequence scale scale_pos scale_le_one weights targetSequence assembled n site pending law
       history current atSite forced response later laterRemaining reached state unsent
 

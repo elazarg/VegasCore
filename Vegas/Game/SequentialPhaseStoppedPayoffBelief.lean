@@ -14,9 +14,10 @@ open SourceProgram Interaction EventGraphRuntime GameTheory GameTheory.Protocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
 
-local notation "app" => phaseApplication (runtime setup) leaks
+local notation "app" => phaseApplication runtime leaks
 
 variable [Fintype Player]
 
@@ -27,12 +28,12 @@ theorem phase_belief_expect_abs_sub_debt_stopped_le_foreign_exit
     (plan : RuntimePhasePlan (graph setup))
     (singletons : ∀ phase ∈ plan.phases, phase.high = phase.low + 1)
     (inputs : PMF (graph setup).Inputs) (horizon : Nat)
-    (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
+    (scheduler : (phaseApplication runtime leaks).Scheduler)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ) (source : BehavioralProfile setup.program)
     (menu : (app).ResponseMenu)
-    (completes : PhaseService.CompletesPlay (runtime setup) leaks
+    (completes : PhaseService.CompletesPlay runtime leaks
       (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler)
     (certificate : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan))
       horizon scheduler).WellFoundedHistories)
@@ -41,7 +42,7 @@ theorem phase_belief_expect_abs_sub_debt_stopped_le_foreign_exit
     (who : Player) {bound : ℝ} (nonnegative : 0 ≤ bound)
     (payoffBounded : ∀ history : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan))
       horizon scheduler).History,
-      |phaseExclusionBase setup .sequential (runtime setup) leaks
+      |phaseExclusionBase setup .sequential runtime leaks
         (fun terminal => utility (setup.parameterOutcome parameter terminal)) excludedPayoff
           history.state who| ≤ bound)
     (excludedBounded : |excludedPayoff who| ≤ bound)
@@ -49,29 +50,31 @@ theorem phase_belief_expect_abs_sub_debt_stopped_le_foreign_exit
       horizon scheduler).History) :
     let model := menu.information (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler
     let kernel := model.runBehavioralUntil certificate players
-      (fun history => PhaseDebtStopped setup leaks source who history.state)
+      (fun history => PhaseDebtStopped setup runtime leaks source who history.state)
     let foreign := {history : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan))
         horizon scheduler).History |
-      PhaseDebtStopped setup leaks source who history.state ∧
-        ¬ PhaseExcluded setup .sequential (runtime setup) leaks who history.state ∧
-        ¬ PhaseOwesFailure setup leaks source who history.state}
+      PhaseDebtStopped setup runtime leaks source who history.state ∧
+        ¬ PhaseExcluded setup .sequential runtime leaks who history.state ∧
+        ¬ PhaseOwesFailure setup runtime leaks source who history.state}
     expect belief (fun history =>
       |expect (model.runBehavioralTerminalFrom certificate players history)
-          (fun final => phaseExclusionBase setup .sequential (runtime setup) leaks
+          (fun final => phaseExclusionBase setup .sequential runtime leaks
             (fun terminal => utility (setup.parameterOutcome parameter terminal)) excludedPayoff
               final.state who) -
-        expect (kernel history) (fun final => phaseDebtStoppedPayoff setup leaks parameter utility
+        expect (kernel history) (fun final => phaseDebtStoppedPayoff setup runtime leaks parameter
+          utility
           excludedPayoff source who final.state)|) ≤
       (2 * bound) * ((belief.bind kernel).toOuterMeasure foreign).toReal := by
   intro model kernel foreign
   let payoff := fun history : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan))
       horizon scheduler).History =>
-    phaseExclusionBase setup .sequential (runtime setup) leaks
+    phaseExclusionBase setup .sequential runtime leaks
       (fun terminal => utility (setup.parameterOutcome parameter terminal)) excludedPayoff
         history.state who
   let read := fun history : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan))
       horizon scheduler).History =>
-    phaseDebtStoppedPayoff setup leaks parameter utility excludedPayoff source who history.state
+    phaseDebtStoppedPayoff setup runtime leaks parameter utility excludedPayoff source who
+      history.state
   let error := fun history =>
     |expect (model.runBehavioralTerminalFrom certificate players history) payoff -
       expect (kernel history) read|
@@ -89,7 +92,7 @@ theorem phase_belief_expect_abs_sub_debt_stopped_le_foreign_exit
           (μ := model.runBehavioralTerminalFrom certificate players history),
         expect_abs_le_of_bounded nonnegative readBounded (μ := kernel history)])
   have pointwise (history) : error history ≤ (2 * bound) * mass history :=
-    phase_expect_sub_debt_stopped_le_foreign_exit setup leaks plan singletons inputs horizon
+    phase_expect_sub_debt_stopped_le_foreign_exit setup runtime leaks plan singletons inputs horizon
       scheduler parameter utility excludedPayoff source menu completes certificate players who
         nonnegative payoffBounded excludedBounded history
   have averaged := expect_mono (fun history _ => pointwise history)

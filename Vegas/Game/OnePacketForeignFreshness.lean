@@ -46,19 +46,22 @@ private theorem prefixes_comparable {Principal : Type} {protocol : ExecutionProt
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- Every actual ready prefix of an unfinished foreign event lies after a
 focal own source turn on the same trace. Sequential readiness prevents an
 unaccounted earlier readiness episode. -/
 theorem foreign_ready_prefix_after_ownTurn
-    {start before : (application setup leaks).Control}
-    (startTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some start))
-    (beforeTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some before))
-    {state : (application setup leaks).ProtocolState}
-    {trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state}
+    {start before : (application setup runtime leaks).Control}
+    (startTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+      start))
+    (beforeTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+      before))
+    {state : (application setup runtime leaks).ProtocolState}
+    {trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state}
     (startPrefix : TracePrefix startTrace trace)
     (beforePrefix : TracePrefix beforeTrace trace)
     (focal owner : Player) (different : owner ≠ focal)
@@ -71,7 +74,7 @@ theorem foreign_ready_prefix_after_ownTurn
   rcases prefixes_comparable startPrefix beforePrefix with forward | backward
   · exact forward
   · obtain ⟨after, same, preserved⟩ :=
-      readyOrCompleted_of_tracePrefix beforeTrace backward (Or.inl ready)
+      readyOrCompleted_of_tracePrefix (runtime := runtime) beforeTrace backward (Or.inl ready)
     cases Option.some.inj same
     rcases preserved with readyNow | completed
     · have focalFacts := PublicView.ownTurn?_spec _ focal current turn
@@ -83,14 +86,14 @@ theorem foreign_ready_prefix_after_ownTurn
 
 omit [Fintype Player] in
 private theorem first_activated_recall_split (owner : Player) (event : (graph setup).EventId)
-    (past : List (application setup leaks).PlayerEntry)
-    (occurs : ∃ entry ∈ past, ActivatedAt setup leaks owner event entry) :
+    (past : List (application setup runtime leaks).PlayerEntry)
+    (occurs : ∃ entry ∈ past, ActivatedAt setup runtime leaks owner event entry) :
     ∃ earlier entry later, past = earlier ++ entry :: later ∧
-      ActivatedAt setup leaks owner event entry ∧
-      ∀ previous ∈ earlier, ¬ ActivatedAt setup leaks owner event previous := by
+      ActivatedAt setup runtime leaks owner event entry ∧
+      ∀ previous ∈ earlier, ¬ ActivatedAt setup runtime leaks owner event previous := by
   classical
-  let matching := fun entry : (application setup leaks).PlayerEntry =>
-    decide (ActivatedAt setup leaks owner event entry)
+  let matching := fun entry : (application setup runtime leaks).PlayerEntry =>
+    decide (ActivatedAt setup runtime leaks owner event entry)
   have found : ∃ entry, past.find? matching = some entry := by
     cases selected : past.find? matching with
     | none =>
@@ -108,55 +111,59 @@ private theorem first_activated_recall_split (owner : Player) (event : (graph se
 its supported transition and full private recall. Intended submission provenance
 makes that earliest ready activation genuinely pending. -/
 theorem firstActivation_response_prefix_of_recall
-    {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     (owner : Player) (event : (graph setup).EventId)
-    (occurs : ∃ entry ∈ control.execution.recall owner, ActivatedAt setup leaks owner event entry)
+    (occurs : ∃ entry ∈ control.execution.recall owner, ActivatedAt setup runtime leaks owner
+      event entry)
     (submissions : OwnSubmissionsAtTurn setup leaks control.execution owner) :
-    ∃ (before : (application setup leaks).Control)
-      (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some before))
-      (response : (application setup leaks).Action)
-      (joint : Player → Option (application setup leaks).Action)
-      (legal : (onePacketProtocol setup leaks bounds horizon scheduler).Legal (some before) joint)
+    ∃ (before : (application setup runtime leaks).Control)
+      (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some before))
+      (response : (application setup runtime leaks).Action)
+      (joint : Player → Option (application setup runtime leaks).Action)
+      (legal : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Legal (some
+        before) joint)
       (realized : some ⟨before.remaining, none,
-        before.execution.respond (application setup leaks) owner response⟩ ∈
-        ((onePacketProtocol setup leaks bounds horizon scheduler).step (some before)
+        before.execution.respond (application setup runtime leaks) owner response⟩ ∈
+        ((onePacketProtocol setup runtime leaks bounds horizon scheduler).step (some before)
           ⟨joint, legal⟩).support),
       TracePrefix (prior.extend joint legal realized) trace ∧
       before.actor = some owner ∧ joint owner = some response ∧
-      pendingEvent setup leaks owner (some (before.execution.recall owner,
-        before.execution.observe (application setup leaks) owner)) = some event ∧
+      pendingEvent setup runtime leaks owner (some (before.execution.recall owner,
+        before.execution.observe (application setup runtime leaks) owner)) = some event ∧
       ∀ previous ∈ before.execution.recall owner,
-        ¬ ActivatedAt setup leaks owner event previous := by
+        ¬ ActivatedAt setup runtime leaks owner event previous := by
   obtain ⟨earlier, entry, later, split, activated, quiet⟩ :=
-    first_activated_recall_split owner event (control.execution.recall owner) occurs
-  have unrecorded : (runtime setup).eventRecorded leaks earlier event = false := by
-    cases recorded : (runtime setup).eventRecorded leaks earlier event with
+    first_activated_recall_split (runtime := runtime) owner event (control.execution.recall owner)
+      occurs
+  have unrecorded : runtime.eventRecorded leaks earlier event = false := by
+    cases recorded : runtime.eventRecorded leaks earlier event with
     | false => rfl
     | true =>
         obtain ⟨previous, recalled, submitted⟩ :=
-          ((runtime setup).eventRecorded_iff leaks _ event).mp recorded
+          (runtime.eventRecorded_iff leaks _ event).mp recorded
         have finalMember : previous ∈ control.execution.recall owner := by
           rw [split]
           exact List.mem_append_left _ recalled
         exact (quiet previous recalled (submissions previous finalMember event submitted)).elim
   have remembered : (some (earlier, entry.beforeView), entry.action) ∈
-      (onePacketInformation setup leaks bounds horizon scheduler).ownPlay owner trace := by
+      (onePacketInformation setup runtime leaks bounds horizon scheduler).ownPlay owner trace := by
     rw [onePacket_ownPlay_recall]
     change (some (earlier, entry.beforeView), entry.action) ∈
-      (application setup leaks).recallOwnPlay (control.execution.recall owner)
+      (application setup runtime leaks).recallOwnPlay (control.execution.recall owner)
     rw [split]
     simpa only [ReactiveApplication.recallOwnPlay, List.nil_append] using
-      mem_ownPlayFrom (application setup leaks) [] earlier entry later
+      mem_ownPlayFrom (application setup runtime leaks) [] earlier entry later
   obtain ⟨before, after, prior, joint, legal, realized, isPrefix, observed, chosen⟩ :=
     InformationModel.exists_tracePrefix_of_mem_ownPlay trace remembered
-  have localLegal := (onePacketProtocol setup leaks bounds horizon scheduler).legalOption_of_legal
+  have localLegal := (onePacketProtocol setup runtime leaks bounds horizon
+    scheduler).legalOption_of_legal
     legal owner
   rw [chosen] at localLegal
   have acting := localLegal.1
   cases before with
   | none =>
-      change (application setup leaks).actor none = some owner at acting
+      change (application setup runtime leaks).actor none = some owner at acting
       simp only [ReactiveApplication.actor, Option.bind_none] at acting
       cases acting
   | some before =>
@@ -165,21 +172,24 @@ theorem firstActivation_response_prefix_of_recall
       simp only [ReactiveApplication.observe, active, ↓reduceIte] at observed
       have sameRecall : before.execution.recall owner = earlier :=
         congrArg Prod.fst (Option.some.inj observed)
-      have sameView : before.execution.observe (application setup leaks) owner = entry.beforeView :=
+      have sameView : before.execution.observe (application setup runtime leaks) owner =
+        entry.beforeView :=
         congrArg Prod.snd (Option.some.inj observed)
-      have pending := pendingEvent_of_spec (setup := setup) (leaks := leaks) activated unrecorded
-      have pendingBefore : pendingEvent setup leaks owner
+      have pending := pendingEvent_of_spec (runtime := runtime) (setup := setup) (leaks := leaks)
+        activated unrecorded
+      have pendingBefore : pendingEvent setup runtime leaks owner
           (some (before.execution.recall owner,
-            before.execution.observe (application setup leaks) owner)) = some event := by
+            before.execution.observe (application setup runtime leaks) owner)) = some event := by
         simpa only [sameRecall, sameView] using pending
       have quietBefore : ∀ previous ∈ before.execution.recall owner,
-          ¬ ActivatedAt setup leaks owner event previous := by
+          ¬ ActivatedAt setup runtime leaks owner event previous := by
         simpa only [sameRecall] using quiet
       have afterEq : after = some ⟨before.remaining, none,
-          before.execution.respond (application setup leaks) owner entry.action⟩ := by
-        change after ∈ ((application setup leaks).transition (initialLaw setup) horizon scheduler
+          before.execution.respond (application setup runtime leaks) owner entry.action⟩ := by
+        change after ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+          scheduler
           (some before) joint).support at realized
-        rw [transition_respond before acting joint, chosen, Option.getD_some,
+        rw [transition_respond (runtime := runtime) before acting joint, chosen, Option.getD_some,
           PMF.mem_support_pure_iff] at realized
         exact realized
       subst after

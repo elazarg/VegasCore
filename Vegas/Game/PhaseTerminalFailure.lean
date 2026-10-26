@@ -107,25 +107,28 @@ utility is exactly the original recovery utility of the projected current state.
 The initial private parameter and the ordinary terminal valuation are retained. -/
 theorem phaseExclusionBase_eq_recoveryExclusionBase
     (setup : Setup (Player := Player) (L := L))
+    (runtime : EventGraphRuntime (graph setup))
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
     (recoveryLeaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ)
-    (control : (phaseApplication (runtime setup) leaks).Control)
+    (control : (phaseApplication runtime leaks).Control)
     (coverage : control.execution.application.FailureCoverage) (who : Player) :
-    phaseExclusionBase setup .sequential (runtime setup) leaks
+    phaseExclusionBase setup .sequential runtime leaks
         (fun terminal => utility (setup.parameterOutcome parameter terminal)) excludedPayoff
         (some control) who =
-      recoveryExclusionBase parameter utility excludedPayoff
-        (some (PhaseRecoveryProjection.control (runtime setup) leaks recoveryLeaks control))
+      recoveryExclusionBase (runtime := runtime) parameter utility excludedPayoff
+        (some (PhaseRecoveryProjection.control runtime leaks recoveryLeaks control))
         who := by
   by_cases excluded : who ∈ control.execution.application.current.excluded
-  · exact (phaseExclusionBase_of_excluded setup .sequential (runtime setup) leaks _ excludedPayoff
+  · exact (phaseExclusionBase_of_excluded setup .sequential runtime leaks _ excludedPayoff
       control who excluded).trans
-        (recoveryExclusionBase_of_excluded parameter utility excludedPayoff _ who excluded).symm
-  rw [recoveryExclusionBase_of_not_excluded parameter utility excludedPayoff _ who excluded,
-    exclusionBase_eq_readout, sourceReadout_eq_decode]
+        (recoveryExclusionBase_of_excluded (runtime := runtime) parameter utility
+          excludedPayoff _ who excluded).symm
+  rw [recoveryExclusionBase_of_not_excluded (runtime := runtime) parameter utility
+    excludedPayoff _ who excluded,
+    exclusionBase_eq_readout, sourceReadout, serviceSourceReadout_eq_decode]
   simp only [phaseExclusionBase, excluded, ↓reduceIte]
   change (if control.execution.application.current.native.config.cut.Terminal then
       decodeState? (terminalRefs setup.program)

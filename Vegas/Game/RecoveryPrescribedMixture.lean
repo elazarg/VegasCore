@@ -19,13 +19,14 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (initial : PMF (RecoveryState (graph setup)))
-  (horizon : Nat) (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
+  (horizon : Nat) (scheduler : (recoveryApplication runtime leaks).Scheduler)
 
-local notation "R" => model setup leaks bounds initial horizon scheduler
+local notation "R" => model setup runtime leaks bounds initial horizon scheduler
 local notation "RP" => ReactiveApplication.ResponseMenu.protocol
-  (Recovery.onePacketMenu (runtime setup) leaks bounds) initial horizon scheduler
+  (Recovery.onePacketMenu runtime leaks bounds) initial horizon scheduler
 
 /-- A forced nonlate decision has the prescribed component for every part. -/
 theorem component_eq_prescribed_of_forced_nonlate [Fintype (RP).History]
@@ -33,24 +34,28 @@ theorem component_eq_prescribed_of_forced_nonlate [Fintype (RP).History]
     (assessment : setup.intendedModel.BehavioralAssessment) {slots : Nat}
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
     (agent : (R).InformationAgent (R).playedInformation)
-    (forced : ForcedAgent setup leaks bounds initial horizon scheduler agent)
-    (nonlate : ¬ KeyedAgent setup leaks bounds initial horizon scheduler agent)
-    (part : Part setup leaks bounds initial horizon scheduler slots
-      (pool setup leaks bounds initial horizon scheduler agent)) :
-    component setup leaks bounds initial horizon scheduler assessment scale nonnegative le_one
+    (forced : ForcedAgent setup runtime leaks bounds initial horizon scheduler agent)
+    (nonlate : ¬ KeyedAgent setup runtime leaks bounds initial horizon scheduler agent)
+    (part : Part setup runtime leaks bounds initial horizon scheduler slots
+      (pool setup runtime leaks bounds initial horizon scheduler agent)) :
+    component setup runtime leaks bounds initial horizon scheduler assessment scale nonnegative
+      le_one
         agent part =
-      prescribedComponent setup leaks bounds initial horizon scheduler assessment scale nonnegative
+      prescribedComponent setup runtime leaks bounds initial horizon scheduler assessment scale
+        nonnegative
         le_one agent := by
-  have notFree : ¬ FreeAgent setup leaks bounds initial horizon scheduler agent :=
+  have notFree : ¬ FreeAgent setup runtime leaks bounds initial horizon scheduler agent :=
     fun absent => absent forced
-  have notOwned : ¬ ownedKeyed (FreeAgent setup leaks bounds initial horizon scheduler)
-      (KeyedAgent setup leaks bounds initial horizon scheduler) agent :=
+  have notOwned : ¬ ownedKeyed (FreeAgent setup runtime leaks bounds initial horizon scheduler)
+      (KeyedAgent setup runtime leaks bounds initial horizon scheduler) agent :=
     fun owned => nonlate owned.1
   obtain ⟨identify, same⟩ := freeKeyedComponent_of_not_free (Opt := LateOption slots)
-    (freeLaw setup leaks bounds initial horizon scheduler scale nonnegative le_one)
-    (prescribedComponent setup leaks bounds initial horizon scheduler assessment scale nonnegative
+    (freeLaw setup runtime leaks bounds initial horizon scheduler scale nonnegative le_one)
+    (prescribedComponent setup runtime leaks bounds initial horizon scheduler assessment scale
+      nonnegative
       le_one)
-    (keyedComponent setup leaks bounds initial horizon scheduler assessment scale nonnegative
+    (keyedComponent setup runtime leaks bounds initial horizon scheduler assessment scale
+      nonnegative
       le_one) notFree
   exact (same part).trans (keyedComponent_of_not_keyed _ _ notOwned (identify part))
 
@@ -60,20 +65,24 @@ theorem component_mixture_eq_prescribed_of_forced_nonlate [Fintype (RP).History]
     (assessment : setup.intendedModel.BehavioralAssessment) {slots : Nat}
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
     (agent : (R).InformationAgent (R).playedInformation)
-    (forced : ForcedAgent setup leaks bounds initial horizon scheduler agent)
-    (nonlate : ¬ KeyedAgent setup leaks bounds initial horizon scheduler agent)
-    (weights : PMF (Part setup leaks bounds initial horizon scheduler slots
-      (pool setup leaks bounds initial horizon scheduler agent))) :
-    weights.bind (component setup leaks bounds initial horizon scheduler assessment scale
+    (forced : ForcedAgent setup runtime leaks bounds initial horizon scheduler agent)
+    (nonlate : ¬ KeyedAgent setup runtime leaks bounds initial horizon scheduler agent)
+    (weights : PMF (Part setup runtime leaks bounds initial horizon scheduler slots
+      (pool setup runtime leaks bounds initial horizon scheduler agent))) :
+    weights.bind (component setup runtime leaks bounds initial horizon scheduler assessment scale
       nonnegative le_one agent) =
-      prescribedComponent setup leaks bounds initial horizon scheduler assessment scale nonnegative
+      prescribedComponent setup runtime leaks bounds initial horizon scheduler assessment scale
+        nonnegative
         le_one agent := by
-  have same : component setup leaks bounds initial horizon scheduler assessment (slots := slots)
+  have same : component setup runtime leaks bounds initial horizon scheduler assessment (slots :=
+    slots)
       scale nonnegative
-      le_one agent = fun _ => prescribedComponent setup leaks bounds initial horizon scheduler
+      le_one agent = fun _ => prescribedComponent setup runtime leaks bounds initial horizon
+        scheduler
         assessment scale nonnegative le_one agent := by
     funext part
-    exact component_eq_prescribed_of_forced_nonlate setup leaks bounds initial horizon scheduler
+    exact component_eq_prescribed_of_forced_nonlate setup runtime leaks bounds initial horizon
+      scheduler
       assessment scale nonnegative le_one agent forced nonlate part
   rw [same, PMF.bind_const]
 

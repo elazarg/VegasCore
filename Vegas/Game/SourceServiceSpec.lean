@@ -76,7 +76,7 @@ abbrev fuel : Nat := 2 * service.planLength + 1
 abbrev readout (final : (service.menu.protocol (initialLaw service.setup) service.planLength
     service.scheduler).History) :
     Option (State L service.setup.program.terminalCtx) :=
-  sourceReadout service.setup service.leaks final.state
+  sourceReadout service.setup (runtime service.setup) service.leaks final.state
 
 end SourceServiceSpec
 

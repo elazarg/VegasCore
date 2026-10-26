@@ -25,6 +25,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
 
 /-- The decoded point of the native initial state of a setup draw is the entry
 point of that draw. -/
@@ -74,22 +75,26 @@ theorem initialMass_eq (initial : State L setup.context) :
 
 variable [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+  {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- **The initial draw matches** at every realized native initial
 transition. -/
 theorem replayStepMatches_start (assessment : setup.intendedModel.BehavioralAssessment)
-    (who : Player) (joint : Player → Option (application setup leaks).Action)
-    {after : (application setup leaks).ProtocolState}
-    (realized : after ∈ ((application setup leaks).transition (initialLaw setup) horizon scheduler
+    (who : Player) (joint : Player → Option (application setup runtime leaks).Action)
+    {after : (application setup runtime leaks).ProtocolState}
+    (realized : after ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+      scheduler
       none joint).support) :
-    ReplayStepMatches setup leaks assessment who setup.intendedProtocol.initHistory 1 none joint
+    ReplayStepMatches setup runtime leaks assessment who setup.intendedProtocol.initHistory 1 none
+      joint
       after := by
   change after ∈ ((initialLaw setup).map fun state => some
-    (⟨horizon, none, ReactiveApplication.Execution.initial (application setup leaks) state⟩ :
-      (application setup leaks).Control)).support at realized
+    (⟨horizon, none, ReactiveApplication.Execution.initial (application setup runtime leaks)
+      state⟩ :
+      (application setup runtime leaks).Control)).support at realized
   obtain ⟨state, supported, rfl⟩ := PMF.support_map .. ▸ realized
   obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
-  exact replayStepMatches_initial assessment who _ joint (initialMass_eq initial)
+  exact replayStepMatches_initial (runtime := runtime) assessment who _ joint (initialMass_eq
+    initial)
 
 end Vegas

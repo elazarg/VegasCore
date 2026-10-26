@@ -15,15 +15,17 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup leaks).Scheduler)
+  (scheduler : (application setup runtime leaks).Scheduler)
 
-local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
+  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
+    native ∅))
 
 omit [Fintype Player] in
 private theorem sourceContinuation_value_of_prefix
@@ -47,36 +49,37 @@ open Classical in
 /-- The same common recovery weights approximate the source value at every
 intended boundary, under counted native service and completion. -/
 theorem assembled_stopped_boundary_value_sub_le
-    [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale positive
+    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+      positive
       le_one weights targetSequence) (n : ℕ)
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : ∀ control : (application setup leaks).Control,
-      (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control) →
+    (opportunity : ∀ control : (application setup runtime leaks).Control,
+      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
       ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
-      OpportunityAt (runtime setup) leaks control.execution delay)
-    (inclusion : ∀ control : (application setup leaks).Control,
-      (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control) →
+      OpportunityAt runtime leaks control.execution delay)
+    (inclusion : ∀ control : (application setup runtime leaks).Control,
+      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
       ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
-      ProtectedInclusionAt (runtime setup) leaks control.execution bound)
-    (timely : (runtime setup).AsyncTimely delay bound)
-    (completes : ∀ control : (application setup leaks).Control,
-      (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control) →
+      ProtectedInclusionAt runtime leaks control.execution bound)
+    (timely : runtime.AsyncTimely delay bound)
+    (completes : ∀ control : (application setup runtime leaks).Control,
+      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
       ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
-      (application setup leaks).terminal (some control) →
+      (application setup runtime leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
     (certificate : (NP).WellFoundedHistories)
-    (rank : Nat) (start : (NP).History) (anchor : (application setup leaks).Execution)
+    (rank : Nat) (start : (NP).History) (anchor : (application setup runtime leaks).Execution)
     (state : start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩)
-    (boundary : ReachedBoundary setup leaks horizon scheduler rank anchor)
+    (boundary : ReachedBoundary setup runtime leaks horizon scheduler rank anchor)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank anchor.application.config = some point)
     (intended : ProtocolState.Intended setup.program point)
@@ -88,23 +91,24 @@ theorem assembled_stopped_boundary_value_sub_le
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
     (excludedBounded : |excludedPayoff who| ≤ payoffBound) :
     let stopped := fun history : (NP).History => ¬ Clear history.state ∨
-      DecodedState setup leaks (failureProfile setup.program)
+      DecodedState setup runtime leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure who setup.program) history.state
     |expect ((N).runBehavioralUntil certificate
         ((targetSequence n).strategy) stopped start)
         (fun final => if stopped final then excludedPayoff who else
-          exclusionBase setup parameter utility excludedPayoff leaks final.state who) -
+          exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who) -
       sourcePointValue setup parameter utility excludedPayoff
         (setup.intendedOpeningProfile (sequence n).strategy) who point| ≤
       (2 * payoffBound * (1 - slotRetention (scale n))) *
-        (application setup leaks).rank horizon start.state := by
+        (application setup runtime leaks).rank horizon start.state := by
   intro stopped
-  have retained := assembled_dominatesHonestFrom_boundary setup leaks bounds horizon
+  have retained := assembled_dominatesHonestFrom_boundary setup runtime leaks bounds horizon
     scheduler
     wellFormed covers capacity sequence scale positive le_one weights targetSequence
       assembled n opportunity inclusion timely
     completes certificate rank start anchor state boundary point decoded intended
-  have estimate := counted_stopped_boundary_value_sub_le opportunity inclusion timely
+  have estimate := counted_stopped_boundary_value_sub_le (runtime := runtime) opportunity
+    inclusion timely
     completes wellFormed covers capacity
     (sequence n) certificate rank start anchor state boundary point decoded intended
     ((targetSequence n).strategy) (slotRetention_nonneg (positive n).le (le_one n))

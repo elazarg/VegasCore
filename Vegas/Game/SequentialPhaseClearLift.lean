@@ -45,29 +45,30 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup))
 
 local notation "inputs" => PMF.map setup.eventInputs setup.initialLaw
 local notation "plan" => sequentialRuntimePhasePlan setup.program
 local notation "recoveryLeaks" => PhaseNativeProjection.nativeLeaks leaks plan
-local notation "P" => phaseApplication (runtime setup) leaks
-local notation "R" => recoveryApplication (runtime setup) recoveryLeaks
-local notation "N" => application setup recoveryLeaks
-local notation "normal" => PhaseCount.normalization (runtime setup) leaks
+local notation "P" => phaseApplication runtime leaks
+local notation "R" => recoveryApplication runtime recoveryLeaks
+local notation "N" => application (runtime := runtime) setup recoveryLeaks
+local notation "normal" => PhaseCount.normalization runtime leaks
 local notation "canonical" => ReactiveApplication.SubmissionNormalization.menu (normal)
-  (PhaseCount.onePacketMenu (runtime setup) leaks bounds)
-local notation "included" => PhaseCount.normalized_onePacket_included (runtime setup) leaks bounds
-local notation "projection" => PhaseRecoveryProjection.protocolState (runtime setup) leaks
+  (PhaseCount.onePacketMenu runtime leaks bounds)
+local notation "included" => PhaseCount.normalized_onePacket_included runtime leaks bounds
+local notation "projection" => PhaseRecoveryProjection.protocolState runtime leaks
   recoveryLeaks
 local notation "phaseInitial" => PMF.map (PhaseRuntimeState.initial plan) (inputs)
 local notation "recoveryInitial" => PMF.map
   (fun native => RecoveryState.mk native ∅) (initialLaw setup)
-local notation "RecoveryMenu" => Recovery.onePacketMenu (runtime setup) recoveryLeaks bounds
-local notation "nativeMenu" => MessageBounds.onePacketMenu (runtime setup) recoveryLeaks bounds
+local notation "RecoveryMenu" => Recovery.onePacketMenu runtime recoveryLeaks bounds
+local notation "nativeMenu" => MessageBounds.onePacketMenu runtime recoveryLeaks bounds
 local notation "recoveryScheduler" => SequentialPhaseSchedulerInformation.scheduler setup.program
-  (runtime setup) leaks recoveryLeaks
-local notation "nativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup) recoveryLeaks
+  runtime leaks recoveryLeaks
+local notation "nativeScheduler" => RecoveryProjection.nativeScheduler runtime recoveryLeaks
 
 omit [Fintype Player] in
 private theorem compiled_recovery_initial :
@@ -82,9 +83,9 @@ theorem exists_native_of_clear_recovery_counted_trace
     (trace : ((RecoveryMenu).protocol recoveryInitial horizon scheduler).Trace state)
     (clear : ReactiveApplication.stateInvariant
       (fun state : RecoveryState (graph setup) => state.excluded = ∅) state) :
-    ∃ native : (onePacketProtocol setup recoveryLeaks bounds horizon
+    ∃ native : (onePacketProtocol (runtime := runtime) setup recoveryLeaks bounds horizon
         (nativeScheduler scheduler)).History,
-      native.state = RecoveryProjection.protocolState (runtime setup) recoveryLeaks state ∧
+      native.state = RecoveryProjection.protocolState runtime recoveryLeaks state ∧
       ∀ current, native.state = some current →
         ExclusionEvidence 0 ∅
           (⟨current.execution.application, ∅⟩ : RecoveryState (graph setup)) := by
@@ -105,21 +106,21 @@ theorem exists_native_of_clear_recovery_counted_trace
   have nativeLaw : (recoveryInitial).map RecoveryState.native = initialLaw setup := by
     simp only [PMF.map_comp, Function.comp_def]
     exact PMF.map_id _
-  obtain ⟨native, rawEq⟩ := RecoveryProjection.exists_nativeBoundedHistory (runtime setup)
+  obtain ⟨native, rawEq⟩ := RecoveryProjection.exists_nativeBoundedHistory runtime
     recoveryLeaks bounds recoveryInitial initialized horizon scheduler ⟨state, trace⟩ empty
   have endpoint := congrArg (fun history :
-      (((runtime setup).reactiveApplication recoveryLeaks).protocol
+      ((runtime.reactiveApplication recoveryLeaks).protocol
         ((recoveryInitial).map RecoveryState.native) horizon (nativeScheduler scheduler)).History =>
       history.state) rawEq
   have record : ∀ current, native.state = some current →
       ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState (graph setup)) := by
     intro current same
-    exact RecoveryProjection.nativeHistory_record (runtime setup) recoveryLeaks recoveryInitial
+    exact RecoveryProjection.nativeHistory_record runtime recoveryLeaks recoveryInitial
       initialized horizon scheduler rawTrace empty current (endpoint.symm.trans same)
   have result : ∃ native : ((nativeMenu).protocol
         ((recoveryInitial).map RecoveryState.native) horizon
           (nativeScheduler scheduler)).History,
-      native.state = RecoveryProjection.protocolState (runtime setup) recoveryLeaks state ∧
+      native.state = RecoveryProjection.protocolState runtime recoveryLeaks state ∧
       ∀ current, native.state = some current →
         ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState (graph setup)) :=
     ⟨native, endpoint, record⟩
@@ -142,7 +143,7 @@ theorem legal_phaseJoint_of_clear_recovery_trace
         recoveryState
       joint) :
     ((canonical).protocol phaseInitial horizon scheduler).Legal phaseState
-      (PhaseRecoveryProjection.phaseJointActions (runtime setup) leaks recoveryLeaks joint) := by
+      (PhaseRecoveryProjection.phaseJointActions runtime leaks recoveryLeaks joint) := by
   subst recoveryState
   have terminal : (R).terminal (projection phaseState) ↔ (P).terminal phaseState := by
     cases phaseState <;> rfl
@@ -165,32 +166,34 @@ theorem legal_phaseJoint_of_clear_recovery_trace
       | some current =>
           have phaseClear : current.execution.application.current.excluded = ∅ := clear
           obtain ⟨native, nativeState, nativeRecord⟩ :=
-            exists_native_of_clear_recovery_counted_trace setup leaks bounds horizon
+            exists_native_of_clear_recovery_counted_trace setup runtime leaks bounds horizon
               (recoveryScheduler scheduler) recoveryTrace clear
-          let nativeControl := RecoveryProjection.control (runtime setup) recoveryLeaks
-            (PhaseRecoveryProjection.control (runtime setup) leaks recoveryLeaks current)
+          let nativeControl := RecoveryProjection.control runtime recoveryLeaks
+            (PhaseRecoveryProjection.control runtime leaks recoveryLeaks current)
           change native.state = some nativeControl at nativeState
-          have actualNative : (onePacketProtocol setup recoveryLeaks bounds horizon
+          have actualNative : (onePacketProtocol (runtime := runtime) setup recoveryLeaks bounds
+            horizon
               (nativeScheduler (recoveryScheduler scheduler))).Trace (some nativeControl) := by
             exact nativeState ▸ native.trace
-          have recoveryMember : response ∈ Recovery.onePacketActions (runtime setup) recoveryLeaks
+          have recoveryMember : response ∈ Recovery.onePacketActions runtime recoveryLeaks
               bounds who
-              ((PhaseRecoveryProjection.execution (runtime setup) leaks recoveryLeaks
+              ((PhaseRecoveryProjection.execution runtime leaks recoveryLeaks
                 current.execution).recall who)
-              ((PhaseRecoveryProjection.execution (runtime setup) leaks recoveryLeaks
+              ((PhaseRecoveryProjection.execution runtime leaks recoveryLeaks
                 current.execution).observe (R) who) := player.2
           rw [PhaseRecoveryProjection.observe] at recoveryMember
-          change response ∈ Recovery.onePacketActions (runtime setup) recoveryLeaks bounds who
+          change response ∈ Recovery.onePacketActions runtime recoveryLeaks bounds who
             ((current.execution.recall who).map
-              (PhaseRecoveryProjection.playerEntry (runtime setup) leaks recoveryLeaks))
-            (PhaseRecoveryProjection.playerView (runtime setup) leaks recoveryLeaks
+              (PhaseRecoveryProjection.playerEntry runtime leaks recoveryLeaks))
+            (PhaseRecoveryProjection.playerView runtime leaks recoveryLeaks
               (current.execution.observe (P) who)) at recoveryMember
           have counted := (included).trace phaseInitial horizon scheduler phaseTrace
-          have member := phase_onePacket_mem_of_recovery_paired_history setup leaks recoveryLeaks
+          have member := phase_onePacket_mem_of_recovery_paired_history setup runtime leaks
+            recoveryLeaks
             bounds inputs horizon scheduler counted phaseClear
             (nativeScheduler (recoveryScheduler scheduler)) nativeControl actualNative
             (nativeRecord nativeControl nativeState) rfl who rfl rfl
-            (PhaseRecoveryProjection.phaseAction (runtime setup) leaks recoveryLeaks response)
+            (PhaseRecoveryProjection.phaseAction runtime leaks recoveryLeaks response)
             (by simpa only [PhaseRecoveryProjection.action_phaseAction] using recoveryMember)
           exact (ReactiveApplication.SubmissionNormalization.menu_mem _ _ _ _ _ _).mpr
             ⟨_, member.1, member.2⟩
@@ -226,7 +229,7 @@ theorem exists_canonical_phase_of_clear_recovery_trace
           | some before =>
               obtain ⟨after, targetEq, _⟩ := (R).transition_recall_prefix recoveryInitial horizon
                 (recoveryScheduler scheduler) before target joint actual
-              have retained := (recoveryApplication_exclusion_monotone (runtime setup)
+              have retained := (recoveryApplication_exclusion_monotone runtime
                 recoveryLeaks).transition recoveryInitial horizon (recoveryScheduler scheduler)
                   before after joint (by rwa [targetEq] at actual)
               rw [targetEq] at clear
@@ -242,29 +245,30 @@ theorem exists_canonical_phase_of_clear_recovery_trace
           | some current =>
               rw [phaseAt] at priorClear
               exact priorClear
-        let phaseJoint := PhaseRecoveryProjection.phaseJointActions (runtime setup) leaks
+        let phaseJoint := PhaseRecoveryProjection.phaseJointActions runtime leaks
           recoveryLeaks joint
-        have phaseLegal := legal_phaseJoint_of_clear_recovery_trace setup leaks bounds horizon
+        have phaseLegal := legal_phaseJoint_of_clear_recovery_trace setup runtime leaks bounds
+          horizon
           scheduler phase.trace prior matched priorClear joint legal
         have law : (((P).transition phaseInitial horizon scheduler phase.state phaseJoint).map
             projection) = (R).transition recoveryInitial horizon (recoveryScheduler scheduler)
               source joint := by
           rw [← matched, ← compiled_recovery_initial setup]
-          have jointEq : PhaseRecoveryProjection.jointActions (runtime setup) leaks recoveryLeaks
+          have jointEq : PhaseRecoveryProjection.jointActions runtime leaks recoveryLeaks
               phaseJoint = joint :=
-            PhaseRecoveryProjection.jointActions_phaseJointActions (runtime setup) leaks
+            PhaseRecoveryProjection.jointActions_phaseJointActions runtime leaks
               recoveryLeaks joint
           rw [← jointEq]
           cases sourcePhase : phase.state with
           | none =>
               exact PhaseRecoveryProjection.transition_projected_initial setup.program
-                (runtime setup)
+                runtime
                 leaks inputs horizon scheduler phaseJoint
           | some current =>
               have priorPhase := (included).trace phaseInitial horizon scheduler phase.trace
               rw [sourcePhase] at priorPhase phaseClear phaseLegal
               have step := PhaseRecoveryProjection.transition_projected_clear_history setup.program
-                (runtime setup) leaks bounds inputs horizon scheduler priorPhase phaseClear
+                runtime leaks bounds inputs horizon scheduler priorPhase phaseClear
                 phaseJoint (by
                   intro who active
                   have player := phaseLegal.2 who

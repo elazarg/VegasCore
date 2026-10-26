@@ -18,9 +18,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 namespace DirectedBindingFrame
 
@@ -28,71 +29,74 @@ namespace DirectedBindingFrame
 forced focal information set. It retains actual submitted-binding provenance,
 private shadow ownership, and the complete operational trace record. -/
 theorem response_trace
-    {memory : BindingMemory (runtime setup) leaks} {owner : Player}
-    {original repaired : (application setup leaks).Execution}
-    (frame : DirectedBindingFrame memory owner original repaired)
-    (submittedRecords : memory.RecordsSubmittedBindings (runtime setup) leaks owner
+    {memory : BindingMemory runtime leaks} {owner : Player}
+    {original repaired : (application setup runtime leaks).Execution}
+    (frame : DirectedBindingFrame (runtime := runtime) memory owner original repaired)
+    (submittedRecords : memory.RecordsSubmittedBindings runtime leaks owner
       original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (remaining : Nat) (actor : Player)
-    (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
+    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
       (some ⟨remaining, some actor, original⟩))
-    (imagePrior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
+    (imagePrior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
       (some ⟨remaining, some actor, repaired⟩))
-    (records : operationalRecord setup leaks bounds horizon scheduler prior =
-      operationalRecord setup leaks bounds horizon scheduler imagePrior)
-    (response : (application setup leaks).Action)
-    (available : response ∈ bounds.onePacketActions (runtime setup) leaks actor
-      (original.recall actor) (original.observe (application setup leaks) actor))
+    (records : operationalRecord setup runtime leaks bounds horizon scheduler prior =
+      operationalRecord setup runtime leaks bounds horizon scheduler imagePrior)
+    (response : (application setup runtime leaks).Action)
+    (available : response ∈ bounds.onePacketActions runtime leaks actor
+      (original.recall actor) (original.observe (application setup runtime leaks) actor))
     (covered : bounds.CoversOutputValues)
     {focal : Player} (other : owner ≠ focal)
-    {info : (onePacketInformation setup leaks bounds horizon scheduler).InfoState focal}
-    (forced : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
+    {info : (onePacketInformation setup runtime leaks bounds horizon scheduler).InfoState focal}
+    (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
+      setup) horizon
       scheduler focal info)
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} (decision : info = some (past, view))
-    (history : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory focal
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} (decision : info = some (past, view))
+    (history : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationHistory focal
       info)
-    {final : (application setup leaks).Control} (current : history.1.state = some final)
-    (afterTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
-      (some ⟨remaining, none, original.respond (application setup leaks) actor response⟩))
+    {final : (application setup runtime leaks).Control} (current : history.1.state = some final)
+    (afterTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+      (some ⟨remaining, none, original.respond (application setup runtime leaks) actor response⟩))
     (isPrefix : TracePrefix afterTrace history.1.trace) :
-    ∃ targetResponse : (application setup leaks).Action,
-      ∃ nextMemory : BindingMemory (runtime setup) leaks,
-        DirectedBindingFrame nextMemory owner
-          (original.respond (application setup leaks) actor response)
-          (repaired.respond (application setup leaks) actor targetResponse) ∧
-        nextMemory.RecordsSubmittedBindings (runtime setup) leaks owner
-          (original.respond (application setup leaks) actor response)
-          (repaired.respond (application setup leaks) actor targetResponse) ∧
+    ∃ targetResponse : (application setup runtime leaks).Action,
+      ∃ nextMemory : BindingMemory runtime leaks,
+        DirectedBindingFrame (runtime := runtime) nextMemory owner
+          (original.respond (application setup runtime leaks) actor response)
+          (repaired.respond (application setup runtime leaks) actor targetResponse) ∧
+        nextMemory.RecordsSubmittedBindings runtime leaks owner
+          (original.respond (application setup runtime leaks) actor response)
+          (repaired.respond (application setup runtime leaks) actor targetResponse) ∧
         nextMemory.shadow.OwnBindings owner ∧
-        ∃ targetTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
+        ∃ targetTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
             (some ⟨remaining, none,
-              repaired.respond (application setup leaks) actor targetResponse⟩),
-          operationalRecord setup leaks bounds horizon scheduler targetTrace =
-            operationalState setup leaks
+              repaired.respond (application setup runtime leaks) actor targetResponse⟩),
+          operationalRecord setup runtime leaks bounds horizon scheduler targetTrace =
+            operationalState setup runtime leaks
                 (some ⟨remaining, none,
-                  original.respond (application setup leaks) actor response⟩) ::
-              operationalRecord setup leaks bounds horizon scheduler prior := by
+                  original.respond (application setup runtime leaks) actor response⟩) ::
+              operationalRecord setup runtime leaks bounds horizon scheduler prior := by
   classical
-  let app := application setup leaks
+  let app := application setup runtime leaks
   by_cases foreign : actor ≠ owner
-  · obtain ⟨afterFrame, targetTrace, targetRecord⟩ := frame.foreign_response_trace remaining actor
+  · obtain ⟨afterFrame, targetTrace, targetRecord⟩ := frame.foreign_response_trace (runtime :=
+      runtime) remaining actor
       foreign prior imagePrior records response available
     exact ⟨response, memory, afterFrame,
       submittedRecords.respond actor response response (Or.inl foreign), onlyBindings,
       targetTrace, targetRecord⟩
   have same : actor = owner := not_ne_iff.mp foreign
   subst actor
-  have rawTrace := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
     horizon scheduler prior
-  have count := (runtime setup).countRecall_history leaks rawTrace
+  have count := runtime.countRecall_history leaks rawTrace
   rcases response with ⟨transmission⟩
   cases transmission with
   | none =>
       let silence : app.Action := ⟨none⟩
-      let nextMemory := memory.record (runtime setup) leaks
-        (memory.shadow.inputView (runtime setup) leaks (repaired.observe app owner)) silence
+      let nextMemory := memory.record runtime leaks
+        (memory.shadow.inputView runtime leaks (repaired.observe app owner)) silence
       obtain ⟨afterFrame, targetTrace, targetRecord⟩ :=
         frame.silence_trace remaining prior imagePrior records
       have nonbinding : ∀ material, silence.transmission = some material →
@@ -103,15 +107,15 @@ theorem response_trace
         (submittedRecords.respond owner silence silence (Or.inr nonbinding)).record _ silence,
         onlyBindings, targetTrace, targetRecord⟩
   | some material =>
-      have parts := (bounds.mem_onePacketActions (runtime setup) leaks owner _ _ _).mp available
-      have normal := ((bounds.menu_mem (runtime setup) leaks owner _ _ _).mp parts.1).2
+      have parts := (bounds.mem_onePacketActions runtime leaks owner _ _ _).mp available
+      have normal := ((bounds.menu_mem runtime leaks owner _ _ _).mp parts.1).2
       change (⟨some (material.normalizeReactive owner (original.observe app owner).application
         (ReactiveApplication.ResponseMenu.knownPackets (original.recall owner)
           (original.observe app owner)))⟩ : app.Action) = ⟨some material⟩ at normal
       have materialNormal := Option.some.inj
         (congrArg ReactiveApplication.Action.transmission normal)
       have permitted : countPermits (app.outputs (original.recall owner))
-          ((runtime setup).localEnvelope leaks owner (original.recall owner)
+          (runtime.localEnvelope leaks owner (original.recall owner)
             (original.observe app owner) material) = true := by
         rcases parts.2 with impossible | ⟨supplied, same, verdict⟩
         · cases impossible
@@ -123,18 +127,19 @@ theorem response_trace
           simp only [CountCallCorrect, localEnvelope, packet] at correct
       | commitment event candidate =>
           simp only [CountCallCorrect, localEnvelope, packet] at correct
-          have absent : ((runtime setup).localEnvelope leaks owner (original.recall owner)
+          have absent : (runtime.localEnvelope leaks owner (original.recall owner)
               (original.observe app owner) material).payload.evidence = none := correct.2.1
           have owned : candidate.1 = owner := correct.2.2.1
           obtain ⟨serial, slot⟩ := correct.2.2.2.1
           have candidateEq : candidate = (owner, .prepared serial) := Prod.ext owned slot
           subst candidate
-          have shape := (runtime setup).normal_binding_of_absent_evidence leaks owner
+          have shape := runtime.normal_binding_of_absent_evidence leaks owner
             (original.recall owner) (original.observe app owner) material event
             (owner, .prepared serial) materialNormal packet absent
           generalize openingEq : material.call.opening = opening at shape
           subst material
-          have turn := response_atTurn_of_forced_prefix forced decision history current remaining
+          have turn := response_atTurn_of_forced_prefix (runtime := runtime) forced decision
+            history current remaining
             owner other original ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩,
               .none⟩⟩ afterTrace isPrefix event rfl
           have ready := (original.application.publicView_eventReady event).mp
@@ -165,26 +170,28 @@ theorem response_trace
               have node := nodeView_eq_bind output codeEq
               let rawResponse : app.Action :=
                 ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
-              let changed := memory.repairResponse (runtime setup) leaks owner
+              let changed := memory.repairResponse runtime leaks owner
                 (repaired.observe app owner) rawResponse
-              let nextMemory : BindingMemory (runtime setup) leaks :=
+              let nextMemory : BindingMemory runtime leaks :=
                 ⟨changed.2, memory.responses ++
-                  [(memory.shadow.inputView (runtime setup) leaks (repaired.observe app owner),
+                  [(memory.shadow.inputView runtime leaks (repaired.observe app owner),
                     rawResponse)]⟩
               have initializedPrior := prior
-              change ((bounds.onePacketMenu (runtime setup) leaks).protocol
+              change ((bounds.onePacketMenu runtime leaks).protocol
                 (serviceInitialLaw setup .sequential) horizon scheduler).Trace _ at initializedPrior
               rw [serviceInitialLaw_eq_inputs] at initializedPrior
-              have fresh := bounds.onePacket_binding_fresh (runtime setup) leaks
+              have fresh := bounds.onePacket_binding_fresh runtime leaks
                 (setup.initialLaw.map setup.eventInputs) horizon scheduler initializedPrior owner
                 event serial opening available
-              obtain ⟨afterFrame, targetTrace, targetRecord⟩ := frame.binding_trace remaining prior
+              obtain ⟨afterFrame, targetTrace, targetRecord⟩ := frame.binding_trace (runtime :=
+                runtime) remaining prior
                 imagePrior records event payload output codeEq node serial opening ready turn
                 covered available
               exact ⟨changed.1, nextMemory, afterFrame,
-                submittedRecords.binding_submission frame.toFrame count event payload output
+                submittedRecords.binding_submission frame.toFrame count event
+                  payload output
                   codeEq node serial opening fresh permitted,
-                memory.repairResponse_ownBindings (runtime setup) leaks owner onlyBindings
+                memory.repairResponse_ownBindings runtime leaks owner onlyBindings
                   (repaired.observe app owner) rawResponse, targetTrace, targetRecord⟩
       | opening event candidate raw =>
           simp only [CountCallCorrect, localEnvelope, packet] at correct
@@ -195,7 +202,8 @@ theorem response_trace
             at envelopeCall
           obtain ⟨rfl, rfl, rfl⟩ := Payload.opening.inj envelopeCall
           have certified := congrArg WitnessedPacket.evidence envelope
-          have leftFixed := onePacket_opening_candidate prior owner material event candidate raw
+          have leftFixed := onePacket_opening_candidate (runtime := runtime) prior owner material
+            event candidate raw
             packet certified
           cases node : nodeView (graph setup) event with
           | bind | sample => simp only [node, and_false] at correct
@@ -203,7 +211,7 @@ theorem response_trace
               have details : owner = actor ∧ raw.ty = payload ∧
                   SignedBinding
                     (EarlierOwnPacket (app.outputs (original.recall owner))
-                      ((runtime setup).localEnvelope leaks owner (original.recall owner)
+                      (runtime.localEnvelope leaks owner (original.recall owner)
                         (original.observe app owner) material))
                     owner candidate binding.field := by
                 simpa only [localEnvelope, packet, node, Message.sender] using correct.2
@@ -214,14 +222,15 @@ theorem response_trace
               rcases raw with ⟨rawPayload, value⟩
               dsimp only at typed
               subst rawPayload
-              obtain ⟨owned, rightFixed⟩ := frame.opening_candidate_of_signed submittedRecords
+              obtain ⟨owned, rightFixed⟩ := frame.opening_candidate_of_signed
+                submittedRecords
                 prior imagePrior material binding candidate value leftFixed signed
               have localFixed : (original.observe app owner).application.candidates candidate.2 =
                   .openable ⟨payload, value⟩ := by
                 change original.application.candidates.lookup (owner, candidate.2) =
                   .openable ⟨payload, value⟩
                 simpa only [← owned, Prod.mk.eta] using leftFixed
-              have shape := (runtime setup).normal_opening_of_owned_evidence leaks owner
+              have shape := runtime.normal_opening_of_owned_evidence leaks owner
                 (original.recall owner) (original.observe app owner) material event candidate
                 ⟨payload, value⟩ materialNormal packet certified owned localFixed
               have known : ReactiveApplication.ResponseMenu.knownPackets (original.recall owner)
@@ -234,10 +243,11 @@ theorem response_trace
                   owner (app.observePlayer original.application owner)
                   (original.network.known owner)
               let openingResponse : app.Action := ⟨some openingMaterial⟩
-              let nextMemory := memory.record (runtime setup) leaks
-                (memory.shadow.inputView (runtime setup) leaks (repaired.observe app owner))
+              let nextMemory := memory.record runtime leaks
+                (memory.shadow.inputView runtime leaks (repaired.observe app owner))
                 openingResponse
               obtain ⟨afterFrame, targetTrace, targetRecord⟩ := frame.normalized_opening_trace
+                (runtime := runtime)
                 remaining prior imagePrior records event candidate ⟨payload, value⟩ owned leftFixed
                 rightFixed available
               have nonbinding : ∀ supplied, openingResponse.transmission = some supplied →

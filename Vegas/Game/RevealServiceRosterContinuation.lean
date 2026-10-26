@@ -44,12 +44,4 @@ theorem serviceSourceReadout_eq_decode (setup : Setup (Player := Player) (L := L
       dsimp only
       rw [ite_eq_left complete, decoded]
 
-omit [Fintype Player] in
-theorem sourceReadout_eq_decode (setup : Setup (Player := Player) (L := L))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (control : (application setup leaks).Control) :
-    sourceReadout setup leaks (some control) =
-      decodeState? (terminalRefs setup.program) control.execution.application.config.store :=
-  serviceSourceReadout_eq_decode setup leaks control
-
 end Vegas

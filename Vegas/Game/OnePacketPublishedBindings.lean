@@ -210,6 +210,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 theorem publishesOrFails_stepClosed :
@@ -219,16 +220,17 @@ theorem publishesOrFails_stepClosed :
       reached
 
 /-- **Publications carry their bindings or fail along every history** of a
-response menu of the default runtime, under any scheduler. -/
+response menu of the supplied runtime, under any scheduler. -/
 theorem decodedState_publishesOrFails (profile : BehavioralProfile setup.program)
-    (menu : (application setup leaks).ResponseMenu) (horizon : Nat)
-    (scheduler : (application setup leaks).Scheduler) :
+    (menu : (application setup runtime leaks).ResponseMenu) (horizon : Nat)
+    (scheduler : (application setup runtime leaks).Scheduler) :
     ∀ {state} (_ : (menu.protocol (initialLaw setup) horizon scheduler).Trace state)
-      (control : (application setup leaks).Control), state = some control →
-      DecodedState setup leaks profile (ProtocolState.PublishesOrFails setup.program)
+      (control : (application setup runtime leaks).Control), state = some control →
+      DecodedState setup runtime leaks profile (ProtocolState.PublishesOrFails setup.program)
         (some control) := by
   intro state trace control current
-  refine decodedState_history_of_stepClosed publishesOrFails_stepClosed ?_ menu horizon scheduler
+  refine decodedState_history_of_stepClosed publishesOrFails_stepClosed ?_
+    menu horizon scheduler
     trace control current
   intro initial _
   exact ProtocolState.publishesOrFails_entry setup.program _ (PublishesOrFails.initial _)

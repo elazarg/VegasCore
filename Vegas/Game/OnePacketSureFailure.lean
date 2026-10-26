@@ -26,6 +26,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 omit [DecidableEq Player] in
@@ -43,33 +44,33 @@ private theorem cast_cast_symm {A B : Type} (same : A = B) (value : B) :
 section OnePacketCommitment
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup leaks).Scheduler)
+  (scheduler : (application setup runtime leaks).Scheduler)
 
 /-- **Only the owner's one packet can fill a vacant binding.** At a history of
 the one-packet game whose binding event `event` of `who` has no accepted
 handle, and whose recall of `who` holds an entry emitting the commitment of
 `event` to `candidate`, one protocol transition installs, if anything, that
 candidate at the event. -/
-theorem onePacket_accepted_new {control next : (application setup leaks).Control}
-    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+theorem onePacket_accepted_new {control next : (application setup runtime leaks).Control}
+    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    {who : Player} {entry : (application setup leaks).PlayerEntry}
+    {who : Player} {entry : (application setup runtime leaks).PlayerEntry}
     {message : Message Player (WitnessedPacket (graph setup))}
-    (records : RecordsEntry setup leaks who entry (some control))
+    (records : RecordsEntry setup runtime leaks who entry (some control))
     (emitted : entry.emitted = some message) (sender : message.sender = who)
     {event : (graph setup).EventId} {candidate : Handle (graph setup)}
     (call : message.payload.call = .commitment event candidate)
     (owned : (graph setup).actor? event = some who)
     (vacant : control.execution.application.accepted (.inr event) = none)
-    (joint : Player → Option (application setup leaks).Action)
-    (reached : some next ∈ ((application setup leaks).transition (initialLaw setup) horizon
+    (joint : Player → Option (application setup runtime leaks).Action)
+    (reached : some next ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
       scheduler (some control) joint).support) :
     ∀ handle, next.execution.application.accepted (.inr event) = some handle →
       handle = candidate := by
   intro installed filled
-  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) :=
-    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
   have facts := legalFacts setup leaks horizon scheduler _ rawTrace
   have unchanged (same : next.execution.application.accepted (.inr event) =
@@ -81,7 +82,7 @@ theorem onePacket_accepted_new {control next : (application setup leaks).Control
   | some responder =>
       cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp reached)
       exact unchanged (congrFun (congrArg PublicView.accepted
-        ((runtime setup).reactive_respond_application leaks execution responder _).2) _)
+        (runtime.reactive_respond_application leaks execution responder _).2) _)
   | none =>
       cases remaining with
       | zero =>
@@ -104,11 +105,11 @@ theorem onePacket_accepted_new {control next : (application setup leaks).Control
               obtain ⟨updated, chosen, rfl⟩ := PMF.support_map .. ▸ supported
               obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ chosen
               exact unchanged (congrFun
-                (environmentStep_tables (runtime setup) _ _ command changed).1 _)
+                (environmentStep_tables runtime _ _ command changed).1 _)
           | «include» id =>
               simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at supported
               cases (PMF.mem_support_pure_iff _ _).mp supported
-              change (execution.includePending (application setup leaks)
+              change (execution.includePending (application setup runtime leaks)
                 id).application.accepted (.inr event) = some installed at filled
               unfold ReactiveApplication.Execution.includePending
                 MessageNetwork.includePending at filled
@@ -118,7 +119,7 @@ theorem onePacket_accepted_new {control next : (application setup leaks).Control
                   exact absurd (filled.symm.trans vacant) (by simp)
               | some envelope =>
                   simp only [found] at filled
-                  cases acceptedEq : (application setup leaks).handle execution.application
+                  cases acceptedEq : (application setup runtime leaks).handle execution.application
                       envelope with
                   | none =>
                       simp only [acceptedEq, Option.getD_none] at filled
@@ -126,7 +127,7 @@ theorem onePacket_accepted_new {control next : (application setup leaks).Control
                   | some after =>
                       simp only [acceptedEq, Option.getD_some] at filled
                       have handled := reactiveHandle_call acceptedEq
-                      rcases handle_tables_cases (runtime setup) _ _ _ handled with
+                      rcases handle_tables_cases runtime _ _ _ handled with
                         ⟨named, chosen, payloadEq, _, acceptedTable, _⟩ | ⟨acceptedTable, _⟩
                       · change envelope.payload.call = .commitment named chosen at payloadEq
                         by_cases sameEvent : named = event
@@ -135,7 +136,7 @@ theorem onePacket_accepted_new {control next : (application setup leaks).Control
                           cases Option.some.inj filled
                           -- The envelope is the owner's one packet for the event.
                           have envelopeSender : envelope.sender = who := by
-                            have acts := handle_sender_actor (runtime setup) _ _ _ handled named
+                            have acts := handle_sender_actor runtime _ _ _ handled named
                               (by rw [payloadEq]; rfl)
                             exact Option.some.inj (acts.symm.trans owned)
                           have pending := (includePending_found execution.network id envelope
@@ -145,7 +146,7 @@ theorem onePacket_accepted_new {control next : (application setup leaks).Control
                           rw [envelopeSender] at otherMember
                           obtain ⟨earlier, later, split⟩ := records
                           change execution.recall who = _ at split
-                          have output : message ∈ (application setup leaks).outputs
+                          have output : message ∈ (application setup runtime leaks).outputs
                               (execution.recall who) := by
                             rw [split]
                             exact List.mem_filterMap.mpr ⟨entry, by simp, emitted⟩
@@ -154,11 +155,14 @@ theorem onePacket_accepted_new {control next : (application setup leaks).Control
                             rfl
                           have sameId : envelope.id = message.id := by
                             by_contra different
-                            exact onePacket_not_emitsOtherFor bounds trace who named message output
+                            exact onePacket_not_emitsOtherFor (runtime := runtime) bounds trace
+                              who named message output
                               named' other otherMember ⟨envelope, otherEmitted,
                                 envelopeSender.trans sender.symm, by rw [payloadEq]; rfl,
                                 different⟩
-                          rw [← facts.inputs who] at output
+                          have inputRecall : execution.InputRecall
+                              (application setup runtime leaks) := facts.inputs
+                          rw [← inputRecall who] at output
                           have inInputs := (List.mem_filter.mp output).1
                           have sameEnvelope : envelope = message :=
                             (facts.unique.inputs message inInputs).pending envelope pending sameId
@@ -175,14 +179,15 @@ theorem onePacket_accepted_new {control next : (application setup leaks).Control
 response of the one-packet menu is permitted by the count verdict, whose call
 check rejects a malformed packet. -/
 theorem onePacket_not_malformed {who : Player}
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} {response : (application setup leaks).Action}
-    (member : response ∈ bounds.onePacketActions (runtime setup) leaks who past view)
-    {material : (application setup leaks).Submission}
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} {response : (application setup runtime
+      leaks).Action}
+    (member : response ∈ bounds.onePacketActions runtime leaks who past view)
+    {material : (application setup runtime leaks).Submission}
     (submits : response.transmission = some material) (raw : Raw L) :
     material.call.packet ≠ .malformed raw := by
   intro malformed
-  rcases ((bounds.mem_onePacketActions (runtime setup) leaks who past view response).mp
+  rcases ((bounds.mem_onePacketActions runtime leaks who past view response).mp
       member).2 with silent | ⟨sent, transmits, permitted⟩
   · rw [submits] at silent
     cases silent

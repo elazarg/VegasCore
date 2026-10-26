@@ -14,11 +14,12 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup leaks).Scheduler)
+  (scheduler : (application setup runtime leaks).Scheduler)
 
-local notation "N" => onePacketInformation setup leaks bounds horizon scheduler
+local notation "N" => onePacketInformation setup runtime leaks bounds horizon scheduler
 
 open Classical in
 /-- An intended commitment determines a single source policy independently of
@@ -31,35 +32,36 @@ theorem intendedCommitment_sourcePolicy_gain
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ)
     {who : Player} (site : (N).InformationSite who) (choice : (N).Choice who site.1)
-    (atTurn : CommitsAtTurn setup leaks bounds horizon scheduler who site choice)
-    (intended : IntendedCommitment setup leaks bounds horizon scheduler site choice)
-    (decision : setup.intendedModel.IsDecisionInfo who (projectView setup leaks who site.1))
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
+    (atTurn : CommitsAtTurn setup runtime leaks bounds horizon scheduler who site choice)
+    (intended : IntendedCommitment setup runtime leaks bounds horizon scheduler site choice)
+    (decision : setup.intendedModel.IsDecisionInfo who (projectView setup runtime leaks who site.1))
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} (atSite : site.1 = some (past, view))
     {bound : ℝ} (readoutBounded : ∀ readout,
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ bound) :
-    ∃ (sourceChoice : setup.intendedModel.Choice who (projectView setup leaks who site.1))
+    ∃ (sourceChoice : setup.intendedModel.Choice who (projectView setup runtime leaks who site.1))
       (event : (graph setup).EventId) (payload : L.Ty)
       (outputEq : (graph setup).outputLayout event = .binding who payload) (value : L.Val payload),
       sourceChoice.1 = sourceOfValue setup event outputEq value ∧
-      (∃ (response : (application setup leaks).Action)
-        (material : (application setup leaks).Submission) (serial : Nat),
+      (∃ (response : (application setup runtime leaks).Action)
+        (material : (application setup runtime leaks).Submission) (serial : Nat),
         choice.1 = some response ∧ response.transmission = some material ∧
         material.call.packet = .commitment event (who, .prepared serial) ∧
         material.call.candidateAfter who view.application.candidates (.prepared serial) =
           .openable ⟨payload, value⟩ ∧ view.application.publicView.ownTurn? who = some event) ∧
       ∀ (history : (N).InformationHistory who site.1) (point : ProtocolState setup.program),
-        (∀ found, nativeDecodedState setup leaks history.1.state = some found →
+        (∀ found, nativeDecodedState setup runtime leaks history.1.state = some found →
           ∀ player, ¬ ProtocolState.OwesFailure player setup.program found) →
-        nativeDecodedState setup leaks history.1.state = some point →
+        nativeDecodedState setup runtime leaks history.1.state = some point →
         setup.intendedModel.historyGain
             (setup.intendedModel.truncatedRunner (instructionCount setup.program + 1))
             (intendedReadoutExclusion setup parameter utility excludedPayoff)
             (payoffComponent setup)
-            assessment (projectedSite setup leaks decision,
-              (assessment.strategy who).commit (projectView setup leaks who site.1) sourceChoice)
-            (replayProjection setup leaks bounds horizon scheduler
-              (projectedSite setup leaks decision) site atSite rfl history) =
+            assessment (projectedSite setup runtime leaks decision,
+              (assessment.strategy who).commit (projectView setup runtime leaks who site.1)
+                sourceChoice)
+            (replayProjection setup runtime leaks bounds horizon scheduler
+              (projectedSite setup runtime leaks decision) site atSite rfl history) =
           expect (ProtocolState.step setup.program point (fun _ => sourceChoice.1))
               (sourcePointValue setup parameter utility excludedPayoff
                 (setup.intendedOpeningProfile assessment.strategy) who) -
@@ -84,13 +86,13 @@ theorem intendedCommitment_sourcePolicy_gain
     rw [packet] at submitted
     exact (Option.some.inj submitted).symm
   subst turnEvent
-  let sourceChoice : setup.intendedModel.Choice who (projectView setup leaks who site.1) :=
+  let sourceChoice : setup.intendedModel.Choice who (projectView setup runtime leaks who site.1) :=
     ⟨sourceOfValue setup event outputEq value, offered⟩
   refine ⟨sourceChoice, event, payload, outputEq, value, rfl,
     ⟨response, material, serial, selected, sends, packet, after, turn⟩, ?_⟩
   rintro ⟨start, observed⟩ point regular decoded
-  have observedState : (application setup leaks).observe who start.state = site.1 :=
-    ((bounds.onePacketMenu (runtime setup) leaks).info (initialLaw setup) horizon scheduler who
+  have observedState : (application setup runtime leaks).observe who start.state = site.1 :=
+    ((bounds.onePacketMenu runtime leaks).info (initialLaw setup) horizon scheduler who
       start.trace).symm.trans observed
   rcases state : start.state with _ | ⟨remaining, actor, execution⟩
   · rw [state] at decoded
@@ -112,19 +114,21 @@ theorem intendedCommitment_sourcePolicy_gain
   have pointDecoded : decodedPoint setup execution.application.config = some point := decoded
   have acts : ProtocolView.actor who setup.program (ProtocolState.observe who setup.program point) =
       some who := (decodedPoint_actor who ready pointDecoded).trans owned
-  obtain ⟨replay, replayed⟩ := intendedHistory?_isSome_of_debtFree wellFormed start.trace _ state
+  obtain ⟨replay, replayed⟩ := intendedHistory?_isSome_of_debtFree (runtime := runtime) wellFormed
+    start.trace _ state
     regular
-  have projected := replayProjection_eq (setup := setup) (leaks := leaks) (bounds := bounds)
+  have projected := replayProjection_eq (runtime := runtime) (setup := setup) (leaks := leaks)
+    (bounds := bounds)
     (horizon := horizon) (scheduler := scheduler)
-    (sourceSite := projectedSite setup leaks decision) atSite rfl ⟨start, observed⟩ replayed
-  have replayState := intendedHistory?_state start.trace replayed
+    (sourceSite := projectedSite setup runtime leaks decision) atSite rfl ⟨start, observed⟩ replayed
+  have replayState := intendedHistory?_state (runtime := runtime) start.trace replayed
   rw [state] at replayState
-  have projectedState : (replayProjection setup leaks bounds horizon scheduler
-      (projectedSite setup leaks decision) site atSite rfl ⟨start, observed⟩).1.state =
+  have projectedState : (replayProjection setup runtime leaks bounds horizon scheduler
+      (projectedSite setup runtime leaks decision) site atSite rfl ⟨start, observed⟩).1.state =
         some point := by
     rw [projected, replayState]
     exact pointDecoded
   exact intendedCommit_historyGain setup parameter utility excludedPayoff wellFormed assessment
-    (projectedSite setup leaks decision) sourceChoice _ projectedState acts readoutBounded
+    (projectedSite setup runtime leaks decision) sourceChoice _ projectedState acts readoutBounded
 
 end Vegas

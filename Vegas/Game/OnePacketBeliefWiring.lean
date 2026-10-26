@@ -32,19 +32,20 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- Operational steps of one profile sequence are operational steps of every
 sequence equal to it, with the same masses and errors. -/
 def OperationalSteps.ofProfilesEq {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
     {profiles other : ℕ → ∀ player,
-      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player}
-    {who : Player} (steps : OperationalSteps setup leaks bounds horizon scheduler sequence
+      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player}
+    {who : Player} (steps : OperationalSteps setup runtime leaks bounds horizon scheduler sequence
       profiles who)
     (same : ∀ n, other n = profiles n) :
-    OperationalSteps setup leaks bounds horizon scheduler sequence other who where
+    OperationalSteps setup runtime leaks bounds horizon scheduler sequence other who where
   mass := steps.mass
   error := steps.error
   mass_nonneg := steps.mass_nonneg
@@ -57,14 +58,14 @@ def OperationalSteps.ofProfilesEq {sequence : ℕ → setup.intendedModel.Behavi
     rw [same n]
     exact steps.component n
 
-variable [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+variable [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
   [Finite setup.intendedProtocol.History]
-  [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History]
+  [Finite (onePacketProtocol setup runtime leaks bounds horizon scheduler).History]
 
 local notation "onePacketN" =>
-  onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 
 /-- **Operational steps of assembled profiles.** For a well-formed setup, at
 the tremble scale over the combined floor of a source sequence to a depth, the
@@ -75,24 +76,29 @@ def assembledOperationalSteps (wellFormed : setup.WellFormed)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     (depth : ℕ)
     (scaleEq : ∀ n, scale n = trembleScale
-      (combinedFloor setup leaks bounds horizon scheduler (sequence n)) depth n)
+      (combinedFloor setup runtime leaks bounds horizon scheduler (sequence n)) depth n)
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
-    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+      scale_pos
       scale_le_one weights targetSequence)
     (who : Player) :
-    OperationalSteps setup leaks bounds horizon scheduler sequence
+    OperationalSteps setup runtime leaks bounds horizon scheduler sequence
       (fun n => (targetSequence n).strategy) who :=
-  have floorPos := fun n => combinedFloor_pos setup leaks bounds horizon scheduler (sequence n)
-  have floorLe := fun n => combinedFloor_le_one setup leaks bounds horizon scheduler (sequence n)
-  OperationalSteps.ofProfilesEq
-    (certificateOperationalSteps wellFormed sequence scale scale_pos scale_le_one
+  have floorPos := fun n => combinedFloor_pos setup runtime leaks bounds horizon scheduler
+    (sequence n)
+  have floorLe := fun n => combinedFloor_le_one setup runtime leaks bounds horizon scheduler
+    (sequence n)
+  OperationalSteps.ofProfilesEq (runtime := runtime)
+    (certificateOperationalSteps (runtime := runtime) wellFormed sequence scale scale_pos
+      scale_le_one
       (fun n => (scaleEq n).trans_le (trembleScale_le_quarter (floorPos n).le (floorLe n)))
-      (fun n => combinedFloor setup leaks bounds horizon scheduler (sequence n)) floorPos
-      (fun n => combinedFloor_le_contentFloor setup leaks bounds horizon scheduler (sequence n))
+      (fun n => combinedFloor setup runtime leaks bounds horizon scheduler (sequence n)) floorPos
+      (fun n => combinedFloor_le_contentFloor setup runtime leaks bounds horizon scheduler
+        (sequence n))
       covers capacity weights who
       (by
         simp only [scaleEq]
@@ -111,67 +117,77 @@ def OnePacketBeliefInputs.ofCertificate (wellFormed : setup.WellFormed)
     {scale : ℕ → ℝ} {scale_pos : ∀ n, 0 < scale n} {scale_le_one : ∀ n, scale n ≤ 1}
     (depth : ℕ)
     (scaleEq : ∀ n, scale n = trembleScale
-      (combinedFloor setup leaks bounds horizon scheduler (sequence n)) depth n)
+      (combinedFloor setup runtime leaks bounds horizon scheduler (sequence n)) depth n)
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     {slots : Nat}
-    {weights : ℕ → ∀ p, PMF (OnePacketPart setup leaks bounds horizon scheduler slots p)}
+    {weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p)}
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
-    (assembled : OnePacketAssembled setup leaks bounds horizon scheduler sequence scale scale_pos
+    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+      scale_pos
       scale_le_one weights targetSequence)
     {who : Player} {site : (onePacketN).InformationSite who}
     {sourceSite : setup.intendedModel.InformationSite who}
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView}
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView}
     (decision : site.1 = some (past, view))
-    (projected : sourceSite.1 = projectView setup leaks who site.1)
+    (projected : sourceSite.1 = projectView setup runtime leaks who site.1)
     (slack : ℝ) (slack_nonneg : 0 ≤ slack)
     (ownIntended : ∀ n (history : (onePacketN).InformationHistory who site.1),
-      RegularTrace setup leaks bounds horizon scheduler (sequence n) who history.1.trace →
-      OwnCompletionsIntended (bounds := bounds) (horizon := horizon) (scheduler := scheduler) who
+      RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who history.1.trace →
+      OwnCompletionsIntended (runtime := runtime) (bounds := bounds) (horizon := horizon)
+        (scheduler := scheduler) who
         history.1.trace)
     (fiberMass : ℕ → ℝ)
-    (fiber : ∀ n point, ∑ history with RegularTrace setup leaks bounds horizon scheduler
+    (fiber : ∀ n point, ∑ history with RegularTrace setup runtime leaks bounds horizon scheduler
         (sequence n) who history.1.trace ∧
-        replayProjection setup leaks bounds horizon scheduler sourceSite site decision projected
+        replayProjection setup runtime leaks bounds horizon scheduler sourceSite site decision
+          projected
           history = point,
-      operationalWeight setup leaks who
-        (roundOrResponseMass (scheduler := scheduler)
-          (stepResponse bounds (keyWeights setup leaks bounds horizon scheduler (weights n))
+      operationalWeight setup runtime leaks who
+        (roundOrResponseMass (runtime := runtime) (scheduler := scheduler)
+          (stepResponse (runtime := runtime) bounds (keyWeights setup runtime leaks bounds horizon
+            scheduler (weights n))
             (scale n)))
-        (operationalRecord setup leaks bounds horizon scheduler history.1.trace) = fiberMass n)
+        (operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) =
+          fiberMass n)
     (counterpart : ℕ → (onePacketN).InformationHistory who site.1 →
       (onePacketN).InformationHistory who site.1)
     (commonWeight : ℕ → (onePacketN).InformationHistory who site.1 → ℝ)
-    (counterpart_regular : ∀ n history, ¬ RegularTrace setup leaks bounds horizon scheduler
+    (counterpart_regular : ∀ n history, ¬ RegularTrace setup runtime leaks bounds horizon scheduler
         (sequence n) who history.1.trace →
-      RegularTrace setup leaks bounds horizon scheduler (sequence n) who
+      RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
         (counterpart n history).1.trace)
-    (irregular_le : ∀ n history, ¬ RegularTrace setup leaks bounds horizon scheduler (sequence n)
+    (irregular_le : ∀ n history, ¬ RegularTrace setup runtime leaks bounds horizon scheduler
+      (sequence n)
         who history.1.trace →
       ((onePacketN).historyReachWeight (targetSequence n).strategy history.1).toReal ≤
         scale n ^ 3 * commonWeight n history)
-    (counterpart_ge : ∀ n history, ¬ RegularTrace setup leaks bounds horizon scheduler
+    (counterpart_ge : ∀ n history, ¬ RegularTrace setup runtime leaks bounds horizon scheduler
         (sequence n) who history.1.trace →
-      scale n ^ 2 * combinedFloor setup leaks bounds horizon scheduler (sequence n) ^ depth *
+      scale n ^ 2 * combinedFloor setup runtime leaks bounds horizon scheduler (sequence n) ^
+        depth *
           commonWeight n history ≤
         slack * ((onePacketN).historyReachWeight (targetSequence n).strategy
           (counterpart n history).1).toReal) :
-    OnePacketBeliefInputs setup leaks bounds horizon scheduler sequence targetSequence site
+    OnePacketBeliefInputs setup runtime leaks bounds horizon scheduler sequence targetSequence site
       sourceSite decision projected where
-  steps := assembledOperationalSteps wellFormed sequence scale scale_pos scale_le_one depth
+  steps := assembledOperationalSteps (runtime := runtime) wellFormed sequence
+    scale scale_pos scale_le_one depth
     scaleEq covers capacity weights assembled who
   scale := scale
-  floors n := combinedFloor setup leaks bounds horizon scheduler (sequence n)
+  floors n := combinedFloor setup runtime leaks bounds horizon scheduler
+    (sequence n)
   depth := depth
   slack := slack
-  floors_pos n := combinedFloor_pos setup leaks bounds horizon scheduler (sequence n)
+  floors_pos n := combinedFloor_pos setup runtime leaks bounds horizon
+    scheduler (sequence n)
   scale_nonneg n := (scale_pos n).le
   negligible := by
     simp only [scaleEq]
     exact tendsto_trembleScale_div_pow _
-      (fun n => combinedFloor_pos setup leaks bounds horizon scheduler (sequence n))
-      (fun n => combinedFloor_le_one setup leaks bounds horizon scheduler (sequence n))
+      (fun n => combinedFloor_pos setup runtime leaks bounds horizon scheduler (sequence n))
+      (fun n => combinedFloor_le_one setup runtime leaks bounds horizon scheduler (sequence n))
   slack_nonneg := slack_nonneg
   ownIntended := ownIntended
   fiberMass := fiberMass

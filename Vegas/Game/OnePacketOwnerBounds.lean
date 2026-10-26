@@ -30,6 +30,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
 
 /-- Every openable candidate of the catalogue is within the message bounds. -/
 def CandidatesWithin (bounds : MessageBounds (graph setup))
@@ -127,13 +128,13 @@ variable {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph 
 
 /-- Inclusion and environment service create no openable candidate. -/
 private theorem openable_of_environmentStep
-    (execution next : (application setup leaks).Execution)
-    (command : (application setup leaks).Command)
-    (reached : next ∈ (execution.environmentStep (application setup leaks) command).support)
+    (execution next : (application setup runtime leaks).Execution)
+    (command : (application setup runtime leaks).Command)
+    (reached : next ∈ (execution.environmentStep (application setup runtime leaks) command).support)
     (handle : Handle (graph setup)) (raw : Raw L)
     (found : next.application.candidates.lookup handle = .openable raw) :
     execution.application.candidates.lookup handle = .openable raw := by
-  let app := application setup leaks
+  let app := application setup runtime leaks
   cases command with
   | wait =>
       simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
@@ -164,13 +165,13 @@ private theorem openable_of_environmentStep
                   simp [EventGraphRuntime.handle] at call
               | opening named other value =>
                   rw [packet] at call
-                  have tables := handle_resolution_tables (runtime setup)
+                  have tables := handle_resolution_tables runtime
                     execution.application next _ (fun _ _ same => by cases same) call
                   change next.candidates.lookup handle = .openable raw at found
                   rwa [tables.2] at found
               | commitment named other =>
                   rw [packet] at call
-                  have tables := handle_commitment_tables (runtime setup)
+                  have tables := handle_commitment_tables runtime
                     execution.application next _ named other call
                   change next.candidates.lookup handle = .openable raw at found
                   rw [tables.1] at found
@@ -179,13 +180,13 @@ private theorem openable_of_environmentStep
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       change state.candidates.lookup handle = .openable raw at found
-      rwa [(environmentStep_tables (runtime setup) execution.application state command
+      rwa [(environmentStep_tables runtime execution.application state command
         changed).2] at found
 
 variable {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
-/-- Every initial state of the default runtime has its openable candidates
+/-- Every initial state of the supplied runtime has its openable candidates
 within the bounds when the bounds cover the initial binding inputs. -/
 private theorem candidatesWithin_initial (covers : bounds.CoversInputValues)
     (state : EventGraphRuntime.State (graph setup)) (member : state ∈ (initialLaw setup).support) :
@@ -251,15 +252,15 @@ variable (leaks bounds) in
 /-- Openable candidates stay within the bounds along every one-packet response
 and every environment step. -/
 private theorem candidatesWithin_serviceInvariant :
-    (bounds.onePacketMenu (runtime setup) leaks).ServiceInvariant scheduler
+    (bounds.onePacketMenu runtime leaks).ServiceInvariant scheduler
       (fun execution => CandidatesWithin bounds execution.application) where
   respond execution who action valid member := by
     rcases action with ⟨transmission⟩
     cases transmission with
     | none => exact valid
     | some material =>
-        have allowed := ((bounds.menu_mem (runtime setup) leaks who _ _ _).mp
-          ((bounds.mem_onePacketActions (runtime setup) leaks who _ _ _).mp member).1).1.1.2
+        have allowed := ((bounds.menu_mem runtime leaks who _ _ _).mp
+          ((bounds.mem_onePacketActions runtime leaks who _ _ _).mp member).1).1.1.2
         intro handle raw found
         change (submitStep (material.call.register execution.application who) who
           material.call.packet).candidates.lookup handle = .openable raw at found
@@ -270,18 +271,20 @@ private theorem candidatesWithin_serviceInvariant :
           exact allowed
         · exact valid handle raw old
   environment execution next command valid _ reached handle raw found :=
-    valid handle raw (openable_of_environmentStep execution next command reached handle raw found)
+    valid handle raw (openable_of_environmentStep (runtime := runtime) execution next command
+      reached handle raw found)
 
 /-- **Openable candidates are within the bounds.** Along every history of the
 one-packet game, every openable candidate of the catalogue is within the message
 bounds, when the bounds cover every value of every initial binding input. -/
 theorem candidate_mem_values_of_trace (covers : bounds.CoversInputValues)
-    {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     {handle : Handle (graph setup)} {raw : Raw L}
     (found : control.execution.application.candidates.lookup handle = .openable raw) :
     raw ∈ bounds.values :=
-  (candidatesWithin_serviceInvariant leaks bounds).history (initialLaw setup) horizon
+  (candidatesWithin_serviceInvariant (runtime := runtime) leaks bounds).history (initialLaw setup)
+    horizon
     (fun state member => candidatesWithin_initial covers state member) trace handle raw found
 
 /-- **The owner swap between two views of one-packet histories keeps the
@@ -289,17 +292,18 @@ bounds.** For two histories of the one-packet game, the owner swap between the
 views of `who` at their end states moves values within the message bounds, when
 the bounds cover every value of every initial binding input. -/
 theorem ownerSwap_bounded (covers : bounds.CoversInputValues) (who : Player)
-    {firstControl secondControl : (application setup leaks).Control}
-    (firstTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
+    {firstControl secondControl : (application setup runtime leaks).Control}
+    (firstTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
       (some firstControl))
-    (secondTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace
+    (secondTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
       (some secondControl)) :
     ∀ handle raw, raw ∈ bounds.values →
-      (ownerSwap who (firstControl.execution.observe (application setup leaks) who).application
-        (secondControl.execution.observe (application setup leaks) who).application).raw
+      (ownerSwap who (firstControl.execution.observe (application setup runtime leaks)
+        who).application
+        (secondControl.execution.observe (application setup runtime leaks) who).application).raw
           handle raw ∈ bounds.values :=
   ownerSwap_bounded_of_candidates who _ _
-    (fun _ _ found => candidate_mem_values_of_trace covers firstTrace found)
-    (fun _ _ found => candidate_mem_values_of_trace covers secondTrace found)
+    (fun _ _ found => candidate_mem_values_of_trace (runtime := runtime) covers firstTrace found)
+    (fun _ _ found => candidate_mem_values_of_trace (runtime := runtime) covers secondTrace found)
 
 end Vegas

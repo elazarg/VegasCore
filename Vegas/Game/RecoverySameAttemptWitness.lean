@@ -13,7 +13,8 @@ open SourceProgram EventGraph EventGraphRuntime Interaction GameTheory.Protocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L)) (mode : ExecutionMode)
+  (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup)) (mode : ExecutionMode)
   (runtime : EventGraphRuntime (serviceGraph setup mode))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (serviceGraph setup mode)))
   (bounds : MessageBounds (serviceGraph setup mode))

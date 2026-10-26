@@ -20,11 +20,12 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- A genuine recovery endpoint with at least one permanent public exclusion. -/
 def RecoveryPublicExclusion :
-    (recoveryApplication (runtime setup) leaks).ProtocolState → Prop
+    (recoveryApplication runtime leaks).ProtocolState → Prop
   | none => False
   | some control => control.execution.application.excluded ≠ ∅
 

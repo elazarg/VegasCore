@@ -8,7 +8,7 @@ A prepared slot of a player stops being fresh only when that player submits a
 commitment naming it: registration and freezing touch only the sender's own
 handle, inclusion freezes only a handle whose commitment was already submitted,
 and no other step changes the catalogue. So at every legal history of the
-default runtime, under arbitrary responses and every scheduler, a player's
+supplied runtime, under arbitrary responses and every scheduler, a player's
 prepared slot is fresh exactly when none of its submitted packets commits to
 it (`Vegas.preparedFresh_history`). Submitted packets are public inputs, so the
 canonical slot a player's decisions use is a function of the public view and
@@ -108,19 +108,21 @@ theorem slotCommitted_append (inputs : List (Message Player (WitnessedPacket gra
 
 end Generic
 
-section Default
+section Runtime
 
 variable {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- A submission keeps freshness of prepared slots in step with the inputs. -/
 theorem preparedFresh_submit (state : EventGraphRuntime.State (graph setup))
     (inputs : List (Message Player (WitnessedPacket (graph setup)))) (who : Player)
-    (material : (application setup leaks).Submission)
+    (material : (application setup runtime leaks).Submission)
     (message : Message Player (WitnessedPacket (graph setup)))
     (sender : message.sender = who) (call : message.payload.call = material.call.packet)
     (fresh : PreparedFresh state inputs) :
-    PreparedFresh ((application setup leaks).submit state who material) (inputs ++ [message]) := by
+    PreparedFresh ((application setup runtime leaks).submit state who material) (inputs ++
+      [message]) := by
   intro owner serial
   rw [slotCommitted_append]
   by_cases same : owner = who
@@ -177,7 +179,7 @@ theorem preparedFresh_submit (state : EventGraphRuntime.State (graph setup))
             cases otherCall
         · intro uncommitted committed
           exact uncommitted (Or.inl committed)
-  · have unchanged : ((application setup leaks).submit state who material).candidates.lookup
+  · have unchanged : ((application setup runtime leaks).submit state who material).candidates.lookup
         (owner, .prepared serial) = state.candidates.lookup (owner, .prepared serial) := by
       change (submitStep (material.call.register state who) who
         material.call.packet).candidates.lookup (owner, .prepared serial) = _
@@ -199,9 +201,9 @@ theorem preparedFresh_submit (state : EventGraphRuntime.State (graph setup))
 
 /-- A scheduler command keeps every prepared slot's meaning: inclusion freezes
 only the handle of a commitment already submitted, which is no longer fresh. -/
-theorem environment_lookup_prepared (execution next : (application setup leaks).Execution)
-    (command : (application setup leaks).Command)
-    (reached : next ∈ (execution.environmentStep (application setup leaks) command).support)
+theorem environment_lookup_prepared (execution next : (application setup runtime leaks).Execution)
+    (command : (application setup runtime leaks).Command)
+    (reached : next ∈ (execution.environmentStep (application setup runtime leaks) command).support)
     (facts : SettledFacts setup leaks execution)
     (fresh : PreparedFresh execution.application execution.network.inputs)
     (owner : Player) (serial : Nat) :
@@ -223,13 +225,13 @@ theorem environment_lookup_prepared (execution next : (application setup leaks).
       rfl
   | application command =>
       obtain ⟨changed, _⟩ := applicationStep_facts execution next command reached
-      rw [(environmentStep_tables (runtime setup) _ _ command changed).2]
+      rw [(environmentStep_tables runtime _ _ command changed).2]
   | «include» id =>
       unfold ReactiveApplication.Execution.environmentStep at reached
       rw [PMF.support_map] at reached
       obtain ⟨updated, supported, rfl⟩ := reached
       cases (PMF.mem_support_pure_iff _ _).mp supported
-      change (execution.includePending (application setup leaks)
+      change (execution.includePending (application setup runtime leaks)
         id).application.candidates.lookup _ = _
       cases found : execution.network.lookup id with
       | none =>
@@ -237,13 +239,15 @@ theorem environment_lookup_prepared (execution next : (application setup leaks).
             found]
       | some message =>
           obtain ⟨identified, present, _⟩ := includePending_found execution.network id message found
-          cases accepted : (application setup leaks).handle execution.application message with
+          cases accepted : (application setup runtime leaks).handle execution.application message
+            with
           | none =>
               simp only [ReactiveApplication.Execution.includePending,
                 MessageNetwork.includePending, found, accepted, Option.getD_none]
           | some after =>
               have applicationEq :
-                  (execution.includePending (application setup leaks) id).application = after := by
+                  (execution.includePending (application setup runtime leaks) id).application =
+                    after := by
                 simp only [ReactiveApplication.Execution.includePending,
                   MessageNetwork.includePending, found, accepted, Option.getD_some]
               rw [applicationEq]
@@ -254,12 +258,12 @@ theorem environment_lookup_prepared (execution next : (application setup leaks).
                   simp [handle] at call
               | opening event handle raw =>
                   rw [packet] at call
-                  rw [(handle_resolution_tables (runtime setup) _ _ _
+                  rw [(handle_resolution_tables runtime _ _ _
                     (fun _ _ same => by cases same) call).2]
               | commitment event handle =>
                   rw [packet] at call
                   obtain ⟨frozen, _, handleOwner⟩ :=
-                    handle_commitment_tables (runtime setup) _ _ _ event handle call
+                    handle_commitment_tables runtime _ _ _ event handle call
                   rw [frozen]
                   by_cases same : (owner, (Slot.prepared serial : CandidateSlot (graph setup))) =
                     handle
@@ -272,37 +276,41 @@ theorem environment_lookup_prepared (execution next : (application setup leaks).
                   · exact CommitmentCandidates.lookup_freeze_other _ _ _ same
 
 /-- Prepared freshness, with the settled facts it rests on. -/
-def FreshFacts (execution : (application setup leaks).Execution) : Prop :=
+def FreshFacts (execution : (application setup runtime leaks).Execution) : Prop :=
   SettledFacts setup leaks execution ∧
     PreparedFresh execution.application execution.network.inputs
 
-theorem freshFacts_serviceInvariant (scheduler : (application setup leaks).Scheduler) :
-    (application setup leaks).ServiceInvariant scheduler FreshFacts where
+theorem freshFacts_serviceInvariant (scheduler : (application setup runtime leaks).Scheduler) :
+    (application setup runtime leaks).ServiceInvariant scheduler
+      (FreshFacts (runtime := runtime)) where
   respond execution who action valid := by
     refine ⟨settledFacts_respond execution valid.1 who action, ?_⟩
     rcases action with ⟨transmission⟩
     cases transmission with
     | none => exact valid.2
     | some material =>
-        exact preparedFresh_submit execution.application execution.network.inputs who material _
+        exact preparedFresh_submit (runtime := runtime) execution.application
+          execution.network.inputs who material _
           rfl rfl valid.2
   environment execution next command valid _ reached := by
     refine ⟨settledFacts_environment execution next command valid.1 reached, ?_⟩
     intro owner serial
-    rw [environment_lookup_prepared execution next command reached valid.1 valid.2 owner serial,
+    rw [environment_lookup_prepared (runtime := runtime) execution next command reached valid.1
+      valid.2 owner serial,
       (environmentStep_shape setup leaks execution next command reached).1]
     exact valid.2 owner serial
 
 /-- **Prepared freshness at every history.** At every legal history of the
-default runtime from its initial law, under arbitrary responses and every
+supplied runtime from its initial law, under arbitrary responses and every
 scheduler, a prepared slot is fresh exactly when no submitted packet of its
 owner commits to it. -/
-theorem preparedFresh_history (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
-    {control : (application setup leaks).Control}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+theorem preparedFresh_history (horizon : Nat) (scheduler : (application setup runtime
+  leaks).Scheduler)
+    {control : (application setup runtime leaks).Control}
+    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some control)) :
     PreparedFresh control.execution.application control.execution.network.inputs :=
-  ((freshFacts_serviceInvariant scheduler).history (initialLaw setup) horizon
+  ((freshFacts_serviceInvariant (runtime := runtime) scheduler).history (initialLaw setup) horizon
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       refine ⟨settledFacts_initial _, fun owner serial => ?_⟩
@@ -312,6 +320,6 @@ theorem preparedFresh_history (horizon : Nat) (scheduler : (application setup le
       simp [SlotCommitted])
     trace).2
 
-end Default
+end Runtime
 
 end Vegas

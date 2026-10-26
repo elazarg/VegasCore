@@ -56,7 +56,8 @@ theorem rosterPlan_no_wire (setup : Setup (Player := Player) (L := L))
 def rosterScheduler (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
-    (network : (runtime setup).NetworkPolicy leaks) : (application setup leaks).Scheduler :=
+    (network : (runtime setup).NetworkPolicy leaks) : (application setup (Vegas.runtime setup)
+      leaks).Scheduler :=
   fun past view => match (rosterPlan setup rosters)[past.length]? with
     | none => PMF.pure .wait
     | some instruction => (runtime setup).interactionInstruction leaks network past view instruction
@@ -68,7 +69,7 @@ instance rosterScheduler_finiteNature (setup : Setup (Player := Player) (L := L)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     [leaks.FiniteSupport] (rosters : (graph setup).EventId → List Player)
     (network : (runtime setup).NetworkPolicy leaks) :
-    (application setup leaks).FiniteNature (initialLaw setup)
+    (application setup (Vegas.runtime setup) leaks).FiniteNature (initialLaw setup)
       (rosterScheduler setup leaks rosters network) where
   initial_finite := by
     rw [initialLaw, serviceInitialLaw, PMF.support_map]

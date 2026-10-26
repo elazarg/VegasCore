@@ -16,41 +16,43 @@ section CountedCompletion
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
-local notation "menu" => bounds.onePacketMenu (runtime setup) leaks
-local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
-local notation "onePacketN" => onePacketModel setup leaks bounds (initialLaw setup) horizon
+local notation "menu" => bounds.onePacketMenu runtime leaks
+local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+local notation "onePacketN" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
   scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
   scheduler
 local notation "ClearState" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
+  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
+    native ∅))
 
 /-- A first public failure cannot precede completion of the current
 pending event under counted clear terminal completeness. -/
 theorem pending_until_eq_clearUntil
-    (terminalCompletes : ∀ (final : (application setup leaks).Control),
+    (terminalCompletes : ∀ (final : (application setup runtime leaks).Control),
       ((menu).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
       ExclusionEvidence 0 ∅ (⟨final.execution.application, ∅⟩ : RecoveryState (graph setup)) →
-      (application setup leaks).terminal (some final) →
+      (application setup runtime leaks).terminal (some final) →
       final.execution.application.config.cut.Terminal)
     (certificate : (E).WellFoundedHistories) (players : ∀ player, (N).BehavioralPolicy player)
-    (start : (E).History) {control : (application setup leaks).Control}
+    (start : (E).History) {control : (application setup runtime leaks).Control}
     (current : start.state = some control) {rank : Nat}
     (ordered : control.execution.application.config.cut.IsPrefix rank)
     (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅))
     (event : (graph setup).EventId)
     (ready : control.execution.application.config.cut.Ready event) :
     (N).runBehavioralUntil certificate players
-        (LateStopped setup leaks bounds horizon scheduler rank) start =
+        (LateStopped setup runtime leaks bounds horizon scheduler rank) start =
       (N).runBehavioralUntil certificate players
-        (fun final => LateStopped setup leaks bounds horizon scheduler rank final ∨
+        (fun final => LateStopped setup runtime leaks bounds horizon scheduler rank final ∨
           ¬ ClearState final.state) start := by
   classical
-  let late := LateStopped setup leaks bounds horizon scheduler rank
+  let late := LateStopped setup runtime leaks bounds horizon scheduler rank
   let early := fun final : (E).History => late final ∨ ¬ ClearState final.state
   have splitting : ∀ history,
       (N).runBehavioralUntil certificate players late history =
@@ -76,7 +78,8 @@ theorem pending_until_eq_clearUntil
     _ = ((N).runBehavioralUntil certificate players early start).bind PMF.pure := by
       apply bind_congr_on_support
       intro final member
-      obtain ⟨anchor, state, _completed, nextPrefix, _seen⟩ := pending_stop_completed
+      obtain ⟨anchor, state, _completed, nextPrefix, _seen⟩ := pending_stop_completed (runtime :=
+        runtime)
         terminalCompletes true certificate players start current ordered clear event ready
         final member
       exact (N).runBehavioralUntil_of_stopped certificate players ⟨_, state, nextPrefix⟩
@@ -87,6 +90,7 @@ end CountedCompletion
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)}
   {initial : PMF (RecoveryState (graph setup))}
@@ -94,36 +98,39 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
     state = (RecoveryState.mk (State.initial inputs) ∅ : RecoveryState (graph setup)))
   (nativeLaw : initial.map RecoveryState.native = initialLaw setup)
   {horizon : Nat}
-  {recoveryScheduler : (recoveryApplication (runtime setup) leaks).Scheduler}
-  (completes : Recovery.CompletesPlay (runtime setup) leaks initial horizon recoveryScheduler)
+  {recoveryScheduler : (recoveryApplication runtime leaks).Scheduler}
+  (completes : Recovery.CompletesPlay runtime leaks initial horizon recoveryScheduler)
 
-local notation "scheduler" => RecoveryProjection.nativeScheduler (runtime setup) leaks
+local notation "scheduler" => RecoveryProjection.nativeScheduler runtime leaks
   recoveryScheduler
-local notation "menu" => bounds.onePacketMenu (runtime setup) leaks
-local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+local notation "menu" => bounds.onePacketMenu runtime leaks
+local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
+  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
+    native ∅))
 
 include initialized nativeLaw completes in
 /-- The first public failure cannot precede completion of the pending source
 event. Adding that stopping condition therefore preserves its entire phase law. -/
 theorem recovery_pending_until_eq_clearUntil
     (certificate : (E).WellFoundedHistories) (players : ∀ player, (N).BehavioralPolicy player)
-    (start : (E).History) {control : (application setup leaks).Control}
+    (start : (E).History) {control : (application setup runtime leaks).Control}
     (current : start.state = some control) {rank : Nat}
     (ordered : control.execution.application.config.cut.IsPrefix rank)
     (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅))
     (event : (graph setup).EventId)
     (ready : control.execution.application.config.cut.Ready event) :
     (N).runBehavioralUntil certificate players
-        (LateStopped setup leaks bounds horizon scheduler rank) start =
+        (LateStopped setup runtime leaks bounds horizon scheduler rank) start =
       (N).runBehavioralUntil certificate players
-        (fun final => LateStopped setup leaks bounds horizon scheduler rank final ∨
+        (fun final => LateStopped setup runtime leaks bounds horizon scheduler rank final ∨
           ¬ Clear final.state) start := by
-  apply pending_until_eq_clearUntil ?_ certificate players start current ordered clear event ready
-  exact Recovery.CompletesPlay.clear_counted_native bounds initialized nativeLaw completes
+  apply pending_until_eq_clearUntil (runtime := runtime) ?_ certificate players start current
+    ordered clear event ready
+  exact Recovery.CompletesPlay.clear_counted_native (runtime := runtime) bounds initialized
+    nativeLaw completes
 
 
 end Vegas

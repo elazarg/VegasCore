@@ -36,7 +36,7 @@ event's roster, and the event's readiness. -/
 structure DecisionPhase (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player) (who : Player)
-    (execution : (application setup leaks).Execution) where
+    (execution : (application setup (Vegas.runtime setup) leaks).Execution) where
   event : (graph setup).EventId
   slot : Nat
   selected : (rosters event)[slot]? = some who
@@ -49,7 +49,7 @@ namespace DecisionPhase
 variable {setup : Setup (Player := Player) (L := L)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {rosters : (graph setup).EventId → List Player} {who : Player}
-  {execution : (application setup leaks).Execution}
+  {execution : (application setup (Vegas.runtime setup) leaks).Execution}
   (phase : DecisionPhase setup leaks rosters who execution)
 
 /-- The phase's event is the only ready event. -/
@@ -104,7 +104,8 @@ namespace TimedApproximant
 variable {service : SourceServiceSpec Player L} (approx : TimedApproximant service)
 
 /-- The native timed compilation of the approximant's source profile. -/
-abbrev players : Player → (application service.setup service.leaks).Policy :=
+abbrev players : Player → (application service.setup (runtime service.setup)
+  service.leaks).Policy :=
   sourceServiceTimedPolicy service.setup service.leaks service.rosters approx.timing
     approx.profile
 

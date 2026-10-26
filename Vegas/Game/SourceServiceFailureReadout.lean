@@ -16,21 +16,23 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {profile : BehavioralProfile setup.program}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- A decoded owed failure appears in every existing terminal source readout. -/
 theorem decoded_owesFailure_failedReveals_of_readout
-    (who : Player) (state : (application setup leaks).ProtocolState)
-    (owed : DecodedState setup leaks profile (ProtocolState.OwesFailure who setup.program) state)
+    (who : Player) (state : (application setup runtime leaks).ProtocolState)
+    (owed : DecodedState setup runtime leaks profile (ProtocolState.OwesFailure
+      who setup.program) state)
     (terminal : State L setup.program.terminalCtx)
-    (readout : sourceReadout setup leaks state = some terminal) :
+    (readout : sourceReadout setup runtime leaks state = some terminal) :
     1 ≤ failedReveals setup.program who (publicOutcome setup.program terminal) := by
   cases state with
   | none => exact owed.elim
   | some control =>
       obtain ⟨rank, ⟨residual⟩, decoded⟩ := owed
-      rw [sourceReadout_eq_decode] at readout
+      rw [sourceReadout, serviceSourceReadout_eq_decode] at readout
       have complete := terminal_decode_complete setup.program .sequential
         control.execution.application.config (by rw [readout]; rfl)
       have full := isPrefix_eventCount_of_terminal residual.checkpoint.ordered complete

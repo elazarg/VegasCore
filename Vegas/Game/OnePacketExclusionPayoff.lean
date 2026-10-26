@@ -3,14 +3,14 @@
 import Vegas.Game.SourceServiceDecodedDebt
 import Vegas.Game.IntendedAuditedOutcome
 
-/-! # The exclusion payoff on the default runtime
+/-! # The exclusion payoff on the supplied runtime
 
 Under exclusion a player with a failed reveal receives a fixed exclusion
 payoff, and every other player its utility of the parameter and public outcome
 (`Vegas.SourceProgram.exclusionUtility`). The same payoff is read on terminal
 source stores (`Vegas.exclusionTerminalUtility`), on typed readouts, zero
 without one (`Vegas.exclusionReadoutUtility`), and on native protocol states of
-the default runtime through their typed readout (`Vegas.exclusionBase`). The
+the supplied runtime through their typed readout (`Vegas.exclusionBase`). The
 readout version is the utility on the outcome type shared by the intended game
 (`Vegas.SourceProgram.Setup.protocolReadout`) and the runtime
 (`Vegas.sourceReadout`).
@@ -40,7 +40,8 @@ variable {Player : Type} [DecidableEq Player]
 
 section Payoff
 
-variable (setup : Setup (Player := Player) (L := L)) {Parameter : Type}
+variable (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup)) {Parameter : Type}
   (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
@@ -97,25 +98,25 @@ theorem exclusionReadoutUtility_mem_Icc (lower upper : Player → ℝ)
 
 variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-/-- The exclusion payoff of a native protocol state of the default runtime: the
+/-- The exclusion payoff of a native protocol state of the supplied runtime: the
 exclusion payoff of its typed terminal readout, zero without one. -/
-abbrev exclusionBase : (application setup leaks).ProtocolState → Player → ℝ :=
-  baseUtility setup leaks (exclusionTerminalUtility setup parameter utility excludedPayoff)
+abbrev exclusionBase : (application setup runtime leaks).ProtocolState → Player → ℝ :=
+  baseUtility setup runtime leaks (exclusionTerminalUtility setup parameter utility excludedPayoff)
 
 /-- The native exclusion payoff is the readout payoff of the typed readout. -/
-theorem exclusionBase_eq_readout (state : (application setup leaks).ProtocolState)
+theorem exclusionBase_eq_readout (state : (application setup runtime leaks).ProtocolState)
     (who : Player) :
-    exclusionBase setup parameter utility excludedPayoff leaks state who =
+    exclusionBase setup runtime parameter utility excludedPayoff leaks state who =
       exclusionReadoutUtility setup parameter utility excludedPayoff
-        (sourceReadout setup leaks state) who := rfl
+        (sourceReadout setup runtime leaks state) who := rfl
 
 /-- **Scheduler-independent bounds.** Bounds on the utility and the exclusion
 payoff bound the native exclusion payoff at every protocol state. -/
 theorem exclusionBase_mem_Icc (lower upper : Player → ℝ)
     (lower_le : ∀ outcome who, lower who ≤ utility outcome who)
     (le_upper : ∀ outcome who, utility outcome who ≤ upper who)
-    (state : (application setup leaks).ProtocolState) (who : Player) :
-    exclusionBase setup parameter utility excludedPayoff leaks state who ∈
+    (state : (application setup runtime leaks).ProtocolState) (who : Player) :
+    exclusionBase setup runtime parameter utility excludedPayoff leaks state who ∈
       Set.Icc (min 0 (min (excludedPayoff who) (lower who)))
         (max 0 (max (excludedPayoff who) (upper who))) :=
   exclusionReadoutUtility_mem_Icc setup parameter utility excludedPayoff lower upper lower_le
@@ -129,7 +130,8 @@ theorem owesFailure_stepClosed {setup : Setup (Player := Player) (L := L)} (who 
   fun state joint target owed reached =>
     ProtocolState.owesFailure_step who setup.program state joint target owed reached
 
-variable {setup : Setup (Player := Player) (L := L)} {profile : BehavioralProfile setup.program}
+variable {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)} {profile : BehavioralProfile setup.program}
 
 end Vegas
 
@@ -139,6 +141,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
 
 /-- On every history of the intended game the exclusion payoff of its readout
 is the intended payoff: no reveal of the intended game fails. -/

@@ -26,9 +26,10 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 open Classical in
 /-- **Scaled fibers from a correspondence.** A bijection between the histories
@@ -36,27 +37,30 @@ of two sites keeping regularity and the operational record, and multiplying the
 base weight by `factor`, multiplies each record's regular base weight by
 `factor`. -/
 theorem fiber_of_equiv_scaled {who : Player}
-    [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History]
-    (base : (onePacketProtocol setup leaks bounds horizon scheduler).History → ℝ)
-    (regular : (onePacketProtocol setup leaks bounds horizon scheduler).History → Prop)
-    (first second : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who)
-    (swap : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
+    [Finite (onePacketProtocol setup runtime leaks bounds horizon scheduler).History]
+    (base : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History → ℝ)
+    (regular : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History → Prop)
+    (first second : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationSite who)
+    (swap : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationHistory
+      who
         first.1 ≃
-      (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
+      (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationHistory who
         second.1)
     (regularEq : ∀ history, regular (swap history).1 ↔ regular history.1)
-    (recordEq : ∀ history, operationalRecord setup leaks bounds horizon scheduler
-      (swap history).1.trace = operationalRecord setup leaks bounds horizon scheduler
+    (recordEq : ∀ history, operationalRecord setup runtime leaks bounds horizon scheduler
+      (swap history).1.trace = operationalRecord setup runtime leaks bounds horizon scheduler
         history.1.trace)
     (factor : ℝ) (baseEq : ∀ history, base (swap history).1 = factor * base history.1)
-    (record : List (Option (OperationalState setup leaks))) :
-    ∑' b : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
+    (record : List (Option (OperationalState setup runtime leaks))) :
+    ∑' b : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationHistory
+      who
         second.1, (if regular b.1 ∧
-          operationalRecord setup leaks bounds horizon scheduler b.1.trace = record then
+          operationalRecord setup runtime leaks bounds horizon scheduler b.1.trace = record then
         base b.1 else 0) =
-      factor * ∑' a : (onePacketInformation setup leaks bounds horizon
+      factor * ∑' a : (onePacketInformation setup runtime leaks bounds horizon
         scheduler).InformationHistory who first.1, (if regular a.1 ∧
-          operationalRecord setup leaks bounds horizon scheduler a.1.trace = record then
+          operationalRecord setup runtime leaks bounds horizon scheduler a.1.trace = record then
         base a.1 else 0) := by
   rw [← swap.tsum_eq, ← tsum_mul_left]
   apply tsum_congr
@@ -66,24 +70,27 @@ theorem fiber_of_equiv_scaled {who : Player}
 open Classical in
 /-- **Base agreement from a scaling correspondence.** -/
 theorem baseLawAgrees_of_equiv_scaled {who : Player}
-    [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History]
-    (base : (onePacketProtocol setup leaks bounds horizon scheduler).History → ℝ)
-    (regular : (onePacketProtocol setup leaks bounds horizon scheduler).History → Prop)
-    (first second : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who)
-    (swap : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
+    [Finite (onePacketProtocol setup runtime leaks bounds horizon scheduler).History]
+    (base : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History → ℝ)
+    (regular : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History → Prop)
+    (first second : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationSite who)
+    (swap : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationHistory
+      who
         first.1 ≃
-      (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
+      (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationHistory who
         second.1)
     (regularEq : ∀ history, regular (swap history).1 ↔ regular history.1)
-    (recordEq : ∀ history, operationalRecord setup leaks bounds horizon scheduler
-      (swap history).1.trace = operationalRecord setup leaks bounds horizon scheduler
+    (recordEq : ∀ history, operationalRecord setup runtime leaks bounds horizon scheduler
+      (swap history).1.trace = operationalRecord setup runtime leaks bounds horizon scheduler
         history.1.trace)
     (factor : ℝ) (factor_ne : factor ≠ 0)
     (baseEq : ∀ history, base (swap history).1 = factor * base history.1)
-    (payoff : List (Option (OperationalState setup leaks)) → ℝ) :
-    BaseLawAgrees base regular first second payoff :=
-  baseLawAgrees_of_fibers base regular first second factor factor_ne
-    (fiber_of_equiv_scaled base regular first second swap regularEq recordEq factor baseEq)
+    (payoff : List (Option (OperationalState setup runtime leaks)) → ℝ) :
+    BaseLawAgrees (runtime := runtime) base regular first second payoff :=
+  baseLawAgrees_of_fibers (runtime := runtime) base regular first second factor factor_ne
+    (fiber_of_equiv_scaled (runtime := runtime) base regular first second swap regularEq recordEq
+      factor baseEq)
     payoff
 
 /-- **Base agreement from a scaling hidden swap.** For an involutive hidden swap
@@ -92,55 +99,67 @@ operational record, so if it also keeps regularity and multiplies the base
 weight of the first site's histories by a common nonzero factor, the two sites'
 base laws agree on every payoff of the record. -/
 theorem baseLawAgrees_of_swap_scaled {who : Player}
-    [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History]
-    (base : (onePacketProtocol setup leaks bounds horizon scheduler).History → ℝ)
-    (regular : (onePacketProtocol setup leaks bounds horizon scheduler).History → Prop)
-    (first second : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who)
+    [Finite (onePacketProtocol setup runtime leaks bounds horizon scheduler).History]
+    (base : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History → ℝ)
+    (regular : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History → Prop)
+    (first second : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationSite who)
     (swap : HiddenSwap (graph setup)) (allowed : Set (graph setup).Inputs)
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (allowedClosed : ∀ inputs ∈ allowed,
       (fun input => swap.values.value (.inl input) (inputs input)) ∈ allowed)
-    (guardedFirst : ∀ history : (onePacketProtocol setup leaks bounds horizon scheduler).History,
-      (onePacketInformation setup leaks bounds horizon scheduler).infoOf who history.trace =
-        first.1 → SwapGuardState setup swap allowed history.state)
-    (guardedSecond : ∀ history : (onePacketProtocol setup leaks bounds horizon scheduler).History,
-      (onePacketInformation setup leaks bounds horizon scheduler).infoOf who history.trace =
-        second.1 → SwapGuardState setup swap allowed history.state)
-    (toSecond : ∀ (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
-      (member : (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
+    (guardedFirst : ∀ history : (onePacketProtocol setup runtime leaks bounds horizon
+      scheduler).History,
+      (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf who history.trace =
+        first.1 → SwapGuardState setup runtime swap allowed history.state)
+    (guardedSecond : ∀ history : (onePacketProtocol setup runtime leaks bounds horizon
+      scheduler).History,
+      (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf who history.trace =
+        second.1 → SwapGuardState setup runtime swap allowed history.state)
+    (toSecond : ∀ (history : (onePacketProtocol setup runtime leaks bounds horizon
+      scheduler).History)
+      (member : (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf who
         history.trace = first.1),
-      (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
-        ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap initialClosed
+      (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf who
+        ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
+          swap initialClosed
           bounded).mapHistory history (guardedFirst history member)).trace = second.1)
-    (toFirst : ∀ (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
-      (member : (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
+    (toFirst : ∀ (history : (onePacketProtocol setup runtime leaks bounds horizon
+      scheduler).History)
+      (member : (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf who
         history.trace = second.1),
-      (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
-        ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap initialClosed
+      (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf who
+        ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
+          swap initialClosed
           bounded).mapHistory history (guardedSecond history member)).trace = first.1)
-    (regularEq : ∀ (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
-      (member : (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
+    (regularEq : ∀ (history : (onePacketProtocol setup runtime leaks bounds horizon
+      scheduler).History)
+      (member : (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf who
         history.trace = first.1),
-      regular ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap
+      regular ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon
+        scheduler swap
         initialClosed bounded).mapHistory history (guardedFirst history member)) ↔
         regular history)
     (factor : ℝ) (factor_ne : factor ≠ 0)
-    (baseEq : ∀ (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
-      (member : (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
+    (baseEq : ∀ (history : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
+      (member : (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf who
         history.trace = first.1),
-      base ((onePacketSwapSymmetry bounds (initialLaw setup) horizon scheduler swap
+      base ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon
+        scheduler swap
         initialClosed bounded).mapHistory history (guardedFirst history member)) =
         factor * base history)
-    (payoff : List (Option (OperationalState setup leaks)) → ℝ) :
-    BaseLawAgrees base regular first second payoff :=
-  baseLawAgrees_of_equiv_scaled base regular first second
-    (StateSymmetry.exchange (onePacketSwapSymmetry_involutive bounds (initialLaw setup) horizon
+    (payoff : List (Option (OperationalState setup runtime leaks)) → ℝ) :
+    BaseLawAgrees (runtime := runtime) base regular first second payoff :=
+  baseLawAgrees_of_equiv_scaled (runtime := runtime) base regular first second
+    (StateSymmetry.exchange (onePacketSwapSymmetry_involutive (runtime := runtime) bounds
+      (initialLaw setup) horizon
       scheduler swap initialClosed bounded allowedClosed) _ _ guardedFirst guardedSecond toSecond
       toFirst)
     (fun history => regularEq history.1 history.2)
-    (fun history => operationalRecord_mapTrace swap initialClosed bounded history.1.trace
+    (fun history => operationalRecord_mapTrace (runtime := runtime) swap initialClosed bounded
+      history.1.trace
       (guardedFirst history.1 history.2))
     factor factor_ne (fun history => baseEq history.1 history.2) payoff
 

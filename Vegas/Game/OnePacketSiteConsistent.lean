@@ -23,27 +23,33 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- The recall of an information state; empty at a non-decision input. -/
-def infoRecall : (application setup leaks).Info → List (application setup leaks).PlayerEntry
+def infoRecall : (application setup runtime leaks).Info → List (application setup runtime
+  leaks).PlayerEntry
   | none => []
   | some (past, _) => past
 
 /-- **Consistent with a site.** The owner acts at the site's information, or its
 recall strictly longer the site's recall. -/
-def SiteConsistent (who : Player) (info : (application setup leaks).Info) :
-    (application setup leaks).ProtocolState → Prop
+def SiteConsistent (who : Player) (info : (application setup runtime leaks).Info) :
+    (application setup runtime leaks).ProtocolState → Prop
   | none => False
-  | some control => (info.isSome ∧ (application setup leaks).observe who (some control) = info) ∨
-      ∃ entry rest, control.execution.recall who = infoRecall info ++ entry :: rest
+  | some control => (info.isSome ∧ (application setup runtime leaks).observe who (some control) =
+    info) ∨
+      ∃ entry rest, control.execution.recall who = infoRecall (runtime := runtime) info ++ entry
+        :: rest
 
 /-- The control step appends one entry to the recall of an acting player and
 keeps every other player's recall. -/
-theorem controlStep_recall {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    (players : Player → (application setup leaks).Policy)
-    (control : (application setup leaks).Control) {next : (application setup leaks).ProtocolState}
-    (member : next ∈ ((application setup leaks).controlStep (initialLaw setup) horizon scheduler
+theorem controlStep_recall {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
+    (players : Player → (application setup runtime leaks).Policy)
+    (control : (application setup runtime leaks).Control) {next : (application setup runtime
+      leaks).ProtocolState}
+    (member : next ∈ ((application setup runtime leaks).controlStep (initialLaw setup) horizon
+      scheduler
       players (some control)).support) (who : Player) :
     ∃ control', next = some control' ∧
       (control.actor = some who → ∃ entry, control'.execution.recall who =
@@ -63,7 +69,8 @@ theorem controlStep_recall {horizon : Nat} {scheduler : (application setup leaks
           obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ member)
           obtain ⟨next', supported, rfl⟩ := PMF.support_map .. ▸ moved
           exact ⟨_, rfl, fun acting => (idle acting).elim, fun _ => congrFun
-            ((application setup leaks).environmentStep_recall execution next' command supported)
+            ((application setup runtime leaks).environmentStep_recall execution next' command
+              supported)
             who⟩
   | some actor =>
       simp only [ReactiveApplication.actor, Option.bind_some] at member
@@ -77,20 +84,25 @@ theorem controlStep_recall {horizon : Nat} {scheduler : (application setup leaks
       · intro idle
         have different : who ≠ actor := fun same => idle (by rw [same])
         simp only [↓reduceIte, Option.getD_some]
-        exact (application setup leaks).respond_recall_other execution actor who different _
+        exact (application setup runtime leaks).respond_recall_other execution actor who different _
 
 /-- **Site consistency is kept by every control step.** -/
-theorem siteConsistent_step {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    (players : Player → (application setup leaks).Policy) (who : Player)
-    (info : (application setup leaks).Info) {state : (application setup leaks).ProtocolState}
-    (consistent : SiteConsistent who info state) {next : (application setup leaks).ProtocolState}
-    (member : next ∈ ((application setup leaks).controlStep (initialLaw setup) horizon scheduler
+theorem siteConsistent_step {horizon : Nat} {scheduler : (application setup runtime
+  leaks).Scheduler}
+    (players : Player → (application setup runtime leaks).Policy) (who : Player)
+    (info : (application setup runtime leaks).Info) {state : (application setup runtime
+      leaks).ProtocolState}
+    (consistent : SiteConsistent (runtime := runtime) who info state) {next : (application setup
+      runtime leaks).ProtocolState}
+    (member : next ∈ ((application setup runtime leaks).controlStep (initialLaw setup) horizon
+      scheduler
       players state).support) :
-    SiteConsistent who info next := by
+    SiteConsistent (runtime := runtime) who info next := by
   cases state with
   | none => exact consistent.elim
   | some control =>
-      obtain ⟨control', rfl, acted, idle⟩ := controlStep_recall players control member who
+      obtain ⟨control', rfl, acted, idle⟩ := controlStep_recall (runtime := runtime) players
+        control member who
       right
       rcases consistent with ⟨isSome, atSite⟩ | ⟨entry, rest, longer⟩
       · have acting : control.actor = some who := by
@@ -108,15 +120,17 @@ theorem siteConsistent_step {horizon : Nat} {scheduler : (application setup leak
         · exact ⟨entry, rest, by rw [idle acting, longer]⟩
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- A history of a site is consistent with it. -/
 theorem siteConsistent_of_history {who : Player}
-    {site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
-    {key : LateKey setup leaks} (siteKey : lateKey setup leaks who site.1 = some key)
-    (history : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
+    {site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who}
+    {key : LateKey setup runtime leaks} (siteKey : lateKey setup runtime leaks who site.1 = some
+      key)
+    (history : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationHistory who
       site.1) :
-    SiteConsistent who site.1 history.1.state := by
+    SiteConsistent (runtime := runtime) who site.1 history.1.state := by
   have info := history.2
   rw [onePacket_infoOf] at info
   cases current : history.1.state with
@@ -138,13 +152,13 @@ omit [Fintype Player] in
 /-- **At a consistent state, the site's key is the site.** At a state consistent
 with a site, an owner whose late-delivery key is the site's key observes the
 site's information. -/
-theorem siteConsistent_key {who : Player} {info : (application setup leaks).Info}
-    {key : LateKey setup leaks} (siteKey : lateKey setup leaks who info = some key)
-    {control : (application setup leaks).Control}
-    (consistent : SiteConsistent who info (some control))
-    (sameKey : LateKey.ofView setup leaks who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who) = key) :
-    (application setup leaks).observe who (some control) = info := by
+theorem siteConsistent_key {who : Player} {info : (application setup runtime leaks).Info}
+    {key : LateKey setup runtime leaks} (siteKey : lateKey setup runtime leaks who info = some key)
+    {control : (application setup runtime leaks).Control}
+    (consistent : SiteConsistent (runtime := runtime) who info (some control))
+    (sameKey : LateKey.ofView setup runtime leaks who (control.execution.recall who)
+      (control.execution.observe (application setup runtime leaks) who) = key) :
+    (application setup runtime leaks).observe who (some control) = info := by
   rcases consistent with ⟨_, atSite⟩ | ⟨entry, rest, longer⟩
   · exact atSite
   · exfalso
@@ -153,7 +167,7 @@ theorem siteConsistent_key {who : Player} {info : (application setup leaks).Info
     | some info =>
         rcases info with ⟨past, view⟩
         simp only [lateKey, Option.some.injEq] at siteKey
-        have lengths := congrArg (fun key : LateKey setup leaks => key.recalled.length)
+        have lengths := congrArg (fun key : LateKey setup runtime leaks => key.recalled.length)
           (sameKey.trans siteKey.symm)
         simp only [LateKey.ofView, List.length_map, longer, infoRecall, List.length_append,
           List.length_cons] at lengths

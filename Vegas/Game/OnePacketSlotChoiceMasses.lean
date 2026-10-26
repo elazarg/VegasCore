@@ -27,6 +27,7 @@ open GameTheory GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   [Fintype Player] (bounds : MessageBounds (graph setup))
 
@@ -34,22 +35,22 @@ omit [Fintype Player] in
 /-- At a binding of the player's turn whose canonical slot is fresh, the
 as-if-honest response is the slot tier's response at the canonical slot. -/
 theorem honestResponse_eq_slotResponse (assessment : setup.intendedModel.BehavioralAssessment)
-    (who : Player) (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
+    (who : Player) (past : List (application setup runtime leaks).PlayerEntry)
+    (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId)
     (turn : view.application.publicView.ownTurn? who = some event) {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding who payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq) (serial : Nat)
     (selected : canonicalFreshSlot who view.application = some serial) :
-    honestResponse setup leaks assessment who past view =
-      (asIfHonestProfile setup leaks assessment who (some (past, view))).map
-        (slotResponse setup leaks who past view event serial) := by
+    honestResponse setup runtime leaks assessment who past view =
+      (asIfHonestProfile setup runtime leaks assessment who (some (past, view))).map
+        (slotResponse setup runtime leaks who past view event serial) := by
   have fresh := canonicalFreshSlot_spec who view.application serial selected
   unfold honestResponse
   rw [turn]
   refine congrArg (fun response =>
-    (asIfHonestProfile setup leaks assessment who (some (past, view))).map response)
+    (asIfHonestProfile setup runtime leaks assessment who (some (past, view))).map response)
     (funext fun choice => ?_)
   cases encoded : choice.bind (encodeEventAction? setup.program event) with
   | none =>
@@ -59,77 +60,90 @@ theorem honestResponse_eq_slotResponse (assessment : setup.intendedModel.Behavio
       obtain ⟨result, rfl⟩ : ∃ result : PublicationResult (L.Val payload),
           action = cast (congrArg EventGraph.EventField.Action outputEq.symm) result :=
         ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
-      rw [slotResponse_of_bind setup leaks who past view event node serial choice _ encoded]
+      rw [slotResponse_of_bind setup runtime leaks who past view event node serial choice _ encoded]
       simp only [cast_cast, cast_eq]
-      rw [(runtime setup).reactiveBinding_normal_of_fresh leaks who past view event payload _
+      rw [runtime.reactiveBinding_normal_of_fresh leaks who past view event payload _
         serial fresh]
-      exact (runtime setup).canonicalServiceDecision_binding leaks who past view event payload
+      exact runtime.canonicalServiceDecision_binding leaks who past view event payload
         outputEq codeEq node serial selected result
 
-variable (initial : PMF (application setup leaks).State) (horizon : Nat)
-  (scheduler : (application setup leaks).Scheduler)
+variable (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
+  (scheduler : (application setup runtime leaks).Scheduler)
 
 /-- The one-packet choice of the slot tier's response at a slot to a source
 choice. -/
-abbrev slotChoiceOf (who : Player) (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId) (slot : Nat)
+abbrev slotChoiceOf (who : Player) (past : List (application setup runtime leaks).PlayerEntry)
+    (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId) (slot :
+      Nat)
     (choice : Option (OwnAction Player L)) :
-    (onePacketModel setup leaks bounds initial horizon scheduler).Choice who (some (past, view)) :=
-  responseChoice setup leaks bounds initial horizon scheduler who (some (past, view))
-    (slotResponse setup leaks who past view event slot choice)
+    (onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who (some (past,
+      view)) :=
+  responseChoice setup runtime leaks bounds initial horizon scheduler who (some (past, view))
+    (slotResponse setup runtime leaks who past view event slot choice)
 
 /-- **Distinct offered slot-tier choices.** At a binding of the player's turn,
 where every prepared slot the count verdict permits is fresh, an offered
 slot-tier choice of a covered source choice at a slot within capacity is the
 slot-tier choice of no other covered source choice or slot within capacity. -/
-theorem slotChoiceOf_injective (who : Player) (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
+theorem slotChoiceOf_injective (who : Player) (past : List (application setup runtime
+  leaks).PlayerEntry)
+    (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId)
     {owner : Player} {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding owner payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind owner payload}
     (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
-    (freshOfPermitted : ∀ slot, countPermits ((application setup leaks).outputs past)
-      (slotEnvelope setup leaks who past view event slot) = true →
+    (freshOfPermitted : ∀ slot, countPermits ((application setup runtime leaks).outputs past)
+      (slotEnvelope setup runtime leaks who past view event slot) = true →
         view.application.candidates (.prepared slot) = .fresh)
     {slot other : Nat} (slotCapacity : slot < bounds.candidateCount)
     (otherCapacity : other < bounds.candidateCount) {first second : Option (OwnAction Player L)}
     (firstCovered : CoveredBinding setup bounds event first)
     (secondCovered : CoveredBinding setup bounds event second)
-    (offered : slotResponse setup leaks who past view event slot first ∈
-      bounds.onePacketActions (runtime setup) leaks who past view)
-    (same : slotChoiceOf setup leaks bounds initial horizon scheduler who past view event other
+    (offered : slotResponse setup runtime leaks who past view event slot first ∈
+      bounds.onePacketActions runtime leaks who past view)
+    (same : slotChoiceOf setup runtime leaks bounds initial horizon scheduler who past view event
+      other
         second =
-      slotChoiceOf setup leaks bounds initial horizon scheduler who past view event slot first) :
+      slotChoiceOf setup runtime leaks bounds initial horizon scheduler who past view event slot
+        first) :
     other = slot ∧ second = first := by
   classical
   obtain ⟨firstAction, firstEncoded, _⟩ := firstCovered
-  obtain ⟨material, transmits, _⟩ := slotResponse_transmission setup leaks who past view event
+  obtain ⟨material, transmits, _⟩ := slotResponse_transmission setup runtime leaks who past view
+    event
     node slot first firstAction firstEncoded
   have values := congrArg Subtype.val same
-  have firstValue : (slotChoiceOf setup leaks bounds initial horizon scheduler who past view event
-      slot first).1 = some (slotResponse setup leaks who past view event slot first) := by
+  have firstValue : (slotChoiceOf setup runtime leaks bounds initial horizon scheduler who past
+    view event
+      slot first).1 = some (slotResponse setup runtime leaks who past view event slot first) := by
     simp only [slotChoiceOf, responseChoice, offered, ↓reduceDIte]
   rw [firstValue] at values
-  by_cases otherOffered : slotResponse setup leaks who past view event other second ∈
-      bounds.onePacketActions (runtime setup) leaks who past view
-  · have secondValue : (slotChoiceOf setup leaks bounds initial horizon scheduler who past view
-        event other second).1 = some (slotResponse setup leaks who past view event other second) :=
+  by_cases otherOffered : slotResponse setup runtime leaks who past view event other second ∈
+      bounds.onePacketActions runtime leaks who past view
+  · have secondValue : (slotChoiceOf setup runtime leaks bounds initial horizon scheduler who past
+    view
+        event other second).1 = some (slotResponse setup runtime leaks who past view event other
+          second) :=
       by simp only [slotChoiceOf, responseChoice, otherOffered, ↓reduceDIte]
     rw [secondValue] at values
     have responses := Option.some.inj values
-    have slotFresh := freshOfPermitted slot ((slotResponse_mem_onePacket_iff setup leaks bounds who
+    have slotFresh := freshOfPermitted slot ((slotResponse_mem_onePacket_iff setup runtime leaks
+      bounds who
       past view event node slot slotCapacity first ⟨firstAction, firstEncoded, ‹_›⟩).mp offered)
-    have otherFresh := freshOfPermitted other ((slotResponse_mem_onePacket_iff setup leaks bounds
+    have otherFresh := freshOfPermitted other ((slotResponse_mem_onePacket_iff setup runtime leaks
+      bounds
       who past view event node other otherCapacity second secondCovered).mp otherOffered)
-    obtain ⟨slotEq, encodedEq⟩ := slotResponse_injective setup leaks bounds who past view event
+    obtain ⟨slotEq, encodedEq⟩ := slotResponse_injective setup runtime leaks bounds who past view
+      event
       node other slot otherFresh slotFresh second first secondCovered
       ⟨firstAction, firstEncoded, ‹_›⟩ responses
     obtain ⟨secondAction, secondEncoded, _⟩ := secondCovered
     rw [secondEncoded, firstEncoded] at encodedEq
     cases Option.some.inj encodedEq
     exact ⟨slotEq, encode_injective setup event secondEncoded firstEncoded⟩
-  · have secondValue : (slotChoiceOf setup leaks bounds initial horizon scheduler who past view
+  · have secondValue : (slotChoiceOf setup runtime leaks bounds initial horizon scheduler who past
+    view
         event other second).1 = some ⟨none⟩ := by
       simp only [slotChoiceOf, responseChoice, otherOffered, ↓reduceDIte]
     rw [secondValue] at values
@@ -142,18 +156,19 @@ binding of the player; every source choice as-if-honest play supports encodes
 to a covered value; the candidate capacity is at least one; and every prepared
 slot the count verdict permits is fresh. -/
 structure CoveredPendingBinding (assessment : setup.intendedModel.BehavioralAssessment)
-    (who : Player) (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (event : (graph setup).EventId)
+    (who : Player) (past : List (application setup runtime leaks).PlayerEntry)
+    (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId)
     (payload : L.Ty) (outputEq : (graph setup).outputLayout event = .binding who payload)
     (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload) : Prop where
   turn : view.application.publicView.ownTurn? who = some event
   node : nodeView (graph setup) event = .bind who payload outputEq codeEq
-  covered : ∀ choice ∈ (asIfHonestProfile setup leaks assessment who (some (past, view))).support,
+  covered : ∀ choice ∈ (asIfHonestProfile setup runtime leaks assessment who (some (past,
+    view))).support,
     CoveredBinding setup bounds event choice
   capacity : 1 ≤ bounds.candidateCount
-  freshOfPermitted : ∀ slot, countPermits ((application setup leaks).outputs past)
-    (slotEnvelope setup leaks who past view event slot) = true →
+  freshOfPermitted : ∀ slot, countPermits ((application setup runtime leaks).outputs past)
+    (slotEnvelope setup runtime leaks who past view event slot) = true →
       view.application.candidates (.prepared slot) = .fresh
 
 omit [Fintype Player] in
@@ -163,22 +178,23 @@ theorem mem_trembleSlots_iff (capacity : 1 ≤ bounds.candidateCount) (slot : Na
   unfold trembleSlots
   rw [Finset.mem_range, max_eq_right capacity]
 
-variable {setup leaks bounds}
+variable {setup runtime leaks bounds}
 
 /-- An offered commitment at a prepared slot is within the candidate
 capacity. -/
 theorem offered_commitment_capacity (who : Player)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (response : (application setup leaks).Action)
-    (member : response ∈ (bounds.menu (runtime setup) leaks).actions who past view)
-    (material : (application setup leaks).Submission)
+    (past : List (application setup runtime leaks).PlayerEntry)
+    (view : (application setup runtime leaks).PlayerView) (response : (application setup runtime
+      leaks).Action)
+    (member : response ∈ (bounds.menu runtime leaks).actions who past view)
+    (material : (application setup runtime leaks).Submission)
     (sends : response.transmission = some material) {event : (graph setup).EventId}
     {owner : Player} {slot : Nat}
     (packet : material.call.packet = .commitment event (owner, .prepared slot)) :
     slot < bounds.candidateCount := by
   obtain ⟨original, rawMember, normalized⟩ :=
-    (((runtime setup).reactiveNormalization leaks).menu_mem
-      (bounds.rawMenu (runtime setup) leaks) who past view response).mp member
+    ((runtime.reactiveNormalization leaks).menu_mem
+      (bounds.rawMenu runtime leaks) who past view response).mp member
   rcases original with ⟨_ | originalMaterial⟩
   · subst normalized
     cases sends
@@ -198,68 +214,84 @@ binding with canonical slot `serial`, the as-if-honest choice gives an offered
 slot-tier choice of a supported source choice its as-if-honest mass at the
 canonical slot, and nothing at another slot. -/
 theorem honestChoice_slotChoiceOf_apply {assessment : setup.intendedModel.BehavioralAssessment}
-    {who : Player} {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} {event : (graph setup).EventId}
+    {who : Player} {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} {event : (graph setup).EventId}
     {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
-    (site : CoveredPendingBinding setup leaks bounds assessment who past view event payload
+    (site : CoveredPendingBinding setup runtime leaks bounds assessment who past view event payload
       outputEq codeEq) {serial : Nat}
     (selected : canonicalFreshSlot who view.application = some serial) {slot : Nat}
     {choice : Option (OwnAction Player L)}
-    (supported : choice ∈ (asIfHonestProfile setup leaks assessment who
+    (supported : choice ∈ (asIfHonestProfile setup runtime leaks assessment who
       (some (past, view))).support) (slotCapacity : slot < bounds.candidateCount)
-    (offered : slotResponse setup leaks who past view event slot choice ∈
-      bounds.onePacketActions (runtime setup) leaks who past view) :
-    honestChoice setup leaks bounds initial horizon scheduler assessment who (some (past, view))
-        (slotChoiceOf setup leaks bounds initial horizon scheduler who past view event slot
+    (offered : slotResponse setup runtime leaks who past view event slot choice ∈
+      bounds.onePacketActions runtime leaks who past view) :
+    honestChoice setup runtime leaks bounds initial horizon scheduler assessment who (some (past,
+      view))
+        (slotChoiceOf setup runtime leaks bounds initial horizon scheduler who past view event slot
           choice) =
       if slot = serial then
-        asIfHonestProfile setup leaks assessment who (some (past, view)) choice
+        asIfHonestProfile setup runtime leaks assessment who (some (past, view)) choice
       else 0 := by
-  change (honestResponse setup leaks assessment who past view).map _ _ = _
-  rw [honestResponse_eq_slotResponse setup leaks assessment who past view event site.turn
+  change (honestResponse setup runtime leaks assessment who past view).map _ _ = _
+  rw [honestResponse_eq_slotResponse setup runtime leaks assessment who past view event site.turn
     site.node serial selected, PMF.map_comp]
   split
   · rename_i same
     subst same
-    exact map_apply_of_injOn _ (slotChoiceOf setup leaks bounds initial horizon scheduler who past
+    exact map_apply_of_injOn _ (slotChoiceOf setup runtime leaks bounds initial horizon scheduler
+      who past
       view event slot) choice fun other otherSupported equal =>
-        (slotChoiceOf_injective setup leaks bounds initial horizon scheduler who past view event
-          site.node site.freshOfPermitted slotCapacity slotCapacity (site.covered choice supported)
+        (slotChoiceOf_injective setup runtime leaks bounds initial horizon scheduler who past view
+          event
+          site.node site.freshOfPermitted slotCapacity
+            slotCapacity (site.covered choice supported)
           (site.covered other otherSupported) offered equal).2
   · rename_i different
     apply map_apply_eq_zero_of_forall_ne
     intro other otherSupported equal
-    change slotChoiceOf setup leaks bounds initial horizon scheduler who past view event serial
-      other = slotChoiceOf setup leaks bounds initial horizon scheduler who past view event slot
+    change slotChoiceOf setup runtime leaks bounds initial horizon scheduler who past view event
+      serial
+      other = slotChoiceOf setup runtime leaks bounds initial horizon scheduler who past view
+        event slot
       choice at equal
     by_cases serialCapacity : serial < bounds.candidateCount
-    · exact different (slotChoiceOf_injective setup leaks bounds initial horizon scheduler who past
-        view event site.node site.freshOfPermitted slotCapacity serialCapacity
-        (site.covered choice supported) (site.covered other otherSupported) offered equal).1.symm
+    · exact different (slotChoiceOf_injective setup runtime leaks bounds initial horizon scheduler
+      who past
+        view event site.node site.freshOfPermitted
+          slotCapacity serialCapacity
+        (site.covered choice supported) (site.covered
+          other otherSupported) offered equal).1.symm
     · exfalso
       obtain ⟨action, encoded, _⟩ := site.covered choice supported
-      obtain ⟨material, transmits, _⟩ := slotResponse_transmission setup leaks who past view
+      obtain ⟨material, transmits, _⟩ := slotResponse_transmission setup runtime leaks who past view
         event site.node slot choice action encoded
       have values := congrArg Subtype.val equal
-      have offeredValue : (slotChoiceOf setup leaks bounds initial horizon scheduler who past view
-          event slot choice).1 = some (slotResponse setup leaks who past view event slot choice) :=
+      have offeredValue : (slotChoiceOf setup runtime leaks bounds initial horizon scheduler who
+        past view
+          event slot choice).1 = some (slotResponse setup runtime leaks who past view event slot
+            choice) :=
         by simp only [slotChoiceOf, responseChoice, offered, ↓reduceDIte]
       rw [offeredValue] at values
-      by_cases otherOffered : slotResponse setup leaks who past view event serial other ∈
-          bounds.onePacketActions (runtime setup) leaks who past view
-      · obtain ⟨otherAction, otherEncoded, _⟩ := site.covered other otherSupported
+      by_cases otherOffered : slotResponse setup runtime leaks who past view event serial other ∈
+          bounds.onePacketActions runtime leaks who past view
+      · obtain ⟨otherAction, otherEncoded, _⟩ := site.covered other
+          otherSupported
         obtain ⟨otherMaterial, otherTransmits, otherEnvelope⟩ := slotResponse_transmission setup
-          leaks who past view event site.node serial other otherAction otherEncoded
-        have effective := ((bounds.mem_onePacketActions (runtime setup) leaks who past view
+          runtime
+          leaks who past view event site.node serial other otherAction
+            otherEncoded
+        have effective := ((bounds.mem_onePacketActions runtime leaks who past view
           _).mp otherOffered).1
         have packetEq : otherMaterial.call.packet = .commitment event (who, .prepared serial) :=
           congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
             message.payload.call) otherEnvelope
-        exact serialCapacity (offered_commitment_capacity who past view _ effective
+        exact serialCapacity (offered_commitment_capacity who past view _
+          effective
           otherMaterial otherTransmits packetEq)
-      · have otherValue : (slotChoiceOf setup leaks bounds initial horizon scheduler who past view
+      · have otherValue : (slotChoiceOf setup runtime leaks bounds initial horizon scheduler who
+        past view
             event serial other).1 = some ⟨none⟩ := by
           simp only [slotChoiceOf, responseChoice, otherOffered, ↓reduceDIte]
         rw [otherValue] at values
@@ -270,16 +302,17 @@ theorem honestChoice_slotChoiceOf_apply {assessment : setup.intendedModel.Behavi
 /-- At the player's turn, the slot tier as a law over one-packet choices is the
 slot-tier choice of a uniform slot and an independent as-if-honest choice. -/
 theorem slotChoice_eq_map {assessment : setup.intendedModel.BehavioralAssessment}
-    {who : Player} {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} {event : (graph setup).EventId}
+    {who : Player} {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} {event : (graph setup).EventId}
     (turn : view.application.publicView.ownTurn? who = some event) :
-    slotChoice setup leaks bounds initial horizon scheduler assessment who (some (past, view)) =
-      (slotPairs setup leaks bounds assessment who past view).map fun pair =>
-        slotChoiceOf setup leaks bounds initial horizon scheduler who past view event pair.1
+    slotChoice setup runtime leaks bounds initial horizon scheduler assessment who (some (past,
+      view)) =
+      (slotPairs setup runtime leaks bounds assessment who past view).map fun pair =>
+        slotChoiceOf setup runtime leaks bounds initial horizon scheduler who past view event pair.1
           pair.2 := by
-  have tier : slotTierResponse setup leaks bounds assessment who past view =
-      (slotPairs setup leaks bounds assessment who past view).map fun pair =>
-        slotResponse setup leaks who past view event pair.1 pair.2 := by
+  have tier : slotTierResponse setup runtime leaks bounds assessment who past view =
+      (slotPairs setup runtime leaks bounds assessment who past view).map fun pair =>
+        slotResponse setup runtime leaks who past view event pair.1 pair.2 := by
     simp only [slotTierResponse, turn]
   rw [slotChoice, tier, PMF.map_comp]
   congr 1
@@ -288,27 +321,28 @@ theorem slotChoice_eq_map {assessment : setup.intendedModel.BehavioralAssessment
 binding, the slot tier gives an offered slot-tier choice of a supported source
 choice at a tremble slot the uniform slot mass times its as-if-honest mass. -/
 theorem slotChoice_slotChoiceOf_apply {assessment : setup.intendedModel.BehavioralAssessment}
-    {who : Player} {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} {event : (graph setup).EventId}
+    {who : Player} {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} {event : (graph setup).EventId}
     {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
-    (site : CoveredPendingBinding setup leaks bounds assessment who past view event payload
+    (site : CoveredPendingBinding setup runtime leaks bounds assessment who past view event payload
       outputEq codeEq) {slot : Nat} {choice : Option (OwnAction Player L)}
-    (supported : choice ∈ (asIfHonestProfile setup leaks assessment who
+    (supported : choice ∈ (asIfHonestProfile setup runtime leaks assessment who
       (some (past, view))).support) (slotCapacity : slot < bounds.candidateCount)
-    (offered : slotResponse setup leaks who past view event slot choice ∈
-      bounds.onePacketActions (runtime setup) leaks who past view) :
-    slotChoice setup leaks bounds initial horizon scheduler assessment who (some (past, view))
-        (slotChoiceOf setup leaks bounds initial horizon scheduler who past view event slot
+    (offered : slotResponse setup runtime leaks who past view event slot choice ∈
+      bounds.onePacketActions runtime leaks who past view) :
+    slotChoice setup runtime leaks bounds initial horizon scheduler assessment who (some (past,
+      view))
+        (slotChoiceOf setup runtime leaks bounds initial horizon scheduler who past view event slot
           choice) =
       PMF.uniformOfFinset (trembleSlots setup bounds) (trembleSlots_nonempty setup bounds) slot *
-        asIfHonestProfile setup leaks assessment who (some (past, view)) choice := by
-  rw [slotChoice_eq_map initial horizon scheduler site.turn]
-  have injective : ∀ pair ∈ (slotPairs setup leaks bounds assessment who past view).support,
-      slotChoiceOf setup leaks bounds initial horizon scheduler who past view event pair.1
+        asIfHonestProfile setup runtime leaks assessment who (some (past, view)) choice := by
+  rw [slotChoice_eq_map (runtime := runtime) initial horizon scheduler site.turn]
+  have injective : ∀ pair ∈ (slotPairs setup runtime leaks bounds assessment who past view).support,
+      slotChoiceOf setup runtime leaks bounds initial horizon scheduler who past view event pair.1
           pair.2 =
-        slotChoiceOf setup leaks bounds initial horizon scheduler who past view event slot
+        slotChoiceOf setup runtime leaks bounds initial horizon scheduler who past view event slot
           choice → pair = (slot, choice) := by
     intro pair pairSupported equal
     obtain ⟨pairSlot, slotDrawn, inner⟩ := (PMF.mem_support_bind_iff _ _ _).mp pairSupported
@@ -317,43 +351,49 @@ theorem slotChoice_slotChoiceOf_apply {assessment : setup.intendedModel.Behavior
     have pairCapacity : pairSlot < bounds.candidateCount :=
       (mem_trembleSlots_iff setup bounds site.capacity pairSlot).mp
         ((PMF.mem_support_uniformOfFinset_iff _ _).mp slotDrawn)
-    obtain ⟨slotEq, choiceEq⟩ := slotChoiceOf_injective setup leaks bounds initial horizon
+    obtain ⟨slotEq, choiceEq⟩ := slotChoiceOf_injective setup runtime leaks bounds initial horizon
       scheduler who past view event site.node site.freshOfPermitted slotCapacity pairCapacity
-      (site.covered choice supported) (site.covered pairChoice choiceDrawn) offered equal
+      (site.covered choice supported) (site.covered
+        pairChoice choiceDrawn) offered equal
     rw [slotEq, choiceEq]
   have mapped := map_apply_of_injOn _ (fun pair : Nat × Option (OwnAction Player L) =>
-    slotChoiceOf setup leaks bounds initial horizon scheduler who past view event pair.1 pair.2)
+    slotChoiceOf setup runtime leaks bounds initial horizon scheduler who past view event pair.1
+      pair.2)
     (slot, choice) injective
   dsimp only at mapped
   rw [mapped]
-  exact slotPairs_apply setup leaks bounds assessment who past view slot choice
+  exact slotPairs_apply setup runtime leaks bounds assessment who past view slot choice
 
 /-- An offered transmitting choice is not silence. -/
 theorem silence_slotChoiceOf_apply {assessment : setup.intendedModel.BehavioralAssessment}
-    {who : Player} {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} {event : (graph setup).EventId}
+    {who : Player} {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} {event : (graph setup).EventId}
     {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
-    (site : CoveredPendingBinding setup leaks bounds assessment who past view event payload
+    (site : CoveredPendingBinding setup runtime leaks bounds assessment who past view event payload
       outputEq codeEq) {slot : Nat} {choice : Option (OwnAction Player L)}
-    (supported : choice ∈ (asIfHonestProfile setup leaks assessment who
+    (supported : choice ∈ (asIfHonestProfile setup runtime leaks assessment who
       (some (past, view))).support)
-    (offered : slotResponse setup leaks who past view event slot choice ∈
-      bounds.onePacketActions (runtime setup) leaks who past view) :
-    PMF.pure (silenceChoice setup leaks bounds initial horizon scheduler who (some (past, view)))
-        (slotChoiceOf setup leaks bounds initial horizon scheduler who past view event slot
+    (offered : slotResponse setup runtime leaks who past view event slot choice ∈
+      bounds.onePacketActions runtime leaks who past view) :
+    PMF.pure (silenceChoice setup runtime leaks bounds initial horizon scheduler who (some (past,
+      view)))
+        (slotChoiceOf setup runtime leaks bounds initial horizon scheduler who past view event slot
           choice) = 0 := by
   classical
   refine PMF.pure_apply_of_ne _ _ fun same => ?_
   obtain ⟨action, encoded, _⟩ := site.covered choice supported
-  obtain ⟨material, transmits, _⟩ := slotResponse_transmission setup leaks who past view event
+  obtain ⟨material, transmits, _⟩ := slotResponse_transmission setup runtime leaks who past view
+    event
     site.node slot choice action encoded
   have values := congrArg Subtype.val same
-  have offeredValue : (slotChoiceOf setup leaks bounds initial horizon scheduler who past view
-      event slot choice).1 = some (slotResponse setup leaks who past view event slot choice) := by
+  have offeredValue : (slotChoiceOf setup runtime leaks bounds initial horizon scheduler who past
+    view
+      event slot choice).1 = some (slotResponse setup runtime leaks who past view event slot
+        choice) := by
     simp only [slotChoiceOf, responseChoice, offered, ↓reduceDIte]
-  have silenceValue : (silenceChoice setup leaks bounds initial horizon scheduler who
+  have silenceValue : (silenceChoice setup runtime leaks bounds initial horizon scheduler who
       (some (past, view))).1 = some ⟨none⟩ := by
     simp only [silenceChoice, responseChoice]
     split <;> rfl

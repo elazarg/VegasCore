@@ -14,18 +14,19 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
+  (scheduler : (recoveryApplication runtime leaks).Scheduler)
 
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
-local notation "NativeScheduler" => nativeScheduler (runtime setup) leaks scheduler
-local notation "R" => model setup leaks bounds Initial horizon scheduler
-local notation "RMenu" => Recovery.onePacketMenu (runtime setup) leaks bounds
+local notation "NativeScheduler" => nativeScheduler runtime leaks scheduler
+local notation "R" => model setup runtime leaks bounds Initial horizon scheduler
+local notation "RMenu" => Recovery.onePacketMenu runtime leaks bounds
 local notation "RP" => ReactiveApplication.ResponseMenu.protocol
-  (Recovery.onePacketMenu (runtime setup) leaks bounds) Initial horizon scheduler
-local notation "RawNative" => ReactiveApplication.protocol (application setup leaks)
+  (Recovery.onePacketMenu runtime leaks bounds) Initial horizon scheduler
+local notation "RawNative" => ReactiveApplication.protocol (application setup runtime leaks)
   (PMF.map RecoveryState.native Initial) horizon (NativeScheduler)
 
 open Classical in
@@ -36,18 +37,18 @@ def nativeDebtStoppedLaw (certificate : (RawNative).WellFoundedHistories)
     PMF (Finset Player ⊕ (RawNative).History) :=
   if clear : ∀ current, history.state = some current →
       current.execution.application.excluded = ∅ then
-    (((application setup leaks).information ((Initial).map RecoveryState.native) horizon
+    (((application setup runtime leaks).information ((Initial).map RecoveryState.native) horizon
       (NativeScheduler)).runBehavioralUntil certificate
-      (nativeProfile (runtime setup) leaks Initial horizon scheduler
+      (nativeProfile runtime leaks Initial horizon scheduler
         (fun who => (RMenu).embedPolicy Initial horizon scheduler who (profile who)))
-      (fun final => ¬ NativeClear (runtime setup) leaks Initial horizon scheduler final ∨
-        DecodedState setup leaks (failureProfile setup.program)
+      (fun final => ¬ NativeClear runtime leaks Initial horizon scheduler final ∨
+        DecodedState setup runtime leaks (failureProfile setup.program)
           (ProtocolState.OwesFailure focal setup.program) final.state)
-      (nativeHistory (runtime setup) leaks Initial horizon scheduler
+      (nativeHistory runtime leaks Initial horizon scheduler
         ((RMenu).toRawHistory Initial horizon scheduler history) clear)).map
-      (nativeClassifiedReadout (runtime setup) leaks Initial horizon scheduler)
+      (nativeClassifiedReadout runtime leaks Initial horizon scheduler)
   else
-    PMF.pure (recoveryClassifiedReadout (runtime setup) leaks Initial horizon scheduler
+    PMF.pure (recoveryClassifiedReadout runtime leaks Initial horizon scheduler
       ((RMenu).toRawHistory Initial horizon scheduler history))
 
 open Classical in
@@ -59,28 +60,31 @@ theorem recovery_belief_expect_abs_sub_native_debt_stopped_le_foreign_exit
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ) (payoffBound : ℝ) (nonnegative : 0 ≤ payoffBound)
     (rawCertificate : (RawNative).WellFoundedHistories)
-    (recoveryCertificate : ((recoveryApplication (runtime setup) leaks).protocol Initial horizon
+    (recoveryCertificate : ((recoveryApplication runtime leaks).protocol Initial horizon
       scheduler).WellFoundedHistories)
     (menuCertificate : (RP).WellFoundedHistories)
-    (completes : Recovery.CompletesPlay (runtime setup) leaks Initial horizon scheduler)
+    (completes : Recovery.CompletesPlay runtime leaks Initial horizon scheduler)
     (profile : ∀ who, (R).BehavioralPolicy who) (focal : Player)
     (payoffBounded : ∀ final : (RP).History,
-      |recoveryExclusionBase parameter utility excludedPayoff final.state focal| ≤ payoffBound)
+      |recoveryExclusionBase (runtime := runtime) parameter utility excludedPayoff final.state
+        focal| ≤ payoffBound)
     (excludedBounded : |excludedPayoff focal| ≤ payoffBound)
     (belief : PMF (RP).History)
     (controlled : ∀ history ∈ belief.support,
-      ∃ current : (recoveryApplication (runtime setup) leaks).Control,
+      ∃ current : (recoveryApplication runtime leaks).Control,
         history.state = some current ∧ current.execution.application.excluded = ∅) :
-    let kernel := nativeDebtStoppedLaw setup leaks bounds horizon scheduler rawCertificate profile
+    let kernel := nativeDebtStoppedLaw setup runtime leaks bounds horizon scheduler rawCertificate
+      profile
       focal
     let read := Sum.elim (fun _ : Finset Player => excludedPayoff focal)
       (fun final : (RawNative).History =>
-        if DecodedState setup leaks (failureProfile setup.program)
+        if DecodedState setup runtime leaks (failureProfile setup.program)
             (ProtocolState.OwesFailure focal setup.program) final.state then excludedPayoff focal
-        else exclusionBase setup parameter utility excludedPayoff leaks final.state focal)
+        else exclusionBase setup runtime parameter utility excludedPayoff leaks final.state focal)
     expect belief (fun history =>
       |expect ((R).runBehavioralTerminalFrom menuCertificate profile history)
-          (fun final => recoveryExclusionBase parameter utility excludedPayoff final.state focal) -
+          (fun final => recoveryExclusionBase (runtime := runtime) parameter utility
+            excludedPayoff final.state focal) -
         expect (kernel history) read|) ≤
       (2 * payoffBound) * ((belief.bind kernel).toOuterMeasure
         {label | ForeignExclusionLabel focal label}).toReal := by
@@ -89,7 +93,8 @@ theorem recovery_belief_expect_abs_sub_native_debt_stopped_le_foreign_exit
   let mass := fun history => ((kernel history).toOuterMeasure event).toReal
   have pointwise : ∀ history ∈ belief.support,
       |expect ((R).runBehavioralTerminalFrom menuCertificate profile history)
-          (fun final => recoveryExclusionBase parameter utility excludedPayoff final.state focal) -
+          (fun final => recoveryExclusionBase (runtime := runtime) parameter utility
+            excludedPayoff final.state focal) -
         expect (kernel history) read| ≤ (2 * payoffBound) * mass history := by
     intro history supported
     obtain ⟨current, state, empty⟩ := controlled history supported
@@ -98,7 +103,8 @@ theorem recovery_belief_expect_abs_sub_native_debt_stopped_le_foreign_exit
       intro next same
       cases Option.some.inj (state.symm.trans same)
       exact empty
-    have estimate := recovery_expect_sub_native_debt_stopped_le_foreign_exit parameter utility
+    have estimate := recovery_expect_sub_native_debt_stopped_le_foreign_exit (runtime := runtime)
+      parameter utility
       excludedPayoff (failureProfile setup.program) Initial (initialLaw_initialized setup) horizon
       scheduler completes (RMenu) rawCertificate recoveryCertificate menuCertificate profile focal
         nonnegative payoffBounded excludedBounded history current state empty

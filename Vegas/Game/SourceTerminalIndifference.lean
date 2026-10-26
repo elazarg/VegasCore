@@ -22,10 +22,11 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  (menu : (application setup leaks).ResponseMenu)
-  (initial : PMF (application setup leaks).State) (horizon : Nat)
-  (scheduler : (application setup leaks).Scheduler)
+  (menu : (application setup runtime leaks).ResponseMenu)
+  (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
+  (scheduler : (application setup runtime leaks).Scheduler)
 
 local notation "E" => menu.protocol initial horizon scheduler
 local notation "M" => menu.information initial horizon scheduler
@@ -34,13 +35,13 @@ omit [Fintype Player] in
 /-- Source completion is genuinely public throughout the actual native
 information fiber, including callbacks after the last event has completed. -/
 theorem sourceTerminal_of_info {who : Player}
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView}
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView}
     (history : (E).History)
     (seen : (M).infoOf who history.trace = some (past, view))
     (complete : ∀ event : (graph setup).EventId,
       event ∈ view.application.publicView.observation.completionOrder) :
-    NativeSourceTerminal (setup := setup) (leaks := leaks) history.state := by
+    NativeSourceTerminal (runtime := runtime) (setup := setup) (leaks := leaks) history.state := by
   have observed := (menu.info initial horizon scheduler who history.trace).symm.trans seen
   cases current : history.state with
   | none => rw [current] at observed; cases observed
@@ -64,14 +65,15 @@ The payoff is explicitly a function of the typed source readout. -/
 theorem sourceTerminal_expect_payoff
     (certificate : (E).WellFoundedHistories)
     (players : ∀ who, (M).BehavioralPolicy who) (start : (E).History)
-    (terminal : NativeSourceTerminal (setup := setup) (leaks := leaks) start.state)
+    (terminal : NativeSourceTerminal (runtime := runtime) (setup := setup) (leaks := leaks)
+      start.state)
     (payoff : Option (State L setup.program.terminalCtx) → ℝ) :
     expect ((M).runBehavioralTerminalFrom certificate players start)
-        (fun final => payoff (sourceReadout setup leaks final.state)) =
-      payoff (sourceReadout setup leaks start.state) := by
+        (fun final => payoff (sourceReadout setup runtime leaks final.state)) =
+      payoff (sourceReadout setup runtime leaks start.state) := by
   calc
     _ = expect ((M).runBehavioralTerminalFrom certificate players start)
-        (fun _ => payoff (sourceReadout setup leaks start.state)) := by
+        (fun _ => payoff (sourceReadout setup runtime leaks start.state)) := by
       apply expect_congr_on_support
       intro final reached
       rw [sourceTerminal_readout_stable menu initial horizon scheduler certificate players start
@@ -83,25 +85,29 @@ for every pair of profiles, rather than postulating a simulation or charge law. 
 theorem sourceTerminal_residual_eq_zero
     (certificate : (E).WellFoundedHistories)
     (source target : ∀ who, (M).BehavioralPolicy who) (history : (E).History)
-    (terminal : NativeSourceTerminal (setup := setup) (leaks := leaks) history.state)
+    (terminal : NativeSourceTerminal (runtime := runtime) (setup := setup) (leaks := leaks)
+      history.state)
     (payoff : Option (State L setup.program.terminalCtx) → ℝ) :
     (M).stoppedContinuationResidual certificate source target (fun _ => False)
-      (fun final => payoff (sourceReadout setup leaks final.state)) history = 0 := by
+      (fun final => payoff (sourceReadout setup runtime leaks final.state))
+        history = 0 := by
   classical
   by_cases ended : (E).terminal history.state
   · simp only [InformationModel.stoppedContinuationResidual, ended, or_true, ↓reduceIte]
   let value := fun current : (E).History => expect
     ((M).runBehavioralUntil certificate target (fun _ => False) current)
-      (fun final => payoff (sourceReadout setup leaks final.state))
+      (fun final => payoff (sourceReadout setup runtime leaks final.state))
   have currentValue (current : (E).History)
-      (complete : NativeSourceTerminal (setup := setup) (leaks := leaks) current.state) :
-      value current = payoff (sourceReadout setup leaks current.state) := by
+      (complete : NativeSourceTerminal (runtime := runtime) (setup := setup) (leaks := leaks)
+        current.state) :
+      value current = payoff (sourceReadout setup runtime leaks current.state) := by
     dsimp only [value]
     rw [← (M).runBehavioralTerminalFrom_eq_until_false]
-    exact sourceTerminal_expect_payoff menu initial horizon scheduler certificate target current
+    exact sourceTerminal_expect_payoff (runtime := runtime) menu initial horizon scheduler
+      certificate target current
       complete payoff
   have afterValue : ∀ next ∈ ((M).runBehavioralFrom source 1 history).support,
-      value next = payoff (sourceReadout setup leaks history.state) := by
+      value next = payoff (sourceReadout setup runtime leaks history.state) := by
     intro next reached
     obtain ⟨⟨joint, legal, realized⟩, _⟩ :=
       (M).mem_support_runBehavioralFrom_one source ended reached
@@ -110,16 +116,18 @@ theorem sourceTerminal_residual_eq_zero
     | some control =>
         have complete : control.execution.application.config.cut.Terminal := by
           simpa only [NativeSourceTerminal, before] using terminal
-        have stepped : next.state ∈ ((application setup leaks).transition initial horizon scheduler
+        have stepped : next.state ∈ ((application setup runtime leaks).transition
+          initial horizon scheduler
             (some control) joint).support := before ▸ realized
         obtain ⟨after, afterState, same⟩ := sourceTerminal_transition control complete joint stepped
-        have nextComplete : NativeSourceTerminal (setup := setup) (leaks := leaks) next.state := by
+        have nextComplete : NativeSourceTerminal (runtime := runtime) (setup := setup) (leaks
+          := leaks) next.state := by
           rw [afterState]
           change after.execution.application.config.cut.Terminal
           rw [same]
           exact complete
-        rw [currentValue next nextComplete, afterState, sourceReadout_eq_decode,
-          sourceReadout_eq_decode, same]
+        rw [currentValue next nextComplete, afterState, sourceReadout,
+          serviceSourceReadout_eq_decode, serviceSourceReadout_eq_decode, same]
   unfold InformationModel.stoppedContinuationResidual
   rw [ite_eq_right (by simpa only [false_or] using ended)]
   change expect _ value - value history = 0
@@ -135,24 +143,27 @@ theorem sourceTerminal_gain_eq_zero [Finite (E).History]
     (excludedPayoff : Player → ℝ)
     (assessment : (M).BehavioralAssessment) {who : Player}
     (deviation : (M).AssessmentDeviation who)
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView}
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView}
     (atSite : deviation.1.1 = some (past, view))
     (complete : ∀ event : (graph setup).EventId,
       event ∈ view.application.publicView.observation.completionOrder) :
     expect ((M).assessmentComparisonWith ((M).runBehavioralTerminalFrom certificate)
-        (fun final => sourceReadout setup leaks final.state) assessment who deviation).alternative
+        (fun final => sourceReadout setup runtime leaks final.state) assessment
+          who deviation).alternative
         (fun readout => exclusionReadoutUtility setup parameter utility excludedPayoff readout
           who) -
       expect ((M).assessmentComparisonWith ((M).runBehavioralTerminalFrom certificate)
-        (fun final => sourceReadout setup leaks final.state) assessment who deviation).prescribed
+        (fun final => sourceReadout setup runtime leaks final.state) assessment
+          who deviation).prescribed
         (fun readout => exclusionReadoutUtility setup parameter utility excludedPayoff readout
           who) = 0 := by
   apply (M).gain_eq_zero_of_constant_continuations _ _ _ assessment deviation
     (fun history => exclusionReadoutUtility setup parameter utility excludedPayoff
-      (sourceReadout setup leaks history.1.state) who)
+      (sourceReadout setup runtime leaks history.1.state) who)
   intro history players final reached
-  have terminal := sourceTerminal_of_info menu initial horizon scheduler history.1
+  have terminal := sourceTerminal_of_info (runtime := runtime) menu initial horizon scheduler
+    history.1
     (history.2.trans atSite) complete
   rw [sourceTerminal_readout_stable menu initial horizon scheduler certificate players history.1
     terminal final reached]

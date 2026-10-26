@@ -152,6 +152,7 @@ end Ranked
 section Sequential
 
 variable (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
 variable {setup}
@@ -170,16 +171,17 @@ theorem ConfigStep.prefix {before after : (graph setup).Config}
 variable (setup)
 /-- One scheduler round from a completed prefix: every new response sees only
 the current event ready, and the prefix grows by at most one event. -/
-theorem round_prefix (scheduler : (application setup leaks).Scheduler)
-    (players : Player → (application setup leaks).Policy) (rank : Nat)
-    (execution next : (application setup leaks).Execution)
+theorem round_prefix (scheduler : (application setup runtime leaks).Scheduler)
+    (players : Player → (application setup runtime leaks).Policy) (rank : Nat)
+    (execution next : (application setup runtime leaks).Execution)
     (ordered : execution.application.config.cut.IsPrefix rank)
     (seen : ReadySeen setup leaks rank execution)
-    (reached : next ∈ ((application setup leaks).round scheduler players execution).support) :
+    (reached : next ∈ ((application setup runtime leaks).round scheduler players
+      execution).support) :
     ReadySeen setup leaks rank next ∧
       (next.application.config = execution.application.config ∨
         next.application.config.cut.IsPrefix (rank + 1)) := by
-  let app := application setup leaks
+  let app := application setup runtime leaks
   obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
   have recallEq := app.environmentStep_recall execution middle command moved
@@ -198,7 +200,7 @@ theorem round_prefix (scheduler : (application setup leaks).Scheduler)
     change next ∈ (app.invoke players who middle).support at resumed
     rw [ReactiveApplication.invoke, PMF.support_map] at resumed
     obtain ⟨response, _, rfl⟩ := resumed
-    obtain ⟨configEq, _⟩ := (runtime setup).reactive_respond_application leaks middle who response
+    obtain ⟨configEq, _⟩ := runtime.reactive_respond_application leaks middle who response
     refine ⟨?_, Or.inl (by rw [configEq, sameApp])⟩
     intro observer entry member event readyView
     rcases app.respond_entry_origin middle who observer response entry member with
@@ -227,10 +229,11 @@ theorem round_prefix (scheduler : (application setup leaks).Scheduler)
 
 /-- Every execution reached by complete rounds from initialization has a
 completed prefix, and its recorded responses saw nothing beyond it. -/
-theorem roundsFrom_ranked (scheduler : (application setup leaks).Scheduler)
-    (players : Player → (application setup leaks).Policy) (count : Nat)
-    (execution : (application setup leaks).Execution)
-    (supported : execution ∈ ((application setup leaks).roundsFrom (initialLaw setup) scheduler
+theorem roundsFrom_ranked (scheduler : (application setup runtime leaks).Scheduler)
+    (players : Player → (application setup runtime leaks).Policy) (count : Nat)
+    (execution : (application setup runtime leaks).Execution)
+    (supported : execution ∈ ((application setup runtime leaks).roundsFrom (initialLaw setup)
+      scheduler
       players count).support) :
     ∃ rank, execution.application.config.cut.IsPrefix rank ∧
       ReadySeen setup leaks rank execution := by
@@ -247,7 +250,7 @@ theorem roundsFrom_ranked (scheduler : (application setup leaks).Scheduler)
       obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       obtain ⟨rank, ordered, seen⟩ := ih prior priorMem
       obtain ⟨nextSeen, nextConfig⟩ :=
-        round_prefix setup leaks scheduler players rank prior execution ordered seen moved
+        round_prefix setup runtime leaks scheduler players rank prior execution ordered seen moved
       rcases nextConfig with same | advanced
       · exact ⟨rank, by rw [same]; exact ordered, nextSeen⟩
       · exact ⟨rank + 1, advanced, fun who entry member event readyView =>
@@ -256,12 +259,12 @@ theorem roundsFrom_ranked (scheduler : (application setup leaks).Scheduler)
 
 /-- Rounds stopped at the completion of the current event keep the recorded
 views below the next event, and stop at its completion or earlier. -/
-theorem runUntil_completion_prefix (scheduler : (application setup leaks).Scheduler)
-    (players : Player → (application setup leaks).Policy) (event : (graph setup).EventId)
-    (count : Nat) (execution stopped : (application setup leaks).Execution)
+theorem runUntil_completion_prefix (scheduler : (application setup runtime leaks).Scheduler)
+    (players : Player → (application setup runtime leaks).Policy) (event : (graph setup).EventId)
+    (count : Nat) (execution stopped : (application setup runtime leaks).Execution)
     (ordered : execution.application.config.cut.IsPrefix event.val)
     (seen : ReadySeen setup leaks event.val execution)
-    (reached : stopped ∈ ((application setup leaks).runUntil scheduler players
+    (reached : stopped ∈ ((application setup runtime leaks).runUntil scheduler players
       (fun final => event ∈ final.application.config.cut.completed) count execution).support) :
     ReadySeen setup leaks event.val stopped ∧
       (stopped.application.config.cut.IsPrefix event.val ∨
@@ -278,7 +281,8 @@ theorem runUntil_completion_prefix (scheduler : (application setup leaks).Schedu
       · simp only [ReactiveApplication.runUntil, halt, ↓reduceIte] at reached
         obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
         obtain ⟨middleSeen, middleConfig⟩ :=
-          round_prefix setup leaks scheduler players event.val execution middle ordered seen moved
+          round_prefix setup runtime leaks scheduler players event.val execution middle ordered
+            seen moved
         rcases middleConfig with same | advanced
         · exact ih middle (by rw [same]; exact ordered) middleSeen rest
         · have finished : event ∈ middle.application.config.cut.completed :=

@@ -115,64 +115,67 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (recoveryLeaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup))
 
-local notation "P" => phaseApplication (runtime setup) leaks
-local notation "R" => recoveryApplication (runtime setup) recoveryLeaks
-local notation "N" => application setup recoveryLeaks
+local notation "P" => phaseApplication runtime leaks
+local notation "R" => recoveryApplication runtime recoveryLeaks
+local notation "N" => application (runtime := runtime) setup recoveryLeaks
 
 /-- A permitted recovery callback at paired actual clear prefixes belongs to the installed phase. -/
 theorem phase_allows_of_recovery_countPermits_paired_history
     (inputs : PMF (graph setup).Inputs) (horizon : Nat)
     (scheduler : (P).Scheduler) {control : (P).Control}
-    (trace : ((PhaseCount.onePacketMenu (runtime setup) leaks bounds).protocol
+    (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
       (inputs.map (PhaseRuntimeState.initial (sequentialRuntimePhasePlan setup.program)))
         horizon scheduler).Trace (some control))
     (clear : control.execution.application.current.excluded = ∅)
     (nativeScheduler : (N).Scheduler) (nativeControl : (N).Control)
-    (nativeTrace : (onePacketProtocol setup recoveryLeaks bounds horizon nativeScheduler).Trace
+    (nativeTrace : (onePacketProtocol (runtime := runtime) setup recoveryLeaks bounds horizon
+      nativeScheduler).Trace
       (some nativeControl))
     (nativeClear : ExclusionEvidence 0 ∅
       (⟨nativeControl.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (current : control.execution.application.current.native = nativeControl.execution.application)
     (who : Player)
     (past : ((control.execution.recall who).map
-      (PhaseRecoveryProjection.playerEntry (runtime setup) leaks recoveryLeaks)).map
-        (RecoveryProjection.playerEntry (runtime setup) recoveryLeaks) =
+      (PhaseRecoveryProjection.playerEntry runtime leaks recoveryLeaks)).map
+        (RecoveryProjection.playerEntry runtime recoveryLeaks) =
           nativeControl.execution.recall who)
-    (view : RecoveryProjection.playerView (runtime setup) recoveryLeaks
-      (PhaseRecoveryProjection.playerView (runtime setup) leaks recoveryLeaks
+    (view : RecoveryProjection.playerView runtime recoveryLeaks
+      (PhaseRecoveryProjection.playerView runtime leaks recoveryLeaks
         (control.execution.observe (P) who)) = nativeControl.execution.observe (N) who)
     (material : WitnessedSubmission (graph setup))
     (permitted : countPermits ((R).outputs ((control.execution.recall who).map
-      (PhaseRecoveryProjection.playerEntry (runtime setup) leaks recoveryLeaks)))
-      (Recovery.localEnvelope (runtime setup) recoveryLeaks who
+      (PhaseRecoveryProjection.playerEntry runtime leaks recoveryLeaks)))
+      (Recovery.localEnvelope runtime recoveryLeaks who
         ((control.execution.recall who).map
-          (PhaseRecoveryProjection.playerEntry (runtime setup) leaks recoveryLeaks))
-        (PhaseRecoveryProjection.playerView (runtime setup) leaks recoveryLeaks
+          (PhaseRecoveryProjection.playerEntry runtime leaks recoveryLeaks))
+        (PhaseRecoveryProjection.playerView runtime leaks recoveryLeaks
           (control.execution.observe (P) who)) material) = true) :
     PhaseCount.allows control.execution.application.publicView material.call.packet = true := by
-  have empty : (PhaseRecoveryProjection.playerView (runtime setup) leaks recoveryLeaks
+  have empty : (PhaseRecoveryProjection.playerView runtime leaks recoveryLeaks
       (control.execution.observe (P) who)).application.2 = ∅ := clear
-  rw [Recovery.localEnvelope_of_empty (runtime setup) recoveryLeaks who _ _ empty,
+  rw [Recovery.localEnvelope_of_empty runtime recoveryLeaks who _ _ empty,
     ← RecoveryProjection.outputs, past, view] at permitted
   have authorized := ((countPermits_eq_true_iff _ _).mp permitted).1
   obtain ⟨event, named, _token⟩ := (WitnessedPacket.tokenValid_iff _).mp authorized
   have addressed : material.call.packet.event? (graph setup) = some event := named
-  have ready := countPermits_localEnvelope_ready_of_clear_trace nativeTrace nativeClear who
+  have ready := countPermits_localEnvelope_ready_of_clear_trace (runtime := runtime) nativeTrace
+    nativeClear who
     material permitted event addressed
   rw [← current] at ready
   let plan := sequentialRuntimePhasePlan setup.program
   let initial := inputs.map (PhaseRuntimeState.initial plan)
-  let rawTrace := (PhaseCount.onePacketMenu (runtime setup) leaks bounds).toRawTrace initial
+  let rawTrace := (PhaseCount.onePacketMenu runtime leaks bounds).toRawTrace initial
     horizon scheduler trace
-  have frontier := (phaseApplication_frontier (runtime setup) leaks).history initial horizon
+  have frontier := (phaseApplication_frontier runtime leaks).history initial horizon
     scheduler (fun state supported => by
       obtain ⟨draw, _supported, rfl⟩ := PMF.support_map .. ▸ supported
       exact PhaseRuntimeState.initial_frontier plan draw) rawTrace
-  have live := ((phaseApplication_live (runtime setup) leaks).history initial horizon scheduler
+  have live := ((phaseApplication_live runtime leaks).history initial horizon scheduler
     (fun state supported => by
       obtain ⟨draw, _supported, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨PhaseRuntimeState.initial_frontier plan draw,
@@ -195,65 +198,67 @@ The conclusion also derives its operational normal form, rather than assuming it
 theorem phase_onePacket_mem_of_recovery_paired_history
     (inputs : PMF (graph setup).Inputs) (horizon : Nat)
     (scheduler : (P).Scheduler) {control : (P).Control}
-    (trace : ((PhaseCount.onePacketMenu (runtime setup) leaks bounds).protocol
+    (trace : ((PhaseCount.onePacketMenu runtime leaks bounds).protocol
       (inputs.map (PhaseRuntimeState.initial (sequentialRuntimePhasePlan setup.program)))
         horizon scheduler).Trace (some control))
     (clear : control.execution.application.current.excluded = ∅)
     (nativeScheduler : (N).Scheduler) (nativeControl : (N).Control)
-    (nativeTrace : (onePacketProtocol setup recoveryLeaks bounds horizon nativeScheduler).Trace
+    (nativeTrace : (onePacketProtocol (runtime := runtime) setup recoveryLeaks bounds horizon
+      nativeScheduler).Trace
       (some nativeControl))
     (nativeClear : ExclusionEvidence 0 ∅
       (⟨nativeControl.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (current : control.execution.application.current.native = nativeControl.execution.application)
     (who : Player)
     (past : ((control.execution.recall who).map
-      (PhaseRecoveryProjection.playerEntry (runtime setup) leaks recoveryLeaks)).map
-        (RecoveryProjection.playerEntry (runtime setup) recoveryLeaks) =
+      (PhaseRecoveryProjection.playerEntry runtime leaks recoveryLeaks)).map
+        (RecoveryProjection.playerEntry runtime recoveryLeaks) =
           nativeControl.execution.recall who)
-    (view : RecoveryProjection.playerView (runtime setup) recoveryLeaks
-      (PhaseRecoveryProjection.playerView (runtime setup) leaks recoveryLeaks
+    (view : RecoveryProjection.playerView runtime recoveryLeaks
+      (PhaseRecoveryProjection.playerView runtime leaks recoveryLeaks
         (control.execution.observe (P) who)) = nativeControl.execution.observe (N) who)
     (response : (P).Action)
-    (member : PhaseRecoveryProjection.action (runtime setup) leaks recoveryLeaks response ∈
-      Recovery.onePacketActions (runtime setup) recoveryLeaks bounds who
+    (member : PhaseRecoveryProjection.action runtime leaks recoveryLeaks response ∈
+      Recovery.onePacketActions runtime recoveryLeaks bounds who
         ((control.execution.recall who).map
-          (PhaseRecoveryProjection.playerEntry (runtime setup) leaks recoveryLeaks))
-        (PhaseRecoveryProjection.playerView (runtime setup) leaks recoveryLeaks
+          (PhaseRecoveryProjection.playerEntry runtime leaks recoveryLeaks))
+        (PhaseRecoveryProjection.playerView runtime leaks recoveryLeaks
           (control.execution.observe (P) who))) :
-    response ∈ PhaseCount.onePacketActions (runtime setup) leaks bounds who
+    response ∈ PhaseCount.onePacketActions runtime leaks bounds who
         (control.execution.recall who) (control.execution.observe (P) who) ∧
-      (PhaseCount.normalization (runtime setup) leaks).action who (control.execution.recall who)
+      (PhaseCount.normalization runtime leaks).action who (control.execution.recall who)
         (control.execution.observe (P) who) response = response := by
-  obtain ⟨recoveryMenu, permitted⟩ := (Recovery.mem_onePacketActions (runtime setup) recoveryLeaks
+  obtain ⟨recoveryMenu, permitted⟩ := (Recovery.mem_onePacketActions runtime recoveryLeaks
       bounds
     who _ _ _).mp member
-  have canonical := (PhaseRecoveryProjection.normalizedMenu_projected (runtime setup) leaks
+  have canonical := (PhaseRecoveryProjection.normalizedMenu_projected runtime leaks
     recoveryLeaks bounds who (control.execution.recall who) (control.execution.observe (P) who)
       response).mpr recoveryMenu
-  have fixed := (PhaseCount.normalization (runtime setup) leaks).menu_normal
-    (PhaseCount.rawMenu (runtime setup) leaks bounds) who (control.execution.recall who)
+  have fixed := (PhaseCount.normalization runtime leaks).menu_normal
+    (PhaseCount.rawMenu runtime leaks bounds) who (control.execution.recall who)
     (control.execution.observe (P) who) response canonical
-  refine ⟨(PhaseCount.mem_onePacketActions (runtime setup) leaks bounds who _ _ _).mpr
+  refine ⟨(PhaseCount.mem_onePacketActions runtime leaks bounds who _ _ _).mpr
     ⟨?_, ?_⟩, fixed⟩
   · obtain ⟨original, raw, normalized⟩ :=
       (ReactiveApplication.SubmissionNormalization.menu_mem _ _ _ _ _ _).mp canonical
-    have projectedRaw := (PhaseRecoveryProjection.rawMenu_projected (runtime setup) leaks
+    have projectedRaw := (PhaseRecoveryProjection.rawMenu_projected runtime leaks
       recoveryLeaks bounds who (control.execution.recall who) (control.execution.observe (P) who)
         original).mp raw
-    have normalizedRaw := Recovery.rawMenu_closed (runtime setup) recoveryLeaks bounds who _ _ _
+    have normalizedRaw := Recovery.rawMenu_closed runtime recoveryLeaks bounds who _ _ _
       projectedRaw
     rw [← PhaseRecoveryProjection.normalization_projected, normalized] at normalizedRaw
-    exact (PhaseRecoveryProjection.rawMenu_projected (runtime setup) leaks recoveryLeaks bounds
+    exact (PhaseRecoveryProjection.rawMenu_projected runtime leaks recoveryLeaks bounds
       who (control.execution.recall who) (control.execution.observe (P) who) response).mpr
         normalizedRaw
   · rcases permitted with silent | ⟨material, transmitted, admitted⟩
     · exact Or.inl silent
     · refine Or.inr ⟨material, transmitted, ?_⟩
-      have allowed := phase_allows_of_recovery_countPermits_paired_history setup leaks recoveryLeaks
+      have allowed := phase_allows_of_recovery_countPermits_paired_history setup runtime leaks
+        recoveryLeaks
         bounds inputs horizon scheduler trace clear nativeScheduler nativeControl nativeTrace
         nativeClear current who past view material admitted
       exact PhaseRecoveryProjection.phase_countPermits_of_recovery_history setup.program
-        (runtime setup) leaks recoveryLeaks bounds inputs horizon scheduler trace clear who
+        runtime leaks recoveryLeaks bounds inputs horizon scheduler trace clear who
         material allowed admitted
 
 end Vegas

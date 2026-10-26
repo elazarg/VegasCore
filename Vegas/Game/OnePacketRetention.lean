@@ -146,6 +146,7 @@ theorem publicFreshSlot_le_bindingEventCount
 end Generic
 
 variable {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 section Allowed
@@ -154,15 +155,16 @@ variable [Fintype Player] (bounds : MessageBounds (graph setup))
 
 /-- An offered response transmits a packet the bounds allow. -/
 theorem offered_packet_allowed (who : Player)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) (response : (application setup leaks).Action)
-    (member : response ∈ (bounds.menu (runtime setup) leaks).actions who past view)
-    (material : (application setup leaks).Submission)
+    (past : List (application setup runtime leaks).PlayerEntry)
+    (view : (application setup runtime leaks).PlayerView) (response : (application setup runtime
+      leaks).Action)
+    (member : response ∈ (bounds.menu runtime leaks).actions who past view)
+    (material : (application setup runtime leaks).Submission)
     (sends : response.transmission = some material) :
     bounds.AllowsPacket material.call.packet := by
   obtain ⟨original, rawMember, normalized⟩ :=
-    (((runtime setup).reactiveNormalization leaks).menu_mem
-      (bounds.rawMenu (runtime setup) leaks) who past view response).mp member
+    ((runtime.reactiveNormalization leaks).menu_mem
+      (bounds.rawMenu runtime leaks) who past view response).mp member
   rcases original with ⟨_ | originalMaterial⟩
   · subst normalized
     cases sends
@@ -173,17 +175,17 @@ theorem offered_packet_allowed (who : Player)
       ((ReactiveApplication.ResponseMenu.fromSubmissions_mem _ who past view _).mp
         rawMember)).1.1
 
-variable (setup leaks) in
+variable (setup runtime leaks) in
 /-- Every packet a player recalls emitting is allowed by the bounds. -/
-def OutputsAllowed (execution : (application setup leaks).Execution) : Prop :=
-  ∀ who, ∀ message ∈ (application setup leaks).outputs (execution.recall who),
+def OutputsAllowed (execution : (application setup runtime leaks).Execution) : Prop :=
+  ∀ who, ∀ message ∈ (application setup runtime leaks).outputs (execution.recall who),
     bounds.AllowsPacket message.payload.call
 
 /-- **Emitted packets are allowed** along every history of the one-packet game,
 under every scheduler. -/
-theorem onePacket_outputsAllowed (scheduler : (application setup leaks).Scheduler) :
-    (bounds.onePacketMenu (runtime setup) leaks).ServiceInvariant scheduler
-      (OutputsAllowed setup leaks bounds) where
+theorem onePacket_outputsAllowed (scheduler : (application setup runtime leaks).Scheduler) :
+    (bounds.onePacketMenu runtime leaks).ServiceInvariant scheduler
+      (OutputsAllowed setup runtime leaks bounds) where
   respond execution who action allowed member := by
     intro observer message output
     obtain ⟨entry, entryMember, emitted⟩ := List.mem_filterMap.mp output
@@ -197,13 +199,14 @@ theorem onePacket_outputsAllowed (scheduler : (application setup leaks).Schedule
         rcases action with ⟨_ | material⟩
         · cases emitted
         · cases Option.some.inj emitted
-          exact offered_packet_allowed bounds observer _ _ ⟨some material⟩
-            ((bounds.mem_onePacketActions (runtime setup) leaks observer _ _ _).mp member).1
+          exact offered_packet_allowed (runtime := runtime) bounds observer _ _ ⟨some material⟩
+            ((bounds.mem_onePacketActions runtime leaks observer _ _ _).mp member).1
             material rfl
     · exact allowed observer message (List.mem_filterMap.mpr ⟨entry, entryMember, emitted⟩)
   environment execution next command allowed _ reached := by
     intro who message output
-    rw [(application setup leaks).environmentStep_recall execution next command reached] at output
+    rw [(application setup runtime leaks).environmentStep_recall execution next command reached]
+      at output
     exact allowed who message output
 
 end Allowed
@@ -211,26 +214,29 @@ end Allowed
 section History
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler} {control : (application setup leaks).Control}
+  {scheduler : (application setup runtime leaks).Scheduler} {control : (application setup runtime
+    leaks).Control}
 
 /-- **The canonical slot is within the binding events.** Along every history of
 the one-packet game, the canonical slot of a player is at most its number of
 binding events. -/
 theorem canonicalFreshSlot_le_bindingEvents
-    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) {serial : Nat}
     (selected : canonicalFreshSlot who (control.execution.application.playerView who) =
       some serial) :
     serial ≤ bindingEventCount (graph setup) who := by
-  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+    scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
-  have clean := (bounds.onePacketMenu_countClean (runtime setup) leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => (runtime setup).countClean_initial leaks state) trace
+  have clean := (bounds.onePacketMenu_countClean runtime leaks scheduler).history
+    (initialLaw setup) horizon (fun state _ => runtime.countClean_initial leaks state) trace
   have facts := legalFacts setup leaks horizon scheduler control rawTrace
-  rw [canonicalFreshSlot_eq_publicFreshSlot (preparedFresh_history horizon scheduler rawTrace)]
+  rw [canonicalFreshSlot_eq_publicFreshSlot (preparedFresh_history (runtime := runtime) horizon
+    scheduler rawTrace)]
     at selected
   exact publicFreshSlot_le_bindingEventCount clean.2
     (fun message member other otherMember => (facts.unique.inputs message member).inputs other
@@ -241,16 +247,17 @@ theorem canonicalFreshSlot_le_bindingEvents
 game: input handles always are, and every other accepted handle is committed by
 a packet its owner emitted. -/
 theorem onePacket_accepted_allowed
-    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (field : (graph setup).Field) (candidate : Handle (graph setup))
     (accepted : control.execution.application.accepted field = some candidate) :
     bounds.AllowsHandle candidate := by
-  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+    scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
-  have signed := signedCommitments_history (runtime setup) leaks (initialLaw setup)
+  have signed := signedCommitments_history runtime leaks (initialLaw setup)
     (serviceInitialLaw_initialized setup) horizon scheduler rawTrace
   cases field with
   | inl input =>
@@ -259,34 +266,36 @@ theorem onePacket_accepted_allowed
       trivial
   | inr event =>
       obtain ⟨message, output, call⟩ := signed.acceptedSigned event candidate accepted
-      have allowed := ((onePacket_outputsAllowed bounds scheduler).history (initialLaw setup)
+      have allowed := ((onePacket_outputsAllowed (runtime := runtime) bounds scheduler).history
+        (initialLaw setup)
         horizon (fun _ _ _ _ output => (List.not_mem_nil output).elim) trace) candidate.1 message
         output
       rw [call] at allowed
       exact allowed
 
-variable (setup leaks) in
+variable (setup runtime leaks) in
 /-- **Retention of first covered canonical packets.** At every history of the
 one-packet game, at an owner's turn at an event its recall has not submitted
 for, while a fresh call still fits the deadline, every transmitting canonical
 decision of the effective opening is retained by the canonical menu. -/
-def RetainsCoveredCanonical (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
+def RetainsCoveredCanonical (horizon : Nat) (scheduler : (application setup runtime
+  leaks).Scheduler)
     (bound : (graph setup).EventId → Nat) : Prop :=
-  ∀ {control : (application setup leaks).Control},
-    ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+  ∀ {control : (application setup runtime leaks).Control},
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) →
     ∀ who (event : (graph setup).EventId) (action : (graph setup).Action event),
     control.execution.application.publicView.ownTurn? who = some event →
-    (runtime setup).eventRecorded leaks (control.execution.recall who) event = false →
-    control.execution.application.publicView.InclusionFitsDeadline (runtime setup) bound event →
+    runtime.eventRecorded leaks (control.execution.recall who) event = false →
+    control.execution.application.publicView.InclusionFitsDeadline runtime bound event →
     EffectiveDecision event action →
-    ((runtime setup).canonicalServiceDecision leaks who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who) event action).transmission ≠
+    (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+      (control.execution.observe (application setup runtime leaks) who) event action).transmission ≠
         none →
-    (runtime setup).canonicalServiceDecision leaks who (control.execution.recall who)
-        (control.execution.observe (application setup leaks) who) event action ∈
-      bounds.canonicalActions (runtime setup) leaks who (control.execution.recall who)
-        (control.execution.observe (application setup leaks) who)
+    runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+        (control.execution.observe (application setup runtime leaks) who) event action ∈
+      bounds.canonicalActions runtime leaks who (control.execution.recall who)
+        (control.execution.observe (application setup runtime leaks) who)
 
 /-- **Retention from bounds adequacy.** If every value of every binding and
 publication type is a bounded value and the candidate capacity exceeds every
@@ -294,9 +303,9 @@ player's number of binding events, the canonical menu retains every first
 covered canonical packet, under every scheduler and inclusion bound. -/
 theorem retainsCoveredCanonical_of_adequate (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
-    (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
+    (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
     (bound : (graph setup).EventId → Nat) :
-    RetainsCoveredCanonical setup leaks bounds horizon scheduler bound := by
+    RetainsCoveredCanonical setup runtime leaks bounds horizon scheduler bound := by
   intro control trace who event action turn unsent fits effective transmits
   have ready := (PublicView.ownTurn?_spec _ who event turn).1
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
@@ -315,7 +324,7 @@ theorem retainsCoveredCanonical_of_adequate (covers : bounds.CoversOutputValues)
       have values := covers event
       rw [outputEq] at values
       cases selected : canonicalFreshSlot owner
-          (control.execution.observe (application setup leaks) owner).application with
+          (control.execution.observe (application setup runtime leaks) owner).application with
       | none =>
           exfalso
           apply transmits
@@ -323,10 +332,11 @@ theorem retainsCoveredCanonical_of_adequate (covers : bounds.CoversOutputValues)
             Option.map_none]
           rfl
       | some serial =>
-          exact bounds.canonical_binding_value_retained (runtime setup) leaks owner _ _ event
+          exact bounds.canonical_binding_value_retained runtime leaks owner _ _ event
             payload outputEq codeEq node turn owned ready fits.withinDeadline unsent serial
             selected
-            (lt_of_le_of_lt (canonicalFreshSlot_le_bindingEvents bounds trace owner selected)
+            (lt_of_le_of_lt (canonicalFreshSlot_le_bindingEvents (runtime := runtime) bounds trace
+              owner selected)
               (capacity owner))
             value (values value)
   | resolve actor payload binding checks outputEq codeEq =>
@@ -336,12 +346,12 @@ theorem retainsCoveredCanonical_of_adequate (covers : bounds.CoversOutputValues)
           (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) := by
         simp
       rw [choiceEq]
-      exact bounds.canonical_resolution_retained (runtime setup) leaks who _ _ event actor
+      exact bounds.canonical_resolution_retained runtime leaks who _ _ event actor
         payload binding checks outputEq codeEq node turn owned ready fits.withinDeadline unsent _
         fun packet sent => bounds.resolutionPacket_allowed who event payload binding checks
           outputEq _ _ values
           (fun field candidate accepted =>
-            onePacket_accepted_allowed bounds trace field candidate accepted)
+            onePacket_accepted_allowed (runtime := runtime) bounds trace field candidate accepted)
           packet sent
 
 end History

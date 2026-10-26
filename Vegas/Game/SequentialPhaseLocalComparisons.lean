@@ -18,27 +18,28 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
+  (scheduler : (phaseApplication runtime leaks).Scheduler)
+  [(phaseApplication runtime leaks).FiniteNature (phaseInitialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
 
 variable {Public : Type*} {signal : State L setup.context → Public}
 
 local notation "RecoveryLeaks" => recoveryLeaks setup leaks
 local notation "RecoveryPrior" => recoveryInitialLaw setup
-local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
-local notation "NativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup)
+local notation "RecoveryScheduler" => recoveryScheduler setup runtime leaks scheduler
+local notation "NativeScheduler" => RecoveryProjection.nativeScheduler runtime
     (RecoveryLeaks)
   (RecoveryScheduler)
-local notation "M" => model setup leaks bounds horizon scheduler
-local notation "MMenu" => menu setup leaks bounds
+local notation "M" => model setup runtime leaks bounds horizon scheduler
+local notation "MMenu" => menu setup runtime leaks bounds
 local notation "MP" => ReactiveApplication.ResponseMenu.protocol (MMenu) (phaseInitialLaw setup)
   horizon scheduler
-local notation "NMenu" => bounds.onePacketMenu (runtime setup) (RecoveryLeaks)
+local notation "NMenu" => bounds.onePacketMenu runtime (RecoveryLeaks)
 local notation "Base" => phaseExclusionBase setup EventGraph.ExecutionMode.sequential
-  (runtime setup) leaks
+  runtime leaks
 
 attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
   phaseHistoryFintype recoveryHistoryFintype nativeHistoryFintype nativeNature
@@ -55,31 +56,33 @@ theorem local_comparisons
       setup.intended_decision_antichain)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     (scaleEq : ∀ n, scale n = trembleScale
-      (combinedFloor setup (RecoveryLeaks) bounds horizon (NativeScheduler) (sequence n))
+      (combinedFloor (runtime := runtime) setup (RecoveryLeaks) bounds horizon (NativeScheduler)
+        (sequence n))
       (2 * horizon + 2) n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     (slots_pos : 0 < bounds.candidateCount)
     (weights : ℕ → ∀ p,
-      PMF (Part setup leaks bounds horizon scheduler bounds.candidateCount p))
+      PMF (Part setup runtime leaks bounds horizon scheduler bounds.candidateCount p))
     (assessments : ℕ → (M).BehavioralAssessment)
     (fallback : ℕ → ∀ player, (M).Policy player)
-    (assembled : ∀ n, (assessments n).strategy = componentStrategy setup leaks bounds horizon
+    (assembled : ∀ n, (assessments n).strategy = componentStrategy setup runtime leaks bounds
+      horizon
       scheduler (fallback n) (sequence n) (scale n) (positive n).le (le_one n) (weights n))
     (mixed : ∀ n, (assessments n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (M) (assessments n)
       ((MMenu).decisionInformationAntichain (phaseInitialLaw setup) horizon scheduler))
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : PhaseService.Opportunity (runtime setup) leaks (phaseInitialLaw setup) horizon
+    (opportunity : PhaseService.Opportunity runtime leaks (phaseInitialLaw setup) horizon
         scheduler delay)
-    (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks (phaseInitialLaw setup)
+    (inclusion : PhaseService.ProtectedInclusion runtime leaks (phaseInitialLaw setup)
         horizon
         scheduler bound)
-    (timely : (runtime setup).AsyncTimely delay bound)
+    (timely : runtime.AsyncTimely delay bound)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ) (payoffBound : ℝ) (nonnegative : 0 ≤ payoffBound)
-    (completes : PhaseService.CompletesPlay (runtime setup) leaks (phaseInitialLaw setup) horizon
+    (completes : PhaseService.CompletesPlay runtime leaks (phaseInitialLaw setup) horizon
         scheduler)
     (payoffBounded : ∀ who (final : (MP).History),
       |(Base (fun terminal => utility (setup.parameterOutcome parameter terminal)) excludedPayoff)
@@ -92,9 +95,9 @@ theorem local_comparisons
     (readoutBounded : ∀ who readout,
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
     (pooled : ∀ n (alternative : ∀ p,
-        PMF (Part setup leaks bounds horizon scheduler bounds.candidateCount p)) p,
+        PMF (Part setup runtime leaks bounds horizon scheduler bounds.candidateCount p)) p,
       ∑ agent ∈ Finset.univ.filter
-          (fun agent => pool setup leaks bounds horizon scheduler agent = p),
+          (fun agent => pool setup runtime leaks bounds horizon scheduler agent = p),
         (if decision : (M).IsDecisionInfo agent.1 agent.2.1 then
           ((assessments n).continuationContext
               ((MMenu).bounded (phaseInitialLaw setup) horizon scheduler).wellFoundedHistories
@@ -103,9 +106,9 @@ theorem local_comparisons
                   terminal)) excludedPayoff) final.state
                 agent.1)).value
               (((assessments n).strategy agent.1).withLaw agent.2.1
-                ((alternative (pool setup leaks bounds horizon scheduler
+                ((alternative (pool setup runtime leaks bounds horizon scheduler
                     agent)).bind
-                  (component setup leaks bounds horizon scheduler (sequence n)
+                  (component setup runtime leaks bounds horizon scheduler (sequence n)
                       (scale n)
                     (positive n).le (le_one n) agent))) -
             ((assessments n).continuationContext
@@ -117,7 +120,7 @@ theorem local_comparisons
         else 0) ≤ 0) :
     ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧
       ∀ n who (site : (M).InformationSite who),
-        ¬ FreeAgent setup leaks bounds horizon scheduler ((M).agentAt site) →
+        ¬ FreeAgent setup runtime leaks bounds horizon scheduler ((M).agentAt site) →
         ∀ choice : (M).Choice who site.1,
           localGain (2 * horizon + 1) (fun final => final.state)
               ((Base (fun terminal => utility (setup.parameterOutcome parameter terminal))
@@ -132,7 +135,7 @@ theorem local_comparisons
                 n)) +
                 error n := by
   classical
-  let rawCertificate := ((application setup (RecoveryLeaks)).bounded
+  let rawCertificate := ((application (runtime := runtime) setup (RecoveryLeaks)).bounded
     ((RecoveryPrior).map RecoveryState.native) horizon (NativeScheduler)).wellFoundedHistories
   let certificate := ((NMenu).bounded (Vegas.initialLaw setup) horizon
     (NativeScheduler)).wellFoundedHistories
@@ -159,24 +162,26 @@ theorem local_comparisons
         (assessments n) site ((MMenu).bounded (phaseInitialLaw setup) horizon scheduler),
       BehavioralPolicy.withLaw_eq_self]
   have pooledGains (n : ℕ) (alternative : ∀ p,
-      PMF (Part setup leaks bounds horizon scheduler bounds.candidateCount p)) (p) :
+      PMF (Part setup runtime leaks bounds horizon scheduler bounds.candidateCount p)) (p) :
       ∑ agent ∈ Finset.univ.filter
-        (fun agent => pool setup leaks bounds horizon scheduler agent = p),
+        (fun agent => pool setup runtime leaks bounds horizon scheduler agent = p),
         (if decision : (M).IsDecisionInfo agent.1 agent.2.1 then
           localGain (2 * horizon + 1) (fun final => final.state)
             (Base (fun terminal => utility (setup.parameterOutcome parameter terminal))
               excludedPayoff) (assessments n) (who := agent.1) ⟨agent.2.1, decision⟩
-            ((alternative (pool setup leaks bounds horizon scheduler agent)).bind
-              (component setup leaks bounds horizon scheduler (sequence n) (scale n)
+            ((alternative (pool setup runtime leaks bounds horizon scheduler agent)).bind
+              (component setup runtime leaks bounds horizon scheduler (sequence n) (scale n)
                 (positive n).le (le_one n) agent)) else 0) ≤ 0 := by
     simpa only [gainEq] using pooled n alternative p
-  obtain ⟨nonlateError, nonlateLimit, nonlateBound⟩ := nonlate_local_comparisons setup leaks bounds
+  obtain ⟨nonlateError, nonlateLimit, nonlateBound⟩ := nonlate_local_comparisons setup runtime
+    leaks bounds
     horizon scheduler wellFormed independent observable sequence sourceMixed sourceBayes scale
     positive le_one scaleEq covers coversInputs capacity weights opportunity inclusion timely
     rawCertificate completes assessments fallback assembled mixed bayes parameter utility
     excludedPayoff nonnegative (fun final who => payoffBounded who final) excludedBounded below
     upper le_upper readoutBounded
-  obtain ⟨keyedError, keyedLimit, keyedBound⟩ := keyed_local_comparisons setup leaks bounds horizon
+  obtain ⟨keyedError, keyedLimit, keyedBound⟩ := keyed_local_comparisons setup runtime leaks
+    bounds horizon
     scheduler wellFormed independent observable sequence sourceMixed sourceBayes scale positive
     le_one scaleEq covers coversInputs capacity weights opportunity inclusion timely rawCertificate
     certificate completes assessments fallback assembled mixed bayes parameter utility
@@ -195,23 +200,26 @@ theorem local_comparisons
       tendsto_finsetSum Finset.univ (fun index _ => limits index)
   intro n who site notFree choice
   obtain ⟨clear, _forced⟩ := Classical.not_not.mp notFree
-  by_cases owing : RecoveryOnePacket.OwingAgent setup (RecoveryLeaks) bounds RecoveryPrior horizon
-      (RecoveryScheduler) (projectedAgent setup leaks bounds horizon scheduler ((M).agentAt site)
+  by_cases owing : RecoveryOnePacket.OwingAgent (runtime := runtime) setup (RecoveryLeaks) bounds
+    RecoveryPrior horizon
+      (RecoveryScheduler) (projectedAgent setup runtime leaks bounds horizon scheduler
+        ((M).agentAt site)
           clear)
   · left
     have actualPositive : 0 < (M).informationMass (assessments n).strategy who site :=
       (M).informationMass_pos_of_fullSupport _ (mixed n) who site
     have positiveSite : 0 < (M).informationMass
-        (componentStrategy setup leaks bounds horizon scheduler (fallback n) (sequence n) (scale n)
+        (componentStrategy setup runtime leaks bounds horizon scheduler (fallback n) (sequence n)
+          (scale n)
           (positive n).le (le_one n) (weights n)) who site := by
       rw [← assembled n]
       exact actualPositive
-    rw [component_owing_localGain_eq_zero setup leaks bounds horizon scheduler (fallback n)
+    rw [component_owing_localGain_eq_zero setup runtime leaks bounds horizon scheduler (fallback n)
       (sequence n) (scale n) (positive n) (le_one n) (weights n) who site clear positiveSite owing
       (assessments n) (assembled n) (bayes n) parameter utility excludedPayoff completes]
     exact Finset.sum_nonneg fun _ _ => abs_nonneg _
-  by_cases keyed : ownedKeyed (FreeAgent setup leaks bounds horizon scheduler)
-      (KeyedAgent setup leaks bounds horizon scheduler) ((M).agentAt site)
+  by_cases keyed : ownedKeyed (FreeAgent setup runtime leaks bounds horizon scheduler)
+      (KeyedAgent setup runtime leaks bounds horizon scheduler) ((M).agentAt site)
   · exact GainComparison.sum_abs_errors (fun index => errors index n) true
       (keyedBound n who site clear keyed owing choice)
   · exact GainComparison.sum_abs_errors (fun index => errors index n) false

@@ -22,12 +22,13 @@ open SourceProgram GameTheory GameTheory.Enforcement GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
 /-- The same optional typed source reader retained by forced-exit preservation. -/
-def recoveryPaymentReadout (state : (recoveryApplication (runtime setup) leaks).ProtocolState) :
+def recoveryPaymentReadout (state : (recoveryApplication runtime leaks).ProtocolState) :
     Option (State L setup.program.terminalCtx) :=
-  sourceReadout setup leaks (RecoveryProjection.protocolState (runtime setup) leaks state)
+  sourceReadout setup runtime leaks (RecoveryProjection.protocolState runtime leaks state)
 
 /-- Reading source exclusion utility commutes with addition of valuation and
 cash, including failed reveals and absent terminal readouts. -/
@@ -54,25 +55,27 @@ theorem recoveryExclusionBase_valuation_factors {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)
     (exitValuation : Player → ℝ)
-    (law : PMF (recoveryApplication (runtime setup) leaks).ProtocolState)
+    (law : PMF (recoveryApplication runtime leaks).ProtocolState)
     (exitCompatible : ∀ control, some control ∈ law.support → ∀ who,
       who ∈ control.execution.application.excluded →
       exitValuation who = exclusionReadoutUtility setup parameter valuation exitValuation
-        (recoveryPaymentReadout setup leaks (some control)) who) :
+        (recoveryPaymentReadout setup runtime leaks (some control)) who) :
     ∀ state ∈ law.support,
-      recoveryExclusionBase parameter valuation exitValuation state =
+      recoveryExclusionBase (runtime := runtime) parameter valuation exitValuation state =
         exclusionReadoutUtility setup parameter valuation exitValuation
-          (recoveryPaymentReadout setup leaks state) := by
+          (recoveryPaymentReadout setup runtime leaks state) := by
   intro state supported
   funext who
   cases state with
   | none => rfl
   | some control =>
     by_cases excluded : who ∈ control.execution.application.excluded
-    · rw [recoveryExclusionBase_of_excluded parameter valuation exitValuation control who excluded]
+    · rw [recoveryExclusionBase_of_excluded (runtime := runtime) parameter valuation exitValuation
+        control who excluded]
       exact exitCompatible control supported who excluded
-    · rw [recoveryExclusionBase_of_not_excluded parameter valuation exitValuation control who
-        excluded, exclusionBase_eq_readout]
+    · rw [recoveryExclusionBase_of_not_excluded (runtime := runtime) parameter valuation
+        exitValuation control who
+        excluded, exclusionBase_eq_readout ]
       rfl
 
 /-- A preserved utility law yields the actual joint cash law under the explicit
@@ -82,47 +85,49 @@ theorem recovery_jointCashLaw_of_utility_law {Parameter Observation : Type}
     (parameter : State L setup.context → Parameter)
     (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)
     (exitValuation exitTransfer : Player → ℝ)
-    (law : PMF (recoveryApplication (runtime setup) leaks).ProtocolState)
+    (law : PMF (recoveryApplication runtime leaks).ProtocolState)
     (reference : PMF (Option (State L setup.program.terminalCtx)))
     (exitCompatible : ∀ control, some control ∈ law.support → ∀ who,
       who ∈ control.execution.application.excluded →
       exitValuation who = exclusionReadoutUtility setup parameter valuation exitValuation
-        (recoveryPaymentReadout setup leaks (some control)) who)
-    (observe : (recoveryApplication (runtime setup) leaks).ProtocolState → Observation)
+        (recoveryPaymentReadout setup runtime leaks (some control)) who)
+    (observe : (recoveryApplication runtime leaks).ProtocolState → Observation)
     (audit : Observation → PMF (Player → Bool)) (deposit : Player → ℝ)
     (utilityLaw :
       (TerminalAudit.jointSettlement law
-          (recoveryExclusionBase parameter (setup.program.parameterPaymentUtility valuation)
+          (recoveryExclusionBase (runtime := runtime) parameter
+            (setup.program.parameterPaymentUtility valuation)
             (fun who => exitValuation who + exitTransfer who)) observe audit deposit).map
-          (fun realized => (recoveryPaymentReadout setup leaks realized.1, realized.2)) =
+          (fun realized => (recoveryPaymentReadout setup runtime leaks realized.1, realized.2)) =
         reference.map (fun readout => (readout,
           exclusionReadoutUtility setup parameter (setup.program.parameterPaymentUtility valuation)
             (fun who => exitValuation who + exitTransfer who) readout))) :
     (TerminalAudit.jointSettlement law
-        (recoveryExclusionBase parameter
+        (recoveryExclusionBase (runtime := runtime) parameter
           (fun outcome who => setup.program.publicTransfers outcome.2 who) exitTransfer)
         observe audit deposit).map
-        (fun realized => (recoveryPaymentReadout setup leaks realized.1, realized.2)) =
+        (fun realized => (recoveryPaymentReadout setup runtime leaks realized.1, realized.2)) =
       reference.map (fun readout => (readout,
         exclusionReadoutUtility setup parameter
           (fun outcome who => setup.program.publicTransfers outcome.2 who)
           exitTransfer readout)) := by
   let sourceValuation := exclusionReadoutUtility setup parameter valuation exitValuation
-  have baseAdd : recoveryExclusionBase (leaks := leaks) parameter
+  have baseAdd : recoveryExclusionBase (runtime := runtime) (leaks := leaks) parameter
         (setup.program.parameterPaymentUtility valuation)
         (fun who => exitValuation who + exitTransfer who) =
-      fun (state : (recoveryApplication (runtime setup) leaks).ProtocolState) who =>
-        recoveryExclusionBase parameter valuation exitValuation state who +
-        recoveryExclusionBase parameter
+      fun (state : (recoveryApplication runtime leaks).ProtocolState) who =>
+        recoveryExclusionBase (runtime := runtime) parameter valuation exitValuation state who +
+        recoveryExclusionBase (runtime := runtime) parameter
           (fun outcome owner => setup.program.publicTransfers outcome.2 owner) exitTransfer
           state who := by
     funext state who
     exact recoveryExclusionBase_add parameter valuation _ exitValuation exitTransfer state who
   rw [baseAdd] at utilityLaw
   apply TerminalAudit.jointSettlement_readout_eq_of_utility_law law
-    (recoveryExclusionBase parameter valuation exitValuation) _
-    (recoveryPaymentReadout setup leaks) sourceValuation
-    (recoveryExclusionBase_valuation_factors setup leaks parameter valuation exitValuation law
+    (recoveryExclusionBase (runtime := runtime) parameter valuation exitValuation) _
+    (recoveryPaymentReadout setup runtime leaks) sourceValuation
+    (recoveryExclusionBase_valuation_factors setup runtime leaks parameter valuation exitValuation
+      law
       exitCompatible) observe audit deposit _
   apply utilityLaw.trans
   rw [PMF.map_comp]

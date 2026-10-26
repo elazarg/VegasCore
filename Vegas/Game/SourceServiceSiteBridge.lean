@@ -28,7 +28,7 @@ variable {Player : Type} [DecidableEq Player]
 is in, that event's readiness, and that it is the only ready event. -/
 structure ReadySite (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (execution : (application setup leaks).Execution) where
+    (execution : (application setup (Vegas.runtime setup) leaks).Execution) where
   event : (graph setup).EventId
   ready : execution.application.config.cut.Ready event
   sole : execution.application.publicView.SoleReady event

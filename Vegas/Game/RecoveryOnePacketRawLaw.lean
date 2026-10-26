@@ -18,20 +18,21 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {initial : PMF (RecoveryState (graph setup))}
-  {scheduler : (recoveryApplication (runtime setup) leaks).Scheduler}
-  [(recoveryApplication (runtime setup) leaks).FiniteNature initial scheduler]
+  {scheduler : (recoveryApplication runtime leaks).Scheduler}
+  [(recoveryApplication runtime leaks).FiniteNature initial scheduler]
 
-local notation "menu" => Recovery.onePacketMenu (runtime setup) leaks bounds
-local notation "raw" => Recovery.rawMenu (runtime setup) leaks bounds
+local notation "menu" => Recovery.onePacketMenu runtime leaks bounds
+local notation "raw" => Recovery.rawMenu runtime leaks bounds
 local notation "N" => ReactiveApplication.ResponseMenu.information
-  (Recovery.onePacketMenu (runtime setup) leaks bounds) initial horizon scheduler
+  (Recovery.onePacketMenu runtime leaks bounds) initial horizon scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (Recovery.onePacketMenu (runtime setup) leaks bounds) initial horizon scheduler
+  (Recovery.onePacketMenu runtime leaks bounds) initial horizon scheduler
 local notation "R" => ReactiveApplication.ResponseMenu.information
-  (Recovery.rawMenu (runtime setup) leaks bounds) initial horizon scheduler
+  (Recovery.rawMenu runtime leaks bounds) initial horizon scheduler
 
 /-- The checked audited raw extension preserves an intended joint law of a
 recovery one-packet equilibrium, with zero charges, its complete normalized
@@ -45,11 +46,13 @@ theorem recovery_intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Ty
     (equilibrium : native.IsSequentialEquilibriumFor
       ((menu).decisionInformationAntichain initial horizon scheduler)
       (fun who site => native.truncatedContinuationContext site
-        (fun final => recoveryExclusionBase parameter utility excludedPayoff final.state who)
+        (fun final => recoveryExclusionBase (runtime := runtime) parameter utility excludedPayoff
+          final.state who)
         (2 * horizon + 1)))
     (law : ((N).runBehavioral native.strategy (2 * horizon + 1)).map (fun final =>
-        (sourceReadout setup leaks (RecoveryProjection.protocolState (runtime setup) leaks
-          final.state), recoveryExclusionBase parameter utility excludedPayoff final.state)) =
+        (sourceReadout setup runtime leaks (RecoveryProjection.protocolState runtime leaks
+          final.state), recoveryExclusionBase (runtime := runtime) parameter utility
+            excludedPayoff final.state)) =
       (setup.intendedModel.runBehavioral source.strategy
         (instructionCount setup.program + 1)).map
         (intendedReadoutExclusion setup parameter utility excludedPayoff))
@@ -65,9 +68,9 @@ theorem recovery_intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Ty
       max 0 (max (excludedPayoff who) (upperUtility who)) -
           min 0 (min (excludedPayoff who) (lowerUtility who)) ≤
         observationRate who * deliveryRate who * deposit who) :
-    let observe := (recoveryApplication (runtime setup) leaks).stateTraffic
-    let audit := Recovery.countAudit (runtime setup) leaks service.sample
-    let base := recoveryExclusionBase parameter utility excludedPayoff
+    let observe := (recoveryApplication runtime leaks).stateTraffic
+    let audit := Recovery.countAudit runtime leaks service.sample
+    let base := recoveryExclusionBase (runtime := runtime) parameter utility excludedPayoff
     let payoff := TerminalAudit.utility base observe audit deposit
     let settle := TerminalAudit.settlement base observe audit deposit
     ∃ target : (R).BehavioralAssessment,
@@ -78,11 +81,11 @@ theorem recovery_intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Ty
       (∀ final ∈ ((R).runBehavioral target.strategy (2 * horizon + 1)).support,
         ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
       ((R).runBehavioral target.strategy (2 * horizon + 1)).map (fun final =>
-        (Recovery.normalization (runtime setup) leaks).state final.state) =
+        (Recovery.normalization runtime leaks).state final.state) =
           ((N).runBehavioral native.strategy (2 * horizon + 1)).map History.state ∧
       ((R).runBehavioral target.strategy (2 * horizon + 1)).bind
         (fun final => (settle final.state).map fun payoffs =>
-          (sourceReadout setup leaks (RecoveryProjection.protocolState (runtime setup) leaks
+          (sourceReadout setup runtime leaks (RecoveryProjection.protocolState runtime leaks
             final.state), payoffs)) =
         (setup.intendedModel.runBehavioral source.strategy
           (instructionCount setup.program + 1)).map
@@ -94,21 +97,23 @@ theorem recovery_intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Ty
     ((menu).bounded initial horizon scheduler)
     (fun who final => base final.state who)).mpr equilibrium
   obtain ⟨target, targetSE, clean, states, joint⟩ :=
-    Recovery.onePacket_raw_sequentialEquilibrium (runtime setup) leaks bounds initial horizon
+    Recovery.onePacket_raw_sequentialEquilibrium runtime leaks bounds initial horizon
       scheduler service observationRate deliveryRate delivery_nonnegative coverage base
-      (recoveryExclusionBase_normalization parameter utility excludedPayoff)
+      (recoveryExclusionBase_normalization (runtime := runtime) parameter utility excludedPayoff)
       (fun who => min 0 (min (excludedPayoff who) (lowerUtility who)))
       (fun who => max 0 (max (excludedPayoff who) (upperUtility who))) deposit
-      (fun state who => (recoveryExclusionBase_mem_Icc parameter utility excludedPayoff
+      (fun state who => (recoveryExclusionBase_mem_Icc (runtime := runtime) parameter utility
+        excludedPayoff
         lowerUtility upperUtility lower_le le_upper state who).1)
-      (fun state who => (recoveryExclusionBase_mem_Icc parameter utility excludedPayoff
+      (fun state who => (recoveryExclusionBase_mem_Icc (runtime := runtime) parameter utility
+        excludedPayoff
         lowerUtility upperUtility lower_le le_upper state who).2)
       deposit_nonnegative sufficient native nativeSE
   refine ⟨target, targetSE, clean, states, ?_⟩
-  let read := fun state : (recoveryApplication (runtime setup) leaks).ProtocolState =>
-    sourceReadout setup leaks (RecoveryProjection.protocolState (runtime setup) leaks state)
-  have normalized (state : (recoveryApplication (runtime setup) leaks).ProtocolState) :
-      read ((Recovery.normalization (runtime setup) leaks).state state) = read state := by
+  let read := fun state : (recoveryApplication runtime leaks).ProtocolState =>
+    sourceReadout setup runtime leaks (RecoveryProjection.protocolState runtime leaks state)
+  have normalized (state : (recoveryApplication runtime leaks).ProtocolState) :
+      read ((Recovery.normalization runtime leaks).state state) = read state := by
     cases state <;> rfl
   have pairs := congrArg (PMF.map (Prod.map read id)) joint
   simp only [PMF.map_bind, PMF.map_comp, Function.comp_def, Prod.map_apply, id_eq,

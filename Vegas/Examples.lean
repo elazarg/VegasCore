@@ -42,5 +42,8 @@ import Vegas.Examples.ReservedEpochConcurrency
 import Vegas.Examples.ReservedEpochConcurrencyValidity
 import Vegas.Examples.ReservedEpochUsableConcurrency
 import Vegas.Examples.SequentialPhaseService
+import Vegas.Examples.SequentialPhaseServiceSetup
+import Vegas.Examples.SequentialPhaseDelayedService
+import Vegas.Examples.SequentialPhaseDelayedEquilibrium
 import Vegas.Examples.SequentialPhaseServiceEquilibrium
 import Vegas.Examples.ProgramPaymentsNativeRepresentation

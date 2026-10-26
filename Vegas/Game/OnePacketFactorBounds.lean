@@ -50,41 +50,46 @@ theorem cube_le_slotError_of_slot_ge {scale floor content : ℝ} (nonnegative : 
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-theorem silenceFactor_mem (after : LateKey setup leaks) :
-    0 ≤ silenceFactor after ∧ silenceFactor after ≤ 1 := by
+theorem silenceFactor_mem (after : LateKey setup runtime leaks) :
+    0 ≤ silenceFactor (runtime := runtime) after ∧ silenceFactor (runtime := runtime) after ≤ 1 :=
+      by
   unfold silenceFactor
   split <;> norm_num
 
-theorem transmitFactor_mem (after : LateKey setup leaks) :
-    0 ≤ transmitFactor after ∧ transmitFactor after ≤ 1 := by
+theorem transmitFactor_mem (after : LateKey setup runtime leaks) :
+    0 ≤ transmitFactor (runtime := runtime) after ∧ transmitFactor (runtime := runtime) after ≤ 1
+      := by
   unfold transmitFactor
-  have := silenceFactor_mem after
+  have := silenceFactor_mem (runtime := runtime) after
   constructor <;> linarith
 
-theorem pendingBindingHonestFactor_mem (before after : LateKey setup leaks) :
-    0 ≤ pendingBindingHonestFactor before after ∧ pendingBindingHonestFactor before after ≤ 1 := by
+theorem pendingBindingHonestFactor_mem (before after : LateKey setup runtime leaks) :
+    0 ≤ pendingBindingHonestFactor (runtime := runtime) before after ∧ pendingBindingHonestFactor
+      (runtime := runtime) before after ≤ 1 := by
   unfold pendingBindingHonestFactor
   split
   · split <;> norm_num
   · norm_num
 
-theorem honestFactor_mem (before after : LateKey setup leaks) :
-    0 ≤ honestFactor before after ∧ honestFactor before after ≤ 1 := by
+theorem honestFactor_mem (before after : LateKey setup runtime leaks) :
+    0 ≤ honestFactor (runtime := runtime) before after ∧ honestFactor (runtime := runtime) before
+      after ≤ 1 := by
   unfold honestFactor
   split
   · norm_num
   · split
-    · exact pendingBindingHonestFactor_mem before after
-    · exact transmitFactor_mem after
+    · exact pendingBindingHonestFactor_mem (runtime := runtime) before after
+    · exact transmitFactor_mem (runtime := runtime) after
 
 variable (bounds : MessageBounds (graph setup))
 
-theorem pendingBindingSlotFactor_mem (before after : LateKey setup leaks)
+theorem pendingBindingSlotFactor_mem (before after : LateKey setup runtime leaks)
     (event : (graph setup).EventId) :
-    0 ≤ pendingBindingSlotFactor bounds before after event ∧
-      pendingBindingSlotFactor bounds before after event ≤ 1 := by
+    0 ≤ pendingBindingSlotFactor (runtime := runtime) bounds before after event ∧
+      pendingBindingSlotFactor (runtime := runtime) bounds before after event ≤ 1 := by
   classical
   have positive : (0 : ℝ) < (trembleSlots setup bounds).card :=
     Nat.cast_pos.mpr (trembleSlots_nonempty setup bounds).card_pos
@@ -97,28 +102,29 @@ theorem pendingBindingSlotFactor_mem (before after : LateKey setup leaks)
     rw [div_le_one positive]
     exact_mod_cast (trembleSlots_nonempty setup bounds).card_pos
 
-theorem slotTierFactor_mem (before after : LateKey setup leaks) :
-    0 ≤ slotTierFactor bounds before after ∧ slotTierFactor bounds before after ≤ 1 := by
+theorem slotTierFactor_mem (before after : LateKey setup runtime leaks) :
+    0 ≤ slotTierFactor (runtime := runtime) bounds before after ∧ slotTierFactor (runtime :=
+      runtime) bounds before after ≤ 1 := by
   unfold slotTierFactor
   split
   · norm_num
   · split
-    · exact pendingBindingSlotFactor_mem bounds before after _
-    · exact transmitFactor_mem after
+    · exact pendingBindingSlotFactor_mem (runtime := runtime) bounds before after _
+    · exact transmitFactor_mem (runtime := runtime) after
 
-theorem lateOptionFactor_mem {slots : Nat} (before after : LateKey setup leaks)
+theorem lateOptionFactor_mem {slots : Nat} (before after : LateKey setup runtime leaks)
     (option : LateOption slots) :
-    0 ≤ lateOptionFactor bounds before after option ∧
-      lateOptionFactor bounds before after option ≤ 1 := by
+    0 ≤ lateOptionFactor (runtime := runtime) bounds before after option ∧
+      lateOptionFactor (runtime := runtime) bounds before after option ≤ 1 := by
   unfold lateOptionFactor
   split
-  · exact silenceFactor_mem after
+  · exact silenceFactor_mem (runtime := runtime) after
   · split
-    · exact silenceFactor_mem after
+    · exact silenceFactor_mem (runtime := runtime) after
     · split
       · split
         · split <;> norm_num
         · split <;> norm_num
-      · exact transmitFactor_mem after
+      · exact transmitFactor_mem (runtime := runtime) after
 
 end Vegas

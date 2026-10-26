@@ -25,6 +25,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- Laws pushed along maps agreeing on the support agree. -/
@@ -43,19 +44,19 @@ private theorem map_fun_const {α β : Type} (law : PMF α) (b : β) :
 
 section Reads
 
-variable {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-  {control : (application setup leaks).Control}
+variable {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
+  {control : (application setup runtime leaks).Control}
 
 /-- Along every history, the key's pending event is the player's pending
 event. -/
 theorem LateKey.ofView_pending
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some control))
     (who : Player) :
-    (LateKey.ofView setup leaks who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who)).pending =
-      pendingEvent setup leaks who (some (control.execution.recall who,
-        control.execution.observe (application setup leaks) who)) := by
+    (LateKey.ofView setup runtime leaks who (control.execution.recall who)
+      (control.execution.observe (application setup runtime leaks) who)).pending =
+      pendingEvent setup runtime leaks who (some (control.execution.recall who,
+        control.execution.observe (application setup runtime leaks) who)) := by
   classical
   unfold LateKey.pending pendingEvent
   change (control.execution.application.publicView.ownTurn? who).filter _ =
@@ -64,19 +65,20 @@ theorem LateKey.ofView_pending
   funext event
   rw [Bool.eq_iff_iff]
   simp only [Bool.not_eq_true', decide_eq_false_iff_not,
-    LateKey.ofView_recorded trace who event]
-  cases (runtime setup).eventRecorded leaks (control.execution.recall who) event <;> simp
+    LateKey.ofView_recorded (runtime := runtime) trace who event]
+  cases runtime.eventRecorded leaks (control.execution.recall who) event <;> simp
 
 /-- Along every history, the key is a late delivery exactly when the
 information state is. -/
 theorem LateKey.ofView_isLate
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some control))
     (who : Player) :
-    (LateKey.ofView setup leaks who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who)).IsLate ↔
-      LateDelivery setup leaks who (some (control.execution.recall who,
-        control.execution.observe (application setup leaks) who)) := by
+    (LateKey.ofView setup runtime leaks who (control.execution.recall who)
+      (control.execution.observe (application setup runtime leaks) who)).IsLate (runtime :=
+        runtime) ↔
+      LateDelivery setup runtime leaks who (some (control.execution.recall who,
+        control.execution.observe (application setup runtime leaks) who)) := by
   unfold LateKey.IsLate LateDelivery
   rw [LateKey.ofView_pending trace who]
   constructor
@@ -92,24 +94,24 @@ end Reads
 section Late
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- **Late options without a pending event.** Along every history of the
 one-packet game, without a pending event, every late option is silence. -/
 theorem onePacket_settled_lateChoice (assessment : setup.intendedModel.BehavioralAssessment)
-    {slots : Nat} {control : (application setup leaks).Control}
-    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    {slots : Nat} {control : (application setup runtime leaks).Control}
+    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player)
-    (settled : pendingEvent setup leaks who (some (control.execution.recall who,
-      control.execution.observe (application setup leaks) who)) = none)
+    (settled : pendingEvent setup runtime leaks who (some (control.execution.recall who,
+      control.execution.observe (application setup runtime leaks) who)) = none)
     (option : LateOption slots) :
-    lateChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment who
+    lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who
         (some (control.execution.recall who,
-          control.execution.observe (application setup leaks) who)) option
-        (silenceChoice setup leaks bounds (initialLaw setup) horizon scheduler who
+          control.execution.observe (application setup runtime leaks) who)) option
+        (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
           (some (control.execution.recall who,
-            control.execution.observe (application setup leaks) who))) = 1 := by
+            control.execution.observe (application setup runtime leaks) who))) = 1 := by
   cases option with
   | none =>
       rw [lateChoice_none]
@@ -117,15 +119,15 @@ theorem onePacket_settled_lateChoice (assessment : setup.intendedModel.Behaviora
   | some slot =>
       cases turn : control.execution.application.publicView.ownTurn? who with
       | none =>
-          change (lateResponse setup leaks assessment who _ _ (some slot)).map _ _ = 1
+          change (lateResponse setup runtime leaks assessment who _ _ (some slot)).map _ _ = 1
           unfold lateResponse
-          rw [show (control.execution.observe (application setup leaks)
+          rw [show (control.execution.observe (application setup runtime leaks)
             who).application.publicView.ownTurn? who = none from turn]
           dsimp only
           rw [PMF.pure_map]
           exact PMF.pure_apply_self _
       | some event =>
-          have recorded : (runtime setup).eventRecorded leaks (control.execution.recall who)
+          have recorded : runtime.eventRecorded leaks (control.execution.recall who)
               event = true := by
             unfold pendingEvent at settled
             change (control.execution.application.publicView.ownTurn? who).filter _ = none
@@ -133,12 +135,14 @@ theorem onePacket_settled_lateChoice (assessment : setup.intendedModel.Behaviora
             rw [turn, Option.filter_some] at settled
             by_contra unrecorded
             simp [unrecorded] at settled
-          rw [lateChoice_some_eq_map assessment who _ _ event turn slot,
-            map_congr_support (g := fun _ => silenceChoice setup leaks bounds (initialLaw setup)
+          rw [lateChoice_some_eq_map (runtime := runtime) assessment who _ _ event turn slot,
+            map_congr_support (g := fun _ => silenceChoice setup runtime leaks bounds (initialLaw
+              setup)
               horizon scheduler who (some (control.execution.recall who,
-                control.execution.observe (application setup leaks) who))) _
-              fun choice _ => onePacket_responseChoice_of_recorded trace who event recorded _
-                (slotResponse_names who _ _ event slot.val choice),
+                control.execution.observe (application setup runtime leaks) who))) _
+              fun choice _ => onePacket_responseChoice_of_recorded (runtime := runtime) trace who
+                event recorded _
+                (slotResponse_names (runtime := runtime) who _ _ event slot.val choice),
             map_fun_const]
           exact PMF.pure_apply_self _
 
@@ -151,57 +155,63 @@ theorem onePacket_pendingBinding_lateChoice
     (assessment : setup.intendedModel.BehavioralAssessment)
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
-    {control : (application setup leaks).Control}
-    (trace : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    {control : (application setup runtime leaks).Control}
+    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (unsent : (runtime setup).eventRecorded leaks (control.execution.recall who) event = false)
+    (unsent : runtime.eventRecorded leaks (control.execution.recall who) event = false)
     {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
-    (response : (application setup leaks).Action)
-    (member : response ∈ bounds.onePacketActions (runtime setup) leaks who
-      (control.execution.recall who) (control.execution.observe (application setup leaks) who))
-    (positive : 0 < contentFactor setup leaks assessment who control.execution
-      (control.execution.respond (application setup leaks) who response) response)
-    (choice : (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).Choice who
+    (response : (application setup runtime leaks).Action)
+    (member : response ∈ bounds.onePacketActions runtime leaks who
+      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+        who))
+    (positive : 0 < contentFactor setup runtime leaks assessment who control.execution
+      (control.execution.respond (application setup runtime leaks) who response) response)
+    (choice : (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+      scheduler).Choice who
       (some (control.execution.recall who,
-        control.execution.observe (application setup leaks) who)))
+        control.execution.observe (application setup runtime leaks) who)))
     (chosen : choice.1 = some response) {slots : Nat} (option : LateOption slots) :
-    (lateChoice setup leaks bounds (initialLaw setup) horizon scheduler assessment who _ option
+    (lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who _
+      option
         choice).toReal =
-      contentFactor setup leaks assessment who control.execution
-          (control.execution.respond (application setup leaks) who response) response *
-        lateOptionFactor bounds
-          (LateKey.ofView setup leaks who (control.execution.recall who)
-            (control.execution.observe (application setup leaks) who))
-          (LateKey.ofView setup leaks who
-            ((control.execution.respond (application setup leaks) who response).recall who)
-            ((control.execution.respond (application setup leaks) who response).observe
-              (application setup leaks) who)) option := by
-  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      contentFactor setup runtime leaks assessment who control.execution
+          (control.execution.respond (application setup runtime leaks) who response) response *
+        lateOptionFactor (runtime := runtime) bounds
+          (LateKey.ofView setup runtime leaks who (control.execution.recall who)
+            (control.execution.observe (application setup runtime leaks) who))
+          (LateKey.ofView setup runtime leaks who
+            ((control.execution.respond (application setup runtime leaks) who response).recall who)
+            ((control.execution.respond (application setup runtime leaks) who response).observe
+              (application setup runtime leaks) who)) option := by
+  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+    scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
   have capacityOne : 1 ≤ bounds.candidateCount :=
     Nat.one_le_iff_ne_zero.mpr fun zero => by
       have := capacity who
       omega
-  have pending : (LateKey.ofView setup leaks who (control.execution.recall who)
-      (control.execution.observe (application setup leaks) who)).pending = some event := by
+  have pending : (LateKey.ofView setup runtime leaks who (control.execution.recall who)
+      (control.execution.observe (application setup runtime leaks) who)).pending = some event := by
     rw [LateKey.ofView_pending rawTrace who]
     unfold pendingEvent
     change (control.execution.application.publicView.ownTurn? who).filter _ = _
     rw [turn, Option.filter_some, unsent]
     rfl
-  have site := onePacket_coveredPendingBinding assessment covers capacityOne trace who event turn
+  have site := onePacket_coveredPendingBinding (runtime := runtime) assessment covers capacityOne
+    trace who event turn
     node
   cases option with
   | none =>
       rw [lateChoice_none]
-      exact (onePacket_pendingBinding_operational_masses assessment covers capacity trace who
+      exact (onePacket_pendingBinding_operational_masses (runtime := runtime) assessment covers
+        capacity trace who
         event turn unsent node response member positive choice chosen).2.1
   | some slot =>
       unfold lateOptionFactor
@@ -209,7 +219,7 @@ theorem onePacket_pendingBinding_lateChoice
       dsimp only
       rw [node]
       dsimp only
-      rw [lateChoice_some_eq_map assessment who _ _ event turn slot]
+      rw [lateChoice_some_eq_map (runtime := runtime) assessment who _ _ event turn slot]
       cases sends : response.transmission with
       | none =>
           have silent : response = ⟨none⟩ := by
@@ -217,93 +227,110 @@ theorem onePacket_pendingBinding_lateChoice
             change transmission = none at sends
             rw [sends]
           subst silent
-          have choiceEq := choice_eq_silenceChoice who _ _ choice chosen
+          have choiceEq := choice_eq_silenceChoice (runtime := runtime) who _ _ choice chosen
           subst choiceEq
-          have contentOne : contentFactor setup leaks assessment who control.execution
-              (control.execution.respond (application setup leaks) who ⟨none⟩) ⟨none⟩ = 1 := rfl
-          have lastNone : ((LateKey.ofView setup leaks who
-              ((control.execution.respond (application setup leaks) who ⟨none⟩).recall who)
-              ((control.execution.respond (application setup leaks) who ⟨none⟩).observe
-                (application setup leaks) who)).lastEmitted.map fun message =>
+          have contentOne : contentFactor setup runtime leaks assessment who control.execution
+              (control.execution.respond (application setup runtime leaks) who ⟨none⟩) ⟨none⟩ = 1
+                := rfl
+          have lastNone : ((LateKey.ofView setup runtime leaks who
+              ((control.execution.respond (application setup runtime leaks) who ⟨none⟩).recall who)
+              ((control.execution.respond (application setup runtime leaks) who ⟨none⟩).observe
+                (application setup runtime leaks) who)).lastEmitted.map fun
+                  message =>
                   message.payload.call : Option (Payload (graph setup))) = none := by
             rw [LateKey.respond_lastEmitted]
             rfl
           rw [contentOne, one_mul, lastNone]
           dsimp only
-          rw [LateKey.ofView_slotPermitted rawTrace who event slot.val]
+          rw [LateKey.ofView_slotPermitted (runtime := runtime) rawTrace who event slot.val]
           by_cases open_ : slot.val < bounds.candidateCount ∧
-              countPermits ((application setup leaks).outputs (control.execution.recall who))
-                (slotEnvelope setup leaks who (control.execution.recall who)
-                  (control.execution.observe (application setup leaks) who) event slot.val) = true
+              countPermits ((application setup runtime leaks).outputs (control.execution.recall
+                who))
+                (slotEnvelope setup runtime leaks who (control.execution.recall who)
+                  (control.execution.observe (application setup runtime leaks) who) event
+                    slot.val) = true
           · simp only [open_, and_self, ↓reduceIte]
             rw [map_apply_eq_zero_of_forall_ne, ENNReal.toReal_zero]
             intro other supported same
-            have covered := onePacket_honest_covered assessment covers trace who event turn other
+            have covered := onePacket_honest_covered (runtime := runtime) assessment covers trace
+              who event turn other
               supported
-            have offered := (slotResponse_mem_onePacket_iff setup leaks bounds who _ _ event node
+            have offered := (slotResponse_mem_onePacket_iff setup runtime leaks bounds who _ _
+              event node
               slot.val open_.1 other covered).mpr open_.2
             obtain ⟨action, encoded, _⟩ := covered
-            obtain ⟨material, transmits, _⟩ := slotResponse_transmission setup leaks who
+            obtain ⟨material, transmits, _⟩ := slotResponse_transmission setup runtime leaks who
               (control.execution.recall who)
-              (control.execution.observe (application setup leaks) who) event node slot.val other
+              (control.execution.observe (application setup runtime leaks) who) event node
+                slot.val other
               action encoded
             have values := congrArg Subtype.val same
             simp only [slotChoiceOf, responseChoice, offered, silenceChoice,
-              bounds.silence_onePacket (runtime setup) leaks who, ↓reduceDIte] at values
+              bounds.silence_onePacket runtime leaks who, ↓reduceDIte] at values
             have silent := congrArg ReactiveApplication.Action.transmission
               (Option.some.inj values)
             rw [transmits] at silent
             cases silent
           · simp only [open_, ↓reduceIte]
-            rw [map_congr_support (g := fun _ => silenceChoice setup leaks bounds
+            rw [map_congr_support (g := fun _ => silenceChoice setup runtime leaks bounds
                 (initialLaw setup) horizon scheduler who (some (control.execution.recall who,
-                  control.execution.observe (application setup leaks) who))) _
+                  control.execution.observe (application setup runtime leaks) who))) _
                 fun other supported => by
-                  apply responseChoice_of_not_offered
+                  apply responseChoice_of_not_offered (runtime := runtime)
                   intro offered
-                  have covered := onePacket_honest_covered assessment covers trace who event turn
+                  have covered := onePacket_honest_covered (runtime := runtime) assessment covers
+                    trace who event turn
                     other supported
                   obtain ⟨action, encoded, _⟩ := covered
-                  obtain ⟨material, transmits, envelope⟩ := slotResponse_transmission setup leaks
+                  obtain ⟨material, transmits, envelope⟩ := slotResponse_transmission setup
+                    runtime leaks
                     who (control.execution.recall who)
-                    (control.execution.observe (application setup leaks) who) event node slot.val
+                    (control.execution.observe (application setup runtime leaks) who) event node
+                      slot.val
                     other action encoded
                   have packetEq : material.call.packet =
                       .commitment event (who, .prepared slot.val) :=
                     congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
                       message.payload.call) envelope
-                  have slotCapacity := offered_commitment_capacity who _ _ _
-                    ((bounds.mem_onePacketActions (runtime setup) leaks who _ _ _).mp offered).1
+                  have slotCapacity := offered_commitment_capacity (runtime := runtime) who _ _ _
+                    ((bounds.mem_onePacketActions runtime leaks who _ _ _).mp offered).1
                     material transmits packetEq
-                  exact open_ ⟨slotCapacity, (slotResponse_mem_onePacket_iff setup leaks bounds
+                  exact open_ ⟨slotCapacity, (slotResponse_mem_onePacket_iff setup runtime leaks
+                    bounds
                     who _ _ event node slot.val slotCapacity other
-                    (onePacket_honest_covered assessment covers trace who event turn other
+                    (onePacket_honest_covered (runtime := runtime) assessment covers trace who
+                      event turn other
                       supported)).mp offered⟩,
               map_fun_const, PMF.pure_apply_self, ENNReal.toReal_one]
       | some material =>
           obtain ⟨serial, value, slotCapacity, responseEq, contentEq⟩ :=
-            onePacket_commitment_realized assessment trace who event turn node response member
+            onePacket_commitment_realized (runtime := runtime) assessment trace who event turn
+              node response member
               material sends positive
           have supported : sourceOfValue setup event outputEq value ∈ (asIfHonestProfile setup
+            runtime
               leaks assessment who (some (control.execution.recall who,
-                control.execution.observe (application setup leaks) who))).support := by
+                control.execution.observe (application setup runtime leaks) who))).support := by
             rw [contentEq] at positive
             exact (PMF.mem_support_iff _ _).mpr (ENNReal.toReal_pos_iff.mp positive).1.ne'
-          have offered : slotResponse setup leaks who (control.execution.recall who)
-              (control.execution.observe (application setup leaks) who) event serial
+          have offered : slotResponse setup runtime leaks who (control.execution.recall who)
+              (control.execution.observe (application setup runtime leaks) who) event serial
               (sourceOfValue setup event outputEq value) ∈ bounds.onePacketActions
-                (runtime setup) leaks who (control.execution.recall who)
-                (control.execution.observe (application setup leaks) who) :=
+                runtime leaks who (control.execution.recall who)
+                (control.execution.observe (application setup runtime leaks) who) :=
             responseEq ▸ member
-          have choiceEq : choice = slotChoiceOf setup leaks bounds (initialLaw setup) horizon
+          have choiceEq : choice = slotChoiceOf setup runtime leaks bounds (initialLaw setup)
+            horizon
               scheduler who (control.execution.recall who)
-              (control.execution.observe (application setup leaks) who) event serial
+              (control.execution.observe (application setup runtime leaks) who) event serial
               (sourceOfValue setup event outputEq value) := by
             apply Subtype.ext
             rw [chosen, responseEq]
             simp only [slotChoiceOf, responseChoice, offered, ↓reduceDIte]
-          obtain ⟨delivered, transmits, envelope⟩ := slotResponse_transmission setup leaks who
-            (control.execution.recall who) (control.execution.observe (application setup leaks)
+          obtain ⟨delivered, transmits, envelope⟩ := slotResponse_transmission setup runtime leaks
+            who
+            (control.execution.recall who) (control.execution.observe (application setup runtime
+              leaks)
               who) event node serial (sourceOfValue setup event outputEq value) _
             (sourceOfValue_encoded setup event outputEq codeEq value)
           rw [← responseEq, sends] at transmits
@@ -311,10 +338,12 @@ theorem onePacket_pendingBinding_lateChoice
           have packetEq : material.call.packet = .commitment event (who, .prepared serial) :=
             congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
               message.payload.call) envelope
-          have lastCall : ((LateKey.ofView setup leaks who
-              ((control.execution.respond (application setup leaks) who response).recall who)
-              ((control.execution.respond (application setup leaks) who response).observe
-                (application setup leaks) who)).lastEmitted.map fun message =>
+          have lastCall : ((LateKey.ofView setup runtime leaks who
+              ((control.execution.respond (application setup runtime leaks) who response).recall
+                who)
+              ((control.execution.respond (application setup runtime leaks) who response).observe
+                (application setup runtime leaks) who)).lastEmitted.map fun
+                  message =>
                   message.payload.call : Option (Payload (graph setup))) =
               some (.commitment event (who, .prepared serial)) := by
             rw [LateKey.respond_lastEmitted, sends]
@@ -322,7 +351,8 @@ theorem onePacket_pendingBinding_lateChoice
           rw [lastCall]
           dsimp only
           subst choiceEq
-          rw [map_slotChoiceOf_apply site slot.val supported slotCapacity offered, contentEq]
+          rw [map_slotChoiceOf_apply (runtime := runtime) site slot.val supported slotCapacity
+            offered, contentEq]
           split
           · rw [mul_one]
           · rw [ENNReal.toReal_zero, mul_zero]

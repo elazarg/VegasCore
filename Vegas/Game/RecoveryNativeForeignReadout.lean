@@ -14,24 +14,27 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
+  (scheduler : (recoveryApplication runtime leaks).Scheduler)
 
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
-local notation "NativeScheduler" => nativeScheduler (runtime setup) leaks scheduler
-local notation "R" => model setup leaks bounds Initial horizon scheduler
-local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horizon (NativeScheduler)
+local notation "NativeScheduler" => nativeScheduler runtime leaks scheduler
+local notation "R" => model setup runtime leaks bounds Initial horizon scheduler
+local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  (NativeScheduler)
 local notation "RP" => ReactiveApplication.ResponseMenu.protocol
-  (Recovery.onePacketMenu (runtime setup) leaks bounds) Initial horizon scheduler
-local notation "RApp" => recoveryApplication (runtime setup) leaks
-local notation "RawNative" => ReactiveApplication.protocol (application setup leaks)
+  (Recovery.onePacketMenu runtime leaks bounds) Initial horizon scheduler
+local notation "RApp" => recoveryApplication runtime leaks
+local notation "RawNative" => ReactiveApplication.protocol (application setup runtime leaks)
   (PMF.map RecoveryState.native (Initial)) horizon (NativeScheduler)
 local notation "ClearState" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
-local notation "RMenu" => Recovery.onePacketMenu (runtime setup) leaks bounds
-local notation "NMenu" => bounds.onePacketMenu (runtime setup) leaks
+  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
+    native ∅))
+local notation "RMenu" => Recovery.onePacketMenu runtime leaks bounds
+local notation "NMenu" => bounds.onePacketMenu runtime leaks
 
 open Classical in
 /-- The classified native foreign-exit event is exactly public evidence failure
@@ -39,12 +42,12 @@ while the focal owner has no native public failure. -/
 theorem nativeClassified_foreign_exit_iff
     (focal : Player) (history : (RawNative).History) :
     ForeignExclusionLabel focal
-        (nativeClassifiedReadout (runtime setup) leaks Initial horizon scheduler history) ↔
+        (nativeClassifiedReadout runtime leaks Initial horizon scheduler history) ↔
       ¬ ClearState history.state ∧
-        focal ∉ nativeFailureOwners (runtime setup) leaks history.state := by
-  rw [← nativeClear_iff_stateInvariant (runtime setup) leaks Initial horizon scheduler
+        focal ∉ nativeFailureOwners runtime leaks history.state := by
+  rw [← nativeClear_iff_stateInvariant runtime leaks Initial horizon scheduler
     history]
-  by_cases clear : NativeClear (runtime setup) leaks Initial horizon scheduler history <;>
+  by_cases clear : NativeClear runtime leaks Initial horizon scheduler history <;>
     simp only [nativeClassifiedReadout, clear, ite_true, ite_false, ForeignExclusionLabel,
       not_true_eq_false, not_false_eq_true, false_and, true_and]
 
@@ -56,23 +59,23 @@ theorem nativeDebtStopped_foreign_mass_eq_public_failure
     (profile : ∀ who, (R).BehavioralPolicy who) (focal : Player) (history : (RP).History)
     (clear : ∀ current, history.state = some current →
       current.execution.application.excluded = ∅) :
-    ((nativeDebtStoppedLaw setup leaks bounds horizon scheduler rawCertificate profile focal
+    ((nativeDebtStoppedLaw setup runtime leaks bounds horizon scheduler rawCertificate profile focal
       history).toOuterMeasure {label | ForeignExclusionLabel focal label}).toReal =
-      ((((application setup leaks).information ((Initial).map RecoveryState.native) horizon
+      ((((application setup runtime leaks).information ((Initial).map RecoveryState.native) horizon
         (NativeScheduler)).runBehavioralUntil rawCertificate
-        (nativeProfile (runtime setup) leaks Initial horizon scheduler
+        (nativeProfile runtime leaks Initial horizon scheduler
           (fun who => (RMenu).embedPolicy Initial horizon scheduler who (profile who)))
-        (fun final => ¬ NativeClear (runtime setup) leaks Initial horizon scheduler final ∨
-          DecodedState setup leaks (failureProfile setup.program)
+        (fun final => ¬ NativeClear runtime leaks Initial horizon scheduler final ∨
+          DecodedState setup runtime leaks (failureProfile setup.program)
             (ProtocolState.OwesFailure focal setup.program) final.state)
-        (nativeHistory (runtime setup) leaks Initial horizon scheduler
+        (nativeHistory runtime leaks Initial horizon scheduler
           ((RMenu).toRawHistory Initial horizon scheduler history) clear)).toOuterMeasure
         {final | ¬ ClearState final.state ∧
-          focal ∉ nativeFailureOwners (runtime setup) leaks final.state}).toReal := by
+          focal ∉ nativeFailureOwners runtime leaks final.state}).toReal := by
   unfold nativeDebtStoppedLaw
   rw [dite_eq_left clear, PMF.toOuterMeasure_map_apply]
   congr 2
   ext final
-  exact nativeClassified_foreign_exit_iff setup leaks horizon scheduler focal final
+  exact nativeClassified_foreign_exit_iff setup runtime leaks horizon scheduler focal final
 
 end Vegas.RecoveryOnePacket

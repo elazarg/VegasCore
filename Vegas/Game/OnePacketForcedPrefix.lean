@@ -91,6 +91,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
 
 /-- **Forcedness reaches back over a source step.** A source point from which a
 step reaches a point forced for `who` is forced for `who`. -/
@@ -108,8 +109,8 @@ theorem forcedPoint_of_step {who : Player} {point target : ProtocolState setup.p
 forced for `who`. -/
 theorem forcedState_iff_decodedPoint
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    {who : Player} (control : (application setup leaks).Control) :
-    ForcedState setup leaks who (some control) ↔
+    {who : Player} (control : (application setup runtime leaks).Control) :
+    ForcedState setup runtime leaks who (some control) ↔
       ∃ point, decodedPoint setup control.execution.application.config = some point ∧
         ForcedPoint setup who point := by
   constructor
@@ -131,27 +132,32 @@ theorem forcedState_iff_decodedPoint
 variable [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- **Forced states reach back along native transitions.** If a native
 transition of the one-packet game from an initialized state reaches a forced
 state of `who`, that initialized state is forced for `who`. -/
-theorem forcedState_of_transition {who : Player} {before : (application setup leaks).Control}
-    {after : (application setup leaks).ProtocolState}
-    (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some before))
-    (joint : Player → Option (application setup leaks).Action)
-    (realized : after ∈ ((application setup leaks).transition (initialLaw setup) horizon scheduler
+theorem forcedState_of_transition {who : Player} {before : (application setup runtime
+  leaks).Control}
+    {after : (application setup runtime leaks).ProtocolState}
+    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some before))
+    (joint : Player → Option (application setup runtime leaks).Action)
+    (realized : after ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+      scheduler
       (some before) joint).support)
-    (forced : ForcedState setup leaks who after) :
-    ForcedState setup leaks who (some before) := by
+    (forced : ForcedState setup runtime leaks who after) :
+    ForcedState setup runtime leaks who (some before) := by
   cases after with
   | none => exact forced.elim
   | some next =>
-      obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
-        (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler prior before rfl
-      obtain ⟨target, decoded, forcedTarget⟩ := (forcedState_iff_decodedPoint next).mp forced
-      refine (forcedState_iff_decodedPoint before).mpr ?_
-      rcases transition_configStep (initialLaw setup) horizon scheduler before next joint
+      obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+        setup.program)
+        (bounds.onePacketMenu runtime leaks) horizon scheduler prior before rfl
+      obtain ⟨target, decoded, forcedTarget⟩ := (forcedState_iff_decodedPoint (runtime := runtime)
+        next).mp forced
+      refine (forcedState_iff_decodedPoint (runtime := runtime) before).mpr ?_
+      rcases transition_configStep (initialLaw setup) horizon scheduler
+        before next joint
           realized with same | ⟨event, ready, action, member⟩
       · rw [same] at decoded
         exact ⟨target, decoded, forcedTarget⟩

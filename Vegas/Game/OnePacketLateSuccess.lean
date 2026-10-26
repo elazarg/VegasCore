@@ -22,30 +22,31 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-variable (setup leaks) in
+variable (setup runtime leaks) in
 /-- The configuration is a prefix of `rank` and the recorded views saw nothing
 beyond it. -/
-def PendingAt (rank : Nat) (execution : (application setup leaks).Execution) : Prop :=
+def PendingAt (rank : Nat) (execution : (application setup runtime leaks).Execution) : Prop :=
   execution.application.config.cut.IsPrefix rank ∧ ReadySeen setup leaks rank execution
 
 /-- **Pending steps.** From a state pending at `rank`, every transition keeps it
 pending at `rank`, or completes the event of rank `rank` at scheduler control
 with the recorded views still seeing nothing beyond `rank`. -/
-theorem pendingTransition {initial : PMF (application setup leaks).State} {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler} {rank remaining : Nat}
-    {actor : Option Player} {execution : (application setup leaks).Execution}
-    (pending : PendingAt setup leaks rank execution)
-    (joint : Player → Option (application setup leaks).Action)
-    {after : (application setup leaks).ProtocolState}
-    (reached : after ∈ ((application setup leaks).transition initial horizon scheduler
+theorem pendingTransition {initial : PMF (application setup runtime leaks).State} {horizon : Nat}
+    {scheduler : (application setup runtime leaks).Scheduler} {rank remaining : Nat}
+    {actor : Option Player} {execution : (application setup runtime leaks).Execution}
+    (pending : PendingAt setup runtime leaks rank execution)
+    (joint : Player → Option (application setup runtime leaks).Action)
+    {after : (application setup runtime leaks).ProtocolState}
+    (reached : after ∈ ((application setup runtime leaks).transition initial horizon scheduler
       (some ⟨remaining, actor, execution⟩) joint).support) :
-    ∃ control : (application setup leaks).Control, after = some control ∧
-      (PendingAt setup leaks rank control.execution ∨
+    ∃ control : (application setup runtime leaks).Control, after = some control ∧
+      (PendingAt setup runtime leaks rank control.execution ∨
         (control.actor = none ∧ control.execution.application.config.cut.IsPrefix (rank + 1) ∧
           ReadySeen setup leaks rank control.execution)) := by
-  let app := application setup leaks
+  let app := application setup runtime leaks
   obtain ⟨ordered, seen⟩ := pending
   cases actor with
   | some who =>
@@ -55,7 +56,7 @@ theorem pendingTransition {initial : PMF (application setup leaks).State} {horiz
       refine ⟨_, rfl, Or.inl ⟨?_, ?_⟩⟩
       · change (execution.respond app who ((joint who).getD ⟨none⟩)).application.config.cut.IsPrefix
           rank
-        rw [((runtime setup).reactive_respond_application leaks execution who _).1]
+        rw [(runtime.reactive_respond_application leaks execution who _).1]
         exact ordered
       · intro observer entry member event readyView
         rcases app.respond_entry_origin execution who observer _ entry member with
@@ -98,19 +99,20 @@ theorem pendingTransition {initial : PMF (application setup leaks).State} {horiz
                 exact Nat.lt_irrefl _ ((ordered.2 _).mp rankLt)
             | wait | «include» _ | application _ => rfl
 
-/-- Every execution of a legal history of the default runtime is pending at
+/-- Every execution of a legal history of the supplied runtime is pending at
 some rank: its configuration is a prefix, and its recorded views saw nothing
 beyond it. -/
-theorem pendingAt_serviceInvariant (scheduler : (application setup leaks).Scheduler) :
-    (application setup leaks).ServiceInvariant scheduler
-      (fun execution => ∃ rank, PendingAt setup leaks rank execution) where
+theorem pendingAt_serviceInvariant (scheduler : (application setup runtime leaks).Scheduler) :
+    (application setup runtime leaks).ServiceInvariant scheduler
+      (fun execution => ∃ rank, PendingAt setup runtime leaks rank execution) where
   respond execution who action valid := by
     obtain ⟨rank, ordered, seen⟩ := valid
     refine ⟨rank, ?_, ?_⟩
-    · rw [((runtime setup).reactive_respond_application leaks execution who action).1]
+    · rw [(runtime.reactive_respond_application leaks execution who action).1]
       exact ordered
     · intro observer entry member event readyView
-      rcases (application setup leaks).respond_entry_origin execution who observer action entry
+      rcases (application setup runtime leaks).respond_entry_origin execution who observer action
+        entry
           member with prior | ⟨_, fresh⟩
       · exact seen observer entry prior event readyView
       · rw [fresh] at readyView
@@ -119,7 +121,7 @@ theorem pendingAt_serviceInvariant (scheduler : (application setup leaks).Schedu
           ((State.publicView_eventReady _ event).mp readyView)).le
   environment execution next command valid _ stepped := by
     obtain ⟨rank, ordered, seen⟩ := valid
-    have recallEq := (application setup leaks).environmentStep_recall execution next command
+    have recallEq := (application setup runtime leaks).environmentStep_recall execution next command
       stepped
     rcases (environmentStep_configStep setup leaks execution next command stepped).prefix rank
         ordered with same | advanced
@@ -130,14 +132,14 @@ theorem pendingAt_serviceInvariant (scheduler : (application setup leaks).Schedu
       rw [recallEq] at member
       exact (seen observer entry member event readyView).trans (Nat.le_succ _)
 
-/-- Every execution reached along a legal history of the default runtime is
+/-- Every execution reached along a legal history of the supplied runtime is
 pending at some rank. -/
-theorem pendingAt_history {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
-    {control : (application setup leaks).Control}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+theorem pendingAt_history {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
+    {control : (application setup runtime leaks).Control}
+    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some control)) :
-    ∃ rank, PendingAt setup leaks rank control.execution :=
-  (pendingAt_serviceInvariant scheduler).history (initialLaw setup) horizon
+    ∃ rank, PendingAt setup runtime leaks rank control.execution :=
+  (pendingAt_serviceInvariant (runtime := runtime) scheduler).history (initialLaw setup) horizon
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨0, EventOrder.Cut.empty_isPrefix _, fun _ entry member =>
@@ -146,20 +148,20 @@ theorem pendingAt_history {horizon : Nat} {scheduler : (application setup leaks)
 section Success
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup leaks).Scheduler)
+  (scheduler : (application setup runtime leaks).Scheduler)
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
 
-variable (setup leaks) in
+variable (setup runtime leaks) in
 /-- The event of rank `rank` has completed: the configuration is a prefix of
 `rank + 1`. -/
-def LateStopped (rank : Nat) (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol
+def LateStopped (rank : Nat) (history : ((bounds.onePacketMenu runtime leaks).protocol
     (initialLaw setup) horizon scheduler).History) : Prop :=
-  ∃ control : (application setup leaks).Control, history.state = some control ∧
+  ∃ control : (application setup runtime leaks).Control, history.state = some control ∧
     control.execution.application.config.cut.IsPrefix (rank + 1)
 
-variable (setup) in
+variable (setup runtime) in
 /-- The source continuation value of a profile at a point: the expected
 exclusion payoff of `who` under the typed readout of its continuation. -/
 def sourcePointValue (profile : BehavioralProfile setup.program) (who : Player)
@@ -168,16 +170,16 @@ def sourcePointValue (profile : BehavioralProfile setup.program) (who : Player)
     (fun readout => exclusionReadoutUtility setup parameter utility excludedPayoff readout who)
 
 open Classical in
-variable (setup leaks) in
+variable (setup runtime leaks) in
 /-- **The value after a completion.** At a history whose configuration decodes,
 after `rank + 1` events, to a point of the intended game, and whose control
 satisfies `fresh`, the source continuation value of `profile` there; elsewhere
 the fallback. -/
 def completionValue (profile : BehavioralProfile setup.program) (rank : Nat)
-    (fresh : (application setup leaks).Control → Prop) (who : Player)
-    (fallback : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+    (fresh : (application setup runtime leaks).Control → Prop) (who : Player)
+    (fallback : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).History → ℝ)
-    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+    (history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).History) : ℝ :=
   match history.state with
   | none => fallback history
@@ -194,7 +196,7 @@ end Success
 section Transport
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
@@ -203,18 +205,20 @@ variable [Fintype Player] (bounds : MessageBounds (graph setup)) {horizon : Nat}
 runtime. -/
 theorem onePacket_step_transition
     (profile : ∀ who,
-      (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).BehavioralPolicy who)
-    {history next : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+        scheduler).BehavioralPolicy who)
+    {history next : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).History}
-    (running : ¬ ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+    (running : ¬ ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).terminal history.state)
-    (member : next ∈ ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+    (member : next ∈ ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
       scheduler).runBehavioralFrom profile 1 history).support) :
-    ∃ joint : Player → Option (application setup leaks).Action,
-      next.state ∈ ((application setup leaks).transition (initialLaw setup) horizon scheduler
+    ∃ joint : Player → Option (application setup runtime leaks).Action,
+      next.state ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+        scheduler
         history.state joint).support := by
   obtain ⟨⟨joint, _, realized⟩, _⟩ :=
-    (onePacketModel setup leaks bounds (initialLaw setup) horizon
+    (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
       scheduler).mem_support_runBehavioralFrom_one profile running member
   exact ⟨joint, realized⟩
 

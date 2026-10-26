@@ -72,12 +72,13 @@ def serviceCanonicalOpportunity (bound : (serviceGraph setup mode).EventId → N
 end Configured
 
 variable (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-/-- The canonical source decision on the default runtime. -/
+/-- The canonical source decision on a supplied sequential runtime. -/
 abbrev sourceServiceCanonicalPolicy : BehavioralProfile setup.program → Player →
-    (application setup leaks).Policy :=
-  serviceCanonicalPolicy setup .sequential (rankDeadline setup .sequential) leaks
+    (application setup runtime leaks).Policy :=
+  serviceCanonicalPolicy setup .sequential runtime.deadline leaks
 
 section Generic
 

@@ -53,16 +53,17 @@ def serviceBaseUtility (utility : State L setup.program.terminalCtx → Player �
 end Configured
 
 variable (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-/-- The terminal readout of the default runtime. -/
-abbrev sourceReadout : (application setup leaks).ProtocolState →
+/-- The terminal readout of the supplied runtime. -/
+abbrev sourceReadout : (application setup runtime leaks).ProtocolState →
     Option (State L setup.program.terminalCtx) :=
-  serviceSourceReadout setup .sequential (rankDeadline setup .sequential) leaks
+  serviceSourceReadout setup .sequential runtime.deadline leaks
 
-/-- The base utility of the default runtime. -/
+/-- The base utility of the supplied runtime. -/
 abbrev baseUtility : (State L setup.program.terminalCtx → Player → ℝ) →
-    (application setup leaks).ProtocolState → Player → ℝ :=
-  serviceBaseUtility setup .sequential (rankDeadline setup .sequential) leaks
+    (application setup runtime leaks).ProtocolState → Player → ℝ :=
+  serviceBaseUtility setup .sequential runtime.deadline leaks
 
 end Vegas

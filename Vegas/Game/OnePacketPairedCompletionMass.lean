@@ -88,6 +88,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
 
 /-- Matching public endpoints of actual configuration steps have equal chance
 completion factors. Binding changes may be directed and need not be invertible. -/
@@ -148,30 +149,36 @@ theorem completionMass_eq_of_public_steps
                 (congrArg EventGraph.PublicObservation.store afterPublic) member otherMember
 
 variable {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+  {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- Complete operational endpoint equality determines the completion factor of
 any two realized native transitions, including scheduler and response rounds. -/
 theorem completionMass_eq_of_operational_transitions
-    {before after imageBefore imageAfter : (application setup leaks).Control}
-    (joint imageJoint : Player → Option (application setup leaks).Action)
-    (realized : some after ∈ ((application setup leaks).transition (initialLaw setup) horizon
+    {before after imageBefore imageAfter : (application setup runtime leaks).Control}
+    (joint imageJoint : Player → Option (application setup runtime leaks).Action)
+    (realized : some after ∈ ((application setup runtime leaks).transition (initialLaw setup)
+      horizon
       scheduler (some before) joint).support)
-    (imageRealized : some imageAfter ∈ ((application setup leaks).transition (initialLaw setup)
+    (imageRealized : some imageAfter ∈ ((application setup runtime leaks).transition (initialLaw
+      setup)
       horizon scheduler (some imageBefore) imageJoint).support)
-    (beforeOperational : operationalState setup leaks (some before) =
-      operationalState setup leaks (some imageBefore))
-    (afterOperational : operationalState setup leaks (some after) =
-      operationalState setup leaks (some imageAfter)) :
+    (beforeOperational : operationalState setup runtime leaks (some before) =
+      operationalState setup runtime leaks (some imageBefore))
+    (afterOperational : operationalState setup runtime leaks (some after) =
+      operationalState setup runtime leaks (some imageAfter)) :
     completionMass setup before.execution.application after.execution.application =
       completionMass setup imageBefore.execution.application imageAfter.execution.application := by
   apply completionMass_eq_of_public_steps
-    (transition_configStep (initialLaw setup) horizon scheduler before after joint realized)
-    (transition_configStep (initialLaw setup) horizon scheduler imageBefore imageAfter imageJoint
+    (transition_configStep (initialLaw setup) horizon scheduler before after
+      joint realized)
+    (transition_configStep (initialLaw setup) horizon scheduler imageBefore
+      imageAfter imageJoint
       imageRealized)
-  · exact congrArg (fun state : OperationalState setup leaks =>
-      state.environment.application.observation) (Option.some.inj beforeOperational)
-  · exact congrArg (fun state : OperationalState setup leaks =>
-      state.environment.application.observation) (Option.some.inj afterOperational)
+  · exact congrArg (fun state : OperationalState setup runtime leaks =>
+      state.environment.application.observation) (Option.some.inj
+        beforeOperational)
+  · exact congrArg (fun state : OperationalState setup runtime leaks =>
+      state.environment.application.observation) (Option.some.inj
+        afterOperational)
 
 end Vegas

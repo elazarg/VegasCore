@@ -141,28 +141,33 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- **Owing nothing reaches back along native transitions.** If `who` owes no
 failure at the decoded point after a native transition of the one-packet game,
 it owes none at the decoded point before it. -/
-theorem notOwes_of_transition {who : Player} {before after : (application setup leaks).Control}
-    (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some before))
-    (joint : Player → Option (application setup leaks).Action)
-    (realized : some after ∈ ((application setup leaks).transition (initialLaw setup) horizon
+theorem notOwes_of_transition {who : Player} {before after : (application setup runtime
+  leaks).Control}
+    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some before))
+    (joint : Player → Option (application setup runtime leaks).Action)
+    (realized : some after ∈ ((application setup runtime leaks).transition (initialLaw setup)
+      horizon
       scheduler (some before) joint).support)
     (notOwed : ∀ point, decodedPoint setup after.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure who setup.program point) :
     ∀ point, decodedPoint setup before.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure who setup.program point := by
   intro point decoded owes
-  rcases transition_configStep (initialLaw setup) horizon scheduler before after joint realized
+  rcases transition_configStep (initialLaw setup) horizon scheduler before
+    after joint realized
       with same | ⟨event, ready, action, member⟩
   · exact notOwed point (by rw [same]; exact decoded) owes
-  · obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
-      (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler prior before rfl
+  · obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+      setup.program)
+      (bounds.onePacketMenu runtime leaks) horizon scheduler prior before rfl
     obtain ⟨current, target, beforeEq, afterEq, supported⟩ :=
       decodedPoint_step residual event ready action _ member
     rw [beforeEq, Option.some.injEq] at decoded
@@ -175,39 +180,45 @@ well-formed setup, along a native history of the one-packet game whose decoded
 point has `who` owing no failure, `who`'s own completions decode to intended
 actions. -/
 theorem ownCompletionsIntended_of_notOwes (wellFormed : setup.WellFormed) (who : Player) :
-    ∀ {state} (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state)
-      (control : (application setup leaks).Control), state = some control →
+    ∀ {state} (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
+      (control : (application setup runtime leaks).Control), state = some control →
       (∀ point, decodedPoint setup control.execution.application.config = some point →
         ¬ ProtocolState.OwesFailure who setup.program point) →
-      OwnCompletionsIntended (bounds := bounds) (horizon := horizon) (scheduler := scheduler)
+      OwnCompletionsIntended (runtime := runtime) (bounds := bounds) (horizon := horizon)
+        (scheduler := scheduler)
         who trace
   | _, .start, _, current, _ => by cases current
   | _, .extend (source := before) (target := after) prior joint legal realized, control,
       current, notOwed => by
       have recursive := fun next same notOwedNext =>
-        ownCompletionsIntended_of_notOwes wellFormed who prior next same notOwedNext
+        ownCompletionsIntended_of_notOwes wellFormed who prior next same
+          notOwedNext
       subst current
-      have realizedRaw : some control ∈ ((application setup leaks).transition (initialLaw setup)
+      have realizedRaw : some control ∈ ((application setup runtime leaks).transition (initialLaw
+        setup)
           horizon scheduler before joint).support := realized
       cases before with
       | none =>
-          obtain rfl := trace_eq_start_of_none prior
+          obtain rfl := trace_eq_start_of_none (runtime := runtime) prior
           exact ⟨trivial, fun current _ initialized => by cases initialized⟩
       | some current =>
-          have notOwedCurrent := notOwes_of_transition prior joint realizedRaw notOwed
+          have notOwedCurrent := notOwes_of_transition (runtime := runtime) prior joint
+            realizedRaw notOwed
           refine ⟨recursive current rfl notOwedCurrent, ?_⟩
           intro current' next same nextSame _ event ready action member acts point decodedCurrent
           cases Option.some.inj same
           cases Option.some.inj nextSame
-          obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
-            (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler prior current rfl
+          obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime)
+            (failureProfile setup.program)
+            (bounds.onePacketMenu runtime leaks) horizon scheduler prior current rfl
           obtain ⟨point', target, decodedCurrent', decodedNext, reachedPoint⟩ :=
             decodedPoint_step residual event ready action _ member
           rw [decodedCurrent, Option.some.injEq] at decodedCurrent'
           subst decodedCurrent'
           obtain ⟨forRank, ⟨forResidual⟩, forHolds⟩ :=
-            decodedState_intendedFor_or_owes wellFormed who (failureProfile setup.program)
-              (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler prior current rfl
+            decodedState_intendedFor_or_owes (runtime := runtime) wellFormed who (failureProfile
+              setup.program)
+              (bounds.onePacketMenu runtime leaks) horizon scheduler prior current rfl
           have intendedFor : ProtocolState.IntendedFor who setup.program point := by
             have holds := forHolds _ forResidual.decode
             have samePoint := Option.some.inj
@@ -228,22 +239,24 @@ a well-formed setup, at a decision input of `who` at whose histories `who` owes
 no failure at the decoded point, `who`'s own completions along every history of
 the input decode to intended actions. -/
 theorem ownCompletionsIntended_of_siteNotOwes (wellFormed : setup.WellFormed) {who : Player}
-    {info : (onePacketInformation setup leaks bounds horizon scheduler).InfoState who}
-    (notOwed : ∀ history : (onePacketInformation setup leaks bounds horizon
+    {info : (onePacketInformation setup runtime leaks bounds horizon scheduler).InfoState who}
+    (notOwed : ∀ history : (onePacketInformation setup runtime leaks bounds horizon
         scheduler).InformationHistory who info,
-      ∀ point, nativeDecodedState setup leaks history.1.state = some point →
+      ∀ point, nativeDecodedState setup runtime leaks history.1.state = some point →
         ¬ ProtocolState.OwesFailure who setup.program point)
-    (history : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
+    (history : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationHistory who
       info) :
-    OwnCompletionsIntended (bounds := bounds) (horizon := horizon) (scheduler := scheduler) who
+    OwnCompletionsIntended (runtime := runtime) (bounds := bounds) (horizon := horizon) (scheduler
+      := scheduler) who
       history.1.trace := by
   obtain ⟨⟨state, trace⟩, seen⟩ := history
   cases state with
   | none =>
-      obtain rfl := trace_eq_start_of_none trace
+      obtain rfl := trace_eq_start_of_none (runtime := runtime) trace
       trivial
   | some control =>
-      exact ownCompletionsIntended_of_notOwes wellFormed who trace control rfl
+      exact ownCompletionsIntended_of_notOwes (runtime := runtime) wellFormed who trace control rfl
         (notOwed ⟨⟨some control, trace⟩, seen⟩)
 
 end Vegas

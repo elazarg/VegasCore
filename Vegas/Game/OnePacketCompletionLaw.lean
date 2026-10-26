@@ -35,25 +35,26 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup leaks).Scheduler)
-  [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+  (scheduler : (application setup runtime leaks).Scheduler)
+  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
 
 local notation "onePacketN" =>
-  onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 
 open Classical in
 /-- **The completion point of a history.** The source point the configuration
 decodes to after `rank + 1` events, when it has completed them, the point is a
 point of the intended game, and the control satisfies `fresh`. -/
-def completionPoint (rank : Nat) (fresh : (application setup leaks).Control → Prop)
-    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+def completionPoint (rank : Nat) (fresh : (application setup runtime leaks).Control → Prop)
+    (history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).History) : Option (ProtocolState setup.program) :=
   match history.state with
   | none => none
@@ -89,35 +90,37 @@ as a sub-probability law on source points, is `success` times stepLaw up to
 `error` against every bounded value. -/
 def CompletionPointLaw
     (installed : ∀ who,
-      (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler).BehavioralPolicy who)
-    (rank : Nat) (fresh : (application setup leaks).Control → Prop)
-    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+      (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+        scheduler).BehavioralPolicy who)
+    (rank : Nat) (fresh : (application setup runtime leaks).Control → Prop)
+    (history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).History)
     (success : ℝ) (stepLaw : PMF (ProtocolState setup.program)) (error : ℝ) : Prop :=
   ∀ (value : ProtocolState setup.program → ℝ) (bound : ℝ), (∀ point, |value point| ≤ bound) →
     |expect ((onePacketN).runBehavioralUntil
-        ((bounds.onePacketMenu (runtime setup) leaks).bounded (initialLaw setup) horizon
+        ((bounds.onePacketMenu runtime leaks).bounded (initialLaw setup) horizon
           scheduler).wellFoundedHistories installed
-        (LateStopped setup leaks bounds horizon scheduler rank) history)
-        (fun stop => (completionPoint setup leaks bounds horizon scheduler rank fresh stop).elim
+        (LateStopped setup runtime leaks bounds horizon scheduler rank) history)
+        (fun stop => (completionPoint setup runtime leaks bounds horizon scheduler rank fresh
+          stop).elim
           0 value) -
       success * expect stepLaw value| ≤ error * bound
 
-omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+omit [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
 /-- At a history where the event completed, the completion value is the source
 continuation value at the completion point, and the fallback without one. -/
 theorem completionValue_eq_elim (profile : BehavioralProfile setup.program)
-    (rank : Nat) (fresh : (application setup leaks).Control → Prop) (who : Player)
-    (fallback : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+    (rank : Nat) (fresh : (application setup runtime leaks).Control → Prop) (who : Player)
+    (fallback : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).History → ℝ)
-    {history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+    {history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).History}
-    (halted : LateStopped setup leaks bounds horizon scheduler rank history) :
-    completionValue setup leaks bounds horizon scheduler parameter utility excludedPayoff
+    (halted : LateStopped setup runtime leaks bounds horizon scheduler rank history) :
+    completionValue setup runtime leaks bounds horizon scheduler parameter utility excludedPayoff
         profile rank fresh who fallback history =
-      (completionPoint setup leaks bounds horizon scheduler rank fresh history).elim
+      (completionPoint setup runtime leaks bounds horizon scheduler rank fresh history).elim
         (fallback history)
         (sourcePointValue setup parameter utility excludedPayoff profile who) := by
   classical

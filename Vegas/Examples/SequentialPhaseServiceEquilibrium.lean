@@ -95,7 +95,7 @@ theorem funded_raw_equilibrium_exists :
     (inferInstance : app.FiniteNature Vegas.Examples.SequentialPhaseService.initial scheduler)
   obtain ⟨intended, equilibrium⟩ := intended_equilibrium_exists
   obtain ⟨target, rational, _⟩ :=
-    SequentialPhase.intended_raw_sequentialEquilibrium_preserved setup leaks bounds horizon
+    SequentialPhase.intended_raw_sequentialEquilibrium_preserved setup runtime leaks bounds horizon
       scheduler (fun _ => ()) sourceUtility (fun _ => -1)
       wellFormed independent observable opportunity protectedInclusion completesPlay timely
       (fun _ => 0) (fun _ => 2)

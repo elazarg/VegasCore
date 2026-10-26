@@ -7,7 +7,7 @@ import Vegas.Source.Exclusion
 
 /-! # The forced region and the projected source view
 
-A native information state of the default runtime is *forced* for its owner
+A native information state of the supplied runtime is *forced* for its owner
 when some native history at it decodes, at its completed prefix, to a source
 point at which no reveal of the owner has failed and every other player is
 neither excluded nor owes a failed reveal (`Vegas.forcedAgent`). The owner's
@@ -240,16 +240,17 @@ theorem history_length_of_isPrefix {graph : EventGraph Player L} (config : graph
     Fin.card_filter_val_lt]
   exact min_eq_right ordered.1
 
-section Default
+section Runtime
 
 variable (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-/-- The source view a native player view of the default runtime shows `who`:
+/-- The source view a native player view of the supplied runtime shows `who`:
 its masked store read at the length of its completion order, with its own
 completions decoded to source actions. It is `none` at a view carrying another
 player's identity and where decoding fails. -/
-def sourceViewOf (who : Player) (view : (application setup leaks).PlayerView) :
+def sourceViewOf (who : Player) (view : (application setup runtime leaks).PlayerView) :
     setup.ProtocolView who :=
   if same : view.application.who = who then
     let observed : (graph setup).PlayerObservation who := same ▸ view.application.observation
@@ -261,27 +262,29 @@ def sourceViewOf (who : Player) (view : (application setup leaks).PlayerView) :
   else none
 
 /-- **The projected source view.** The source view a native information state
-of the default runtime shows its owner: at a decision input, the source view of
+of the supplied runtime shows its owner: at a decision input, the source view of
 its current player view (`Vegas.sourceViewOf`); `none` at a non-decision
 input. -/
-def projectView (who : Player) : (application setup leaks).Info → setup.ProtocolView who
+def projectView (who : Player) : (application setup runtime leaks).Info → setup.ProtocolView who
   | none => none
-  | some (_, view) => sourceViewOf setup leaks who view
+  | some (_, view) => sourceViewOf setup runtime leaks who view
 
 /-- **The projection is the decoded point's view.** At an execution whose
 configuration decodes at its completed prefix to a source point, the projected
 view of `who`'s observation, whatever its recall, is `who`'s view of that point. -/
-theorem projectView_observe (who : Player) (execution : (application setup leaks).Execution)
+theorem projectView_observe (who : Player) (execution : (application setup runtime leaks).Execution)
     (rank : Nat) (ordered : execution.application.config.cut.IsPrefix rank)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
-    (past : List (application setup leaks).PlayerEntry) :
-    projectView setup leaks who (some (past, execution.observe (application setup leaks) who)) =
+    (past : List (application setup runtime leaks).PlayerEntry) :
+    projectView setup runtime leaks who (some (past, execution.observe (application setup runtime
+      leaks) who)) =
       setup.protocolObserve who (some point) := by
-  change sourceViewOf setup leaks who (execution.observe (application setup leaks) who) = _
+  change sourceViewOf setup runtime leaks who (execution.observe (application setup runtime leaks)
+    who) = _
   unfold sourceViewOf
   rw [dite_eq_left
-    (show (execution.observe (application setup leaks) who).application.who = who from rfl)]
+    (show (execution.observe (application setup runtime leaks) who).application.who = who from rfl)]
   change decodeViewPrefix? who setup.program
       (ContextRefs.initial setup.context (outputLayout setup.program)) (outputRef setup.program)
       ((graph setup).playerObserve who execution.application.config).completionOrder.length
@@ -300,16 +303,16 @@ theorem projectView_observe (who : Player) (execution : (application setup leaks
       execution.application.config.history)).trans ?_
   exact decodeViewPrefix?_eq_observe who rank setup.program _ [] _ _ _ _ point decoded
 
-variable {setup leaks}
+variable {setup runtime leaks}
 
 /-- **Every native history decodes.** Every configuration of a history of any
-response menu of the default runtime, under any scheduler, has a source
+response menu of the supplied runtime, under any scheduler, has a source
 residual at some prefix, for every source profile. -/
 theorem protocol_sourceResidual (profile : BehavioralProfile setup.program)
-    (menu : (application setup leaks).ResponseMenu) (horizon : Nat)
-    (scheduler : (application setup leaks).Scheduler) :
+    (menu : (application setup runtime leaks).ResponseMenu) (horizon : Nat)
+    (scheduler : (application setup runtime leaks).Scheduler) :
     ∀ {state} (_trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace state)
-      (control : (application setup leaks).Control), state = some control →
+      (control : (application setup runtime leaks).Control), state = some control →
       ∃ rank,
         Nonempty (SourceResidual setup profile rank control.execution.application.config) := by
   intro state trace
@@ -322,14 +325,15 @@ theorem protocol_sourceResidual (profile : BehavioralProfile setup.program)
       | none =>
           change some control ∈ ((initialLaw setup).map fun state =>
             some ⟨horizon, none, ReactiveApplication.Execution.initial
-              (application setup leaks) state⟩).support at realized
+              (application setup runtime leaks) state⟩).support at realized
           obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realized
           cases Option.some.inj same
           obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
           exact ⟨0, ⟨SourceResidual.initial setup profile initial⟩⟩
       | some previous =>
           obtain ⟨rank, ⟨residual⟩⟩ := ih previous rfl
-          have step := transition_configStep (initialLaw setup) horizon scheduler previous control
+          have step := transition_configStep (initialLaw setup) horizon
+            scheduler previous control
             joint realized
           rcases step.prefix rank residual.checkpoint.ordered with same | advanced
           · exact ⟨rank, residual.configStep step rank (by
@@ -342,17 +346,18 @@ history's configuration, at its completed prefix, is a decoded state property
 of that history, for every source profile. -/
 theorem decodedState_of_decode (profile : BehavioralProfile setup.program)
     {property : ProtocolState setup.program → Prop}
-    {menu : (application setup leaks).ResponseMenu} {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler}
+    {menu : (application setup runtime leaks).ResponseMenu} {horizon : Nat}
+    {scheduler : (application setup runtime leaks).Scheduler}
     (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
-    (control : (application setup leaks).Control) (current : history.state = some control)
+    (control : (application setup runtime leaks).Control) (current : history.state = some control)
     {rank : Nat} (ordered : control.execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank control.execution.application.config = some point)
     (holds : property point) :
-    DecodedState setup leaks profile property history.state := by
+    DecodedState setup runtime leaks profile property history.state := by
   obtain ⟨found, ⟨residual⟩⟩ :=
-    protocol_sourceResidual profile menu horizon scheduler history.trace control current
+    protocol_sourceResidual (runtime := runtime) profile menu horizon scheduler history.trace
+      control current
   rw [current]
   have same := isPrefix_unique ordered residual.checkpoint.ordered
   subst same
@@ -361,7 +366,7 @@ theorem decodedState_of_decode (profile : BehavioralProfile setup.program)
   subst read
   exact holds
 
-variable (setup)
+variable (setup runtime)
 
 /-- **A forced source point for `who`.** No reveal of `who` has failed, and
 every other player is neither excluded nor owes a failed reveal. `who` itself
@@ -376,35 +381,35 @@ variable (leaks)
 
 /-- An initialized native state whose configuration decodes at its completed
 prefix to a forced source point for `who`. -/
-def ForcedState (who : Player) : (application setup leaks).ProtocolState → Prop
+def ForcedState (who : Player) : (application setup runtime leaks).ProtocolState → Prop
   | none => False
   | some control => ∃ rank point, control.execution.application.config.cut.IsPrefix rank ∧
       sourceServicePrefix? setup rank control.execution.application.config = some point ∧
       ForcedPoint setup who point
 
-variable {setup leaks}
+variable {setup runtime leaks}
 
 /-- **The forced region.** An information state of `who` is forced when some
 native history at it is in a forced state for `who`. This is a property of the
 information state alone. -/
-def forcedAgent (menu : (application setup leaks).ResponseMenu)
-    (initial : PMF (application setup leaks).State) (horizon : Nat)
-    (scheduler : (application setup leaks).Scheduler) (who : Player)
+def forcedAgent (menu : (application setup runtime leaks).ResponseMenu)
+    (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
+    (scheduler : (application setup runtime leaks).Scheduler) (who : Player)
     (info : (menu.information initial horizon scheduler).InfoState who) : Prop :=
   ∃ history : (menu.protocol initial horizon scheduler).History,
     (menu.information initial horizon scheduler).infoOf who history.trace = info ∧
-      ForcedState setup leaks who history.state
+      ForcedState setup runtime leaks who history.state
 
 /-- A history in a forced state makes its information state forced. -/
-theorem forcedAgent_of_history {menu : (application setup leaks).ResponseMenu}
-    {initial : PMF (application setup leaks).State} {horizon : Nat}
-    {scheduler : (application setup leaks).Scheduler} {who : Player}
+theorem forcedAgent_of_history {menu : (application setup runtime leaks).ResponseMenu}
+    {initial : PMF (application setup runtime leaks).State} {horizon : Nat}
+    {scheduler : (application setup runtime leaks).Scheduler} {who : Player}
     (history : (menu.protocol initial horizon scheduler).History)
-    (forced : ForcedState setup leaks who history.state) :
-    forcedAgent menu initial horizon scheduler who
+    (forced : ForcedState setup runtime leaks who history.state) :
+    forcedAgent (runtime := runtime) menu initial horizon scheduler who
       ((menu.information initial horizon scheduler).infoOf who history.trace) :=
   ⟨history, rfl, forced⟩
 
-end Default
+end Runtime
 
 end Vegas

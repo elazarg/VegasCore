@@ -13,9 +13,10 @@ open SourceProgram Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {memory : BindingMemory (runtime setup) leaks} {owner : Player}
-  {original repaired : (application setup leaks).Execution}
+  {memory : BindingMemory runtime leaks} {owner : Player}
+  {original repaired : (application setup runtime leaks).Execution}
 
 namespace EventGraphRuntime.BindingMemory.Frame
 
@@ -24,11 +25,11 @@ one-packet traffic. Ready disclosures read successful original bindings;
 all remaining memory, candidate, acceptance and rejection facts are derived
 from actual signed inputs and the carried submission invariant. -/
 theorem pending_inclusion
-    (frame : Frame (runtime setup) leaks memory owner original repaired)
+    (frame : Frame runtime leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
-    (recorded : memory.RecordsSubmittedBindings (runtime setup) leaks owner original repaired)
-    (clean : (runtime setup).CountClean leaks original)
-    (signed : (runtime setup).SignedCommitments leaks original)
+    (recorded : memory.RecordsSubmittedBindings runtime leaks owner original repaired)
+    (clean : runtime.CountClean leaks original)
+    (signed : runtime.SignedCommitments leaks original)
     (leftBinding : original.application.BindingInvariant)
     (rightBinding : repaired.application.BindingInvariant)
     (successfulReady : ∀ (event : (graph setup).EventId) (actor : Player) (payload : L.Ty)
@@ -41,8 +42,8 @@ theorem pending_inclusion
       original.application.config.cut.Ready event →
       ∃ value, binding.get? original.application.config.store = some (.success value))
     (id : MessageId Player) :
-    let app := application setup leaks
-    Frame (runtime setup) leaks memory owner
+    let app := application setup runtime leaks
+    Frame runtime leaks memory owner
       { original.includePending app id with environmentRecall := original.environmentRecall ++
         [⟨original.observeEnvironment app, .include id⟩] }
       { repaired.includePending app id with environmentRecall := repaired.environmentRecall ++
@@ -79,7 +80,8 @@ theorem pending_inclusion
                   by_cases ready : original.application.config.cut.Ready event
                   · obtain ⟨value, successful⟩ := successfulReady event actor payload binding checks
                       outputEq codeEq node ready
-                    exact frame.ready_opening_inclusion onlyBindings leftBinding rightBinding
+                    exact frame.ready_opening_inclusion onlyBindings
+                      leftBinding rightBinding
                       event actor payload binding checks outputEq codeEq node ready value successful
                       id candidate raw evidence found
                   · have rightNotReady : ¬ repaired.application.config.cut.Ready event := by
@@ -88,7 +90,7 @@ theorem pending_inclusion
                       exact ready
                     have refused (state : EventGraphRuntime.State (graph setup))
                         (notReady : ¬ state.config.cut.Ready event) :
-                        handle (runtime setup) state ⟨id, .opening event candidate raw⟩ = none := by
+                        handle runtime state ⟨id, .opening event candidate raw⟩ = none := by
                       simp only [handle, dite_eq_right notReady]
                     exact frame.include_rejected id _ found
                       (by simpa only [reactiveApplication_handle,

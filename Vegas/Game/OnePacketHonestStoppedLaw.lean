@@ -15,35 +15,38 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk native ∅))
+  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
+    native ∅))
 
 /-- An honest continuation with the intended source law cannot encounter a
 public exclusion or hidden own debt, so stopping there leaves its terminal law unchanged. -/
 theorem honest_debt_stopped_terminal_law_of_readout_law
     (bounds : MessageBounds (graph setup)) (wellFormed : setup.WellFormed)
-    {horizon : Nat} {scheduler : (application setup leaks).Scheduler}
+    {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (certificate : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+    (certificate : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).WellFoundedHistories)
-    (start : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup)
+    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).History)
     (point : ProtocolState setup.program)
     (static : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context) point)
     (intended : ProtocolState.Intended setup.program point)
     (law : (InformationModel.runBehavioralTerminalFrom
-      (onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler) certificate
-        (honestProfile setup leaks bounds (initialLaw setup) horizon scheduler assessment)
-        start).map (fun final => sourceReadout setup leaks final.state) =
+      (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler) certificate
+        (honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment)
+        start).map (fun final => sourceReadout setup runtime leaks final.state) =
           (setup.continuationLaw (setup.intendedOpeningProfile assessment.strategy)
             (some point)).map some)
     (who : Player) :
-    let model := onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
-    let honest := honestProfile setup leaks bounds (initialLaw setup) horizon scheduler assessment
+    let model := onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+    let honest := honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler
+      assessment
     let stopped := fun history => ¬ Clear history.state ∨
-      DecodedState setup leaks (failureProfile setup.program)
+      DecodedState setup runtime leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure who setup.program) history.state
     model.runBehavioralUntil certificate honest stopped start =
         model.runBehavioralTerminalFrom certificate honest start ∧
@@ -51,7 +54,7 @@ theorem honest_debt_stopped_terminal_law_of_readout_law
         ¬ stopped final := by
   classical
   intro model honest stopped
-  let menu := bounds.onePacketMenu (runtime setup) leaks
+  let menu := bounds.onePacketMenu runtime leaks
   let reachable := fun history => ∃ fuel,
     history ∈ (model.runBehavioralFrom honest fuel start).support
   have notStopped : ∀ history, reachable history → ¬ stopped history := by
@@ -64,7 +67,7 @@ theorem honest_debt_stopped_terminal_law_of_readout_law
           reached control current
       have clear : Clear history.state := by
         rw [current]
-        exact exclusionEvidence_of_decodedIntended
+        exact exclusionEvidence_of_decodedIntended (runtime := runtime)
           (menu.toRawTrace (initialLaw setup) horizon scheduler (current ▸ history.trace)) decodedEq
           intendedDecoded
       refine fun stop => ?_

@@ -28,55 +28,58 @@ private theorem flag_mass_le_of_withinTV_false {α : Type*} {error : ℝ}
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
+  (scheduler : (phaseApplication runtime leaks).Scheduler)
+  [(phaseApplication runtime leaks).FiniteNature (phaseInitialLaw setup) scheduler]
   {delay bound : (graph setup).EventId → Nat}
-  (opportunity : PhaseService.Opportunity (runtime setup) leaks (phaseInitialLaw setup) horizon
+  (opportunity : PhaseService.Opportunity runtime leaks (phaseInitialLaw setup) horizon
     scheduler delay)
-  (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks (phaseInitialLaw setup) horizon
+  (inclusion : PhaseService.ProtectedInclusion runtime leaks (phaseInitialLaw setup) horizon
     scheduler bound)
-  (timely : (runtime setup).AsyncTimely delay bound)
-  (completes : PhaseService.CompletesPlay (runtime setup) leaks (phaseInitialLaw setup) horizon
+  (timely : runtime.AsyncTimely delay bound)
+  (completes : PhaseService.CompletesPlay runtime leaks (phaseInitialLaw setup) horizon
     scheduler)
 
 local notation "RecoveryLeaks" => recoveryLeaks setup leaks
-local notation "nativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup)
+local notation "nativeScheduler" => RecoveryProjection.nativeScheduler runtime
     (RecoveryLeaks)
-  (recoveryScheduler setup leaks scheduler)
-local notation "N" => onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup) horizon
+  (recoveryScheduler setup runtime leaks scheduler)
+local notation "N" => onePacketModel (runtime := runtime) setup (RecoveryLeaks) bounds
+  (Vegas.initialLaw setup) horizon
   (nativeScheduler)
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu (runtime setup) (RecoveryLeaks)) (Vegas.initialLaw setup) horizon
+  (bounds.onePacketMenu runtime (RecoveryLeaks)) (Vegas.initialLaw setup) horizon
     (nativeScheduler)
-local notation "NativeModel" => onePacketModel setup (RecoveryLeaks) bounds (Vegas.initialLaw setup)
+local notation "NativeModel" => onePacketModel (runtime := runtime) setup (RecoveryLeaks) bounds
+  (Vegas.initialLaw setup)
   horizon (nativeScheduler)
 local notation "NativeProtocol" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu (runtime setup) (RecoveryLeaks)) (Vegas.initialLaw setup) horizon
+  (bounds.onePacketMenu runtime (RecoveryLeaks)) (Vegas.initialLaw setup) horizon
     (nativeScheduler)
 
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu (runtime setup) (RecoveryLeaks)) (Vegas.initialLaw setup) horizon
+  (bounds.onePacketMenu runtime (RecoveryLeaks)) (Vegas.initialLaw setup) horizon
     (nativeScheduler)
 
-local notation "R" => recoveryModel setup leaks bounds horizon scheduler
+local notation "R" => recoveryModel setup runtime leaks bounds horizon scheduler
 local notation "RecoveryPrior" => recoveryInitialLaw setup
-local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
-local notation "RecoveryMenu" => Recovery.onePacketMenu (runtime setup) (RecoveryLeaks) bounds
+local notation "RecoveryScheduler" => recoveryScheduler setup runtime leaks scheduler
+local notation "RecoveryMenu" => Recovery.onePacketMenu runtime (RecoveryLeaks) bounds
 
 attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
   phaseHistoryFintype recoveryHistoryFintype nativeHistoryFintype nativeNature
 
-local notation "M" => model setup leaks bounds horizon scheduler
-local notation "MP" => ReactiveApplication.ResponseMenu.protocol (menu setup leaks bounds)
+local notation "M" => model setup runtime leaks bounds horizon scheduler
+local notation "MP" => ReactiveApplication.ResponseMenu.protocol (menu setup runtime leaks bounds)
   (phaseInitialLaw setup) horizon scheduler
 local notation "phaseClear" => ReactiveApplication.stateInvariant (app := phaseApplication
-  (runtime setup) leaks) (fun state => RecoveryState.excluded (PhaseRuntimeState.current state) = ∅)
+  runtime leaks) (fun state => RecoveryState.excluded (PhaseRuntimeState.current state) = ∅)
 
-omit [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler] in
+omit [(phaseApplication runtime leaks).FiniteNature (phaseInitialLaw setup) scheduler] in
 open Classical in
-private def exclusionFlag (state : (phaseApplication (runtime setup) leaks).ProtocolState) : Bool :=
+private def exclusionFlag (state : (phaseApplication runtime leaks).ProtocolState) : Bool :=
   decide (¬ phaseClear state)
 
 include opportunity inclusion timely completes in
@@ -88,20 +91,22 @@ theorem component_initialized_exclusion_mass_le
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (Part setup leaks bounds horizon scheduler slots p)) (n : ℕ)
+    (weights : ℕ → ∀ p, PMF (Part setup runtime leaks bounds horizon scheduler slots p)) (n : ℕ)
     (fallback : ∀ who, (M).Policy who) :
     (((((M).runBehavioral
-      (componentStrategy setup leaks bounds horizon scheduler fallback (sequence n) (scale n)
+      (componentStrategy setup runtime leaks bounds horizon scheduler fallback (sequence n) (scale
+        n)
         (positive n).le (le_one n) (weights n)) (2 * horizon + 1)).map
-        (fun final => exclusionFlag setup leaks final.state)) true).toReal) ≤
+        (fun final => exclusionFlag setup runtime leaks final.state)) true).toReal) ≤
       (min (Fintype.card Player) 1 * horizon : ℕ) * (1 - slotRetention (scale n)) := by
   classical
-  have coupling := component_initialized_projection_withinTV setup leaks bounds horizon scheduler
+  have coupling := component_initialized_projection_withinTV setup runtime leaks bounds horizon
+    scheduler
     fallback (sequence n) (scale n) (positive n).le (le_one n) (weights n) (fun _ => false)
-    (exclusionFlag setup leaks) (by intro history clear; simp [exclusionFlag, clear])
+    (exclusionFlag setup runtime leaks) (by intro history clear; simp [exclusionFlag, clear])
   have upper := flag_mass_le_of_withinTV_false coupling
   exact upper.trans
-    (component_projection_initialized_failure_mass_le setup leaks bounds horizon scheduler
+    (component_projection_initialized_failure_mass_le setup runtime leaks bounds horizon scheduler
       opportunity inclusion timely completes wellFormed covers capacity sequence scale positive
       le_one weights n)
 
@@ -114,11 +119,12 @@ theorem initialized_limit_no_exclusion
     (sourceSequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     (vanishes : Filter.Tendsto scale Filter.atTop (nhds 0)) {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (Part setup leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (Part setup runtime leaks bounds horizon scheduler slots p))
     (fallback : ∀ who, (M).Policy who)
     (assessments : ℕ → (M).BehavioralAssessment)
     (assembled : ∀ n, (assessments n).strategy =
-      componentStrategy setup leaks bounds horizon scheduler fallback (sourceSequence n) (scale n)
+      componentStrategy setup runtime leaks bounds horizon scheduler fallback (sourceSequence n)
+        (scale n)
         (positive n).le (le_one n) (weights n))
     (limit : (M).BehavioralAssessment) (index : ℕ → ℕ) (increasing : StrictMono index)
     (converges : ∀ who (site : (M).InformationSite who),
@@ -131,19 +137,20 @@ theorem initialized_limit_no_exclusion
   let budget : ℝ := (min (Fintype.card Player) 1 * horizon : ℕ)
   have approximation (n : ℕ) :
       (((((M).runBehavioral (assessments n).strategy (2 * horizon + 1)).map
-        (fun final => exclusionFlag setup leaks final.state)) true).toReal) ≤
+        (fun final => exclusionFlag setup runtime leaks final.state)) true).toReal) ≤
         budget * (1 - slotRetention (scale n)) := by
     rw [assembled n]
-    exact component_initialized_exclusion_mass_le setup leaks bounds horizon scheduler opportunity
+    exact component_initialized_exclusion_mass_le setup runtime leaks bounds horizon scheduler
+      opportunity
       inclusion timely completes wellFormed covers capacity sourceSequence scale positive le_one
       weights n fallback
-  let certificate := ((menu setup leaks bounds).bounded (phaseInitialLaw setup) horizon
+  let certificate := ((menu setup runtime leaks bounds).bounded (phaseInitialLaw setup) horizon
     scheduler).wellFoundedHistories
   have evaluation (profile : ∀ who, (M).BehavioralPolicy who) :
       (M).runBehavioralTerminalFrom certificate profile (MP).initHistory =
         (M).runBehavioral profile (2 * horizon + 1) :=
     (M).runBehavioralTerminalFrom_initHistory certificate profile
-      ((menu setup leaks bounds).bounded (phaseInitialLaw setup) horizon scheduler)
+      ((menu setup runtime leaks bounds).bounded (phaseInitialLaw setup) horizon scheduler)
   have terminalConverges := (M).runBehavioralTerminalFrom_convergesPointwise certificate
     converges (MP).initHistory
   have runConverges : PMFConvergesPointwise
@@ -151,7 +158,7 @@ theorem initialized_limit_no_exclusion
       ((M).runBehavioral limit.strategy (2 * horizon + 1)) := by
     simpa only [evaluation] using terminalConverges
   have atomConverges :=
-    (runConverges.map (fun final => exclusionFlag setup leaks final.state)).toReal true
+    (runConverges.map (fun final => exclusionFlag setup runtime leaks final.state)).toReal true
   have retained := tendsto_slotRetention (vanishes.comp increasing.tendsto_atTop)
   have negligible : Filter.Tendsto
       (fun n => budget * (1 - slotRetention (scale (index n)))) Filter.atTop (nhds 0) := by

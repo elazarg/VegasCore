@@ -26,6 +26,7 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
 section Generic
@@ -116,22 +117,25 @@ end Generic
 /-- The approximate version of `BoundaryContinuationLaw`: from every completion
 boundary within the horizon, the players' run is within `error rank` of the
 source continuation. -/
-def BoundaryContinuationWithin (scheduler : (application setup leaks).Scheduler) (horizon : Nat)
-    (players : Player → (application setup leaks).Policy)
+def BoundaryContinuationWithin (scheduler : (application setup runtime leaks).Scheduler)
+  (horizon : Nat)
+    (players : Player → (application setup runtime leaks).Policy)
     (profile : BehavioralProfile setup.program) (error : Nat → ℝ) : Prop :=
-  ∀ rank (execution : (application setup leaks).Execution),
+  ∀ rank (execution : (application setup runtime leaks).Execution),
     CompletionBoundary setup leaks scheduler players rank execution →
     execution.environmentRecall.length ≤ horizon →
     PMF.WithinTV (error rank)
-      (((application setup leaks).runToHorizon scheduler players horizon execution).map
-        (fun final => sourceReadout setup leaks ((application setup leaks).finished final)))
+      (((application setup runtime leaks).runToHorizon scheduler players horizon execution).map
+        (fun final => sourceReadout setup runtime leaks ((application setup runtime
+          leaks).finished final)))
       (sourceContinuation setup profile rank execution.application.config)
 
 /-- With no error, the approximate law is the exact one. -/
-theorem BoundaryContinuationWithin.law {scheduler : (application setup leaks).Scheduler}
-    {horizon : Nat} {players : Player → (application setup leaks).Policy}
+theorem BoundaryContinuationWithin.law {scheduler : (application setup runtime leaks).Scheduler}
+    {horizon : Nat} {players : Player → (application setup runtime leaks).Policy}
     {profile : BehavioralProfile setup.program} {error : Nat → ℝ}
-    (within : BoundaryContinuationWithin setup leaks scheduler horizon players profile error)
+    (within : BoundaryContinuationWithin setup runtime leaks scheduler horizon players profile
+      error)
     (zero : ∀ rank, error rank = 0) :
     BoundaryContinuationLaw setup leaks scheduler horizon players profile := by
   intro rank execution boundary bounded
@@ -141,25 +145,25 @@ theorem BoundaryContinuationWithin.law {scheduler : (application setup leaks).Sc
 variable {setup leaks}
 /-- A stopped point of a completion run from a completion boundary at which
 the event has completed is the next boundary, within the horizon. -/
-theorem CompletionBoundary.stopped {scheduler : (application setup leaks).Scheduler}
-    {players : Player → (application setup leaks).Policy} {horizon : Nat}
-    (event : (graph setup).EventId) (execution : (application setup leaks).Execution)
+theorem CompletionBoundary.stopped {scheduler : (application setup runtime leaks).Scheduler}
+    {players : Player → (application setup runtime leaks).Policy} {horizon : Nat}
+    (event : (graph setup).EventId) (execution : (application setup runtime leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler players event.val execution)
     (bounded : execution.environmentRecall.length ≤ horizon)
-    (stopped : (application setup leaks).Execution)
-    (reached : stopped ∈ ((application setup leaks).runUntilHorizon scheduler players
+    (stopped : (application setup runtime leaks).Execution)
+    (reached : stopped ∈ ((application setup runtime leaks).runUntilHorizon scheduler players
       (fun final => event ∈ final.application.config.cut.completed) horizon execution).support)
     (finished : event ∈ stopped.application.config.cut.completed) :
     stopped.environmentRecall.length ≤ horizon ∧
       CompletionBoundary setup leaks scheduler players (event.val + 1) stopped := by
-  let app := application setup leaks
-  obtain ⟨rank, ranked, seen⟩ := roundsFrom_ranked setup leaks scheduler players _ execution
+  let app := application setup runtime leaks
+  obtain ⟨rank, ranked, seen⟩ := roundsFrom_ranked setup runtime leaks scheduler players _ execution
     boundary.supported
   have rankEq := isPrefix_unique ranked boundary.ordered
   subst rankEq
   obtain ⟨used, within, _, length⟩ := app.runUntil_runRounds scheduler players _ _ execution
     stopped reached
-  obtain ⟨stoppedSeen, stoppedConfig⟩ := runUntil_completion_prefix setup leaks scheduler
+  obtain ⟨stoppedSeen, stoppedConfig⟩ := runUntil_completion_prefix setup runtime leaks scheduler
     players event _ execution stopped boundary.ordered seen reached
   refine ⟨by omega, app.roundsFrom_runUntil scheduler players (initialLaw setup) _ _ execution
     stopped boundary.supported reached, ?_, ?_⟩

@@ -19,7 +19,7 @@ owner's reveal fail at the next decoded point
 includes an accepted packet naming it, from its actor, or completes a
 publication event with the withholding action
 (`Vegas.environment_completion_cause`). So at every legal history of the
-default runtime, under arbitrary responses and every scheduler, either some
+supplied runtime, under arbitrary responses and every scheduler, either some
 reveal has failed at the decoded point, or every completed publication event
 was completed by an accepted packet of its actor
 (`Vegas.publicationRecord_history`).
@@ -153,6 +153,7 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 section Completion
@@ -161,9 +162,9 @@ section Completion
 completes a ready event, either an included packet naming that event was
 accepted, by the event's actor, or the action is the withholding action at a
 publication event, as at an expired reveal. -/
-theorem environment_completion_cause (execution next : (application setup leaks).Execution)
-    (command : (application setup leaks).Command)
-    (reached : next ∈ (execution.environmentStep (application setup leaks) command).support)
+theorem environment_completion_cause (execution next : (application setup runtime leaks).Execution)
+    (command : (application setup runtime leaks).Command)
+    (reached : next ∈ (execution.environmentStep (application setup runtime leaks) command).support)
     {event : (graph setup).EventId} (ready : execution.application.config.cut.Ready event)
     (action : (graph setup).Action event)
     (member : next.application.config ∈
@@ -173,7 +174,7 @@ theorem environment_completion_cause (execution next : (application setup leaks)
         (graph setup).actor? event = some message.sender) ∨
       ∀ payload (outputEq : (graph setup).outputLayout event = .publication payload),
         action = cast (congrArg EventGraph.EventField.Action outputEq.symm) false := by
-  rcases reactive_completion_cases (runtime setup) leaks execution next command reached ready
+  rcases reactive_completion_cases runtime leaks execution next command reached ready
       action member with accepted | ⟨_, _, _, _, _, expired⟩ | ownerless
   · obtain ⟨message, _, ledger, receipt, named, actor, _⟩ := accepted
     exact Or.inl ⟨message, ledger, receipt, named, actor⟩
@@ -193,7 +194,7 @@ end Completion
 
 section Record
 
-variable (setup) in
+variable (setup runtime) in
 /-- Some player's reveal has failed at a source point. -/
 def SomeRevealFailed (point : ProtocolState setup.program) : Prop :=
   ∃ who, ProtocolState.RevealFailed who setup.program point
@@ -204,7 +205,7 @@ theorem someRevealFailed_stepClosed : StepClosed setup (SomeRevealFailed setup) 
 
 /-- Every completed publication event was completed by an accepted packet naming
 it, sent by the event's actor. -/
-def PublicationsAccepted (execution : (application setup leaks).Execution) : Prop :=
+def PublicationsAccepted (execution : (application setup runtime leaks).Execution) : Prop :=
   ∀ event ∈ execution.application.config.cut.completed, ∀ payload,
     (graph setup).outputLayout event = .publication payload →
       ∃ message ∈ execution.network.ledger, (message.id, true) ∈ execution.receipts ∧
@@ -215,15 +216,17 @@ def PublicationsAccepted (execution : (application setup leaks).Execution) : Pro
 either some reveal has failed at the decoded point or every completed
 publication event was completed by an accepted packet of its actor. -/
 def PublicationRecord (profile : BehavioralProfile setup.program)
-    (execution : (application setup leaks).Execution) : Prop :=
+    (execution : (application setup runtime leaks).Execution) : Prop :=
   ∃ rank, Nonempty (SourceResidual setup profile rank execution.application.config) ∧
     (DecodedHolds (SomeRevealFailed setup) rank execution.application.config ∨
-      PublicationsAccepted execution)
+      PublicationsAccepted (runtime := runtime) execution)
 
 /-- Scheduler commands only append to the ledger and the receipts. -/
-theorem environment_ledger_receipts_grow (execution next : (application setup leaks).Execution)
-    (command : (application setup leaks).Command)
-    (reached : next ∈ (execution.environmentStep (application setup leaks) command).support) :
+theorem environment_ledger_receipts_grow (execution next : (application setup runtime
+  leaks).Execution)
+    (command : (application setup runtime leaks).Command)
+    (reached : next ∈ (execution.environmentStep (application setup runtime leaks)
+      command).support) :
     (∀ message ∈ execution.network.ledger, message ∈ next.network.ledger) ∧
       ∀ receipt ∈ execution.receipts, receipt ∈ next.receipts := by
   rcases (environmentStep_shape setup leaks execution next command reached).2.2 with
@@ -233,22 +236,24 @@ theorem environment_ledger_receipts_grow (execution next : (application setup le
   · rw [networkEq, (includePending_found execution.network id message found).2.2, receiptsEq]
     exact ⟨fun _ kept => List.mem_append_left _ kept, fun _ kept => List.mem_append_left _ kept⟩
 
-/-- The publication record holds at every legal history of the default runtime,
+/-- The publication record holds at every legal history of the supplied runtime,
 under arbitrary responses and every scheduler. -/
 theorem publicationRecord_serviceInvariant (profile : BehavioralProfile setup.program)
-    (scheduler : (application setup leaks).Scheduler) :
-    (application setup leaks).ServiceInvariant scheduler (PublicationRecord profile) where
+    (scheduler : (application setup runtime leaks).Scheduler) :
+    (application setup runtime leaks).ServiceInvariant scheduler (PublicationRecord (runtime :=
+      runtime) profile) where
   respond execution who action valid := by
-    have configEq := ((runtime setup).reactive_respond_application leaks execution who action).1
-    have ledgerEq := (application setup leaks).respond_ledger execution who action
-    have receiptsEq := (application setup leaks).respond_receipts execution who action
+    have configEq := (runtime.reactive_respond_application leaks execution who action).1
+    have ledgerEq := (application setup runtime leaks).respond_ledger execution who action
+    have receiptsEq := (application setup runtime leaks).respond_receipts execution who action
     unfold PublicationRecord PublicationsAccepted at valid ⊢
     rw [configEq, ledgerEq, receiptsEq]
     exact valid
   environment execution next command valid _ reached := by
     obtain ⟨rank, ⟨residual⟩, holds⟩ := valid
-    have grows := environment_ledger_receipts_grow execution next command reached
-    have kept : PublicationsAccepted execution →
+    have grows := environment_ledger_receipts_grow (runtime := runtime) execution next command
+      reached
+    have kept : PublicationsAccepted (runtime := runtime) execution →
         ∀ event ∈ execution.application.config.cut.completed, ∀ payload,
           (graph setup).outputLayout event = .publication payload →
           ∃ message ∈ next.network.ledger, (message.id, true) ∈ next.receipts ∧
@@ -290,7 +295,8 @@ theorem publicationRecord_serviceInvariant (profile : BehavioralProfile setup.pr
         intro state decoded
         rw [decodedNext state decoded]
         exact someRevealFailed_stepClosed _ _ _ (failed _ residual.decode) reachedPoint
-      · rcases environment_completion_cause execution next command reached ready action member with
+      · rcases environment_completion_cause (runtime := runtime) execution next command reached
+          ready action member with
           ⟨message, present, receipt, named, actor⟩ | withheld
         · right
           intro other completed payload outputEq
@@ -316,15 +322,16 @@ theorem publicationRecord_serviceInvariant (profile : BehavioralProfile setup.pr
             · exact (publication ⟨payload, outputEq⟩).elim
             · exact kept accepted other earlier payload outputEq
 
-/-- The publication record holds at every legal history of the default runtime
+/-- The publication record holds at every legal history of the supplied runtime
 from its initial law. -/
 theorem publicationRecord_history (profile : BehavioralProfile setup.program)
-    (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
-    {control : (application setup leaks).Control}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
+    {control : (application setup runtime leaks).Control}
+    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some control)) :
-    PublicationRecord profile control.execution :=
-  (publicationRecord_serviceInvariant profile scheduler).history (initialLaw setup) horizon
+    PublicationRecord (runtime := runtime) profile control.execution :=
+  (publicationRecord_serviceInvariant (runtime := runtime) profile scheduler).history (initialLaw
+    setup) horizon
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       let residual := SourceResidual.initial setup profile initial
@@ -356,11 +363,11 @@ packet carries the value of any event other than the ready one: a stale
 opening exists only after an expired reveal, which is a failed reveal and
 leaves the forced region. -/
 theorem onePacket_pending_of_forced (horizon : Nat)
-    (scheduler : (application setup leaks).Scheduler) (who : Player)
-    (history : ((bounds.onePacketMenu (runtime setup) leaks).protocol (initialLaw setup) horizon
+    (scheduler : (application setup runtime leaks).Scheduler) (who : Player)
+    (history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).History)
-    (forced : ForcedState setup leaks who history.state)
-    {control : (application setup leaks).Control} (current : history.state = some control)
+    (forced : ForcedState setup runtime leaks who history.state)
+    {control : (application setup runtime leaks).Control} (current : history.state = some control)
     (message : Message Player (WitnessedPacket (graph setup)))
     (pending : message ∈ control.execution.network.pending) :
     (∃ event candidate, message.payload.call = .commitment event candidate ∧
@@ -369,15 +376,15 @@ theorem onePacket_pending_of_forced (horizon : Nat)
         message.payload.evidence = some ⟨candidate, raw⟩ ∧
         control.execution.application.config.cut.Ready event ∧
         (graph setup).actor? event = some message.sender := by
-  let app := application setup leaks
+  let app := application setup runtime leaks
   have trace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control) :=
-    current ▸ (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon
+    current ▸ (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
       scheduler history.trace
-  have clean := (bounds.onePacketMenu_countClean (runtime setup) leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => (runtime setup).countClean_initial leaks state)
+  have clean := (bounds.onePacketMenu_countClean runtime leaks scheduler).history
+    (initialLaw setup) horizon (fun state _ => runtime.countClean_initial leaks state)
     history.trace
   rw [current] at clean forced
-  change (runtime setup).CountClean leaks control.execution at clean
+  change runtime.CountClean leaks control.execution at clean
   have facts := settledFacts_history (initialLaw setup) horizon scheduler trace
   have distinct := app.idsDistinct_history scheduler (initialLaw setup) horizon trace
   change control.execution.network.IdsDistinct at distinct
@@ -423,7 +430,8 @@ theorem onePacket_pending_of_forced (horizon : Nat)
             intro completed
             obtain ⟨rank, point, ordered, decoded, forcedPoint⟩ := forced
             obtain ⟨recordRank, ⟨residual⟩, record⟩ :=
-              publicationRecord_history (failureProfile setup.program) horizon scheduler trace
+              publicationRecord_history (runtime := runtime) (failureProfile setup.program)
+                horizon scheduler trace
             have sameRank := isPrefix_unique ordered residual.checkpoint.ordered
             subst sameRank
             rcases record with failed | accepted

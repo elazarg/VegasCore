@@ -84,6 +84,7 @@ variable {leaks}
 section Sequential
 
 variable {setup : Setup (Player := Player) (L := L)}
+  (runtime : EventGraphRuntime (graph setup))
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 section Head
@@ -105,11 +106,12 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
         law.bind (fun action => (config.step event ready action).bind
           fun next => sourceContinuation setup profile (rank + 1) next) ∧
       (∀ owner, (graph setup).actor? event = some owner →
-        ∀ current : (application setup leaks).Execution, current.application.config = config →
-          sourceServiceCanonicalPolicy setup leaks profile owner (current.recall owner)
-              (current.observe (application setup leaks) owner) =
-            law.map fun action => (runtime setup).canonicalServiceDecision leaks owner
-              (current.recall owner) (current.observe (application setup leaks) owner) event
+        ∀ current : (application setup runtime leaks).Execution, current.application.config =
+          config →
+          sourceServiceCanonicalPolicy setup runtime leaks profile owner (current.recall owner)
+              (current.observe (application setup runtime leaks) owner) =
+            law.map fun action => runtime.canonicalServiceDecision leaks owner
+              (current.recall owner) (current.observe (application setup runtime leaks) owner) event
               action) ∧
       ((∀ who, (profile who).EffectiveDisclosures setup.program []
           (Revelations.initial setup.context)) →
@@ -258,9 +260,7 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
           residualProfile refs source embedding refsBefore rank aligned current
           (by rw [sameConfig]; exact checkpoint.agrees)
           (by rw [sameConfig]; exact checkpoint.history) (by rw [sameConfig]; exact ready)
-        rw [show sourceServiceCanonicalPolicy setup leaks = serviceCanonicalPolicy setup .sequential
-          (rankDeadline setup .sequential) leaks from rfl, law, PMF.map_comp]
-        rfl
+        simpa only [PMF.map_comp, Function.comp_def] using law
       · intro _ action _
         unfold EffectiveAction
         rw [EventGraphRuntime.nodeView_eq_bind outputEq codeEq]
@@ -339,9 +339,7 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
           profile residualProfile refs source embedding refsBefore rank aligned current
           (by rw [sameConfig]; exact checkpoint.agrees)
           (by rw [sameConfig]; exact checkpoint.history) (by rw [sameConfig]; exact ready)
-        rw [show sourceServiceCanonicalPolicy setup leaks = serviceCanonicalPolicy setup .sequential
-          (rankDeadline setup .sequential) leaks from rfl, law, PMF.map_comp]
-        rfl
+        simpa only [PMF.map_comp, Function.comp_def] using law
       · intro effectiveWhole action member
         unfold EffectiveAction
         rw [EventGraphRuntime.nodeView_eq_resolve outputEq codeEq]

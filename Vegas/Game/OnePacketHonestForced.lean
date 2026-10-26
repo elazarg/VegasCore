@@ -25,9 +25,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-variable (setup) in
+variable (setup runtime) in
 /-- A point of the intended game, or one at which some player owes a failed
 reveal. -/
 def IntendedOrOwed (point : ProtocolState setup.program) : Prop :=
@@ -43,18 +44,19 @@ theorem intendedOrOwed_stepClosed : StepClosed setup (IntendedOrOwed setup) := b
       reached⟩
 
 /-- **Intended or owed along every history.** For a well-formed setup, along
-every history of a response menu of the default runtime from its initial law,
+every history of a response menu of the supplied runtime from its initial law,
 under any scheduler, the configuration decodes to a point of the intended game
 or one at which some player owes a failed reveal. -/
 theorem decodedState_intended_or_owes (wellFormed : setup.WellFormed)
     (profile : BehavioralProfile setup.program)
-    (menu : (application setup leaks).ResponseMenu) (horizon : Nat)
-    (scheduler : (application setup leaks).Scheduler) :
+    (menu : (application setup runtime leaks).ResponseMenu) (horizon : Nat)
+    (scheduler : (application setup runtime leaks).Scheduler) :
     ∀ {state} (_ : (menu.protocol (initialLaw setup) horizon scheduler).Trace state)
-      (control : (application setup leaks).Control), state = some control →
-      DecodedState setup leaks profile (IntendedOrOwed setup) (some control) := by
+      (control : (application setup runtime leaks).Control), state = some control →
+      DecodedState setup runtime leaks profile (IntendedOrOwed setup) (some control) := by
   intro state trace control current
-  refine decodedState_history_of_stepClosed intendedOrOwed_stepClosed ?_ menu horizon scheduler
+  refine decodedState_history_of_stepClosed intendedOrOwed_stepClosed ?_ menu
+    horizon scheduler
     trace control current
   intro initial member
   exact Or.inl (ProtocolState.intended_entry setup.program _

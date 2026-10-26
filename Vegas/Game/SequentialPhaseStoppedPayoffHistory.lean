@@ -14,17 +14,19 @@ open SourceProgram Interaction EventGraphRuntime GameTheory GameTheory.Protocol
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (recoveryLeaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
 local notation "projection" =>
-  PhaseRecoveryProjection.protocolState (runtime setup) leaks recoveryLeaks
+  PhaseRecoveryProjection.protocolState runtime leaks recoveryLeaks
 
 /-- Focal physical exclusion is unchanged by projection of the current state. -/
 theorem phaseExcluded_eq_projected (who : Player)
-    (state : (phaseApplication (runtime setup) leaks).ProtocolState) :
-    PhaseExcluded setup .sequential (runtime setup) leaks who state =
-      RecoveryExcluded (setup := setup) (leaks := recoveryLeaks) who (projection state) := by
+    (state : (phaseApplication runtime leaks).ProtocolState) :
+    PhaseExcluded setup .sequential runtime leaks who state =
+      RecoveryExcluded (runtime := runtime) (setup := setup) (leaks := recoveryLeaks) who
+        (projection state) := by
   cases state <;> rfl
 
 open Classical in
@@ -33,24 +35,25 @@ exactly the recovery payoff readout, with its existing debt/exit floor.
 Coverage is derived from the actual raw phase trace rather than assumed. -/
 theorem phaseDebtStoppedPayoff_history_eq_projected
     (plan : RuntimePhasePlan (graph setup)) (inputs : PMF (graph setup).Inputs)
-    (horizon : Nat) (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-    (menu : (phaseApplication (runtime setup) leaks).ResponseMenu)
+    (horizon : Nat) (scheduler : (phaseApplication runtime leaks).Scheduler)
+    (menu : (phaseApplication runtime leaks).ResponseMenu)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ) (source : BehavioralProfile setup.program) (who : Player)
     (history : (menu.protocol (inputs.map (PhaseRuntimeState.initial plan))
       horizon scheduler).History) :
-    phaseDebtStoppedPayoff setup leaks parameter utility excludedPayoff source who history.state =
-      if RecoveryPublicExclusion (setup := setup) (leaks := recoveryLeaks)
+    phaseDebtStoppedPayoff setup runtime leaks parameter utility excludedPayoff source who
+      history.state =
+      if RecoveryPublicExclusion (runtime := runtime) (setup := setup) (leaks := recoveryLeaks)
           (projection history.state) ∨
-          RecoveryDecodedState (leaks := recoveryLeaks) source
+          RecoveryDecodedState (runtime := runtime) (leaks := recoveryLeaks) source
             (ProtocolState.OwesFailure who setup.program) (projection history.state) then
         excludedPayoff who
-      else recoveryExclusionBase parameter utility excludedPayoff
+      else recoveryExclusionBase (runtime := runtime) parameter utility excludedPayoff
         (projection history.state) who := by
-  apply phaseDebtStoppedPayoff_eq_projected setup leaks recoveryLeaks
+  apply phaseDebtStoppedPayoff_eq_projected setup runtime leaks recoveryLeaks
   intro control current
-  exact phaseFailureCoverage_history (runtime setup) leaks plan inputs horizon scheduler
+  exact phaseFailureCoverage_history runtime leaks plan inputs horizon scheduler
     (current ▸ menu.toRawTrace (inputs.map (PhaseRuntimeState.initial plan)) horizon scheduler
       history.trace)
 
@@ -58,18 +61,20 @@ theorem phaseDebtStoppedPayoff_history_eq_projected
 pushforward laws transport its probability without a history bijection. -/
 theorem phase_foreign_debt_exit_eq_projected
     (source : BehavioralProfile setup.program) (who : Player)
-    (state : (phaseApplication (runtime setup) leaks).ProtocolState) :
-    (PhaseDebtStopped setup leaks source who state ∧
-      ¬ PhaseExcluded setup .sequential (runtime setup) leaks who state ∧
-      ¬ PhaseOwesFailure setup leaks source who state) ↔
-    ((RecoveryPublicExclusion (setup := setup) (leaks := recoveryLeaks) (projection state) ∨
-        RecoveryDecodedState (leaks := recoveryLeaks) source
+    (state : (phaseApplication runtime leaks).ProtocolState) :
+    (PhaseDebtStopped setup runtime leaks source who state ∧
+      ¬ PhaseExcluded setup .sequential runtime leaks who state ∧
+      ¬ PhaseOwesFailure setup runtime leaks source who state) ↔
+    ((RecoveryPublicExclusion (runtime := runtime) (setup := setup) (leaks := recoveryLeaks)
+      (projection state) ∨
+        RecoveryDecodedState (runtime := runtime) (leaks := recoveryLeaks) source
           (ProtocolState.OwesFailure who setup.program) (projection state)) ∧
-      ¬ RecoveryExcluded (setup := setup) (leaks := recoveryLeaks) who (projection state) ∧
-      ¬ RecoveryDecodedState (leaks := recoveryLeaks) source
+      ¬ RecoveryExcluded (runtime := runtime) (setup := setup) (leaks := recoveryLeaks) who
+        (projection state) ∧
+      ¬ RecoveryDecodedState (runtime := runtime) (leaks := recoveryLeaks) source
         (ProtocolState.OwesFailure who setup.program) (projection state)) := by
-  rw [phaseDebtStopped_eq_projected setup leaks recoveryLeaks,
-    phaseExcluded_eq_projected setup leaks recoveryLeaks,
-    phaseOwesFailure_eq_projected setup leaks recoveryLeaks]
+  rw [phaseDebtStopped_eq_projected setup runtime leaks recoveryLeaks,
+    phaseExcluded_eq_projected setup runtime leaks recoveryLeaks,
+    phaseOwesFailure_eq_projected setup runtime leaks recoveryLeaks]
 
 end Vegas

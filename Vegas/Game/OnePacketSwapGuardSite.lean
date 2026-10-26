@@ -32,22 +32,24 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- **Initial binding inputs keep their initial handles** along every history. -/
-theorem accepted_initial_of_trace {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+theorem accepted_initial_of_trace {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     {input : (graph setup).InputId} {owner : Player} {payload : L.Ty}
     (layoutEq : (graph setup).inputLayout input = .binding owner payload) :
     control.execution.application.accepted (.inl input) = some (owner, .initial input) := by
-  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+    scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
-  have grows := acceptedGrows_step (setup := setup) leaks
-  have invariant : (application setup leaks).Invariant
+  have grows := acceptedGrows_step (runtime := runtime) (setup := setup) leaks
+  have invariant : (application setup runtime leaks).Invariant
       (fun state => state.accepted (.inl input) = some (owner, .initial input)) :=
     ⟨fun state who material held => grows.submit state who material _ _ held,
       fun state message next held handled => grows.handle state message next handled _ _ held,
@@ -127,9 +129,9 @@ theorem bindingCellsAgree_of_replay (wellFormed : setup.WellFormed)
     (secondState : second.state = some q) (who : Player)
     (sameView : ProtocolState.observe who setup.program p =
       ProtocolState.observe who setup.program q)
-    {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
-    (replayed : intendedHistory? setup leaks bounds horizon scheduler trace = some first)
+    {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    (replayed : intendedHistory? setup runtime leaks bounds horizon scheduler trace = some first)
     (readyOwn : ∀ event, control.execution.application.config.cut.Ready event →
       ∀ owner payload binding checks outputEq codeEq,
         nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
@@ -154,7 +156,7 @@ theorem bindingCellsAgree_of_replay (wellFormed : setup.WellFormed)
     exact visibleCellsAgree_of_observe sameView _
       (show (cellField (CellTy.commitment owner payload)).VisibleTo owner from rfl)
   · have decoded : decodedPoint setup control.execution.application.config = some p := by
-      rw [← firstState, intendedHistory?_state trace replayed]
+      rw [← firstState, intendedHistory?_state (runtime := runtime) trace replayed]
       rfl
     exact revealedCellsAgree_of_observe wellFormed firstState secondState who sameView
       (decodedPoint_revealedInto decoded completed outputEq codeEq)
@@ -169,32 +171,33 @@ theorem swapGuardState_of_replay (wellFormed : setup.WellFormed)
     (secondState : second.state = some q) (who : Player)
     (sameView : ProtocolState.observe who setup.program p =
       ProtocolState.observe who setup.program q)
-    {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
-    (replayed : intendedHistory? setup leaks bounds horizon scheduler trace = some first)
+    {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    (replayed : intendedHistory? setup runtime leaks bounds horizon scheduler trace = some first)
     (readyOwn : ∀ event, control.execution.application.config.cut.Ready event →
       ∀ owner payload binding checks outputEq codeEq,
         nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
           owner = who)
     {table : AcceptedHandles (graph setup)}
     (tableEq : control.execution.application.accepted = table) :
-    SwapGuardState setup (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
+    SwapGuardState setup runtime (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
         (betweenHandlePairs setup p q table))
       (swapAllowed (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
         (betweenHandlePairs setup p q table))) (some control) := by
   subst tableEq
-  have injective := acceptedInjective_of_trace bounds trace
+  have injective := acceptedInjective_of_trace (runtime := runtime) bounds trace
   have agree := fun event active owner payload binding checks outputEq codeEq view =>
-    bindingCellsAgree_of_replay (event := event) (owner := owner) (payload := payload)
+    bindingCellsAgree_of_replay (runtime := runtime) (event := event) (owner := owner) (payload :=
+      payload)
       (binding := binding) (checks := checks) (outputEq := outputEq) (codeEq := codeEq)
       wellFormed firstState secondState who sameView trace replayed readyOwn active view
   refine ⟨?_, fun event candidate accepted =>
     bindCompatible_betweenHandlePairs injective accepted, fun event active =>
     revealFixed_between injective _ (fun _ _ held => held) event (agree event active),
     fun player recalled member submission sent => ?_, HiddenSwap.expired_ofPairs _ _ _⟩
-  · exact inputs_mem_swapAllowed firstState secondState _
+  · exact inputs_mem_swapAllowed (runtime := runtime) firstState secondState _
       (initialHandlesCompatible_betweenHandlePairs injective
-        (fun _ _ _ layoutEq => accepted_initial_of_trace trace layoutEq))
+        (fun _ _ _ layoutEq => accepted_initial_of_trace (runtime := runtime) trace layoutEq))
       trace replayed
   · cases owned : submission.evidence with
     | none | forward => trivial
@@ -202,7 +205,8 @@ theorem swapGuardState_of_replay (wellFormed : setup.WellFormed)
         change EventGraph.pairSwap (betweenHandlePairs setup p q
           control.execution.application.accepted fact.handle) fact.raw = fact.raw
         obtain ⟨event, owner, payload, binding, checks, outputEq, codeEq, view, active,
-          onlyField⟩ := certificate_field bounds trace player recalled member submission sent
+          onlyField⟩ := certificate_field (runtime := runtime) bounds trace player recalled member
+            submission sent
             fact owned
         by_cases found : ∃ field, control.execution.application.accepted field =
             some fact.handle

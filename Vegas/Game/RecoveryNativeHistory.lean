@@ -33,22 +33,24 @@ private theorem history_cast_raw {Player : Type} [DecidableEq Player]
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (recoveryApplication (runtime setup) leaks).Scheduler)
+  (scheduler : (recoveryApplication runtime leaks).Scheduler)
 
 local notation "Initial" => PMF.map
   (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
-local notation "NativeScheduler" => nativeScheduler (runtime setup) leaks scheduler
-local notation "RApp" => recoveryApplication (runtime setup) leaks
-local notation "R" => model setup leaks bounds Initial horizon scheduler
-local notation "N" => onePacketModel setup leaks bounds (initialLaw setup) horizon (NativeScheduler)
-local notation "RMenu" => Recovery.onePacketMenu (runtime setup) leaks bounds
-local notation "NMenu" => bounds.onePacketMenu (runtime setup) leaks
+local notation "NativeScheduler" => nativeScheduler runtime leaks scheduler
+local notation "RApp" => recoveryApplication runtime leaks
+local notation "R" => model setup runtime leaks bounds Initial horizon scheduler
+local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  (NativeScheduler)
+local notation "RMenu" => Recovery.onePacketMenu runtime leaks bounds
+local notation "NMenu" => bounds.onePacketMenu runtime leaks
 local notation "RP" => ReactiveApplication.ResponseMenu.protocol
-  (Recovery.onePacketMenu (runtime setup) leaks bounds) Initial horizon scheduler
+  (Recovery.onePacketMenu runtime leaks bounds) Initial horizon scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (MessageBounds.onePacketMenu (runtime setup) leaks bounds) (initialLaw setup) horizon
+  (MessageBounds.onePacketMenu runtime leaks bounds) (initialLaw setup) horizon
   (NativeScheduler)
 
 /-- The genuine finite native projection of any entire actual clear recovery
@@ -58,7 +60,7 @@ def nativeClearHistory (history : (RP).History)
       current.execution.application.excluded = ∅) : (NP).History :=
   Equiv.cast (congrArg (fun initial : PMF (EventGraphRuntime.State (graph setup)) =>
       ((NMenu).protocol initial horizon (NativeScheduler)).History) (initialLaw_native setup))
-    (exists_nativeBoundedHistory (runtime setup) leaks bounds Initial
+    (exists_nativeBoundedHistory runtime leaks bounds Initial
       (initialLaw_initialized setup) horizon scheduler history clear).choose
 
 /-- The finite projection retains the exact realized projected raw history. -/
@@ -66,15 +68,15 @@ theorem nativeClearHistory_raw (history : (RP).History)
     (clear : ∀ current, history.state = some current →
       current.execution.application.excluded = ∅) :
     (NMenu).toRawHistory (initialLaw setup) horizon (NativeScheduler)
-        (nativeClearHistory setup leaks bounds horizon scheduler history clear) =
+        (nativeClearHistory setup runtime leaks bounds horizon scheduler history clear) =
       Equiv.cast (congrArg (fun initial : PMF (EventGraphRuntime.State (graph setup)) =>
-        ((application setup leaks).protocol initial horizon (NativeScheduler)).History)
+        ((application setup runtime leaks).protocol initial horizon (NativeScheduler)).History)
           (initialLaw_native setup))
-        (nativeHistory (runtime setup) leaks Initial horizon scheduler
+        (nativeHistory runtime leaks Initial horizon scheduler
           ((RMenu).toRawHistory Initial horizon scheduler history) clear) := by
   unfold nativeClearHistory
   rw [history_cast_raw (NMenu) (initialLaw_native setup) horizon (NativeScheduler)]
-  exact congrArg _ (exists_nativeBoundedHistory (runtime setup) leaks bounds Initial
+  exact congrArg _ (exists_nativeBoundedHistory runtime leaks bounds Initial
     (initialLaw_initialized setup) horizon scheduler history clear).choose_spec
 
 
@@ -86,24 +88,25 @@ theorem nativeClearHistory_eq_of_raw (history : (RP).History)
     (native : (NP).History)
     (same : (NMenu).toRawHistory (initialLaw setup) horizon (NativeScheduler) native =
       Equiv.cast (congrArg (fun initial : PMF (EventGraphRuntime.State (graph setup)) =>
-        ((application setup leaks).protocol initial horizon (NativeScheduler)).History)
+        ((application setup runtime leaks).protocol initial horizon (NativeScheduler)).History)
           (initialLaw_native setup))
-        (nativeHistory (runtime setup) leaks Initial horizon scheduler
+        (nativeHistory runtime leaks Initial horizon scheduler
           ((RMenu).toRawHistory Initial horizon scheduler history) clear)) :
-    nativeClearHistory setup leaks bounds horizon scheduler history clear = native :=
+    nativeClearHistory setup runtime leaks bounds horizon scheduler history clear = native :=
   (NMenu).toRawHistory_injective (initialLaw setup) horizon (NativeScheduler)
-    ((nativeClearHistory_raw setup leaks bounds horizon scheduler history clear).trans same.symm)
+    ((nativeClearHistory_raw setup runtime leaks bounds horizon scheduler history clear).trans
+      same.symm)
 
 /-- Replacing a whole actual recovery policy commutes with canonical projection. -/
 theorem sourceNativeProfile_update
     (profile : ∀ who, (R).BehavioralPolicy who)
     (focal : Player) (alternative : (R).BehavioralPolicy focal) :
-    sourceNativeProfile setup leaks bounds horizon scheduler
+    sourceNativeProfile setup runtime leaks bounds horizon scheduler
       (Profile.update (sig := (R).behavioralSignature) profile focal alternative) =
       Profile.update (sig := (N).behavioralSignature)
-        (sourceNativeProfile setup leaks bounds horizon scheduler profile) focal
-        (fun input => (alternative (liftInformation (runtime setup) leaks input)).map
-          (sourceNativeChoiceEquiv setup leaks bounds horizon scheduler focal input)) := by
+        (sourceNativeProfile setup runtime leaks bounds horizon scheduler profile) focal
+        (fun input => (alternative (liftInformation runtime leaks input)).map
+          (sourceNativeChoiceEquiv setup runtime leaks bounds horizon scheduler focal input)) := by
   funext who input
   by_cases same : who = focal
   · subst who
@@ -114,15 +117,16 @@ theorem sourceNativeProfile_update
 theorem nativeClearHistory_state (history : (RP).History)
     (clear : ∀ current, history.state = some current →
       current.execution.application.excluded = ∅) :
-    (nativeClearHistory setup leaks bounds horizon scheduler history clear).state =
-      protocolState (runtime setup) leaks history.state := by
-  have raw := nativeClearHistory_raw setup leaks bounds horizon scheduler history clear
+    (nativeClearHistory setup runtime leaks bounds horizon scheduler history clear).state =
+      protocolState runtime leaks history.state := by
+  have raw := nativeClearHistory_raw setup runtime leaks bounds horizon scheduler history clear
   have states := congrArg History.state raw
   have castState {first second : PMF (EventGraphRuntime.State (graph setup))}
       (same : first = second)
-      (found : ((application setup leaks).protocol first horizon (NativeScheduler)).History) :
+      (found : ((application setup runtime leaks).protocol first horizon
+        (NativeScheduler)).History) :
       (Equiv.cast (congrArg (fun initial =>
-        ((application setup leaks).protocol initial horizon (NativeScheduler)).History)
+        ((application setup runtime leaks).protocol initial horizon (NativeScheduler)).History)
           same) found).state = found.state := by
     subst second
     rfl
@@ -130,12 +134,12 @@ theorem nativeClearHistory_state (history : (RP).History)
 
 /-- The physical own turn is fixed throughout an actual observed decision fiber. -/
 theorem informationHistory_control_turn {who : Player}
-    {past : List (recoveryApplication (runtime setup) leaks).PlayerEntry}
-    {view : (recoveryApplication (runtime setup) leaks).PlayerView}
+    {past : List (recoveryApplication runtime leaks).PlayerEntry}
+    {view : (recoveryApplication runtime leaks).PlayerView}
     (history : (R).InformationHistory who (some (past, view)))
     {event : (graph setup).EventId}
     (turn : view.application.1.publicView.ownTurn? who = some event) :
-    ∃ current : (recoveryApplication (runtime setup) leaks).Control,
+    ∃ current : (recoveryApplication runtime leaks).Control,
       history.1.state = some current ∧
         current.execution.application.native.publicView.ownTurn? who = some event := by
   have observed := ((RMenu).info Initial horizon scheduler who history.1.trace).symm.trans history.2

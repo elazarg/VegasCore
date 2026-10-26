@@ -19,13 +19,14 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- Every completed owned event at an actual clear prefix has an authentic owner packet. -/
-theorem completedByOwner_of_clear_trace {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+theorem completedByOwner_of_clear_trace {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
     (event : (graph setup).EventId)
@@ -33,7 +34,8 @@ theorem completedByOwner_of_clear_trace {control : (application setup leaks).Con
     (owner : Player) (acting : (graph setup).actor? event = some owner) :
     ∃ message ∈ control.execution.network.ledger, message.sender = owner ∧
       message.payload.call.event? (graph setup) = some event := by
-  rcases completedByOwner_of_trace trace control rfl event completed owner acting with
+  rcases completedByOwner_of_trace (runtime := runtime) trace control rfl event completed owner
+    acting with
     packet | failure
   · exact packet
   · exfalso
@@ -45,8 +47,9 @@ theorem completedByOwner_of_clear_trace {control : (application setup leaks).Con
           ⟨event, nodeView_bind_actor outputEq codeEq, Or.inl missed⟩
         exact Finset.notMem_empty actual excluded
     | resolve actual payload binding checks outputEq codeEq =>
-        obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
-          (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler trace control rfl
+        obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+          setup.program)
+          (bounds.onePacketMenu runtime leaks) horizon scheduler trace control rfl
         have decoded := decodedPoint_eq residual
         exact not_revealFailed_of_exclusionEvidence control.execution.application clear rank _
           residual.decode owner (failure.2.2 payload outputEq _ decoded)
@@ -57,29 +60,30 @@ theorem completedByOwner_of_clear_trace {control : (application setup leaks).Con
 
 /-- No permitted callback at an actual clear source prefix names a completed event. -/
 theorem countPermits_localEnvelope_unfinished_of_clear_trace
-    {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup))) (who : Player)
     (material : WitnessedSubmission (graph setup))
-    (permitted : countPermits ((application setup leaks).outputs (control.execution.recall who))
-      ((runtime setup).localEnvelope leaks who (control.execution.recall who)
-        (control.execution.observe (application setup leaks) who) material) = true)
+    (permitted : countPermits ((application setup runtime leaks).outputs (control.execution.recall
+      who))
+      (runtime.localEnvelope leaks who (control.execution.recall who)
+        (control.execution.observe (application setup runtime leaks) who) material) = true)
     (event : (graph setup).EventId)
     (named : material.call.packet.event? (graph setup) = some event) :
     event ∉ control.execution.application.config.cut.completed := by
   intro completed
-  let app := application setup leaks
-  let message := (runtime setup).localEnvelope leaks who (control.execution.recall who)
+  let app := application setup runtime leaks
+  let message := runtime.localEnvelope leaks who (control.execution.recall who)
     (control.execution.observe app who) material
   have allowed := (countPermits_eq_true_iff _ _).mp permitted
   have addressed : message.payload.call.event? (graph setup) = some event := named
   have acting := countCallCorrect_actor _ message allowed.2.1 addressed
   obtain ⟨old, onLedger, sender, oldNamed⟩ :=
-    completedByOwner_of_clear_trace trace clear event completed who acting
-  let rawTrace := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
+    completedByOwner_of_clear_trace (runtime := runtime) trace clear event completed who acting
+  let rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
     horizon scheduler trace
-  obtain ⟨inputRecall, serialRecall, _⟩ := (runtime setup).countRecall_history leaks rawTrace
+  obtain ⟨inputRecall, serialRecall, _⟩ := runtime.countRecall_history leaks rawTrace
   have facts := settledFacts_history (initialLaw setup) horizon scheduler rawTrace
   have present := facts.carried.ledger old onLedger
   have recalled : old ∈ app.outputs (control.execution.recall who) := by
@@ -92,18 +96,20 @@ theorem countPermits_localEnvelope_unfinished_of_clear_trace
 
 /-- Every permitted clear source callback names a genuinely ready event. -/
 theorem countPermits_localEnvelope_ready_of_clear_trace
-    {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
+    {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     (clear : ExclusionEvidence 0 ∅
       (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup))) (who : Player)
     (material : WitnessedSubmission (graph setup))
-    (permitted : countPermits ((application setup leaks).outputs (control.execution.recall who))
-      ((runtime setup).localEnvelope leaks who (control.execution.recall who)
-        (control.execution.observe (application setup leaks) who) material) = true)
+    (permitted : countPermits ((application setup runtime leaks).outputs (control.execution.recall
+      who))
+      (runtime.localEnvelope leaks who (control.execution.recall who)
+        (control.execution.observe (application setup runtime leaks) who) material) = true)
     (event : (graph setup).EventId)
     (named : material.call.packet.event? (graph setup) = some event) :
     control.execution.application.config.cut.Ready event := by
-  refine ⟨countPermits_localEnvelope_unfinished_of_clear_trace trace clear who material permitted
+  refine ⟨countPermits_localEnvelope_unfinished_of_clear_trace (runtime := runtime) trace clear
+    who material permitted
     event named, ?_⟩
   have allowed := (countPermits_eq_true_iff _ _).mp permitted
   obtain ⟨actual, addressed, token⟩ := (WitnessedPacket.tokenValid_iff _).mp allowed.1

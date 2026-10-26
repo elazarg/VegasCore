@@ -33,8 +33,8 @@ Every ingredient is already present in the local input or the static roster. -/
 def bindingRequired (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player) (who : Player)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) : Prop :=
+    (past : List (application setup (Vegas.runtime setup) leaks).PlayerEntry)
+    (view : (application setup (Vegas.runtime setup) leaks).PlayerView) : Prop :=
   ∃ event payload,
     view.application.publicView.ownTurn? who = some event ∧
     (graph setup).outputLayout event = .binding who payload ∧
@@ -49,8 +49,9 @@ open Classical in
 def sourceServiceActions (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player)
-    (who : Player) (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView) : Finset (application setup leaks).Action :=
+    (who : Player) (past : List (application setup (Vegas.runtime setup) leaks).PlayerEntry)
+    (view : (application setup (Vegas.runtime setup) leaks).PlayerView) : Finset (application
+      setup (Vegas.runtime setup) leaks).Action :=
   if bindingRequired setup leaks rosters who past view then
     bounds.requiredBindingActions (runtime setup) leaks who past view
   else bounds.compiledActions (runtime setup) leaks who past view
@@ -58,7 +59,7 @@ def sourceServiceActions (setup : Setup (Player := Player) (L := L))
 def sourceServiceMenu (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) (rosters : (graph setup).EventId → List Player) :
-    (application setup leaks).ResponseMenu where
+    (application setup (Vegas.runtime setup) leaks).ResponseMenu where
   actions := sourceServiceActions setup leaks bounds rosters
   nonempty who past view := by
     classical

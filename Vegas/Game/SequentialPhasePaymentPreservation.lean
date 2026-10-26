@@ -23,16 +23,17 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
+  (scheduler : (phaseApplication runtime leaks).Scheduler)
+  [(phaseApplication runtime leaks).FiniteNature (phaseInitialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
 
-local notation "app" => phaseApplication (runtime setup) leaks
-local notation "raw" => PhaseCount.rawMenu (runtime setup) leaks bounds
+local notation "app" => phaseApplication runtime leaks
+local notation "raw" => PhaseCount.rawMenu runtime leaks bounds
 local notation "R" => ReactiveApplication.ResponseMenu.information
-  (PhaseCount.rawMenu (runtime setup) leaks bounds) (phaseInitialLaw setup) horizon scheduler
+  (PhaseCount.rawMenu runtime leaks bounds) (phaseInitialLaw setup) horizon scheduler
 
 variable {Public : Type*} {signal : State L setup.context → Public}
 
@@ -44,10 +45,10 @@ local notation "utility" => setup.program.parameterPaymentUtility valuation
 local notation "exitPayoff" => (fun who => exitValuation who + exitTransfer who)
 
 local notation "base" => phaseExclusionBase setup EventGraph.ExecutionMode.sequential
-  (runtime setup) leaks
+  runtime leaks
   (fun terminal => utility (setup.parameterOutcome parameter terminal)) exitPayoff
 local notation "read" => phaseSourceReadout setup EventGraph.ExecutionMode.sequential
-  (runtime setup) leaks
+  runtime leaks
 
 /-- The original raw sequential-equilibrium guarantee also preserves the actual
 cash vector. The actual intended histories have no failed publication, so no
@@ -57,14 +58,14 @@ theorem intended_raw_programPayments_preserved
     (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal) {delay bound : (graph setup).EventId → Nat}
-    (opportunity : PhaseService.Opportunity (runtime setup) leaks (phaseInitialLaw setup) horizon
+    (opportunity : PhaseService.Opportunity runtime leaks (phaseInitialLaw setup) horizon
       scheduler delay)
-    (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks (phaseInitialLaw setup)
+    (inclusion : PhaseService.ProtectedInclusion runtime leaks (phaseInitialLaw setup)
         horizon
       scheduler bound)
-    (completes : PhaseService.CompletesPlay (runtime setup) leaks (phaseInitialLaw setup) horizon
+    (completes : PhaseService.CompletesPlay runtime leaks (phaseInitialLaw setup) horizon
       scheduler)
-    (timely : AsyncTimely (runtime setup) delay bound)
+    (timely : AsyncTimely runtime delay bound)
     (lowerUtility upperUtility : Player → ℝ)
     (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
     (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
@@ -88,7 +89,7 @@ theorem intended_raw_programPayments_preserved
           min 0 (min (exitPayoff who) (lowerUtility who)) ≤
         observationRate who * deliveryRate who * deposit who) :
     let observe := (app).stateTraffic
-    let audit := PhaseCount.audit (runtime setup) leaks service.sample
+    let audit := PhaseCount.audit runtime leaks service.sample
     let payoff := TerminalAudit.utility base observe audit deposit
     let settle := TerminalAudit.settlement base observe audit deposit
     ∃ target : (R).BehavioralAssessment,
@@ -108,7 +109,7 @@ theorem intended_raw_programPayments_preserved
           (intendedReadoutExclusion setup parameter utility exitPayoff) ∧
       ((R).runBehavioral target.strategy (2 * horizon + 1)).bind
         (fun final => (TerminalAudit.settlement
-          (phaseExclusionBase setup .sequential (runtime setup) leaks
+          (phaseExclusionBase setup .sequential runtime leaks
             (fun terminal who => setup.program.publicTransfers
               (setup.program.publicOutcome terminal) who) exitTransfer)
           observe audit deposit final.state).map fun receipts =>
@@ -121,7 +122,8 @@ theorem intended_raw_programPayments_preserved
   classical
   intro observe audit payoff settle
   obtain ⟨target, targetSE, clear, clean, joint⟩ :=
-    intended_raw_sequentialEquilibrium_preserved setup leaks bounds horizon scheduler parameter
+    intended_raw_sequentialEquilibrium_preserved setup runtime leaks bounds horizon scheduler
+      parameter
       utility exitPayoff wellFormed independent observable opportunity inclusion completes timely
       lowerUtility upperUtility lower_le le_upper below intended equilibrium covers coversInputs
       capacity service observationRate deliveryRate delivery_nonnegative coverage deposit
@@ -170,7 +172,7 @@ theorem intended_raw_programPayments_preserved
     obtain ⟨final, finalSupported, same⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
     have empty := clear final finalSupported control same
     exact (Finset.notMem_empty who (empty ▸ excluded)).elim
-  have cash := phase_jointCashLaw_of_utility_law setup .sequential (runtime setup) leaks
+  have cash := phase_jointCashLaw_of_utility_law setup .sequential runtime leaks
     (fun terminal => valuation (setup.parameterOutcome parameter terminal))
     (fun terminal who => setup.program.publicTransfers (setup.program.publicOutcome terminal) who)
     exitValuation exitTransfer targetLaw sourceLaw exitCompatible observe audit deposit utilityLaw

@@ -91,6 +91,7 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
 
 /-- **The content of a call** at a contract state: at a binding event, the
 commitment of the value its handle binds there; at a resolve event, the
@@ -113,15 +114,15 @@ def callContent (state : EventGraphRuntime.State (graph setup))
       | _ => none
   | .malformed _ => none
 
-variable {setup}
+variable {setup runtime}
 
 /-- The source action a transmission decodes to is the content of its call at
 the state after the submission. -/
 theorem sentSourceAction_eq_callContent
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (after : (application setup leaks).Execution)
-    (material : (application setup leaks).Submission) :
-    sentSourceAction setup leaks after ⟨some material⟩ =
+    (after : (application setup runtime leaks).Execution)
+    (material : (application setup runtime leaks).Submission) :
+    sentSourceAction setup runtime leaks after ⟨some material⟩ =
       callContent setup after.application material.call.packet := by
   unfold sentSourceAction callContent
   rfl
@@ -148,7 +149,7 @@ theorem callContent_keep {before after : EventGraphRuntime.State (graph setup)}
 handle at the state it is included at, and its handle belongs to its sender. -/
 theorem handle_commitment_action (state next : EventGraphRuntime.State (graph setup))
     (id : MessageId Player) (event : (graph setup).EventId) (candidate : Handle (graph setup))
-    (accepted : handle (runtime setup) state ⟨id, .commitment event candidate⟩ = some next) :
+    (accepted : handle runtime state ⟨id, .commitment event candidate⟩ = some next) :
     candidate.1 = id.1 ∧ ∃ (ready : state.config.cut.Ready event) (owner : Player)
       (payload : L.Ty) (outputEq : (graph setup).outputLayout event = .binding owner payload)
       (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
@@ -160,7 +161,7 @@ theorem handle_commitment_action (state next : EventGraphRuntime.State (graph se
         (cast (congrArg EventGraph.EventField.Value outputEq.symm)
           (state.bindingResult candidate payload)) := by
   by_cases ready : state.config.cut.Ready event
-  · by_cases timely : state.WithinDeadline (runtime setup) event
+  · by_cases timely : state.WithinDeadline runtime event
     · cases view : nodeView (graph setup) event with
       | resolve | sample => simp [handle, ready, timely, view] at accepted
       | bind owner payload outputEq codeEq =>
@@ -194,7 +195,7 @@ theorem expiredAction_failing {event : (graph setup).EventId}
 /-- A single actual message supplies every accepted-completion observation. -/
 structure AcceptedSourceCompletion
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    (execution next : (application setup leaks).Execution)
+    (execution next : (application setup runtime leaks).Execution)
     (event : (graph setup).EventId) (action : (graph setup).Action event) (actor : Player) where
   message : Message Player (WitnessedPacket (graph setup))
   pending : message ∈ execution.network.pending
@@ -213,21 +214,21 @@ structure AcceptedSourceCompletion
 due expiry. Its receipt and decoded content refer to that same accepted message. -/
 theorem owned_completion_cases
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    (execution next : (application setup leaks).Execution)
-    (command : (application setup leaks).Command)
-    (reached : next ∈ (execution.environmentStep (application setup leaks) command).support)
+    (execution next : (application setup runtime leaks).Execution)
+    (command : (application setup runtime leaks).Command)
+    (reached : next ∈ (execution.environmentStep (application setup runtime leaks) command).support)
     {event : (graph setup).EventId} (ready : execution.application.config.cut.Ready event)
     (action : (graph setup).Action event)
     (member : next.application.config ∈
       (execution.application.config.step event ready action).support)
     {actor : Player} (acts : (graph setup).actor? event = some actor) :
-    Nonempty (AcceptedSourceCompletion execution next event action actor) ∨
+    Nonempty (AcceptedSourceCompletion (runtime := runtime) execution next event action actor) ∨
       (command = .application (.expire event) ∧
         ∃ entered, execution.application.activatedAt event = some entered ∧
-          (runtime setup).deadline event ≤ execution.application.clock - entered ∧
+          runtime.deadline event ≤ execution.application.clock - entered ∧
           next.application.accepted = execution.application.accepted ∧
           ExpiredAction event action) := by
-  rcases reactive_completion_cases (runtime setup) leaks execution next command reached ready
+  rcases reactive_completion_cases runtime leaks execution next command reached ready
       action member with accepted | expired | ownerless
   · obtain ⟨message, pending, ledger, receipt, named, sender, call⟩ := accepted
     have senderEq : message.sender = actor := Option.some.inj (sender.symm.trans acts)
@@ -242,7 +243,8 @@ theorem owned_completion_cases
       | commitment other candidate =>
           rw [packet] at call
           obtain ⟨owned, otherReady, owner, payload, outputEq, codeEq, view, configEq⟩ :=
-            handle_commitment_action execution.application next.application message.id other
+            handle_commitment_action (runtime := runtime) execution.application next.application
+              message.id other
               candidate call
           have otherMember : next.application.config ∈ (execution.application.config.step other
               otherReady (cast (congrArg EventGraph.EventField.Action outputEq.symm)
@@ -250,7 +252,7 @@ theorem owned_completion_cases
             rw [commit_step _ other otherReady outputEq codeEq, configEq]
             exact (PMF.mem_support_pure_iff _ _).mpr rfl
           cases step_completion_unique otherMember member
-          have table := (handle_commitment_tables (runtime setup) execution.application
+          have table := (handle_commitment_tables runtime execution.application
             next.application message.id _ candidate call).2.1
           refine ⟨?_, ?_, fun _ _ _ => ?_⟩
           · simp only [callContent, view]
@@ -263,7 +265,7 @@ theorem owned_completion_cases
           rw [packet] at call
           obtain ⟨otherReady, otherAction, otherMember, _, _, owner, payload, binding,
             checks, outputEq, codeEq, view, actionEq⟩ :=
-            handle_opening_config_step (runtime setup) execution.application next.application
+            handle_opening_config_step runtime execution.application next.application
               message.id other candidate raw call
           cases step_completion_unique otherMember member
           refine ⟨?_, ?_, fun _ _ layout => ?_⟩

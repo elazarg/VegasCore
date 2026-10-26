@@ -15,9 +15,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {memory : BindingMemory (runtime setup) leaks} {owner : Player}
-  {original repaired : (application setup leaks).Execution}
+  {memory : BindingMemory runtime leaks} {owner : Player}
+  {original repaired : (application setup runtime leaks).Execution}
 
 namespace EventGraphRuntime.BindingMemory.Frame
 
@@ -26,7 +27,7 @@ opening inclusion preserves the frame, including rejection. The successful
 binding is unchanged by directed repair, so both native handlers accept the
 same packets and execute the same public deferred-guard result. -/
 theorem ready_opening_inclusion
-    (frame : Frame (runtime setup) leaks memory owner original repaired)
+    (frame : Frame runtime leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (leftBinding : original.application.BindingInvariant)
     (rightBinding : repaired.application.BindingInvariant)
@@ -44,8 +45,8 @@ theorem ready_opening_inclusion
     (evidence : Option (OpeningFact (graph setup)))
     (found : original.network.lookup id =
       some ⟨id, ⟨.opening event candidate raw, evidence, some ⟨event⟩⟩⟩) :
-    let app := application setup leaks
-    Frame (runtime setup) leaks memory owner
+    let app := application setup runtime leaks
+    Frame runtime leaks memory owner
       { original.includePending app id with environmentRecall := original.environmentRecall ++
         [⟨original.observeEnvironment app, .include id⟩] }
       { repaired.includePending app id with environmentRecall := repaired.environmentRecall ++
@@ -57,16 +58,17 @@ theorem ready_opening_inclusion
   have rightReady : repaired.application.config.cut.Ready event := by
     rw [← State.publicView_eventReady, ← frame.publicView, State.publicView_eventReady]
     exact ready
-  cases handled : handle (runtime setup) original.application
+  cases handled : handle runtime original.application
       ⟨id, .opening event candidate raw⟩ with
   | none =>
-      have rightRejected : handle (runtime setup) repaired.application
+      have rightRejected : handle runtime repaired.application
           ⟨id, .opening event candidate raw⟩ = none := by
-        cases rightHandled : handle (runtime setup) repaired.application
+        cases rightHandled : handle runtime repaired.application
             ⟨id, .opening event candidate raw⟩ with
         | none => rfl
         | some next =>
-            obtain ⟨previous, previousHandled, _⟩ := handle_opening_accepted_transfer
+            obtain ⟨previous, previousHandled, _⟩ := handle_opening_accepted_transfer (runtime :=
+              runtime)
               repaired.application original.application frame.publicView.symm rightBinding
               leftBinding rightReady node sameBinding.symm id candidate raw rightHandled
             rw [handled] at previousHandled
@@ -78,7 +80,8 @@ theorem ready_opening_inclusion
           ite_true] using rightRejected)
   | some next =>
       obtain ⟨timely, sender, owned, associated, chosen, rawEq, stored⟩ :=
-        handle_opening_accepted_facts original.application next ready node id candidate raw handled
+        handle_opening_accepted_facts (runtime := runtime) original.application next ready node id
+          candidate raw handled
       subst raw
       have chosenEq : chosen = value := PublicationResult.success.inj
         (Option.some.inj (stored.symm.trans successful))

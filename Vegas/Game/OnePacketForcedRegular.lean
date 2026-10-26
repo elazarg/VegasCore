@@ -162,6 +162,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
 
 /-- **Intended points are forced** for every player. -/
 theorem forcedPoint_of_intended (who : Player) {point : ProtocolState setup.program}
@@ -188,12 +189,12 @@ theorem actor_of_binding {event : (graph setup).EventId} {owner : Player} {paylo
       rw [outputEq] at layout
       cases layout
 
-variable (setup) in
+variable (setup runtime) in
 /-- **The public record** of an observer `who` at a native control state: every
 completed binding event of another player has an accepted handle, and no other
 player's reveal has failed at the decoded point. -/
 def PublicRecord {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    (who : Player) (control : (application setup leaks).Control) : Prop :=
+    (who : Player) (control : (application setup runtime leaks).Control) : Prop :=
   (∀ event owner payload, (graph setup).outputLayout event = .binding owner payload →
     owner ≠ who → event ∈ control.execution.application.config.cut.completed →
       control.execution.application.accepted (.inr event) ≠ none) ∧
@@ -204,27 +205,31 @@ def PublicRecord {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket
 variable [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- **The public record reaches back** along every transition. -/
-theorem publicRecord_of_transition {who : Player} {current next : (application setup leaks).Control}
-    (prior : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some current))
-    (joint : Player → Option (application setup leaks).Action)
-    (realized : some next ∈ ((application setup leaks).transition (initialLaw setup) horizon
+theorem publicRecord_of_transition {who : Player} {current next : (application setup runtime
+  leaks).Control}
+    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some current))
+    (joint : Player → Option (application setup runtime leaks).Action)
+    (realized : some next ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
       scheduler (some current) joint).support)
-    (record : PublicRecord setup who next) : PublicRecord setup who current := by
+    (record : PublicRecord setup runtime who next) : PublicRecord setup runtime who current := by
   refine ⟨fun event owner payload layout other completed => ?_,
     fun player other point decoded failed => ?_⟩
   · have later := record.1 event owner payload layout other
-      (completed_transition leaks joint realized completed)
-    rcases acceptedKept_transition leaks (initialLaw setup) horizon scheduler current next joint
+      (completed_transition (runtime := runtime) leaks joint realized completed)
+    rcases acceptedKept_transition (runtime := runtime) leaks (initialLaw setup) horizon scheduler
+      current next joint
         realized event with same | ⟨ready, _, _⟩
     · rw [← same]
       exact later
     · exact (ready.1 completed).elim
-  · obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
-      (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler prior current rfl
-    rcases transition_configStep (initialLaw setup) horizon scheduler current next joint realized
+  · obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+      setup.program)
+      (bounds.onePacketMenu runtime leaks) horizon scheduler prior current rfl
+    rcases transition_configStep (initialLaw setup) horizon scheduler current
+      next joint realized
         with same | ⟨event, ready, action, member⟩
     · exact record.2 player other point (by rw [same]; exact decoded) failed
     · obtain ⟨before, target, beforeEq, afterEq, reached⟩ :=
@@ -239,24 +244,26 @@ state of `who`, every completed binding event of another player was completed
 by an accepted commitment, since an expiry would leave that player owing a
 failure. -/
 theorem publicRecord_of_forced (who : Player) : ∀ {state}
-    (_ : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state)
-    (control : (application setup leaks).Control), state = some control →
-    ForcedState setup leaks who (some control) → PublicRecord setup who control
+    (_ : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
+    (control : (application setup runtime leaks).Control), state = some control →
+    ForcedState setup runtime leaks who (some control) → PublicRecord setup runtime who control
   | _, .start, _, current, _ => by cases current
   | _, .extend (source := before) prior joint _ realized, control, current, forced => by
       have recursive := fun next same forcedNext =>
         publicRecord_of_forced who prior next same forcedNext
       subst current
-      change some control ∈ ((application setup leaks).transition (initialLaw setup) horizon
+      change some control ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
         scheduler before joint).support at realized
-      obtain ⟨found, foundDecoded, foundForced⟩ := (forcedState_iff_decodedPoint control).mp forced
+      obtain ⟨found, foundDecoded, foundForced⟩ := (forcedState_iff_decodedPoint (runtime :=
+        runtime) control).mp forced
       refine ⟨fun event owner payload layout other completed => ?_,
         fun player other point decoded failed => ?_⟩
       · cases before with
         | none =>
             change some control ∈ ((initialLaw setup).map fun state => some
-              (⟨horizon, none, ReactiveApplication.Execution.initial (application setup leaks)
-                state⟩ : (application setup leaks).Control)).support at realized
+              (⟨horizon, none, ReactiveApplication.Execution.initial (application setup runtime
+                leaks)
+                state⟩ : (application setup runtime leaks).Control)).support at realized
             obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realized
             cases Option.some.inj same
             obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
@@ -264,16 +271,19 @@ theorem publicRecord_of_forced (who : Player) : ∀ {state}
               initial).checkpoint.ordered
             exact absurd ((ordered.2 event).mp completed) (Nat.not_lt_zero _)
         | some current =>
-            have forcedCurrent := forcedState_of_transition prior joint realized forced
+            have forcedCurrent := forcedState_of_transition (runtime := runtime) prior joint
+              realized forced
             have earlier := recursive current rfl forcedCurrent
             by_cases before_ : event ∈ current.execution.application.config.cut.completed
             · have kept := earlier.1 event owner payload layout other before_
-              rcases acceptedKept_transition leaks (initialLaw setup) horizon scheduler current
+              rcases acceptedKept_transition (runtime := runtime) leaks (initialLaw setup) horizon
+                scheduler current
                   control joint realized event with same | ⟨ready, _, _⟩
               · rw [same]
                 exact kept
               · exact (ready.1 before_).elim
-            · rcases transition_configStep (initialLaw setup) horizon scheduler current control
+            · rcases transition_configStep (initialLaw setup) horizon
+                scheduler current control
                   joint realized with same | ⟨completedEvent, ready, action, member⟩
               · rw [same] at completed
                 exact (before_ completed).elim
@@ -287,22 +297,25 @@ theorem publicRecord_of_forced (who : Player) : ∀ {state}
                   | none => rfl
                   | some actor =>
                       exfalso
-                      rw [transition_respond current acting joint, PMF.mem_support_pure_iff]
+                      rw [transition_respond (runtime := runtime) current acting joint,
+                        PMF.mem_support_pure_iff]
                         at realized
                       cases Option.some.inj realized
                       exact config_ne_of_step member
-                        ((runtime setup).reactive_respond_application leaks current.execution
+                        (runtime.reactive_respond_application leaks current.execution
                           actor _).1
-                rcases transition_idle_cases (initialLaw setup) horizon scheduler current idle
+                rcases transition_idle_cases (runtime := runtime) (initialLaw setup) horizon
+                  scheduler current idle
                     joint realized with sameExecution | ⟨command, moved⟩
                 · exact (config_ne_of_step member (by rw [sameExecution])).elim
-                · rcases completion_cases current.execution control.execution command moved ready
+                · rcases completion_cases (runtime := runtime) current.execution control.execution
+                    command moved ready
                       action member (actor_of_binding layout) with
                     ⟨_, _, _, _, _, _, table⟩ | ⟨_, failing⟩
                   · exact table owner payload layout
                   · exfalso
-                    obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual
-                      (failureProfile setup.program) (bounds.onePacketMenu (runtime setup) leaks)
+                    obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime)
+                      (failureProfile setup.program) (bounds.onePacketMenu runtime leaks)
                       horizon scheduler prior current rfl
                     obtain ⟨point, target, decodedCurrent, decodedNext, reached⟩ :=
                       decodedPoint_step residual event ready action _ member
@@ -327,11 +340,12 @@ completions decode to intended actions, the decoded point is a point of the
 intended game. -/
 theorem intended_of_regular (wellFormed : setup.WellFormed)
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player) : ∀ {state}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state)
-    (control : (application setup leaks).Control), state = some control →
-    PublicRecord setup who control →
-    RegularTrace setup leaks bounds horizon scheduler assessment who trace →
-    OwnCompletionsIntended (bounds := bounds) (horizon := horizon) (scheduler := scheduler)
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
+    (control : (application setup runtime leaks).Control), state = some control →
+    PublicRecord setup runtime who control →
+    RegularTrace setup runtime leaks bounds horizon scheduler assessment who trace →
+    OwnCompletionsIntended (runtime := runtime) (bounds := bounds) (horizon := horizon) (scheduler
+      := scheduler)
       who trace →
     ∃ point, decodedPoint setup control.execution.application.config = some point ∧
       ProtocolState.Intended setup.program point
@@ -341,16 +355,18 @@ theorem intended_of_regular (wellFormed : setup.WellFormed)
       obtain ⟨regularPrior, _⟩ := regular
       obtain ⟨ownPrior, ownStep⟩ := ownIntended
       have recursive := fun next same recordNext =>
-        intended_of_regular wellFormed assessment who prior next same recordNext regularPrior
+        intended_of_regular wellFormed assessment who prior next same
+          recordNext regularPrior
           ownPrior
       subst current
-      have realizedRaw : some control ∈ ((application setup leaks).transition (initialLaw setup)
+      have realizedRaw : some control ∈ ((application setup runtime leaks).transition (initialLaw
+        setup)
           horizon scheduler before joint).support := realized
       cases before with
       | none =>
           change some control ∈ ((initialLaw setup).map fun state => some
-            (⟨horizon, none, ReactiveApplication.Execution.initial (application setup leaks)
-              state⟩ : (application setup leaks).Control)).support at realizedRaw
+            (⟨horizon, none, ReactiveApplication.Execution.initial (application setup runtime leaks)
+              state⟩ : (application setup runtime leaks).Control)).support at realizedRaw
           obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realizedRaw
           cases Option.some.inj same
           obtain ⟨initial, initialMem, rfl⟩ := PMF.support_map .. ▸ supported
@@ -358,26 +374,31 @@ theorem intended_of_regular (wellFormed : setup.WellFormed)
             (setup.initialConfig_intended wellFormed initialMem)
             (wellFormed.guardsSatisfiable initial initialMem)⟩
       | some current =>
-          have recordCurrent := publicRecord_of_transition prior joint realizedRaw record
+          have recordCurrent := publicRecord_of_transition (runtime := runtime) prior joint
+            realizedRaw record
           obtain ⟨point, decodedCurrent, intended⟩ := recursive current rfl recordCurrent
-          have forcedCurrent : ForcedState setup leaks who (some current) :=
-            (forcedState_iff_decodedPoint current).mpr
+          have forcedCurrent : ForcedState setup runtime leaks who (some current) :=
+            (forcedState_iff_decodedPoint (runtime := runtime) current).mpr
               ⟨point, decodedCurrent, forcedPoint_of_intended who intended⟩
           cases acting : current.actor with
           | some actor =>
-              rw [transition_respond current acting joint, PMF.mem_support_pure_iff]
+              rw [transition_respond (runtime := runtime) current acting joint,
+                PMF.mem_support_pure_iff]
                 at realizedRaw
               cases Option.some.inj realizedRaw
               refine ⟨point, ?_, intended⟩
-              change decodedPoint setup (current.execution.respond (application setup leaks) actor
+              change decodedPoint setup (current.execution.respond (application setup runtime
+                leaks) actor
                 ((joint actor).getD ⟨none⟩)).application.config = _
-              rw [((runtime setup).reactive_respond_application leaks current.execution actor
+              rw [(runtime.reactive_respond_application leaks current.execution actor
                 ((joint actor).getD ⟨none⟩)).1]
               exact decodedCurrent
           | none =>
-              obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
-                (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler prior current rfl
-              rcases transition_configStep (initialLaw setup) horizon scheduler current control
+              obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime)
+                (failureProfile setup.program)
+                (bounds.onePacketMenu runtime leaks) horizon scheduler prior current rfl
+              rcases transition_configStep (initialLaw setup) horizon
+                scheduler current control
                   joint realizedRaw with same | ⟨event, ready, action, member⟩
               · exact ⟨point, by rw [same]; exact decodedCurrent, intended⟩
               obtain ⟨before', target, beforeEq, afterEq, reached⟩ :=
@@ -391,27 +412,34 @@ theorem intended_of_regular (wellFormed : setup.WellFormed)
               · subst own
                 exact ownStep current control rfl rfl acting event ready action member acts
                   point decodedCurrent
-              rcases transition_idle_cases (initialLaw setup) horizon scheduler current acting
+              rcases transition_idle_cases (runtime := runtime) (initialLaw setup) horizon
+                scheduler current acting
                   joint realizedRaw with sameExecution | ⟨command, moved⟩
               · exact (config_ne_of_step member (by rw [sameExecution])).elim
-              rcases completion_cases current.execution control.execution command moved ready
+              rcases completion_cases (runtime := runtime) current.execution control.execution
+                command moved ready
                   action member acts with
                 ⟨message, onLedger, sender, named, content, owned, _⟩ | ⟨tables, failing⟩
-              · have invariant := periodInvariant assessment who prior current rfl forcedCurrent
-                have positive := unsettledContent_pos assessment who prior regularPrior
-                have rawTrace := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace
+              · have invariant := periodInvariant (runtime := runtime) assessment who prior
+                  current rfl forcedCurrent
+                have positive := unsettledContent_pos (runtime := runtime) assessment who prior
+                  regularPrior
+                have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace
                   (initialLaw setup) horizon scheduler (prior.extend joint legal realized)
                 have facts := settledFacts_history (initialLaw setup) horizon scheduler rawTrace
-                have inputsEq := transition_idle_inputs (initialLaw setup) horizon scheduler
+                have inputsEq := transition_idle_inputs (runtime := runtime) (initialLaw setup)
+                  horizon scheduler
                   current acting joint realizedRaw
                 have present : message ∈ current.execution.network.inputs := by
                   rw [← inputsEq]
                   exact facts.carried.ledger message onLedger
-                rcases invariant.settled event ready player acts own with ⟨_, nothing⟩ |
+                rcases invariant.settled event ready player acts own with ⟨_,
+                  nothing⟩ |
                     ⟨recorded, recordedPresent, recordedSender, recordedNamed, sent, keep, fixed,
                       eq⟩
                 · exact (nothing message present sender named).elim
-                · have sameMessage := invariant.unique recorded recordedPresent message present
+                · have sameMessage := invariant.unique recorded
+                    recordedPresent message present
                     (recordedSender ▸ own) (recordedSender.trans sender.symm) event
                     recordedNamed named
                   subst sameMessage
@@ -434,7 +462,8 @@ theorem intended_of_regular (wellFormed : setup.WellFormed)
                     subst sameOwner
                     have vacant : current.execution.application.accepted (.inr event) = none := by
                       by_contra present
-                      exact ready.1 (accepted_completed leaks prior current rfl event present)
+                      exact ready.1 (accepted_completed (runtime := runtime) leaks prior current
+                        rfl event present)
                     have completedNow :
                         event ∈ control.execution.application.config.cut.completed := by
                       rw [current.execution.application.config.step_cut event ready action _
@@ -459,34 +488,39 @@ forced history of the site gives a public record, which `who`'s view carries
 over to every history of the site. -/
 theorem forcedState_of_regular (wellFormed : setup.WellFormed)
     (assessment : setup.intendedModel.BehavioralAssessment) {who : Player}
-    {site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} (decision : site.1 = some (past, view))
-    (forced : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
+    {site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who}
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} (decision : site.1 = some (past, view))
+    (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
+      setup) horizon
       scheduler who site.1)
-    (history : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
+    (history : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationHistory who
       site.1)
-    (regular : RegularTrace setup leaks bounds horizon scheduler assessment who history.1.trace)
-    (ownIntended : OwnCompletionsIntended (bounds := bounds) (horizon := horizon)
+    (regular : RegularTrace setup runtime leaks bounds horizon scheduler assessment who
+      history.1.trace)
+    (ownIntended : OwnCompletionsIntended (runtime := runtime) (bounds := bounds) (horizon :=
+      horizon)
       (scheduler := scheduler) who history.1.trace) :
-    ForcedState setup leaks who history.1.state := by
+    ForcedState setup runtime leaks who history.1.state := by
   obtain ⟨witness, witnessInfo, witnessForced⟩ := forced
-  obtain ⟨control, stateEq, viewEq⟩ := state_of_decision history decision
+  obtain ⟨control, stateEq, viewEq⟩ := state_of_decision (runtime := runtime) history decision
   obtain ⟨witnessControl, witnessStateEq, witnessViewEq⟩ :=
-    state_of_decision (site := site) ⟨witness, witnessInfo⟩ decision
+    state_of_decision (runtime := runtime) (site := site) ⟨witness, witnessInfo⟩ decision
   obtain ⟨⟨state, trace⟩, info⟩ := history
   change state = some control at stateEq
   subst stateEq
   obtain ⟨witnessState, witnessTrace⟩ := witness
   change witnessState = some witnessControl at witnessStateEq
   subst witnessStateEq
-  have witnessRecord := publicRecord_of_forced who witnessTrace witnessControl rfl witnessForced
-  have sameView : control.execution.observe (application setup leaks) who =
-      witnessControl.execution.observe (application setup leaks) who :=
+  have witnessRecord := publicRecord_of_forced (runtime := runtime) who witnessTrace
+    witnessControl rfl witnessForced
+  have sameView : control.execution.observe (application setup runtime leaks) who =
+      witnessControl.execution.observe (application setup runtime leaks) who :=
     viewEq.trans witnessViewEq.symm
   have samePublic : control.execution.application.publicView =
       witnessControl.execution.application.publicView :=
-    congrArg (fun observed : (application setup leaks).PlayerView =>
+    congrArg (fun observed : (application setup runtime leaks).PlayerView =>
       observed.application.publicView) sameView
   have sameAccepted : control.execution.application.accepted =
       witnessControl.execution.application.accepted :=
@@ -495,10 +529,10 @@ theorem forcedState_of_regular (wellFormed : setup.WellFormed)
       witnessControl.execution.application.config.history.map EventGraph.Completion.event :=
     congrArg (fun publicView : PublicView (graph setup) =>
       publicView.observation.completionOrder) samePublic
-  have sameSource := (sourceViewOf_eq_decodedPoint who trace).symm.trans
-    ((congrArg (sourceViewOf setup leaks who) sameView).trans
-      (sourceViewOf_eq_decodedPoint who witnessTrace))
-  have record : PublicRecord setup who control := by
+  have sameSource := (sourceViewOf_eq_decodedPoint (runtime := runtime) who trace).symm.trans
+    ((congrArg (sourceViewOf setup runtime leaks who) sameView).trans
+      (sourceViewOf_eq_decodedPoint (runtime := runtime) who witnessTrace))
+  have record : PublicRecord setup runtime who control := by
     refine ⟨fun event owner payload layout other completed => ?_,
       fun player other point decoded failed => ?_⟩
     · rw [sameAccepted]
@@ -506,8 +540,9 @@ theorem forcedState_of_regular (wellFormed : setup.WellFormed)
       apply (witnessControl.execution.application.config.history_exact event).mp
       rw [← sameOrder]
       exact (control.execution.application.config.history_exact event).mpr completed
-    · obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (failureProfile setup.program)
-        (bounds.onePacketMenu (runtime setup) leaks) horizon scheduler witnessTrace
+    · obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+        setup.program)
+        (bounds.onePacketMenu runtime leaks) horizon scheduler witnessTrace
         witnessControl rfl
       have witnessDecoded := decodedPoint_eq residual
       rw [decoded, witnessDecoded] at sameSource
@@ -515,18 +550,19 @@ theorem forcedState_of_regular (wellFormed : setup.WellFormed)
       exact witnessRecord.2 player other _ witnessDecoded
         ((ProtocolState.revealFailed_iff_of_observe_eq player who setup.program _ _
           observed).mp failed)
-  obtain ⟨point, decoded, intended⟩ := intended_of_regular wellFormed assessment who trace
+  obtain ⟨point, decoded, intended⟩ := intended_of_regular (runtime := runtime) wellFormed
+    assessment who trace
     control rfl record regular ownIntended
-  exact (forcedState_iff_decodedPoint control).mpr
+  exact (forcedState_iff_decodedPoint (runtime := runtime) control).mpr
     ⟨point, decoded, forcedPoint_of_intended who intended⟩
 
 section Assembly
 
 variable {who : Player}
-  {site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
+  {site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who}
   {sourceSite : setup.intendedModel.InformationSite who}
-  {past : List (application setup leaks).PlayerEntry}
-  {view : (application setup leaks).PlayerView}
+  {past : List (application setup runtime leaks).PlayerEntry}
+  {view : (application setup runtime leaks).PlayerView}
 
 open Classical in
 /-- **Forced-belief inputs at an own-turn site.** For a well-formed setup, at a
@@ -539,53 +575,64 @@ the honest counterparts remain inputs. -/
 def ForcedBeliefInputs.ofRegularHistories
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
     {profiles : ℕ → ∀ player,
-      (onePacketInformation setup leaks bounds horizon scheduler).BehavioralPolicy player}
-    {steps : OperationalSteps setup leaks bounds horizon scheduler sequence profiles who}
-    [Fintype ((onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
+      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player}
+    {steps : OperationalSteps setup runtime leaks bounds horizon scheduler sequence profiles who}
+    [Fintype ((onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationHistory who
       site.1)]
     [DecidableEq (setup.intendedModel.InformationHistory who sourceSite.1)]
     {scale floors : ℕ → ℝ} {depth : ℕ} {slack : ℝ} {n : ℕ} (wellFormed : setup.WellFormed)
-    (forced : forcedAgent (bounds.onePacketMenu (runtime setup) leaks) (initialLaw setup) horizon
+    (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
+      setup) horizon
       scheduler who site.1)
     (decision : site.1 = some (past, view)) {event : (graph setup).EventId}
     (turn : view.application.publicView.ownTurn? who = some event)
-    (projected : sourceSite.1 = projectView setup leaks who site.1)
+    (projected : sourceSite.1 = projectView setup runtime leaks who site.1)
     (mixed : (sequence n).IsFullyMixed)
-    (ownIntended : ∀ history : (onePacketInformation setup leaks bounds horizon
+    (ownIntended : ∀ history : (onePacketInformation setup runtime leaks bounds horizon
         scheduler).InformationHistory who site.1,
-      RegularTrace setup leaks bounds horizon scheduler (sequence n) who history.1.trace →
-      OwnCompletionsIntended (bounds := bounds) (horizon := horizon) (scheduler := scheduler)
+      RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who history.1.trace →
+      OwnCompletionsIntended (runtime := runtime) (bounds := bounds) (horizon := horizon)
+        (scheduler := scheduler)
         who history.1.trace)
     (fiberMass : ℝ)
-    (fiber : ∀ point, ∑ history with RegularTrace setup leaks bounds horizon scheduler
+    (fiber : ∀ point, ∑ history with RegularTrace setup runtime leaks bounds horizon scheduler
         (sequence n) who history.1.trace ∧
-        replayProjection setup leaks bounds horizon scheduler sourceSite site decision projected
+        replayProjection setup runtime leaks bounds horizon scheduler sourceSite site decision
+          projected
           history = point,
-      operationalWeight setup leaks who (steps.mass n)
-        (operationalRecord setup leaks bounds horizon scheduler history.1.trace) = fiberMass)
-    (counterpart : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory
+      operationalWeight setup runtime leaks who (steps.mass n)
+        (operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) =
+          fiberMass)
+    (counterpart : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationHistory
         who site.1 →
-      (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who site.1)
-    (commonWeight : (onePacketInformation setup leaks bounds horizon
+      (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationHistory who
+        site.1)
+    (commonWeight : (onePacketInformation setup runtime leaks bounds horizon
       scheduler).InformationHistory who site.1 → ℝ)
-    (counterpart_regular : ∀ history, ¬ RegularTrace setup leaks bounds horizon scheduler
+    (counterpart_regular : ∀ history, ¬ RegularTrace setup runtime leaks bounds horizon scheduler
         (sequence n) who history.1.trace →
-      RegularTrace setup leaks bounds horizon scheduler (sequence n) who
+      RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
         (counterpart history).1.trace)
-    (irregular_le : ∀ history, ¬ RegularTrace setup leaks bounds horizon scheduler (sequence n)
+    (irregular_le : ∀ history, ¬ RegularTrace setup runtime leaks bounds horizon scheduler
+      (sequence n)
         who history.1.trace →
-      ((onePacketInformation setup leaks bounds horizon scheduler).historyReachWeight
+      ((onePacketInformation setup runtime leaks bounds horizon scheduler).historyReachWeight
           (profiles n) history.1).toReal ≤ scale n ^ 3 * commonWeight history)
-    (counterpart_ge : ∀ history, ¬ RegularTrace setup leaks bounds horizon scheduler
+    (counterpart_ge : ∀ history, ¬ RegularTrace setup runtime leaks bounds horizon scheduler
         (sequence n) who history.1.trace →
       scale n ^ 2 * floors n ^ depth * commonWeight history ≤
-        slack * ((onePacketInformation setup leaks bounds horizon scheduler).historyReachWeight
+        slack * ((onePacketInformation setup runtime leaks bounds horizon
+          scheduler).historyReachWeight
           (profiles n) (counterpart history).1).toReal) :
-    ForcedBeliefInputs setup leaks bounds horizon scheduler sequence profiles steps site
-      sourceSite (replayProjection setup leaks bounds horizon scheduler sourceSite site decision
+    ForcedBeliefInputs setup runtime leaks bounds horizon scheduler sequence profiles steps site
+      sourceSite (replayProjection setup runtime leaks bounds horizon scheduler sourceSite site
+        decision
         projected) scale floors depth slack n :=
-  ForcedBeliefInputs.ofForcedHistories forced decision turn projected mixed
-    (fun history regular => forcedState_of_regular wellFormed (sequence n) decision forced history
+  ForcedBeliefInputs.ofForcedHistories (runtime := runtime) forced decision turn projected mixed
+    (fun history regular => forcedState_of_regular (runtime := runtime) wellFormed (sequence n)
+      decision forced history
       regular (ownIntended history regular))
     ownIntended fiberMass fiber counterpart commonWeight counterpart_regular irregular_le
       counterpart_ge

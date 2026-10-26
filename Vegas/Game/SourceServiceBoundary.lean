@@ -36,7 +36,7 @@ structure ServiceBoundary (setup : Setup (Player := Player) (L := L))
     (rosters : (graph setup).EventId → List Player) (initial : State L setup.context)
     {Γ : SourceCtx Player L} (source : Config Player L Γ)
     (refs : ContextRefs (graph setup).layout Γ) (rank : Nat)
-    (execution : (application setup leaks).Execution) : Prop
+    (execution : (application setup (Vegas.runtime setup) leaks).Execution) : Prop
     extends SourceCheckpoint setup source refs rank execution.application.config where
   invariant : EventGraphRuntime.State.Invariant (graph := graph setup)
     (setup.eventInputs initial) execution.application
@@ -44,8 +44,8 @@ structure ServiceBoundary (setup : Setup (Player := Player) (L := L))
   prepared : ∀ who, execution.application.PreparedPrefix who
   represented : execution.application.CandidatesRepresented
   acceptedRecorded : execution.application.AcceptedRecorded
-  recall : execution.InputRecall (application setup leaks)
-  serialRecall : execution.SerialRecall (application setup leaks)
+  recall : execution.InputRecall (application setup (Vegas.runtime setup) leaks)
+  serialRecall : execution.SerialRecall (application setup (Vegas.runtime setup) leaks)
   published : execution.network.Satisfies fun message =>
     message.id ∈ execution.network.ledger.map Message.id
   serials : execution.network.SerialsBeforeNext
@@ -66,7 +66,7 @@ theorem ServiceBoundary.ready {setup : Setup (Player := Player) (L := L)}
     {rosters : (graph setup).EventId → List Player} {initial : State L setup.context}
     {Γ : SourceCtx Player L} {source : Config Player L Γ}
     {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
-    {execution : (application setup leaks).Execution}
+    {execution : (application setup (Vegas.runtime setup) leaks).Execution}
     (boundary : ServiceBoundary setup leaks rosters initial source refs rank execution)
     (event : (graph setup).EventId) (atRank : event.val = rank) :
     execution.application.config.cut.Ready event :=
@@ -79,11 +79,11 @@ theorem ServiceBoundary.sampledActivation {setup : Setup (Player := Player) (L :
     {rosters : (graph setup).EventId → List Player} {initial : State L setup.context}
     {Γ : SourceCtx Player L} {source : Config Player L Γ}
     {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
-    {execution : (application setup leaks).Execution}
+    {execution : (application setup (Vegas.runtime setup) leaks).Execution}
     (boundary : ServiceBoundary setup leaks rosters initial source refs rank execution)
     (who : Player) (sample : Finset (MessageId Player)) :
     ServiceBoundary setup leaks rosters initial source refs rank
-      (execution.sampledActivation (application setup leaks) who sample) :=
+      (execution.sampledActivation (application setup (Vegas.runtime setup) leaks) who sample) :=
   { boundary with
     published := boundary.published.learn who sample
     serials := boundary.serials.learn who sample }

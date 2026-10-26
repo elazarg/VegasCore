@@ -25,60 +25,61 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup leaks).Scheduler)
-  [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
+  (scheduler : (application setup runtime leaks).Scheduler)
+  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
 
 local notation "onePacketN" =>
-  onePacketModel setup leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 
-omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+omit [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
 /-- The newest entry of an operational record is the operational state of the
 history's state. -/
-theorem operationalRecord_headD {state : (application setup leaks).ProtocolState}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state) :
-    (operationalRecord setup leaks bounds horizon scheduler trace).headD
-        (operationalState setup leaks none) = operationalState setup leaks state :=
+theorem operationalRecord_headD {state : (application setup runtime leaks).ProtocolState}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state) :
+    (operationalRecord setup runtime leaks bounds horizon scheduler trace).headD
+        (operationalState setup runtime leaks none) = operationalState setup runtime leaks state :=
   match trace with
   | .start => rfl
   | .extend _ _ _ _ => rfl
 
-omit [(application setup leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+omit [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
 /-- Every history of a decision site of `who` with a pending event is a prefix of
 the site's rank. -/
 theorem ordered_of_site {who : Player} {site : (onePacketN).InformationSite who}
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} (atSite : site.1 = some (past, view))
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} (atSite : site.1 = some (past, view))
     (history : (onePacketN).InformationHistory who site.1) :
     ∃ remaining execution, history.1.state = some ⟨remaining, some who, execution⟩ ∧
-      execution.recall who = past ∧ execution.observe (application setup leaks) who = view ∧
-      execution.application.config.cut.IsPrefix (siteRank site.1) := by
+      execution.recall who = past ∧ execution.observe (application setup runtime leaks) who = view ∧
+      execution.application.config.cut.IsPrefix (siteRank (runtime := runtime) site.1) := by
   obtain ⟨remaining, execution, current, recallEq, observeEq⟩ :=
-    state_of_site setup leaks bounds horizon scheduler atSite history
+    state_of_site setup runtime leaks bounds horizon scheduler atSite history
   refine ⟨remaining, execution, current, recallEq, observeEq, ?_⟩
-  have rawTrace : ((application setup leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
-    (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
       (current ▸ history.1.trace)
-  obtain ⟨found, foundOrdered, _⟩ := pendingAt_history rawTrace
-  have rankEq : siteRank site.1 = found := by
+  obtain ⟨found, foundOrdered, _⟩ := pendingAt_history (runtime := runtime) rawTrace
+  have rankEq : siteRank (runtime := runtime) site.1 = found := by
     rw [atSite, ← observeEq]
     change (execution.application.config.history.map EventGraph.Completion.event).length = found
     rw [List.length_map]
     exact history_length_of_isPrefix _ foundOrdered
   exact rankEq ▸ foundOrdered
 
-omit [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+omit [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
 open Classical Filter in
 /-- **Uniform errors from errors at each site.** For a property of errors at a
@@ -128,7 +129,7 @@ theorem exists_uniform_of_sites
     have spec := (perSite who site holds).choose_spec.2 n
     exact mono n who site _ _ ((le_abs_self _).trans (atSite ▸ single)) spec
 
-omit [∀ who, DecidableEq ((onePacketModel setup leaks bounds (initialLaw setup) horizon
+omit [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
 open Filter in
 /-- **Uniform decorrelation.** If at every site satisfying a condition the
@@ -140,19 +141,20 @@ theorem exists_uniform_decorrelation
     (perSite : ∀ who (site : (onePacketN).InformationSite who), condition who site →
       ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧ ∀ n,
         BeliefDecorrelated ((targetSequence n).belief who site)
-          (fun history => operationalRecord setup leaks bounds horizon scheduler
+          (fun history => operationalRecord setup runtime leaks bounds horizon scheduler
             history.1.trace)
-          (fun history => nativeDecodedState setup leaks history.1.state) (error n)) :
+          (fun history => nativeDecodedState setup runtime leaks history.1.state) (error n)) :
     ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧
       ∀ n who (site : (onePacketN).InformationSite who), condition who site →
         BeliefDecorrelated ((targetSequence n).belief who site)
-          (fun history => operationalRecord setup leaks bounds horizon scheduler
+          (fun history => operationalRecord setup runtime leaks bounds horizon scheduler
             history.1.trace)
-          (fun history => nativeDecodedState setup leaks history.1.state) (error n) :=
-  exists_uniform_of_sites setup leaks bounds horizon scheduler
+          (fun history => nativeDecodedState setup runtime leaks history.1.state) (error n) :=
+  exists_uniform_of_sites setup runtime leaks bounds horizon scheduler
     (fun n who site error => BeliefDecorrelated ((targetSequence n).belief who site)
-      (fun history => operationalRecord setup leaks bounds horizon scheduler history.1.trace)
-      (fun history => nativeDecodedState setup leaks history.1.state) error)
+      (fun history => operationalRecord setup runtime leaks bounds horizon scheduler
+        history.1.trace)
+      (fun history => nativeDecodedState setup runtime leaks history.1.state) error)
     (fun _ _ _ _ _ le decorrelated => decorrelated.mono le) condition perSite
 
 end Vegas

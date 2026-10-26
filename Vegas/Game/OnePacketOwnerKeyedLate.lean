@@ -23,45 +23,49 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
   EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} [Fintype Player]
+  {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)} [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- **Agreeing base laws at two late sites with one key.** -/
 theorem ownerSwap_baseLawAgrees_late
     {Public : Type*} (signal : State L setup.context → Public)
-    [Finite (onePacketProtocol setup leaks bounds horizon scheduler).History]
+    [Finite (onePacketProtocol setup runtime leaks bounds horizon scheduler).History]
     (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal)
     (covers : bounds.CoversInputValues)
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (weight : List (Option (OperationalState setup leaks)) → ℝ) {who : Player}
-    {site₁ site₂ : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
-    {past₁ past₂ : List (application setup leaks).PlayerEntry}
-    {view₁ view₂ : (application setup leaks).PlayerView}
+    (weight : List (Option (OperationalState setup runtime leaks)) → ℝ) {who : Player}
+    {site₁ site₂ : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationSite who}
+    {past₁ past₂ : List (application setup runtime leaks).PlayerEntry}
+    {view₁ view₂ : (application setup runtime leaks).PlayerView}
     (firstSite : site₁.1 = some (past₁, view₁)) (secondSite : site₂.1 = some (past₂, view₂))
-    (sameKey : lateKey setup leaks who site₁.1 = lateKey setup leaks who site₂.1)
-    (firstDebtFree : ∀ history : (onePacketInformation setup leaks bounds horizon
+    (sameKey : lateKey setup runtime leaks who site₁.1 = lateKey setup runtime leaks who site₂.1)
+    (firstDebtFree : ∀ history : (onePacketInformation setup runtime leaks bounds horizon
         scheduler).InformationHistory who site₁.1, ∀ point,
-      nativeDecodedState setup leaks history.1.state = some point →
+      nativeDecodedState setup runtime leaks history.1.state = some point →
         ¬ ProtocolState.OwesFailure who setup.program point)
-    (secondDebtFree : ∀ history : (onePacketInformation setup leaks bounds horizon
+    (secondDebtFree : ∀ history : (onePacketInformation setup runtime leaks bounds horizon
         scheduler).InformationHistory who site₂.1, ∀ point,
-      nativeDecodedState setup leaks history.1.state = some point →
+      nativeDecodedState setup runtime leaks history.1.state = some point →
         ¬ ProtocolState.OwesFailure who setup.program point)
-    (firstLate : LateDelivery setup leaks who site₁.1)
-    (secondLate : LateDelivery setup leaks who site₂.1)
-    (payoff : List (Option (OperationalState setup leaks)) → ℝ) :
-    BaseLawAgrees
-      (fun history => othersSourceWeight setup leaks bounds horizon scheduler assessment who
-        history.trace * weight (operationalRecord setup leaks bounds horizon scheduler
+    (firstLate : LateDelivery setup runtime leaks who site₁.1)
+    (secondLate : LateDelivery setup runtime leaks who site₂.1)
+    (payoff : List (Option (OperationalState setup runtime leaks)) → ℝ) :
+    BaseLawAgrees (runtime := runtime)
+      (fun history => othersSourceWeight setup runtime leaks bounds horizon scheduler assessment who
+        history.trace * weight (operationalRecord setup runtime leaks bounds horizon scheduler
           history.trace))
-      (fun history => RegularTrace setup leaks bounds horizon scheduler assessment who
+      (fun history => RegularTrace setup runtime leaks bounds horizon scheduler assessment who
         history.trace) site₁ site₂ payoff :=
-  ownerSwap_baseLawAgrees signal wellFormed independent observable covers assessment
+  ownerSwap_baseLawAgrees (runtime := runtime) signal wellFormed independent observable covers
+    assessment
     weight firstSite secondSite sameKey firstDebtFree secondDebtFree
-    (ownerSwap_info firstSite secondSite sameKey firstDebtFree secondDebtFree firstLate
+    (ownerSwap_info (runtime := runtime) firstSite secondSite sameKey firstDebtFree secondDebtFree
+      firstLate
       secondLate) payoff
 
 end Vegas

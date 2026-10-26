@@ -30,7 +30,8 @@ structure PublicCheckpoint (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (initial : State L setup.context) {Γ : SourceCtx Player L}
     (source : Config Player L Γ) (refs : ContextRefs (graph setup).layout Γ)
-    (rank : Nat) (execution : (application setup leaks).Execution) : Prop where
+    (rank : Nat) (execution : (application setup (Vegas.runtime setup) leaks).Execution) : Prop
+      where
   emptyRegistry : source.registry = []
   openable : source.state.BindingsOpenable
   agrees : refs.Agrees source.state execution.application.config.store
@@ -70,7 +71,7 @@ structure Checkpoint (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (initial : State L setup.context) {Γ : SourceCtx Player L}
     (source : Config Player L Γ) (refs : ContextRefs (graph setup).layout Γ)
-    (rank : Nat) (execution : (application setup leaks).Execution) : Prop
+    (rank : Nat) (execution : (application setup (Vegas.runtime setup) leaks).Execution) : Prop
     extends PublicCheckpoint setup leaks initial source refs rank execution where
   pending : ∀ message ∈ execution.network.pending,
     message.id ∈ execution.network.ledger.map Message.id
@@ -78,14 +79,14 @@ structure Checkpoint (setup : Setup (Player := Player) (L := L))
   inputs : ∀ input ∈ execution.network.inputs,
     input.id ∈ execution.network.ledger.map Message.id
   serials : execution.network.SerialsBeforeNext
-  recall : execution.InputRecall (application setup leaks)
+  recall : execution.InputRecall (application setup (Vegas.runtime setup) leaks)
 
 /-- At a checkpoint of some rank, the event of that rank is ready. -/
 theorem PublicCheckpoint.ready {setup : Setup (Player := Player) (L := L)}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
     {initial : State L setup.context} {Γ : SourceCtx Player L}
     {source : Config Player L Γ} {refs : ContextRefs (graph setup).layout Γ} {rank : Nat}
-    {execution : (application setup leaks).Execution}
+    {execution : (application setup (Vegas.runtime setup) leaks).Execution}
     (checkpoint : PublicCheckpoint setup leaks initial source refs rank execution)
     (event : (graph setup).EventId) (eventRank : event.val = rank) :
     execution.application.config.cut.Ready event := by

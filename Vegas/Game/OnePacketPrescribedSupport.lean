@@ -132,6 +132,7 @@ theorem revealFailed_stepClosed {setup : Setup (Player := Player) (L := L)} (who
     ProtocolState.revealFailed_step who setup.program state joint target failed reached
 
 variable (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
 section AsIfHonest
@@ -141,31 +142,33 @@ configuration decodes at its completed prefix to a source point, as-if-honest
 play of `who`, whatever its recall, is the intended strategy at `who`'s view of
 that point. -/
 theorem asIfHonestProfile_observe (assessment : setup.intendedModel.BehavioralAssessment)
-    (who : Player) (execution : (application setup leaks).Execution) (rank : Nat)
+    (who : Player) (execution : (application setup runtime leaks).Execution) (rank : Nat)
     (ordered : execution.application.config.cut.IsPrefix rank)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
-    (past : List (application setup leaks).PlayerEntry) :
-    asIfHonestProfile setup leaks assessment who
-        (some (past, execution.observe (application setup leaks) who)) =
+    (past : List (application setup runtime leaks).PlayerEntry) :
+    asIfHonestProfile setup runtime leaks assessment who
+        (some (past, execution.observe (application setup runtime leaks) who)) =
       (assessment.strategy who (setup.protocolObserve who (some point))).map Subtype.val := by
   unfold asIfHonestProfile
-  rw [projectView_observe setup leaks who execution rank ordered point decoded past]
+  rw [projectView_observe setup runtime leaks who execution rank ordered point decoded past]
 
 /-- The support of as-if-honest play at a decoded state is the image of the
 intended strategy's support at the decoded view. -/
 theorem mem_support_asIfHonestProfile_observe
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (who : Player) (execution : (application setup leaks).Execution) (rank : Nat)
+    (who : Player) (execution : (application setup runtime leaks).Execution) (rank : Nat)
     (ordered : execution.application.config.cut.IsPrefix rank)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
-    (past : List (application setup leaks).PlayerEntry) (choice : Option (OwnAction Player L)) :
-    choice ∈ (asIfHonestProfile setup leaks assessment who
-        (some (past, execution.observe (application setup leaks) who))).support ↔
+    (past : List (application setup runtime leaks).PlayerEntry) (choice : Option (OwnAction Player
+      L)) :
+    choice ∈ (asIfHonestProfile setup runtime leaks assessment who
+        (some (past, execution.observe (application setup runtime leaks) who))).support ↔
       ∃ intended ∈ (assessment.strategy who (setup.protocolObserve who (some point))).support,
         intended.1 = choice := by
-  rw [asIfHonestProfile_observe setup leaks assessment who execution rank ordered point decoded
+  rw [asIfHonestProfile_observe setup runtime leaks assessment who execution rank ordered point
+    decoded
     past, PMF.support_map]
   rfl
 
@@ -175,54 +178,59 @@ section Classification
 
 /-- The pending event of a decision input: the owner's turn event, provided its
 recall has not submitted for it. -/
-def pendingEvent (who : Player) : (application setup leaks).Info → Option (graph setup).EventId
+def pendingEvent (who : Player) : (application setup runtime leaks).Info → Option (graph
+  setup).EventId
   | none => none
   | some (past, view) => (view.application.publicView.ownTurn? who).filter fun event =>
-      !(runtime setup).eventRecorded leaks past event
+      !runtime.eventRecorded leaks past event
 
 /-- The owner's turn was `event` at the view a recall entry was taken at. -/
 def ActivatedAt (who : Player) (event : (graph setup).EventId)
-    (entry : (application setup leaks).PlayerEntry) : Prop :=
+    (entry : (application setup runtime leaks).PlayerEntry) : Prop :=
   entry.beforeView.application.publicView.ownTurn? who = some event
 
 /-- **First activation.** A decision input with a pending event that was the
 owner's turn at none of its recalled views. -/
-def FirstActivation (who : Player) (info : (application setup leaks).Info) : Prop :=
-  ∃ past view event, info = some (past, view) ∧ pendingEvent setup leaks who info = some event ∧
-    ∀ entry ∈ past, ¬ ActivatedAt setup leaks who event entry
+def FirstActivation (who : Player) (info : (application setup runtime leaks).Info) : Prop :=
+  ∃ past view event, info = some (past, view) ∧ pendingEvent setup runtime leaks who info = some
+    event ∧
+    ∀ entry ∈ past, ¬ ActivatedAt setup runtime leaks who event entry
 
 /-- **Late delivery.** A decision input with a pending event that was the
 owner's turn at some recalled view, at which it did not submit for it. -/
-def LateDelivery (who : Player) (info : (application setup leaks).Info) : Prop :=
-  ∃ past view event, info = some (past, view) ∧ pendingEvent setup leaks who info = some event ∧
-    ∃ entry ∈ past, ActivatedAt setup leaks who event entry
+def LateDelivery (who : Player) (info : (application setup runtime leaks).Info) : Prop :=
+  ∃ past view event, info = some (past, view) ∧ pendingEvent setup runtime leaks who info = some
+    event ∧
+    ∃ entry ∈ past, ActivatedAt setup runtime leaks who event entry
 
-variable {setup leaks}
+variable {setup runtime leaks}
 
 /-- A pending event is the owner's ready turn event, and the recall has not
 submitted for it. -/
-theorem pendingEvent_spec {who : Player} {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} {event : (graph setup).EventId}
-    (pending : pendingEvent setup leaks who (some (past, view)) = some event) :
+theorem pendingEvent_spec {who : Player} {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} {event : (graph setup).EventId}
+    (pending : pendingEvent setup runtime leaks who (some (past, view)) = some event) :
     view.application.publicView.ownTurn? who = some event ∧
       view.application.publicView.EventReady event ∧ (graph setup).actor? event = some who ∧
-      (runtime setup).eventRecorded leaks past event = false := by
+      runtime.eventRecorded leaks past event = false := by
   simp only [pendingEvent, Option.filter_eq_some_iff, Bool.not_eq_eq_eq_not, Bool.not_true]
     at pending
   have spec := view.application.publicView.ownTurn?_spec who event pending.1
   exact ⟨pending.1, spec.1, spec.2, pending.2⟩
 
-theorem pendingEvent_of_spec {who : Player} {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} {event : (graph setup).EventId}
+theorem pendingEvent_of_spec {who : Player} {past : List (application setup runtime
+  leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} {event : (graph setup).EventId}
     (turn : view.application.publicView.ownTurn? who = some event)
-    (unsent : (runtime setup).eventRecorded leaks past event = false) :
-    pendingEvent setup leaks who (some (past, view)) = some event := by
+    (unsent : runtime.eventRecorded leaks past event = false) :
+    pendingEvent setup runtime leaks who (some (past, view)) = some event := by
   simp only [pendingEvent, Option.filter_eq_some_iff, turn, unsent, Bool.not_false, and_self]
 
 /-- First activations and late deliveries exclude each other. -/
 theorem not_lateDelivery_of_firstActivation {who : Player}
-    {info : (application setup leaks).Info} (first : FirstActivation setup leaks who info) :
-    ¬ LateDelivery setup leaks who info := by
+    {info : (application setup runtime leaks).Info} (first : FirstActivation setup runtime leaks
+      who info) :
+    ¬ LateDelivery setup runtime leaks who info := by
   rintro ⟨past', view', event', same', pending', entry, member, activated⟩
   obtain ⟨past, view, event, same, pending, never⟩ := first
   rw [same] at same'
@@ -234,35 +242,35 @@ theorem not_lateDelivery_of_firstActivation {who : Player}
 /-- Every decision input with a pending event is a first activation or a late
 delivery. -/
 theorem firstActivation_or_lateDelivery {who : Player}
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} {event : (graph setup).EventId}
-    (pending : pendingEvent setup leaks who (some (past, view)) = some event) :
-    FirstActivation setup leaks who (some (past, view)) ∨
-      LateDelivery setup leaks who (some (past, view)) := by
-  by_cases earlier : ∃ entry ∈ past, ActivatedAt setup leaks who event entry
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} {event : (graph setup).EventId}
+    (pending : pendingEvent setup runtime leaks who (some (past, view)) = some event) :
+    FirstActivation setup runtime leaks who (some (past, view)) ∨
+      LateDelivery setup runtime leaks who (some (past, view)) := by
+  by_cases earlier : ∃ entry ∈ past, ActivatedAt setup runtime leaks who event entry
   · exact Or.inr ⟨past, view, event, rfl, pending, earlier⟩
   · push Not at earlier
     exact Or.inl ⟨past, view, event, rfl, pending, earlier⟩
 
 /-- At a first activation or a late delivery the event is pending at the
 current view. -/
-theorem FirstActivation.pending {who : Player} {info : (application setup leaks).Info}
-    (first : FirstActivation setup leaks who info) :
+theorem FirstActivation.pending {who : Player} {info : (application setup runtime leaks).Info}
+    (first : FirstActivation setup runtime leaks who info) :
     ∃ past view event, info = some (past, view) ∧
       view.application.publicView.ownTurn? who = some event ∧
       view.application.publicView.EventReady event ∧ (graph setup).actor? event = some who ∧
-      (runtime setup).eventRecorded leaks past event = false := by
+      runtime.eventRecorded leaks past event = false := by
   obtain ⟨past, view, event, rfl, pending, _⟩ := first
-  exact ⟨past, view, event, rfl, pendingEvent_spec pending⟩
+  exact ⟨past, view, event, rfl, pendingEvent_spec (runtime := runtime) pending⟩
 
-theorem LateDelivery.pending {who : Player} {info : (application setup leaks).Info}
-    (late : LateDelivery setup leaks who info) :
+theorem LateDelivery.pending {who : Player} {info : (application setup runtime leaks).Info}
+    (late : LateDelivery setup runtime leaks who info) :
     ∃ past view event, info = some (past, view) ∧
       view.application.publicView.ownTurn? who = some event ∧
       view.application.publicView.EventReady event ∧ (graph setup).actor? event = some who ∧
-      (runtime setup).eventRecorded leaks past event = false := by
+      runtime.eventRecorded leaks past event = false := by
   obtain ⟨past, view, event, rfl, pending, _⟩ := late
-  exact ⟨past, view, event, rfl, pendingEvent_spec pending⟩
+  exact ⟨past, view, event, rfl, pendingEvent_spec (runtime := runtime) pending⟩
 
 end Classification
 
@@ -274,16 +282,16 @@ variable [Fintype Player] (bounds : MessageBounds (graph setup))
 the count verdict permits against the owner's earlier packets when it
 transmits, lies in the one-packet menu. -/
 theorem canonical_mem_onePacket (who : Player)
-    (past : List (application setup leaks).PlayerEntry)
-    (view : (application setup leaks).PlayerView)
-    (response : (application setup leaks).Action)
-    (retained : response ∈ bounds.canonicalActions (runtime setup) leaks who past view)
+    (past : List (application setup runtime leaks).PlayerEntry)
+    (view : (application setup runtime leaks).PlayerView)
+    (response : (application setup runtime leaks).Action)
+    (retained : response ∈ bounds.canonicalActions runtime leaks who past view)
     (permitted : ∀ material, response.transmission = some material →
-      countPermits ((application setup leaks).outputs past)
-        ((runtime setup).localEnvelope leaks who past view material) = true) :
-    response ∈ bounds.onePacketActions (runtime setup) leaks who past view := by
-  refine (bounds.mem_onePacketActions (runtime setup) leaks who past view response).mpr
-    ⟨bounds.canonicalActions_effective (runtime setup) leaks who past view retained, ?_⟩
+      countPermits ((application setup runtime leaks).outputs past)
+        (runtime.localEnvelope leaks who past view material) = true) :
+    response ∈ bounds.onePacketActions runtime leaks who past view := by
+  refine (bounds.mem_onePacketActions runtime leaks who past view response).mpr
+    ⟨bounds.canonicalActions_effective runtime leaks who past view retained, ?_⟩
   cases sent : response.transmission with
   | none => exact Or.inl rfl
   | some material => exact Or.inr ⟨material, sent, permitted material sent⟩

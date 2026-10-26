@@ -20,15 +20,16 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-variable (setup leaks) in
+variable (setup runtime leaks) in
 /-- **A reached boundary.** The execution of a legal history at a scheduler
 boundary, whose configuration is a prefix at `rank`, with every event from
 `rank` on untouched and every own submission made at its author's turn. -/
-structure ReachedBoundary (horizon : Nat) (scheduler : (application setup leaks).Scheduler)
-    (rank : Nat) (execution : (application setup leaks).Execution) : Prop where
-  trace : Nonempty (((application setup leaks).protocol (initialLaw setup) horizon
+structure ReachedBoundary (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
+    (rank : Nat) (execution : (application setup runtime leaks).Execution) : Prop where
+  trace : Nonempty (((application setup runtime leaks).protocol (initialLaw setup) horizon
     scheduler).Trace (some ⟨horizon - execution.environmentRecall.length, none, execution⟩))
   bounded : execution.environmentRecall.length ≤ horizon
   ordered : execution.application.config.cut.IsPrefix rank

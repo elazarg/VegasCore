@@ -24,6 +24,7 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
 
 /-- **Private initial inputs are not failures** in a well-formed setup: a
 private input never fails, and an initial commitment holds a success. -/
@@ -56,7 +57,7 @@ theorem eventInputs_not_failure (wellFormed : setup.WellFormed) {who : Player}
 
 variable [Fintype Player] {leaks : MessageNetwork.ObservationRule Player
     (WitnessedPacket (graph setup))} {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 omit [Fintype Player] in
 /-- A private input of `who` is the input of a cell `who` hides. -/
@@ -84,19 +85,20 @@ private theorem hidden_of_privateTo {who : Player} {input : (graph setup).InputI
 ends at a control whose inputs are those of a supported setup draw, and the
 site's view stores that draw's inputs at `who`'s private inputs. -/
 theorem siteDraw {who : Player}
-    {site : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
-    {past : List (application setup leaks).PlayerEntry}
-    {view : (application setup leaks).PlayerView} (decision : site.1 = some (past, view))
-    (history : (onePacketInformation setup leaks bounds horizon scheduler).InformationHistory who
+    {site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who}
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} (decision : site.1 = some (past, view))
+    (history : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationHistory who
       site.1) :
-    ∃ (control : (application setup leaks).Control) (draw : State L setup.context),
+    ∃ (control : (application setup runtime leaks).Control) (draw : State L setup.context),
       history.1.state = some control ∧ draw ∈ setup.initialLaw.support ∧
       control.execution.application.config.inputs = setup.eventInputs draw ∧
       ∀ input, PrivateTo who (setup := setup) (.inl input) →
         view.application.observation.store (.inl input) = some (setup.eventInputs draw input) := by
-  obtain ⟨control, stateEq, viewEq⟩ := state_of_decision history decision
+  obtain ⟨control, stateEq, viewEq⟩ := state_of_decision (runtime := runtime) history decision
   obtain ⟨draw, member, inputsEq, -⟩ :=
-    initialSlots_of_trace history.1.trace control stateEq
+    initialSlots_of_trace (runtime := runtime) history.1.trace control stateEq
   refine ⟨control, draw, stateEq, member, inputsEq, fun input privateTo => ?_⟩
   rw [← viewEq]
   change (graph setup).playerStore who control.execution.application.config.store (.inl input) =
@@ -111,23 +113,27 @@ sends the inputs of the draw of every history of the first site to the inputs
 of a supported draw. -/
 theorem ownerSwap_priorClosed (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependent) {who : Player}
-    {site₁ site₂ : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
-    {past₁ past₂ : List (application setup leaks).PlayerEntry}
-    {view₁ view₂ : (application setup leaks).PlayerView}
+    {site₁ site₂ : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationSite who}
+    {past₁ past₂ : List (application setup runtime leaks).PlayerEntry}
+    {view₁ view₂ : (application setup runtime leaks).PlayerView}
     (firstSite : site₁.1 = some (past₁, view₁)) (secondSite : site₂.1 = some (past₂, view₂)) :
     ∀ initial ∈ setup.initialLaw.support,
-      (∃ history : (onePacketInformation setup leaks bounds horizon
-          scheduler).InformationHistory who site₁.1, ∃ control : (application setup leaks).Control,
+      (∃ history : (onePacketInformation setup runtime leaks bounds horizon
+          scheduler).InformationHistory who site₁.1, ∃ control : (application setup runtime
+            leaks).Control,
         history.1.state = some control ∧
           control.execution.application.config.inputs = setup.eventInputs initial) →
       ∃ other ∈ setup.initialLaw.support, setup.eventInputs other =
         (ownerSwap who view₁.application view₂.application).inputs (setup.eventInputs initial) := by
   rintro initial member ⟨history, control, stateEq, inputsEq⟩
-  obtain ⟨control₁, draw₁, stateEq₁, -, inputsEq₁, firstStore⟩ := siteDraw firstSite history
+  obtain ⟨control₁, draw₁, stateEq₁, -, inputsEq₁, firstStore⟩ := siteDraw (runtime := runtime)
+    firstSite history
   rw [stateEq] at stateEq₁
   cases Option.some.inj stateEq₁
   obtain ⟨history₂, -⟩ := site₂.2
-  obtain ⟨-, draw₂, -, drawMember₂, -, secondStore⟩ := siteDraw secondSite history₂
+  obtain ⟨-, draw₂, -, drawMember₂, -, secondStore⟩ := siteDraw (runtime := runtime) secondSite
+    history₂
   have firstStore' : ∀ input, PrivateTo who (setup := setup) (.inl input) →
       view₁.application.observation.store (.inl input) =
         some (setup.eventInputs initial input) := fun input privateTo => by

@@ -20,25 +20,26 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (phaseApplication (runtime setup) leaks).Scheduler)
-  [(phaseApplication (runtime setup) leaks).FiniteNature (phaseInitialLaw setup) scheduler]
+  (scheduler : (phaseApplication runtime leaks).Scheduler)
+  [(phaseApplication runtime leaks).FiniteNature (phaseInitialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
 
 variable {Public : Type*} {signal : State L setup.context → Public}
 
 local notation "RecoveryLeaks" => recoveryLeaks setup leaks
-local notation "RecoveryScheduler" => recoveryScheduler setup leaks scheduler
-local notation "NativeScheduler" => RecoveryProjection.nativeScheduler (runtime setup)
+local notation "RecoveryScheduler" => recoveryScheduler setup runtime leaks scheduler
+local notation "NativeScheduler" => RecoveryProjection.nativeScheduler runtime
     (RecoveryLeaks)
   (RecoveryScheduler)
-local notation "M" => model setup leaks bounds horizon scheduler
-local notation "MMenu" => menu setup leaks bounds
+local notation "M" => model setup runtime leaks bounds horizon scheduler
+local notation "MMenu" => menu setup runtime leaks bounds
 local notation "MP" => ReactiveApplication.ResponseMenu.protocol (MMenu) (phaseInitialLaw setup)
   horizon scheduler
 local notation "Base" => phaseExclusionBase setup EventGraph.ExecutionMode.sequential
-  (runtime setup) leaks
+  runtime leaks
 
 attribute [local instance] phaseInfoDecidableEq recoveryInfoDecidableEq nativeInfoDecidableEq
   phaseHistoryFintype recoveryHistoryFintype nativeHistoryFintype nativeNature
@@ -55,14 +56,14 @@ theorem intended_sequentialEquilibrium_preserved
     (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal) {delay bound : (graph setup).EventId → Nat}
-    (opportunity : PhaseService.Opportunity (runtime setup) leaks (phaseInitialLaw setup) horizon
+    (opportunity : PhaseService.Opportunity runtime leaks (phaseInitialLaw setup) horizon
         scheduler delay)
-    (inclusion : PhaseService.ProtectedInclusion (runtime setup) leaks (phaseInitialLaw setup)
+    (inclusion : PhaseService.ProtectedInclusion runtime leaks (phaseInitialLaw setup)
         horizon
         scheduler bound)
-    (completes : PhaseService.CompletesPlay (runtime setup) leaks (phaseInitialLaw setup) horizon
+    (completes : PhaseService.CompletesPlay runtime leaks (phaseInitialLaw setup) horizon
         scheduler)
-    (timely : AsyncTimely (runtime setup) delay bound)
+    (timely : AsyncTimely runtime delay bound)
     (lowerUtility upperUtility : Player → ℝ)
     (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
     (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
@@ -87,7 +88,7 @@ theorem intended_sequentialEquilibrium_preserved
         ∀ control, final.state = some control → control.execution.application.current.excluded =
             ∅) ∧
       ((M).runBehavioral canonical.strategy (2 * horizon + 1)).map (fun final =>
-        (phaseSourceReadout setup .sequential (runtime setup) leaks final.state, (Base (fun
+        (phaseSourceReadout setup .sequential runtime leaks final.state, (Base (fun
             terminal => utility (setup.parameterOutcome parameter terminal)) excludedPayoff)
             final.state)) =
         (setup.intendedModel.runBehavioral intended.strategy
@@ -97,13 +98,16 @@ theorem intended_sequentialEquilibrium_preserved
   obtain ⟨sourceSequence, sourceMixed, sourceBayes, sourceConverges, sourceRational⟩ :=
     setup.intended_exclusionSource wellFormed parameter utility excludedPayoff intended
       equilibrium
-  let floors := fun n => combinedFloor setup (RecoveryLeaks) bounds horizon (NativeScheduler)
+  let floors := fun n => combinedFloor (runtime := runtime) setup (RecoveryLeaks) bounds horizon
+    (NativeScheduler)
     (sourceSequence n)
   let scale := fun n => trembleScale (floors n) (2 * horizon + 2) n
   have floorPositive := fun n =>
-    combinedFloor_pos setup (RecoveryLeaks) bounds horizon (NativeScheduler) (sourceSequence n)
+    combinedFloor_pos (runtime := runtime) setup (RecoveryLeaks) bounds horizon (NativeScheduler)
+      (sourceSequence n)
   have floorLeOne := fun n =>
-    combinedFloor_le_one setup (RecoveryLeaks) bounds horizon (NativeScheduler) (sourceSequence n)
+    combinedFloor_le_one (runtime := runtime) setup (RecoveryLeaks) bounds horizon
+      (NativeScheduler) (sourceSequence n)
   have positive : ∀ n, 0 < scale n := fun n => trembleScale_pos (floorPositive n)
   have le_one : ∀ n, scale n ≤ 1 := fun n =>
     trembleScale_le_one (floorPositive n).le (floorLeOne n)
@@ -111,11 +115,12 @@ theorem intended_sequentialEquilibrium_preserved
     tendsto_trembleScale floors floorPositive floorLeOne
   obtain ⟨weights, sequence, limit, index, assembled, mixed, bayes, increasing, converges,
       consistent, pooled, _limits, freeOptimal⟩ :=
-    exists_consistent_completion setup leaks bounds horizon scheduler parameter utility
+    exists_consistent_completion setup runtime leaks bounds horizon scheduler parameter utility
         excludedPayoff
       sourceSequence bounds.candidateCount scale positive le_one vanishes
   let fallback : ∀ who, (M).Policy who := fun _ _ => Classical.arbitrary _
-  have componentAssembled : ∀ n, (sequence n).strategy = componentStrategy setup leaks bounds
+  have componentAssembled : ∀ n, (sequence n).strategy = componentStrategy setup runtime leaks
+    bounds
       horizon scheduler fallback (sourceSequence n) (scale n) (positive n).le (le_one n)
       (weights n) := assembled
   let payoffBound : ℝ := ∑ player,
@@ -132,14 +137,15 @@ theorem intended_sequentialEquilibrium_preserved
       (fun player => min 0 (min (excludedPayoff player) (lowerUtility player)))
       (fun player => max 0 (max (excludedPayoff player) (upperUtility player)))
       (fun _ => min_le_left _ _) (fun _ => le_max_left _ _) who
-      (phaseExclusionBase_mem_Icc setup .sequential (runtime setup) leaks
+      (phaseExclusionBase_mem_Icc setup .sequential runtime leaks
         (fun terminal => utility (setup.parameterOutcome parameter terminal)) excludedPayoff
         lowerUtility upperUtility (fun terminal => lower_le (setup.parameterOutcome parameter
           terminal)) (fun terminal => le_upper (setup.parameterOutcome parameter terminal))
         final.state who)
   obtain ⟨error, errorVanishes, comparisons⟩ :=
     if slots_pos : 0 < bounds.candidateCount then
-      local_comparisons setup leaks bounds horizon scheduler wellFormed independent observable
+      local_comparisons setup runtime leaks bounds horizon scheduler wellFormed independent
+        observable
         sourceSequence sourceMixed sourceBayes scale positive le_one (fun _ => rfl) covers
             coversInputs
         capacity slots_pos weights sequence (fun _ => fallback) componentAssembled mixed bayes
@@ -153,8 +159,8 @@ theorem intended_sequentialEquilibrium_preserved
           omega⟩
   let sourceObserve := intendedReadoutExclusion setup parameter utility excludedPayoff
   let targetObserve := fun final : (MP).History =>
-    (phaseSourceReadout setup .sequential (runtime setup) leaks final.state,
-      (phaseExclusionBase setup .sequential (runtime setup) leaks
+    (phaseSourceReadout setup .sequential runtime leaks final.state,
+      (phaseExclusionBase setup .sequential runtime leaks
             (fun terminal => utility (setup.parameterOutcome parameter terminal)) excludedPayoff)
                 final.state)
   let payoff := fun outcome : Option (State L setup.program.terminalCtx) × (Player → ℝ) =>
@@ -173,7 +179,8 @@ theorem intended_sequentialEquilibrium_preserved
           (instructionCount setup.program + 1)).map sourceObserve) outcome).toReal| ≤ lawError n :=
       by
     rw [componentAssembled n]
-    exact (component_initialized_readout_withinTV setup leaks bounds horizon scheduler opportunity
+    exact (component_initialized_readout_withinTV setup runtime leaks bounds horizon scheduler
+      opportunity
       inclusion timely completes wellFormed covers capacity sourceSequence scale positive le_one
       weights n fallback parameter utility excludedPayoff).apply outcome
   obtain ⟨phaseSE, phaseLaw⟩ :=
@@ -183,7 +190,7 @@ theorem intended_sequentialEquilibrium_preserved
       ((MMenu).decisionRecall (phaseInitialLaw setup) horizon scheduler) payoff intended
           sourceSequence
       sourceConverges sourceRational sequence
-      (fun _ site => ¬ FreeAgent setup leaks bounds horizon scheduler ((M).agentAt site))
+      (fun _ site => ¬ FreeAgent setup runtime leaks bounds horizon scheduler ((M).agentAt site))
       error errorVanishes (fun n who site notFree choice => by
         have compared := comparisons n who site notFree choice
         unfold intendedSiteGain payoffComponent at compared
@@ -195,7 +202,7 @@ theorem intended_sequentialEquilibrium_preserved
           ((MMenu).bounded (phaseInitialLaw setup) horizon scheduler).wellFoundedHistories
           ((MMenu).bounded (phaseInitialLaw setup) horizon scheduler)]
         exact freeOptimal who site (not_not.mp free) law)
-  have noExclusion := initialized_limit_no_exclusion setup leaks bounds horizon scheduler
+  have noExclusion := initialized_limit_no_exclusion setup runtime leaks bounds horizon scheduler
     opportunity inclusion timely completes wellFormed covers capacity sourceSequence scale positive
     le_one vanishes weights fallback sequence componentAssembled limit index increasing
     (fun who site => converges.strategy who site)

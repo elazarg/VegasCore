@@ -27,8 +27,8 @@ prior is closed under the swap of `who`'s inputs:
   (`Vegas.RevealRecord`, `Vegas.revealRecord_history`), which is a debt;
 * recalled owned requests are fixed: they name handles of the recalling player
   (`Vegas.ownedRequestsOwn_history`), and when that player is `who` the
-  envelope carrying the fact is recalled at both sites, so the fact holds at
-  both and the handle carries no pair.
+  envelope carrying the fact is recalled at both sites, so the fact holds
+  at both and the handle carries no pair.
 -/
 
 noncomputable section
@@ -41,6 +41,7 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
 
 section Pairs
 
@@ -137,9 +138,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup leaks).Scheduler}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 section Initial
 
@@ -155,8 +157,8 @@ private theorem candidateOfValue_binding_ne_fresh (owner : Player) (payload : L.
 the one-packet game, the inputs are those of a setup draw, and the candidate at
 the initial slot of each binding input is the candidate of the input value. -/
 theorem initialSlots_of_trace {state}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace state) :
-    ∀ control : (application setup leaks).Control, state = some control →
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state) :
+    ∀ control : (application setup runtime leaks).Control, state = some control →
       ∃ initial ∈ setup.initialLaw.support,
         control.execution.application.config.inputs = setup.eventInputs initial ∧
         ∀ input owner payload, (graph setup).inputLayout input = .binding owner payload →
@@ -170,7 +172,7 @@ theorem initialSlots_of_trace {state}
       subst initialized
       cases before with
       | none =>
-          change some control ∈ ((application setup leaks).transition (initialLaw setup)
+          change some control ∈ ((application setup runtime leaks).transition (initialLaw setup)
             horizon scheduler none joint).support at realized
           rw [ReactiveApplication.transition, PMF.support_map] at realized
           obtain ⟨drawn, drawnMember, drawnEq⟩ := realized
@@ -182,9 +184,10 @@ theorem initialSlots_of_trace {state}
           exact State.initial_candidate _ owner (.initial input)
       | some current =>
           obtain ⟨initial, member, inputsEq, candidates⟩ := ih current rfl
-          have step := transition_configStep (initialLaw setup) horizon scheduler current
+          have step := transition_configStep (initialLaw setup) horizon
+            scheduler current
             control joint realized
-          have kept := (keepsFixedCandidates_step (runtime setup) leaks).transition
+          have kept := (keepsFixedCandidates_step runtime leaks).transition
             (initialLaw setup) horizon scheduler current control joint realized
           have sameInputs : control.execution.application.config.inputs =
               current.execution.application.config.inputs := by
@@ -216,14 +219,15 @@ private theorem get?_of_store {kind : EventGraph.EventField Player L}
   simp [EventGraph.FieldRef.get?, stored]
 
 /-- The binding invariant holds along every history of the one-packet game. -/
-private theorem bindingInvariant_of_trace {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control)) :
+private theorem bindingInvariant_of_trace {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+      control)) :
     control.execution.application.BindingInvariant :=
-  ((runtime setup).reactiveBindingInvariant leaks).history (initialLaw setup) horizon scheduler
+  (runtime.reactiveBindingInvariant leaks).history (initialLaw setup) horizon scheduler
     (fun state member => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
       exact State.initial_bindingInvariant _)
-    ((bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon
+    ((bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
       scheduler trace)
 
 /-- **Accepted bindings of a debt-free owner hold the candidates of their
@@ -232,9 +236,9 @@ owes no failure, every field that accepted a handle of `who` stores a value
 whose candidate is the meaning of that handle: an initial binding keeps the
 candidate of its input, and a binding event stores a success, since a failed
 binding makes its owner owe a failure. -/
-theorem ownBinding_candidate {who : Player} {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control))
-    (debtFree : ∀ point, nativeDecodedState setup leaks (some control) = some point →
+theorem ownBinding_candidate {who : Player} {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    (debtFree : ∀ point, nativeDecodedState setup runtime leaks (some control) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
     {field : (graph setup).Field} {handle : Handle (graph setup)}
     (accepted : control.execution.application.accepted field = some handle)
@@ -242,16 +246,16 @@ theorem ownBinding_candidate {who : Player} {control : (application setup leaks)
     ∃ value, control.execution.application.config.store field = some value ∧
       control.execution.application.candidates.lookup handle =
         State.candidateOfValue who ((graph setup).layout field) value := by
-  have valid := bindingInvariant_of_trace trace
+  have valid := bindingInvariant_of_trace (runtime := runtime) trace
   obtain ⟨payload, layoutEq⟩ := valid.accepted_typed field handle accepted
   rw [owned] at layoutEq
   cases field with
   | inl input =>
       have inputEq : (graph setup).inputLayout input = .binding who payload := layoutEq
-      have initialAccepted := accepted_initial_of_trace trace inputEq
+      have initialAccepted := accepted_initial_of_trace (runtime := runtime) trace inputEq
       rw [accepted] at initialAccepted
       cases Option.some.inj initialAccepted
-      obtain ⟨_, _, _, candidates⟩ := initialSlots_of_trace trace control rfl
+      obtain ⟨_, _, _, candidates⟩ := initialSlots_of_trace (runtime := runtime) trace control rfl
       exact ⟨_, rfl, candidates input who payload inputEq⟩
   | inr event =>
       obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp
@@ -273,9 +277,9 @@ theorem ownBinding_candidate {who : Player} {control : (application setup leaks)
       | failure =>
           exfalso
           rw [result] at read
-          obtain ⟨rank, ⟨residual⟩, record⟩ := failedBindingRecord_history
+          obtain ⟨rank, ⟨residual⟩, record⟩ := failedBindingRecord_history (runtime := runtime)
             (failureProfile setup.program) horizon scheduler
-            ((bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup) horizon
+            ((bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
               scheduler trace)
           have done := valid.accepted_complete event handle accepted
           have owes := record event done who payload layoutEq read _ residual.decode
@@ -285,12 +289,12 @@ end Clean
 
 section Reveals
 
-variable (setup leaks) in
+variable (setup runtime leaks) in
 /-- **The reveal record.** The configuration decodes at a prefix, and every
 completed reveal either published the success its binding holds, or its owner's
 reveal failed at the decoded point. -/
 def RevealRecord (profile : BehavioralProfile setup.program)
-    (execution : (application setup leaks).Execution) : Prop :=
+    (execution : (application setup runtime leaks).Execution) : Prop :=
   ∃ rank, Nonempty (SourceResidual setup profile rank execution.application.config) ∧
     ∀ event ∈ execution.application.config.cut.completed, ∀ owner payload binding checks
       outputEq codeEq,
@@ -401,13 +405,14 @@ private theorem binding_of_resolveOutput {owner : Player} {payload : L.Ty}
               exact congrArg some foundEq
 
 omit [Fintype Player] in
-/-- The reveal record holds at every legal history of the default runtime,
+/-- The reveal record holds at every legal history of the supplied runtime,
 under arbitrary responses and every scheduler. -/
 theorem revealRecord_serviceInvariant (profile : BehavioralProfile setup.program)
-    (scheduler : (application setup leaks).Scheduler) :
-    (application setup leaks).ServiceInvariant scheduler (RevealRecord setup leaks profile) where
+    (scheduler : (application setup runtime leaks).Scheduler) :
+    (application setup runtime leaks).ServiceInvariant scheduler (RevealRecord setup runtime leaks
+      profile) where
   respond execution who action valid := by
-    have configEq := ((runtime setup).reactive_respond_application leaks execution who action).1
+    have configEq := (runtime.reactive_respond_application leaks execution who action).1
     unfold RevealRecord at valid ⊢
     rw [configEq]
     exact valid
@@ -497,14 +502,15 @@ theorem revealRecord_serviceInvariant (profile : BehavioralProfile setup.program
             (Or.inr ⟨completed, ready, action, member⟩) advanced
 
 omit [Fintype Player] in
-/-- The reveal record holds along every history of the default runtime from its
+/-- The reveal record holds along every history of the supplied runtime from its
 initial law. -/
 theorem revealRecord_history (profile : BehavioralProfile setup.program)
-    {control : (application setup leaks).Control}
-    (trace : ((application setup leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    {control : (application setup runtime leaks).Control}
+    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some control)) :
-    RevealRecord setup leaks profile control.execution :=
-  (revealRecord_serviceInvariant profile scheduler).history (initialLaw setup) horizon
+    RevealRecord setup runtime leaks profile control.execution :=
+  (revealRecord_serviceInvariant (runtime := runtime) profile scheduler).history (initialLaw
+    setup) horizon
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       let residual := SourceResidual.initial setup profile initial
@@ -516,10 +522,10 @@ end Reveals
 
 section Requests
 
-variable (setup leaks) in
+variable (setup runtime leaks) in
 /-- **Owned requests name own handles.** Every recalled transmission requesting
 owned evidence requests a fact about a handle of the recalling player. -/
-def OwnedRequestsOwn (execution : (application setup leaks).Execution) : Prop :=
+def OwnedRequestsOwn (execution : (application setup runtime leaks).Execution) : Prop :=
   ∀ who, ∀ recalled ∈ execution.recall who, ∀ submission,
     recalled.action.transmission = some submission →
     ∀ fact, submission.evidence = .owned fact → fact.handle.1 = who
@@ -545,15 +551,16 @@ private theorem handle_owner_of_normalize {who : Player}
 /-- Owned requests name own handles along every history of the one-packet
 game. -/
 theorem ownedRequestsOwn_history
-    {control : (application setup leaks).Control}
-    (trace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control)) :
-    OwnedRequestsOwn setup leaks control.execution :=
-  (show (bounds.onePacketMenu (runtime setup) leaks).ServiceInvariant scheduler
-      (OwnedRequestsOwn setup leaks) from
+    {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+      control)) :
+    OwnedRequestsOwn setup runtime leaks control.execution :=
+  (show (bounds.onePacketMenu runtime leaks).ServiceInvariant scheduler
+      (OwnedRequestsOwn setup runtime leaks) from
     { respond := fun execution who action valid member => by
-        let app := application setup leaks
+        let app := application setup runtime leaks
         intro observer recalled entryMember submission sent fact owned
-        rw [respond_recall (runtime setup) leaks] at entryMember
+        rw [respond_recall runtime leaks] at entryMember
         split at entryMember
         · rename_i same
           subst same
@@ -563,8 +570,8 @@ theorem ownedRequestsOwn_history
             rcases action with ⟨transmission⟩
             change transmission = some submission at sent
             subst sent
-            have normal := ((bounds.menu_mem (runtime setup) leaks observer _ _ _).mp
-              ((bounds.mem_onePacketActions (runtime setup) leaks observer _ _ _).mp
+            have normal := ((bounds.menu_mem runtime leaks observer _ _ _).mp
+              ((bounds.mem_onePacketActions runtime leaks observer _ _ _).mp
                 member).1).2
             have normalEvidence := congrArg (fun response : app.Action =>
               response.transmission.map WitnessedSubmission.evidence) normal
@@ -580,7 +587,7 @@ theorem ownedRequestsOwn_history
         · exact valid observer recalled entryMember submission sent fact owned
       environment := fun execution next command valid _ reached => by
         intro observer recalled member
-        rw [(application setup leaks).environmentStep_recall execution next command
+        rw [(application setup runtime leaks).environmentStep_recall execution next command
           reached] at member
         exact valid observer recalled member }).history
     (initialLaw setup) horizon (fun _ _ _ _ member => (List.not_mem_nil member).elim) trace
@@ -593,12 +600,15 @@ section Guard
 game at whose decoded points `who` owes no failure, with the same accepted
 handles, a field of `who` accepting a handle carries either no pair at the field
 and the handle, or the two typed successes and their raw values. -/
-theorem ownerPairs_of_accepted {who : Player} {first second : (application setup leaks).Control}
-    (firstTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some first))
-    (secondTrace : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some second))
-    (firstDebtFree : ∀ point, nativeDecodedState setup leaks (some first) = some point →
+theorem ownerPairs_of_accepted {who : Player} {first second : (application setup runtime
+  leaks).Control}
+    (firstTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+      first))
+    (secondTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+      second))
+    (firstDebtFree : ∀ point, nativeDecodedState setup runtime leaks (some first) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
-    (secondDebtFree : ∀ point, nativeDecodedState setup leaks (some second) = some point →
+    (secondDebtFree : ∀ point, nativeDecodedState setup runtime leaks (some second) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
     (acceptedEq : first.execution.application.accepted = second.execution.application.accepted)
     {field : (graph setup).Field} {slot : CandidateSlot (graph setup)} {payload : L.Ty}
@@ -617,9 +627,9 @@ theorem ownerPairs_of_accepted {who : Player} {first second : (application setup
           some (⟨payload, firstValue⟩, ⟨payload, secondValue⟩) := by
   intro firstView secondView
   obtain ⟨left, leftStore, leftCandidate⟩ :=
-    ownBinding_candidate firstTrace firstDebtFree accepted rfl
+    ownBinding_candidate (runtime := runtime) firstTrace firstDebtFree accepted rfl
   obtain ⟨right, rightStore, rightCandidate⟩ :=
-    ownBinding_candidate secondTrace secondDebtFree (acceptedEq ▸ accepted) rfl
+    ownBinding_candidate (runtime := runtime) secondTrace secondDebtFree (acceptedEq ▸ accepted) rfl
   have visible := (privateTo_of_binding layoutEq).1
   exact ownerPairs_of_candidateOfValue layoutEq
     ((EventGraph.playerStore_of_visible _ who _ field visible).trans leftStore)
@@ -683,7 +693,7 @@ theorem ownerHandlePairs_of_candidates_eq {who : Player} {first second : PlayerV
 omit [Fintype Player] in
 /-- At a reveal that is the owner's turn, the delivered value is the owner's
 stored binding. -/
-theorem deliveredValue_of_turn {who : Player} {view : (application setup leaks).PlayerView}
+theorem deliveredValue_of_turn {who : Player} {view : (application setup runtime leaks).PlayerView}
     {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
     {owner : Player} {payload : L.Ty}
     {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
@@ -693,7 +703,7 @@ theorem deliveredValue_of_turn {who : Player} {view : (application setup leaks).
       ((graph setup).nodes event) = .resolve owner payload binding checks}
     (resolveView : nodeView (graph setup) event =
       .resolve owner payload binding checks outputEq codeEq) :
-    deliveredValue setup leaks who view =
+    deliveredValue setup runtime leaks who view =
       some ⟨.binding owner payload, binding.get? view.application.observation.store⟩ := by
   unfold deliveredValue
   rw [turn]
@@ -710,30 +720,32 @@ of `Vegas.OwingAgent` at the site's agent), and the owner swap between their
 views. When the setup prior is closed under the swap of the inputs of the
 first site's histories, the swap guard holds at every history of the first site. -/
 theorem ownerSwap_guard {who : Player}
-    {site₁ site₂ : (onePacketInformation setup leaks bounds horizon scheduler).InformationSite who}
-    {past₁ past₂ : List (application setup leaks).PlayerEntry}
-    {view₁ view₂ : (application setup leaks).PlayerView}
+    {site₁ site₂ : (onePacketInformation setup runtime leaks bounds horizon
+      scheduler).InformationSite who}
+    {past₁ past₂ : List (application setup runtime leaks).PlayerEntry}
+    {view₁ view₂ : (application setup runtime leaks).PlayerView}
     (firstSite : site₁.1 = some (past₁, view₁)) (secondSite : site₂.1 = some (past₂, view₂))
-    (sameKey : lateKey setup leaks who site₁.1 = lateKey setup leaks who site₂.1)
-    (firstDebtFree : ∀ history : (onePacketInformation setup leaks bounds horizon
+    (sameKey : lateKey setup runtime leaks who site₁.1 = lateKey setup runtime leaks who site₂.1)
+    (firstDebtFree : ∀ history : (onePacketInformation setup runtime leaks bounds horizon
         scheduler).InformationHistory who site₁.1, ∀ point,
-      nativeDecodedState setup leaks history.1.state = some point →
+      nativeDecodedState setup runtime leaks history.1.state = some point →
         ¬ ProtocolState.OwesFailure who setup.program point)
-    (secondDebtFree : ∀ history : (onePacketInformation setup leaks bounds horizon
+    (secondDebtFree : ∀ history : (onePacketInformation setup runtime leaks bounds horizon
         scheduler).InformationHistory who site₂.1, ∀ point,
-      nativeDecodedState setup leaks history.1.state = some point →
+      nativeDecodedState setup runtime leaks history.1.state = some point →
         ¬ ProtocolState.OwesFailure who setup.program point)
     (priorClosed : ∀ initial ∈ setup.initialLaw.support,
-      (∃ history : (onePacketInformation setup leaks bounds horizon
-          scheduler).InformationHistory who site₁.1, ∃ control : (application setup leaks).Control,
+      (∃ history : (onePacketInformation setup runtime leaks bounds horizon
+          scheduler).InformationHistory who site₁.1, ∃ control : (application setup runtime
+            leaks).Control,
         history.1.state = some control ∧
           control.execution.application.config.inputs = setup.eventInputs initial) →
       ∃ other ∈ setup.initialLaw.support, setup.eventInputs other =
         (ownerSwap who view₁.application view₂.application).inputs (setup.eventInputs initial))
-    (history : (onePacketProtocol setup leaks bounds horizon scheduler).History)
-    (member : (onePacketInformation setup leaks bounds horizon scheduler).infoOf who
+    (history : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
+    (member : (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf who
       history.trace = site₁.1) :
-    SwapGuardState setup (ownerSwap who view₁.application view₂.application)
+    SwapGuardState setup runtime (ownerSwap who view₁.application view₂.application)
       (swapAllowed (ownerSwap who view₁.application view₂.application)) history.state := by
   -- The two histories and their views.
   obtain ⟨state₁, trace₁⟩ := history
@@ -748,7 +760,8 @@ theorem ownerSwap_guard {who : Player}
   cases state₂Eq : history₂.state with
   | none => rw [state₂Eq] at secondInfo; cases secondInfo
   | some control₂ =>
-  have trace₂ : (onePacketProtocol setup leaks bounds horizon scheduler).Trace (some control₂) :=
+  have trace₂ : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+    control₂) :=
     state₂Eq ▸ history₂.trace
   rw [state₂Eq] at secondInfo
   simp only [ReactiveApplication.observe] at member secondInfo
@@ -756,10 +769,12 @@ theorem ownerSwap_guard {who : Player}
   · split at secondInfo
     · obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj member).symm
       obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj secondInfo).symm
-      have firstDebt : ∀ point, nativeDecodedState setup leaks (some control₁) = some point →
+      have firstDebt : ∀ point, nativeDecodedState setup runtime leaks (some control₁) = some
+        point →
           ¬ ProtocolState.OwesFailure who setup.program point := fun point decoded =>
         firstDebtFree ⟨⟨some control₁, trace₁⟩, firstMember⟩ point decoded
-      have secondDebt : ∀ point, nativeDecodedState setup leaks (some control₂) = some point →
+      have secondDebt : ∀ point, nativeDecodedState setup runtime leaks (some control₂) = some
+        point →
           ¬ ProtocolState.OwesFailure who setup.program point := fun point decoded =>
         secondDebtFree ⟨history₂, secondMember⟩ point (by rw [state₂Eq]; exact decoded)
       rw [firstSite, secondSite] at sameKey
@@ -770,18 +785,19 @@ theorem ownerSwap_guard {who : Player}
           control₂.execution.application.publicView := currentEq.1
       have acceptedEq : control₁.execution.application.accepted =
           control₂.execution.application.accepted := congrArg PublicView.accepted publicEq
-      have valid₁ := bindingInvariant_of_trace trace₁
-      have firstRaw := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace (initialLaw setup)
+      have valid₁ := bindingInvariant_of_trace (runtime := runtime) trace₁
+      have firstRaw := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
         horizon scheduler trace₁
-      have secondRaw := (bounds.onePacketMenu (runtime setup) leaks).toRawTrace
+      have secondRaw := (bounds.onePacketMenu runtime leaks).toRawTrace
         (initialLaw setup) horizon scheduler trace₂
-      change SwapGuard setup (ownerSwap who (control₁.execution.application.playerView who)
+      change SwapGuard setup runtime (ownerSwap who (control₁.execution.application.playerView who)
         (control₂.execution.application.playerView who))
         (swapAllowed (ownerSwap who (control₁.execution.application.playerView who)
           (control₂.execution.application.playerView who))) control₁.execution
       refine ⟨?_, ?_, ?_, ?_, HiddenSwap.expired_ofPairs _ _ _⟩
       · -- The inputs: initial handles are compatible, and the prior is closed.
-        obtain ⟨initial, initialMember, inputsEq, -⟩ := initialSlots_of_trace trace₁ control₁ rfl
+        obtain ⟨initial, initialMember, inputsEq, -⟩ := initialSlots_of_trace (runtime := runtime)
+          trace₁ control₁ rfl
         have drawnMember : ∀ draw ∈ setup.initialLaw.support,
             EventGraphRuntime.State.initial (graph := graph setup) (setup.eventInputs draw) ∈
               (initialLaw setup).support := fun draw drawMember => by
@@ -794,8 +810,10 @@ theorem ownerSwap_guard {who : Player}
           intro input owner payload layoutEq
           by_cases owned : owner = who
           · subst owned
-            exact ownerPairs_of_accepted trace₁ trace₂ firstDebt secondDebt acceptedEq
-              (field := .inl input) layoutEq (accepted_initial_of_trace trace₁ layoutEq)
+            exact ownerPairs_of_accepted (runtime := runtime) trace₁ trace₂ firstDebt secondDebt
+              acceptedEq
+              (field := .inl input) layoutEq (accepted_initial_of_trace (runtime := runtime)
+                trace₁ layoutEq)
           · exact Or.inl ⟨ownerPairs_of_not_visible
               (not_visible_of_binding (field := .inl input) layoutEq owned),
               ownerHandlePairs_of_ne owned⟩
@@ -812,7 +830,8 @@ theorem ownerSwap_guard {who : Player}
         obtain ⟨owner, slot⟩ := candidate
         by_cases owned : owner = who
         · subst owned
-          rcases ownerPairs_of_accepted trace₁ trace₂ firstDebt secondDebt acceptedEq layoutEq
+          rcases ownerPairs_of_accepted (runtime := runtime) trace₁ trace₂ firstDebt secondDebt
+            acceptedEq layoutEq
               accepted with ⟨eventNone, handleNone⟩ | ⟨left, right, eventPair, handlePair⟩
           · exact HiddenSwap.bindCompatible_ofPairs_none _ _ eventNone handleNone
           · exact HiddenSwap.bindCompatible_ofPairs _ _ layoutEq left right eventPair handlePair
@@ -844,10 +863,12 @@ theorem ownerSwap_guard {who : Player}
                     actor
                   have secondTurn : control₂.execution.application.publicView.ownTurn? owner =
                       some event := publicEq ▸ firstTurn
-                  rw [deliveredValue_of_turn (view := control₁.execution.observe
-                      (application setup leaks) owner) firstTurn resolveView,
-                    deliveredValue_of_turn (view := control₂.execution.observe
-                      (application setup leaks) owner) secondTurn resolveView] at deliveredEq
+                  rw [deliveredValue_of_turn (runtime := runtime) (view :=
+                    control₁.execution.observe
+                      (application setup runtime leaks) owner) firstTurn resolveView,
+                    deliveredValue_of_turn (runtime := runtime) (view := control₂.execution.observe
+                      (application setup runtime leaks) owner) secondTurn resolveView]
+                        at deliveredEq
                   have viewGet := eq_of_heq (Sigma.mk.inj (Option.some.inj deliveredEq)).2
                   exact (masked _).symm.trans (viewGet.trans (masked _))
                 · -- A completed reveal published its binding: the publication is public.
@@ -879,8 +900,8 @@ theorem ownerSwap_guard {who : Player}
                       (.publication payload) := ⟨.inr event, outputEq⟩
                   have firstRead := get?_of_store publication stored
                   have secondRead := get?_of_store publication secondStored
-                  have noFailure : ∀ {control : (application setup leaks).Control},
-                      (∀ point, nativeDecodedState setup leaks (some control) = some point →
+                  have noFailure : ∀ {control : (application setup runtime leaks).Control},
+                      (∀ point, nativeDecodedState setup runtime leaks (some control) = some point →
                         ¬ ProtocolState.OwesFailure owner setup.program point) →
                       ∀ {rank} (_ : SourceResidual setup (failureProfile setup.program) rank
                         control.execution.application.config),
@@ -890,9 +911,11 @@ theorem ownerSwap_guard {who : Player}
                       (Or.inl (ProtocolState.RevealFailed.indebted _ _
                         (failed _ residual.decode)))
                   obtain ⟨_, ⟨firstResidual⟩, firstRecord⟩ :=
-                    revealRecord_history (failureProfile setup.program) firstRaw
+                    revealRecord_history (runtime := runtime) (failureProfile setup.program)
+                      firstRaw
                   obtain ⟨_, ⟨secondResidual⟩, secondRecord⟩ :=
-                    revealRecord_history (failureProfile setup.program) secondRaw
+                    revealRecord_history (runtime := runtime) (failureProfile setup.program)
+                      secondRaw
                   rcases firstRecord event completed owner payload binding checks outputEq codeEq
                       resolveView _ firstRead with ⟨first, firstResult, firstBound⟩ | failed
                   · rcases secondRecord event secondCompleted owner payload binding checks
@@ -919,9 +942,10 @@ theorem ownerSwap_guard {who : Player}
                 change candidateOwner' = owner at candidateOwner
                 subst candidateOwner
                 obtain ⟨left, leftStore, leftCandidate⟩ :=
-                  ownBinding_candidate trace₁ firstDebt accepted rfl
+                  ownBinding_candidate (runtime := runtime) trace₁ firstDebt accepted rfl
                 obtain ⟨right, rightStore, rightCandidate⟩ :=
-                  ownBinding_candidate trace₂ secondDebt (acceptedEq ▸ accepted) rfl
+                  ownBinding_candidate (runtime := runtime) trace₂ secondDebt (acceptedEq ▸
+                    accepted) rfl
                 rw [storeEq, rightStore] at leftStore
                 cases Option.some.inj leftStore
                 change EventGraph.pairSwap (ownerHandlePairs candidateOwner' _ _
@@ -944,34 +968,39 @@ theorem ownerSwap_guard {who : Player}
         | none | forward => trivial
         | owned fact =>
             change EventGraph.pairSwap (ownerHandlePairs who _ _ fact.handle) fact.raw = fact.raw
-            have own := ownedRequestsOwn_history trace₁ player recalled recalledMember submission
+            have own := ownedRequestsOwn_history (runtime := runtime) trace₁ player recalled
+              recalledMember submission
               sent fact owned
             by_cases same : player = who
             · rw [same] at recalledMember own
-              obtain ⟨message, emitted, evidence, -⟩ := ownedRequestsEmitted_history bounds trace₁
+              obtain ⟨message, emitted, evidence, -⟩ := ownedRequestsEmitted_history (runtime :=
+                runtime) bounds trace₁
                 who recalled recalledMember submission sent
               have carried := evidence fact owned
               have decoded : fact ∈ message.payload.evidence.toList := by
                 rw [carried]
                 exact List.mem_singleton_self fact
-              have firstInput := output_mem_inputs_of_trace bounds trace₁ who message
+              have firstInput := output_mem_inputs_of_trace (runtime := runtime) bounds trace₁ who
+                message
                 (List.mem_filterMap.mpr ⟨recalled, recalledMember, emitted⟩)
-              have firstSound : ((runtime setup).packetEvidence leaks).Sound control₁.execution :=
-                ((runtime setup).packetEvidence leaks).history_sound (initialLaw setup) horizon
+              have firstSound : (runtime.packetEvidence leaks).Sound control₁.execution :=
+                (runtime.packetEvidence leaks).history_sound (initialLaw setup) horizon
                   scheduler firstRaw
               have firstHolds : fact.Holds control₁.execution.application :=
                 firstSound.inputs message firstInput fact decoded
               have mapped := recalledEq ▸ List.mem_map_of_mem
-                (f := fun entry : (application setup leaks).PlayerEntry =>
-                  (operationalView setup leaks entry.beforeView, entry.emitted)) recalledMember
+                (f := fun entry : (application setup runtime leaks).PlayerEntry =>
+                  (operationalView setup runtime leaks entry.beforeView, entry.emitted))
+                    recalledMember
               obtain ⟨entry, entryMember, entryEq⟩ := List.mem_map.mp mapped
               have entryEmitted : entry.emitted = some message :=
                 (congrArg Prod.snd entryEq).trans emitted
-              have secondInput := output_mem_inputs_of_trace bounds trace₂ who message
+              have secondInput := output_mem_inputs_of_trace (runtime := runtime) bounds trace₂
+                who message
                 (List.mem_filterMap.mpr ⟨entry, entryMember, entryEmitted⟩)
-              have secondSound : ((runtime setup).packetEvidence leaks).Sound
+              have secondSound : (runtime.packetEvidence leaks).Sound
                   control₂.execution :=
-                ((runtime setup).packetEvidence leaks).history_sound (initialLaw setup) horizon
+                (runtime.packetEvidence leaks).history_sound (initialLaw setup) horizon
                   scheduler secondRaw
               have secondHolds : fact.Holds control₂.execution.application :=
                 secondSound.inputs message secondInput fact decoded
