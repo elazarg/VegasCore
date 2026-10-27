@@ -35,10 +35,19 @@ observation assumptions are not universal blockchain semantics.
 Outer recording is already separate from application acceptance:
 `Interaction.ReactiveApplication.Execution.includePending` updates the network
 ledger even when the application handler returns no result. The
-[publication module](../Interaction/ReactivePublication.lean) already proves
-network publication invariants. The new task is to guarantee the required
-bodies reach that ledger under the specified service, not to invent another
-rejected-call archive.
+[message publication module](../Interaction/MessagePublication.lean) proves
+`Interaction.MessageNetwork.PendingOrPublished`: a submitted envelope remains
+pending or is published. This does not require a scheduler restriction.
+[ReactivePublication](../Interaction/ReactivePublication.lean) lifts persistence
+to executions and also supplies an at-most-once inclusion contract. The new task
+is timely publication of the required bodies, not a second rejected-call
+archive or cancellation-prevention mechanism.
+
+The body-key, fee reserve and immutable validator in the mathematical runtime's
+deployment discussion explain how a real chain might realize this abstraction.
+They are not missing Lean network state. Do not implement a key/fee validator
+to reprove persistence already guaranteed by the abstract network. Capacity and
+the service's inclusion law remain separate obligations.
 
 ## Definition boundaries
 
@@ -67,9 +76,13 @@ In particular, completing a native event refreshes readiness timestamps in
 [EventApplication](../Vegas/Pending/EventApplication.lean), including events
 outside the installed phase. Simply postponing normalization can start the
 next phase's deadlines before that phase becomes available. The fixed-window
-controller must define phase-gated activation or installation-time deadline
-rebasing, with the corresponding observation and invariant proofs. The
-immediate controller must retain its existing timestamp behavior.
+controller should gate effective readiness until phase installation at its
+public window time. Then the normal timestamp update can use that time without
+rebasing an earlier stamp. Distinguish graph dependency readiness from readiness
+permitted by the installed phase, and check the invariants connecting readiness
+to timestamps; merely suppressing normalization or expiry commands is not a
+gate. Use rebasing only if this smaller construction fails. The immediate
+controller must retain its existing timestamp behavior.
 
 Do not introduce an arbitrary failure-handler algebra or a product of Boolean
 configuration switches. Both concrete implementations use the source's
@@ -84,24 +97,49 @@ a player observation. Scheduler access to network data is distinct from player
 knowledge; neither justifies inventing a public order of senders.
 
 For the new service, distinguish signed body, broadcast occurrence and
-broadcaster. A forwarded body does not change its signed author. A replay does
-not create a new body job or reset its inclusion deadline. Reuse the existing
-authentication/known-packet machinery where its definitions have this meaning;
-add the missing body identity and authorization data at the packet layer.
+broadcaster. Define body identity as a projection of the payload, preserving
+the signed author and all authenticated fields while ignoring envelope serial
+and rebroadcaster. Check that projection against the existing token and
+forwarding definitions before adding packet data. A forwarded body does not
+change its author. In the closed authenticated model the first envelope of a
+new non-genesis body must originate with its author; this needs a provenance
+lemma, not an inference from the envelope sender field alone.
 
-The current reactive response emits at most one envelope. The concurrent
-mathematics permits bounded fresh bodies together with replay coordinates.
-Encoding this as a list payload would couple their inclusion; serializing it
-into several responses can add observations or decisions. Neither is a free
-representation change. Resolve this finite batch interface with an explicit
-transition and information comparison before extracting more generic APIs.
-A wider engine primitive is justified only by that concrete mismatch.
+Start with one inclusion job per body in the existing scheduler's private
+memory. The scheduler can inspect pending payloads; this does not reveal them
+to players. The first envelope starts the body's one service draw. Copies do
+not reset it or draw new delays. A copy may be included only after the body's
+canonical record, and subsequent records have no further application effect.
+Thus a foreign replay cannot complete an opening early, and self-replays
+cannot buy independent chances of inclusion. These are explicit scheduler
+and controller laws; no change to the network carrier is needed for them.
+Every submitted body must have a record by its promised bound, not every copy
+of that body. Duplicate envelopes can remain separately visible.
 
-Keep engine fuel, player sending opportunities and blockchain time distinct.
-Several engine commands may implement one logical block; their count must not
-silently become a new player-visible clock or a public sender order. A concrete
-service must relate these units and provide enough commands/capacity for its
-claimed opportunity and publication bounds.
+Keep the current one-envelope response as the first implementation candidate.
+One proper commitment-block body already carries the owner's component handles.
+Additional raw bodies and replays can use additional activations within the
+same slot. This avoids requiring a multi-envelope engine primitive up front.
+It still needs a proof: intermediate observations, adaptive timing, allocation
+of activation opportunities and the fresh/replay budget must support the
+retained comparison. A finite batch and a sequence of choices are not
+definitionally the same game. Widen the engine only after identifying a concrete
+obstruction to this representation.
+
+Within-slot activation order is a remaining service choice. A fixed order
+cannot silently become common knowledge of previous sends. A randomized order
+must still satisfy the claimed opportunity and freshness laws; randomization
+alone is not a proof. Specify the players' actual observations of activations
+and distinguish opportunity order from unknown decisions to send or stay silent.
+
+Reuse the existing time units:
+[ServicePlan](../Vegas/Pending/ServicePlan.lean) separates opportunities from
+clock ticks, [ReactiveAsyncContract](../Vegas/Pending/ReactiveAsyncContract.lean)
+defines a slot between ticks, and
+[ReservedEpochScheduler](../Vegas/Pending/ReservedEpochScheduler.lean) counts
+environment commands with a cursor. Relate engine fuel to these units and the
+new resource bound. Do not invent another time semantics or expose internal
+microsteps as a new player-visible clock.
 
 Keep service properties separate. The existing phase service protects a sole
 packet for a current attempt/event. The concurrent route additionally needs
@@ -110,7 +148,8 @@ and independent fresh service. State those properties over actual executions;
 construct a scheduler satisfying them. Do not strengthen the shared service
 record so every sequential instance must satisfy the concurrent assumptions.
 
-Submission commits all new body jobs before exposing any component effect.
+Each submission starts its body's irrevocable service obligation before any
+component effect; a single body carrying several commitments has one job.
 Exclusion, retirement, rejection and base-payoff freeze cannot cancel them.
 Final audit occurs after the last permitted raw submission plus the publication
 bound. These are essential to stopping the raw comparison at submission;
@@ -166,26 +205,35 @@ execution protocol, information model and readers are derived definitions.
 Configuration selects a concrete controller construction; it does not supply
 arbitrary transition, observation or readout functions in their place.
 Operational hypotheses concern these concrete objects. They must not contain
-SE preservation or its deviation comparison as an assumed field.
+SE preservation or its deviation comparison as an assumed field. Separate
+network-supplied delay/observation laws from contract windows and controller
+choices in their concrete records. Declared raw traffic bounds are an explicit
+model/resource premise, not a hidden permission for the compiler to remove
+deviations. Any existential capacity choice must be visible in the theorem.
 
-The existential in [Paper](../Paper.lean) ranges over such concrete
+The proposed broadcast theorem must quantify over such concrete
 configurations before the source equilibrium is selected. The supplied service
 law and its assumptions are fixed outside that existential, so it cannot choose
 a more favorable network. The theorem may select the contract configuration
 and an implementing equilibrium. No new contract programming language is
 required merely to express this result.
 
-The generic [broadcast carrier](../Vegas/Game/BroadcastImplementation.lean) is
-not the basis for this implementation: its freely supplied protocol, model and
-readers fail to enforce these connections. Replace that draft when the concrete
-definitions are available; do not fill its gap with an unspecified predicate
-or an admitted constructor. `Paper.lean` remains one file of statements.
+The [generic game carrier](../Vegas/Game/SourceGameImplementation.lean) only
+expresses the preservation conclusion. Its freely supplied protocol, model and
+readers do not enforce these connections. The proposition definition in
+[Paper](../Paper.lean) is not an asserted result and is not the broadcast target:
+the source game itself can witness the unrestricted existential. State the
+concrete target when its definitions are available; do not turn that generic
+existence into a broadcast theorem or fill the gap with an unspecified predicate.
+There is no admitted constructor, proof admission or speculative observation
+signal interface. `Paper.lean` remains one file of statements.
 
 ## Known semantic risks and required checks
 
 | Risk | Required evidence |
 | --- | --- |
 | Microstep serialization exposes an order of sends or introduces intermediate choices. | Show the actual views and legal deviations of the batch representation; a terminal-state equality alone is insufficient. No invented public sender calendar. |
+| Foreign or self-replays improve the first body's service. | One first-submission draw per signed body; copies cannot be included ahead of its canonical record, and cannot cause a second application effect. Prove provenance and body projection. |
 | Delaying closure changes accepted calls, source information or future deadlines. | Give exact boundary order, including inclusion at the deadline, failure settlement and readiness. Prove both the immediate-controller identity and the new window rules. |
 | Private preparation consumes later legal choices. | Establish that future admitted source choices and fresh submission allowance remain available at every relevant raw prefix. Reuse candidate machinery only with this property. |
 | Retry forgets information or lets old authenticated bodies become current again. | Preserve recall and actual archives; distinguish attempt authorization from a sender-supplied tag; prove fresh-action and old-replay comparisons. |
@@ -206,9 +254,10 @@ or an admitted constructor. `Paper.lean` remains one file of statements.
 3. Build the fixed-window controller and body service on the existing engine,
    adding only the justified packet/menu changes. Prove the operational facts
    needed to identify its actual game, observations and settlement.
-4. Replace the arbitrary-game existential draft with the fully defined concrete
-   statement. Its SE proof may remain the explicitly requested admission; its
-   target semantics may not.
+4. Define the fully specified concrete target proposition before proving it.
+   Keep an unproved target as a proposition definition so the strict build
+   remains meaningful. Assert a theorem only when its proof is supplied;
+   operational semantics cannot be replaced with an admitted constructor.
 5. Instantiate the retained-game comparison and raw extension. Keep the
    timing/information arguments specific to the service they actually prove.
    Extract a common theorem only when both preservation routes use its contract.

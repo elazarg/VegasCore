@@ -102,6 +102,11 @@ to wait for a receipt with the earlier stopping event of actual submission.
 
 ## 3. Publication, funding and final audit
 
+For mechanization on the existing Lean network, envelope persistence is already
+an invariant; the body-key validator below is a deployment refinement of that
+abstraction. The [runtime design](se-runtime-design.md) separates the existing
+persistence proof from the new body-level timing and copy-service laws.
+
 A body has a canonical key. A key can be consumed only by recording that exact
 body. Replacement, cancellation, shared nonces, validator changes and fee
 withdrawals cannot invalidate an admitted recording obligation. Inner game

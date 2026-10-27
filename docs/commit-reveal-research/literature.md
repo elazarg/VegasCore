@@ -121,8 +121,9 @@ source factorization, own-service freshness and reset compatibility.
 [Strategic terminal reporting](../se-strategic-reporting-mathematics.md) and
 [authorwise evidence summaries](../se-evidence-summary-mathematics.md) remain
 extension tools for other message models, not prerequisites of the primary
-construction. The admitted existential draft in [Paper](../../Paper.lean) still
-needs a formal operational specification restricting its implementation carrier.
+construction. The generic existential conclusion in [Paper](../../Paper.lean)
+is a proposition definition, not an asserted result; the concrete broadcast
+target still needs its operational definitions.
 The cited ERC-4337 components support a possible validation design, not a proof
 of the required nonrevocable submission or independent inclusion interface.
 

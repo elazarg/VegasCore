@@ -44,8 +44,9 @@ reports. [Reporting incentives](se-strategic-reporting-mathematics.md) and an
 [exact evidence summary](se-evidence-summary-mathematics.md) remain separate
 extension tools. The specified per-run capacity, nonrevocable submission,
 independent service, observation/reset and ideal-message assumptions remain
-explicit. The existential [Lean draft](../Paper.lean) is admitted and still
-needs its operational specification; it is not a checked implementation theorem.
+explicit. The [Lean conclusion](../Paper.lean) is a proposition definition over
+generic games; a concrete operational target is still needed before stating a
+broadcast implementation theorem.
 
 The [support-based broadcast theorem](se-asynchronous-preservation-theorem.md)
 and [fresh-service/reset proof](se-asynchronous-support-weakening.md) give the

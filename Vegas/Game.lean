@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.BroadcastImplementation
+import Vegas.Game.SourceGameImplementation
 import Vegas.Game.TerminalObservation
 import Vegas.Game.TerminalObservationLaws
 import Vegas.Game.PhasePaymentReadout

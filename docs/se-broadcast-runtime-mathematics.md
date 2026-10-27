@@ -136,6 +136,16 @@ and are retained exactly. They are not replaced by this shadow construction.
 
 ## 3. Funded body keys and transaction validity
 
+In the existing abstract Lean network, submitted envelopes already remain
+pending or published: `Interaction.MessageNetwork.PendingOrPublished` in
+[MessagePublication](../Interaction/MessagePublication.lean). There is no
+cancellation operation. The validator and funding rules below describe how a
+real-chain carrier could realize that persistence assumption; they do not call
+for implementing a key/fee validator in the abstract Lean runtime. For that
+runtime, use the existing invariant, a signed-body projection, and the
+body-service scheduler contract described in the [runtime design](se-runtime-design.md).
+Persistence alone still does not prove timely publication or capacity.
+
 For each potential qualifying body e, use a collision-free canonical key k(e).
 The mathematical key space is finite. Different conflicting bodies have
 different keys even when their application slot is the same. The primary

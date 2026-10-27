@@ -26,12 +26,12 @@ development, its remaining steps, and the index of results retired to the
 
 Search with rg and inspect signatures with lean-defs.py before adding machinery.
 
-The admitted broadcast-existence draft in [Paper](../Paper.lean) is a
-formalization target, not a checked manuscript result. Its
-[implementation carrier](../Vegas/Game/BroadcastImplementation.lean) belongs to
-the strategic composition layer. It contains no compiler constructor and does
-not yet enforce the broadcast operational specification. The concrete compiler
-and runtime definitions belong to their respective owning layers.
+The source-preservation conclusion in [Paper](../Paper.lean) is a proposition
+definition, not an asserted result or a broadcast specification. Its
+[finite-game carrier](../Vegas/Game/SourceGameImplementation.lean) belongs to
+the strategic composition layer and imposes no operational semantics. A concrete
+broadcast target must derive its game from definitions in the compiler and
+runtime layers; it cannot use an unrestricted game existential as that target.
 The [SE runtime design](se-runtime-design.md) specifies how to reuse those
 layers across the existing sequential and proposed fixed-window concurrent
 implementations, without making the latter's proof assumptions universal.

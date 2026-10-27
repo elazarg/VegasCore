@@ -35,9 +35,10 @@ submission has a precise meaning; merely observing signed bytes does not create
 a chain job. These are not properties of every blockchain or every timely
 builder. The [mechanization inventory](se-asynchronous-mechanization-inventory.md)
 separates the reusable Lean foundations from the concrete implementation work.
-The existential draft in [Paper](../Paper.lean) fixes one implementation before
-all source equilibria, but is admitted and still lacks the formal operational
-constraint connecting its generic game carrier to this broadcast runtime.
+The proposition definition in [Paper](../Paper.lean) expresses the existential
+preservation conclusion without asserting it. Its generic game carrier imposes
+no operational constraints; it is not yet a statement about this broadcast
+runtime.
 
 The [support-based theorem](se-asynchronous-preservation-theorem.md) gives an
 alternative timing proof using conditional repair of late broadcasts. Its

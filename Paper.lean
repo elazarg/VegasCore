@@ -16,9 +16,9 @@ manuscript states, each pinned to the three standard axioms. The build rejects
 hatches throughout the tree, so results the manuscript does not state need no
 pin here.
 
-The broadcast existence statement is an admitted formalization draft, not a
-checked manuscript result. Its operational specification is still to be
-formalized; the ordinary warning-strict build rejects its admission.
+The source-preservation conclusion below is a proposition definition, not an
+asserted result or a broadcast specification. Concrete runtime definitions and
+their hypotheses are required before stating the proposed broadcast theorem.
 -/
 
 noncomputable section
@@ -31,29 +31,20 @@ open GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
 
 open Vegas.SourceProgram in
-/-- Draft existential preservation conclusion. One implementation must work
-for every source equilibrium; the target assessment may depend on that source
-assessment. There is no admitted compiler constructor.
-
-The carrier does not yet constrain the implementation to realize `parameters`
-or the broadcast operational specification. Those conditions must be added
-before this can state blockchain implementation correctness: an unrestricted
-existence statement could be witnessed by the source game itself. -/
-theorem broadcast_source_raw_sequential_equilibrium
+/-- The existential preservation conclusion, without an assertion that it holds.
+The implementation precedes every source assessment. This proposition imposes
+no operational constraints and can be witnessed by the source game itself;
+it is not a blockchain preservation target until restricted to a concrete
+runtime. No compiler, network assumption or preservation proof is supplied. -/
+def SourcePreservationConclusion
     [Fintype Player] [IExpr.ResultTypes L]
     (setup : Setup (Player := Player) (L := L))
-    [setup.FiniteInitialLaw] [Finite setup.intendedProtocol.History]
-    (finiteBindings : setup.program.FiniteBindingTypes) (wellFormed : setup.WellFormed)
-    (parameters : BroadcastParameters Player)
-    (payoffs : ConcurrentPayoffs setup) (boundedPayoffs : payoffs.Bounded)
-    (deposit : Player → ℝ)
-    (funded : ∀ who, max 0 (payoffs.upperUtility who) - payoffs.excludedPayoff who ≤ deposit who) :
-    ∃ implementation : BroadcastImplementation setup,
+    (payoffs : ConcurrentPayoffs setup) (deposit : Player → ℝ) : Prop :=
+    ∃ implementation : SourceGameImplementation setup,
       ∀ source : setup.intendedModel.BehavioralAssessment,
         payoffs.SourceEquilibrium source →
           ∃ target : implementation.model.BehavioralAssessment,
-            implementation.PreservesAssessment payoffs deposit source target := by
-  sorry
+            implementation.PreservesAssessment payoffs deposit source target
 
 open Vegas.SourceProgram in
 theorem concurrent_source_raw_sequential_equilibrium

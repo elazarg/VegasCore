@@ -20,16 +20,15 @@ The [strategic reporting game](se-strategic-reporting-mathematics.md) and
 tools. They do not establish the retained timing/information argument for a
 separate announcement-only operation.
 
-The admitted existential statement in [Paper](../Paper.lean) has the order
+The proposition definition in [Paper](../Paper.lean) has the order
 "there exists one implementation; for every source equilibrium there exists
-an implementing equilibrium." The [result carrier](../Vegas/Game/BroadcastImplementation.lean)
-defines its payoff and joint-law conclusion without a compiler stub or an
-admitted helper definition. It is still a generic finite-game carrier: no formal
-operational predicate connects it to the proposed parameters or broadcast
-transition system. Adding that constraint is necessary before the statement
-expresses blockchain implementation correctness; otherwise the source game
-itself could witness existence. The draft is preparation, not a checked theorem
-or a complete formal statement of the mathematical construction.
+an implementing equilibrium." The [result carrier](../Vegas/Game/SourceGameImplementation.lean)
+defines its payoff and joint-law conclusion without a compiler stub or a proof
+admission. It is a generic finite-game carrier with no operational constraints;
+the source game itself can witness its existential. This is a definition of
+the conclusion's shape, not an asserted result or a complete formal statement
+of the broadcast construction. The concrete target needs a game derived from
+the runtime, with network laws separate from contract choices and raw bounds.
 
 The program scope is finite initial support, finite binding domains and finite
 support for every reachable sample of the linear source syntax, so the intended
@@ -46,9 +45,9 @@ values are finite in the stated game.
 | Fixed windows and recording interval | Supplied runtime parameters and event deadlines exist. The current phase application advances when a phase finishes. | Add readiness gates for the public times A, D and the recording interval. First sends remain possible after A. Record stale bodies independently of executing their inner calls. Prove publication from the actual service bound. |
 | Failure and rollback | `Vegas.EventGraphRuntime.PhaseRuntimeState.settle` already rolls back a failed commitment phase when fresh misses occur and preserves earlier checkpoints. | Relate the fixed-window batch controller to these source transitions. The support-free argument requires rollback of the entire current commitment block on any commitment failure. No global abort is needed. |
 | Saved obligations and exclusion payoff | Source recovery debt and native phase exclusion lemmas exist; see below. | Prove termination and resolve/check-or-exclude for the new service/controller. A guard can fail at its last input publication, not necessarily at its subject opening. |
-| Broadcast occurrences and entries | `Interaction.MessageNetwork` and the reactive recall/receipt modules provide authenticated messages and actual histories. | Distinguish a canonical body from its repeated broadcast occurrences and from the rebroadcaster. Add finite batch/replay actions, immutable body-level jobs, and the appropriate reference-profile projection. Do not erase visible duplicate receipts. |
+| Broadcast occurrences and entries | `Interaction.MessageNetwork` and the reactive recall/receipt modules provide authenticated messages and actual histories. | Define the signed-body projection and provenance. First try one body per response, with extra raw sends/replays using more activations in a slot. Prove the operational information/budget comparison; do not erase visible duplicate receipts or assume batch equivalence. |
 | Physical authorization | `Vegas.EventGraphRuntime.CommitAttemptId` and `Vegas.EventGraphRuntime.CommitAttemptPacket.tokenValid_retired` already distinguish current and retired attempts. | Add actual installed-phase and accepted-component authorization records; establish persistent positive validity/invalidity checks. A namespace inequality lemma is not the entire authorization/evidence adapter. |
-| Service | The existing concurrent implementation uses one correlated reserved tape for the whole run. | Construct the chosen body-level service. Either prove the same-information delayed-delivery repair, or the fresh-body completion and regenerated-continuation conditions. The existing tape mixture is not automatically an instance of the latter. |
+| Service | The existing concurrent implementation uses one correlated reserved tape for the whole run. Private scheduler memory, persistence of submitted envelopes, slot time and service contracts already exist. | Construct the body-level scheduler contract: one first-submission draw, copies after canonical recording, no duplicate application effect, and publication by the bound. Prove the chosen timing/reset conditions. Neither the existing tape mixture nor persistence alone supplies them. No fee/key validator is needed in the abstract Lean network. |
 | Timing policy | The existing concurrent local-gain theorem is specialized to its implementation and information construction. | For the support-based route, build the joint completion-agent game. For the fresh-service route, use the clock optimizer over success probabilities p_e(a). These are proof-selected strategies; the implementation does not forbid alternative timing. |
 | Failure continuation | Generic constrained information-agent completion and perfect-recall one-step bounds exist. | Supply the actual continuation information model. The support-based proof completes full raw handlers. The support-free proof first uses a structurally clean handler, fresh namespaces, old-namespace observation filtering and fixed replay coordinates, then restores raw actions by extension. Players retain their actual memory. |
 | Audit and collateral | The reactive engine already records included envelopes even when the application rejects them. Existing evidence services and terminal audit accounting supply collection and payoff-spread interfaces. | Instantiate that recording for the new body representation and implement the positive ledger verifier. Prove publication under the chosen service and derive inevitable charge at the first forbidden submission; no peer-receipt premise is needed. Fund per-author per-run publication allowances and audit work separately from deterrence collateral. Monitor capture and strategic reporting are separate alternatives. |
@@ -152,5 +151,5 @@ report-all game. Its availability follows from total recording and the assumed
 nonrevocable inclusion service for submitted bodies. A monitored backend instead
 assumes capture and forwarding. A strategic reporting backend needs the report
 game and its incentive proof. Objective verification alone supplies none of
-those availability properties. The admitted Lean draft does not discharge the
-operational adapters or change the checked paper results.
+those availability properties. The generic proposition definition does not
+discharge the operational adapters or change the checked paper results.
