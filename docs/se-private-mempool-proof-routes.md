@@ -8,6 +8,13 @@ The preserved object remains the joint law of original inputs, complete typed
 terminal state, public result, and realized net payoffs, without on-path
 exclusions or charges.
 
+The [registered-service implementation](se-publication-end-to-end.md) gives
+the full finite mathematical construction for one explicit public transport
+calendar. It derives historical authorization, observable replay, automatic
+ledger audit and funded settlement. The broader padded theorem below uses
+the existing runtime interfaces; its statement should not be read as already
+implementing those interfaces for arbitrary blockchains.
+
 There is no established impossibility of this target from private mempool
 observations. There is also no complete mathematical proof here for the current
 concurrent runtime after deleting complete pending observation. Two specific
@@ -47,6 +54,14 @@ The detailed mathematical specification is divided by proof obligation:
 | [Finite private-observation transfer](se-publication-transfer-mathematics.md) | Fixed games and dependent menus, causal reach factorization, actual Bayesian mixtures, every literal one-step deviation and one common consistency sequence. |
 | [Native counted adapter](se-publication-native-adapter.md) | Exhaustive action classes, candidate masking, controlled transitions, all-index reference probabilities, private own memory and ordered-pending reconstruction. |
 | [Audit and delayed authorization](se-publication-audit-boundary.md) | Conditional evidence coverage, a possible publication/audit tail, excluded-owner disclosure extensions, and the boundary with retained signatures and replay. |
+
+For the concrete end-to-end instance, the
+[authorization specification](se-publication-authorization.md),
+[registered transport proof](se-publication-end-to-end-review.md), and
+[audit implementation](se-publication-audit-implementation.md) discharge those
+backend obligations. The public-calendar specialization is explicit. A single
+localized equilibrium extension combines the active-player penalty bound with
+the excluded-player direct payoff bound.
 
 These derivations expose two separate service requirements. Publication before
 the next commitment makes the counted source query available. Collection of

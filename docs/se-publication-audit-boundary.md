@@ -331,7 +331,7 @@ players. It may change their information and optimal behavior dramatically.
 It asserts that its actor cannot improve its own already fixed payoff, and that
 a common completion can preserve the selected equilibrium law.
 
-Apply it **before adding audit payoffs**. Start with the padded counted
+One valid two-stage construction applies this lemma to base payoffs. Start with the padded counted
 base-payoff game and allow genuinely old authorized messages by already
 excluded owners, with no conflicting second packet or other count violation.
 At each retained site where such an action is new, exclusion is public and
@@ -342,12 +342,21 @@ invented. This gives an SE of the enlarged counted game with exactly the origina
 terminal law. Newly reachable hidden late proposals need no source-archive
 decoder, because the restriction-extension theorem supplies their completion.
 
-Then extend this enlarged counted game to its genuinely raw action domain with
+One can then extend this enlarged counted game to its genuinely raw action domain with
 a sound audit covering the remaining violations. Retained histories must have
 zero audit charge. The funded first-departure inequality supplies the other
-comparator cases. This order matters: after a past raw violation, a prescribed
-continuation may have net payoff below F_i, so a fresh claim that “silence pays
-F_i” would be false. The source of the second extension is audit clean.
+comparator cases. Its source must be audit clean: after a past raw violation,
+a prescribed continuation may have net payoff below F_i, so a fresh claim
+that “silence pays F_i” would be false.
+
+The [registered-service construction](se-publication-end-to-end.md) needs only
+one application of the generic theorem. It starts from the clean counted game,
+with observable replay already handled. Active-player extra actions use the
+funded collection comparison. Excluded-player extra actions use the direct
+inequality E[F_i-D_i*charge_i]<=F_i for arbitrary raw continuations, since
+charges and deposits are nonnegative. The comparator on the right is the
+clean **source** continuation. Thus a separate old-message game is optional;
+no exact-payoff assertion is made about a previously charged raw continuation.
 
 This is a mathematical route for a larger delayed-authorization model, not an
 application of the unchanged phase-specific raw theorem. It requires its own

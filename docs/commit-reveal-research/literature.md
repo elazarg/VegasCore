@@ -82,6 +82,11 @@ Its detailed specifications derive the
 [audit and delayed-authorization boundaries](../se-publication-audit-boundary.md).
 They separate the mathematical private-reception result from the backend's
 bounded recording, authentic evidence collection and retained-signature duties.
+The [end-to-end registered service](../se-publication-end-to-end.md) instantiates
+these duties with actual-phase authorization, visible replay under a public
+transport calendar, a final ledger drain, deterministic auditing and segregated
+escrow. It uses one mixed direct/penalized equilibrium extension. The source
+game is unchanged; the service and cryptographic idealizations are explicit.
 
 Use papers, official protocol specifications or implementation documentation.
 Record the precise property supported: cryptographic confidentiality, finality,
