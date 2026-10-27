@@ -98,6 +98,13 @@ portable evidence, reporting incentives, a report-all completion and a scoped
 impossibility result for unauditable verifiable disclosure; it cites the
 transaction-pool implementation and signature/relay standards separately
 from the mathematical liveness assumptions.
+The [finite broadcast preservation theorem](../se-asynchronous-preservation-theorem.md)
+composes a source vector adapter, conditional repair of late broadcasts, one
+joint operational equilibrium, full raw failure-handler completion, saved-debt
+normalization and funded positive-evidence reporting. Its concrete service has
+partial observation and partial ledger batches, with explicit capacity,
+support and noninterference requirements. It is a mathematical construction
+for that service, not an arbitrary-builder or deployed-blockchain result.
 
 Use papers, official protocol specifications or implementation documentation.
 Record the precise property supported: cryptographic confidentiality, finality,
@@ -108,4 +115,4 @@ of the combined game interface.
 
 Hardware confidentiality, committee honesty and availability, and computational
 cryptographic security must be named separately. Idealizing one assumption
-does not idealize the rest. The present round makes no new deployment claim.
+does not idealize the rest. These constructions make no deployment claim.

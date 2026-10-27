@@ -35,6 +35,15 @@ concurrent theorem's complete-visibility gap: latent archive mixtures, legal
 information coarsening, stochastic replay, private-message consistency, and
 finite obstruction searches with the other runtime hypotheses held fixed.
 
+The [finite partially observed broadcast theorem](se-asynchronous-preservation-theorem.md)
+gives an end-to-end hand construction for a specified asynchronous service.
+It combines source batching, a conditional repair of late broadcasts, joint
+timing choices, full raw continuations after public failure, saved-debt
+normalization and positive-evidence reporting. Its support, capacity,
+noninterference and ideal commitment assumptions are explicit; it does not
+claim preservation for arbitrary builders or instantiate the current Lean
+concurrent theorem.
+
 The most direct simplification opportunity is to transport only the
 continuation gains needed for rationality. Information compression supplies a
 broader generalization route, while power-sequence consistency offers finite

@@ -8,27 +8,30 @@ define packet authorization and penalties, and escrow funds; it cannot impose
 a public order of who has had a chance to send, observe an empty global mempool,
 or force a block producer to empty that pool.
 
-No end-to-end preservation theorem for this target is established here.
-The [scheduled-service benchmark](se-publication-scheduled-benchmark.md) proves
-a more restricted mathematical statement with a fixed public sender calendar.
-Its no-padding and replay-history reconstruction arguments depend on that
-calendar and cannot justify the asynchronous target.
+The [finite preservation theorem](se-asynchronous-preservation-theorem.md)
+constructs an end-to-end mathematical argument for one explicit partially
+observed broadcast model. Everyone can broadcast at every modeled block;
+reception remains partial, ledger batches may be partial, and retransmissions
+remain observable. The construction includes the source-language adapter,
+one joint timing policy, consistent failure play, raw-message comparisons and
+funded reporting. It uses individual irreversible publication, content-blind
+delivery with specified support, capacity for the bounded application traffic,
+and an ideal authenticated commitment algebra. These are substantial named
+assumptions, not properties of every blockchain or every timely builder.
 
-The incompleteness is mathematical, not only unimplemented Lean assembly.
-Even granting the stated publication and evidence-delivery bounds, there is
-no constructed joint timing/recovery policy whose source comparisons hold
-at every actual private information set for one specified asynchronous
-service. The scalar timing result covers a narrower success/own-floor
-process; foreign failure and rollback are not instances of that process
-without further proof.
+The central probability step repairs a foreign late send into a protected
+broadcast that remains unobserved through the same actual information set.
+It makes foreign failure conditionally rare even after the observer's own
+earlier waits. After the first public exit, the proof completes the actual raw
+continuation jointly, retaining all private memories. It does not require
+rollback to erase information or require survivors to receive an abort floor.
 
-The generic finishing principles are available. One legal fully mixed family
-with uniformly vanishing local gains and the selected initialized-law limit
-would yield SE by the finite Bayesian limit argument. Separately finding an
-optimal timing policy, a rational handler completion and a reporting
-equilibrium does not show they form that same family. Controlled replay
-effects and concrete evidence acquisition are additional runtime obligations,
-not consequences of padding or a larger deposit.
+The theorem is a hand derivation for its specified compiler and service.
+It does not establish the unchanged Lean concurrent theorem without complete
+pending observation, nor close the arbitrary-builder target. The
+[scheduled-service benchmark](se-publication-scheduled-benchmark.md) remains
+a separate restricted statement whose public sender calendar is unnecessary
+in the finite broadcast construction.
 
 ## What the contract can control
 
@@ -82,12 +85,11 @@ A positive result must implement its evidence collection or retain a precise
 conditional-coverage assumption. It must not infer complete collection from
 the existence of an audit contract.
 
-The open construction therefore has three distinct tasks: derive the contract
-publication invariant from an explicit asynchronous inclusion contract; prove
-the prescribed beliefs and every local deviation comparison under actual
-private observations; and supply an authentic, funded audit with the coverage
-used by the raw-action extension. Contract-controlled padding is available.
-Public sender turns and automatic queue clearing are not supplied by padding.
+Applying the construction to another backend has three distinct tasks: derive
+the publication and support conditions from its inclusion contract; establish
+the actual-information comparisons; and supply the authentic funded audit.
+Contract-controlled padding is available. Public sender turns and automatic
+queue clearing are not supplied by padding.
 
 ## Publication from an individual transaction bound
 
@@ -156,8 +158,10 @@ at some refined site.
 
 Neither example refutes concurrent preservation. A different policy using
 only the player's actual information may handle late opportunities correctly.
-What remains is to derive its source-game comparison and its common
-consistency sequence, including rollback and other players' failures.
+The [joint construction](se-asynchronous-fixed-window-construction.md) derives
+its source comparison and common consistency sequence for a concrete service,
+including other players' failures. An arbitrary bounded service still needs
+such a derivation.
 
 There is a proved conditional alternative to prompt sending. The
 [optimal-timing analysis](se-asynchronous-timing-policy.md) considers a
@@ -174,10 +178,12 @@ proof supplies a common fully mixed consistency sequence and vanishing local
 gain bounds. Exact initialized-law preservation additionally needs attainable
 certain success at fresh stages.
 
-The missing step is deriving those hypotheses for concurrent recovery:
-foreign failures can change a survivor's continuation rather than give it F,
-and delivery may select source states or affect other players' behavior.
-The timing theorem addresses that explicit class, not every bounded service.
+For concurrent recovery, foreign failures can change a survivor's continuation
+rather than give it F, and delivery may select source states or affect other
+players' behavior. The [pre-exit argument](se-asynchronous-pre-exit-construction.md)
+handles these effects for its service by a uniform conditional probability
+bound and simultaneous handler completion. The scalar timing theorem alone
+does not establish them for every bounded service.
 
 A correct opening also satisfies a weaker **success-or-exit** invariant:
 after its reveal event completes, either its owner survived and the unique
@@ -195,9 +201,11 @@ and complete post-exit play on the survivors' actual private information.
 Its source-level theorem allows arbitrary bounded survivor continuations
 when the first exiter's utility stays capped and a public marker separates
 the continuation region. It does not require a common archive of failed
-openings. The native bridge still has to handle disclosures and timing choices
-before that public exit, including submissions that may succeed. Moving those
-observations into a handler by definition would skip precisely that obligation.
+openings. The finite broadcast construction supplies the pre-exit bridge through
+its conditional repair and joint timing argument. Other native backends still
+have to handle disclosures and timing before public exit, including submissions
+that may succeed. Moving those observations into a handler by definition would
+skip precisely that obligation.
 
 ## Evidence can travel separately from the original transaction
 
@@ -247,12 +255,12 @@ authentication model includes.
 
 | Obligation | What is established | What is still needed |
 | --- | --- | --- |
-| Publication before another semantic binding | Public cooldown plus an individual finalized-recording bound | A precise transaction class with that bound, or a proof requiring less publication |
-| Private reception without public sender turns | Ordered own-recall reconstruction; finite filtering and conditional repair arguments | The actual backend's observation and service adapters |
-| Visible retransmission | A causal simulation when erasure preserves service and payoffs | Control of propagation, capacity, fee and builder effects |
-| Late timing choices | Optimal actual-information timing for a separable success/floor process; failure of unrestricted prompt-send dominance | Derive the comparison for foreign failures, rollback and actual service reactions |
-| Raw deviations | Direct fixed-exit comparisons and conditional audit-deterrence lemmas | Authentic disclosure classification and implemented evidence collection |
-| End-to-end SE and selected joint law | No capstone for the asynchronous target | One fixed finite implementation and one consistent sequence satisfying all the preceding obligations |
+| Publication before another semantic binding | Public cooldown and an explicit body-level publication service | Realize its irrevocable eligibility and capacity in the chosen backend |
+| Partial reception without public sender turns | Same-information-set retiming and source–operations factorization for the finite broadcast model | Verify the backend's support and content-independence conditions |
+| Visible retransmission | A broadcast-batch repair retaining every observed occurrence; body-level service deduplication | Control real propagation, capacity, fee and builder effects |
+| Late timing choices | One joint operational agent equilibrium, conditional foreign-failure bound, full actual-memory handler completion | Extend beyond the specified service if a broader backend is required |
+| Raw deviations | Saved-debt normalization, first-exposure comparison and sponsored report-all for the specified authenticated algebra | Realize its commitment, positive-evidence and delivery interfaces |
+| End-to-end SE and selected joint law | Complete finite mathematical construction in the linked theorem | Mechanization and a justified correspondence to the selected blockchain backend |
 
 The intended concurrent implementation remains the target. The restricted
 scheduled service is a benchmark for the mathematical components, not a
