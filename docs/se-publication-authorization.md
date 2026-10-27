@@ -4,9 +4,11 @@ This document specifies the authorization adapter between the current phase
 runtime and a finite model permitting retained signatures. The mathematical
 construction preserves the intended game's equilibrium law; it does not assume
 that a ledger can delete a participant's private copy of an old packet.
-The publication proof and the counted-to-private transport remain the ones in
-[the padding specification](se-publication-padding-mathematics.md) and
-[the native adapter](se-publication-native-adapter.md).
+The primary service uses the original, unmodified phase compiler and a full
+processing batch before every cycle's callback block. It needs no source
+padding. The pointwise publication argument below feeds
+[the native adapter](se-publication-native-adapter.md) and the
+[end-to-end construction](se-publication-end-to-end.md).
 
 The exact current-model result, the proposed retained-authorization model, and
 its equilibrium extension are separate statements. Source inspections below
@@ -76,7 +78,8 @@ that capability explicitly.
 
 ## A finite retained-authorization model
 
-Fix the padded program, finite horizon, bounded packet alphabet, candidate
+Fix the original source program and its compiled phase graph, finite horizon,
+bounded packet alphabet, candidate
 reserve, scheduler law, actual private reception rule and initial joint law.
 No object in this paragraph varies with the consistency index. Use ideal
 authentication, as the current symbolic model does; this is not a computational
@@ -137,6 +140,62 @@ Two distinctions are essential:
   an intrinsic defect. Showing a later ledger state does not repair the exact
   signed body if that body fixed its authorization evidence. Collection of the
   defective body is a separate audit obligation.
+
+## Full-batch publication without changing the source
+
+The primary calendar processes the entire pending queue at the start of every
+cycle, then offers one callback to each owner in a fixed order, then executes
+the existing sample, expiry and clock commands. The processing prefix has
+enough capacity for every admitted occurrence. There is no inclusion, sample
+or expiry between two callbacks of the same cycle.
+
+The installed phase is constant throughout that callback block.
+`Vegas.EventGraphRuntime.PhaseRuntimeState.submit` in
+[PhaseApplication](../Vegas/Pending/PhaseApplication.lean) updates private
+candidate state without invoking normalization. More strongly,
+`Vegas.EventGraphRuntime.PhaseCount.submit_publicView` in
+[PhaseCountProjection](../Vegas/Pending/PhaseCountProjection.lean) preserves the
+whole public phase, attempt, readiness and exclusion projection for every
+submission. `Interaction.ReactiveApplication.Execution.respond` in
+[ReactiveApplication](../Interaction/ReactiveApplication.lean) performs only
+submission, packet emission, network append and own-recall append. Its activation
+step preserves the application, updating the network's private learned list and
+ordinary environment-recall bookkeeping.
+
+Fix any initialized counted history at a binding callback in cycle c. Every
+opening submitted in an earlier cycle was already pending before cycle c's
+processing prefix, or was recorded even earlier. The full prefix records all
+such envelopes, including rejected and stale ones. A new counted opening
+cannot have been submitted earlier in cycle c: the same binding phase was
+installed at every earlier callback, and every nonsilent counted response must
+name a current owned request. A binding-phase request emits an opaque binding,
+not an opening. The initial network has no submitted openings.
+
+Therefore, pointwise at every counted binding information set,
+
+\[
+ \{\text{typed proposals in all submitted openings}\}
+   =\{\text{typed proposals in ledgered openings}\}.
+\]
+
+Retries do not change this argument: they occur during processing or the
+post-callback application commands, never midway through the callback block.
+An allowed replay repeats an existing entry. If it carries an opening, the
+first admission of that entry was in an earlier cycle and is already ledgered;
+repetition adds no new proposal to the set. Private reception can remain
+arbitrary. Historical first openings by excluded owners belong to the later
+raw extension, where this decoder identity is not asserted.
+
+For an original source with n events, use \(N=n\) in the existing runtime
+resource formulas. No fresh source cell, point-mass distribution constructor,
+context embedding or source-stuttering theorem is needed. The existing complete
+reference construction is instantiated directly on the unmodified source and
+this deterministic reserved tape.
+
+For a different service whose processing may skip cycles, the separately
+derived [publication-padding route](se-publication-padding-mathematics.md)
+remains a valid sufficient construction under its own language and resource
+hypotheses. Those additional hypotheses are not part of this primary instance.
 
 ## Closed-opening classification
 
@@ -241,7 +300,8 @@ proper reveal-phase address in each attempt namespace.
    That attempt succeeds and the real reveal phase issues the attempt-free
    token naming \(R\).
 3. B opens \(h'\) properly in that real reveal phase, signed serial 7.
-   The phase and publication padding complete. B remains active.
+   The phase closes and a later binding block begins. B remains active; the
+   example also survives any intervening finite publication-padding block.
 4. During a later binding block, B broadcasts an old-value opening for \(h\),
    signed serial 5, with reveal namespace \((R\text{-phase},g)\), and attaches
    the genuine token naming \(R\).
@@ -281,7 +341,8 @@ serials also prevents omitting binding 6 by choosing an old inner nonce.
 
 ## Extending the counted game after exclusion
 
-Let \(R\) be the padded counted game under the actual private reception rule.
+Let \(R\) be the original compiled counted game under the primary calendar
+and actual private reception rule.
 Let \(E\) additionally permit historical first owned packets whose authorization is
 valid, at a site where their owner is publicly and permanently excluded. This
 includes an expired request while other owners keep its containing phase open;
@@ -304,7 +365,9 @@ the existing order: processing, owner callbacks, one source-sample command,
 expiry commands and clock advance. This is a deterministic reserved tape;
 private pending reception remains arbitrary. Its activation and processing gap
 bounds are one. Use a processing capacity covering every admitted gameplay
-packet as in the padding calculation.
+packet using the existing resource calculation with the original event count
+\(N=n\). The sample slot here executes an existing source chance instruction
+when one is ready; it introduces no new source instruction.
 
 This choice gives an explicit producer for the historical-certificate wallet.
 In fact, a player's original private own recall suffices; complete pending
@@ -640,7 +703,7 @@ occurs before registration: such an observation belongs to a larger
 communication game and needs a different evidence producer.
 
 The primary composition first constructs the private counted/replay SE for the
-padded program, then applies the single localized raw extension: unexcluded
+unmodified source compiler, then applies the single localized raw extension: unexcluded
 extra actions use persistent evidence and the funded bound; excluded extra
 actions use the direct clean-source comparator. The optional fixed-payoff
 intermediate extension and strongly inert replay lemma remain useful separate

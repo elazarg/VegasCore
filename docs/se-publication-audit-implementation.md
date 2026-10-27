@@ -9,12 +9,16 @@ audit collection from this transport and an explicit final drain. It does not
 postulate `EvidenceCoverage` as an unexplained property of a private observer.
 
 The mathematical statements are finite hand proofs. They have not been assembled
-in Lean. The source and counted-game ingredients are in
-[publication padding](se-publication-padding-mathematics.md),
-[the native adapter](se-publication-native-adapter.md), and
+in Lean. The primary service uses the original source program: its full processing
+batch before every callback block already gives publication, with no inserted
+samples. The counted-game ingredients are in
+[the native adapter](se-publication-native-adapter.md) and
 [causal transfer](se-publication-transfer-mathematics.md). The separate
 [audit boundary](se-publication-audit-boundary.md) explains why retained old
-signatures require an action extension.
+signatures require an action extension. The
+[publication-padding construction](se-publication-padding-mathematics.md) remains
+a sufficient alternative for a service with processing gaps; it is not required
+by this primary every-cycle construction.
 
 ## The communication and payment model
 
@@ -265,7 +269,7 @@ is sufficient at an active first departure.
 
 ## One extension handles old signatures and audited actions
 
-Let R be the padded current-phase counted game after the controlled observable
+Let R be the original-program current-phase counted game after the controlled observable
 replay extension for the fixed public calendar. Its prescribed replay probabilities
 vanish in the common consistency sequence, so its equilibrium has the selected
 original execution and outcome law. Let G allow every bounded authenticated
@@ -322,8 +326,19 @@ of a ledger's eventual application-level idempotence.
 
 ## Explicit lifecycle, queue bounds and publication
 
-Fix C gameplay cycles and m registered players. Each cycle has at most m owner
-callbacks, so at most
+Let N be the original program's event count and m the number of registered
+players. No source instructions are inserted. Choose owned deadlines satisfying
+the existing strict margin 1+1+2<deadline; five cycles is one uniform choice.
+With maximum deadline Dmax, use the existing completion and resource definitions:
+
+    W = (N+m)(N+1)+N,
+    C = (W+1)(Dmax+2),
+    B = Cm,
+    w = B+m+N+2,
+    H = Cw.
+
+The candidate reserve is at least H. Each of the C gameplay cycles has at most
+m owner callbacks, so at most
 
     B = C m
 
@@ -331,8 +346,9 @@ transport occurrences can be admitted during gameplay, hence at most B distinct
 entries. This bound includes every malformed, replayed, conflicting, stale and
 old-authorized action. It is independent of
 prescribed behavior. Finite prepared-handle and body bounds are chosen before
-the selected source equilibrium. The source padding and completion bound use
-these expanded resources.
+the selected source equilibrium. Processing and callback reservations are
+separate, so choosing the large batch capacity B creates no additional callbacks
+or circular traffic bound.
 
 ### Publication before another semantic choice
 
@@ -342,18 +358,44 @@ rule removes the pending head and appends the full occurrence to the ledger even
 if the application rejects its entry. It applies each entry at most once, in
 first-admission order. No player acts inside the batch. Therefore a full prefix
 empties any pending list of length at most B. The primary public calendar has a
-processing batch every cycle. More generally a processing-gap bound p gives the publication calculation
-in the padding document: if a reveal block closes at c, the first later binding
-callback is at d >= c+p+2, and a clearing epoch q satisfies
+processing batch every cycle.
 
-    c+1 <= q < c+1+p < d.
+Fix any retained binding callback in cycle c. The prefix has already recorded
+every occurrence admitted in earlier cycles. Throughout the subsequent owner
+callback block, the installed phase is constant: a response only registers its
+private preparation and appends its envelope, while reception only extends
+private leaked-message memory. Neither executes a game call or advances a phase.
+The exact current-runtime facts are
+`Vegas.EventGraphRuntime.PhaseCount.submit_publicView` in
+[PhaseCountProjection](../Vegas/Pending/PhaseCountProjection.lean),
+`Interaction.ReactiveApplication.Execution.environmentStep` in
+[ReactiveApplication](../Interaction/ReactiveApplication.lean), and
+`Interaction.MessageNetwork.learn` in
+[MessageNetwork](../Interaction/MessageNetwork.lean).
 
-All first counted entries from that closed current phase have been logged before
-the next semantic binding. Visible replays repeat entries rather than introducing
-new opening values; their receipt signals are handled by the controlled replay
-proof. Later first old messages are handled by the direct excluded-owner
-comparison; they do not silently become part of the current-phase source-copy
-invariant.
+Because this block's installed phase is a commitment phase, every retained new
+first entry emitted earlier in the same block is an opaque binding, never an
+opening. A replayed opening was first admitted in an earlier cycle and is already
+in the ledger. Initial traffic is empty. Therefore, at this callback,
+
+    all submitted opening proposals = ledger opening proposals.
+
+The archive is a set, so replay multiplicity changes no proposal. The equality
+holds at every retained counted history, including failed guards, waits, retries
+and one-step alternatives. Phase changes during processing occur before the
+callback block; sample and expiry changes occur after it. Neither is a missing
+case. Historical first messages outside the retained menu are handled by the raw
+extension, not by asserting this decoder after such a departure.
+
+This proves publication without any source transformation. The primary theorem
+needs no additional point-mass distribution constructor or context-weakening
+operation. Original typed source states and their intended SE are unchanged.
+
+For a different service that may skip processing cycles, this phase-constant
+argument alone does not clear earlier-cycle openings. The separate padding
+construction inserts p+2 constant samples and gives a clearing epoch before
+the next binding callback under a processing-gap bound p. Its language and
+expanded-resource hypotheses belong to that alternative construction.
 
 With smaller blocks of b>0 envelopes, a drain after admission closes requires
 ceil(B/b) enabled epochs. If consecutive enabled epochs are at most p cycles
@@ -411,7 +453,8 @@ audit verdict is zero. Lifting the consistency sequence through this determinist
 expansion preserves its decision beliefs and gains. The restriction then compares
 equal-horizon games with aligned terminal histories, rather than mapping an old
 terminal history to a still-running target prefix. The final readout erases the
-tail, just as it erases source padding.
+tail. No source padding is erased in the primary construction because none was
+inserted.
 
 ## Derived audit observation and delivery
 
@@ -475,13 +518,23 @@ replays of an entry already included. This proves retained payoff matching for
 the stronger verdict. It does not charge based on whether a sender followed an
 immediate-send prescription.
 
-If a reveal block closes at c and a later binding callback is at
+For the separately padded general-gap construction, if a reveal block closes
+at c and a later binding callback is at
 b>=c+d_inc+2, then x(e)<=c for each event of that block. A previously unrecorded
 opening entry still pending at b has future earliest record r(m)>=b, and hence
 r(m)>x(e)+d_inc. It will be charged. A replay can still be pending with an earlier
 record r(m)<=x(e)+d_inc; its opening value is already public, and its receipt
 signals are covered by the replay proof. Thus "every pending occurrence is late"
 would be false.
+
+The primary every-cycle service does not need, or generally satisfy, that
+additional delay. A reveal may close in the processing prefix of cycle c, and
+an excluded owner may first admit its old opening during that cycle's binding
+callback block. Its next-cycle record can be r=c+1=x(e)+d_inc, so Late is false
+while another same-cycle binding callback can receive it privately. This does
+not affect the retained archive theorem: the historical first admission is
+outside R, and the excluded-owner direct comparison handles it without any
+charge-probability premise.
 
 An excluded owner might send after x(e) but still obtain a record within the
 slack interval. Its Late status can depend on future processing, and there need
@@ -534,7 +587,8 @@ raw SE extending the selected R SE, using the direct F_i comparison at excluded
 sites. The terminal history law is the retained
 one. Along this law charge_i is zero for every owner. Escrows are returned in full,
 and the realized net-payoff vector equals the original base-payoff vector, jointly
-with original initial inputs and terminal state after erasing padding cells.
+with the original initial inputs and unchanged typed terminal state. The final
+readout erases only auxiliary replay/transport records and the forced audit tail.
 
 Funding is explicit. The session sponsor reserves the full admission, storage,
 inclusion, verification and settlement cost before play. These costs are not
@@ -573,7 +627,7 @@ the exact unchanged-payoff theorem does not apply unchanged.
 
 ## A finite end-to-end composition statement
 
-Fix the source setup, the padded compiler, finite session grammar, genuine
+Fix the source setup and its original-program compiler, finite session grammar, genuine
 phase/accepted-binding certificate implementation, replay rule, registered
 transport, deterministic public calendar and extended tail schedule, payoff function and funding
 before selecting the source SE. Assume the same well-formedness, finite-value,
@@ -583,10 +637,9 @@ Assume the closed-opening/phase-completion classification and controlled retaine
 history embeddings described above.
 
 Then every intended source SE has a raw registered-session SE with exactly its
-initialized original terminal/public/net-payoff joint law after erasing constant
-padding. The proof composes:
+initialized original terminal/public/net-payoff joint law. The proof composes:
 
-1. deterministic source padding, the common-sequence private counted proof, and
+1. direct full-batch publication, the common-sequence private counted proof, and
    the controlled observable-replay extension for the fixed calendar;
 2. the persistent-witness classification for active first extra actions and the
    direct net-payoff comparison for already excluded actors;

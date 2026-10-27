@@ -86,7 +86,9 @@ The [end-to-end registered service](../se-publication-end-to-end.md) instantiate
 these duties with actual-phase authorization, visible replay under a public
 transport calendar, a final ledger drain, deterministic auditing and segregated
 escrow. It uses one mixed direct/penalized equilibrium extension. The source
-game is unchanged; the service and cryptographic idealizations are explicit.
+program and game are unchanged: full publication before every callback block
+supplies the archive invariant without dummy samples. The service and
+cryptographic idealizations are explicit.
 
 Use papers, official protocol specifications or implementation documentation.
 Record the precise property supported: cryptographic confidentiality, finality,

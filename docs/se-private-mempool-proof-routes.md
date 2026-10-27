@@ -11,7 +11,10 @@ exclusions or charges.
 The [registered-service implementation](se-publication-end-to-end.md) gives
 the full finite mathematical construction for one explicit public transport
 calendar. It derives historical authorization, observable replay, automatic
-ledger audit and funded settlement. The broader padded theorem below uses
+ledger audit and funded settlement. In that instance a full batch precedes
+every callback block and submissions cannot advance the phase inside the
+block, so publication already holds for the original unpadded compiler.
+The broader padded theorem below uses
 the existing runtime interfaces; its statement should not be read as already
 implementing those interfaces for arbitrary blockchains.
 

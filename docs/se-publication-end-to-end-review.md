@@ -1,27 +1,82 @@
 # Registered transport, replay and equilibrium extension
 
-This note separates three extensions of the padded counted game: observable
+This note separates three extensions of the current-phase counted game: observable
 retransmission, genuinely new historical disclosures, and audited raw writes.
 The distinctions matter because a repeated payload need not be an unobservable
 action, and a signature authenticates its author rather than the person who
 later retransmits its bytes.
 
-The underlying counted preservation argument is in
+The primary service uses the original source program without padding. Its
+processing batch before every callback block supplies the necessary publication
+property. The underlying counted preservation argument is in
 [the transfer mathematics](se-publication-transfer-mathematics.md),
 [the native adapter](se-publication-native-adapter.md), and
-[the padding calculation](se-publication-padding-mathematics.md). The audit
+[the end-to-end construction](se-publication-end-to-end.md). The audit
 interface is in [the audit boundary](se-publication-audit-boundary.md). The
 claims below are finite mathematical arguments, not new Lean theorems.
 
+## Publication without source padding
+
+Use the deterministic calendar of Section 3: each cycle's full processing
+batch finishes before all player callbacks, and its sample, expiry and clock
+commands follow all callbacks. Fix any reached current-phase counted binding
+callback in cycle c.
+
+The installed phase is constant throughout that cycle's callback block.
+`Vegas.EventGraphRuntime.PhaseRuntimeState.submit` in
+[PhaseApplication](../Vegas/Pending/PhaseApplication.lean) only updates private
+preparation; it does not normalize phases.
+`Vegas.EventGraphRuntime.PhaseCount.submit_publicView` in
+[PhaseCountProjection](../Vegas/Pending/PhaseCountProjection.lean) preserves
+the whole public descriptor and attempt. An activation changes only private
+network reception, and no inclusion or application-environment command occurs
+inside the callback block. Thus the block has a commitment phase installed
+at every earlier callback as well.
+
+Every nonsilent counted response in that phase is a binding. In particular,
+`Vegas.EventGraphRuntime.PhaseProposal.commitment_response_archive` and
+`Vegas.EventGraphRuntime.PhaseProposal.phase_commitment_prefix_sourceArchive`
+in [PhaseCommitmentProposalArchive](../Vegas/Game/PhaseCommitmentProposalArchive.lean)
+show that these responses add no typed opening proposal. Hence every submitted
+opening proposal at the chosen binding callback was already admitted before
+cycle c. The full batch at the start of c recorded every such entry before
+any callback. Therefore the all-submitted opening archive is exactly the
+archive recoverable from the ledger, at every counted binding information
+set and every consistency index.
+
+This includes stale or rejected prior openings: batch recording precedes and
+does not depend on application acceptance. It includes every retry, since the
+same argument applies afresh at its callback. In cycle zero the initial queue
+and submitted-opening archive are empty. Initial private commitments are
+source inputs and initial candidate capabilities, not previously submitted
+network opening proposals; an initial commitment's later resolve packet is
+subject to the same current-phase menu.
+
+Visible replays do not spoil the argument. At a binding callback any replayed
+opening already has its original entry in that ledger. The typed source
+archive is a finite set, so another occurrence contributes no new proposal.
+The full raw game can have new old disclosures, but those are handled by the
+mixed extension below; this archive equality is asserted only for the
+retained counted/replay game.
+
+Consequently the primary theorem needs no constant-sample insertion or source
+context embedding. If the source has n events, its compiled event count is
+N=n. The source finite game, information sets and typed terminal state remain
+literally the original ones. For a service with a larger processing gap, the
+separate [padding construction](se-publication-padding-mathematics.md) remains
+a sufficient publication mechanism, with its additional language and resource
+requirements. It is not required for this every-cycle full-batch instance.
+
 ## 1. One extension with two continuation comparisons
 
-Let R be the padded counted game with its base utility, and fix a selected SE
-whose original initialized outcome and payoff law is to be preserved.
+Start from the original source's counted game on this calendar, with its base
+utility, and fix a selected SE whose original initialized outcome and payoff
+law is to be preserved.
 
 1. Add any retained, genuinely neutral network behavior for which a controlled
    strategy and belief construction has been proved. Section 3 gives one such
    construction for visible retransmission under a public deterministic
-   transport calendar.
+   transport calendar. Call the resulting retained game R.
 2. Extend directly to all authenticated writes in one application of localized
    enforcement. At copied sites of an active actor, additional actions have
    persistent, completely ledger-observable violation witnesses. At copied
@@ -283,8 +338,9 @@ class over that actor's actually known replay entries. The replay splitting
 reads only transport knowledge, not the private preparation catalogue or the
 ordinary alias record except through emitted transport data. These replay
 menus can differ from the complete-observation menus; no player is asked to
-copy an unknown packet. The source query supplied by the publication barrier
-makes the semantic class law measurable in actual information.
+copy an unknown packet. The source query supplied by the full-batch
+publication argument makes the semantic class law measurable in actual
+information.
 
 Ordinary aliases require a separate summation from replay noise. Fix a masked
 physical/effective base path h and a complete transport/reception/replay word.

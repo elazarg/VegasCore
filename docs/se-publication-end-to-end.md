@@ -6,7 +6,7 @@ Mempool reception stays private. Every admitted transmission is registered
 durably and then published, including rejected game calls. Deposits remain
 locked until publication and automatic auditing finish.
 
-The preservation claim is mathematical, not Lean checked. Its source padding,
+The preservation claim is mathematical, not Lean checked. Its publication,
 native action classes, probability transfer, authorization, replay and settlement
 arguments are derived in the companion documents linked below. The construction
 gives one complete finite service instance. It does not assert preservation for
@@ -18,10 +18,11 @@ unregistered private communication.
 Fix a source setup satisfying the existing finite intended-game hypotheses:
 a finite player set, a finite supported joint initial law, finite binding
 choices, successful initial commitments and source well-formedness. Correlated
-private inputs are allowed. Fix the source payoff and public readout. The
-expression language must supply the constant distributions and context
-transport constructed in
-[the padding specification](se-publication-padding-mathematics.md).
+private inputs are allowed. Fix the source payoff and public readout. The source
+program is compiled unchanged: this service needs no dummy samples or additional
+expression/context transport operations. The separate
+[padding specification](se-publication-padding-mathematics.md) applies to a
+broader processing-gap service.
 
 For a direct monetary implementation, take the source payoff to be a bounded
 transfer in the currency's base unit, computed from the public settled readout
@@ -35,7 +36,7 @@ valuations, cash transfers and a realizable fixed excluded utility; see
 
 Fix, before selecting a source equilibrium:
 
-* the padded compiler and canonical packet format;
+* the existing phase compiler and the backend's canonical packet format;
 * the public transport calendar, deadlines, finite message/candidate bounds
   and all storage and processing reservations;
 * the actual finitely branching private reception rule;
@@ -47,8 +48,9 @@ equilibrium of this intended source game, the raw game of the implementation
 below has a sequential equilibrium preserving the joint law of the original
 initial inputs, original typed terminal state, original public result and
 realized net-payoff vector. The selected implementation equilibrium has no
-exclusions or audit charges. Auxiliary padding cells, transport metadata and
-the final forced audit tail are erased by the specified observation map.
+exclusions or audit charges. Auxiliary transport metadata and the final forced
+audit tail are erased by the observation map; original typed source cells need
+no erasure.
 
 The implementation and deposits are independent of the selected source SE.
 Only its preserving strategy and belief construction depend on that SE.
@@ -103,23 +105,22 @@ or approximate result.
 
 ## Compiler and resource calculation
 
-Insert three fresh deterministic public samples after each maximal reveal
-block that has a later commitment block. This is the processingGap+2
-construction specialized to processingGap=1. No original commitment block
-is split. Choose every owned event's deadline to satisfy the existing strict
-margin 1+1+2<deadline; five cycles is one uniform choice. Padding samples may
-have deadline zero because they are ownerless and cannot expire.
+Compile the original source using its existing concurrent phase plan. No
+original commitment block is split and no sample instruction is inserted.
+Choose every owned event's deadline to satisfy the existing strict margin
+1+1+2<deadline; five cycles is one uniform choice. Original ownerless samples
+may have deadline zero because they cannot expire.
 
-For original event count n and number r of inserted padding boundaries, put
+For original event count n, put
 
-    N = n + 3r
+    N = n
     W = (N+m)(N+1) + N
     C = (W+1)(Dmax+2)
     B = mC
     w = B+m+N+2
     H = Cw.
 
-Here m is the player count and Dmax is the expanded runtime's maximum
+Here m is the player count and Dmax is the runtime's maximum
 deadline. These are the completion, occurrence-capacity, cycle-width and
 command-horizon bounds from the
 [padding calculation](se-publication-padding-mathematics.md). Choose the
@@ -133,11 +134,57 @@ also works for this concrete calendar, but using B reuses the existing full
 processing calculation. Bigger batches add no owner callbacks and create no
 circular traffic bound.
 
-If a reveal block closes at cycle c, the three samples cannot all execute
-before cycle c+2. The next binding callback is at cycle d>=c+3 because owner
-callbacks precede the sample slot. The batch at c+1 records all openings
-already submitted when that block closed. For any reached later binding,
-c+1<d<C, so this batch lies inside the actual finite execution.
+### Publication at every counted binding, without padding
+
+Consider a retained counted history at a binding callback in cycle c.
+At the start of the cycle the processing batch records every previously
+pending occurrence. During the ensuing owner-callback block:
+
+* activation changes only private network reception;
+* a response registers private preparation and appends an envelope, but
+  preserves the public application view, installed phase and attempt;
+* no inclusion, sample or expiry command interleaves with those callbacks.
+
+These are the actual definitions of
+`Interaction.ReactiveApplication.Execution.respond` and
+`Interaction.ReactiveApplication.Execution.environmentStep` in
+[ReactiveApplication](../Interaction/ReactiveApplication.lean), together with
+`Vegas.EventGraphRuntime.PhaseCount.submit_publicView` in
+[PhaseCountProjection](../Vegas/Pending/PhaseCountProjection.lean).
+In particular, `Vegas.EventGraphRuntime.PhaseRuntimeState.submit` does not
+call phase normalization.
+
+The current binding phase therefore was already installed at the start of
+this callback block. Every earlier first admission from a counted response
+is a binding; silence and replays add no new opening entry.
+Every previously emitted opening is consequently from an earlier cycle and
+was recorded by the current full processing batch. An opening replay repeats
+one of those already recorded entries and adds no proposal to the archive.
+Cycle zero begins with no traffic. Initial private commitments are not
+submitted opening proposals.
+
+Thus, at every retained counted binding callback, including every retry,
+
+    all submitted opening proposals = ledger opening proposals.
+
+This equality holds pointwise, independently of the profile and reception
+probabilities. It supplies exactly the publication premise of the native
+adapter on the original unpadded compiler. Full clearing is the existing
+`Vegas.EventGraphRuntime.ReservedEpoch.full_processing_epoch_clears` in
+[ReservedEpochEmptyProcessing](../Vegas/Pending/ReservedEpochEmptyProcessing.lean).
+
+The statement is not extended to arbitrary raw histories: an excluded owner
+may make a new historical first disclosure later in this callback block.
+The direct payoff comparison below handles that action and the resulting
+new private information sites. No archive decoder is required there.
+
+For a service that can skip processing cycles, this argument fails: expiry
+can install a binding phase while an earlier opening remains pending.
+The separate processingGap+2 padding construction addresses that broader
+current-phase service. It is unnecessary in the full-batch-every-cycle
+implementation specified here.
+
+### Original public chance
 
 The usual chance instructions are public. For the concrete expression language,
 one can implement a rational weighted table by a fresh uniform integer and
@@ -297,7 +344,11 @@ sequence uses those choices, and every legal alternative is compared.
 
 Let R be this private counted game with visible replay. Let G allow every
 bounded constructible authenticated body, including fresh messages using old
-authorizations. Use the canonical singleton/pair audit:
+authorizations. R includes every literal G construction of a permitted current
+counted response and every permitted known-entry replay, not just the preferred
+wallet encoder. Holding a body's construction privately until now is not an
+extra public action tag. The native alias argument covers this full retained
+menu. Use the canonical singleton/pair audit:
 
 * intrinsic format, ownership, type, authorization or opening-proof defects;
 * two distinct authenticated entries for the same physical event;
@@ -395,8 +446,9 @@ The sponsor's fixed service cost is outside the players' declared game utility;
 variable gas costs deducted from their winnings would require a different
 source payoff model.
 
-The source-padding map erases fresh constant cells. The replay map erases
-auxiliary transport occurrences. The raw extension preserves the entire
+The source program and its typed state are unchanged. The replay map erases
+auxiliary transport occurrences, and the final readout erases the forced tail.
+The raw extension preserves the entire
 embedded terminal-history law and its payoff vector. Composing their readouts
 therefore preserves the original initialized joint law, including realized
 payments rather than just their expectations.
@@ -444,6 +496,7 @@ network. In particular:
   corresponding refinement or approximation. They are not consequences of
   the exact finite theorem.
 
-No impossibility of the unpadded current compiler is established. The
-implementation here is a concrete sufficient design for the original intended
-game under the stated service, not a claim that every restriction is necessary.
+The unpadded compiler with arbitrary hidden reserved tapes remains open.
+The implementation here uses the unpadded source and phase rules under the
+specified public service, with its historical-authorization and audit backend.
+It is a concrete sufficient design, not a claim that every restriction is necessary.
