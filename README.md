@@ -32,6 +32,10 @@ boundaries and the next questions. The [positive-latency example](Vegas/Examples
 and [funded service example](Vegas/Examples/SequentialPhaseServiceEquilibrium.lean)
 exercise actual runtime service premises.
 
+The [two-player Odds–Evens instance](docs/sequential-se-instances.md) combines
+positive latency with imperfect evidence capture and delivery on the same
+phase runtime. Its exact funding and preservation scopes are stated there.
+
 ## Language and compiler
 
 Programs are finite, straight-line typed descriptions of public samples,

@@ -6,6 +6,12 @@ allow partial pending observation. Their main open questions concern the prior,
 service and evidence assumptions, and operational realizations of those
 assumptions. No counterexample below refutes the checked statements.
 
+The [two-player instance](sequential-se-instances.md) exercises positive latency
+and imperfect audit coverage on the same phase runtime as monetary preservation.
+The [correlated-prior analysis](sequential-correlated-prior-analysis.md) gives a
+conditioning/gluing route for an existing signal known to every player, with
+its outstanding formal adapters. It does not settle generic correlated priors.
+
 ## Checked starting points
 
 The permanent-exclusion capstone is
@@ -80,6 +86,10 @@ the two existing coverage definitions from those operations. Include packets
 sent after exclusion and packets rejected by the game. A verifier alone, an
 honest-relayer assertion, or a complete-evidence example does not discharge
 availability for a realistic partially observed network.
+
+Traffic rejected before ledger inclusion needs a separate capture route.
+Recording rejected contract calls alone does not establish evidence coverage
+for packets that cannot enter the ledger at all.
 
 Start with a small complete operational example and state its availability
 assumption openly. Then weaken capture or delivery while preserving a positive

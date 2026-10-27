@@ -21,8 +21,7 @@ local notation "app" => phaseApplication runtime leaks
 
 theorem initial_activation_state {length : Nat} (packetBudget : Nat) (tape : Tape Player length)
     (plan : RuntimePhasePlan graph) (ordered : graph.RevealRelaxedOrdered)
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample) (draw : graph.Inputs) :
+    (maximal : RuntimePhase.PartitionRegular plan.phases) (draw : graph.Inputs) :
     ActivationState runtime leaks packetBudget tape draw
       (ReactiveApplication.Execution.initial app (PhaseRuntimeState.initial plan draw)) := by
   refine ⟨initial_progress_geometry plan ordered maximal draw, ?_, ?_⟩
@@ -51,8 +50,7 @@ theorem activation_state_exists_invariant {length : Nat} (packetBudget : Nat)
 
 theorem activation_state_history {length : Nat} (packetBudget : Nat) (tape : Tape Player length)
     (plan : RuntimePhasePlan graph) (ordered : graph.RevealRelaxedOrdered)
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
+    (maximal : RuntimePhase.PartitionRegular plan.phases)
     (inputs : PMF graph.Inputs) (horizon : Nat) (current : (app).Control)
     (trace : ((app).protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon
       (family runtime leaks packetBudget tape)).Trace (some current)) :
@@ -129,8 +127,7 @@ theorem family_opportunity {length : Nat} (packetBudget cycles : Nat)
     (tape : Tape Player length) (activationGap processingGap : Nat)
     (gaps : tape.BoundedGaps cycles activationGap processingGap)
     (plan : RuntimePhasePlan graph) (ordered : graph.RevealRelaxedOrdered)
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample) (inputs : PMF graph.Inputs) :
+    (maximal : RuntimePhase.PartitionRegular plan.phases) (inputs : PMF graph.Inputs) :
     PhaseService.Opportunity runtime leaks (inputs.map (PhaseRuntimeState.initial plan))
       (cycles * cycleWidth (graph := graph) packetBudget) (family runtime leaks packetBudget tape)
         (fun _ => activationGap + 1) := by

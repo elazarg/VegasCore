@@ -19,8 +19,7 @@ namespace PhaseRuntimeState
 private theorem request_origin_of_bounds {inputs : graph.Inputs}
     (before after : PhaseRuntimeState graph) (ordered : graph.RevealRelaxedOrdered)
     (valid : before.Invariant inputs) (frontier : before.Frontier) (live : before.Live)
-    (maximal : before.phases.IsChain fun first second =>
-      first.kind ≠ second.kind ∨ first.kind = .sample)
+    (maximal : RuntimePhase.PartitionRegular before.phases)
     (quiescent : ∀ event, ¬ before.current.AutomaticReady event)
     (suffix : after.phases <:+ before.phases) (owner : Player)
     (coordinate : CommitAttemptEvent graph) (entered limit : Nat)
@@ -81,8 +80,7 @@ theorem respond_request_origin {inputs : graph.Inputs} (execution : (app).Execut
     (who : Player) (action : (app).Action) (ordered : graph.RevealRelaxedOrdered)
     (valid : execution.application.Invariant inputs) (frontier : execution.application.Frontier)
     (live : execution.application.Live)
-    (maximal : execution.application.phases.IsChain fun first second =>
-      first.kind ≠ second.kind ∨ first.kind = .sample)
+    (maximal : RuntimePhase.PartitionRegular execution.application.phases)
     (quiescent : ∀ event, ¬ execution.application.current.AutomaticReady event)
     (owner : Player) (coordinate : CommitAttemptEvent graph) (entered : Nat)
     (request : (execution.respond app who action).application.SeedRequest owner coordinate)
@@ -106,8 +104,7 @@ theorem environmentStep_request_origin {inputs : graph.Inputs}
     (execution next : (app).Execution) (command : (app).Command)
     (ordered : graph.RevealRelaxedOrdered) (valid : execution.application.Invariant inputs)
     (frontier : execution.application.Frontier) (live : execution.application.Live)
-    (maximal : execution.application.phases.IsChain fun first second =>
-      first.kind ≠ second.kind ∨ first.kind = .sample)
+    (maximal : RuntimePhase.PartitionRegular execution.application.phases)
     (quiescent : ∀ event, ¬ execution.application.current.AutomaticReady event)
     (reached : next ∈ (execution.environmentStep app command).support)
     (owner : Player) (coordinate : CommitAttemptEvent graph) (entered : Nat)

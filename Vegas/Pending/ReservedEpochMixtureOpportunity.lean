@@ -21,8 +21,7 @@ local notation "app" => phaseApplication runtime leaks
 theorem implementation_activation_state_history {length : Nat} (packetBudget : Nat)
     (prior : PMF (Tape Player length))
     (plan : RuntimePhasePlan graph) (ordered : graph.RevealRelaxedOrdered)
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample) (inputs : PMF graph.Inputs)
+    (maximal : RuntimePhase.PartitionRegular plan.phases) (inputs : PMF graph.Inputs)
     (horizon : Nat) (current : (app).Control)
     (trace : ((app).protocol (inputs.map (PhaseRuntimeState.initial plan)) horizon
       (implementation runtime leaks packetBudget prior).scheduler).Trace (some current)) :
@@ -59,8 +58,7 @@ theorem implementation_opportunity {length : Nat} (packetBudget cycles : Nat)
     (prior : PMF (Tape Player length)) (activationGap processingGap : Nat)
     (gaps : ∀ tape ∈ prior.support, tape.BoundedGaps cycles activationGap processingGap)
     (plan : RuntimePhasePlan graph) (ordered : graph.RevealRelaxedOrdered)
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample) (inputs : PMF graph.Inputs) :
+    (maximal : RuntimePhase.PartitionRegular plan.phases) (inputs : PMF graph.Inputs) :
     PhaseService.Opportunity runtime leaks (inputs.map (PhaseRuntimeState.initial plan))
       (cycles * cycleWidth (graph := graph) packetBudget)
         (implementation runtime leaks packetBudget prior).scheduler

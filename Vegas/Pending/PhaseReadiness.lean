@@ -18,6 +18,22 @@ open EventGraph
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
 
+/-- Either phase-kind barriers or total source dependencies confine readiness.
+The latter permits consecutive singleton phases of the same kind. -/
+def PartitionRegular (phases : List (RuntimePhase graph)) : Prop :=
+  (phases.IsChain fun before after =>
+    before.kind ≠ after.kind ∨ before.kind = .sample) ∨
+    ∀ (before after : graph.EventId), before.val < after.val →
+      before ∈ graph.order.predecessors after
+
+omit [DecidableEq Player] in
+theorem PartitionRegular.suffix {phases later : List (RuntimePhase graph)}
+    (regular : PartitionRegular phases) (suffix : later <:+ phases) :
+    PartitionRegular later := by
+  rcases regular with maximal | sequential
+  · exact Or.inl (maximal.suffix suffix)
+  · exact Or.inr sequential
+
 /-- Automatic exclusion service cannot complete a nonexcluded owner's event. -/
 theorem drainFuel_completed_survivor (phase : RuntimePhase graph) (fuel : Nat)
     (state : RecoveryState graph) (event : graph.EventId) (owner : Player)
@@ -267,14 +283,43 @@ theorem Frontier.after_effect {state : PhaseRuntimeState graph} (valid : state.F
         exact ⟨positioned.1, native_step_within phase _ _ positioned.2 event inside
           ready action supported⟩
 
+theorem ready_mem_regular (phase : RuntimePhase graph)
+    (remaining : List (RuntimePhase graph))
+    (adjacent : (phase :: remaining).IsChain fun before after => before.high = after.low)
+    (last : ∀ final ∈ (phase :: remaining).getLast?, final.high = graph.order.eventCount)
+    (regular : RuntimePhase.PartitionRegular (phase :: remaining))
+    (state : RecoveryState graph) (ordered : graph.RevealRelaxedOrdered)
+    (within : state.native.config.cut.Within phase.low phase.high)
+    (unfinished : ¬ phase.Finished state)
+    (event : graph.EventId) (ready : state.native.config.cut.Ready event) :
+    event ∈ phase.events := by
+  rcases regular with maximal | sequential
+  · obtain ⟨bindingBoundary, revealBoundary⟩ := phase_boundaries phase remaining adjacent
+      last maximal
+    exact phase.ready_mem state ordered within unfinished bindingBoundary revealBoundary event ready
+  · have lower : phase.low ≤ event.val := by
+      by_contra below
+      exact ready.1 (within.1 event (by omega))
+    have missing : ∃ other ∈ phase.events, other ∉ state.native.config.cut.completed := by
+      by_contra absent
+      apply unfinished
+      intro other inside
+      by_contra incomplete
+      exact absent ⟨other, inside, incomplete⟩
+    obtain ⟨other, inside, incomplete⟩ := missing
+    have upper : event.val ≤ other.val := by
+      by_contra later
+      exact incomplete (ready.2 (sequential other event (by omega)))
+    exact (phase.mem_events event).mpr
+      ⟨lower, lt_of_le_of_lt upper ((phase.mem_events other).mp inside).2⟩
+
 /-- On actual barrier-ordered phases, local automatic completion suppresses
 ALL excluded-owner readiness before any next observation or seed query. -/
 theorem settle_global_quiescent (phases : List (RuntimePhase graph)) (generation : Nat)
     (entry current : RecoveryState graph) (retired : List (RetiredCommitAttempt graph))
     (ordered : graph.RevealRelaxedOrdered)
     (valid : Frontier (⟨phases, generation, entry, current, retired⟩ : PhaseRuntimeState graph))
-    (maximal : phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample) :
+    (maximal : RuntimePhase.PartitionRegular phases) :
     ∀ event, ¬ (settle phases generation entry current retired).current.AutomaticReady event := by
   have result := settle_frontier phases generation entry current retired valid
   have boundaries := maximal.suffix (settle_suffix phases generation entry current retired)
@@ -287,16 +332,15 @@ theorem settle_global_quiescent (phases : List (RuntimePhase graph)) (generation
       have adjacent := result.adjacent
       have last := result.last
       rw [installed] at adjacent last boundaries
-      obtain ⟨bindingBoundary, revealBoundary⟩ := phase_boundaries phase remaining adjacent
-        last boundaries
       have positioned := result.positioned
       rw [installed] at positioned
       have head : phase ∈ (settle phases generation entry current retired).phases.head? := by
         simp only [installed, List.head?_cons, Option.mem_some_iff]
       have unfinished := settle_unfinished phases generation entry current retired valid
         phase head
-      have inside := phase.ready_mem _ ordered positioned.2 unfinished bindingBoundary
-        revealBoundary event eligible.1
+      have inside := ready_mem_regular phase remaining adjacent last boundaries _ ordered
+        positioned.2 unfinished
+        event eligible.1
       exact settle_quiescent phases generation entry current retired phase head event inside
         eligible
 
@@ -315,8 +359,7 @@ theorem phaseApplication_quiescent (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket graph))
     (ordered : graph.RevealRelaxedOrdered) :
     (phaseApplication runtime leaks).Invariant (fun state =>
-      state.Frontier ∧ (state.phases.IsChain fun before after =>
-        before.kind ≠ after.kind ∨ before.kind = .sample) ∧
+      state.Frontier ∧ (RuntimePhase.PartitionRegular state.phases) ∧
         ∀ event, ¬ state.current.AutomaticReady event) where
   submit state who submission valid :=
     ⟨state.submit_frontier who submission valid.1, valid.2.1,
@@ -361,11 +404,9 @@ theorem phaseApplication_quiescent (runtime : EventGraphRuntime graph)
 quiescent for excluded owners without suppressing surviving event calendars. -/
 theorem phaseApplication_initial_quiescent (plan : RuntimePhasePlan graph)
     (ordered : graph.RevealRelaxedOrdered)
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample) (inputs : graph.Inputs) :
+    (maximal : RuntimePhase.PartitionRegular plan.phases) (inputs : graph.Inputs) :
     (PhaseRuntimeState.initial plan inputs).Frontier ∧
-      ((PhaseRuntimeState.initial plan inputs).phases.IsChain fun before after =>
-        before.kind ≠ after.kind ∨ before.kind = .sample) ∧
+      (RuntimePhase.PartitionRegular (PhaseRuntimeState.initial plan inputs).phases) ∧
       ∀ event, ¬ (PhaseRuntimeState.initial plan inputs).current.AutomaticReady event := by
   have raw : PhaseRuntimeState.Frontier
       (⟨plan.phases, 0, ⟨State.initial inputs, ∅⟩, ⟨State.initial inputs, ∅⟩, []⟩ :

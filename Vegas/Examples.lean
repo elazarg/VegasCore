@@ -7,6 +7,10 @@ import Vegas.Examples.ConcurrentRevealOrderLaw
 import Vegas.Examples.LateLeak
 import Vegas.Examples.LateOpeningRuntimeSource
 import Vegas.Examples.LateOpeningRuntimeSourceContinuation
+import Vegas.Examples.OddsEvensEquilibrium
+import Vegas.Examples.OddsEvensRawEquilibrium
+import Vegas.Examples.OddsEvensService
+import Vegas.Examples.OddsEvensSetup
 import Vegas.Examples.PrivateValueAuction
 import Vegas.Examples.ProgramPayments
 import Vegas.Examples.ProgramPaymentsNativeRepresentation

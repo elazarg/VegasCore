@@ -92,8 +92,7 @@ def completionCycles : Nat := (workBound graph + 1) * (maximumDeadline runtime +
 Packet padding, candidate supply, player policies and the joint tape do not enter it. -/
 theorem runRounds_complete {length : Nat} (packetBudget : Nat) (tape : Tape Player length)
     (plan : RuntimePhasePlan graph) (ordered : graph.RevealRelaxedOrdered)
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
+    (maximal : RuntimePhase.PartitionRegular plan.phases)
     (players : Player → (app).Policy) (inputs : graph.Inputs) (final : (app).Execution)
     (reached : final ∈ ((app).runRounds (family runtime leaks packetBudget tape) players
       (completionCycles runtime * cycleWidth (graph := graph) packetBudget)

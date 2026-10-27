@@ -19,8 +19,7 @@ namespace PhaseRuntimeState
 /-- Every native-ready event is in the current maximal phase. -/
 theorem ready_current_phase (state : PhaseRuntimeState graph)
     (ordered : graph.RevealRelaxedOrdered) (frontier : state.Frontier) (live : state.Live)
-    (maximal : state.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
+    (maximal : RuntimePhase.PartitionRegular state.phases)
     (event : graph.EventId) (ready : state.current.native.config.cut.Ready event) :
     ∃ phase ∈ state.phases.head?, event ∈ phase.events := by
   cases phases : state.phases with
@@ -36,17 +35,15 @@ theorem ready_current_phase (state : PhaseRuntimeState graph)
       have adjacent := frontier.adjacent
       have last := frontier.last
       rw [phases] at adjacent last maximal
-      have boundaries := phase_boundaries phase remaining adjacent last maximal
       refine ⟨phase, by simp only [List.head?_cons, Option.mem_some_iff],
-        phase.ready_mem state.current ordered position.2 (live phase head)
-        boundaries.1 boundaries.2 event ready⟩
+        ready_mem_regular phase remaining adjacent last maximal state.current ordered position.2
+        (live phase head) event ready⟩
 
 /-- Genuine normalized metadata turns each ready owned event into a precise
 current-attempt request; excluded owners have no ready event. -/
 theorem request_of_ready (state : PhaseRuntimeState graph)
     (ordered : graph.RevealRelaxedOrdered) (frontier : state.Frontier) (live : state.Live)
-    (maximal : state.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
+    (maximal : RuntimePhase.PartitionRegular state.phases)
     (quiescent : ∀ event, ¬ state.current.AutomaticReady event)
     (event : graph.EventId) (ready : state.current.native.config.cut.Ready event)
     (owner : Player) (actor : graph.actor? event = some owner) :
@@ -88,8 +85,7 @@ strictly later installed suffix. -/
 theorem ready_namespace_phase (before after : PhaseRuntimeState graph)
     (orderedGraph : graph.RevealRelaxedOrdered) (frontier : before.Frontier)
     (live : before.Live)
-    (maximal : before.phases.IsChain fun first second =>
-      first.kind ≠ second.kind ∨ first.kind = .sample)
+    (maximal : RuntimePhase.PartitionRegular before.phases)
     (suffix : after.phases <:+ before.phases) (owner : Player)
     (coordinate : CommitAttemptEvent graph)
     (requested : after.SeedRequest owner coordinate)

@@ -149,6 +149,7 @@ import Vegas.Pending.PhaseSingletonRebuild
 import Vegas.Pending.PhaseSingletonTransition
 import Vegas.Pending.PhaseStaticCountVerdict
 import Vegas.Pending.PhaseStoredCheckpoint
+import Vegas.Pending.PhaseThinnedCollection
 import Vegas.Pending.PhaseTimelyResolution
 import Vegas.Pending.PublicFailureEvidence
 import Vegas.Pending.ReactiveAcceptedOutput

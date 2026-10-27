@@ -24,8 +24,7 @@ theorem implementation_asyncContract {length : Nat} (prior : PMF (Tape Player le
     (gaps : ∀ tape ∈ prior.support,
       tape.BoundedGaps (completionCycles runtime) activationGap processingGap)
     (plan : RuntimePhasePlan graph) (ordered : graph.RevealRelaxedOrdered)
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample) (inputs : PMF graph.Inputs) :
+    (maximal : RuntimePhase.PartitionRegular plan.phases) (inputs : PMF graph.Inputs) :
     PhaseService.AsyncContract runtime leaks (inputs.map (PhaseRuntimeState.initial plan))
       (executionHorizon runtime)
         (implementation runtime leaks (packetCapacity runtime) prior).scheduler

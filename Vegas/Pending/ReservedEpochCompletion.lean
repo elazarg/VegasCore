@@ -28,8 +28,7 @@ def executionHorizon : Nat := horizon (graph := graph) (completionCycles runtime
 initial private-input law. No prescribed player profile is assumed. -/
 theorem terminal_history_complete {length : Nat} (tape : Tape Player length)
     (plan : RuntimePhasePlan graph) (ordered : graph.RevealRelaxedOrdered)
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample)
+    (maximal : RuntimePhase.PartitionRegular plan.phases)
     (inputs : PMF graph.Inputs) (current : (app).Control)
     (trace : ((app).protocol (inputs.map (PhaseRuntimeState.initial plan))
       (executionHorizon runtime) (family runtime leaks (packetCapacity runtime) tape)).Trace
@@ -54,8 +53,7 @@ theorem terminal_history_complete {length : Nat} (tape : Tape Player length)
 
 theorem family_completesPlay {length : Nat} (tape : Tape Player length)
     (plan : RuntimePhasePlan graph) (ordered : graph.RevealRelaxedOrdered)
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample) (inputs : PMF graph.Inputs) :
+    (maximal : RuntimePhase.PartitionRegular plan.phases) (inputs : PMF graph.Inputs) :
     PhaseService.CompletesPlay runtime leaks (inputs.map (PhaseRuntimeState.initial plan))
       (executionHorizon runtime) (family runtime leaks (packetCapacity runtime) tape) := by
   intro current trace terminal
@@ -66,8 +64,7 @@ theorem family_completesPlay {length : Nat} (tape : Tape Player length)
 The proof extracts a supported original tape through the anchored run law. -/
 theorem implementation_terminal_history_complete {length : Nat} (prior : PMF (Tape Player length))
     (plan : RuntimePhasePlan graph) (ordered : graph.RevealRelaxedOrdered)
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample) (inputs : PMF graph.Inputs)
+    (maximal : RuntimePhase.PartitionRegular plan.phases) (inputs : PMF graph.Inputs)
     (current : (app).Control)
     (trace : ((app).protocol (inputs.map (PhaseRuntimeState.initial plan))
       (executionHorizon runtime)

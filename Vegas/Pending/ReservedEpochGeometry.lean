@@ -19,8 +19,7 @@ structure ProgressGeometry (inputs : graph.Inputs) (state : PhaseRuntimeState gr
   valid : WorkValid inputs state
   frontier : state.Frontier
   live : state.Live
-  maximal : state.phases.IsChain fun before after =>
-    before.kind ≠ after.kind ∨ before.kind = .sample
+  maximal : RuntimePhase.PartitionRegular state.phases
   quiescent : ∀ event, ¬ state.current.AutomaticReady event
 
 variable (runtime : EventGraphRuntime graph)
@@ -66,8 +65,7 @@ theorem runRounds_nonempty_before (scheduler : (app).Scheduler)
 omit [Fintype Player] in
 theorem initial_progress_geometry (plan : RuntimePhasePlan graph)
     (ordered : graph.RevealRelaxedOrdered)
-    (maximal : plan.phases.IsChain fun before after =>
-      before.kind ≠ after.kind ∨ before.kind = .sample) (inputs : graph.Inputs) :
+    (maximal : RuntimePhase.PartitionRegular plan.phases) (inputs : graph.Inputs) :
     ProgressGeometry inputs (PhaseRuntimeState.initial plan inputs) := by
   have geometry := phaseApplication_initial_quiescent plan ordered maximal inputs
   exact ⟨⟨(PhaseRuntimeState.initial_invariant plan inputs).1,

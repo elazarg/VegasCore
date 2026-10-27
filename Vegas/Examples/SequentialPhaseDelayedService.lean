@@ -70,7 +70,7 @@ theorem opportunity : PhaseService.Opportunity runtime leaks initial horizon sch
     (fun _ => 3) := by
   exact ReservedEpoch.family_opportunity runtime leaks packetBudget
     (ReservedEpoch.completionCycles runtime) tape 2 1 (tape_boundedGaps _) plan
-    (serviceGraph_revealRelaxedOrdered fixture .sequential) maximal
+    (serviceGraph_revealRelaxedOrdered fixture .sequential) (Or.inl maximal)
     (fixture.initialLaw.map fixture.eventInputs)
 
 theorem protectedInclusion : PhaseService.ProtectedInclusion runtime leaks initial horizon scheduler
@@ -80,7 +80,7 @@ theorem protectedInclusion : PhaseService.ProtectedInclusion runtime leaks initi
 
 theorem completesPlay : PhaseService.CompletesPlay runtime leaks initial horizon scheduler :=
   ReservedEpoch.family_completesPlay runtime leaks tape plan
-    (serviceGraph_revealRelaxedOrdered fixture .sequential) maximal
+    (serviceGraph_revealRelaxedOrdered fixture .sequential) (Or.inl maximal)
     (fixture.initialLaw.map fixture.eventInputs)
 
 theorem timely : runtime.AsyncTimely (fun _ => 3) (fun _ => 2) := by

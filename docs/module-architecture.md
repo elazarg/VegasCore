@@ -1,8 +1,8 @@
 # Module ownership
 
 The active production modules are the dependency closure of the paper-facing
-results, the sequential monetary specialization and the positive-latency
-runtime example. Regression tests and examples are retained when their
+results, the sequential monetary specialization and the checked concrete
+runtime instances. Regression tests and examples are retained when their
 production dependencies lie in that core. Umbrellas expose the retained
 subtree; imports do not preserve unused research modules merely to keep a name.
 
@@ -26,6 +26,11 @@ the [one-packet raw extension](../Vegas/Game/OnePacketExtension.lean).
 Their imports identify the actual proof adapters. The
 [open-problems guide](sequential-se-open-problems.md) distinguishes hypotheses
 from future service, audit and source refinements.
+
+The [Odds–Evens raw instance](../Vegas/Examples/OddsEvensRawEquilibrium.lean)
+consumes the sequential phase theorem and the
+[imperfect-evidence adapter](../Vegas/Pending/PhaseThinnedCollection.lean).
+The [instance guide](sequential-se-instances.md) describes their exact scope.
 
 Use `rg` and `python lean-defs.py <files>` to inspect owners before adding
 definitions. Share actual operations and isolate hypotheses that vary with a
