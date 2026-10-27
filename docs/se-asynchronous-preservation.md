@@ -10,29 +10,34 @@ or force a block producer to empty that pool.
 
 The [end-to-end derivation](se-broadcast-preservation-derivation.md) organizes
 the primary mathematical route: source batching, fresh-service timing and
-failure continuations, raw-message comparison, and strategic terminal reporting.
+failure continuations, raw-message comparison, and direct public-ledger audit.
 The [runtime specification](se-broadcast-runtime-mathematics.md) defines the
 finite message-inbox game and its publication/observation transitions.
 Everyone can broadcast at every modeled block; reception remains partial,
 ledger batches may be partial, and retransmissions remain observable.
 
-There is no honest audit monitor in this route. A relevant body is either
-actually public or held by a nonauthor game player. The
-[reporting proof](se-strategic-reporting-mathematics.md) constructs an equilibrium
-in which those players report their evidence after base payoffs freeze.
-It handles raw report actions and one common consistency sequence. The proof
-uses an explicit finite allowance for all in-scope raw traffic. The
-[evidence-summary theorem](se-evidence-summary-mathematics.md) reduces canonical
-terminal bundles without changing the Boolean penalties; application capacity
-and report delivery remain separate obligations.
+There is no honest audit monitor or strategic reporting stage in this route.
+Every bounded authenticated session body is recordable, including stale or
+malformed inner game calls. Its immutable submission job makes it public by
+the final audit under every profile. The raw comparison can therefore stop
+at the first forbidden submission, independently of who receives it.
+The [reporting proof](se-strategic-reporting-mathematics.md) and
+[evidence-summary theorem](se-evidence-summary-mathematics.md) are separate
+tools for broader message models; they do not themselves prove preservation
+for an announcement-only operation.
 
 The substantive runtime premises are immutable body-level publication,
-independent fresh service, packet-local observation, a bounded typed message
-domain, funded report delivery and ideal authenticated commitments. A valid
+independent fresh service, source-factorizing and reset-compatible observation,
+a bounded typed message domain and ideal authenticated commitments. Capacity
+and publication funding cover each author's maximum traffic in one run, not
+every possible payload. A valid
 submission has a precise meaning; merely observing signed bytes does not create
 a chain job. These are not properties of every blockchain or every timely
 builder. The [mechanization inventory](se-asynchronous-mechanization-inventory.md)
 separates the reusable Lean foundations from the concrete implementation work.
+The existential draft in [Paper](../Paper.lean) fixes one implementation before
+all source equilibria, but is admitted and still lacks the formal operational
+constraint connecting its generic game carrier to this broadcast runtime.
 
 The [support-based theorem](se-asynchronous-preservation-theorem.md) gives an
 alternative timing proof using conditional repair of late broadcasts. Its

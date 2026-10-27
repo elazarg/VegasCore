@@ -112,12 +112,17 @@ uses per-author publication lanes and one positive witness per offending author;
 bounded eventual capture replaces the need to publish all raw variants.
 
 The [primary end-to-end derivation](../se-broadcast-preservation-derivation.md)
-instead uses [strategic terminal reporting](../se-strategic-reporting-mathematics.md)
-by the actual game players, with no honest capture service. Its
-[runtime specification](../se-broadcast-runtime-mathematics.md) separates
-persistent body validity from the assumed timely inclusion service and from
-partial peer reception. [Authorwise evidence summaries](../se-evidence-summary-mathematics.md)
-preserve the Boolean audit exactly while reducing prescribed report size.
+uses direct ledger audit, with no honest capture service or strategic reporting.
+Its [runtime specification](../se-broadcast-runtime-mathematics.md) records every
+bounded authenticated session body and separates persistent body validity from
+the assumed timely inclusion service and partial peer reception. Publication
+reserves cover per-author traffic in one run. The observation hypotheses include
+source factorization, own-service freshness and reset compatibility.
+[Strategic terminal reporting](../se-strategic-reporting-mathematics.md) and
+[authorwise evidence summaries](../se-evidence-summary-mathematics.md) remain
+extension tools for other message models, not prerequisites of the primary
+construction. The admitted existential draft in [Paper](../../Paper.lean) still
+needs a formal operational specification restricting its implementation carrier.
 The cited ERC-4337 components support a possible validation design, not a proof
 of the required nonrevocable submission or independent inclusion interface.
 

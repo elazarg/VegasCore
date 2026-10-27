@@ -1,29 +1,29 @@
-# A finite broadcast runtime with strategic evidence reporting
+# A finite broadcast runtime with direct ledger audit
 
 This document specifies the runtime used by a fresh-service preservation
-argument without an honest auditor, relay or evidence collector. It separates
-three objects which must not be conflated: an authenticated application body,
-a qualifying transaction submission, and a participant's observation of a
-network occurrence.
+argument without an honest auditor, relay or evidence collector. Every bounded
+authenticated current-session application body is recordable, including a
+malformed inner game call. The primary construction therefore collects audit
+evidence directly from the ledger; it needs no strategic reporting stage.
 
-The target has one broadcast/submission primitive. Broadcasting a qualifying
-funded transaction creates the chain obligation defined below. Receiving an
-arbitrary signed envelope does not create that obligation. There is no second
-operation which sends the exact qualifying transaction bytes to a private
-audience while declining the submission transition. This is an explicit
+The target has one broadcast/submission primitive. Broadcasting such a body
+creates the funded recording obligation defined below. A network observation
+is not itself a submission. There is no second operation which announces the
+same authenticated bytes while declining the submission transition. This is an explicit
 restriction of the runtime communication model. It is not a consequence of a
 compiler, transaction signatures, or ordinary account-nonce replacement.
 
 The chain's stated inclusion contract is an assumption about the blockchain
-service. Evidence is obtained either from an actual public chain record or
-from strategic players who received it and later choose to report. No unseen
-observer's private retention is counted as collection.
+service. Evidence comes from the actual public chain record. No unseen
+observer's private retention is counted as collection. The two substantive
+availability premises are that broadcast is submission and that submitted
+bodies have the stated nonrevocable timely-inclusion service.
 
 The [fresh-service proof](se-asynchronous-support-weakening.md) supplies the
 proper-core timing and reset argument. The
 [authenticated comparison](se-asynchronous-authenticated-construction.md)
 supplies the semantic repair and raw-action comparison. This specification
-gives their concrete transaction, receipt and reporting interfaces. It is
+gives their concrete transaction, observation and ledger-audit interfaces. It is
 mathematical work; it does not add Lean declarations or assert an EVM
 implementation.
 
@@ -56,9 +56,10 @@ session signature into an offense by its original signer.
 The finite message algebra is typed and nonnested. A source value, a handle,
 an opening certificate and an authenticated application body are distinct
 sorts. Application fields cannot contain another authenticated application
-body or an arbitrary encoding of one. Reports are a separate, expressly
-defined finite list type. This restriction is needed by the reporting
-incentive proof; it is not a claim about arbitrary byte-string protocols.
+body or an arbitrary encoding of one. The separate reporting extension uses
+an expressly defined finite list type. The primary direct-ledger proof does
+not need an own-free report bundle, but still uses the declared finite typed
+message domain. It is not a claim about arbitrary byte-string protocols.
 
 An ideal commitment handle has one immutable private typed meaning once it is
 bound, and its public name reveals no function of that meaning. A usable
@@ -74,30 +75,37 @@ chat channel. If such a channel is admitted, its information and evidence
 effects need their own theorem. A signature on one body cannot be used to
 attribute a modified or stripped body to its original author.
 
-Let E_tx be the finite set of possible qualifying authenticated inbox bodies.
-Let E_raw contain the other authenticated session bodies. An ordinary proper
-binding or opening is in E_tx. A malformed inner game call may also be in
-E_tx: chain eligibility is deliberately broader than game acceptance.
-Every body in E_raw has a positive intrinsic format/domain/authorization
-violation, unless it is an explicitly retained transport alias. A body which
-is perfectly valid protocol communication but is neither submitted nor
-intrinsically faulty is not silently placed in E_raw; that is the separate
-announcement-only boundary discussed below.
+Let E_tx be the finite set of all bounded authenticated current-session
+application bodies. Outer recording is total on this domain. Proper calls,
+malformed inner calls, stale calls, conflicts and exact retransmissions all
+use this same interface. In the primary construction E_raw is empty: there
+is no authenticated body class which can be broadcast but is refused recording.
+An unrelated-session signature or unauthenticated string is not silently
+reclassified as a chargeable current-session body. An enlarged communication
+interface admitting such traffic needs its own information and incentive proof.
 
 ## 2. Private plans do not consume future semantic menus
 
 Each physical attempt and source component has a reserved fresh namespace.
 The current legal fresh names depend on public syntax and ordinary operational
 freshness records, not on private source values, carrier nonces, or a count of
-unpublished private plans. A fixed full-support fresh-name law can be used,
-with service and policies equivariant under consistent renaming. One canonical
-name per slot is a simpler special case.
+unpublished private plans. The primary construction uses one canonical name
+and one canonical proof representation per current slot. Every declared raw
+body is still recordable; a second conflicting representation cannot cancel
+the canonical body's job. Old-public-body replay coordinates retain their
+positive product law. There is no unspecified representation-floor error.
+Canonicality is part of the valid current-slot grammar or the ideal primitive's
+unique representation, not merely a reference-policy convention. A different
+current representation is a positively verifiable structural fault. If a
+backend instead permits several valid first representations, it must retain
+and analyze those aliases; choosing one in the reference policy is insufficient.
 
 A player may keep arbitrary bounded private scratch plans: intended values,
 possible handles, coins and proposed future messages. Planning changes no
 network queue, public certificate, service credit or physical component
 binding. It cannot reserve all of a future slot's names, freeze a name's
-meaning, or remove a core source action from its future menu. Changing a
+meaning, spend a future submission allowance, or remove a core source action
+from its future menu. Changing a
 private plan before its first binding use is therefore still private planning.
 
 At the first qualifying binding transmission for an unused physical component,
@@ -130,8 +138,8 @@ and are retained exactly. They are not replaced by this shadow construction.
 
 For each potential qualifying body e, use a collision-free canonical key k(e).
 The mathematical key space is finite. Different conflicting bodies have
-different keys even when their application slot is the same. A report body
-uses a disjoint key and funding domain.
+different keys even when their application slot is the same. The primary
+construction has no report-body domain.
 
 An immutable inbox/account validator fixes the following rules for the whole
 session:
@@ -147,17 +155,30 @@ session:
    rejects insufficient execution resources. Inner game rejection does not
    revert the outer record: recording and the bounded, failure-returning game
    interpreter are separate stages.
-4. Funds for every key which can occur in the declared raw domain are locked
-   until its publication obligation and the final audit are discharged. Other
-   bodies cannot spend that key's allowance. The validator and these rules
-   cannot be changed or withdrawn during the session.
+4. Each author has a segregated reserve for the largest number of distinct
+   bodies it can submit in one run. Submission irrevocably earmarks the
+   recording allowance for that actual body key. Other jobs cannot spend it.
+   Uncommitted funds and earmarked allowances remain locked through publication
+   and audit; the validator cannot be changed during the session.
 5. Canonical copies of e share its key. Sending another copy does not create a
    new publication job or reset its start time.
 
-These rules can be described without assuming that every body is known at
-deployment: a fixed body-indexed validation rule and a reserve covering the
-entire finite domain suffice. The mathematical model does not give players
-future phase capabilities by enumerating opaque certificate atoms.
+These rules do not reserve money for every possible payload. If author i has
+at most H_i action opportunities and may introduce at most b_i fresh bodies
+per opportunity, put N_i=H_i*b_i. With per-body recording cost at most c_i,
+reserve N_i*c_i for that author. At a prefix after k opportunities at most
+k*b_i jobs have consumed earmarks, so at least (H_i-k)*b_i full allowances
+remain. Every later permitted fresh batch is still funded. Earlier raw
+choices and private planning cannot exhaust a later core choice's allowance.
+Different authors' reserves are disjoint.
+
+Canonical retransmissions create no new job or earmark. A current-session
+body first becomes known to a nonauthor only through a prior broadcast or
+public record; forwarding it therefore cannot introduce an unbudgeted new
+author job. Initial source commitments are not a library of unsubmitted
+current-session signed envelopes. Fixed genesis records, if present, are
+funded and counted separately. The model does not grant future phase
+capabilities by enumerating certificate atoms.
 
 The relevant validity invariant is
 
@@ -172,12 +193,12 @@ are excluded by rules 3 and 4. Game expiry affects only the inner interpreter.
 This is an invariant about public validation and locked resources, not a relay's
 promise to remember something.
 
-For a finite bound N_tx on distinct qualifying bodies and a maximum recording
-cost c_tx, a reserve N_tx*c_tx suffices for this deliberately large baseline.
-Use separate reserves for base-game obligations, audit collateral and report
-transactions. A player's raw flood cannot consume another body's or another
-reporter's allowance. This accounting removes affordability interference; it
-does not prove network delivery or inclusion.
+Thus the publication reserve is sum_i N_i*c_i, sized by one execution's
+largest possible submission count, not by |E_tx|. Audit collateral is separate.
+Every occurrence, including a replay, also has a declared intake cost covered
+by its per-step multiplicity bound. A player's raw flood cannot consume
+another author's reserve or an already earmarked job allowance. This accounting
+removes affordability interference; it does not prove delivery or inclusion.
 
 The crucial remaining service premise is that the chain's timely-inclusion
 contract applies to these persistently valid funded body-key operations.
@@ -202,17 +223,30 @@ A state contains:
 * the private source cells and each player's scratch/owned-binding state;
 * a body-key map, recording jobs and in-flight broadcast occurrences;
 * each player's complete own action and receipt history;
-* base-game, reporting and audit phase markers and their separate balances.
+* base-game and audit phase markers and their separate balances.
 
 The full mathematical state can contain a body which no player has received.
 That does not place it in any player's observation. The public ledger is the
 source of common public records.
 
-At a block decision, a player chooses a bounded multiset of new own signed
-bodies and known signed bodies to retransmit. Each known-body coordinate has
-a fixed finite multiplicity bound. There is no smaller aggregate cap which
-would prevent an otherwise available current submission while retaining
-the selected replay coordinates. All fields and alphabets remain finite.
+At a block decision, a player chooses up to b_i fresh own signed bodies and
+a bounded replay multiset of known bodies. Each replay coordinate has a
+fixed finite multiplicity bound. There is no smaller aggregate cap coupling
+these coordinates: one new current body remains available together with
+every legal replay selection. In the proper core the current body has a
+canonical representation. Fresh bodies and replay occurrences have separately
+bounded intake work. All fields and alphabets remain finite.
+
+Here a replayable known body is one already broadcast in this run or a fixed
+genesis record. Knowing a privately prepared or signed plan does not make its
+first transmission a replay: that first network use consumes the fresh-body
+cap. Own recall and authenticated receipt determine these categories locally.
+
+If G is the number of fixed genesis bodies and L bounds each replay
+multiplicity, at most G+sum_i N_i distinct bodies can be known in one run.
+Thus one action has at most b_i+L*(G+sum_i N_i) occurrences. This per-run
+bound funds intake without reserving for every payload in the alphabet and
+without introducing a shared cap that couples a current action to old replays.
 
 The following transitions define the communication interface.
 
@@ -222,13 +256,14 @@ The following transitions define the communication interface.
 each e in E_tx whose key has not previously been submitted or recorded, create
 its publication job with admission time a=t. This is an actual submission
 transition of this runtime, not an inference made from another player's
-receipt. For e in E_raw, create occurrences but no chain publication promise.
+receipt. There is no E_raw case in the primary model.
 
-**Partial receipt.** Chance delivers complete occurrences to some players.
-The sender cannot select a confidential audience. Players may receive
-different bodies at different times and may observe duplicates. Author and
-broadcaster are not conflated. Unreceived occurrences have no effect on other
-occurrences' delivery, inclusion jobs, controller state or player observations.
+**Partial observation.** Chance produces the permitted observations of
+broadcast traffic. The sender cannot select a confidential audience. Players
+may observe different bodies, opaque metadata, counts or duplicates. Complete
+body receipt is not an audit requirement. The factorization, freshness and
+reset conditions in section 5 restrict these kernels; arbitrary value-blind
+projections are not automatically admitted. Author and broadcaster are distinct.
 
 **Public recording.** When e's job is included, append its complete body and
 key to L and consume that key. Then evaluate its inner game call. Rejection,
@@ -241,15 +276,12 @@ through that boundary, then compute completion, missing owners and excluded
 owners. The next semantic decision is disabled until this result and the
 required recording interval are public.
 
-**Freeze.** At the public terminal point T, freeze base payoffs. Each player
-records its then-current knowledge K_i for its prescribed reporting strategy.
-The physical network does not stop delivering messages, and the player does
-not lose later observations. Pending publication obligations continue to
-record. Later communication cannot change the frozen base game or revoke
-already submitted recording/reporting jobs.
-
-**Reporting and audit.** Apply sections 7 and 8. The final verifier consumes
-actual public bodies, never a private monitor's assertion.
+**Freeze and drain.** At the public terminal point T0, freeze base payoffs and
+end new strategic submissions. Pending publication and observation events
+continue. Set TA>=T0+Delta, so every submitted body is recorded by audit.
+The final verifier consumes actual public bodies, never a private monitor's
+assertion. The optional reporting extension in section 8 uses a later
+submission cutoff instead.
 
 ## 5. A fresh independent inclusion service
 
@@ -270,8 +302,9 @@ at successive blocks and compulsory inclusion by a+Delta. Neither instance
 requires positive probability of every delayed-receipt pattern for the fresh
 proof.
 
-Reserve enough application recording capacity to include every due body under
-the declared finite raw bound. Thus the inclusion rule is well-defined under
+Reserve enough application recording capacity to include at most sum_i N_i
+due bodies under the per-run raw bound, accounting for their maximum sizes.
+Thus the inclusion rule is well-defined under
 every deviation. It need not clear unrelated transactions, and it may include
 only a subset of the application's jobs in an earlier block. There is no
 shared nonce, allowance or congestion queue which lets one body interfere
@@ -292,17 +325,42 @@ network history predicts its fresh job coins. Hence
 
     q*_e(t) = max_{a>=t} p_e(a)
 
-is attainable by a common clock-based submission policy. At protected times
+where a ranges over the finite remaining admissible current-window times,
+with never-submit included at value zero. This maximum is attainable by a
+common clock-based submission policy. At protected times
 a<=D-Delta, p_e(a)=1. Conditional on any fixed foreign first-admission,
 failure and archive scenario C, an adaptive policy tau has success probability
 E[p_e(tau)|C]<=q*_e(t). This is the precise timing input to the fresh proof;
 cross-body independence and conditional freshness are substantive premises.
 
-Receipt kernels can be deterministic complete observation or partial packet-
-local observation. New-body receipt kernels must be independent of discarded
-old traffic after a reset. Mere blindness to source values does not justify a
-persistent router state which predicts later service or changes later new-body
-reception.
+The observation conditions are separate from audit collection:
+
+1. **Semantic opacity and factorization.** At a binding window, conditional on
+   the retained source information J, the operational observation law cannot
+   inspect unrevealed candidate meanings or other hidden semantic values. The
+   source/operational path law factors into the source weight and a mechanical
+   weight. At reveal windows, authorized visible payloads may be included;
+   their selection mask depends on mechanical data rather than their values.
+2. **Own-service freshness.** No pre-submission observation predicts the
+   fresh coins of the not-yet-submitted own body. Together with independent
+   service, this gives the conditional-on-C timing calculation above.
+3. **Independent service.** Other broadcasts, replays and observation events
+   cannot change an admitted body's service law or create service competition.
+4. **Reset compatibility.** The next namespace's observations and service
+   are independent of discarded old traffic, including changes to old replay
+   policies. The actual old record is a causal auxiliary observation of the
+   retained coarse own history, and actual menus factor into current actions
+   and inert old replay coordinates. This is the action/information quotient
+   proved in the fresh-service construction, not an instruction to forget.
+
+Complete observation, partial bodies, metadata and counts can satisfy these
+conditions. For example, counts indexed by the current namespace and generated
+from its fresh mechanical process can be retained while old-namespace records
+are auxiliary. An unlabeled total count mixing old flights with new traffic
+need not satisfy the reset condition: remembered old flights may reveal which
+new event produced a count. Value blindness alone does not prove the required
+conditional factorization or reset. Complete-body receipt is unnecessary for
+the primary audit, because the body is unavoidably recorded after submission.
 
 ## 6. Source windows, rollback and reset
 
@@ -348,149 +406,120 @@ This action/information quotient matters. A forgotten private candidate may
 otherwise provide an extra authentic opening action, and old duplicate
 history may otherwise predict noise in a future replay signaling channel.
 
-## 7. Freeze knowledge, then let players report
+## 7. Submission gives unavoidable ledger evidence
 
-There is no monitor. At freeze time T, let K_j be the complete authenticated
-application bodies actually received or read from the ledger by player j.
-Perfect recall retains them. Reports concern these frozen sets, not messages
-newly learned from another report.
+Let A_bad be the first submission of an auditable forbidden body before base
+freeze T0, unless semantic debt or own exclusion has already supplied the
+stopping comparison. This is an action event, not the first receipt or first
+observable effect. If it occurs in a batch, the whole batch is committed to
+recording by the same transition. A violation involving two new components
+of that batch therefore has both witnesses.
 
-Use a fixed finite set of simultaneous reporting rounds, with an opportunity
-for every player before a public cutoff T_R regardless of previous reports
-or raw communication. A player may submit a canonical bundle of any known
-foreign-authored bodies, with enough capacity to report its entire frozen
-foreign set, or omit it. A partial, malformed or omitted earlier report does
-not consume the ability to submit the canonical bundle at a later round.
-There is no first-report quota. The separate
-report funding and capacity cover the entire finite reporting domain, under
-every profile, even if players flooded the gameplay network.
+Every authenticated body is in E_tx. Equation (2) makes the submitted body
+public by TA, under every later raw profile. Earlier retained counterparts
+have the same persistent promise. For the deterministic positive verifier:
 
-The declared raw tail may also contain new application submissions through
-T_R. After that last submission cutoff only the fixed service and audit drain
-remain; there is no new unbounded stream of strategic submissions.
-
-A qualifying report submission is another actual funded chain operation.
-Its immutable inclusion deadline is no later than T_R+Delta_R. An adversary
-cannot cancel another report, make another reporter's allowance unavailable,
-or displace that report with its own spending. The audit waits until
-
-    T_audit >= max(T_R+Delta, T_R+Delta_R).                                  (3)
-
-The first term also finishes every tail-created application job. In particular,
-it makes all pre-freeze qualifying counterparts available even if they were
-not public when knowledge was frozen. A reporter need not yet
-know which earlier body will complete a conflict witness: report the body it
-has, then let the final deterministic verifier combine actual public records.
-
-The report-all strategy submits K_j restricted to authors other than j.
-It has zero net player cost and no positive bounty. Penalties are not paid
-to other game players. Each penalty against i uses only i-authored application
-bodies and fixed public controller records. The nonnested message algebra
-ensures that reporting a foreign body does not also disclose an unlisted
-i-authored application body hidden inside it.
-
-Fix a reporting information set. Already submitted foreign bundles remain
-fixed; the prescribed future canonical bundles are fixed by each reporter's
-own snapshot and do not depend on later receipts or the current report.
-The snapshot is a strategy record, not an artificial restriction on what
-players physically know. All qualifying reports arrive by (3).
-Changing player i's report of foreign bodies therefore changes no terminal
-evidence against i, no frozen base utility and no fee paid by i. Report-all
-is a best response at every such information set. If extra report actions
-voluntarily reveal one's own incriminating body, they can only lower that
-player's payoff.
-
-This proves a strategic reporting equilibrium. It does not assume players
-honestly report every observation under every strategy profile. The raw
-comparison is first made in the reduced game with report-all fixed; a
-vanishing fully mixed reporting perturbation then supplies one consistent
-equilibrium of the strategic-reporting game. Its finite-horizon reporting
-error tends to zero uniformly.
-
-## 8. Exposure gives actual evidence, without private capture
-
-Before the base freeze T, let the effective exposure of a previously
-suppressed body e be the first of:
-
-* full receipt by a game player j different from auth(e); or
-* full public recording of e in the inbox.
-
-Private retention by an unnamed ingress is not an exposure used by this
-lemma. If e can affect execution, the record transition has already exposed
-the full body publicly. If e has not been received by a nonauthor and is not
-public, packet-local noninterference says it has not changed anybody else's
-information, any other service job, or the controller. Own scratch and
-unreceived flights can be simulated privately.
-
-At an effective exposure e before freeze, the reduced report-all game has the
-following collection facts.
-
-| Violation | Source of the actual final witness |
+| Violation | Actual final public witness |
 | --- | --- |
-| Intrinsic format, owner, phase or certificate defect | e itself, from the public inbox or a nonauthor reporter |
-| A conflicting second body for one physical slot | e plus the retained earlier proper body's public record guaranteed by (2) |
-| Reuse of one handle across bindings/components | The two signed binding records, or the two indexed components of one signed body |
-| An active owner's new body for a closed old slot | e plus that slot's already accepted public record |
-| An excluded owner's first historically valid old disclosure | No fabricated offense: use the permanent own-payoff comparison |
+| Intrinsic inner format, owner, phase or certificate defect | The submitted current-session body itself |
+| A conflicting second body for one physical slot | Both submitted bodies |
+| Reuse of one handle across bindings/components | Both binding bodies, or both indexed components in one body |
+| An active owner's new body for a closed old slot | The new body and that slot's accepted public body |
+| An excluded owner's first historically valid old disclosure | Use permanent own payoff; do not invent an offense |
 
-For a private conflict, no reporter must already hold both bodies. The earlier
-retained body is an actual qualifying submission, so it remains due for
-publication under every later deviation. The final verifier uses unordered
-positive pairs, not a guessed global emission order. If e is never effectively
-exposed before freeze, it had no effect on the base game; an unreported body
-known only to its author cannot create an additional base-game advantage.
+Thus every positive witness W needed at A_bad satisfies
 
-For malformed inner calls which are nevertheless in E_tx, full public logging
-alone supplies the first row. For nonqualifying e in E_raw, nonauthor receipt
-and strategic reporting supply it. These are two different proofs of
-availability. Neither treats signature validity as evidence retention.
+    W subseteq P_final,                                                   (3)
 
-The clean retained semantic shadow has the usual stopping alternatives.
-An unsaved bad binding may be erased by rollback before a genuine opening is
-authorized. An irreversibly saved earliest bad binding forces its owner to
-exclusion: truthful completion eventually checks its false guard, while
-withholding or an unusable opening also excludes it. A directly forbidden
-body stops at effective exposure and yields the positive witness above.
-All private simulations and stopping choices use one causal own-information
-policy, not hidden-state-dependent comparator selection.
+where P_final is the actual application inbox at TA. The verifier uses
+unordered positive pairs; it does not need a guessed global emission order.
+Nobody must privately receive, recognize, preserve or report the witness.
+The publication job is an explicit consequence of submission, not common
+knowledge of the body before recording.
 
-With permanent base floor F_i, upper base bound U_i and refundable charge
-D_i>=U_i-F_i, an exposed offense has raw net payoff at most F_i in the reduced
-report-all game. Own exclusion or a saved bad obligation also caps raw net
-payoff at F_i. A clean legal comparator can remain quiet and obtain at least
-F_i. This is the direct continuation comparison required by the action-
-restriction extension. It needs no lower bound on the probability of exposure.
+The causal semantic shadow still handles non-auditable bad private choices.
+Before public exit it can replace an unusable or guard-invalid current choice
+behind the same canonical opaque name. The raw and shadow wire is identical.
+An unsaved current block may be erased by rollback before any genuine opening
+is authorized. If its earliest bad obligation is irreversibly saved, truthful
+completion eventually checks its false guard; withholding or an unusable
+opening instead excludes its owner. In either case that owner's eventual
+base payoff is F_i. Guard checking occurs when the last required input is
+public, not necessarily at the first changed opening. After public exit new
+structurally clean raw handler choices are copied literally.
 
-## 9. What is proved, and the exact communication boundary
+At A_bad, the comparator can stop sending the offending body and continue
+quietly. Subsequent raw observations may change arbitrarily within the stated
+runtime: the complete audit charge is already inevitable. There is no need
+to simulate a suppressed body's flights until receipt or to impose a
+complete-envelope observation condition for this comparison. Before A_bad,
+matching physical broadcasts and shadow-compatible private meanings give the
+same observations by semantic opacity.
 
-For the finite target specified here, availability follows from actual public
-logging or a nonauthor strategic report. There is no honest monitor premise.
-The body-key validator proves validity persistence; the explicitly assumed
-chain service turns it into bounded publication; the reporting game supplies
-the remaining received nontransaction evidence. The source timing/reset and
-semantic-shadow arguments can therefore use these concrete local interfaces.
+For refundable collateral D_i>=U_i-F_i, submission of the positive witness
+caps the raw terminal net payoff by U_i-D_i<=F_i. Own exclusion or saved bad
+debt also caps it by F_i. A clean retained quiet continuation has payoff at
+least F_i. On a branch with no stopping event before base freeze, the coupled
+base utilities agree and later nonnegative audit charges cannot improve the
+raw payoff. This proves the direct continuation comparison for one causal
+policy over the entire actual retained information set. It quantifies over
+all extending raw opponents' profiles; no reporting strategy is fixed.
 
-The target still has substantive runtime assumptions: a closed authenticated
-message algebra; one broadcast/submission primitive; funded body-key recording
-whose inclusion law is fresh and isolated; sufficient finite capacity;
-packet-local exposure; and a funded report stage. These are not consequences
-of source-language compilation alone.
+## 8. Strategic reporting as a separate extension tool
+
+The primary construction has no strategic reports, report reserve or report
+incentive assumption. Its time names are T0 for base freeze and last strategic
+submission, and TA>=T0+Delta for final ledger audit.
+
+For a different model with authenticated bodies that can be observed but are
+not recordable, the [strategic reporting construction](se-strategic-reporting-mathematics.md)
+is a separate tool. Use TK=T0 for the frozen evidence snapshot, TS for the
+last reporting/application submission in that extension, and
+TA>=max(TS+Delta,TS+Delta_R) for its final drain and audit. Physical observations
+continue after TK; the snapshot is only the prescribed strategy's remembered
+input.
+
+That extension requires complete positive witnesses to be held by nonauthors
+or eventually be public; guaranteed delivery of chosen canonical reports;
+segregated reporting entitlements; monotone authorwise verification; and
+zero incremental reporting cost with no payoff redistribution. Its common
+fully mixed sequence proves a selected report-all equilibrium. The primary
+ledger theorem uses none of these reporting incentives.
+
+Reporting does not by itself close an announcement-only interface for proper
+protocol bodies. A failed owner's privately announced value may remain
+unpublished at the next semantic binding decision even if reported at terminal
+audit. Such a change affects the retained timing/information proof as well as
+final evidence collection. It must be analyzed separately.
+
+## 9. Exact scope of the runtime theorem
+
+For the finite target specified here, all authenticated bounded session bodies
+are recordable. Body-key validation proves persistent eligibility; the
+nonrevocable timely-inclusion assumption turns actual submissions into final
+public records. Positive audit witnesses are therefore collected directly,
+without a trusted monitor and without strategic reporting. Source timing,
+rollback and semantic repair use the separate observation and reset conditions
+stated above.
+
+The substantive runtime assumptions are a closed authenticated message domain;
+one broadcast/submission primitive; immutable body-key recording; fresh
+independent inclusion with sufficient per-run capacity; the stated source and
+reset observation factorization; and fixed public windows/barriers. They are
+not consequences of source compilation or of an ordinary transaction deadline.
+No publication event is invented from another player's receipt.
 
 In particular, a different API may let a player show the same chain-valid
-signed bytes to peers without submitting them to the chain service. Then
-seeing those bytes proves neither a job nor (2). A retained-prefix body could
-be absent at audit, and a failed owner's announced value could remain private
-past the next binding barrier. Terminal report-all does not make it public
-earlier. Nor may an omitted transaction wrapper simply be blamed on the
-original signer: another party might have stripped it.
+signed bytes to peers without submitting them to this service. Then observing
+those bytes proves neither a job nor equation (2). A retained-prefix body can
+be absent from the final ledger, and a failed owner's announced value can
+remain private past the next binding barrier. Nor may an omitted transaction
+wrapper be blamed on the original signer: another party might have stripped it.
 
-That larger announce-only model is not refuted here. A correct announced
-opening which never completes caps its own author's payoff by exclusion; an
-announced opening which completes reveals the same value publicly. These facts
-are useful normalization cases. They do not by themselves supply a legal
-comparison under every extending opponents' policy: early unsubmitted signals
-can reach information sets excluded by the retained publication bound and
-change a foreign-failure continuation. Either include those announcements in
-the retained timing/information game and prove its comparisons, or give them
-an independently authenticated protocol format with a positive offense.
-Simply renaming an observed envelope a submission does neither.
+That larger interface is not refuted here. Its correct-but-uncompleted opening
+still leads to its author's exclusion, and an opening which completes makes
+its value public. Those facts do not alone supply a legal comparison under
+every extending opponents' policy. Either include announcements in a retained
+timing/information construction and prove its comparisons, or specify an
+independently authenticated auditable message class with actual evidence
+availability. Calling every observed envelope a submission does neither.

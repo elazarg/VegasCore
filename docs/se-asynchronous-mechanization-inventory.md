@@ -7,12 +7,24 @@ new adapters needed to implement them. It is not a completion checklist and
 does not change the fixed SE target or its checked boxes.
 
 The primary [assembled derivation](se-broadcast-preservation-derivation.md)
-uses the [explicit runtime](se-broadcast-runtime-mathematics.md) and
-[strategic reporting game](se-strategic-reporting-mathematics.md), with no honest
-monitor. The [evidence-summary lemma](se-evidence-summary-mathematics.md) is an
-optional exact reduction of the prescribed terminal bundles. Their finite
-transition/menu and probability lemmas specify what the corresponding rows
-below must implement; the compact monitor remains an alternative backend.
+uses the [explicit runtime](se-broadcast-runtime-mathematics.md) and deterministic
+ledger audit. All bounded authenticated session bodies are recordable. There is
+no honest monitor, strategic reporting stage or receipt-dependent audit stop.
+The [strategic reporting game](se-strategic-reporting-mathematics.md) and
+[evidence-summary lemma](se-evidence-summary-mathematics.md) are separate extension
+tools. They do not establish the retained timing/information argument for a
+separate announcement-only operation.
+
+The admitted existential statement in [Paper](../Paper.lean) has the order
+"there exists one implementation; for every source equilibrium there exists
+an implementing equilibrium." The [result carrier](../Vegas/Game/BroadcastImplementation.lean)
+defines its payoff and joint-law conclusion without a compiler stub or an
+admitted helper definition. It is still a generic finite-game carrier: no formal
+operational predicate connects it to the proposed parameters or broadcast
+transition system. Adding that constraint is necessary before the statement
+expresses blockchain implementation correctness; otherwise the source game
+itself could witness existence. The draft is preparation, not a checked theorem
+or a complete formal statement of the mathematical construction.
 
 The program scope is finite initial support, finite binding domains and finite
 support for every reachable sample of the linear source syntax, so the intended
@@ -34,7 +46,7 @@ values are finite in the stated game.
 | Service | The existing concurrent implementation uses one correlated reserved tape for the whole run. | Construct the chosen body-level service. Either prove the same-information delayed-delivery repair, or the fresh-body completion and regenerated-continuation conditions. The existing tape mixture is not automatically an instance of the latter. |
 | Timing policy | The existing concurrent local-gain theorem is specialized to its implementation and information construction. | For the support-based route, build the joint completion-agent game. For the fresh-service route, use the clock optimizer over success probabilities p_e(a). These are proof-selected strategies; the implementation does not forbid alternative timing. |
 | Failure continuation | Generic constrained information-agent completion and perfect-recall one-step bounds exist. | Supply the actual continuation information model. The support-based proof completes full raw handlers. The support-free proof first uses a structurally clean handler, fresh namespaces, old-namespace observation filtering and fixed replay coordinates, then restores raw actions by extension. Players retain their actual memory. |
-| Audit and collateral | Existing evidence services and terminal audit accounting support conditional collection and payoff-spread inequalities. | Implement the compact positive verifier and capture service, or the strategic reporting stage. Prove the actual collection premise; receiving one packet does not instantiate the current full-traffic evidence object. Fund publication/audit work separately from deterrence collateral. |
+| Audit and collateral | Existing evidence services and terminal audit accounting support conditional collection and payoff-spread inequalities. | For the primary runtime, implement total outer recording and the positive ledger verifier. Derive inevitable charge at the first forbidden submission; no peer-receipt premise is needed. Fund per-author per-run publication allowances and audit work separately from deterrence collateral. Monitor capture and strategic reporting are separate alternatives. |
 | End-to-end law | Current capstones retain initialized readouts and realized payoff laws. Generic continuation extension and SE limit theorems are available. | Instantiate them for the new models and prove the complete initialized source/public/payoff readout correspondence. Existing current-runtime conclusions cannot simply be relabeled. |
 
 The relevant source owners are [CommitBlockInformation](../Vegas/Source/CommitBlockInformation.lean),
@@ -94,7 +106,7 @@ the fresh clock optimizer, partial-view repair or reset quotient.
 `Vegas.EventGraphRuntime.ReservedEpoch.full_processing_epoch_clears` in
 [ReservedEpochEmptyProcessing](../Vegas/Pending/ReservedEpochEmptyProcessing.lean)
 proves a full-processing property for that epoch service. The new theorem
-uses individual publication or monitored per-author lanes; it must prove its
+uses individual body publication; it must prove its
 own publication invariant instead of importing a full-pool-flush premise.
 
 `Vegas.EventGraphRuntime.PhaseCount.onePacket_raw_sequentialEquilibrium` in
@@ -124,17 +136,16 @@ can claim the new scope.
 
 The source language, intended utilities and generic equilibrium foundations
 can remain. The substantial new work is the physical packet/service model,
-the actual-information adapter, and the compact audit backend. The fresh-service
+the actual-information adapter, and the deterministic ledger audit. The fresh-service
 route simplifies the timing proof but adds an explicit reset/observation quotient;
 the delayed-support route retains more operational history but needs its
 likelihood repair. The monitored-lane audit is available with either route
 when that route's clean-body service conditions hold.
 
-For a nonstrategic audit service there is no report-all game to implement or
-solve. For a strategic reporting backend there is. These are alternative
-backends, not two required reporting mechanisms. The nonstrategic backend
-assumes evidence capture and forwarding; objective on-chain verification does
-not prove those availability properties. Replacing an honest service by a
-network coverage theorem or a strategic reporting implementation is additional
-work, not a consequence of the compact witness format. No production change, Lean
-implementation or paper theorem is made by this inventory.
+The primary ledger audit needs neither an evidence-capture service nor a
+report-all game. Its availability follows from total recording and the assumed
+nonrevocable inclusion service for submitted bodies. A monitored backend instead
+assumes capture and forwarding. A strategic reporting backend needs the report
+game and its incentive proof. Objective verification alone supplies none of
+those availability properties. The admitted Lean draft does not discharge the
+operational adapters or change the checked paper results.

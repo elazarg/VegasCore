@@ -37,14 +37,15 @@ finite obstruction searches with the other runtime hypotheses held fixed.
 
 The [organized end-to-end derivation](se-broadcast-preservation-derivation.md)
 combines source batching, fresh-service timing, actual-memory failure play,
-saved-debt normalization and strategic evidence reporting. Its
-[runtime](se-broadcast-runtime-mathematics.md) has no honest audit monitor:
-evidence comes from public records and actual game players whose
-[reporting incentives](se-strategic-reporting-mathematics.md) are proved.
-An [exact evidence summary](se-evidence-summary-mathematics.md) preserves the
-Boolean penalty vector with smaller prescribed bundles. The specified finite
-capacity, submission, independence and ideal-message assumptions remain
-explicit; this is not an arbitrary-builder or current-Lean theorem.
+saved-debt normalization and direct ledger audit. Its
+[runtime](se-broadcast-runtime-mathematics.md) records every bounded authenticated
+session body, so audit collection needs neither an honest monitor nor strategic
+reports. [Reporting incentives](se-strategic-reporting-mathematics.md) and an
+[exact evidence summary](se-evidence-summary-mathematics.md) remain separate
+extension tools. The specified per-run capacity, nonrevocable submission,
+independent service, observation/reset and ideal-message assumptions remain
+explicit. The existential [Lean draft](../Paper.lean) is admitted and still
+needs its operational specification; it is not a checked implementation theorem.
 
 The [support-based broadcast theorem](se-asynchronous-preservation-theorem.md)
 and [fresh-service/reset proof](se-asynchronous-support-weakening.md) give the

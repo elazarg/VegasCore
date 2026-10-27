@@ -26,6 +26,13 @@ development, its remaining steps, and the index of results retired to the
 
 Search with rg and inspect signatures with lean-defs.py before adding machinery.
 
+The admitted broadcast-existence draft in [Paper](../Paper.lean) is a
+formalization target, not a checked manuscript result. Its
+[implementation carrier](../Vegas/Game/BroadcastImplementation.lean) belongs to
+the strategic composition layer. It contains no compiler constructor and does
+not yet enforce the broadcast operational specification. The concrete compiler
+and runtime definitions belong to their respective owning layers.
+
 Model-specific namespaces may use the same mathematical theorem name. Cite the
 qualified declaration to identify its contract. The documentation checker
 rejects ambiguous short names; the reachability report follows actual constant
