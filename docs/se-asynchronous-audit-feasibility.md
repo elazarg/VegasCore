@@ -189,6 +189,43 @@ only max(0,2q-1) by a union bound. They can give zero joint coverage when q<=1/2
 For example, Nature can reveal exactly one of the two messages to H and never
 both. A reporting bounty cannot create the missing second message.
 
+### The current coverage interface still needs a concrete witness adapter
+
+The existing `Vegas.EventGraphRuntime.PhaseCount.Evidence` in
+[PhaseCountMenu](../Vegas/Pending/PhaseCountMenu.lean) pairs the full signed
+traffic list with an accused envelope. Its corresponding
+`Vegas.EventGraphRuntime.PhaseCount.EvidenceCoverage` in
+[PhaseCountCollection](../Vegas/Pending/PhaseCountCollection.lean) assumes
+conditional observation and delivery of that evidence object. A recipient of
+one leaked packet does not automatically possess it.
+
+Portable signatures and report-all do not by themselves instantiate this
+interface. The proposed positive singleton/pair/phase-certificate verifier
+needs its own soundness proof and a first-departure argument showing that
+the actual ledger and recipients collectively hold the needed witness.
+Alternatively, a payoff comparison must show that the uncollected departure
+cannot improve the deviator's payoff. This is a mathematical producer
+obligation, not merely a different serialization of the existing evidence.
+
+Even receiving complete envelopes is not sufficient without a restriction
+on how reception is selected. The current
+`Interaction.MessageNetwork.ObservationRule` in
+[MessageNetwork](../Interaction/MessageNetwork.lean) selects identifiers as a
+function of the entire pending list. For example, suppose innocent marker
+packets x and y are both pending. A rule can reveal x when a hidden offending
+packet contains bit zero and y when it contains bit one, while never
+revealing the offending packet. The recipient learns the bit and possesses
+only an innocent envelope. Report-all then supplies no evidence against the
+hidden sender merely from that information gain.
+
+This refutes an inference from arbitrary private reception to evidence
+coverage, not SE preservation itself. A backend can restrict the observation
+model and prove the appropriate evidence/effect relation, or supply
+independent authenticated monitoring with its own justified coverage.
+Neither the communication bond nor the publication lemma manufactures that
+relation. The lemma still publishes all qualifying retained pre-closure
+openings before the next binding, as already proved.
+
 ## A reporting-incentive theorem with explicit hypotheses
 
 Freeze the base game outcome before the reporting stage. Messages remain

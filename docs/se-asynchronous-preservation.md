@@ -14,6 +14,22 @@ a more restricted mathematical statement with a fixed public sender calendar.
 Its no-padding and replay-history reconstruction arguments depend on that
 calendar and cannot justify the asynchronous target.
 
+The incompleteness is mathematical, not only unimplemented Lean assembly.
+Even granting the stated publication and evidence-delivery bounds, there is
+no constructed joint timing/recovery policy whose source comparisons hold
+at every actual private information set for one specified asynchronous
+service. The scalar timing result covers a narrower success/own-floor
+process; foreign failure and rollback are not instances of that process
+without further proof.
+
+The generic finishing principles are available. One legal fully mixed family
+with uniformly vanishing local gains and the selected initialized-law limit
+would yield SE by the finite Bayesian limit argument. Separately finding an
+optimal timing policy, a rational handler completion and a reporting
+equilibrium does not show they form that same family. Controlled replay
+effects and concrete evidence acquisition are additional runtime obligations,
+not consequences of padding or a larger deposit.
+
 ## What the contract can control
 
 The contract can record a public reveal-block closure time c, reject further
