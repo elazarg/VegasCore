@@ -82,13 +82,22 @@ Its detailed specifications derive the
 [audit and delayed-authorization boundaries](../se-publication-audit-boundary.md).
 They separate the mathematical private-reception result from the backend's
 bounded recording, authentic evidence collection and retained-signature duties.
-The [end-to-end registered service](../se-publication-end-to-end.md) instantiates
-these duties with actual-phase authorization, visible replay under a public
-transport calendar, a final ledger drain, deterministic auditing and segregated
-escrow. It uses one mixed direct/penalized equilibrium extension. The source
-program and game are unchanged: full publication before every callback block
-supplies the archive invariant without dummy samples. The service and
-cryptographic idealizations are explicit.
+The [scheduled-service benchmark](../se-publication-scheduled-benchmark.md)
+instantiates these duties under a fixed public sender calendar and full queue
+clearing. Those are stronger network premises, not compiler choices, so this
+benchmark does not establish the intended asynchronous implementation.
+The [asynchronous analysis](../se-asynchronous-preservation.md) separates
+contract-controlled cooldowns from transaction inclusion, derives a proof-only
+past-information refinement, and identifies the remaining timing, replay and
+audit obligations. Its bounded-inclusion example refutes a prompt-send proof
+step, not concurrent preservation itself. The
+[timing module](../se-asynchronous-timing-policy.md) proves preservation of
+source comparisons by optimal private timing under explicit success/floor
+separation. The [audit module](../se-asynchronous-audit-feasibility.md) derives
+portable evidence, reporting incentives, a report-all completion and a scoped
+impossibility result for unauditable verifiable disclosure; it cites the
+transaction-pool implementation and signature/relay standards separately
+from the mathematical liveness assumptions.
 
 Use papers, official protocol specifications or implementation documentation.
 Record the precise property supported: cryptographic confidentiality, finality,

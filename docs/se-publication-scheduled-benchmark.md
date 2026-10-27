@@ -1,15 +1,21 @@
-# End-to-end preservation for a registered blockchain service
+# Preservation in a scheduled service: a restricted benchmark
 
-The implementation specified here compiles a finite intended commit–reveal
-game to an authenticated, funded broadcast service with a public ledger.
-Mempool reception stays private. Every admitted transmission is registered
-durably and then published, including rejected game calls. Deposits remain
-locked until publication and automatic auditing finish.
+This mathematical example uses public sender opportunities in a fixed order
+and a complete queue flush before each round. Those are substantial service
+premises, not smart-contract implementation choices. They do not model players
+who can send at arbitrary times after prerequisites, without knowing others'
+sending opportunities or silence. This example does not establish the intended
+asynchronous blockchain preservation result.
+
+The [asynchronous target](se-asynchronous-preservation.md) keeps that distinction
+explicit. The benchmark below remains useful for separating probability,
+authorization and enforcement arguments. Its receivers have private packet
+reception, but its service exposes a public operational schedule.
 
 The preservation claim is mathematical, not Lean checked. Its publication,
 native action classes, probability transfer, authorization, replay and settlement
 arguments are derived in the companion documents linked below. The construction
-gives one complete finite service instance. It does not assert preservation for
+gives one restricted finite service instance. It does not assert preservation for
 an arbitrary hidden service tape, an ordinary unreserved mempool, or
 unregistered private communication.
 
@@ -43,7 +49,7 @@ Fix, before selecting a source equilibrium:
 * ideal authentication and opaque, binding commitment capabilities;
 * the audit predicate, payout funding, segregated deposits and settlement rule.
 
-**Finite registered-service preservation theorem.** For every sequential
+**Scheduled-service benchmark theorem.** For every sequential
 equilibrium of this intended source game, the raw game of the implementation
 below has a sequential equilibrium preserving the joint law of the original
 initial inputs, original typed terminal state, original public result and
@@ -497,6 +503,8 @@ network. In particular:
   the exact finite theorem.
 
 The unpadded compiler with arbitrary hidden reserved tapes remains open.
-The implementation here uses the unpadded source and phase rules under the
+The benchmark here uses the unpadded source and phase rules under the
 specified public service, with its historical-authorization and audit backend.
-It is a concrete sufficient design, not a claim that every restriction is necessary.
+It is not a solution for an asynchronous blockchain. Removing its scheduling
+premises requires new arguments, rather than reclassifying those premises as
+compiler choices.

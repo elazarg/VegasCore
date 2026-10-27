@@ -4,11 +4,16 @@ This document specifies the authorization adapter between the current phase
 runtime and a finite model permitting retained signatures. The mathematical
 construction preserves the intended game's equilibrium law; it does not assume
 that a ledger can delete a participant's private copy of an old packet.
-The primary service uses the original, unmodified phase compiler and a full
+This is a restricted scheduled-service benchmark, not an implementation of
+the [asynchronous target](se-asynchronous-preservation.md). Its public callback
+order and guaranteed full batches are service premises; a contract cannot
+create them by adding padding.
+
+The benchmark service uses the original, unmodified phase compiler and a full
 processing batch before every cycle's callback block. It needs no source
 padding. The pointwise publication argument below feeds
 [the native adapter](se-publication-native-adapter.md) and the
-[end-to-end construction](se-publication-end-to-end.md).
+[scheduled-service construction](se-publication-scheduled-benchmark.md).
 
 The exact current-model result, the proposed retained-authorization model, and
 its equilibrium extension are separate statements. Source inspections below
@@ -143,7 +148,7 @@ Two distinctions are essential:
 
 ## Full-batch publication without changing the source
 
-The primary calendar processes the entire pending queue at the start of every
+The benchmark calendar processes the entire pending queue at the start of every
 cycle, then offers one callback to each owner in a fixed order, then executes
 the existing sample, expiry and clock commands. The processing prefix has
 enough capacity for every admitted occurrence. There is no inclusion, sample
@@ -195,7 +200,7 @@ this deterministic reserved tape.
 For a different service whose processing may skip cycles, the separately
 derived [publication-padding route](se-publication-padding-mathematics.md)
 remains a valid sufficient construction under its own language and resource
-hypotheses. Those additional hypotheses are not part of this primary instance.
+hypotheses. Those additional hypotheses are not part of this benchmark instance.
 
 ## Closed-opening classification
 
@@ -341,7 +346,7 @@ serials also prevents omitting binding 6 by choosing an old inner nonce.
 
 ## Extending the counted game after exclusion
 
-Let \(R\) be the original compiled counted game under the primary calendar
+Let \(R\) be the original compiled counted game under the benchmark calendar
 and actual private reception rule.
 Let \(E\) additionally permit historical first owned packets whose authorization is
 valid, at a site where their owner is publicly and permanently excluded. This
@@ -357,7 +362,7 @@ identity is not asserted at every \(E\)-history. An old late opening can create
 genuinely new survivor information, and those sites receive a consistent
 rational completion.
 
-### Public authorization readback for the primary service
+### Public authorization readback for the benchmark service
 
 For the concrete backend, choose one fixed owner order, activate every owner
 exactly once per cycle, and enable full FIFO processing in every cycle. Keep
@@ -385,9 +390,14 @@ means list suffix, not set subtraction. It is exactly the sequence of envelopes
 admitted during cycle c−1. The processing prefix of c−1 emptied all older
 traffic before that cycle's callbacks; no processing occurred afterward until
 the prefix of c; and the latter clears the entire resulting queue. FIFO order
-preserves the fixed owner-slot order. With at most one packet per owner per
-cycle, the batch also identifies each nonsilent owner slot. A missing owner's
-packet means silence. This argument uses durable inclusion of rejected packets.
+preserves the fixed sender-slot order. For original admissions, there is at
+most one entry per sender slot. Retained replay occurrences need their separate
+authenticated broadcaster and slot metadata: the author of an old entry need
+not be its current broadcaster. Reconstruct the public application trace from
+first admissions; reconstruct transport occurrences from that metadata.
+A missing occurrence means silence only for the corresponding scheduled sender
+slot. This argument uses durable inclusion of rejected entries and occurrence
+records, not the signature author as a proxy for the broadcaster.
 
 Packets of owners earlier than i in the current cycle may already be pending,
 but have not been included. Their private registration/freeze operations do
@@ -457,7 +467,7 @@ postulating it. The actual richer private game may expose the whole certificate
 archive and remember every late packet. At new histories the restriction
 extension handles its new information directly. The reconstruction claim is
 needed only on retained histories. It is specific to this deterministic
-primary service; a more general scheduler needs its own readback producer.
+benchmark service; a more general scheduler needs its own readback producer.
 
 The same producer handles arbitrary reception rules that inspect certificate
 bytes. Combine the reconstructed canonical authorization record with each
@@ -496,7 +506,7 @@ Its fields have the following concrete definitions.
 
 The structural claim is about a restriction of one fixed enlarged model. The
 preceding readback proves that its canonical certificate wallet is determined
-by the original local information for the primary service. The information
+by the original local information for the benchmark service. The information
 embedding therefore does not split an original information set. Extra
 noncanonical certificate bytes or a richer unrelated ledger log are not part
 of this construction; their observation refinement would require a separate
@@ -557,7 +567,7 @@ the target net payoff with \(F_i\) is unnecessary.
 
 ### One localized extension to the full raw game
 
-For the primary construction let \(R\) include the counted reference and the
+For the benchmark construction let \(R\) include the counted reference and the
 controlled replay actions already justified by the replay transport. Let
 \(G\) be the entire bounded authenticated-session game with its final audit.
 Supply the retained history/information/action embedding, the matched base
@@ -702,7 +712,7 @@ to handle replay. This specialization excludes a private observation that
 occurs before registration: such an observation belongs to a larger
 communication game and needs a different evidence producer.
 
-The primary composition first constructs the private counted/replay SE for the
+The benchmark composition first constructs the private counted/replay SE for the
 unmodified source compiler, then applies the single localized raw extension: unexcluded
 extra actions use persistent evidence and the funded bound; excluded extra
 actions use the direct clean-source comparator. The optional fixed-payoff

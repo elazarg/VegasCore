@@ -6,12 +6,16 @@ The distinctions matter because a repeated payload need not be an unobservable
 action, and a signature authenticates its author rather than the person who
 later retransmits its bytes.
 
-The primary service uses the original source program without padding. Its
+This is a restricted scheduled-service benchmark. Its public callback calendar
+and full batches are not contract-controlled choices and do not discharge the
+[asynchronous preservation target](se-asynchronous-preservation.md).
+
+The benchmark service uses the original source program without padding. Its
 processing batch before every callback block supplies the necessary publication
 property. The underlying counted preservation argument is in
 [the transfer mathematics](se-publication-transfer-mathematics.md),
 [the native adapter](se-publication-native-adapter.md), and
-[the end-to-end construction](se-publication-end-to-end.md). The audit
+[the scheduled-service construction](se-publication-scheduled-benchmark.md). The audit
 interface is in [the audit boundary](se-publication-audit-boundary.md). The
 claims below are finite mathematical arguments, not new Lean theorems.
 
@@ -59,7 +63,7 @@ The full raw game can have new old disclosures, but those are handled by the
 mixed extension below; this archive equality is asserted only for the
 retained counted/replay game.
 
-Consequently the primary theorem needs no constant-sample insertion or source
+Consequently the benchmark theorem needs no constant-sample insertion or source
 context embedding. If the source has n events, its compiled event count is
 N=n. The source finite game, information sets and typed terminal state remain
 literally the original ones. For a service with a larger processing gap, the

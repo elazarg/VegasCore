@@ -8,15 +8,20 @@ The preserved object remains the joint law of original inputs, complete typed
 terminal state, public result, and realized net payoffs, without on-path
 exclusions or charges.
 
-The [registered-service implementation](se-publication-end-to-end.md) gives
-the full finite mathematical construction for one explicit public transport
-calendar. It derives historical authorization, observable replay, automatic
-ledger audit and funded settlement. In that instance a full batch precedes
-every callback block and submissions cannot advance the phase inside the
-block, so publication already holds for the original unpadded compiler.
-The broader padded theorem below uses
-the existing runtime interfaces; its statement should not be read as already
-implementing those interfaces for arbitrary blockchains.
+The [asynchronous preservation analysis](se-asynchronous-preservation.md)
+states the actual target: players can submit once prerequisites are public,
+without a public sender order or knowledge of other players' opportunities.
+Contract-controlled publication delays remain available. Bounded inclusion,
+off-path timing incentives and authentic evidence collection are distinct
+obligations; no end-to-end result for this target is established here.
+
+The [scheduled-service benchmark](se-publication-scheduled-benchmark.md)
+derives authorization, replay, ledger audit and settlement for a fixed public
+calendar with full batches. Those service premises are stronger than the
+target and cannot be supplied by the contract. Its no-padding specialization
+does not remove the asynchronous target's publication problem.
+The padded theorem below is also conditional on its existing runtime
+interfaces, rather than an implementation of them on arbitrary blockchains.
 
 There is no established impossibility of this target from private mempool
 observations. There is also no complete mathematical proof here for the current
@@ -58,11 +63,11 @@ The detailed mathematical specification is divided by proof obligation:
 | [Native counted adapter](se-publication-native-adapter.md) | Exhaustive action classes, candidate masking, controlled transitions, all-index reference probabilities, private own memory and ordered-pending reconstruction. |
 | [Audit and delayed authorization](se-publication-audit-boundary.md) | Conditional evidence coverage, a possible publication/audit tail, excluded-owner disclosure extensions, and the boundary with retained signatures and replay. |
 
-For the concrete end-to-end instance, the
+For the restricted scheduled-service benchmark, the
 [authorization specification](se-publication-authorization.md),
 [registered transport proof](se-publication-end-to-end-review.md), and
 [audit implementation](se-publication-audit-implementation.md) discharge those
-backend obligations. The public-calendar specialization is explicit. A single
+backend obligations under its stronger service premises. A single
 localized equilibrium extension combines the active-player penalty bound with
 the excluded-player direct payoff bound.
 

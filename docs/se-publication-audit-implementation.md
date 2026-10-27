@@ -1,5 +1,12 @@
 # A finite registered-broadcast audit and settlement backend
 
+This backend is a restricted scheduled-service benchmark. Durable admission
+before any private receipt, a public callback calendar, and full queue clearing
+are assumptions about its network. They are not properties supplied by a
+blockchain contract. For the intended asynchronous implementation, see
+[the target and remaining obligations](se-asynchronous-preservation.md) and
+[audit feasibility](se-asynchronous-audit-feasibility.md).
+
 This document constructs the audit service for a closed, authenticated session
 broadcast network. Every admitted session envelope is retained and eventually
 recorded on the ledger, including envelopes whose inner game action is malformed.
@@ -9,7 +16,7 @@ audit collection from this transport and an explicit final drain. It does not
 postulate `EvidenceCoverage` as an unexplained property of a private observer.
 
 The mathematical statements are finite hand proofs. They have not been assembled
-in Lean. The primary service uses the original source program: its full processing
+in Lean. The benchmark service uses the original source program: its full processing
 batch before every callback block already gives publication, with no inserted
 samples. The counted-game ingredients are in
 [the native adapter](se-publication-native-adapter.md) and
@@ -18,7 +25,7 @@ samples. The counted-game ingredients are in
 signatures require an action extension. The
 [publication-padding construction](se-publication-padding-mathematics.md) remains
 a sufficient alternative for a service with processing gaps; it is not required
-by this primary every-cycle construction.
+by this benchmark every-cycle construction.
 
 ## The communication and payment model
 
@@ -102,7 +109,7 @@ occurrence whose receipt and metadata may be observed and whose bytes are logged
 It does not mutate the entry, consume a new semantic nonce, register a new
 candidate, or apply the game action twice.
 
-The primary backend uses a deterministic public calendar: one processing batch
+The benchmark backend uses a deterministic public calendar: one processing batch
 per cycle followed by exactly one callback per owner in a fixed order. At a
 nonemitting callback, a player may retransmit any entry it actually knows through
 own earlier admission, ledger inclusion or private reception. First admission of
@@ -114,7 +121,7 @@ calendar and must not be generalized to arbitrary hidden service tapes.
 
 An optional simpler backend can instead suppress exact replays before all
 observation, queueing and receipts. That requires genuinely invisible ingress
-deduplication; ledger-only deduplication is insufficient. The primary construction
+deduplication; ledger-only deduplication is insufficient. The benchmark construction
 does not assume that retransmissions are invisible.
 
 For each new canonical body the transport assigns an outer registration serial.
@@ -171,7 +178,7 @@ certificate contents and its availability are determined by the ordinary public
 view and retained own recall: installed phase, attempt, completed prerequisites,
 exclusion status and accepted handle. The cycle-by-cycle reconstruction in
 [the authorization analysis](se-publication-authorization.md) proves this for
-the primary public calendar. Each new ledger suffix is the preceding cycle's
+the benchmark public calendar. Each new ledger suffix is the preceding cycle's
 complete batch, each public sample writes one retained cell, and bindings,
 certified openings, expiry and rollback have publicly reconstructible effects.
 Thus even original private own recall reconstructs the canonical issuance archive
@@ -357,7 +364,7 @@ processing prefix, with no admission interleaved inside that prefix. Its FIFO
 rule removes the pending head and appends the full occurrence to the ledger even
 if the application rejects its entry. It applies each entry at most once, in
 first-admission order. No player acts inside the batch. Therefore a full prefix
-empties any pending list of length at most B. The primary public calendar has a
+empties any pending list of length at most B. The benchmark public calendar has a
 processing batch every cycle.
 
 Fix any retained binding callback in cycle c. The prefix has already recorded
@@ -387,7 +394,7 @@ callback block; sample and expiry changes occur after it. Neither is a missing
 case. Historical first messages outside the retained menu are handled by the raw
 extension, not by asserting this decoder after such a departure.
 
-This proves publication without any source transformation. The primary theorem
+This proves publication without any source transformation. The benchmark theorem
 needs no additional point-mass distribution constructor or context-weakening
 operation. Original typed source states and their intended SE are unchanged.
 
@@ -453,7 +460,7 @@ audit verdict is zero. Lifting the consistency sequence through this determinist
 expansion preserves its decision beliefs and gains. The restriction then compares
 equal-horizon games with aligned terminal histories, rather than mapping an old
 terminal history to a still-running target prefix. The final readout erases the
-tail. No source padding is erased in the primary construction because none was
+tail. No source padding is erased in the benchmark construction because none was
 inserted.
 
 ## Derived audit observation and delivery
@@ -499,7 +506,7 @@ trace reconstruction also reconstructs this completion-time table.
 
 Let d_inc be the maximum actual registration-to-inclusion delay, in the same
 clock units, including the final tail. For the full-flush reserved service it is
-the processing-gap bound p; for the primary every-cycle calendar it is one cycle.
+the processing-gap bound p; for the benchmark every-cycle calendar it is one cycle.
 For a registered entry sent at s,
 
     s <= r(m) <= s+d_inc.
@@ -527,7 +534,7 @@ record r(m)<=x(e)+d_inc; its opening value is already public, and its receipt
 signals are covered by the replay proof. Thus "every pending occurrence is late"
 would be false.
 
-The primary every-cycle service does not need, or generally satisfy, that
+The benchmark every-cycle service does not need, or generally satisfy, that
 additional delay. A reveal may close in the processing prefix of cycle c, and
 an excluded owner may first admit its old opening during that cycle's binding
 callback block. Its next-cycle record can be r=c+1=x(e)+d_inc, so Late is false

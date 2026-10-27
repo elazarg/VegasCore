@@ -349,7 +349,7 @@ comparator cases. Its source must be audit clean: after a past raw violation,
 a prescribed continuation may have net payoff below F_i, so a fresh claim
 that “silence pays F_i” would be false.
 
-The [registered-service construction](se-publication-end-to-end.md) needs only
+The [scheduled-service benchmark](se-publication-scheduled-benchmark.md) needs only
 one application of the generic theorem. It starts from the clean counted game,
 with observable replay already handled. Active-player extra actions use the
 funded collection comparison. Excluded-player extra actions use the direct
