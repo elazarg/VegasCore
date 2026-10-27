@@ -12,11 +12,12 @@ import Vegas.Game.ProgramPaymentAsyncNash
 import Vegas.Game.OnePacketExtension
 import Vegas.Game.RecoverySequentialCompilation
 import Vegas.Game.SequentialPhaseRawPreservation
+import Vegas.Game.SequentialPhasePaymentPreservation
 import Vegas.Game.ServiceRosterAsync
 import Vegas.Examples.LateLeak
 import Vegas.Examples.CommitRevealAuction
 import Vegas.Examples.BoundedPaymentAuction
-import Vegas.Examples.SequentialPhaseServiceEquilibrium
+import Vegas.Examples.SequentialPhaseDelayedEquilibrium
 
 /-! # Paper theorems
 
@@ -883,10 +884,16 @@ end Vegas.Paper
 #print axioms
   Vegas.Examples.BoundedPaymentAuction.truthful_not_dominant
 
-/-- info: 'Vegas.Examples.SequentialPhaseService.funded_raw_equilibrium_exists' depends on axioms:
+/-- info: 'Vegas.SequentialPhase.intended_raw_programPayments_preserved' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-open Vegas.Examples.SequentialPhaseService in
+#print axioms Vegas.SequentialPhase.intended_raw_programPayments_preserved
+
+/-- info: 'Vegas.Examples.SequentialPhaseDelayedService.funded_raw_equilibrium_exists' depends on
+axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+open Vegas.Examples.SequentialPhaseDelayedService in
 #print axioms funded_raw_equilibrium_exists
 
 /-- info: 'Vegas.SourceProgram.Setup.terminal_guards_hold' depends on axioms:
