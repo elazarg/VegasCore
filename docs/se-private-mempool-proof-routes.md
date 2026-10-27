@@ -261,6 +261,41 @@ record every previously submitted opening. Apply the same rule at recovery
 transitions that would enable a new binding. Only then start the new block's
 readiness and deadlines.
 
+**Where the waiting interval starts.** Let \(D\) be the actual public clock
+when the ledger closes the reveal block: every event in that block has either
+been accepted or expired. The interval is measured from \(D\), not from an
+honest player's first submission, the last packet someone happened to observe,
+or a guessed empty-mempool time. If the service records every already-submitted
+packet within a bound \(\Delta\), the next binding is enabled only after the
+corresponding \(D+\Delta\) bound, with the scheduler's discrete-slot margin.
+Individual reveal acceptance deadlines remain unchanged.
+
+For example, suppose the block closes at clock 100 and the recording bound is
+5 cycles. An opening submitted at 99 might be included in time and accepted,
+or included at 103 after its event expired. In the latter case the owner still
+suffers the specified failure; the packet's data becomes public before the
+next binding. Recording a rejected message does not resurrect its opening.
+Sending closer to the acceptance deadline is therefore still a deviation with
+its actual success probability. The padding argument does not assume that
+probability is zero or that every late send fails.
+
+This argument needs bounded **recording**, including stale packets, rather
+than just a positive or high probability of inclusion. If inclusion delay has
+an unbounded tail, no fixed cooldown establishes the exact archive equality.
+The current reserved service supplies the stronger bounded-recording property;
+an ordinary probabilistic mempool guarantee does not.
+
+Fresh broadcasts after closure remain possible as raw deviations. They can
+arrive after the publication interval, so the cleanup lemma does not cover
+them. The existing model classifies their newly emitted old-phase calls as
+count forbidden and uses the funded audit extension. This relies on the actual
+emission interface: it attaches the current attempt and masks out-of-phase
+authorization before the packet enters the network. A concrete blockchain
+adapter must justify that interface or account for an old signed message
+withheld until after closure. An inclusion timestamp alone cannot certify
+when a sender first broadcast a message. The finite model theorem does not
+itself implement such an authorization or audit mechanism.
+
 This is an application-visible phase rule. It must not install the next binding
 early and merely hope players refrain from acting. Callbacks may continue
 during the interval; with no ready source event, the counted effective action
