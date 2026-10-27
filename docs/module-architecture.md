@@ -32,6 +32,9 @@ formalization target, not a checked manuscript result. Its
 the strategic composition layer. It contains no compiler constructor and does
 not yet enforce the broadcast operational specification. The concrete compiler
 and runtime definitions belong to their respective owning layers.
+The [SE runtime design](se-runtime-design.md) specifies how to reuse those
+layers across the existing sequential and proposed fixed-window concurrent
+implementations, without making the latter's proof assumptions universal.
 
 Model-specific namespaces may use the same mathematical theorem name. Cite the
 qualified declaration to identify its contract. The documentation checker

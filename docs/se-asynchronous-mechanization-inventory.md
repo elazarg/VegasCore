@@ -6,6 +6,11 @@ constructions. The table below distinguishes existing Lean results from the
 new adapters needed to implement them. It is not a completion checklist and
 does not change the fixed SE target or its checked boxes.
 
+The [runtime design](se-runtime-design.md) fixes the reuse boundaries, the two
+concrete controller variants and the semantic checks required before extracting
+shared definitions. It keeps concurrent proof assumptions out of the common
+execution machinery and preserves the existing sequential consumer.
+
 The primary [assembled derivation](se-broadcast-preservation-derivation.md)
 uses the [explicit runtime](se-broadcast-runtime-mathematics.md) and deterministic
 ledger audit. All bounded authenticated session bodies are recordable. There is
@@ -46,7 +51,7 @@ values are finite in the stated game.
 | Service | The existing concurrent implementation uses one correlated reserved tape for the whole run. | Construct the chosen body-level service. Either prove the same-information delayed-delivery repair, or the fresh-body completion and regenerated-continuation conditions. The existing tape mixture is not automatically an instance of the latter. |
 | Timing policy | The existing concurrent local-gain theorem is specialized to its implementation and information construction. | For the support-based route, build the joint completion-agent game. For the fresh-service route, use the clock optimizer over success probabilities p_e(a). These are proof-selected strategies; the implementation does not forbid alternative timing. |
 | Failure continuation | Generic constrained information-agent completion and perfect-recall one-step bounds exist. | Supply the actual continuation information model. The support-based proof completes full raw handlers. The support-free proof first uses a structurally clean handler, fresh namespaces, old-namespace observation filtering and fixed replay coordinates, then restores raw actions by extension. Players retain their actual memory. |
-| Audit and collateral | Existing evidence services and terminal audit accounting support conditional collection and payoff-spread inequalities. | For the primary runtime, implement total outer recording and the positive ledger verifier. Derive inevitable charge at the first forbidden submission; no peer-receipt premise is needed. Fund per-author per-run publication allowances and audit work separately from deterrence collateral. Monitor capture and strategic reporting are separate alternatives. |
+| Audit and collateral | The reactive engine already records included envelopes even when the application rejects them. Existing evidence services and terminal audit accounting supply collection and payoff-spread interfaces. | Instantiate that recording for the new body representation and implement the positive ledger verifier. Prove publication under the chosen service and derive inevitable charge at the first forbidden submission; no peer-receipt premise is needed. Fund per-author per-run publication allowances and audit work separately from deterrence collateral. Monitor capture and strategic reporting are separate alternatives. |
 | End-to-end law | Current capstones retain initialized readouts and realized payoff laws. Generic continuation extension and SE limit theorems are available. | Instantiate them for the new models and prove the complete initialized source/public/payoff readout correspondence. Existing current-runtime conclusions cannot simply be relabeled. |
 
 The relevant source owners are [CommitBlockInformation](../Vegas/Source/CommitBlockInformation.lean),
