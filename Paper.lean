@@ -17,7 +17,7 @@ import Vegas.Game.ServiceRosterAsync
 import Vegas.Examples.LateLeak
 import Vegas.Examples.CommitRevealAuction
 import Vegas.Examples.BoundedPaymentAuction
-import Vegas.Examples.SequentialPhaseDelayedEquilibrium
+import Vegas.Examples.OddsEvensRawEquilibrium
 
 /-! # Paper theorems
 
@@ -889,12 +889,20 @@ end Vegas.Paper
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.SequentialPhase.intended_raw_programPayments_preserved
 
-/-- info: 'Vegas.Examples.SequentialPhaseDelayedService.funded_raw_equilibrium_exists' depends on
-axioms:
+/-- info: 'Vegas.Examples.OddsEvensRaw.intended_equilibrium_preserved' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-open Vegas.Examples.SequentialPhaseDelayedService in
-#print axioms funded_raw_equilibrium_exists
+#print axioms Vegas.Examples.OddsEvensRaw.intended_equilibrium_preserved
+
+/-- info: 'Vegas.Examples.OddsEvensRaw.funded_raw_equilibrium_exists' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.OddsEvensRaw.funded_raw_equilibrium_exists
+
+/-- info: 'Vegas.Examples.OddsEvensRaw.collection_probability' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.OddsEvensRaw.collection_probability
 
 /-- info: 'Vegas.SourceProgram.Setup.terminal_guards_hold' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
