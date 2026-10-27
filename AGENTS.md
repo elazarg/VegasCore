@@ -32,11 +32,12 @@ compatibility. When renaming or refactoring, update all callers and docs.
   `docs/module-architecture.md` for reusable APIs and their scope; instantiate
   existing machinery and identify missing adapter hypotheses before replacing it.
 * Commit and push each stable, verified checkpoint.
-* Work on sequential-equilibrium preservation beyond the fixed calendar is
-  tracked in `docs/se-async-checklist.md`. Follow its methodology: boxes close
-  only on checked theorems, and the target, boxes and semantics change only with
-  the owner's explicit approval. Read `ephemeral/se-async-log.md` (approvals and
-  work log) when present, and append to its work log.
+* The active research scope is checked non-concurrent SE preservation; see
+  `docs/sequential-se-open-problems.md`. The broader fixed target and checklist
+  are preserved at the checkpoint linked from `docs/archives.md`; their boxes
+  and semantics are not changed by pruning. Only checked theorems close proof
+  obligations. Read `ephemeral/se-async-log.md` (approvals and work log) when
+  present, and append to its work log.
 * Plan and checklist labels (box names such as S1 or H, step numbers, question
   or counterexample tags) never appear in Lean declaration or module names or in
   docstrings; describe the mathematics instead.

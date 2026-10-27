@@ -1,64 +1,24 @@
-# Compilation boundary
+# Compilation and runtime boundary
 
-The [source compiler](../Vegas/Compile/EventGraphCompiler.lean) lowers a typed
-source program to a typed event graph. Observation and readout adapters connect
-source histories and values to graph execution. Public samples retain their
-conditional kernels; private inputs remain owner-private; binding and resolution
-remain distinct actions.
+The [source compiler](../Vegas/Compile/EventGraphCompiler.lean) lowers typed
+instructions to an event graph. Source-law and Nash correspondence hold under
+their stated public graph schedulers. Concurrent event-graph scheduling is
+distinct from partially observed concurrent raw-ledger SE preservation.
 
-The [pending application](../Vegas/Pending/EventApplication.lean) separates
-private candidate material, signed public submission and inclusion. A public
-builder controls activations, inclusion, clock advancement and expiry. Player
-policies see their own recall, public application state, receipts and genuinely
-observed packets. They do not see unsampled pending messages or the builder's
-hidden history.
+The retained raw SE theorems use the sequential forced-exit or singleton-phase
+controller. Players send authenticated envelopes to a pending network. A
+scheduler chooses activations, inclusion, clock advances and expiry; the
+application records included envelopes and executes its permitted transitions.
+Policies observe their actual recall and the specified reception rule.
 
-The scheduler's public network view contains the entire pending pool, input
-history, ledger and submission counters. A concrete backend with restricted
-visibility must implement the chosen command law through its available
-observation. The [observation adapter](../Interaction/ReactiveSchedulerObservation.lean)
-states this factorization and preserves the complete finite execution law for
-every raw player policy. The public pending lottery is one instance: it uses
-only the set of pending identifiers. Support restriction alone does not
-preserve command probabilities or beliefs.
+Service hypotheses concern every legal raw history. They guarantee opportunities,
+protected inclusion for the specified sole event identifier, deadlines and
+completion. Theorems quantify over supplied relative event durations, not only
+one calendar. The count audit separately assumes authentic evidence and
+conditional coverage adequate for the stated deposit inequality.
 
-The [canonical client](../Vegas/Pending/ReactiveCanonicalDecision.lean) implements
-source FALSE or failed validation by silence followed by
-ordinary FALSE expiry. The contract has no withholding packet, so silence is
-the only way to withhold. Packet-free resolution expiry is not a
-binding-omission charge.
-WAIT therefore need not represent a deviation from the source prescription.
-
-A runtime compiler result needs three kinds of evidence: executable source
-correspondence, preservation of the information used by strategies, and actual
-continuation payoff comparisons. Correct final values establish only the first.
-A retained response menu is a proof restriction; it cannot be imposed on raw
-players without a valid equilibrium-extension argument.
-
-The checked compiler entry point is the failure-aware `SourceProgram`.
-The [surface prototype](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Language/ToCore.lean) lowers to `SurfaceCore`
-and has no verified translation into that entry point. Guard feasibility and
-nullable values in the prototype do not specify source publication failures.
-Such a bridge needs an explicit interpretation of failure and guard timing.
-The separate [reactive graph-policy compiler](../Vegas/Pending/ReactivePolicy.lean)
-remembers original sampled decisions, including silent TRUE decisions after
-failed validation.
-The [private-memory facts](../Vegas/Pending/ReactivePolicyFacts.lean) establish
-alignment of supported intention memory with positive own recall and retention
-through later responses. A recorded silent decision at a ready owned event
-therefore suppresses behavioral redraw, including after a consistent recall
-suffix. At the `research-tree` tag, source-observation and reachable-frontier
-adapters compose these local facts into [`Vegas.source_prescribed_terminal_joint_law`](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceReactiveLaw.lean#L123) in
-[SourceServiceReactiveLaw](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceReactiveLaw.lean).
-For finite players under `AsyncContract` and `AsyncTimely`, it preserves the
-joint original-initial-state and complete final-source-state law in sequential
-and concurrent-binding modes. The
-[authentic settled-audit theorem](https://github.com/elazarg/VegasCore/blob/research-tree/Vegas/Game/SourceServiceReactiveAudit.lean)
-also proves zero standard audit charge throughout initialized prescribed runs
-and preserves the joint initial-state, final-state and realized net-payoff law,
-for every authentic audit sampler and deposit. Unilateral-deviation correspondence,
-off-path belief and rationality transport, and concurrent-reveals preservation
-require separate evidence.
-
-The [README](../README.md#checked-results) lists the equilibrium results that
-supply these edges, with their contracts and environments.
+These operational premises must be derived for a concrete deployment. In
+particular, timely inclusion alone does not establish evidence availability,
+and an engine step is not automatically elapsed blockchain time. The
+[open-problems guide](sequential-se-open-problems.md) describes these interfaces
+and the positive-latency regression.

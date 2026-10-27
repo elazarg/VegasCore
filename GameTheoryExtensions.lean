@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Math.Transfers
 import GameTheoryExtensions.Analysis.Enforcement
 import GameTheoryExtensions.Analysis.ObservableEnforcement
 import GameTheoryExtensions.Analysis.Protocol.AffineKeyedPools
@@ -9,13 +8,12 @@ import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
 import GameTheoryExtensions.Analysis.Protocol.ComponentCompletion
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheoryExtensions.Analysis.Protocol.ContinuationDecision
-import GameTheoryExtensions.Analysis.Protocol.ContinuationOwnPlay
 import GameTheoryExtensions.Analysis.Protocol.CopiedSiteLimit
 import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
+import GameTheoryExtensions.Analysis.Protocol.GainComparison
 import GameTheoryExtensions.Analysis.Protocol.KeyedPools
 import GameTheoryExtensions.Analysis.Protocol.LastDecision
 import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
-import GameTheoryExtensions.Analysis.Protocol.GainComparison
 import GameTheoryExtensions.Analysis.Protocol.LocalizedEnforcement
 import GameTheoryExtensions.Analysis.Protocol.OneShotDeviation
 import GameTheoryExtensions.Analysis.Protocol.OwnPlayReach
@@ -23,19 +21,18 @@ import GameTheoryExtensions.Analysis.Protocol.PassageBayes
 import GameTheoryExtensions.Analysis.Protocol.PassageRestrictionExtension
 import GameTheoryExtensions.Analysis.Protocol.Perturbation
 import GameTheoryExtensions.Analysis.Protocol.ProjectedBeliefTransport
-import GameTheoryExtensions.Analysis.Protocol.ProportionalBeliefTransport
-import GameTheoryExtensions.Analysis.Protocol.PublicScheduling
 import GameTheoryExtensions.Analysis.Protocol.ReachBounds
-import GameTheoryExtensions.Analysis.Protocol.RestrictionExtension
 import GameTheoryExtensions.Analysis.Protocol.RetainedDeviation
-import GameTheoryExtensions.Analysis.Protocol.Sequential
 import GameTheoryExtensions.Analysis.Protocol.SingleMoverReach
 import GameTheoryExtensions.Analysis.Protocol.SourceGainTransport
+import GameTheoryExtensions.Analysis.Protocol.StoppedBayes
+import GameTheoryExtensions.Analysis.Protocol.StoppedCharge
 import GameTheoryExtensions.Analysis.Protocol.StoppedContinuationComparison
 import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
 import GameTheoryExtensions.Analysis.Protocol.StoppedKernelComparison
+import GameTheoryExtensions.Analysis.Protocol.StoppedReadout
 import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 import GameTheoryExtensions.Analysis.Protocol.SuccessRanking
 import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceContinuation
@@ -43,7 +40,6 @@ import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
 import GameTheoryExtensions.Analysis.Protocol.UniformPolicyLimit
 import GameTheoryExtensions.Analysis.QuasilinearBounds
 import GameTheoryExtensions.Analysis.QuasilinearSettlement
-import GameTheoryExtensions.Core.PendingChoice
 import GameTheoryExtensions.Math.FiniteIntervalBounds
 import GameTheoryExtensions.Math.Probability.ActionSplitting
 import GameTheoryExtensions.Math.Probability.AffineDecorrelation
@@ -53,61 +49,19 @@ import GameTheoryExtensions.Math.Probability.Domination
 import GameTheoryExtensions.Math.Probability.EqualMassFibers
 import GameTheoryExtensions.Math.Probability.Expectation
 import GameTheoryExtensions.Math.Probability.ExpectationContraction
-import GameTheoryExtensions.Math.Probability.DiscretePushforward
-import GameTheoryExtensions.Math.Probability.GatedExpectation
 import GameTheoryExtensions.Math.Probability.NearDecorrelation
-import GameTheoryExtensions.Math.Probability.NestedPosterior
 import GameTheoryExtensions.Math.Probability.ObservedChoice
-import GameTheoryExtensions.Math.Probability.PerturbationScale
-import GameTheoryExtensions.Math.Probability.PresentConditional
+import GameTheoryExtensions.Math.Probability.OptionalDomination
 import GameTheoryExtensions.Math.Probability.ProductDecorrelation
 import GameTheoryExtensions.Math.Probability.ProductTransport
-import GameTheoryExtensions.Math.Probability.RestrictedDisintegration
-import GameTheoryExtensions.Math.Probability.RetainedGain
 import GameTheoryExtensions.Math.Probability.SiteDraw
 import GameTheoryExtensions.Math.Probability.Support
 import GameTheoryExtensions.Math.Probability.SwapTransport
 import GameTheoryExtensions.Math.Probability.TotalVariation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheoryExtensions.Math.Transfers
 import GameTheoryExtensions.Protocol.ContinuationHorizon
-import GameTheoryExtensions.Protocol.FlaggedMenuRestriction
 import GameTheoryExtensions.Protocol.MenuRestriction
 import GameTheoryExtensions.Protocol.OwnPlayPrefix
 import GameTheoryExtensions.Protocol.StateSymmetry
 import GameTheoryExtensions.Protocol.TracePrefix
-
-import GameTheoryExtensions.Math.Probability.OptionalDomination
-
-import GameTheoryExtensions.Math.Probability.ConditioningCost
-import GameTheoryExtensions.Analysis.Protocol.StoppedBayes
-import GameTheoryExtensions.Analysis.Protocol.StoppedReadout
-
-import GameTheoryExtensions.Analysis.Protocol.BeliefMonomial
-
-import GameTheoryExtensions.Analysis.Protocol.ObservableGainTransport
-
-import GameTheoryExtensions.Math.Probability.KernelPosteriorGain
-
-import GameTheoryExtensions.Math.Probability.ObservableMoments
-
-import GameTheoryExtensions.Analysis.PublicRandomization
-
-import GameTheoryExtensions.Analysis.Protocol.StoppedCharge
-
-import GameTheoryExtensions.Math.InvariantObservables
-import GameTheoryExtensions.Analysis.PrivateObservableTransport
-import GameTheoryExtensions.Math.AffineRay
-import GameTheoryExtensions.Math.RationalStrictDirection
-import GameTheoryExtensions.Math.Probability.NormalizedPower
-import GameTheoryExtensions.Math.Probability.PowerPosterior
-import GameTheoryExtensions.Analysis.Protocol.PowerReach
-import GameTheoryExtensions.Analysis.Protocol.PowerCertificate
-import GameTheoryExtensions.Analysis.Protocol.StoppedResidual
-import GameTheoryExtensions.Analysis.Protocol.FullSupportApproximation
-import GameTheoryExtensions.Analysis.Protocol.FiniteTraceCoordinates
-import GameTheoryExtensions.Analysis.Protocol.LogReach
-import GameTheoryExtensions.Analysis.Protocol.BayesLogLimits
-import GameTheoryExtensions.Analysis.Protocol.LogRateCertificate
-import GameTheoryExtensions.Analysis.Protocol.PowerCompleteness
-import GameTheoryExtensions.Analysis.PrivateTranscriptWeights
-import GameTheoryExtensions.Analysis.ConditionalObservableTensor

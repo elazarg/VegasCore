@@ -1,21 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphCash
-import Vegas.Compile.CommitBlockReferences
 import Vegas.Compile.CommitPhaseLayout
-import Vegas.Compile.CommitPrefixAdmission
-import Vegas.Compile.CommitPrefixAdmittedAction
-import Vegas.Compile.CommitPrefixAtEvent
-import Vegas.Compile.CommitPrefixBindingSplit
-import Vegas.Compile.CommitPrefixCompletion
-import Vegas.Compile.CommitPrefixCompletionSnoc
-import Vegas.Compile.CommitPrefixIntendedCompletion
-import Vegas.Compile.CommitPrefixReadStability
-import Vegas.Compile.CommitPrefixView
-import Vegas.Compile.CommitPrefixWordAction
-import Vegas.Compile.CommitPrefixWordReadout
 import Vegas.Compile.CompiledReadoutSuffix
-import Vegas.Compile.EventBindingActionFailure
+import Vegas.Compile.CompiledRevealOrigins
 import Vegas.Compile.EventGraphAssembly
 import Vegas.Compile.EventGraphBacktranslation
 import Vegas.Compile.EventGraphCanonical
@@ -41,13 +28,3 @@ import Vegas.Compile.EventGraphScheduling
 import Vegas.Compile.EventGraphState
 import Vegas.Compile.EventGraphStep
 import Vegas.Compile.EventGraphSuffix
-import Vegas.Compile.EventSourcePosition
-import Vegas.Compile.EventSourceView
-import Vegas.Compile.EventSourceViewErasure
-import Vegas.Compile.ExcludedCommitPrefixObservation
-import Vegas.Compile.ProtocolViewSuffix
-import Vegas.Compile.ContextRefsTransport
-
-import Vegas.Compile.CompiledRevealOrigins
-
-/-! Source-program lowering to the typed immutable graph. -/

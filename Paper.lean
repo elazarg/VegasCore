@@ -1,8 +1,18 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Source.Safety
-import Vegas.Compile
-import Vegas.Game
+import Vegas.Compile.EventGraphScheduling
+import Vegas.Compile.EventGraphDeviation
+import Vegas.Game.EventCompilation
+import Vegas.Game.IntendedPreservation
+import Vegas.Game.IntendedNash
+import Vegas.Game.AsyncServiceRawNash
+import Vegas.Game.AsyncClientObservables
+import Vegas.Game.ProgramPaymentAsyncNash
+import Vegas.Game.OnePacketExtension
+import Vegas.Game.RecoverySequentialCompilation
+import Vegas.Game.SequentialPhaseRawPreservation
+import Vegas.Game.ServiceRosterAsync
 import Vegas.Examples.LateLeak
 import Vegas.Examples.CommitRevealAuction
 import Vegas.Examples.BoundedPaymentAuction
@@ -16,9 +26,6 @@ manuscript states, each pinned to the three standard axioms. The build rejects
 hatches throughout the tree, so results the manuscript does not state need no
 pin here.
 
-The source-preservation conclusion below is a proposition definition, not an
-asserted result or a broadcast specification. Concrete runtime definitions and
-their hypotheses are required before stating the proposed broadcast theorem.
 -/
 
 noncomputable section
@@ -29,42 +36,6 @@ open GameTheory Vegas Interaction
 open GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
-
-open Vegas.SourceProgram in
-/-- The existential preservation conclusion, without an assertion that it holds.
-The implementation precedes every source assessment. This proposition imposes
-no operational constraints and, under finite source histories, can be witnessed
-by the source game itself;
-it is not a blockchain preservation target until restricted to a concrete
-runtime. No compiler, network assumption or preservation proof is supplied. -/
-def SourcePreservationConclusion
-    [Fintype Player] [IExpr.ResultTypes L]
-    (setup : Setup (Player := Player) (L := L))
-    (payoffs : ConcurrentPayoffs setup) (deposit : Player → ℝ) : Prop :=
-    ∃ implementation : SourceGameImplementation setup,
-      ∀ source : setup.intendedModel.BehavioralAssessment,
-        payoffs.SourceEquilibrium source →
-          ∃ target : implementation.model.BehavioralAssessment,
-            implementation.PreservesAssessment payoffs deposit source target
-
-open Vegas.SourceProgram in
-theorem concurrent_source_raw_sequential_equilibrium
-    [Fintype Player] [IExpr.ResultTypes L]
-    (setup : Setup (Player := Player) (L := L))
-    (implementation : ReservedConcurrentImplementation setup)
-    (payoffs : ConcurrentPayoffs setup) (countAudit : ConcurrentCountAudit setup)
-    (valid : implementation.Valid payoffs countAudit)
-    (source : setup.intendedModel.BehavioralAssessment)
-    (equilibrium : payoffs.SourceEquilibrium source) :
-    ∃ target : implementation.model.BehavioralAssessment,
-      implementation.PreservesAssessment payoffs countAudit source target :=
-  Vegas.concurrentRawSequentialPreservation setup implementation payoffs countAudit
-    valid source equilibrium
-
-/-- info: 'Vegas.Paper.concurrent_source_raw_sequential_equilibrium' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.concurrent_source_raw_sequential_equilibrium
 
 open Vegas.SourceProgram in
 theorem source_protocol_horizon [IExpr.ResultTypes L]
@@ -128,60 +99,6 @@ theorem intended_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.intended_sequential_equilibrium
 
-open Vegas.SourceProgram Vegas.EventGraphRuntime
-  GameTheory.Protocol GameTheory.Enforcement in
-theorem async_client_nash_reflection [Fintype Player] [IExpr.ResultTypes L]
-    {Parameter : Type} (service : AsyncServiceSpec Player L)
-    (admission : CommitmentInterface service.setup.program)
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
-    (parameter : State L service.setup.context → Parameter)
-    (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
-    (sample : List (SettledEvidence service.setup service.mode) →
-      PMF (List (SettledEvidence service.setup service.mode)))
-    (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
-    (deposit : Player → ℝ) (menu : (serviceApplication service.setup service.mode service.deadline
-      service.leaks).ResponseMenu)
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
-    (covered : ∀ (source : Profile (service.sourceModel admission).behavioralSignature) who,
-      menu.Admissible (serviceInitialLaw service.setup service.mode) service.horizon
-        service.scheduler who
-        (serviceClientPolicy service.setup service.mode service.deadline service.leaks
-          service.bound turns timing
-          (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
-            admission source)) who))
-    (low : Player → ℝ) (range : ℝ)
-    (within : ∀ who (output : Option (State L service.setup.program.terminalCtx))
-      (charged : Bool),
-      low who ≤ output.elim 0 (fun state => utility (service.setup.parameterOutcome parameter
-          state) who) - (if charged then deposit who else 0) ∧
-        output.elim 0 (fun state => utility (service.setup.parameterOutcome parameter
-          state) who) - (if charged then deposit who else 0) ≤ low who + range)
-    (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature) :
-    let base := serviceBaseUtility service.setup service.mode service.deadline service.leaks
-      (fun state => utility (service.setup.parameterOutcome parameter state))
-    let payoff := TerminalAudit.utility base
-      ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
-        service.leaks)
-      (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
-    IsεNash ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
-        service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
-        (fun history who => payoff history.state who) ε
-        (service.clientProfile admission menu timing source) →
-      IsεNash ((service.sourceModel admission).toBehavioralGameForm
-        (instructionCount service.setup.program + 1))
-        (fun final who => (service.setup.protocolReadout final.state).elim 0
-          (fun state => utility (service.setup.parameterOutcome parameter state) who))
-        (ε + 2 * timing.deferralError * range) source := by
-  intro base payoff equilibrium
-  exact (isεNash_iff_εBestResponse _ _).mpr
-    (service.isεBestResponse_of_clientProfile admission ordered parameter utility sample authentic
-      deposit menu timing covered low (fun _ => range) within ε source equilibrium)
-
-/-- info: 'Vegas.Paper.async_client_nash_reflection' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.async_client_nash_reflection
-
 open Vegas.SourceProgram GameTheory.Protocol in
 theorem intended_nash [Fintype Player] [IExpr.ResultTypes L]
     (setup : Setup (Player := Player) (L := L))
@@ -232,7 +149,7 @@ open Vegas.SourceProgram Vegas.EventGraphRuntime
 theorem async_client_nash_correspondence [Fintype Player] [IExpr.ResultTypes L]
     {Parameter : Type} (service : AsyncServiceSpec Player L)
     (admission : CommitmentInterface service.setup.program)
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
+    (keepsReveals : service.mode ≠ .concurrentReveals)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (SettledEvidence service.setup service.mode) →
@@ -274,9 +191,12 @@ theorem async_client_nash_correspondence [Fintype Player] [IExpr.ResultTypes L]
         (instructionCount service.setup.program + 1))
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
-        (ε + 2 * timing.deferralError * range) source) :=
-  service.isεNash_rawClientProfile_approximate admission ordered parameter utility sample authentic
-    deposit
+        (ε + 2 * timing.deferralError * range) source) := by
+  have ordered : (serviceGraph service.setup service.mode).BarrierOrdered :=
+    service.setup.eventGraph.withMode_barrierOrdered
+      (toEventGraph_barrierOrdered service.setup.program) service.mode keepsReveals
+  exact service.isεNash_rawClientProfile_approximate admission ordered parameter utility sample
+    authentic deposit
     nonnegative timing low range within ε source
 
 /-- info: 'Vegas.Paper.async_client_nash_correspondence' depends on axioms:
@@ -288,7 +208,7 @@ open Vegas.SourceProgram Vegas.EventGraphRuntime
   GameTheory.Protocol GameTheory.Enforcement in
 theorem intended_async_client_nash [Fintype Player] [IExpr.ResultTypes L]
     {Parameter : Type} (service : AsyncServiceSpec Player L)
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
+    (keepsReveals : service.mode ≠ .concurrentReveals)
     (wellFormed : service.setup.WellFormed)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
@@ -348,8 +268,11 @@ theorem intended_async_client_nash [Fintype Player] [IExpr.ResultTypes L]
             (instructionCount service.setup.program + 1)).map
           (fun final => (service.setup.protocolReadout final.state,
             fun who => (service.setup.protocolReadout final.state).elim 0
-              (fun state => utility (service.setup.parameterOutcome parameter state) who)))) :=
-  service.intended_rawClientProfile_isεNash ordered wellFormed parameter utility forfeit range
+              (fun state => utility (service.setup.parameterOutcome parameter state) who)))) := by
+  have ordered : (serviceGraph service.setup service.mode).BarrierOrdered :=
+    service.setup.eventGraph.withMode_barrierOrdered
+      (toEventGraph_barrierOrdered service.setup.program) service.mode keepsReveals
+  exact service.intended_rawClientProfile_isεNash ordered wellFormed parameter utility forfeit range
     sample authentic deposit nonnegative timing low spread within intended source agrees ε
     equilibrium
 
@@ -363,7 +286,7 @@ open Vegas.SourceProgram Vegas.EventGraphRuntime
 theorem async_first_turn_nash_iff [Fintype Player] [IExpr.ResultTypes L]
     {Parameter : Type} (service : AsyncServiceSpec Player L)
     (admission : CommitmentInterface service.setup.program)
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
+    (keepsReveals : service.mode ≠ .concurrentReveals)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
     (sample : List (SettledEvidence service.setup service.mode) →
@@ -396,9 +319,12 @@ theorem async_first_turn_nash_iff [Fintype Player] [IExpr.ResultTypes L]
         (instructionCount service.setup.program + 1))
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
-        ε source :=
-  service.isεNash_firstTurnClientProfile_iff admission ordered parameter utility sample authentic
-    deposit
+        ε source := by
+  have ordered : (serviceGraph service.setup service.mode).BarrierOrdered :=
+    service.setup.eventGraph.withMode_barrierOrdered
+      (toEventGraph_barrierOrdered service.setup.program) service.mode keepsReveals
+  exact service.isεNash_firstTurnClientProfile_iff admission ordered parameter utility sample
+    authentic deposit
     nonnegative turns low range within ε source
 
 /-- info: 'Vegas.Paper.async_first_turn_nash_iff' depends on axioms:
@@ -410,7 +336,7 @@ open Vegas.SourceProgram Vegas.EventGraphRuntime
   GameTheory.Protocol GameTheory.Enforcement in
 theorem intended_async_first_turn_nash [Fintype Player] [IExpr.ResultTypes L]
     {Parameter : Type} (service : AsyncServiceSpec Player L)
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
+    (keepsReveals : service.mode ≠ .concurrentReveals)
     (wellFormed : service.setup.WellFormed)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
@@ -470,8 +396,11 @@ theorem intended_async_first_turn_nash [Fintype Player] [IExpr.ResultTypes L]
             (instructionCount service.setup.program + 1)).map
           (fun final => (service.setup.protocolReadout final.state,
             fun who => (service.setup.protocolReadout final.state).elim 0
-              (fun state => utility (service.setup.parameterOutcome parameter state) who))) :=
-  service.intended_firstTurnClientProfile_isεNash ordered wellFormed parameter utility forfeit
+              (fun state => utility (service.setup.parameterOutcome parameter state) who))) := by
+  have ordered : (serviceGraph service.setup service.mode).BarrierOrdered :=
+    service.setup.eventGraph.withMode_barrierOrdered
+      (toEventGraph_barrierOrdered service.setup.program) service.mode keepsReveals
+  exact service.intended_firstTurnClientProfile_isεNash ordered wellFormed parameter utility forfeit
     range sample authentic deposit nonnegative turns low spread within intended source
     agrees ε equilibrium
 
@@ -928,15 +857,25 @@ end Vegas.Paper
 
 /-! Mathematical results cited in the maintained manuscript, including prose invariants. -/
 
+/-- info: 'Vegas.SourceProgram.Setup.intendedState_trace' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.intendedState_trace
+
+/-- info: 'Vegas.SourceProgram.Setup.failedReveals_eq_zero_of_intendedState' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.SourceProgram.Setup.failedReveals_eq_zero_of_intendedState
+
+/-- info: 'Vegas.asyncDeviation_readout_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.asyncDeviation_readout_law
+
 /-- info: 'Vegas.AsyncServiceSpec.payment_firstTurnClientProfile_settlement_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.AsyncServiceSpec.payment_firstTurnClientProfile_settlement_law
-
-/-- info: 'Vegas.concurrent_programPayments_sequential_preservation' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.concurrent_programPayments_sequential_preservation
 
 /-- info: 'Vegas.Examples.BoundedPaymentAuction.truthful_not_dominant' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

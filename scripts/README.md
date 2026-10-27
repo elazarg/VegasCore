@@ -1,46 +1,26 @@
-# Validation scripts
+# Validation and inventory scripts
 
-Run from the repository root after the full warning-strict build:
+Run the strict build and checks from the repository root:
 
 ```powershell
+lake build
 python scripts/check-module-boundaries.py
 python scripts/check-lean-options.py
 python scripts/check-doc-references.py
 python -m unittest discover -s scripts -p 'test_*.py'
 ```
 
-The module check validates active import resolution, build-root coverage,
-aggregators and architectural boundaries. The source-policy check keeps
-options central, rejects proof admissions, axiom declarations and trust escape
-hatches, and requires an exact standard-axiom pin after every Paper theorem.
-Documentation checks resolve active Lean names and Markdown links; a citation
-inside a link to the `research-tree` tag names that tag's tree.
+Module checks validate imports, aggregator coverage and architectural layers.
+Source policy rejects admissions, axiom declarations and trust escapes, enforces
+central options and checks exact standard-axiom pins for Paper theorems.
+Documentation checks resolve active citations and Markdown paths; external
+sources pinned by full commit IDs refer to their own tree.
 
-`python scripts/report-unreached.py` lists the modules none of whose
-declarations a Paper theorem, a test or an example uses, largest first. Names
-mentioned unambiguously in test and example source count as uses, since `example`
-commands leave no declaration to follow. A qualified reference is kept intact;
-an ambiguous short name counts none of its owners. Name anonymous uses explicitly
-or qualify their references to make the inventory precise. It reports only;
-`--strict` makes a nonempty list fail. Uses through notation or tactics elsewhere are invisible to it, so
-the build confirms each removal.
+`python scripts/report-unreached.py` reports declaration reachability from
+Paper, examples and tests. Its lexical approximations are investigation leads;
+the build validates removals. `python scripts/proof-inventory.py --help` describes
+the declaration and proof-window inventory. `python lean-defs.py <files>`
+prints declaration surfaces without proofs.
 
-The [experiments](experiments) directory holds the investigation scripts that
-research notes cite. They are reference material and are not part of the
-default test or build roots.
-
-`python scripts/proof-inventory.py --output ephemeral/proof-review` inventories
-tracked Lean source, including the separately managed GameTheory tree. It writes
-module/declaration CSV files, a layer summary, and cross-file matches of exact
-eight-line proof windows. Body recognition is lexical and includes tactic-valued
-definitions; equation-style declarations do not have complete body coverage.
-Assignments in result-type let bindings are excluded. Windows overlap, and
-body/window counts are search leads rather than a census of proof syntax or
-counts of removable lines. Use physical file lines for exact size comparisons.
-The [proof review](../docs/proof-review.md) explains the measurement and its limits. The inventory never edits Lean source.
-
-`python scripts/check-proof-review-probes.py` replays the isolated Lean sources
-in the [checked-probe appendix](../docs/proof-review/checked-probes.md) after the
-ordinary build. It uses the built central Lake setup and writes only temporary
-files. `--list` lists the experiments; `--probe NAME` checks a single one. This
-validates review statements without treating them as merged production APIs.
+Broader proof experiments and research scripts are available through the
+[archive index](../docs/archives.md).
