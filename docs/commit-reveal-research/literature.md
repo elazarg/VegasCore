@@ -105,6 +105,11 @@ normalization and funded positive-evidence reporting. Its concrete service has
 partial observation and partial ledger batches, with explicit capacity,
 support and noninterference requirements. It is a mathematical construction
 for that service, not an arbitrary-builder or deployed-blockchain result.
+Its [fresh-service alternative](../se-asynchronous-support-weakening.md) replaces
+delayed-delivery support by conditional freshness and a controlled reset of
+continuation information. The [compact audit service](../se-asynchronous-lanes-and-audit-service.md)
+uses per-author publication lanes and one positive witness per offending author;
+bounded eventual capture replaces the need to publish all raw variants.
 
 Use papers, official protocol specifications or implementation documentation.
 Record the precise property supported: cryptographic confidentiality, finality,

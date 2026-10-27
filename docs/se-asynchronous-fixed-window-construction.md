@@ -23,6 +23,16 @@ addresses the larger raw-message game separately. The
 [combined finite theorem](se-asynchronous-preservation-theorem.md) states
 the complete model and composes these components.
 
+The theorem ranges over fixed finite service and observation kernels satisfying
+the conditions below. The repair constants may depend on their positive chance
+probabilities; they need not be uniform across kernels. Independent fair
+inclusion coins are one instance. The
+[fresh-service alternative](se-asynchronous-support-weakening.md) removes the
+delayed-delivery support requirement under a different set of sufficient
+conditions. The [monitored-lane backend](se-asynchronous-lanes-and-audit-service.md)
+reduces the ledger capacity requirement for either route, when its clean-body
+service satisfies that route's conditions.
+
 ## The semantic and utility interface
 
 Start with a finite perfect-recall source game. At a private-choice phase,

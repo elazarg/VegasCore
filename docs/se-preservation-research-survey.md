@@ -44,6 +44,13 @@ noninterference and ideal commitment assumptions are explicit; it does not
 claim preservation for arbitrary builders or instantiate the current Lean
 concurrent theorem.
 
+The [fresh-service/reset refinement](se-asynchronous-support-weakening.md)
+removes delayed-delivery support for a precisely specified class, while the
+[per-author audit service](se-asynchronous-lanes-and-audit-service.md) reduces
+ledger work to authorized slots and compact witnesses. The accompanying
+[implementation inventory](se-asynchronous-mechanization-inventory.md) identifies
+which Lean foundations are reusable and which physical adapters remain new.
+
 The most direct simplification opportunity is to transport only the
 continuation gains needed for rationality. Information compression supplies a
 broader generalization route, while power-sequence consistency offers finite

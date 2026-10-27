@@ -33,6 +33,19 @@ pending observation, nor close the arbitrary-builder target. The
 a separate restricted statement whose public sender calendar is unnecessary
 in the finite broadcast construction.
 
+There are useful alternatives to its strongest premises. The
+[fresh-service argument](se-asynchronous-support-weakening.md) replaces the
+delayed-delivery support bound with a direct failure-continuation comparison,
+under conditional freshness and an explicit reset/menu quotient. Deterministic
+prompt inclusion and complete observation are included. The
+[monitored per-author backend](se-asynchronous-lanes-and-audit-service.md)
+reduces ledger work to authorized protocol slots plus one witness per offending
+author and replaces report-all with an audit service. These are explicit
+sufficient constructions; plain per-body noninterference or an audit-service
+label alone does not establish their conditions. The
+[mechanization inventory](se-asynchronous-mechanization-inventory.md) separates
+reusable Lean foundations from the new physical adapters.
+
 ## What the contract can control
 
 The contract can record a public reveal-block closure time c, reject further
@@ -261,6 +274,11 @@ authentication model includes.
 | Late timing choices | One joint operational agent equilibrium, conditional foreign-failure bound, full actual-memory handler completion | Extend beyond the specified service if a broader backend is required |
 | Raw deviations | Saved-debt normalization, first-exposure comparison and sponsored report-all for the specified authenticated algebra | Realize its commitment, positive-evidence and delivery interfaces |
 | End-to-end SE and selected joint law | Complete finite mathematical construction in the linked theorem | Mechanization and a justified correspondence to the selected blockchain backend |
+
+The service alternatives and smaller audit bound in the linked theorem refine
+this table: the fresh-service route does not need delayed-delivery support,
+and the monitored backend does not publish every raw variant or require
+strategic reports. It does require durable capture and protected audit delivery.
 
 The intended concurrent implementation remains the target. The restricted
 scheduled service is a benchmark for the mathematical components, not a

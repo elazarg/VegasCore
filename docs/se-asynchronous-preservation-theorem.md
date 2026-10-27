@@ -17,6 +17,16 @@ The detailed derivations are the [service and timing construction](se-asynchrono
 the [conditional pre-exit proof](se-asynchronous-pre-exit-construction.md), and
 the [authenticated raw-message extension](se-asynchronous-authenticated-construction.md).
 
+There are two useful alternatives to the base construction below. A
+[fresh-service construction](se-asynchronous-support-weakening.md) removes
+delayed-delivery support and includes deterministic prompt inclusion and
+complete observation. A [monitored-lane backend](se-asynchronous-lanes-and-audit-service.md)
+replaces publication of all raw variants and strategic report-all with bounded
+application work and one audit witness per offending author. Their additional
+conditions and composition are stated below. The
+[mechanization inventory](se-asynchronous-mechanization-inventory.md) identifies
+the existing Lean results and the new implementation adapters.
+
 ## Statement and quantifiers
 
 Let G be a finite perfect-recall intended commit–reveal game with a fixed finite
@@ -26,6 +36,11 @@ depend only on those data and are nonempty. Public samples and new public
 observations separate blocks. All accepted commitments have designated later
 resolve obligations. Initialization may correlate the players' private data
 arbitrarily.
+
+Concretely, initialization has finite support and the binding/payload domains
+offered to strategic players are finite. Unbounded bids are outside this
+statement. The linear source adapter covers every program of the existing
+syntax satisfying these finiteness and well-formedness conditions.
 
 Fix the compiler, finite traffic bounds, service, observation kernels and audit
 described below. Let F_i be a fixed exclusion payoff, no greater than any base
@@ -39,7 +54,9 @@ These choices precede the choice of source equilibrium. They do not depend on
 the probability that a particular late packet is included. Gas and report costs
 are separately funded; they do not change these net game payoffs.
 
-**Theorem.** Every selected sequential equilibrium of G has a sequential
+**Theorem.** For every fixed finite service and observation kernel satisfying
+the structural and support conditions below, every selected sequential
+equilibrium of G has a sequential
 equilibrium of this finite raw-message implementation preserving the joint law
 of initial source data, typed terminal results, source public results and
 realized net game payoffs. There is no exclusion, forfeiture or audit charge on
@@ -49,6 +66,12 @@ removed from the target game.
 
 The theorem asserts existence of an implementing equilibrium. It does not say
 that every target equilibrium implements the selected source equilibrium.
+The likelihood constants may depend on the chosen kernels' positive chance
+probabilities. They need not be uniform across the class of services, and the
+collateral inequality does not depend on those constants. The kernels are fixed
+throughout the perturbation sequence and are not chosen after observing a
+deviation. Independent inclusion coins of probability 1/2 give one instance,
+not the only service quantified over.
 
 ## The compiler
 
@@ -86,9 +109,9 @@ An extra Delta-long recording interval after closure makes every qualifying
 opening broadcast by D public before the next binding choice. Thus an opening
 broadcast at a<=D records by a+Delta<=D+Delta, even if its inner game call is stale.
 
-Commitment failure may roll back the current commitment block and exclude its
-missing owners. It does not erase anyone's memories. A saved binding outside
-that block retains its resolve obligation. Every such obligation must eventually
+On commitment-window failure, roll back the entire current commitment block
+and exclude its missing owners. This does not erase anyone's memories. A saved
+binding outside that block retains its resolve obligation. Every such obligation must eventually
 be opened, genuinely erased by rollback, or owned by an excluded player. A
 deadline discharges each unfinished obligation by exclusion. A retry consumes
 at least one previously active owner; successful advance consumes a source
@@ -101,8 +124,9 @@ source strategy into information sets created by failure.
 
 ## The network and evidence service
 
-The following is one concrete finite network, fixed independently of the
-selected source equilibrium.
+The following defines a class of finite networks, each fixed independently of
+the selected source equilibrium. This section uses the delayed-support route;
+the fresh-service route below replaces that support condition.
 
 Its initialization installs the original private values without extra public
 disclosure. Initial handle names and other auxiliary public metadata are fixed
@@ -114,7 +138,7 @@ source samples retain their original conditional kernels and separate coins.
 | --- | --- |
 | Broadcast | A player broadcasts a bounded multiset of authenticated bodies through the one network. Each known body has a fixed finite multiplicity bound; there is no smaller aggregate cap that prevents adding the current first entry. |
 | Partial observation | Independent body/occurrence receipt coins select who receives each complete envelope. Every permitted pattern, including no new receipt, has positive probability. Selection does not inspect hidden payload values; removing an unseen extra body changes no other receipt law. |
-| Qualifying publication | Each distinct qualifying body broadcast at a has its own immutable publication job. In each subsequent block, independently include each nonurgent job with positive probability; include it compulsorily at a+Delta. |
+| Qualifying publication | Each distinct qualifying body broadcast at a has its own immutable publication job. Independent body-local coins give every permitted subset of pending nonurgent jobs positive probability; include due jobs compulsorily at a+Delta. A nonurgent inclusion probability must be strictly between zero and one for this route. |
 | Capacity | The qualifying application traffic has a fixed finite bound, and capacity/funding covers that whole bound even after deviations. This is not a promise to clear unrelated mempool traffic. |
 | Repetition | Repeating a body creates observable broadcast occurrences but no second publication job and cannot reset or cancel the first deadline. |
 | Authorization | Canonical authenticated phase and accepted-binding certificates identify the actual installed physical attempt. Historical validity and guard inputs remain verifiable from immutable records. |
@@ -290,18 +314,123 @@ Its bounded finite-horizon error is uniform over pre-report histories and tends
 to zero, as does reporting regret at its actual information sets.
 All retained-path charges vanish, preserving the claimed realized net law.
 
+## An alternative without delayed-delivery support
+
+The [fresh-service proof](se-asynchronous-support-weakening.md) replaces the
+normal-explanation bound with a direct comparison of foreign-failure branches.
+Its exact conditions are stronger than independence of source and network
+randomness alone:
+
+* For a not-yet-broadcast body of class e, first broadcast at a has success
+  probability p_e(a) by the window deadline. Its service coins are fresh
+  conditional on all previous observations and independent of foreign jobs.
+  After broadcast, retries and other traffic do not change this job's service.
+* Future job and new-message observation kernels restart from the public entry
+  state and fresh randomness. Old queue state, allocation counters, receipts
+  and proof-byte/order metadata do not affect them.
+* After a commitment failure, the entire current block rolls back. The public
+  recording barrier precedes the next attempt. Keep live saved bindings and
+  their obligations, actual public archives, exclusions and private source data.
+  Use fresh physical namespaces for new actions.
+* In the intermediate handler, remove positive-audit offenses and first old
+  disclosures of already excluded owners. Keep public old-body replays legal,
+  with fixed positive source-independent replay probabilities. The prescribed
+  handler policies ignore all old-namespace occurrences, including new copies.
+  New messages and all current source information remain available. The raw
+  extension restores the removed actions by audit or the excluded-owner floor.
+
+For an unsent body, one clock-based policy attains
+
+    q*_e(t) = max_{a >= t} p_e(a)
+
+conditional on every payoff-relevant foreign completion scenario. An adaptive
+policy using later receipts cannot do better: its fresh success probability is
+an average of p_e(a)'s, each at most this maximum. This does not require p_e to
+be monotone in a or require any delayed-delivery pattern to have positive mass.
+
+The reset proof supplies the actual information and action correspondence for
+the handler. It is not an instruction that players forget what they observed.
+On foreign commitment failure, the current semantic vector is erased from the
+effective continuation; on all-player success it has its ordinary source
+effect. At a binding site its value consequently has the form
+
+    q*_e(t) * Pr(foreign completion | actual information) * sourceValue(a)
+        + a term independent of a.
+
+Every surviving handler payoff is at least the global floor. The same timing
+optimizer is therefore optimal on failure branches too. With future timing
+trembles epsilon_n and coarse-handler local regret delta_n, the uniform local
+bound is max(R_n + 2 B H epsilon_n, delta_n), without a rare-foreign-failure
+term. The common Bayesian limit and raw extension give the same joint-law
+conclusion as the base theorem.
+
+This alternative quantifies over every fixed finite kernel satisfying these
+freshness, reset and observation conditions. It includes deterministic prompt
+service, complete observation and partial observation. It does not cover an
+arbitrary value-blind kernel whose old signals predict a future body or whose
+old traffic changes new receipt probabilities. The two service classes are
+alternative sufficient conditions, not an assertion that one contains every
+instance of the other.
+
+## An audit service with capacity proportional to authorized work
+
+The [monitored-lane construction](se-asynchronous-lanes-and-audit-service.md)
+can replace strategic report-all. An audit service durably captures relevant
+complete bodies by a bound, keeps one representative per authorized physical
+slot, and detects an intrinsic violation or a conflicting pair. It then
+publishes one protected witness for that author and can quarantine further
+application work. Capture can occur after another player's receipt; there is
+no registration-before-observation or global sending-order assumption.
+
+Before a witness, every first qualifying representative receives an archive
+publication job, including stale calls. Inner execution is conditional
+separately. After a witness, further publication is unnecessary for deterrence
+because the covering charge is already unavoidable. Thus the required
+invariant is publication of a retained-prefix body by its bound **or** an
+unavoidable charge against its owner by settlement.
+
+Let H_i bound author i's authorized slots, including retries; let a_i bound
+one body publication's work, including its component vector; and let e_i bound
+one full positive witness and verification. Total ledger work is at most
+
+    sum_i (H_i * a_i + e_i).
+
+It depends on program size, retries and encoding sizes, not on the number of
+different values or handles a deviator could try. Per-author application lanes
+isolate other players from that flood. A separate protected audit allowance
+delivers the one witness before collateral release. There is no strategic
+reporting game in this backend. With certain collection the deposit condition
+remains D_i >= U_i-F_i; conditional collection q_i requires q_i D_i >= U_i-F_i.
+
+This reduces ledger capacity, not the need for reliable evidence intake.
+Bounded capture, authentication/DoS isolation and audit delivery are still
+service assumptions. Paying a monitor or reserving a lane does not by itself
+prove them.
+
+The two alternatives can be composed concretely. In a clean fixed-window run
+there is at most one outstanding first body per author. Give that body's
+capture/publication job fresh packet-local randomness and a protected
+per-author service bound; start the next window after old first jobs have
+recorded. This supplies the fresh timing model. The compact monitor does not
+change any clean run. Additional raw jobs can change the run only at a causal
+effect with eventual evidence capture, at which point the charge comparison
+applies. The audit-clean intermediate handler and the saved-debt/direct-floor
+comparisons supply the raw extension at post-failure sites as well.
+
 ## What this settles and what it does not
 
 The construction supplies source comparison, joint late timing, actual-memory
 failure continuation, raw deviation control, reporting incentives and the
-initialized joint-law conclusion for one explicit finite implementation. The
-three companion proofs give the intermediate probability and coupling details.
+initialized joint-law conclusion for the specified finite implementations. The
+companion proofs give the intermediate probability and coupling details.
 No pending message is declared common knowledge before ledger publication.
 
-The principal backend obligations are substantial: enough funded application
-capacity, the stated support and noninterference of the broadcast service,
-immutable publication despite conflicting traffic, and realization of the
-authenticated commitment/evidence algebra. A generic transaction deadline,
+The principal backend obligations are the selected service class's information
+and noninterference properties, bounded funded application work, and actual
+evidence capture/delivery. Delayed support and full raw-body publication are
+requirements of the base construction, not of every alternative above.
+With ideal authenticated commitments given, the remaining audit task is the
+message/capture interface and positive verifier. A generic transaction deadline,
 a larger deposit, or contract padding alone does not establish them. These
 obligations must be checked before applying this theorem to a blockchain model
 or claiming that it replaces the current concurrent theorem's observation
