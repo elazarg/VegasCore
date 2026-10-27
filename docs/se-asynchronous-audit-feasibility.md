@@ -385,6 +385,12 @@ it as an unresolved deviation. Local txpool deduplication is not that invariant.
 
 ## Bounty funding changes the utility comparison
 
+For collateral that remains after exclusion, see the
+[post-exit deterrence analysis](se-post-exit-deterrence.md).
+Its comparison uses additional expected loss relative to silence. Reusing an
+already-inevitable binary slash does not create an additional incentive, even
+if the corresponding money remains locked.
+
 If the original game players can earn reporting rewards, their raw utility is
 not just base utility minus their own audit penalty. Let R_i^max bound all
 incoming bounties player i can earn. The crude active-deviation upper bound is

@@ -185,6 +185,15 @@ observations into a handler by definition would skip precisely that obligation.
 
 ## Evidence can travel separately from the original transaction
 
+The [post-exit collateral analysis](se-post-exit-deterrence.md) shows that a
+failed player can keep a refundable communication bond, separate from the
+failure forfeiture. New provable misconduct can then incur an incremental
+loss. If total continuation utility is already fixed, silence can instead be
+selected as a weak best response; no assumption that failed players cannot
+send is necessary. A reserve already certain to be lost supplies no further
+strict deterrence. Neither construction removes messages sent before exit
+or the need for consistent off-path beliefs after private receipts.
+
 The [audit analysis](se-asynchronous-audit-feasibility.md) distinguishes a
 signed application message from the outer transaction carrying it. A recipient
 can report the former using its own nonce and funding even if the sender
