@@ -21,11 +21,11 @@ import GameTheoryExtensions.Analysis.Protocol.PassageBayes
 import GameTheoryExtensions.Analysis.Protocol.PassageRestrictionExtension
 import GameTheoryExtensions.Analysis.Protocol.Perturbation
 import GameTheoryExtensions.Analysis.Protocol.ProjectedBeliefTransport
+import GameTheoryExtensions.Analysis.Protocol.ProportionalBeliefTransport
 import GameTheoryExtensions.Analysis.Protocol.ReachBounds
 import GameTheoryExtensions.Analysis.Protocol.RetainedDeviation
 import GameTheoryExtensions.Analysis.Protocol.SingleMoverReach
 import GameTheoryExtensions.Analysis.Protocol.SourceGainTransport
-import GameTheoryExtensions.Analysis.Protocol.StoppedBayes
 import GameTheoryExtensions.Analysis.Protocol.StoppedCharge
 import GameTheoryExtensions.Analysis.Protocol.StoppedContinuationComparison
 import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound

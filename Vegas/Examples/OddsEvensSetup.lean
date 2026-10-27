@@ -2,7 +2,6 @@
 
 import Vegas.Expr.Simple
 import Vegas.Game.RevealService
-import Vegas.Game.SequentialRuntimePhases
 import Vegas.Game.OnePacketPublicInitialSignal
 import Vegas.Game.OnePacketSwapFiberSum
 import Vegas.Game.ProgramPayoffs
@@ -62,7 +61,6 @@ def setup : Setup (Player := Player) (L := simpleExpr) where
   exitTransfers := fun _ => 0
 
 abbrev compiled := graph setup
-abbrev plan := sequentialRuntimePhasePlan program
 
 def sourceUtility (result : Unit × PublicOutcome program) (who : Player) : ℝ :=
   cash (result.2.get (.there .here)) (result.2.get .here) who

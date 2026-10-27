@@ -27,9 +27,16 @@ cover VegasCore, GameTheory and the private Overleaf repository. The archive is
 local; the public checkpoint and reading guide are pushed. The ignored
 `ephemeral/se-preservation-checkpoint.json` points to the archive.
 
-The revised non-concurrent manuscript is on the local Overleaf branch
-`focus/sequential-se-preservation`, commit
-`a3adaece0be4a644d966345a3215c00535647e81`. Its verified
-`Overleaf-sequential-focus.bundle` and checksum are saved alongside that archive.
-The Overleaf server accepts only `main`; its active content remains the broader
-manuscript, so use the local focus branch for correspondence with this core.
+The phase controller, its sequential preservation theorem and the earlier
+concrete service examples are available at
+[`39ba8ee6ccbc2a9d4a0f9b150e3085fd7bbab2be`](https://github.com/elazarg/VegasCore/tree/39ba8ee6ccbc2a9d4a0f9b150e3085fd7bbab2be).
+The local archive
+`C:/Users/elazar/VegasCore-local/research-archive/sequential-forced-exit-2026-10-28`
+also contains a hashed ZIP of the retired current source and its dependency
+manifest, including the concrete phase trace outside the public checkpoint.
+
+The non-concurrent manuscript lives on the local Overleaf branch
+`focus/sequential-se-preservation`. Its verified focus bundles and checksums
+are retained in these local archives. The Overleaf server accepts only `main`;
+its active content remains the broader manuscript, so use the local focus
+branch for correspondence with this core.

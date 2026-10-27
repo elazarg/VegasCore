@@ -11,13 +11,13 @@ import Vegas.Game.AsyncClientObservables
 import Vegas.Game.ProgramPaymentAsyncNash
 import Vegas.Game.OnePacketExtension
 import Vegas.Game.RecoverySequentialCompilation
-import Vegas.Game.SequentialPhaseRawPreservation
-import Vegas.Game.SequentialPhasePaymentPreservation
+import Vegas.Game.RecoveryPaymentPreservation
 import Vegas.Game.ServiceRosterAsync
 import Vegas.Examples.LateLeak
 import Vegas.Examples.CommitRevealAuction
 import Vegas.Examples.BoundedPaymentAuction
-import Vegas.Examples.OddsEvensRawEquilibrium
+import Vegas.Examples.OddsEvensRecoveryRawEquilibrium
+import Vegas.Examples.OddsEvensFullSource
 
 /-! # Paper theorems
 
@@ -763,97 +763,6 @@ theorem recovery_intended_raw_sequential_equilibrium [Fintype Player] [IExpr.Res
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.recovery_intended_raw_sequential_equilibrium
 
-open Classical in
-open Vegas.SourceProgram Vegas.EventGraphRuntime GameTheory.Protocol GameTheory.Enforcement in
-theorem sequential_phase_intended_raw_sequential_equilibrium [Fintype Player] [IExpr.ResultTypes L]
-    (setup : Setup (Player := Player) (L := L))
-    (runtime : EventGraphRuntime (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (CommitAttemptPacket (graph setup)))
-    (bounds : MessageBounds (graph setup)) (horizon : Nat)
-    (scheduler : (phaseApplication runtime leaks).Scheduler)
-    [(phaseApplication runtime leaks).FiniteNature
-      (SequentialPhase.phaseInitialLaw setup) scheduler]
-    [Finite setup.intendedProtocol.History]
-    {Parameter : Type} (parameter : State L setup.context → Parameter)
-    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-    (excludedPayoff : Player → ℝ)
-    {Public : Type*} {signal : State L setup.context → Public}
-    (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal) {delay bound : (graph setup).EventId → Nat}
-    (opportunity : PhaseService.Opportunity runtime leaks
-      (SequentialPhase.phaseInitialLaw setup) horizon scheduler delay)
-    (inclusion : PhaseService.ProtectedInclusion runtime leaks
-      (SequentialPhase.phaseInitialLaw setup) horizon scheduler bound)
-    (completes : PhaseService.CompletesPlay runtime leaks
-      (SequentialPhase.phaseInitialLaw setup) horizon scheduler)
-    (timely : AsyncTimely runtime delay bound)
-    (lowerUtility upperUtility : Player → ℝ)
-    (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
-    (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
-    (below : ∀ (final : setup.intendedProtocol.History) terminal,
-      setup.protocolReadout final.state = some terminal →
-        ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
-    (intended : setup.intendedModel.BehavioralAssessment)
-    (equilibrium : intended.IsSequentialEquilibrium setup.intended_decision_antichain
-      setup.intended_bounded.wellFoundedHistories
-      (fun who final => (setup.protocolReadout final.state).elim 0
-        (fun state => utility (setup.parameterOutcome parameter state) who)))
-    (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
-    (service : EvidenceReportService (PhaseCount.Evidence (graph setup)))
-    (observationRate deliveryRate : Player → ℝ)
-    (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
-    (coverage : PhaseCount.EvidenceCoverage service observationRate deliveryRate)
-    (deposit : Player → ℝ) (deposit_nonnegative : ∀ who, 0 ≤ deposit who)
-    (sufficient : ∀ who,
-      max 0 (max (excludedPayoff who) (upperUtility who)) -
-          min 0 (min (excludedPayoff who) (lowerUtility who)) ≤
-        observationRate who * deliveryRate who * deposit who) :
-    let initial := SequentialPhase.phaseInitialLaw setup
-    let raw := PhaseCount.rawMenu runtime leaks bounds
-    let observe := (phaseApplication runtime leaks).stateTraffic
-    let audit := PhaseCount.audit runtime leaks service.sample
-    let base := phaseExclusionBase setup .sequential runtime leaks
-      (fun terminal => utility (setup.parameterOutcome parameter terminal)) excludedPayoff
-    let payoff := TerminalAudit.utility base observe audit deposit
-    let settle := TerminalAudit.settlement base observe audit deposit
-    ∃ target : (raw.information initial horizon scheduler).BehavioralAssessment,
-      target.IsSequentialEquilibrium
-        (raw.decisionInformationAntichain initial horizon scheduler)
-        (raw.bounded initial horizon scheduler).wellFoundedHistories
-        (fun who final => payoff final.state who) ∧
-      (∀ final ∈ ((raw.information initial horizon scheduler).runBehavioral
-          target.strategy (2 * horizon + 1)).support,
-        ∀ control, final.state = some control →
-          control.execution.application.current.excluded = ∅) ∧
-      (∀ final ∈ ((raw.information initial horizon scheduler).runBehavioral
-          target.strategy (2 * horizon + 1)).support,
-        ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
-      ((raw.information initial horizon scheduler).runBehavioral target.strategy
-          (2 * horizon + 1)).bind
-          (fun final => (settle final.state).map fun payoffs =>
-            (phaseSourceReadout setup .sequential runtime leaks final.state, payoffs)) =
-        (setup.intendedModel.runBehavioral intended.strategy
-          (instructionCount setup.program + 1)).map
-          (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
-  intro initial raw observe audit base payoff settle
-  obtain ⟨target, truncated, clean⟩ :=
-    Vegas.SequentialPhase.intended_raw_sequentialEquilibrium_preserved setup runtime leaks
-      bounds horizon
-      scheduler parameter utility excludedPayoff
-      wellFormed independent observable opportunity inclusion completes timely lowerUtility
-      upperUtility lower_le le_upper below intended equilibrium covers coversInputs capacity service
-      observationRate deliveryRate delivery_nonnegative coverage deposit deposit_nonnegative
-      sufficient
-  exact ⟨target, (target.isSequentialEquilibrium_iff_truncated_of_bounded _ _ _
-    (raw.bounded initial horizon scheduler) _).mpr truncated, clean⟩
-
-/-- info: 'Vegas.Paper.sequential_phase_intended_raw_sequential_equilibrium' depends on axioms:
-[propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms Vegas.Paper.sequential_phase_intended_raw_sequential_equilibrium
-
 end Vegas.Paper
 
 /-! Mathematical results cited in the maintained manuscript, including prose invariants. -/
@@ -884,25 +793,30 @@ end Vegas.Paper
 #print axioms
   Vegas.Examples.BoundedPaymentAuction.truthful_not_dominant
 
-/-- info: 'Vegas.SequentialPhase.intended_raw_programPayments_preserved' depends on axioms:
+/-- info: 'Vegas.Recovery.intended_raw_programPayments_preserved' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.SequentialPhase.intended_raw_programPayments_preserved
+#print axioms Vegas.Recovery.intended_raw_programPayments_preserved
 
-/-- info: 'Vegas.Examples.OddsEvensRaw.intended_equilibrium_preserved' depends on axioms:
+/-- info: 'Vegas.Examples.OddsEvensRecoveryRaw.intended_equilibrium_preserved' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Examples.OddsEvensRaw.intended_equilibrium_preserved
+#print axioms Vegas.Examples.OddsEvensRecoveryRaw.intended_equilibrium_preserved
 
-/-- info: 'Vegas.Examples.OddsEvensRaw.funded_raw_equilibrium_exists' depends on axioms:
+/-- info: 'Vegas.Examples.OddsEvensRecoveryRaw.fair_equilibrium_exists' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Examples.OddsEvensRaw.funded_raw_equilibrium_exists
+#print axioms Vegas.Examples.OddsEvensRecoveryRaw.fair_equilibrium_exists
 
-/-- info: 'Vegas.Examples.OddsEvensRaw.collection_probability' depends on axioms:
+/-- info: 'Vegas.Examples.OddsEvens.fair_full_source_equilibrium_exists' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Examples.OddsEvensRaw.collection_probability
+#print axioms Vegas.Examples.OddsEvens.fair_full_source_equilibrium_exists
+
+/-- info: 'Vegas.Examples.OddsEvensRecoveryRaw.collection_probability' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Examples.OddsEvensRecoveryRaw.collection_probability
 
 /-- info: 'Vegas.SourceProgram.Setup.terminal_guards_hold' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

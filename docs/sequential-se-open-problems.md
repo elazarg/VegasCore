@@ -7,7 +7,7 @@ service and evidence assumptions, and operational realizations of those
 assumptions. No counterexample below refutes the checked statements.
 
 The [two-player instance](sequential-se-instances.md) exercises positive latency
-and imperfect audit coverage on the same phase runtime as monetary preservation.
+and imperfect audit coverage on the same forced-exit runtime as monetary preservation.
 The [correlated-prior analysis](sequential-correlated-prior-analysis.md) gives a
 conditioning/gluing route for an existing signal known to every player, with
 its outstanding formal adapters. It does not settle generic correlated priors.
@@ -17,12 +17,9 @@ its outstanding formal adapters. It does not settle generic correlated priors.
 The permanent-exclusion capstone is
 `Vegas.recovery_intended_raw_sequentialEquilibrium_preserved` in
 [RecoverySequentialCompilation](../Vegas/Game/RecoverySequentialCompilation.lean).
-The singleton-phase capstone is
-`Vegas.SequentialPhase.intended_raw_sequentialEquilibrium_preserved` in
-[SequentialPhaseRawPreservation](../Vegas/Game/SequentialPhaseRawPreservation.lean).
-Both compile the sequential graph, use the supplied runtime's relative deadline
-durations, and quantify over a supplied scheduler and pending-observation rule.
-They construct an actual raw-runtime assessment with whole-continuation
+It compiles the sequential graph, uses the supplied runtime's relative deadline
+durations, and quantifies over a supplied scheduler and pending-observation rule.
+It constructs an actual raw-runtime assessment with whole-continuation
 sequential rationality. Its supported paths exclude nobody, incur no count-audit
 charge, and preserve the exact joint law of typed source readout and realized
 settled payoff vector. The complete typed terminal store retains the original
@@ -31,8 +28,8 @@ readers therefore retains their joint law too; the utility's parameter reader
 does not restrict this typed-store conclusion.
 
 The monetary specialization
-`Vegas.SequentialPhase.intended_raw_programPayments_preserved` in
-[SequentialPhasePaymentPreservation](../Vegas/Game/SequentialPhasePaymentPreservation.lean)
+`Vegas.Recovery.intended_raw_programPayments_preserved` in
+[RecoveryPaymentPreservation](../Vegas/Game/RecoveryPaymentPreservation.lean)
 additionally retains executable cash with the initial reader and full typed
 store. It separates valuation, declared exit valuation and exit transfer.
 
@@ -55,7 +52,7 @@ The substantive premises remain:
   deposit covers the stated utility spread, including the exclusion override
   and zero fallback.
 
-There is no complete-pending-observation premise in these two theorems and no
+There is no complete-pending-observation premise in the recovery theorems and no
 independent-per-message-delay premise. Those facts distinguish their scope
 from the deferred concurrent construction. The evidence-coverage premise still
 needs an operational producer; arbitrary pending observation does not produce
@@ -66,9 +63,7 @@ it automatically.
 This is a deployment/refinement obligation, rather than a defect in the
 conditional theorem. Inspect the exact definitions
 `Vegas.EventGraphRuntime.CountEvidenceCoverage` in
-[ReactiveCountAudit](../Vegas/Pending/ReactiveCountAudit.lean) and
-`Vegas.EventGraphRuntime.PhaseCount.EvidenceCoverage` in
-[PhaseCountCollection](../Vegas/Pending/PhaseCountCollection.lean).
+[ReactiveCountAudit](../Vegas/Pending/ReactiveCountAudit.lean).
 Count evidence includes a signed envelope and the signed traffic list against
 which its serial is judged. That traffic is the model's actual emission record;
 it is not automatically a publicly available ledger.
@@ -82,7 +77,7 @@ This rules out just multiplying unrelated unconditional averages.
 The next concrete task is to specify who obtains the needed signed evidence,
 how missing earlier messages affect verification, who publishes the evidence,
 and why publication receives the claimed coverage before settlement. Derive
-the two existing coverage definitions from those operations. Include packets
+the existing coverage definition from those operations. Include packets
 sent after exclusion and packets rejected by the game. A verifier alone, an
 honest-relayer assertion, or a complete-evidence example does not discharge
 availability for a realistic partially observed network.
@@ -149,12 +144,11 @@ histories. An externally advancing block clock needs a concrete scheduler
 realization satisfying those same obligations. An honest-path timing estimate
 or a numerical positive margin does not supply that realization.
 
-The checked positive-latency example in
-[SequentialPhaseDelayedEquilibrium](../Vegas/Examples/SequentialPhaseDelayedEquilibrium.lean)
-is a useful regression consumer: its event duration is six, its reaction and
-inclusion bounds are three and two, and it proves the actual service contract
-as well as preservation. Extend this style of example to multiple owners,
-several source decisions and imperfect evidence capture before generalizing.
+The checked [two-player instance](sequential-se-instances.md) has event duration
+six, reaction and inclusion bounds three and two, and proves the actual service
+contract under arbitrary raw play. It combines multiple source decisions with
+imperfect evidence capture. Its periodic full-batch scheduler and empty pending
+reception are concrete choices to strengthen independently.
 
 Protected inclusion only protects the owner's sole identifier for an event.
 It is not a guarantee to flush the pool or include every malformed duplicate.

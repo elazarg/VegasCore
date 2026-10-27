@@ -5,7 +5,7 @@ instructions to an event graph. Source-law and Nash correspondence hold under
 their stated public graph schedulers. Concurrent event-graph scheduling is
 distinct from partially observed concurrent raw-ledger SE preservation.
 
-The retained raw SE theorems use the sequential forced-exit or singleton-phase
+The retained raw SE theorems use the sequential forced-exit
 controller. Players send authenticated envelopes to a pending network. A
 scheduler chooses activations, inclusion, clock advances and expiry; the
 application records included envelopes and executes its permitted transitions.

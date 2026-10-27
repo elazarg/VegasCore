@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.CommitPhaseLayout
 import Vegas.Compile.CompiledReadoutSuffix
-import Vegas.Compile.CompiledRevealOrigins
 import Vegas.Compile.EventGraphAssembly
 import Vegas.Compile.EventGraphBacktranslation
 import Vegas.Compile.EventGraphCanonical

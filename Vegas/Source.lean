@@ -4,11 +4,11 @@ import Vegas.Source.Accounting
 import Vegas.Source.Basic
 import Vegas.Source.CellSwap
 import Vegas.Source.CellSwapDebt
-import Vegas.Source.CommitPhase
-import Vegas.Source.CommitPhaseRecovery
-import Vegas.Source.CommitRecoveryPoint
-import Vegas.Source.CommitRecoveryStep
 import Vegas.Source.CommitmentInterface
+import Vegas.Source.ConditionedInitialFiber
+import Vegas.Source.ConditionedInitialHistory
+import Vegas.Source.ConditionedInitialLaw
+import Vegas.Source.ConditionedInitialPolicy
 import Vegas.Source.DebtObservation
 import Vegas.Source.Disclosure
 import Vegas.Source.DisclosureAliases
@@ -20,8 +20,6 @@ import Vegas.Source.EffectiveOpening
 import Vegas.Source.Exclusion
 import Vegas.Source.FailedBinding
 import Vegas.Source.FailedBindingDeviation
-import Vegas.Source.FailedGuardRegistry
-import Vegas.Source.FailureRevelations
 import Vegas.Source.FiniteSupport
 import Vegas.Source.Forfeit
 import Vegas.Source.GuardPrediction
@@ -44,7 +42,6 @@ import Vegas.Source.ProtocolEvaluation
 import Vegas.Source.ProtocolState
 import Vegas.Source.ProtocolTermination
 import Vegas.Source.Purification
-import Vegas.Source.RegistryFailureExtension
 import Vegas.Source.RevealSequence
 import Vegas.Source.Safety
 import Vegas.Source.Semantics

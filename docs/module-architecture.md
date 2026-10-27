@@ -14,22 +14,21 @@ subtree; imports do not preserve unused research modules merely to keep a name.
 | Vegas.Foundation / Vegas.Expr | Typed values, environments and executable expressions. |
 | Vegas.Source | Source instructions, initial law, information and guard/completion invariants. |
 | Vegas.EventGraph | Typed dependencies, execution, observations and readout. |
-| Vegas.Pending | Submission, inclusion, relative deadlines, phase/recovery controllers, service and count-audit contracts. |
+| Vegas.Pending | Submission, inclusion, relative deadlines, permanent-exclusion controller, service and count-audit contracts. |
 | Vegas.Compile | Source-to-graph compiler and source/scheduler correspondence. |
 | Vegas.Game | Intended-source extension, Nash correspondence and raw non-concurrent SE preservation. |
 | Tests and examples | Retained semantic regressions and concrete consumers. |
 
 Start with [recovery preservation](../Vegas/Game/RecoverySequentialCompilation.lean),
-[singleton-phase preservation](../Vegas/Game/SequentialPhaseRawPreservation.lean),
-[monetary preservation](../Vegas/Game/SequentialPhasePaymentPreservation.lean) and
+[monetary preservation](../Vegas/Game/RecoveryPaymentPreservation.lean) and
 the [one-packet raw extension](../Vegas/Game/OnePacketExtension.lean).
 Their imports identify the actual proof adapters. The
 [open-problems guide](sequential-se-open-problems.md) distinguishes hypotheses
 from future service, audit and source refinements.
 
-The [Odds–Evens raw instance](../Vegas/Examples/OddsEvensRawEquilibrium.lean)
-consumes the sequential phase theorem and the
-[imperfect-evidence adapter](../Vegas/Pending/PhaseThinnedCollection.lean).
+The [Odds–Evens raw instance](../Vegas/Examples/OddsEvensRecoveryRawEquilibrium.lean)
+consumes the forced-exit theorem and the
+[imperfect-evidence adapter](../Vegas/Pending/ThinnedCountCollection.lean).
 The [instance guide](sequential-se-instances.md) describes their exact scope.
 
 Use `rg` and `python lean-defs.py <files>` to inspect owners before adding

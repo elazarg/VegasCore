@@ -6,6 +6,47 @@ gluing, and separates it from the unresolved case of correlated private
 information that nobody jointly knows. The implementation, scheduler,
 observation rule and audit remain fixed throughout.
 
+## Checked source adapters
+
+The source conditioning and Bayes accounting are mechanized:
+
+* [ConditionedInitialLaw](../Vegas/Source/ConditionedInitialLaw.lean) changes only
+  the actual initial law, restricts support, retains local observations and
+  menus and post-initial kernels, and reconstructs the original source run law
+  by mixing conditional source laws.
+* [ConditionedInitialHistory](../Vegas/Source/ConditionedInitialHistory.lean)
+  and [ConditionedInitialFiber](../Vegas/Source/ConditionedInitialFiber.lean)
+  give an injective actual intended-history map, an inverse on the selected
+  initial component, and state, length and observation preservation. Their
+  information-history map is bijective when the whole actual information
+  fiber determines the component.
+* [ConditionedInitialPolicy](../Vegas/Source/ConditionedInitialPolicy.lean)
+  transports actual intended choices and local randomized action laws without
+  adding any observation of the signal.
+* `Vegas.SourceProgram.Setup.conditionInitial_historyReachWeight_scale` in
+  [ConditionedSourceReach](../Vegas/Game/ConditionedSourceReach.lean) proves the
+  exact unnormalized history-reach identity below for every source behavioral
+  profile and every nonempty conditional intended history.
+* `Vegas.SourceProgram.Setup.conditionInitial_bayesBelief` in
+  [ConditionedSourceBayes](../Vegas/Game/ConditionedSourceBayes.lean) gives exact
+  mapped Bayes beliefs at an actual source information fiber determining the
+  component, using the existing proportional-reach transport theorem.
+* [CorrelatedInitialBits](../Vegas/Examples/CorrelatedInitialBits.lean) is an
+  actual source with two owner-private copies of one Boolean bit, fresh owned
+  commitments and reveals by both players, and Odds–Evens settlement. It proves
+  failure of the Unit-signal independence premise, deterministic conditional
+  priors satisfying that premise, and recovery of the common bit from each
+  player's existing private initial observation.
+  [CorrelatedInitialBitsInformation](../Vegas/Examples/CorrelatedInitialBitsInformation.lean)
+  proves the actual source decision-information fibers determine their
+  component and applies the Bayes transport theorem to them. It reuses the
+  source's initial-cell observation and preservation invariants.
+
+This does not yet weaken a raw-runtime SE preservation theorem. It remains to
+restrict and glue SE consistency witnesses and continuation rationality, and
+transport the actual forced-exit runtime and service hypotheses through
+conditioning. The proofs do not assume the signal is ledger-public.
+
 ## Where the existing proof uses independence
 
 The relevant declaration surfaces are in
@@ -13,9 +54,8 @@ The relevant declaration surfaces are in
 [OnePacketOwnerKeyed](../Vegas/Game/OnePacketOwnerKeyed.lean),
 [OnePacketLateRecords](../Vegas/Game/OnePacketLateRecords.lean), and
 [OnePacketSpliceForced](../Vegas/Game/OnePacketSpliceForced.lean).
-The retained raw capstones are
-[recovery](../Vegas/Game/RecoverySequentialCompilation.lean) and
-[singleton phase](../Vegas/Game/SequentialPhaseRawPreservation.lean).
+The active raw capstone is
+[forced-exit recovery](../Vegas/Game/RecoverySequentialCompilation.lean).
 
 There are two separate obligations. An owner swap must replace one player's
 hidden initial cells while retaining a supported draw and the required
@@ -83,9 +123,8 @@ later player decision. No player chooses before the initial draw.
 
 The retained views support this premise structurally: player-store masking
 keeps a player's own private inputs in [Information](../Vegas/EventGraph/Information.lean),
-and the [recovery](../Vegas/Pending/ExclusionApplication.lean) and
-[phase](../Vegas/Pending/PhaseApplication.lean) player views retain the native
-player view even after exclusion. The formal adapter still needs the input
+and the [recovery](../Vegas/Pending/ExclusionApplication.lean) player view retains
+the native player view even after exclusion. The formal adapter still needs the input
 store invariant and initial-to-runtime encoding identity, rather than merely
 the view definitions.
 
@@ -144,7 +183,7 @@ beliefs separately for different components.
 
 ### Applying the existing theorem component by component
 
-Apply the retained recovery or singleton-phase theorem to each conditional
+Apply the retained forced-exit theorem to each conditional
 setup, using the conditional independence premise and U as the public signal.
 All-history service properties restrict to a smaller supported initial law:
 every conditional legal history is already a global legal history. The same
@@ -228,9 +267,10 @@ case, but ordinary card hands leave uncertainty about the allocation and are
 not covered automatically. A randomized latent mixture variable that players
 cannot recover is not a valid Z for this proof.
 
-## Concrete Lean adapter obligations
+## Source and runtime adapter obligations
 
-Before calling this a formal result, establish:
+The source history and Bayes lemmas above discharge portions of the following
+obligations. The complete SE and operational theorem still requires:
 
 1. Conditioning a setup changes only its initial probability law; source menus,
    graph/runtime/readers, physical transition kernels and audit are transported
@@ -302,17 +342,15 @@ The smaller foundation APIs are closer to the required proof:
   `GameTheory.Protocol.InformationModel.bayesBelief_projection_at_depth`
   is appropriate for genuinely different decision depths; conditioning alone
   does not require a depth change.
-* The archived
-  [`GameTheory.Protocol.InformationModel.informationMass_projection_of_proportional_reach`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/ProportionalBeliefTransport.lean#L38)
+* `GameTheory.Protocol.InformationModel.informationMass_projection_of_proportional_reach`
   and
-  [`GameTheory.Protocol.InformationModel.bayesBelief_projection_of_proportional_reach`](https://github.com/elazarg/VegasCore/blob/research-tree/GameTheoryExtensions/Analysis/Protocol/ProportionalBeliefTransport.lean#L59)
-  already provide the scalar generalization. Their fiber-sum premise is
-  `scale * conditional reach = summed global reach`. Positive finite scale and positive conditional information mass give
-  positive global information mass. The [checkpoint version](https://github.com/elazarg/VegasCore/blob/cb6b8df2d011c678c0c2bc03981feb8b04243048/GameTheoryExtensions/Analysis/Protocol/ProportionalBeliefTransport.lean)
-  also derives scale finiteness from the information-mass bound. For the
-  application scale pi_z, finiteness is immediate. No new scaled
-  Bayes-normalization lemma is needed. This module is outside the active core;
-  restore it only when an actual conditional-source consumer justifies doing so.
+  `GameTheory.Protocol.InformationModel.bayesBelief_projection_of_proportional_reach`
+  in [ProportionalBeliefTransport](../GameTheoryExtensions/Analysis/Protocol/ProportionalBeliefTransport.lean)
+  provide the scalar generalization and are used by the actual source Bayes
+  consumer. Their fiber-sum premise is
+  `scale * target reach = summed raw reach`. The positive finite multiplier
+  cancels in Bayes normalization; the source consumer uses scale pi_z inverse,
+  from conditional histories to their embedded global histories.
 * `GameTheory.Protocol.InformationModel.BehavioralAssessment.IsLimitConsistent.exists_sequence`
   in [BehavioralAssessment](../GameTheory/GameTheory/Protocol/BehavioralAssessment.lean)
   extracts the existing consistency witness. The gluing construction should
@@ -331,34 +369,33 @@ No exported finite initial-component SE gluing theorem was found in these
 owners or the foundation's protocol-analysis layer. This is an inspected reuse
 boundary, not a claim that the whole foundation has been proved to lack one.
 
-### The next small application lemma
+### The next sequential-equilibrium obligation
 
-The next missing result is source-specific unnormalized reach scaling, not
-Bayes normalization or a new gluing framework. Fix a positive component z,
-the actual conditional setup obtained by changing only the initial law, and
-an arbitrary global source behavioral profile sigma. Construct the history
-embedding j_z from the conditional intended protocol into the global intended
-protocol and the locally restricted profile sigma_z. The statement to prove is:
+For the actual conditional setup, the source history embedding j_z and the
+transported policy sigma_z, the checked reach identity is:
 
     for every conditional history h after initialization,
     reach_global(sigma, j_z(h)) = pi_z * reach_conditional(sigma_z, h).
 
-The embedding must retain the initial draw and all later actions and outcomes,
-preserve length and actual observations, and induce a bijection from every
-conditional decision-information fiber to the corresponding global fiber.
-That last claim uses recoverability of z from the deciding player's information.
+The map retains the initial draw and all later actions and outcomes and
+preserves length and actual observations. Its bijection on decision-information
+fibers requires that the original fiber determine the component. The correlated
+bit source proves that premise from each player's actual initial observation
+and its retention at every later source decision.
 The initialization-free root is excluded from the displayed scaling identity:
 both protocols give their root reach one, not pi_z. There is no player decision
 there, so this exclusion does not affect Bayes transport at decision sites.
 
-The archived proportional-reach theorem can then be instantiated with the
-global information fiber as its raw side, the conditional fiber as its source
-side, the inverse of j_z on the selected fiber as its projection, and scale
-pi_z. Totalizing the projection outside that fiber with the conditional root
-does not change its fiber-sum obligation. This gives exact Bayes transport
-without proving another normalization lemma.
+The actual Bayes consumer uses j_z directly, with conditional histories on its
+raw side, original histories on its target side and scale pi_z inverse. There
+is no need to totalize a new inverse projection or prove another normalization
+lemma.
 
-Prove this source-history lemma and the correlated-bit fixture before carrying
-the same identities through the compiled raw runtime and packaging the finite
-SE-gluing corollary. Restoring the archived probability adapter alone does not
-weaken either preservation theorem.
+The next result should restrict an existing source SE and its one common
+consistency sequence to an observed component, preserving whole-continuation
+rationality under the same actual history and choice maps. The source-law and
+Bayes lemmas do not themselves transport continuation deviations or prove
+consistency of a selected limiting conditional belief system. Derive those
+properties and instantiate them on the correlated-bit source before attempting
+runtime SE gluing. The forced-exit runtime and finite gluing steps remain
+distinct obligations; the source regression is not raw SE preservation.

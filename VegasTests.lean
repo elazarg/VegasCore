@@ -11,7 +11,6 @@ import VegasTests.EventStrategies
 import VegasTests.FiniteSupportPurification
 import VegasTests.Honest
 import VegasTests.PartialEnvironment
-import VegasTests.RepeatedActivation
 import VegasTests.ResultExpressions
 import VegasTests.ServiceTiming
 import VegasTests.SourceSemantics

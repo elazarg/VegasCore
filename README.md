@@ -15,8 +15,7 @@ source policy. The manuscript is maintained separately in `overleaf/`.
 | Result | Checked scope |
 | --- | --- |
 | `Vegas.Paper.recovery_intended_raw_sequential_equilibrium` | Intended-game SE extends to the forced-exit contract on the sequential graph under a finitely branching asynchronous builder, arbitrary pending observation, conditional independence of initial private data given a public signal, and funded count-audit coverage. The realized joint outcome/payoff law is preserved and no player is excluded or charged on the implementing path. |
-| `Vegas.Paper.sequential_phase_intended_raw_sequential_equilibrium` | Corresponding result for the singleton-phase contract, with supplied relative deadlines and its own actual service and audit hypotheses. |
-| `Vegas.SequentialPhase.intended_raw_programPayments_preserved` | Monetary specialization with executable program transfers and valuation, retaining the initialized typed/public/net-payoff joint law. |
+| `Vegas.Recovery.intended_raw_programPayments_preserved` | Monetary specialization with executable program transfers and valuation, retaining the initialized typed/public/net-payoff joint law. |
 | `Vegas.Paper.one_packet_raw_sequential_equilibrium` | Extension from the one-permitted-packet game to all raw responses on the plain contract, under conditional audit coverage and adequate deposits. |
 
 These theorems need neither complete pending visibility nor independent
@@ -28,13 +27,14 @@ theorems for ideal authenticated commitment interfaces and specified services.
 They do not themselves implement signatures, cryptography or an EVM backend.
 
 The [open-problems guide](docs/sequential-se-open-problems.md) states the exact
-boundaries and the next questions. The [positive-latency example](Vegas/Examples/SequentialPhaseDelayedEquilibrium.lean)
-and [funded service example](Vegas/Examples/SequentialPhaseServiceEquilibrium.lean)
-exercise actual runtime service premises.
+boundaries and the next questions. The [two-player service](Vegas/Examples/OddsEvensRecoveryService.lean) and its
+clock, opportunity, receipt and completion proofs exercise actual runtime
+service premises.
 
 The [two-player Odds–Evens instance](docs/sequential-se-instances.md) combines
 positive latency with imperfect evidence capture and delivery on the same
-phase runtime. Its exact funding and preservation scopes are stated there.
+forced-exit runtime. Its fair source equilibrium, exact joint law, expected
+payoff of 100 per player, and funding scope are checked.
 
 ## Language and compiler
 
@@ -47,9 +47,9 @@ See [source semantics](docs/source-semantics.md).
 The compiler lowers source instructions to a typed event graph. Its checked
 source law, scheduler correspondence and Nash results remain in the core,
 including the concurrent event-graph Nash theorem: that result is about public
-graph scheduling, not concurrent raw-ledger SE preservation. The plain,
-forced-exit and phase implementations remain where the retained theorems use
-them. There is no API compatibility requirement.
+graph scheduling, not concurrent raw-ledger SE preservation. The plain and
+forced-exit implementations remain where the retained theorems use them.
+There is no API compatibility requirement.
 
 Checked late-leak examples delimit preservation and show sufficient payoff
 conditions in their stated finite games. Their impossibility conclusions do
