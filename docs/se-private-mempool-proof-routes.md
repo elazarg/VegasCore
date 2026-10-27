@@ -671,6 +671,38 @@ such a bound for a chosen deadline. This distinction follows the synchrony
 models of [Dwork, Lynch and Stockmeyer](https://groups.csail.mit.edu/tds/papers/Lynch/jacm88.pdf).
 Their consensus theorem is not a transaction-inclusion guarantee.
 
+### Compiler policy versus the service promise
+
+An opening can be late for the game's acceptance deadline while remaining a
+valid transaction for the publication service. The compiler can preserve this
+distinction: record the authenticated opening data, then apply the game's
+existing deadline and failure rules. A valid publication transaction need not
+be a successful game action. The publication interval and delayed readiness of
+the next commitment block are compiler choices.
+
+The compiler cannot itself guarantee that a builder includes the transaction
+within a known bound. That guarantee belongs to the service contract. If the
+underlying contract already promises bounded recording of every admitted,
+funded publication transaction, arranging for expired game openings to remain
+in that admitted class uses the same service promise. It does not require a
+separate exception for late game actions.
+
+For the current reserved concurrent service, bounded full-batch processing
+already records late and rejected envelopes. The padding therefore adds no
+service hypothesis relative to that implementation. In contrast, the weaker
+recovery contract permits its inclusion obligation to end when the event
+completes; it does not imply later publication. Reusing it would require an
+explicit transport-publication guarantee or a proved implementation of one.
+Calling the late packet a publication transaction does not by itself derive
+that guarantee from the existing game-event contract.
+
+The cleanup invariant itself only needs the earlier admissible opening
+payloads recorded before the next binding, not publication of every arbitrary
+malformed packet. Full-batch flushing is the current sufficient producer.
+A narrower producer must still account for capacity and interference from raw
+traffic. Keeping a transaction admissible also does not resolve the separate
+post-closure broadcast and old-authorization issue described above.
+
 ## What would justify an impossibility conclusion
 
 A failure of archive reconstruction, a failure of arbitrary continuation
