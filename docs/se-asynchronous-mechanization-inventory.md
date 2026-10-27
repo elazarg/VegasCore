@@ -123,5 +123,9 @@ when that route's clean-body service conditions hold.
 
 For a nonstrategic audit service there is no report-all game to implement or
 solve. For a strategic reporting backend there is. These are alternative
-backends, not two required reporting mechanisms. No production change, Lean
+backends, not two required reporting mechanisms. The nonstrategic backend
+assumes evidence capture and forwarding; objective on-chain verification does
+not prove those availability properties. Replacing an honest service by a
+network coverage theorem or a strategic reporting implementation is additional
+work, not a consequence of the compact witness format. No production change, Lean
 implementation or paper theorem is made by this inventory.

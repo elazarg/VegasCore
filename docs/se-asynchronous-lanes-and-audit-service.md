@@ -13,6 +13,60 @@ ordinary peer-to-peer transaction pool supplies the required capture service.
 It changes the capacity and evidence producer; the proper-core timing theorem
 still needs its own hypotheses and proof for the chosen service.
 
+## What is trusted, and what the contract verifies
+
+The monitored backend assumes reliable evidence availability and delivery. It
+does not derive them from signatures, collateral or transaction inclusion.
+The monitor is not an authority whose verdict the contract accepts. A
+deterministic contract verifier checks the original authenticated bodies,
+their public authorization records, and the positive violation. A monitor's
+assertion is insufficient. Arbitrary reporters cannot create a valid accusation
+against an author who did not produce the offending bodies.
+
+The additional assumption is operational: relevant complete bodies are
+retained, the necessary witness parts are assembled, and valid evidence reaches
+the ledger before collateral release. Before any proved offense, qualifying
+proper bodies must also receive their promised archive-publication service.
+A monitor which silently drops a proper body can cause a missed deadline even
+though it cannot forge an audit charge. The construction therefore relies on
+its forwarding behavior as well as on evidence retention.
+
+One honest monitor is a sufficient realization of this assumption, not a
+requirement for a single named authority. Multiple relays or witness holders
+could supply the same interface if their combined behavior guarantees at least
+one functioning route for each required body and complete witness. The other
+relays may lie or withhold: their statements do not authorize a penalty.
+Permissionless reporting is compatible with the verifier. Replication and
+permissionless submission alone do not prove capture, capacity, or timely
+delivery; those still need an implementation argument.
+
+In the certain-collection version, at every retained information set where the
+raw deviation is compared, after its first relevant effect and under every
+allowed later deviation, the required charge is collected by settlement with
+probability one. The conditional-probability variant below permits a uniform
+lower bound q_i>0 and requires q_i D_i>=U_i-F_i. A probability measured only
+before the game, or before a sender learns which reporting routes are absent,
+does not establish that conditional bound.
+
+Capture is separate from ledger inclusion. Timely inclusion of submitted audit
+transactions does not imply that an effectful broadcast reaches a willing
+evidence holder. The partially observed network can, unless its kernel rules
+this out, deliver a signed offending body to a strategic recipient while no
+evidence-retaining relay receives it. If that recipient withholds it, the ledger
+can have exactly the same records as a run without the body. A sound verifier
+cannot punish based on those records alone. This defeats this collection
+guarantee; it is not a general impossibility result for preservation.
+
+An auditor's deposit does not automatically repair the problem. Penalizing its
+omission requires verifiable evidence that it incurred and failed an obligation;
+an unseen broadcast supplies no such public receipt. An acknowledged intake
+protocol can establish some duties, but leaves the pre-acknowledgment capture
+question. Alternatively, reporting must be modeled as strategic play and its
+incentives proved. The
+[terminal report-all construction](se-asynchronous-authenticated-construction.md)
+does that for its larger funded reporting service. Its proof is not inherited
+by calling a compact monitor an audit service.
+
 ## What a FIFO lane proves
 
 Suppose an honest ingress has already accepted an authenticated body p. Its
@@ -158,6 +212,18 @@ durably available, or their authors already have persistent witnesses, by
 T+Gamma_C. Subsequent audit transmissions use the separate
 service allowance; they are not new strategic application broadcasts. This
 finite lifecycle is needed to choose a final settlement time.
+
+For the combined fresh-service route, the capture and publication kernels must
+also satisfy that route's conditional freshness and isolation requirements.
+For a clean first body sent at a, p_e(a) is the probability of final publication
+by the window deadline, including capture delay. Fresh per-body capture coins
+with delay at most Gamma_C and isolated per-author intake, followed by the
+specified isolated publication service, are one sufficient producer. Shared
+monitor load or a common random outage must not introduce dependence between
+authors' clean service jobs. A delay bound alone does not establish this
+condition. The physical channel must provide eventual capture for every
+effectful offending body as specified above, including a body received by a
+player before any relay obtains it.
 
 The bodies may reach the monitor in a different order from their emissions.
 An earlier representative is either already stored or a later arrival

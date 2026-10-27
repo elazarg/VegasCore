@@ -27,6 +27,14 @@ conditions and composition are stated below. The
 [mechanization inventory](se-asynchronous-mechanization-inventory.md) identifies
 the existing Lean results and the new implementation adapters.
 
+Both service routes require the stated independence between distinct bodies'
+service. Complete observation here does not include the correlated reserved
+tape of the current concurrent Lean theorem. Common random outages or congestion
+shocks are not covered merely because they respect a delay bound. The compact
+audit alternative also assumes reliable evidence capture and forwarding;
+its objective verifier removes trust in an accusation, not this availability
+assumption.
+
 ## Statement and quantifiers
 
 Let G be a finite perfect-recall intended commit–reveal game with a fixed finite
@@ -382,6 +390,15 @@ publishes one protected witness for that author and can quarantine further
 application work. Capture can occur after another player's receipt; there is
 no registration-before-observation or global sending-order assumption.
 
+The contract checks complete positive evidence itself; it does not accept an
+auditor's verdict. The backend nevertheless assumes that relevant bodies are
+retained and forwarded, that witnesses are assembled, and that the required
+reports arrive. One honest service or a proved honest-route coverage condition
+can supply this guarantee. Timely inclusion alone starts too late to establish
+capture. Neither permissionless reporting nor an auditor bond proves it without
+additional dissemination or incentive arguments. The monitored backend is
+conditional on that extra availability guarantee.
+
 Before a witness, every first qualifying representative receives an archive
 publication job, including stale calls. Inner execution is conditional
 separately. After a witness, further publication is unnecessary for deterrence
@@ -416,6 +433,9 @@ change any clean run. Additional raw jobs can change the run only at a causal
 effect with eventual evidence capture, at which point the charge comparison
 applies. The audit-clean intermediate handler and the saved-debt/direct-floor
 comparisons supply the raw extension at post-failure sites as well.
+Here the clean body's completion probability includes capture delay. Per-author
+intake must preserve the assumed freshness and cross-author isolation; sharing
+a monitor does not itself supply these properties.
 
 ## What this settles and what it does not
 
