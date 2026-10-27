@@ -158,7 +158,7 @@ There are three different cases:
 | Event | Consequence |
 | --- | --- |
 | A new attributable violation after exclusion | An unpaid reserve can deter it under the incremental collection bound. |
-| A message sent before exclusion but received later | Silence after exclusion does not remove it; later receipt alone does not prove later sending. |
+| A qualifying message sent before exclusion but received later | The publication delay makes its payload public before the next binding; later receipt alone still does not prove later sending. |
 | A new receipt of an old signed body | The body proves its author and content, not who retransmitted it or when. |
 
 An ordinary signature does not provide a trustworthy sending time. A stored
@@ -211,15 +211,38 @@ collateral can support it without assuming that failed players lose their
 ability to communicate. Neither public sender turns nor complete mempool
 visibility is needed for these incentive arguments.
 
+Publication padding addresses the complementary case of already-sent messages.
+Let c be the public closure of the relevant reveal phase, and let the next
+binding become ready only after the finalized recording cutoff c+Delta.
+For a qualifying opening admitted at s<=c, including one sent before its
+owner's failure but received afterward,
+
+    recordedAt(message) <= s+Delta <= c+Delta.
+
+It is therefore public before the next binding. No one needs to know its
+private sending time. A send arbitrarily close to c is covered by the same
+inequality; it may fail the game deadline while still meeting the later
+publication deadline. This is precisely the
+[publication-padding lemma](se-asynchronous-publication-contract.md).
+
+Thus delayed receipt of a qualifying pre-exit opening is not an additional
+publication obstruction once that barrier is established. Padding and residual
+collateral have complementary roles: the barrier publishes the covered backlog,
+and the bond can deter new provable disclosures beyond it. The phase-closure
+cutoff c also covers an earlier exit e<=c. A newly emitted entry after c is not
+made timely by the inequality for s<=c; its evidence and incentives require the
+separate extension.
+
 Legal messages nevertheless remain in every fully mixed consistency sequence.
 Survivors therefore still need consistent beliefs and rational continuations
 at information sets reached after a disclosure. The
 [private handler extension](se-quit-handler-preservation.md) handles that
 source-level completion under its hypotheses.
 
-The remaining native issue is a message sent or observed **before** its author's
-public exclusion, possibly followed by success, failure or another player's
-exit. No post-exit silence rule undoes that information. Residual collateral
-addresses additional misconduct; the
-[asynchronous preservation analysis](se-asynchronous-preservation.md) still
-requires the pre-exit timing, information and attribution comparison.
+The remaining native proof must establish the operational incentive comparisons
+before the barrier, including choices leading to success, own failure or a
+foreign failure, and the appropriate common consistency sequence. Messages
+outside the qualifying publication class need their own delivery/evidence
+argument. These are distinct from the already-proved publication inequality
+for covered pre-exit messages; see the
+[asynchronous preservation analysis](se-asynchronous-preservation.md).

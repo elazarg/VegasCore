@@ -191,8 +191,11 @@ failure forfeiture. New provable misconduct can then incur an incremental
 loss. If total continuation utility is already fixed, silence can instead be
 selected as a weak best response; no assumption that failed players cannot
 send is necessary. A reserve already certain to be lost supplies no further
-strict deterrence. Neither construction removes messages sent before exit
-or the need for consistent off-path beliefs after private receipts.
+strict deterrence. Qualifying messages sent before exit are handled by the
+publication delay proved above: they are public before the next binding,
+even if received after failure. The bond addresses additional misconduct;
+consistent off-path beliefs and operational incentive comparisons remain
+separate proof obligations.
 
 The [audit analysis](se-asynchronous-audit-feasibility.md) distinguishes a
 signed application message from the outer transaction carrying it. A recipient
