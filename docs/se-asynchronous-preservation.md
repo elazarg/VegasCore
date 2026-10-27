@@ -8,43 +8,46 @@ define packet authorization and penalties, and escrow funds; it cannot impose
 a public order of who has had a chance to send, observe an empty global mempool,
 or force a block producer to empty that pool.
 
-The [finite preservation theorem](se-asynchronous-preservation-theorem.md)
-constructs an end-to-end mathematical argument for one explicit partially
-observed broadcast model. Everyone can broadcast at every modeled block;
-reception remains partial, ledger batches may be partial, and retransmissions
-remain observable. The construction includes the source-language adapter,
-one joint timing policy, consistent failure play, raw-message comparisons and
-funded reporting. It uses individual irreversible publication, content-blind
-delivery with specified support, capacity for the bounded application traffic,
-and an ideal authenticated commitment algebra. These are substantial named
-assumptions, not properties of every blockchain or every timely builder.
+The [end-to-end derivation](se-broadcast-preservation-derivation.md) organizes
+the primary mathematical route: source batching, fresh-service timing and
+failure continuations, raw-message comparison, and strategic terminal reporting.
+The [runtime specification](se-broadcast-runtime-mathematics.md) defines the
+finite message-inbox game and its publication/observation transitions.
+Everyone can broadcast at every modeled block; reception remains partial,
+ledger batches may be partial, and retransmissions remain observable.
 
-The central probability step repairs a foreign late send into a protected
-broadcast that remains unobserved through the same actual information set.
-It makes foreign failure conditionally rare even after the observer's own
-earlier waits. After the first public exit, the proof completes the actual raw
-continuation jointly, retaining all private memories. It does not require
-rollback to erase information or require survivors to receive an abort floor.
+There is no honest audit monitor in this route. A relevant body is either
+actually public or held by a nonauthor game player. The
+[reporting proof](se-strategic-reporting-mathematics.md) constructs an equilibrium
+in which those players report their evidence after base payoffs freeze.
+It handles raw report actions and one common consistency sequence. The proof
+uses an explicit finite allowance for all in-scope raw traffic. The
+[evidence-summary theorem](se-evidence-summary-mathematics.md) reduces canonical
+terminal bundles without changing the Boolean penalties; application capacity
+and report delivery remain separate obligations.
 
-The theorem is a hand derivation for its specified compiler and service.
-It does not establish the unchanged Lean concurrent theorem without complete
-pending observation, nor close the arbitrary-builder target. The
-[scheduled-service benchmark](se-publication-scheduled-benchmark.md) remains
-a separate restricted statement whose public sender calendar is unnecessary
-in the finite broadcast construction.
+The substantive runtime premises are immutable body-level publication,
+independent fresh service, packet-local observation, a bounded typed message
+domain, funded report delivery and ideal authenticated commitments. A valid
+submission has a precise meaning; merely observing signed bytes does not create
+a chain job. These are not properties of every blockchain or every timely
+builder. The [mechanization inventory](se-asynchronous-mechanization-inventory.md)
+separates the reusable Lean foundations from the concrete implementation work.
 
-There are useful alternatives to its strongest premises. The
-[fresh-service argument](se-asynchronous-support-weakening.md) replaces the
-delayed-delivery support bound with a direct failure-continuation comparison,
-under conditional freshness and an explicit reset/menu quotient. Deterministic
-prompt inclusion and complete observation are included. The
-[monitored per-author backend](se-asynchronous-lanes-and-audit-service.md)
-reduces ledger work to authorized protocol slots plus one witness per offending
-author and replaces report-all with an audit service. These are explicit
-sufficient constructions; plain per-body noninterference or an audit-service
-label alone does not establish their conditions. The
-[mechanization inventory](se-asynchronous-mechanization-inventory.md) separates
-reusable Lean foundations from the new physical adapters.
+The [support-based theorem](se-asynchronous-preservation-theorem.md) gives an
+alternative timing proof using conditional repair of late broadcasts. Its
+[fresh-service alternative](se-asynchronous-support-weakening.md) supplies the
+timing/reset result used by the primary derivation. Both retain actual player
+memories. The [monitored per-author backend](se-asynchronous-lanes-and-audit-service.md)
+is a separate capacity alternative conditional on reliable evidence capture
+and forwarding; it is not the collection producer of the primary theorem.
+
+These are hand derivations for specified compiler and service models. They do
+not establish the unchanged Lean concurrent theorem without complete pending
+observation or close the arbitrary-builder target. The
+[scheduled-service benchmark](se-publication-scheduled-benchmark.md) is a separate
+restricted statement; the primary construction needs no public player-sending
+calendar.
 
 ## What the contract can control
 

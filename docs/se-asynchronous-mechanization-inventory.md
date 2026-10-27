@@ -6,8 +6,17 @@ constructions. The table below distinguishes existing Lean results from the
 new adapters needed to implement them. It is not a completion checklist and
 does not change the fixed SE target or its checked boxes.
 
-The program scope is finite initial support and finite binding domains for the
-linear source syntax. Unbounded bidding is outside this statement. Integer
+The primary [assembled derivation](se-broadcast-preservation-derivation.md)
+uses the [explicit runtime](se-broadcast-runtime-mathematics.md) and
+[strategic reporting game](se-strategic-reporting-mathematics.md), with no honest
+monitor. The [evidence-summary lemma](se-evidence-summary-mathematics.md) is an
+optional exact reduction of the prescribed terminal bundles. Their finite
+transition/menu and probability lemmas specify what the corresponding rows
+below must implement; the compact monitor remains an alternative backend.
+
+The program scope is finite initial support, finite binding domains and finite
+support for every reachable sample of the linear source syntax, so the intended
+game has finitely many histories. Unbounded bidding is outside this statement. Integer
 payoff expressions need not have a finite ambient type; their reachable
 values are finite in the stated game.
 

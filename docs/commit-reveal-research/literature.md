@@ -111,6 +111,16 @@ continuation information. The [compact audit service](../se-asynchronous-lanes-a
 uses per-author publication lanes and one positive witness per offending author;
 bounded eventual capture replaces the need to publish all raw variants.
 
+The [primary end-to-end derivation](../se-broadcast-preservation-derivation.md)
+instead uses [strategic terminal reporting](../se-strategic-reporting-mathematics.md)
+by the actual game players, with no honest capture service. Its
+[runtime specification](../se-broadcast-runtime-mathematics.md) separates
+persistent body validity from the assumed timely inclusion service and from
+partial peer reception. [Authorwise evidence summaries](../se-evidence-summary-mathematics.md)
+preserve the Boolean audit exactly while reducing prescribed report size.
+The cited ERC-4337 components support a possible validation design, not a proof
+of the required nonrevocable submission or independent inclusion interface.
+
 Use papers, official protocol specifications or implementation documentation.
 Record the precise property supported: cryptographic confidentiality, finality,
 admission, release, observation or availability. Distinguish transaction

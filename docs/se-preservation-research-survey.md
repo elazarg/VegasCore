@@ -35,21 +35,23 @@ concurrent theorem's complete-visibility gap: latent archive mixtures, legal
 information coarsening, stochastic replay, private-message consistency, and
 finite obstruction searches with the other runtime hypotheses held fixed.
 
-The [finite partially observed broadcast theorem](se-asynchronous-preservation-theorem.md)
-gives an end-to-end hand construction for a specified asynchronous service.
-It combines source batching, a conditional repair of late broadcasts, joint
-timing choices, full raw continuations after public failure, saved-debt
-normalization and positive-evidence reporting. Its support, capacity,
-noninterference and ideal commitment assumptions are explicit; it does not
-claim preservation for arbitrary builders or instantiate the current Lean
-concurrent theorem.
+The [organized end-to-end derivation](se-broadcast-preservation-derivation.md)
+combines source batching, fresh-service timing, actual-memory failure play,
+saved-debt normalization and strategic evidence reporting. Its
+[runtime](se-broadcast-runtime-mathematics.md) has no honest audit monitor:
+evidence comes from public records and actual game players whose
+[reporting incentives](se-strategic-reporting-mathematics.md) are proved.
+An [exact evidence summary](se-evidence-summary-mathematics.md) preserves the
+Boolean penalty vector with smaller prescribed bundles. The specified finite
+capacity, submission, independence and ideal-message assumptions remain
+explicit; this is not an arbitrary-builder or current-Lean theorem.
 
-The [fresh-service/reset refinement](se-asynchronous-support-weakening.md)
-removes delayed-delivery support for a precisely specified class, while the
-[per-author audit service](se-asynchronous-lanes-and-audit-service.md) reduces
-ledger work to authorized slots and compact witnesses. The accompanying
-[implementation inventory](se-asynchronous-mechanization-inventory.md) identifies
-which Lean foundations are reusable and which physical adapters remain new.
+The [support-based broadcast theorem](se-asynchronous-preservation-theorem.md)
+and [fresh-service/reset proof](se-asynchronous-support-weakening.md) give the
+alternative timing constructions. The [per-author audit service](se-asynchronous-lanes-and-audit-service.md)
+is a distinct capacity alternative with an additional capture/forwarding
+assumption. The [implementation inventory](se-asynchronous-mechanization-inventory.md)
+identifies reusable Lean foundations and the required physical adapters.
 
 The most direct simplification opportunity is to transport only the
 continuation gains needed for rationality. Information compression supplies a
@@ -849,3 +851,4 @@ application has been formalized.
 | `BeiglboeckPflueglSchrott2024` | A Probabilistic View on the Adapted Wasserstein Distance |
 | `MultitubesRepo2026` | Multitubes: transport and constraints on directed graphs |
 | `UniformEquilibriumRepo2026` | UniformEquilibrium: formal research on uniform equilibria in stochastic games |
+| `ButerinEtAl2021ERC4337` | Account abstraction: validation, keyed nonces and sponsorship components; not an inclusion or preservation theorem |

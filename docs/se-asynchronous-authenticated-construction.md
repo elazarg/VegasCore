@@ -9,6 +9,12 @@ below. This document supplies the authenticated extension and reporting
 composition. It does not assume public sender turns, a full mempool flush, or an
 auditor who knows the complete traffic history.
 
+The [assembled fresh-service route](se-broadcast-preservation-derivation.md)
+uses the same stopped comparisons with a structurally audit-clean intermediate
+handler, the [explicit inbox runtime](se-broadcast-runtime-mathematics.md), and
+the [full strategic reporting construction](se-strategic-reporting-mathematics.md).
+There only actual game players report; no private ingress is assumed honest.
+
 The claim is about the explicit channel and cryptographic idealization below.
 It is not a theorem for every Internet side channel or every raw EVM transaction.
 The source and service interfaces remain those of the
@@ -158,13 +164,13 @@ broadcast into the session network. The primary service uses one joint
 broadcast-to-recording kernel with bound Delta, the delayed-delivery support
 specified by the proper-core construction, and independent per-body randomness.
 Intermediate chance-selected observations and final recording belong to that
-same kernel. An evidence-retaining ingress receives the complete body no later
-than its recording. Every distinct bounded qualifying application body is
+same kernel. Public recording includes the complete body before its inner
+application effect. Every distinct bounded qualifying application body is
 recorded, including conflicting and stale inner calls. Later player actions
 cannot revoke that promise. The promise prescribes neither sender turns nor
 an emptying of unrelated queues.
 
-One implementation interface uses a sponsor-funded inbox and an honest relay
+An alternative implementation interface uses a sponsor-funded inbox and an honest relay
 which submits with its own account nonce. The game player cannot cancel that
 relay transaction by replacing its own transaction. Admission must mean actual
 acceptance of this irreversible obligation; an ordinary private-RPC acknowledgment
@@ -175,6 +181,11 @@ the publication bound Delta_route+Delta_chain, but not the normal-explanation
 support used by the proper-core theorem. Such a two-leg implementation needs
 its own proof of that support and the relevant coupling. The primary hand
 construction uses the single joint kernel specified above.
+
+That relay is an additional forwarding assumption, not an evidence source in
+the primary strategic-reporting theorem. The explicit runtime instead states
+body-key validation rules and the network's publication obligation separately.
+Neither approach may infer irrevocable submission from a peer receipt alone.
 
 The relay deduplicates identical canonical bodies, not all bodies for a physical
 slot. Two conflicting bodies receive separate publication jobs; the one emitted
@@ -444,11 +455,13 @@ level; it must not be inferred merely from the format of a received packet.
 
 ## Terminal report-all supplies collection after exposure
 
-Freeze the base game at a public terminal point. Let K_j be the bounded set of
-complete entries actually held by each player or evidence-retaining ingress.
+Freeze the base game at a public terminal point. Let K_j be the bounded snapshot
+of complete entries actually held by each game player at the reporting boundary.
 Public prefix entries remain available from the ledger. Each participant can
 send a canonical bundle of all known foreign-authored entries. Reports are
 sponsored and have zero net cost and zero positive reward for game players.
+Later receipts remain possible; the prescribed bundle uses the remembered
+snapshot. No unnamed ingress's possession is counted as a strategic report.
 
 Use the following finite report service:
 
@@ -461,6 +474,13 @@ Use the following finite report service:
    reports retain this guarantee.
 4. The penalty against i uses only i-authored entries and fixed public records.
    A report from i contains no i-authored entry, including nested entries.
+
+The full raw-tail producer uses fixed simultaneous report rounds and segregated
+entitlements which survive earlier partial reports and arbitrary application
+traffic. The [reporting mathematics](se-strategic-reporting-mathematics.md)
+states the total parser, all-profile delivery bound and exact common-sequence
+lift. It allows malformed reports, self-reports and late application messages;
+none can retract evidence or reopen base play.
 
 At any reached reporting prefix, each other player's already chosen bundle is
 fixed, and each remaining report-all bundle is fixed by frozen knowledge. All
@@ -550,11 +570,12 @@ suppressed, and any newly copied semantic defect still triggers the bad-save
 stopping condition.
 
 No suppressed packet can alter the common public state or another player's
-information before its first external reception. Thus this invariant continues
+information before its first nonauthor-player receipt or full public record.
+Thus this invariant continues
 through silent flight steps and through the identical processing of matching
-entries. When a suppressed packet first arrives at an execution ingress, that
-ingress already holds its full body; its effect cannot precede the exposure
-event. Every earlier conflicting entry in P remains due for public recording.
+entries. A suppressed packet's execution effect requires its full public inbox
+record first. Private retention by an execution ingress alone does not supply
+evidence. Every earlier conflicting entry in P remains due for public recording.
 This is the induction needed for the comparison; a compiler whose preparation
 or channel transitions violate one of these clauses does not instantiate it.
 
@@ -564,8 +585,8 @@ exposure. In either case its eventual raw base payoff is F_i and its net payoff
 is at most F_i. A clean quiet retained continuation gives at least F_i. These
 branches contribute a nonpositive gain without an audit witness.
 
-Let E be external exposure of a suppressed forbidden entry before either
-payoff-cap stopping boundary. If none of these stops occurs, every changed
+Let E be external exposure of a suppressed forbidden entry before base payoff
+freeze and before either payoff-cap stopping boundary. If none of these stops occurs, every changed
 binding block must have been rolled back rather than saved, so the terminal
 initialized game and utility laws agree. On E the raw player's base gain over the retained
 comparator is at most U_i-F_i, and the terminal report-all audit collects at
