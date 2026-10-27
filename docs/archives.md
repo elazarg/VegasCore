@@ -20,8 +20,7 @@ of the pinned revision. The tag preserves all public tracked source, including
 the concurrent complete-observation theorem and the unfinished partial-observation
 construction. The concurrent hand argument is not a mechanized backend theorem.
 
-Private notes and correspondence are retained in the local archive
-`C:/Users/elazar/VegasCore-local/research-archive/se-preservation-2026-10-27`.
+Private notes and correspondence are retained in an undistributed local archive.
 Its restoration instructions, manifest, hashed source ZIP and verified bundles
 cover VegasCore, GameTheory and the private Overleaf repository. The archive is
 local; the public checkpoint and reading guide are pushed. The ignored
@@ -30,10 +29,13 @@ local; the public checkpoint and reading guide are pushed. The ignored
 The phase controller, its sequential preservation theorem and the earlier
 concrete service examples are available at
 [`39ba8ee6ccbc2a9d4a0f9b150e3085fd7bbab2be`](https://github.com/elazarg/VegasCore/tree/39ba8ee6ccbc2a9d4a0f9b150e3085fd7bbab2be).
-The local archive
-`C:/Users/elazar/VegasCore-local/research-archive/sequential-forced-exit-2026-10-28`
-also contains a hashed ZIP of the retired current source and its dependency
-manifest, including the concrete phase trace outside the public checkpoint.
+An undistributed local archive also contains a hashed ZIP of the retired source
+and its dependency manifest, including the concrete phase trace outside the
+public checkpoint. The ignored `ephemeral/sequential-forced-exit-checkpoint.json`
+records its location. Restore the phase implementation in a separate checkout
+of the pinned revision. Adapting it to later interfaces and proving concurrent
+preservation remain separate tasks; removing it from the maintained core does
+not settle which recovery rules concurrent preservation needs.
 
 The non-concurrent manuscript lives on the local Overleaf branch
 `focus/sequential-se-preservation`. Its verified focus bundles and checksums
