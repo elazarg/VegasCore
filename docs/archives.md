@@ -37,8 +37,7 @@ of the pinned revision. Adapting it to later interfaces and proving concurrent
 preservation remain separate tasks; removing it from the maintained core does
 not settle which recovery rules concurrent preservation needs.
 
-The non-concurrent manuscript lives on the local Overleaf branch
-`focus/sequential-se-preservation`. Its verified focus bundles and checksums
-are retained in these local archives. The Overleaf server accepts only `main`;
-its active content remains the broader manuscript, so use the local focus
-branch for correspondence with this core.
+The Overleaf `main` branch carries the non-concurrent manuscript that
+corresponds to this core. A comment at the top of its main LaTeX file names the
+VegasCore commit it describes. The broader manuscript that stated the concurrent
+theorem is Overleaf commit `82bf748` and the local archive bundles.
