@@ -932,6 +932,11 @@ open Vegas in
 open Vegas in
 #print axioms rosterScheduler_asyncContract
 
+/-- info: 'Vegas.rosterScheduler_asyncTimely' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.rosterScheduler_asyncTimely
+
 /-- info: 'Vegas.Examples.CommitRevealAuction.truthful_not_dominant' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
