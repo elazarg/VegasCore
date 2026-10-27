@@ -8,6 +8,15 @@ raw-action and continuation comparisons have not been established for the
 current runtime. It also supplies no concurrent result under the adaptive
 service used by the recovery theorem.
 
+The [ledger-publication construction](se-private-mempool-proof-routes.md)
+provides a more direct compiler candidate than global abort: insert deterministic
+public sample steps that give the reserved service time to record earlier
+openings before enabling the next commitment block. Its finite hand preservation
+proof retains concurrent commitments and individual failure rules, using a
+controlled private-observation transfer and the existing raw audit extension.
+It does not prove preservation for the unpadded runtime, and its compiler and
+proof adapters remain unmechanized.
+
 Rollback is a compiler recovery policy. It is not imposed by the ledger or the
 existence of private mempools. Replacing recovery with an absorbing failure
 outcome can remove the need to reason about survivor equilibria, remembered
@@ -45,6 +54,7 @@ handler-aware incentive and attribution obligations.
 | Object | Result established here | Runtime conclusion |
 |---|---|---|
 | Current concurrent compiler, private pending observations | No preservation theorem or admissible counterexample | Open, even with the reserved-service assumptions retained. |
+| Sample-padded publication barrier | Finite hand preservation proof under the existing finite reserved-service/audit conditions and explicit expression-language capability | Compiler and probability adapters remain unmechanized; original program readout is preserved by erasing internal padding cells. |
 | Independent source/operational product | Finite hand proof under explicit separation | Not an instantiation for the current compiler. |
 | Global-abort compiler proposal | Sufficient mathematical specification | Changes failure semantics; its concrete implementation obligations remain. |
 | Quit-handler extension | Source-level hand proof with a first-quitter cap | Private observations and timeout attribution still need a runtime proof. |

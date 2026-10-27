@@ -1,5 +1,12 @@
 # Sequential equilibrium with private mempools: mathematical foundations
 
+The [ledger-publication construction](se-private-mempool-proof-routes.md)
+combines these foundations with the actual runtime interfaces. It proves a
+finite controlled-garbling theorem and derives preservation for a compiler using
+deterministic sample padding, with the existing reserved service and funded
+audit. This is a hand theorem for that compiler, not a checked weakening of the
+unpadded concurrent theorem.
+
 Preservation for the current concurrent runtime under private pending
 observations remains unproved and unrefuted here. The results below are finite
 hand proofs and conditional construction lemmas, not a discharge of that

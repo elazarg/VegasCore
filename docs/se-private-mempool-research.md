@@ -3,7 +3,11 @@
 Concurrent preservation without complete pending observation remains unproved
 and unrefuted here, even with the current reserved-service assumptions retained.
 The finite results in this survey do not establish a weakening of the current
-runtime theorem.
+runtime theorem. A separate [ledger-publication construction](se-private-mempool-proof-routes.md)
+gives a finite hand preservation proof for a compiler that inserts deterministic
+public padding before later commitment blocks. It retains concurrent commitments,
+individual failure rules and private mempool reception. Its compiler and proof
+adapters have not been implemented in Lean.
 
 One proposed replacement for complete pending observation is to keep
 unseen submissions **latent**, aggregate their probabilities inside each actual
@@ -26,7 +30,12 @@ mathematical research results, not newly checked runtime preservation theorems.
 
 ## Keep the target and information boundary explicit
 
-The first comparison should keep the source game, selected source SE, joint
+The objective is the intended commit–reveal game implemented on an idealized
+realistic blockchain. Rollback, the enlarged source game for silence and other
+recovery machinery are means toward that objective. The unchanged implementation
+is one useful comparison, not a requirement on every solution.
+
+That comparison keeps the source game, selected source SE, joint
 initial law, `.concurrent` graph, phase rollback/exit semantics, reserved service
 prior, deadlines, utility floor and funded audit fixed. Change only pending
 observation. Preserve the same initialized joint law of inputs, typed terminal
@@ -35,6 +44,10 @@ charges. The current graph permits concurrent commitments between public
 barriers; it does not permit arbitrary concurrent reveals. A counterexample
 using concurrent reveals or a content-adaptive builder would not answer this
 first question. See [the precise concurrent contract](se-concurrent-mechanization.md).
+
+The publication construction addresses a different, concrete compiler choice:
+the ledger actually records earlier opening payloads before a new binding
+becomes available. It does not declare private mempool contents public.
 
 Players may use their private inputs, own actions, receipts, ledger observations
 and the messages their own observation process actually delivers. The proof may

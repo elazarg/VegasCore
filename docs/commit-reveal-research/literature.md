@@ -69,6 +69,12 @@ consistency constructions, and relates exact obstruction search to
 semialgebraic equilibrium theory. The
 [compiler analysis](../se-private-mempool-compilation.md) compares rollback
 with absorbing failure and explains the incentive and payout requirements.
+The [ledger-publication construction](../se-private-mempool-proof-routes.md)
+isolates the late-opening archive obstruction and the failure of arbitrary
+post-exclusion continuation selection. It gives a finite hand preservation
+proof for deterministic sample padding, using causal private-observation
+simulation and a counted candidate mask, followed by the existing raw audit
+extension. The compiler and proof adapters remain unmechanized.
 
 Use papers, official protocol specifications or implementation documentation.
 Record the precise property supported: cryptographic confidentiality, finality,
