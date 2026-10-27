@@ -7,7 +7,8 @@ import Vegas.Game.ConcurrentRawSequentialPreservation
 These data express the conclusion of source sequential-equilibrium preservation:
 a target assessment, the initialized joint law and clean settlement. They impose
 no network or operational semantics. In particular, existence of such a game
-does not assert blockchain implementation; the source game itself can qualify.
+does not assert blockchain implementation; under finite source histories, the
+source game itself can qualify.
 
 A concrete runtime theorem must derive its protocol, information and readers
 from actual execution. The runtime design is in `docs/se-runtime-design.md`.

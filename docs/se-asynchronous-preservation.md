@@ -1,5 +1,8 @@
 # Sequential-equilibrium preservation with asynchronous submissions
 
+The [resume guide](se-preservation-resume.md) indexes the proof status, open
+obstacles and saved working material for this research.
+
 The target is a commit–reveal program implemented on an idealized blockchain
 where players can send at any opportunity after prerequisites are public.
 Sending opportunities, silence and pending reception are not public facts.

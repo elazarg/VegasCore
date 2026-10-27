@@ -1,11 +1,10 @@
 # A finite preservation theorem for partially observed broadcast
 
-For the organized fresh-service construction with actual strategic reporters
-and no honest audit monitor, start with the
-[end-to-end derivation](se-broadcast-preservation-derivation.md). It fixes the
-runtime, reporting game and capacity refinement boundary. This document also
-retains the alternative delayed-support timing construction and monitored
-backend, with their separate hypotheses.
+For the primary fresh-service construction with direct public-ledger audit,
+start with the [end-to-end derivation](se-broadcast-preservation-derivation.md).
+It needs neither strategic reporters nor an honest audit monitor. This document
+describes the alternative delayed-support timing construction, its reporting
+model and the monitored backend, with their separate hypotheses.
 
 This theorem gives a complete mathematical construction for a specified finite
 commit–reveal implementation. Its network has ordinary broadcasts with partial

@@ -7,6 +7,10 @@ interfaces, and proposed applications are distinguished throughout. The
 applications are research proposals, not checked preservation theorems or
 changes to the [fixed target and checklist](se-async-checklist.md).
 
+The [concurrent preservation resume guide](se-preservation-resume.md) separates
+the proposed runtime construction, checked results and unresolved obstacles,
+and provides a reading order and restart instructions.
+
 The [experiment ledger](se-preservation-experiments.md) records checked local
 implementations, concrete consumers, boundary examples and decisions to retain
 existing interfaces. Its results have their stated scopes; the broader

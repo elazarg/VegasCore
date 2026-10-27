@@ -33,7 +33,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr}
 open Vegas.SourceProgram in
 /-- The existential preservation conclusion, without an assertion that it holds.
 The implementation precedes every source assessment. This proposition imposes
-no operational constraints and can be witnessed by the source game itself;
+no operational constraints and, under finite source histories, can be witnessed
+by the source game itself;
 it is not a blockchain preservation target until restricted to a concrete
 runtime. No compiler, network assumption or preservation proof is supplied. -/
 def SourcePreservationConclusion

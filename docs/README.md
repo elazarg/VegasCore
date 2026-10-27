@@ -6,6 +6,10 @@ counterexamples; a statement in a research note is a paper argument unless it
 cites a Lean declaration. Links into the `research-tree` tag point at retired
 code, which is checked at that tag only.
 
+For partially observed concurrent SE preservation, start with the
+[resume guide](se-preservation-resume.md): current proof status, assumptions,
+obstacles, reading order and recovery instructions.
+
 ## Design
 
 - [Semantics, compiled output and enforcement](semantics-and-enforcement.md):

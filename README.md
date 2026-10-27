@@ -188,6 +188,13 @@ resolve.
 Retired models, routes and examples remain at the `research-tree` tag. The
 [consolidation ledger](docs/consolidation.md#retired-results) indexes them.
 
+## Research checkpoint
+
+The [SE preservation resume guide](docs/se-preservation-resume.md) locates the
+concurrent-runtime mathematics, open obstacles, implementation design and
+restart material. The proposed partially observed broadcast theorem remains
+unmechanized; the guide distinguishes it from the checked results above.
+
 ## Build and validate
 
 `lakefile.toml` makes Lean warnings errors, so a `sorry` fails the build. The

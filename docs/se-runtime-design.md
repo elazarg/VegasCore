@@ -1,5 +1,8 @@
 # Runtime definitions for sequential-equilibrium preservation
 
+The [resume guide](se-preservation-resume.md) gives the wider proof status,
+unresolved service questions and restart sequence.
+
 ## Objective and scope
 
 Use the existing source compiler, message execution engine and game-theory
