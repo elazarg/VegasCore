@@ -39,6 +39,23 @@ checklist closure is asserted. The
 [compiler analysis](se-private-mempool-compilation.md) contain the general
 consistency, completion, and incentive results used here.
 
+The detailed mathematical specification is divided by proof obligation:
+
+| Document | Derived content |
+| --- | --- |
+| [Source padding and assembly](se-publication-padding-mathematics.md) | Exact instruction/context maps, source beliefs and gains, expanded resource bounds, cycle inequalities, archive equality and final joint-law composition. |
+| [Finite private-observation transfer](se-publication-transfer-mathematics.md) | Fixed games and dependent menus, causal reach factorization, actual Bayesian mixtures, every literal one-step deviation and one common consistency sequence. |
+| [Native counted adapter](se-publication-native-adapter.md) | Exhaustive action classes, candidate masking, controlled transitions, all-index reference probabilities, private own memory and ordered-pending reconstruction. |
+| [Audit and delayed authorization](se-publication-audit-boundary.md) | Conditional evidence coverage, a possible publication/audit tail, excluded-owner disclosure extensions, and the boundary with retained signatures and replay. |
+
+These derivations expose two separate service requirements. Publication before
+the next commitment makes the counted source query available. Collection of
+authentic evidence makes the raw-action extension valid. The first does not
+imply the second. The current finite model supplies a conditional theorem under
+its stated audit interface; a backend must implement that interface, including
+traffic from the final gameplay callbacks. Previously signed but unbroadcast
+transactions also require the separate authorization adapter described above.
+
 ## What private observations actually obstruct
 
 The phase normalizer retries a **commitment** phase when it contains a fresh

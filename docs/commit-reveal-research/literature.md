@@ -75,6 +75,13 @@ post-exclusion continuation selection. It gives a finite hand preservation
 proof for deterministic sample padding, using causal private-observation
 simulation and a counted candidate mask, followed by the existing raw audit
 extension. The compiler and proof adapters remain unmechanized.
+Its detailed specifications derive the
+[source transformation and timing](../se-publication-padding-mathematics.md),
+[conditional probability and incentive transfer](../se-publication-transfer-mathematics.md),
+[actual counted-menu adapter](../se-publication-native-adapter.md), and
+[audit and delayed-authorization boundaries](../se-publication-audit-boundary.md).
+They separate the mathematical private-reception result from the backend's
+bounded recording, authentic evidence collection and retained-signature duties.
 
 Use papers, official protocol specifications or implementation documentation.
 Record the precise property supported: cryptographic confidentiality, finality,
