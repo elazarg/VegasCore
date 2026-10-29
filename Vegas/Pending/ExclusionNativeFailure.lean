@@ -1,8 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionEvidence
+import Vegas.Pending.PublicFailureEvidence
+import Interaction.ReactiveHistory
 
-/-! # Native public failure persistence -/
+/-! # Native failure persistence and receipt provenance -/
 
 noncomputable section
 
@@ -15,81 +16,66 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L} (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
-omit [DecidableEq Player] in
 /-- Completing a different ready event preserves every previous public failure. -/
 theorem State.PublicFailure.of_completionStep {before after : State graph}
     (step : CompletionStep before after) {event : graph.EventId}
-    (failed : before.PublicFailure event) : after.PublicFailure event := by
-  rcases step with ⟨same, accepted, _⟩ | ⟨next, ready, action, reached, _, acceptedOnly⟩
-  · exact (State.PublicFailure.congr event (by rw [same]) (by rw [same])
-      (congrFun accepted _)).mpr failed
-  · have different : event ≠ next := fun same => ready.1 (same ▸ failed.completed)
-    exact (State.PublicFailure.of_step_of_ne reached (fun field changed =>
-      (acceptedOnly field changed).2) different).mpr failed
+    (failed : before.PublicFailure event) : after.PublicFailure event :=
+  (step.publicFailure_iff_of_completed failed.completed).mpr failed
 
-/-- Every native operation either preserves the completion footprint or
-completes one ready event. Private preparation changes no public footprint. -/
-theorem reactiveApplication_completionStep :
-    (runtime.reactiveApplication leaks).StepRelation CompletionStep where
-  refl := CompletionStep.refl
-  submit := by
-    intro state who submission
-    have publicEq := reactiveApplication_submit_publicView runtime leaks state who submission
-    refine Or.inl ⟨?_, congrArg PublicView.accepted publicEq,
-      congrArg PublicView.activatedAt publicEq⟩
-    change (submitStep (submission.call.register state who) who _).config = _
-    rw [submitStep_config, (submission.call.register_facts who state).1]
-  handle := fun state message next accepted =>
-    completionStep_handle runtime state next _ (reactiveHandle_call accepted)
-  environment := fun state command next reached =>
-    completionStep_environmentStep runtime state next command reached
-
-/-- No future native operation can erase the public evidence of exclusion. -/
+/-- No application operation can erase public failure evidence. -/
 theorem reactiveApplication_publicFailure_monotone :
     (runtime.reactiveApplication leaks).StepRelation
       (fun before after => ∀ event, before.PublicFailure event → after.PublicFailure event) where
   refl := fun _ _ failed => failed
-  submit := fun state who submission _event failed => failed.of_completionStep
-    ((reactiveApplication_completionStep runtime leaks).submit state who submission)
-  handle := fun state message next accepted _event failed => failed.of_completionStep
-    ((reactiveApplication_completionStep runtime leaks).handle state message next accepted)
-  environment := fun state command next reached _event failed => failed.of_completionStep
-    ((reactiveApplication_completionStep runtime leaks).environment state command next reached)
+  submit := fun state who submission _event failed => failed.of_completionPath
+    ((reactiveApplication_completionPath runtime leaks).submit state who submission)
+  handle := fun state message next accepted _event failed => failed.of_completionPath
+    ((reactiveApplication_completionPath runtime leaks).handle state message next accepted)
+  environment := fun state command next reached _event failed => failed.of_completionPath
+    ((reactiveApplication_completionPath runtime leaks).environment state command next reached)
 
-/-- Accepted handles retain completed-event provenance along every native history. -/
+/-- Every application operation preserves prior public default membership. -/
+theorem reactiveApplication_defaulted_monotone :
+    (runtime.reactiveApplication leaks).StepRelation
+      (fun before after => before.config.defaulted ⊆ after.config.defaulted) where
+  refl := fun _ => Finset.Subset.refl _
+  submit := fun state who submission => CompletionStep.defaulted_mono_path
+    ((reactiveApplication_completionPath runtime leaks).submit state who submission)
+  handle := fun state message next accepted => CompletionStep.defaulted_mono_path
+    ((reactiveApplication_completionPath runtime leaks).handle state message next accepted)
+  environment := fun state command next reached => CompletionStep.defaulted_mono_path
+    ((reactiveApplication_completionPath runtime leaks).environment state command next reached)
+
+/-- Accepted handles retain completed-event provenance along every initialized history. -/
 theorem native_receiptsComplete_history (initial : PMF (State graph))
     (initialized : ∀ native ∈ initial.support, ∃ inputs, native = State.initial inputs)
     (horizon : Nat) (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     {state : (runtime.reactiveApplication leaks).ProtocolState}
     (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace state) :
     ReactiveApplication.stateInvariant State.ReceiptsComplete state := by
-  let step := reactiveApplication_completionStep runtime leaks
+  let step := reactiveApplication_completionPath runtime leaks
   have preserved : (runtime.reactiveApplication leaks).Invariant State.ReceiptsComplete :=
-    { submit := fun state who submission valid => valid.step (step.submit state who submission)
+    { submit := fun state who submission valid => valid.path (step.submit state who submission)
       handle := fun state message next valid accepted =>
-        valid.step (step.handle state message next accepted)
+        valid.path (step.handle state message next accepted)
       environment := fun state command next valid reached =>
-        valid.step (step.environment state command next reached) }
+        valid.path (step.environment state command next reached) }
   apply preserved.history initial horizon scheduler ?_ trace
   intro native supported
   obtain ⟨inputs, rfl⟩ := initialized native supported
   exact State.ReceiptsComplete.initial inputs
 
-/-- If a native transition ends with no public exclusion evidence, its actual
-predecessor also has none. The accepted-handle invariant is supplied by the
-actual predecessor history. -/
+/-- If a native transition ends without defaults, its predecessor also has none.
+No initialization or receipt assumption is needed for this monotonicity fact. -/
 theorem native_clear_before_transition (initial : PMF (State graph))
-    (initialized : ∀ native ∈ initial.support, ∃ inputs, native = State.initial inputs)
     (horizon : Nat) (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     {before after : (runtime.reactiveApplication leaks).ProtocolState}
-    (prior : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace before)
     (joint : Player → Option (runtime.reactiveApplication leaks).Action)
     (realized : after ∈ ((runtime.reactiveApplication leaks).transition initial horizon scheduler
       before joint).support)
     (clear : ∀ current, after = some current →
-      ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph)) :
-    ∀ current, before = some current →
-      ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph) := by
+      current.execution.application.config.defaulted = ∅) :
+    ∀ current, before = some current → current.execution.application.config.defaulted = ∅ := by
   cases before with
   | none => intro current impossible; cases impossible
   | some current =>
@@ -98,15 +84,12 @@ theorem native_clear_before_transition (initial : PMF (State graph))
     obtain ⟨next, nextEq, _recall⟩ :=
       (runtime.reactiveApplication leaks).transition_recall_prefix initial horizon scheduler
         current after joint realized
-    have persists := (reactiveApplication_publicFailure_monotone runtime leaks).transition initial
+    have persists := (reactiveApplication_defaulted_monotone runtime leaks).transition initial
       horizon scheduler current next joint (nextEq ▸ realized)
-    refine ⟨native_receiptsComplete_history runtime leaks initial initialized horizon scheduler
-      prior, fun event lower => by omega, fun owner => ⟨?_, ?_⟩⟩
-    · intro member
-      exact (Finset.notMem_empty owner member).elim
-    · rintro (inherited | ⟨event, _lower, acting, failed⟩)
-      · exact inherited
-      · exact (clear next nextEq).excluded_zero owner |>.mpr
-          ⟨event, acting, persists event failed⟩
+    apply Finset.eq_empty_iff_forall_notMem.mpr
+    intro who member
+    have remaining := persists member
+    rw [clear next nextEq] at remaining
+    exact Finset.notMem_empty _ remaining
 
 end Vegas.EventGraphRuntime

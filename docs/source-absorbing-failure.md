@@ -40,6 +40,18 @@ failure. It queries no policy callback and appends no invented own action.
 Automatic openings still resolve their binding and retain guard bookkeeping.
 Public samples follow their declared laws and execution continues.
 
+[DisclosureBehavioral](../Vegas/Source/DisclosureBehavioral.lean) normalizes
+only unopenable disclosure attempts. Authentic attempts remain unchanged even
+when deferred guards reject publication. Its uniform profile transformation
+preserves the joint law of every typed cell and the full default history for
+arbitrary profiles, prior configurations and initial laws, without a
+finite-player or posterior-reconstruction premise. Defaulted owners' private
+intention lists can differ; full configuration equality is not asserted.
+[DisclosureOpening](../Vegas/Source/DisclosureOpening.lean) and
+[DisclosureSupport](../Vegas/Source/DisclosureSupport.lean) use the same
+authentic-binding criterion. Intended-strategy consumers remain acceptance
+obligations.
+
 Policy callbacks accept proof that their owner is active. This removes unused
 inactive responses from the strategy type and permits exact strategy
 equivalence with legal protocol policies. It imposes no restriction on an
@@ -233,6 +245,17 @@ foreign hidden candidate meanings need not agree. The graph-observation
 projection of a native player view is owned by the application layer and
 shared by [continuation observation](../Vegas/Pending/ReactiveContinuationObservation.lean).
 
+[PublicFailureEvidence](../Vegas/Pending/PublicFailureEvidence.lean) lifts
+native receipt footprints and failure persistence along finite completion
+paths, and [ExclusionNativeFailure](../Vegas/Pending/ExclusionNativeFailure.lean)
+reads default monotonicity directly from graph configurations. Exact
+first-default/receipt provenance remains a separate constructor proof.
+[ReactiveSampleLikelihood](../Vegas/Pending/ReactiveSampleLikelihood.lean)
+retains the actual physical chance law through atomic draining, while
+[ReactiveServiceProgress](../Vegas/Pending/ReactiveServiceProgress.lean)
+preserves clocks, completed events and unfinished-event deadlines through
+arbitrary responses and environment operations.
+
 These are operational support/refinement laws; they do not establish the
 probabilistic client/compiler law or equilibrium preservation.
 
@@ -260,3 +283,22 @@ Only checked theorems close these obligations:
 
 The ordinary full build, examples and paper guards remain acceptance gates for
 replacing the maintained tower. Targeted source/compiler checks do not close them.
+
+## Scheduler and deviation proof boundary
+
+Two simultaneously ready actions need not commute under absorbing default.
+For two bindings owned by one player, omitting the first and then requesting a
+successful second binding produces two failures. Executing the successful
+binding first retains that success. The actual graph steps and unequal stored
+results are checked in [EventGraphDefault](../VegasTests/EventGraphDefault.lean).
+Thus the unrestricted local-commutation statement in
+[Commutation](../Vegas/EventGraph/Commutation.lean) is false for this semantics.
+Foreign default announcements also invalidate observation-erasure arguments
+that retain only hidden field values.
+
+The compiler-generated order is sequential and already has an exact
+scheduler-independence theorem. The remaining deviation/scheduler interface
+must use that generated order instead of the generic commutation and foreign
+normalization argument. The full replacement is unproved until that interface,
+its strategic consumers and the other acceptance obligations above check.
+No additional scheduler or runtime assumption is authorized by this boundary.

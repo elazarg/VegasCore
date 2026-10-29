@@ -136,4 +136,36 @@ example : (afterOmission.step ⟨1, by decide⟩ secondBinding_ready_afterOmissi
   rw [PMF.pure_map, PMF.pure_map]
   rfl
 
+private def afterSecondBinding : twoBindings.Config :=
+  bindingInitial.complete ⟨1, by decide⟩ secondBinding_ready (some (.success true)) (.success true)
+
+private theorem firstBinding_ready_afterSecondBinding :
+    afterSecondBinding.cut.Ready ⟨0, by decide⟩ :=
+  firstBinding_ready.after_complete secondBinding_ready (by decide)
+
+/-- The successful second binding is itself a supported execution from the initial cut. -/
+example : bindingInitial.step ⟨1, by decide⟩ secondBinding_ready (some (.success true)) =
+    PMF.pure afterSecondBinding := by
+  unfold Config.step
+  change (PMF.pure (PublicationResult.success true : PublicationResult Bool)).map _ = _
+  rw [PMF.pure_map]
+  rfl
+
+/-- Two ready actions need not commute: omission suppresses a later same-owner action. -/
+example :
+    (afterOmission.step ⟨1, by decide⟩ secondBinding_ready_afterOmission
+      (some (.success true))).map (fun final => final.outputs ⟨1, by decide⟩) ≠
+    (afterSecondBinding.step ⟨0, by decide⟩ firstBinding_ready_afterSecondBinding none).map
+      (fun final => final.outputs ⟨1, by decide⟩) := by
+  unfold Config.step
+  change ((PMF.pure (PublicationResult.failure : PublicationResult Bool)).map _).map _ ≠
+    ((PMF.pure (PublicationResult.failure : PublicationResult Bool)).map _).map _
+  rw [PMF.pure_map, PMF.pure_map, PMF.pure_map, PMF.pure_map]
+  change PMF.pure (some (PublicationResult.failure : PublicationResult Bool)) ≠
+    PMF.pure (some (PublicationResult.success true : PublicationResult Bool))
+  intro same
+  have contradiction := congrArg
+    (fun law : PMF (Option (PublicationResult Bool)) => law (some .failure)) same
+  simp at contradiction
+
 end VegasTests

@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReactiveService
 import Vegas.Pending.EventProgress
+import Vegas.Pending.ExclusionInvariant
 
 /-! # Progress under arbitrary reactive player and network policies
 
@@ -18,6 +19,39 @@ open GameTheory.Math.Probability Interaction
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
+
+/-- Zero-time automatic completions preserve established service progress. -/
+theorem State.ServiceProgress.drain {inputs : graph.Inputs} {ticks : Nat}
+    {before after : State graph} (progress : State.ServiceProgress inputs ticks before after) :
+    State.ServiceProgress inputs ticks before after.drain := by
+  have completed := State.drainFuel_completed_subset after.config.remaining after
+  refine ⟨progress.invariant.drain, progress.completed.trans completed,
+    after.drain_tables.2.2.trans progress.clock, ?_⟩
+  intro event entered activated unfinished
+  exact progress.invariant.drain_activatedAt_of_not_completed event entered
+    (progress.activated event entered activated (fun done => unfinished (completed done)))
+    unfinished
+
+/-- Automatic completion after an accepted call preserves the clock. -/
+theorem reactiveApplication_handle_clock (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (state next : State graph) (message : Message Player (WitnessedPacket graph))
+    (accepted : (runtime.reactiveApplication leaks).handle state message = some next) :
+    next.clock = state.clock := by
+  obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
+  rw [← nextEq, native.drain_tables.2.2]
+  exact (handle_clock_activated runtime state native ⟨message.id, message.payload.call⟩ handled).1
+
+/-- Application time advances only by the native command's explicit ticks. -/
+theorem reactiveApplication_environment_clock (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (state next : State graph) (command : EnvironmentCommand graph)
+    (supported : next ∈ ((runtime.reactiveApplication leaks).environment state command).support) :
+    next.clock = state.clock + command.clockTicks := by
+  change next ∈ ((environmentStep runtime state command).map State.drain).support at supported
+  obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ supported
+  rw [native.drain_tables.2.2]
+  exact environmentStep_clock runtime state native command moved
 
 theorem reactive_respond_progress (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -108,12 +142,13 @@ theorem reactive_environmentStep_clock (runtime : EventGraphRuntime graph)
               message with
           | none => rfl
           | some state =>
-              exact (handle_clock_activated runtime execution.application state
-                ⟨message.id, message.payload.call⟩ (reactiveHandle_call accepted)).1
+              exact reactiveApplication_handle_clock runtime leaks execution.application state
+                message accepted
   | application command =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      have clock := environmentStep_clock runtime execution.application state command changed
+      have clock := reactiveApplication_environment_clock runtime leaks execution.application
+        state command changed
       cases command <;> simpa [reactiveTicks, EnvironmentCommand.clockTicks] using clock
 
 theorem reactive_include_progress (runtime : EventGraphRuntime graph)
@@ -134,9 +169,10 @@ theorem reactive_include_progress (runtime : EventGraphRuntime graph)
           message with
       | none => exact .refl invariant
       | some next =>
-          exact handle_progress runtime inputs _ next
-            ⟨message.id, message.payload.call⟩ invariant
-            (reactiveHandle_call accepted)
+          obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
+          rw [← nextEq]
+          exact (handle_progress runtime inputs _ native
+            ⟨message.id, message.payload.call⟩ invariant handled).drain
 
 theorem reactive_environment_progress (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -164,13 +200,17 @@ theorem reactive_environment_progress (runtime : EventGraphRuntime graph)
   | application command =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      refine ⟨environmentStep_invariant runtime execution.application state
-        command invariant changed,
-        environmentStep_completed_subset runtime execution.application state command changed,
+      change state ∈ ((environmentStep runtime execution.application command).map
+        State.drain).support at changed
+      obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ changed
+      apply State.ServiceProgress.drain
+      refine ⟨environmentStep_invariant runtime execution.application native
+        command invariant moved,
+        environmentStep_completed_subset runtime execution.application native command moved,
         ?_, ?_⟩
-      · have clock := environmentStep_clock runtime execution.application state command changed
+      · have clock := environmentStep_clock runtime execution.application native command moved
         cases command <;> simpa [reactiveTicks, EnvironmentCommand.clockTicks] using clock
       · exact environmentStep_activatedAt_of_not_completed runtime
-          execution.application state command invariant changed
+          execution.application native command invariant moved
 
 end Vegas.EventGraphRuntime

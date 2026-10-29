@@ -4,10 +4,10 @@ import Vegas.Source.Setup
 
 /-! # Finitely branching source runs
 
-Chance laws are exact finite tables and disclosures are Boolean, so a run
-branches finitely exactly when every commitment kernel it consults does. That
-holds for every profile when fresh binding types are finite; over an infinite
-binding alphabet it is a property of the profile.
+Chance laws have finite support and disclosures are Boolean. Finite support
+of every active commitment kernel therefore suffices for finite support of the
+complete run. This holds for every profile when fresh binding types are finite;
+over an infinite binding alphabet it is a property of the profile.
 -/
 
 noncomputable section
@@ -17,13 +17,13 @@ open GameTheory
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-/-- Every commitment kernel of the profile has finite support at every view. -/
+/-- Every commitment kernel has finite support at every active view. -/
 def BehavioralProfile.FiniteSupport : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (p : SourceProgram Player L Γ O) → BehavioralProfile p → Prop
   | _, _, .ret _, _ => True
   | _, _, .sample _ _ _ k, profile => BehavioralProfile.FiniteSupport k (afterSample profile)
   | _, _, .commit _ _ _ _ k, profile =>
-      (∀ view, (commitKernel profile view).support.Finite) ∧
+      (∀ view active, (commitKernel profile view active).support.Finite) ∧
         BehavioralProfile.FiniteSupport k (afterCommit profile)
   | _, _, .reveal _ _ _ _ _ _ k, profile =>
       BehavioralProfile.FiniteSupport k (afterReveal profile)
@@ -38,7 +38,7 @@ theorem FiniteBindingTypes.profileFiniteSupport :
       profileFiniteSupport k finite (afterSample profile)
   | _, _, .commit _ _ _ _ k, finite, profile =>
       have := finite.1
-      ⟨fun _ => Set.toFinite _, profileFiniteSupport k finite.2 (afterCommit profile)⟩
+      ⟨fun _ _ => Set.toFinite _, profileFiniteSupport k finite.2 (afterCommit profile)⟩
   | _, _, .reveal _ _ _ _ _ _ k, finite, profile =>
       profileFiniteSupport k finite (afterReveal profile)
 
@@ -50,7 +50,7 @@ theorem PurePolicy.profileFiniteSupport :
   | _, _, .ret _, _ => trivial
   | _, _, .sample _ _ _ k, profile => profileFiniteSupport k profile
   | _, _, .commit _ _ _ _ k, profile =>
-      ⟨fun _ => by simp [commitKernel, PurePolicy.toBehavioral],
+      ⟨fun _ _ => by simp [commitKernel, PurePolicy.toBehavioral],
         profileFiniteSupport k fun who => (profile who).2⟩
   | _, _, .reveal _ _ _ _ _ _ k, profile => profileFiniteSupport k fun who => (profile who).2
 
@@ -61,16 +61,20 @@ theorem runFrom_support_finite : {Γ : SourceCtx Player L} → {O : Finset VarId
     BehavioralProfile.FiniteSupport p profile → (config : Config Player L Γ) →
     (runFrom p profile config).support.Finite
   | _, _, .ret _, _, _, config => by
-      change (PMF.pure config.state).support.Finite
+      change (PMF.pure config).support.Finite
       rw [PMF.support_pure]
       exact Set.finite_singleton _
   | _, _, .sample _ _ _ k, profile, finite, config => by
       rw [runFrom_sample, PMF.support_bind]
       exact (L.evalDist_support_finite _ _).biUnion fun _ _ =>
         runFrom_support_finite k _ finite _
-  | _, _, .commit _ _ _ _ k, profile, finite, config => by
-      rw [runFrom_commit, PMF.support_bind]
-      exact (finite.1 _).biUnion fun _ _ => runFrom_support_finite k _ finite.2 _
+  | _, _, .commit _ owner _ _ k, profile, finite, config => by
+      by_cases inactive : owner ∈ config.defaulted
+      · simp only [runFrom, inactive, dite_true, PMF.pure_bind]
+        exact runFrom_support_finite k _ finite.2 _
+      · rw [runFrom_commit, dite_eq_right inactive, PMF.support_bind]
+        exact (finite.1 (config.view owner) inactive).biUnion fun _ _ =>
+          runFrom_support_finite k _ finite.2 _
   | _, _, .reveal _ _ _ _ _ _ k, profile, finite, config => by
       rw [runFrom_reveal, PMF.support_bind]
       exact (Set.toFinite _).biUnion fun _ _ => runFrom_support_finite k _ finite _
@@ -83,7 +87,7 @@ theorem Setup.run_support_finite (setup : Setup (Player := Player) (L := L))
     (setup.run profile).support.Finite := by
   rw [Setup.run, PMF.support_bind]
   exact setup.initialLaw_support_finite.biUnion fun initial _ => runFrom_support_finite _ _ finite
-    ⟨initial, [], Revelations.initial setup.context, fun _ => []⟩
+    (Config.initial initial)
 
 /-- The public result law of a finitely branching setup run is finitely
 supported. -/

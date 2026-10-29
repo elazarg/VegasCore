@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.FiniteSupport
+import Vegas.Source.Semantics
 import GameTheory.Math.Probability.SelectiveStopping
 
 /-! # Refusing to open, and when it is worth nothing
@@ -35,7 +35,7 @@ def Disclosing {who : Player} : {Γ : SourceCtx Player L} → {O : Finset VarId}
   | _, _, .sample _ _ _ k, policy => Disclosing k policy
   | _, _, .commit _ _ _ _ k, policy => Disclosing k policy.2
   | _, _, .reveal _ owner _ _ _ _ k, policy =>
-      (∀ (own : owner = who) view, false ∉ (policy.1 own view).support) ∧
+      (∀ (own : owner = who) view active, false ∉ (policy.1 own view active).support) ∧
         Disclosing k policy.2
 
 /-- Open at every own reveal, and leave every binding alone. -/
@@ -46,7 +46,7 @@ def BehavioralPolicy.forceDisclose {who : Player} :
   | _, _, .sample _ _ _ k, policy => forceDisclose k policy
   | _, _, .commit _ _ _ _ k, policy => (policy.1, forceDisclose k policy.2)
   | _, _, .reveal _ _ _ _ _ _ k, policy =>
-      (fun _ _ => PMF.pure true, forceDisclose k policy.2)
+      (fun _ _ _ => PMF.pure true, forceDisclose k policy.2)
 
 theorem disclosing_forceDisclose {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} → (p : SourceProgram Player L Γ O) →
@@ -55,7 +55,7 @@ theorem disclosing_forceDisclose {who : Player} :
   | _, _, .sample _ _ _ k, policy => disclosing_forceDisclose k policy
   | _, _, .commit _ _ _ _ k, policy => disclosing_forceDisclose k policy.2
   | _, _, .reveal _ _ _ _ _ _ k, policy =>
-      ⟨fun _ _ => by simp [BehavioralPolicy.forceDisclose], disclosing_forceDisclose k policy.2⟩
+      ⟨fun _ _ _ => by simp [BehavioralPolicy.forceDisclose], disclosing_forceDisclose k policy.2⟩
 
 /-- Opening is at least as good as refusing, at every decision this player could
 face, measured against the continuation in which it opens from then on. This is
@@ -73,12 +73,11 @@ def DisclosesProfitably {who : Player} :
       (∀ (_ : owner = who) (config : Config Player L _),
         expect (runFrom k (Function.update (afterReveal profile) who
             ((afterReveal profile who).forceDisclose k))
-          (revealSuccessor published source config false)) utility ≤
+          (revealSuccessor published source config false)) (fun final => utility final.state) ≤
         expect (runFrom k (Function.update (afterReveal profile) who
             ((afterReveal profile who).forceDisclose k))
-          (revealSuccessor published source config true)) utility) ∧
+          (revealSuccessor published source config true)) (fun final => utility final.state)) ∧
         DisclosesProfitably k utility (afterReveal profile) policy.2
 
-/-! ## Removing the refusal -/
 
 end Vegas.SourceProgram

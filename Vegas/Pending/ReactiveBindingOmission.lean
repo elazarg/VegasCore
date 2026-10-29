@@ -50,6 +50,8 @@ theorem PublicView.missedBinding_of_accepted (view : PublicView graph)
   unfold missedBinding
   cases graph.outputLayout event <;> simp only [accepted, Option.isNone_some, Bool.and_false]
 
+variable [DecidableEq Player]
+
 theorem State.missedBinding_complete (state : State graph) (event : graph.EventId)
     (ready : state.config.cut.Ready event) (action : graph.Action event)
     (value : (graph.outputLayout event).Value) (owner : Player) (payload : L.Ty)
@@ -80,6 +82,7 @@ theorem missedBinding_expire (runtime : EventGraphRuntime graph) (state next : S
   cases (PMF.mem_support_pure_iff _ _).mp reached
   exact state.missedBinding_complete event ready _ _ owner payload outputEq absent
 
+omit [DecidableEq Player] in
 /-- Only bindings can be omitted. -/
 theorem PublicView.missedBinding_of_not_binding (view : PublicView graph)
     (event : graph.EventId)

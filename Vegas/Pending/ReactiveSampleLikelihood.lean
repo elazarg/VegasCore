@@ -35,9 +35,9 @@ theorem bindingTraffic_sample_result
     let after := fun (execution : app.Execution)
         (ready : execution.application.config.cut.Ready event) =>
       { execution with
-        application := execution.application.complete event ready
+        application := (execution.application.complete event ready
           (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)
-          (cast (congrArg EventField.Value outputEq.symm) value)
+          (cast (congrArg EventField.Value outputEq.symm) value)).drain
         environmentRecall := execution.environmentRecall ++
           [⟨execution.observeEnvironment app, .application (.executeSample event)⟩] }
     runtime.bindingTraffic leaks focal (after left leftReady) =
@@ -55,14 +55,21 @@ theorem bindingTraffic_sample_result
       left.application.publicView left.receipts = _
     rw [networks, publics, receipts]
     rfl
-  have complete := State.complete_playerView_congr left.application right.application focal
+  have completed := State.complete_playerView_congr left.application right.application focal
     publics (left.application.playerView_observation_eq right.application focal views)
     (congrArg PlayerView.candidates views)
     event leftReady rightReady
     (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)
     (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)
     (cast (congrArg EventField.Value outputEq.symm) value)
-    (cast (congrArg EventField.Value outputEq.symm) value) (fun _ => rfl) (fun _ => rfl)
+    (cast (congrArg EventField.Value outputEq.symm) value) (fun _ => rfl) (fun _ => rfl) (by
+      cases codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) with
+      | sample payload law =>
+          rw [left.application.config.completion_defaultEvent_of_code event outputEq
+            (.sample payload law) codeEq, right.application.config.completion_defaultEvent_of_code
+              event outputEq (.sample payload law) codeEq]
+          rfl)
+  have complete := State.drain_playerView_congr _ _ focal completed
   change runtime.bindingTraffic leaks focal (after left leftReady) = _
   have completedPublic : (after left leftReady).application.publicView =
       (after right rightReady).application.publicView := congrArg PlayerView.publicView complete
@@ -116,10 +123,10 @@ theorem bindingTraffic_sample
         codeEq PUnit.unit draw evaluates, PMF.map_comp]
     rfl
   simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp]
-  change (environmentStep runtime left.application (.executeSample event)).map _ =
-    (environmentStep runtime right.application (.executeSample event)).map _
-  rw [sampleLaw left leftReady leftLaw, sampleLaw right rightReady rightLaw,
-    PMF.map_comp, PMF.map_comp]
+  change ((environmentStep runtime left.application (.executeSample event)).map State.drain).map
+      _ = ((environmentStep runtime right.application (.executeSample event)).map State.drain).map _
+  rw [sampleLaw left leftReady leftLaw, sampleLaw right rightReady rightLaw]
+  simp only [PMF.map_comp]
   apply map_congr_on_support _
   intro value _
   exact runtime.bindingTraffic_sample_result leaks left right focal same event leftReady rightReady

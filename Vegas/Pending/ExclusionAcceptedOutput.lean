@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionEvidence
+import Vegas.Pending.PublicFailureEvidence
 import Vegas.Pending.ReactiveAcceptedOutput
 
 /-! # Successful graph outputs exclude public failure evidence -/
@@ -57,7 +57,7 @@ theorem OutputSucceeded.not_publicFailure {native : State graph} {event : graph.
           · have acceptedAt : native.publicView.accepted (.inr event) = some candidate := accepted
             rw [native.publicView.missedBinding_of_accepted event candidate acceptedAt] at missed
             cases missed
-          · simp only [RecoveryState.publicationFailed, view, Bool.false_eq_true] at publication
+          · simp only [State.publicationFailed, view, Bool.false_eq_true] at publication
   | resolve owner payload binding checks outputEq codeEq =>
       rcases failed with missed | publication
       · simp only [PublicView.missedBinding, outputEq, Bool.false_eq_true] at missed
@@ -66,13 +66,13 @@ theorem OutputSucceeded.not_publicFailure {native : State graph} {event : graph.
           intro bad
           exact good ((isFailure_cast outputEq value).mp bad)
         have output : native.config.outputs event = some value := stored
-        rw [RecoveryState.publicationFailed, view, output] at publication
+        rw [State.publicationFailed, view, output] at publication
         cases converted : cast (congrArg EventField.Value outputEq) value with
         | failure => exact notFailed converted
         | success opening => simp only [converted, Bool.false_eq_true] at publication
   | sample payload law outputEq codeEq =>
       rcases failed with missed | publication
       · simp only [PublicView.missedBinding, outputEq, Bool.false_eq_true] at missed
-      · simp only [RecoveryState.publicationFailed, view, Bool.false_eq_true] at publication
+      · simp only [State.publicationFailed, view, Bool.false_eq_true] at publication
 
 end Vegas.EventGraphRuntime

@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReactiveSignedCommitments
 import Vegas.Pending.EventBindingInvariant
+import Vegas.Pending.ExclusionInvariant
 
 /-! # Accepted calls write successful outputs
 
@@ -90,12 +91,14 @@ theorem keepsFixedCandidates_step :
     have registered := material.call.register_lookup_of_not_fresh state who handle fixed
     rw [submitStep_lookup_of_not_fresh _ _ _ _ (registered ▸ fixed), registered]
   handle state message next accepted handle fixed := by
-    rcases handle_tables_cases runtime state next _ (reactiveHandle_call accepted) with
+    obtain ⟨native, handled, rfl⟩ := reactiveHandle_call accepted
+    rw [native.drain_tables.2.1]
+    rcases handle_tables_cases runtime state native _ handled with
       ⟨_, candidate, _, candidates, _⟩ | ⟨_, candidates⟩
     · rw [candidates, state.candidates.lookup_freeze_eq_of_not_fresh handle candidate fixed]
     · rw [candidates]
   environment state command next reached handle _ := by
-    rw [(environmentStep_tables runtime state next command reached).2]
+    rw [(reactiveApplication_environment_tables runtime leaks state next command reached).2]
 
 /-- **Stored fields stay stored** under every runtime operation. -/
 theorem keepsStore_step : (runtime.reactiveApplication leaks).StepRelation KeepsStore where
@@ -108,10 +111,15 @@ theorem keepsStore_step : (runtime.reactiveApplication leaks).StepRelation Keeps
     split
     · split <;> exact stored
     · exact stored
-  handle state message next accepted field value stored :=
-    handle_store_of_some runtime state next _ (reactiveHandle_call accepted) field value stored
-  environment state command next reached field value stored :=
-    environmentStep_store_of_some runtime state next command reached field value stored
+  handle state message next accepted field value stored := by
+    obtain ⟨native, handled, rfl⟩ := reactiveHandle_call accepted
+    exact native.drain_store_of_some field value
+      (handle_store_of_some runtime state native _ handled field value stored)
+  environment state command next reached field value stored := by
+    change next ∈ ((environmentStep runtime state command).map State.drain).support at reached
+    obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ reached
+    exact native.drain_store_of_some field value
+      (environmentStep_store_of_some runtime state native command moved field value stored)
 
 /-- **An accepted commitment writes a success.** If the contract accepts a
 commitment for a binding event whose handle holds an openable meaning of the
@@ -165,6 +173,13 @@ theorem handle_opening_output_success (state next : State graph) (id : MessageId
     (resolved : EventCode.resolveOutput? binding checks true state.config.store =
       some (.success value)) :
     OutputSucceeded next.config.store event := by
+  have ownerActive : owner ∉ state.config.defaulted := by
+    obtain ⟨active, _ready, _timely, actor, input, ref, guards, layoutEq, nativeCode,
+      opening, result, nativeNode, sender, _rest⟩ :=
+      (handle_opening_iff runtime state next id event candidate raw).mp accepted
+    rw [node] at nativeNode
+    cases nativeNode
+    simpa only [sender] using active
   obtain ⟨ready, action, member, _, _, owner', payload', binding', checks', outputEq', codeEq',
     node', actionEq⟩ := handle_opening_config_step runtime state next id event candidate raw
       accepted
@@ -173,7 +188,10 @@ theorem handle_opening_output_success (state next : State graph) (id : MessageId
   subst actionEq
   rw [state.config.step_eq_map_of_code event ready outputEq
     (.resolve owner payload binding checks) codeEq true (PMF.pure (.success value))
-    (by rw [EventCode.resolve_eval?, resolved]; rfl)] at member
+    (by
+      simp only [EventCode.effectiveAction, EventCode.actor, ite_eq_right ownerActive]
+      rw [EventCode.resolve_eval?, resolved]
+      rfl)] at member
   rw [PMF.pure_map, PMF.mem_support_pure_iff] at member
   let ref : FieldRef graph.layout (.publication payload) := ⟨.inr event, outputEq⟩
   refine outputSucceeded_of_ref _ event ref rfl (value := .success value) ?_

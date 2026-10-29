@@ -4,6 +4,7 @@ import Vegas.Pending.ReactiveEntryStability
 import Vegas.Pending.ReactiveFreshCallAcceptance
 import Vegas.Pending.EventAssociationInvariant
 import Vegas.Pending.EventBindingInvariant
+import Vegas.Pending.PublicFailureEvidence
 
 /-! # What a recorded view of a ready event keeps while the event is unfinished
 
@@ -66,124 +67,6 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
   (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-
-omit [DecidableEq Player] in
-/-- Either the configuration, accepted handles and activation times are
-unchanged, or one ready event completes, activation times are refreshed around
-it, and accepted handles change at most at its output. -/
-def CompletionStep (before after : State graph) : Prop :=
-  (after.config = before.config ∧ after.accepted = before.accepted ∧
-      after.activatedAt = before.activatedAt) ∨
-    ∃ event, ∃ (ready : before.config.cut.Ready event) (action : graph.Action event),
-      after.config ∈ (before.config.step event ready action).support ∧
-      after.activatedAt = State.refreshActivated after.config before.clock before.activatedAt ∧
-      ∀ field, after.accepted field ≠ before.accepted field →
-        before.accepted field = none ∧ field = .inr event
-
-omit [DecidableEq Player] in
-theorem CompletionStep.refl (state : State graph) : CompletionStep state state :=
-  Or.inl ⟨rfl, rfl, rfl⟩
-
-/-- An accepted commitment fills a vacant output field. -/
-theorem handle_commitment_vacant (state next : State graph) (id : MessageId Player)
-    (event : graph.EventId) (candidate : Handle graph)
-    (accepted : handle runtime state ⟨id, .commitment event candidate⟩ = some next) :
-    state.accepted (.inr event) = none := by
-  obtain ⟨_ready, _timely, _owner, _payload, _outputEq, _codeEq, _view, _sender,
-    _handleOwner, vacant, _unused, _nextEq⟩ :=
-    (handle_commitment_iff runtime state next id event candidate).mp accepted
-  exact vacant
-
-theorem completionStep_handle (state next : State graph)
-    (message : Message Player (Payload graph))
-    (accepted : handle runtime state message = some next) : CompletionStep state next := by
-  obtain ⟨event, named, ready, action, member⟩ :=
-    handle_config_mem_step runtime state next message accepted
-  refine Or.inr ⟨event, ready, action, member,
-    (handle_clock_activated runtime state next message accepted).2, ?_⟩
-  intro field changed
-  rcases message with ⟨id, packet⟩
-  cases packet with
-  | malformed raw => simp [handle] at accepted
-  | commitment actual candidate =>
-      have actualEq : actual = event := Option.some.inj named
-      subst actualEq
-      have tables := (handle_commitment_tables runtime state next id actual candidate accepted).2.1
-      by_cases other : field = .inr actual
-      · subst other
-        exact ⟨handle_commitment_vacant runtime state next id actual candidate accepted, rfl⟩
-      · exact (changed (by rw [tables, Function.update_of_ne other])).elim
-  | opening actual candidate raw =>
-      have tables := (handle_resolution_tables runtime state next _ (by intros; simp)
-        accepted).1
-      exact (changed (by rw [tables])).elim
-
-omit [DecidableEq Player] in
-theorem completionStep_environmentStep (state next : State graph)
-    (command : EnvironmentCommand graph)
-    (member : next ∈ (environmentStep runtime state command).support) :
-    CompletionStep state next := by
-  have accepted := (environmentStep_tables runtime state next command member).1
-  have unchanged : ∀ field, next.accepted field ≠ state.accepted field → False :=
-    fun field changed => changed (by rw [accepted])
-  cases command with
-  | advanceClock =>
-      simp only [environmentStep, PMF.mem_support_pure_iff] at member
-      subst next
-      exact Or.inl ⟨rfl, rfl, rfl⟩
-  | executeSample event =>
-      rcases (environmentStep_executeSample_config_activated runtime state next event member).2
-        with ⟨configEq, activatedEq⟩ | ⟨ready, action, stepped, activatedEq⟩
-      · exact Or.inl ⟨configEq, accepted, activatedEq⟩
-      · exact Or.inr ⟨event, ready, action, stepped, activatedEq,
-          fun field changed => (unchanged field changed).elim⟩
-  | expire event =>
-      rcases (environmentStep_expire_config_activated runtime state next event member).2
-        with ⟨configEq, activatedEq⟩ | ⟨ready, action, stepped, activatedEq⟩
-      · exact Or.inl ⟨configEq, accepted, activatedEq⟩
-      · exact Or.inr ⟨event, ready, action, stepped, activatedEq,
-          fun field changed => (unchanged field changed).elim⟩
-
-/-- Every scheduler command takes one completion step of the application. -/
-theorem completionStep_reactive_environmentStep
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (command : (runtime.reactiveApplication leaks).Command)
-    (reached : next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
-      command).support) :
-    CompletionStep execution.application next.application := by
-  unfold ReactiveApplication.Execution.environmentStep at reached
-  rw [PMF.support_map] at reached
-  obtain ⟨updated, supported, rfl⟩ := reached
-  cases command with
-  | activate who =>
-      rw [PMF.support_map] at supported
-      obtain ⟨_, _, rfl⟩ := supported
-      exact CompletionStep.refl _
-  | wait =>
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      exact CompletionStep.refl _
-  | «include» id =>
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      change CompletionStep execution.application
-        (execution.includePending (runtime.reactiveApplication leaks) id).application
-      unfold ReactiveApplication.Execution.includePending
-      cases execution.network.includePending id with
-      | mk envelope network =>
-          cases envelope with
-          | none => exact CompletionStep.refl _
-          | some envelope =>
-              change CompletionStep execution.application
-                (((runtime.reactiveApplication leaks).handle execution.application
-                  envelope).getD execution.application)
-              cases accepted : (runtime.reactiveApplication leaks).handle execution.application
-                  envelope with
-              | none => exact CompletionStep.refl _
-              | some next =>
-                  exact completionStep_handle runtime _ next _ (reactiveHandle_call accepted)
-  | application command =>
-      rw [PMF.support_map] at supported
-      obtain ⟨state, changed, rfl⟩ := supported
-      exact completionStep_environmentStep runtime _ state command changed
 
 /-- A recorded response that saw `event` ready, while `event` is unfinished:
 the events completed since were ready together with it, its activation time is

@@ -38,11 +38,12 @@ theorem fixedCandidateLookupInvariant (runtime : EventGraphRuntime graph)
         change state.candidates.lookup candidate ≠ .fresh
         rwa [same])).trans same
   · intro state message target same accepted
-    exact (handle_lookup_of_not_fresh runtime state target
-      ⟨message.id, message.payload.call⟩ candidate (by rwa [same])
-      (reactiveHandle_call accepted)).trans same
+    obtain ⟨native, handled, targetEq⟩ := reactiveHandle_call accepted
+    rw [← targetEq, native.drain_tables.2.1]
+    exact (handle_lookup_of_not_fresh runtime state native
+      ⟨message.id, message.payload.call⟩ candidate (by rwa [same]) handled).trans same
   · intro state command target same supported
-    rw [(environmentStep_tables runtime state target command supported).2]
+    rw [(reactiveApplication_environment_tables runtime leaks state target command supported).2]
     exact same
 
 end Vegas.EventGraphRuntime

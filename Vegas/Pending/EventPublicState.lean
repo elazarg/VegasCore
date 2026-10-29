@@ -31,7 +31,7 @@ instance (view : PublicView graph) (event : graph.EventId) :
 unopenable handles. This test does not inspect a candidate's hidden meaning. -/
 def BindingIncludable (runtime : EventGraphRuntime graph) (view : PublicView graph)
     (message : Message Player (Payload graph)) : Prop :=
-  match message.payload with
+  message.sender ∉ view.observation.defaulted ∧ match message.payload with
   | .commitment event candidate =>
       view.EventReady event ∧
       (match view.activatedAt event with
@@ -150,13 +150,18 @@ theorem State.publicView_bindingIncludable (runtime : EventGraphRuntime graph)
       (handle runtime state ⟨id, .commitment event candidate⟩).isSome := by
   classical
   simp only [PublicView.BindingIncludable, state.publicView_eventReady]
-  change (state.config.cut.Ready event ∧ state.WithinDeadline runtime event ∧ _) ↔ _
+  change (id.1 ∉ state.config.defaulted ∧ state.config.cut.Ready event ∧
+    state.WithinDeadline runtime event ∧ _) ↔ _
+  by_cases inactive : id.1 ∈ state.config.defaulted
+  · simp [inactive, handle, Message.sender]
+  simp only [inactive, not_false_eq_true, true_and]
   by_cases ready : state.config.cut.Ready event
   · by_cases timely : state.WithinDeadline runtime event
     · cases view : nodeView graph event <;>
-        simp [handle, ready, timely, view, State.publicView, State.HandleUnused]
+        simp [handle, Message.sender, inactive, ready, timely, view,
+          State.publicView, State.HandleUnused]
       split_ifs <;> simp_all
-    · simp [handle, ready, timely]
-  · simp [handle, ready]
+    · simp [handle, Message.sender, inactive, ready, timely]
+  · simp [handle, Message.sender, inactive, ready]
 
 end Vegas.EventGraphRuntime
