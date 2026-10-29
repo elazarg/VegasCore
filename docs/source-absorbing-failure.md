@@ -341,10 +341,11 @@ For two bindings owned by one player, omitting the first and then requesting a
 successful second binding produces two failures. Executing the successful
 binding first retains that success. The actual graph steps and unequal stored
 results are checked in [EventGraphDefault](../VegasTests/EventGraphDefault.lean).
-Thus the unrestricted local-commutation statement in
-[Commutation](../Vegas/EventGraph/Commutation.lean) is false for this semantics.
-Foreign default announcements also invalidate observation-erasure arguments
-that retain only hidden field values.
+[Commutation](../Vegas/EventGraph/Commutation.lean) proves the independent
+typed-write and evaluator-footprint facts; these do not assert that arbitrary
+requested actions commute through default control. Foreign default
+announcements also prevent erasing observations while retaining only hidden
+field values.
 
 The compiler-generated order is sequential. Its exact scheduling simulation
 uses unchanged strategies and supports every reader of the full terminal

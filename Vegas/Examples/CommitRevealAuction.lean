@@ -51,16 +51,16 @@ def setup : Setup (Player := Player) (L := simpleExpr) where
 
 /-- Alice binds the supplied report and always discloses it. -/
 def alicePolicy (report : Int) : BehavioralPolicy Player.alice program :=
-  (fun _ _ => PMF.pure (.success report),
+  (fun _ _ _ => PMF.pure (some (.success report)),
     ((fun h => nomatch h),
-      (fun _ _ => PMF.pure true, ((fun h => nomatch h), PUnit.unit))))
+      (fun _ _ _ => PMF.pure true, ((fun h => nomatch h), PUnit.unit))))
 
 /-- Bob binds 4 and discloses precisely when Alice's public report is 5. -/
 def bobPolicy : BehavioralPolicy Player.bob program :=
   ((fun h => nomatch h),
-    (fun _ _ => PMF.pure (.success 4),
+    (fun _ _ _ => PMF.pure (some (.success 4)),
       ((fun h => nomatch h),
-        (fun _ view => PMF.pure (match view.1.cells.get .here with
+        (fun _ view _ => PMF.pure (match view.observation.cells.get .here with
           | .failure => false
           | .success bid => decide (bid = (5 : Int))),
           PUnit.unit))))
@@ -76,39 +76,65 @@ def profile (report : Int) : Profile setup.valueBindingGame.sig := fun
   | .bob => bobStrategy
 
 def result (alice bob : PublicationResult Int) : PublicOutcome program :=
-  Env.cons bob (Env.cons alice (Env.empty simpleExpr.Val))
+  ⟨Env.cons bob (Env.cons alice (Env.empty simpleExpr.Val)),
+    ⟨[if bob.isFailure then some Player.bob else none,
+      if alice.isFailure then some Player.alice else none, none, none]⟩⟩
 
 /-- Net utility for a second-price sale, breaking ties toward Alice. A bidder
 who withholds pays the forfeiture to the seller, with no transfer to the other
 bidder. Values are exogenous analysis parameters, not chosen reports. -/
 def utility (values : Player → ℝ) (forfeiture : ℝ)
     (outcome : PublicOutcome program) : Player → ℝ
-  | .alice => match (outcome.get (.there .here) : PublicationResult Int) with
+  | .alice => match (outcome.values.get (.there .here) : PublicationResult Int) with
     | .failure => -forfeiture
-    | .success a => match (outcome.get .here : PublicationResult Int) with
+    | .success a => match (outcome.values.get .here : PublicationResult Int) with
       | .failure => values .alice
       | .success b => if b ≤ a then values .alice - b else 0
-  | .bob => match (outcome.get .here : PublicationResult Int) with
+  | .bob => match (outcome.values.get .here : PublicationResult Int) with
     | .failure => -forfeiture
-    | .success b => match (outcome.get (.there .here) : PublicationResult Int) with
+    | .success b => match (outcome.values.get (.there .here) : PublicationResult Int) with
       | .failure => values .bob
       | .success a => if a < b then values .bob - a else 0
 
+private abbrev bound (report : Int) :=
+  commitSuccessor 1 (acceptGuard Player.bob 1)
+    (commitSuccessor 0 (acceptGuard Player.alice 0)
+      (Config.initial (Env.empty (CellVal simpleExpr))) (some (.success report)))
+    (some (.success 4))
+
+private abbrev disclosed (report : Int) :=
+  revealSuccessor 2 (.there .here) (bound report) true
+
+private abbrev finished (report : Int) :=
+  revealSuccessor 3 (.there .here) (disclosed report) (decide (report = 5))
+
 theorem play_truthful :
     setup.valueBindingGame.play (profile 5) = PMF.pure (result (.success 5) (.success 4)) := by
-  simp only [Setup.valueBindingGame, Setup.publicRun, Setup.run, setup, valueBindingProfile,
-    profile, aliceStrategy, bobStrategy, alicePolicy, bobPolicy, SourceProgram.run,
-    program, runFrom, commitKernel, revealKernel, afterCommit, afterReveal,
-    PMF.pure_bind, PMF.pure_map]
-  rfl
+  calc
+    _ = (PMF.pure (finished 5)).map (publicOutcome program) := by
+      simp only [Setup.publicRun, Setup.run, setup, valueBindingProfile,
+        profile, aliceStrategy, bobStrategy, alicePolicy, bobPolicy, SourceProgram.run,
+        program, runFrom, commitKernel, revealKernel, afterCommit, afterReveal,
+        Config.initial_defaulted, Finset.notMem_empty, ↓reduceDIte, PMF.pure_bind]
+      rw [dite_eq_right (by decide), PMF.pure_bind]
+      rw [dite_eq_right (by decide), PMF.pure_bind]
+      rw [dite_eq_right (by decide), PMF.pure_bind]
+      rfl
+    _ = _ := PMF.pure_map _ _
 
 theorem play_misreport :
     setup.valueBindingGame.play (profile 6) = PMF.pure (result (.success 6) .failure) := by
-  simp only [Setup.valueBindingGame, Setup.publicRun, Setup.run, setup, valueBindingProfile,
-    profile, aliceStrategy, bobStrategy, alicePolicy, bobPolicy, SourceProgram.run,
-    program, runFrom, commitKernel, revealKernel, afterCommit, afterReveal,
-    PMF.pure_bind, PMF.pure_map]
-  rfl
+  calc
+    _ = (PMF.pure (finished 6)).map (publicOutcome program) := by
+      simp only [Setup.publicRun, Setup.run, setup, valueBindingProfile,
+        profile, aliceStrategy, bobStrategy, alicePolicy, bobPolicy, SourceProgram.run,
+        program, runFrom, commitKernel, revealKernel, afterCommit, afterReveal,
+        Config.initial_defaulted, Finset.notMem_empty, ↓reduceDIte, PMF.pure_bind]
+      rw [dite_eq_right (by decide), PMF.pure_bind]
+      rw [dite_eq_right (by decide), PMF.pure_bind]
+      rw [dite_eq_right (by decide), PMF.pure_bind]
+      rfl
+    _ = _ := PMF.pure_map _ _
 
 theorem update_profile (before after : Int) :
     Profile.update (profile before) .alice (aliceStrategy after) = profile after := by

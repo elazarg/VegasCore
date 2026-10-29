@@ -2,7 +2,7 @@
 
 import Vegas.Pending.ReactivePolicyFacts
 import Vegas.Pending.ReactiveHiddenInclusion
-import Vegas.EventGraph.Commutation
+import Vegas.EventGraph.ObservationStep
 
 /-! # Allocation and transport during a hidden binding repair
 

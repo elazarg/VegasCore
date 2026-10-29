@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.Commutation
+import Vegas.EventGraph.Execution
 
 /-! # Repair preserves every successful typed binding
 
@@ -81,7 +81,7 @@ theorem BindingRefines.success {Field : Type} {layout : Field → EventField Pla
 
 end Store
 
-variable [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
+variable [DecidableEq Player] [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 /-- Every actual completion preserves the invariant if its new values do.
 All unchanged typed fields are covered by the dependent store update. -/

@@ -8,7 +8,6 @@ import Vegas.Compile.EventGraphCompiler
 import Vegas.Compile.EventGraphDeviation
 import Vegas.Compile.EventGraphEvaluation
 import Vegas.Compile.EventGraphHistory
-import Vegas.Compile.EventGraphIndependence
 import Vegas.Compile.EventGraphInputs
 import Vegas.Compile.EventGraphLaw
 import Vegas.Compile.EventGraphLayout

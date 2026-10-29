@@ -167,20 +167,17 @@ example : terminal.terminalPayoffs terminal_is_terminal =
     [(false, 12)] := by
   rfl
 
-/-- The local commutation theorem transports through the retained payoff
-expression: sampling first or resolving first yields the same readout law. -/
+/-- Independent typed output writes preserve the heterogeneous payout expression. -/
 example :
-    (readoutGraph.stepThen initial 0 1 (initial_ready 0) (initial_ready 1)
-      (by decide) PUnit.unit true).map
-        (fun config => graphPayoff.eval? config.store) =
-    (readoutGraph.stepThen initial 1 0 (initial_ready 1) (initial_ready 0)
-      (by decide) true PUnit.unit).map
-        (fun config => graphPayoff.eval? config.store) := by
-  have stores := Vegas.EventGraph.stepThen_map_store_comm initial 0 1
-    (initial_ready 0) (initial_ready 1) (by decide) PUnit.unit true
-  have readouts := congrArg
-    (PMF.map fun store => graphPayoff.eval? store) stores
-  simpa only [PMF.map_comp, Function.comp_def] using readouts
+    graphPayoff.eval? ((initial.complete 0 (initial_ready 0) PUnit.unit sampleValue).complete 1
+      ((initial_ready 1).after_complete (initial_ready 0) (by decide))
+        true (.success true)).store =
+    graphPayoff.eval? ((initial.complete 1 (initial_ready 1) true (.success true)).complete 0
+      ((initial_ready 0).after_complete (initial_ready 1) (by decide))
+        PUnit.unit sampleValue).store :=
+  congrArg (fun store => graphPayoff.eval? store)
+    (Vegas.EventGraph.store_complete_comm (initial_ready 0) (initial_ready 1)
+      (by decide) PUnit.unit true sampleValue (.success true))
 
 end
 

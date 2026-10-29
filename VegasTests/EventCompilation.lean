@@ -1,27 +1,23 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Compile.EventGraphAssembly
+import Vegas.Compile.EventGraphDeviation
 import Vegas.Compile.EventGraphHistory
-import Vegas.Compile.EventGraphIndependence
 import Vegas.Compile.EventGraphObservation
-import Vegas.Compile.EventGraphScheduling
-import Vegas.EventGraph.BarrierInformation
-import Vegas.Game.EventScheduling
 import Vegas.Game.EventCompilation
 import Vegas.Pending.EventApplication
 import VegasTests.SourceSemantics
 
-/-! # Source-to-event compilation regressions
+/-! # Source-ranked compiler regressions
 
-Compiler-generated dependencies permit distinct players' bindings to complete
-in either order while retaining source public-observation barriers. A mixed
-source program checks heterogeneous results, initial secrets and public chance.
+Generated dependencies retain source order, public default timing and actual
+choices. Arbitrary schedulers and deviations use exact full-configuration laws.
+Heterogeneous values, correlated initial inputs and public chance stay supported.
 -/
 
 namespace VegasTests.EventCompilation
 
-open Vegas
-open GameTheory.Math.Probability
+open Vegas GameTheory.Math.Probability
 
 noncomputable section
 
@@ -40,43 +36,36 @@ private def pairSource : SourceProgram Bool simpleExpr [] ∅ :=
   .reveal 3 true 1 (by decide) (.there .here) (by decide) <|
   .ret []
 
-private abbrev pairOrder := Vegas.EventGraph.barrierOrder (outputLayout pairSource)
-
 private def pairGraph := toEventGraph pairSource
-
 private def pairConfig : pairGraph.Config := .initial (fun input => nomatch input)
-
 private abbrev first : pairGraph.EventId := ⟨0, by decide⟩
 private abbrev second : pairGraph.EventId := ⟨1, by decide⟩
-
 private theorem first_ready : pairConfig.cut.Ready first := by decide
 
-private theorem second_ready : pairConfig.cut.Ready second := by decide
-
-/-- These are the compiler's actual certified nodes, not a hand-built graph. -/
 example : pairGraph.InformationDiscipline pairGraph.prefixSchema :=
   toEventGraph_informationDiscipline pairSource
 
-private def completedSecond : pairGraph.Config :=
-  pairConfig.complete second second_ready (.success true) (.success true)
+/-- Full source ranking makes only the first binding initially ready. -/
+example : pairConfig.cut.enabled = {first} := by decide
+example : ¬ pairConfig.cut.Ready second := by decide
 
-/-- A real semantic step accepts the second source commitment first. -/
-private theorem step_second :
-    pairConfig.step second second_ready (.success true) = PMF.pure completedSecond := by
-  change (PMF.pure (PublicationResult.success true)).map _ = _
-  rw [PMF.pure_map]
-  rfl
+private def completedFirst : pairGraph.Config :=
+  pairConfig.complete first first_ready (some (.success false)) (.success false)
 
-example : completedSecond.history.map Vegas.EventGraph.Completion.event = [second] := rfl
+private theorem step_first :
+    pairConfig.step first first_ready (some (.success false)) = PMF.pure completedFirst := by
+  rw [pairConfig.step_eq_map_of_eval first first_ready (some (.success false))
+    (PMF.pure (PublicationResult.success false)) (by rfl)]
+  exact PMF.pure_map _ _
 
-example : completedSecond.cut.Ready first :=
-  first_ready.after_complete second_ready (by decide)
+example : completedFirst.history.map Vegas.EventGraph.Completion.event = [first] := rfl
+example : completedFirst.cut.Ready second := by decide
+example : completedFirst.defaults = ⟨[none]⟩ := rfl
 
-example : completedSecond ∈ (pairConfig.step second second_ready (.success true)).support := by
-  rw [step_second]
+example : completedFirst ∈
+    (pairConfig.step first first_ready (some (.success false))).support := by
+  rw [step_first]
   exact (PMF.mem_support_pure_iff _ _).mpr rfl
-
-example : eventCount pairSource = 4 := rfl
 
 private def firstRefs : ContextRefs pairGraph.layout
     [(0, CellTy.commitment false simpleExpr.bool)] :=
@@ -87,9 +76,7 @@ private def firstState (choice : Bool) :
     State simpleExpr [(0, CellTy.commitment false simpleExpr.bool)] :=
   Env.cons (PublicationResult.success choice) (Env.empty (CellVal simpleExpr))
 
-/-- The second player can reconstruct its source decision view before the
-foreign commitment has completed. Hidden entries require neither a value nor
-a fabricated in-domain default. -/
+/-- Hidden cells require neither a fabricated value nor an in-domain default. -/
 example (choice : Bool) :
     decodeObservation? true firstRefs (pairGraph.playerStore true pairConfig.store) =
       some (sourceObserve true (firstState choice)) := by
@@ -100,60 +87,21 @@ example (choice : Bool) :
   | here => rfl
   | there source => nomatch source
 
-/-- An unavailable own binding is genuinely unavailable, rather than silently
-decoded as a payload value. -/
 example : decodeObservation? (Γ := [(0, CellTy.commitment false simpleExpr.bool)])
     false firstRefs (pairGraph.playerStore false pairConfig.store) = none := rfl
 
 private def pairProfile : SourceProgram.BehavioralProfile pairSource :=
   fun _ =>
-    (fun _ _ => PMF.pure (.success false),
-     (fun _ _ => PMF.pure (.success true),
-      (fun _ _ => PMF.pure true,
-       (fun _ _ => PMF.pure true, PUnit.unit))))
+    (fun _ _ _ => PMF.pure (some (.success false)),
+     (fun _ _ _ => PMF.pure (some (.success true)),
+      (fun _ _ _ => PMF.pure true,
+       (fun _ _ _ => PMF.pure true, PUnit.unit))))
 
-private def orderSensitiveFirst : pairGraph.BehavioralPolicy false :=
-  fun event actor observation =>
-    if same : event = first then by
-      subst event
-      exact PMF.pure (.success (decide (second ∈ observation.completionOrder)))
-    else compileEventProfile pairSource pairProfile false event actor observation
-
-/-- The arbitrary policy class really can use public completion order. -/
-example : orderSensitiveFirst first rfl (pairGraph.playerObserve false pairConfig) =
-    PMF.pure (.success false) := by
-  simp [orderSensitiveFirst, Vegas.EventGraph.playerObserve, pairConfig,
-    Vegas.EventGraph.Config.initial]
-
-example : orderSensitiveFirst first rfl (pairGraph.playerObserve false completedSecond) =
-    PMF.pure (.success true) := by
-  simp [orderSensitiveFirst, Vegas.EventGraph.playerObserve, completedSecond,
-    Vegas.EventGraph.Config.complete, pairConfig, Vegas.EventGraph.Config.initial]
-
-/-- The actual order-sensitive deviation, not just a compiled source policy,
-is covered by the asynchronous graph mixture theorem. -/
-theorem pairSource_finiteBindingTypes : pairSource.FiniteBindingTypes :=
-  ⟨inferInstanceAs (Finite Bool), inferInstanceAs (Finite Bool), trivial⟩
-
-example (inputs : PMF pairGraph.Inputs) (inputsFinite : inputs.support.Finite)
-    (scheduler : pairGraph.PublicScheduler) :
-    ∃ mixture : PMF (pairGraph.BehavioralPolicy false),
-      (inputs.bind fun initial => pairGraph.runPolicies scheduler
-        (GameTheory.Profile.update (sig := pairGraph.gameSignature)
-          (compileEventProfile pairSource pairProfile)
-          false orderSensitiveFirst) initial).map Vegas.EventGraph.Config.store =
-        mixture.bind fun alternative =>
-          (inputs.bind fun initial => pairGraph.runPolicies pairGraph.canonicalScheduler
-            (GameTheory.Profile.update (sig := pairGraph.gameSignature)
-              (compileEventProfile pairSource pairProfile)
-              false alternative) initial).map Vegas.EventGraph.Config.store := by
-  obtain ⟨mixture, _, law⟩ :=
-    (toEventGraph_barrierOrdered pairSource).exists_deviation_mixture
-      (toEventGraph_finiteActions pairSource pairSource_finiteBindingTypes)
-      inputs inputsFinite scheduler (compileEventProfile pairSource pairProfile)
-      false orderSensitiveFirst
-  rw [normalizeProfile_compileEventProfile] at law
-  exact ⟨mixture, law⟩
+/-- Every graph profile, including arbitrary deviations, has one scheduler law. -/
+example (scheduler : pairGraph.PublicScheduler) (profile : pairGraph.BehavioralProfile) :
+    pairGraph.runPolicies scheduler profile pairConfig.inputs =
+      pairGraph.runPolicies pairGraph.canonicalScheduler profile pairConfig.inputs :=
+  toEventGraph_runPolicies_eq pairSource profile scheduler pairGraph.canonicalScheduler _
 
 private def pairSetup : SourceProgram.Setup (Player := Bool) (L := simpleExpr) where
   context := []
@@ -164,61 +112,19 @@ private def pairSetup : SourceProgram.Setup (Player := Bool) (L := simpleExpr) w
   accounts := rfl
   exitTransfers := fun _ => 0
 
-instance : pairSetup.FiniteInitialLaw := ⟨by simp [pairSetup]⟩
-
-/-- The order-sensitive asynchronous deviation has a source-policy mixture
-for the program whose independent bindings admit both completion orders. -/
-example (scheduler : pairSetup.eventGraph.PublicScheduler) :
-    ∃ mixture : PMF (SourceProgram.BehavioralPolicy false pairSource),
-      (pairSetup.initialLaw.bind fun initial =>
-        (pairSetup.eventGraph.terminalOutcomes scheduler
-          (GameTheory.Profile.update (sig := pairSetup.eventGraph.gameSignature)
-            (compileEventProfile pairSource pairProfile)
-            false orderSensitiveFirst)
-          (pairSetup.eventInputs initial)).map
-            (terminalState pairSource)) =
-        mixture.bind fun alternative =>
-          pairSetup.run (GameTheory.Profile.update
-            (sig := SourceProgram.gameSignature pairSource) pairProfile false alternative) := by
-  obtain ⟨mixture, _, law⟩ := scheduled_setup_deviation_law pairSetup
-    pairSource_finiteBindingTypes scheduler pairProfile false orderSensitiveFirst
-  exact ⟨mixture, law⟩
-
-/-- The actual compiled second-player policy can act first. It does not wait
-for the foreign binding merely to reconstruct its source observation. -/
-example : compileEventProfile pairSource pairProfile true second rfl
-      (pairGraph.playerObserve true pairConfig) =
-    PMF.pure (PublicationResult.success true) := by
-  rfl
-
-/-- Publicly completing the other hidden commitment first does not alter the
-first player's prescribed decision. Arbitrary policies may still use that
-completion-order signal. -/
-example : compileEventProfile pairSource pairProfile false first rfl
-      (pairGraph.playerObserve false completedSecond) =
-    compileEventProfile pairSource pairProfile false first rfl
-      (pairGraph.playerObserve false pairConfig) := by
-  exact compileEventPolicy_complete_hidden pairSource false
-    (pairProfile false) pairConfig second first second_ready
-    (.success true) (.success true) (by decide) (by decide) rfl
-
-/-- Compilation creates two initially enabled bindings, not a global cursor. -/
-example : (EventOrder.Cut.empty pairOrder).enabled =
-    {⟨0, by decide⟩, ⟨1, by decide⟩} := by decide
-
-private def secondBound : pairOrder.Cut :=
-  (EventOrder.Cut.empty pairOrder).complete ⟨1, by decide⟩ (by decide)
-
-example : ⟨1, by decide⟩ ∈ secondBound.completed ∧
-    ⟨0, by decide⟩ ∉ secondBound.completed := by decide
-
-/-- Neither public result is enabled until both earlier bindings are complete. -/
-example : ¬ secondBound.Ready ⟨2, by decide⟩ ∧
-    ¬ secondBound.Ready ⟨3, by decide⟩ := by decide
-
-example : (secondBound.complete ⟨0, by decide⟩ (by decide)).Ready ⟨2, by decide⟩ := by decide
-
-example : ¬ (secondBound.complete ⟨0, by decide⟩ (by decide)).Ready ⟨3, by decide⟩ := by decide
+/-- One replacement source policy works before private setup is sampled.
+The exact configuration law requires neither a mixture nor finite payloads. -/
+example (scheduler : pairSetup.eventGraph.PublicScheduler)
+    (replacement : pairSetup.eventGraph.BehavioralPolicy false) :
+    (pairSetup.initialLaw.bind fun initial =>
+      (pairSetup.eventGraph.terminalOutcomes scheduler
+        (GameTheory.Profile.update (sig := pairSetup.eventGraph.gameSignature)
+          (compileEventProfile pairSource pairProfile) false replacement)
+        (pairSetup.eventInputs initial)).map (terminalConfig pairSource)) =
+      pairSetup.run (GameTheory.Profile.update
+        (sig := SourceProgram.gameSignature pairSource) pairProfile false
+        (backtranslateEventPolicy pairSource false replacement)) :=
+  scheduled_setup_deviation_law pairSetup scheduler pairProfile false replacement
 
 /-- The typed catalog retains the original optional payload separately from
 the failure-aware publication result. -/
@@ -256,7 +162,8 @@ example (scheduler : SourceSemantics.mixedSetup.eventGraph.PublicScheduler)
       (compileEventProfile SourceSemantics.mixedSetup.program profile)
       (encodeInputs SourceSemantics.mixedState)).map
         (terminalState SourceSemantics.mixedSetup.program) =
-      SourceProgram.run SourceSemantics.mixedSetup.program profile SourceSemantics.mixedState :=
+      (SourceProgram.run SourceSemantics.mixedSetup.program profile
+        SourceSemantics.mixedState).map SourceProgram.Config.state :=
   scheduled_terminalState_law SourceSemantics.mixedSetup.program scheduler profile
     SourceSemantics.mixedState
 
@@ -270,7 +177,7 @@ private def rejectingInitial : rejectingGraph.Config :=
 
 private def rejectingBound : rejectingGraph.Config :=
   rejectingInitial.complete rejectingBind (by decide)
-    (PublicationResult.success true) (PublicationResult.success true)
+    (some (PublicationResult.success true)) (PublicationResult.success true)
 
 /-- An unsatisfiable guard compiles, and its reveal computes failure. It is not
 silently replaced by an unrestricted commitment or a valid in-domain value. -/
@@ -285,85 +192,9 @@ from its own recall. -/
 example : decodeHistory SourceSemantics.falseGuardProgram
       rejected.history SourceSemantics.Player.alice =
     [SourceProgram.OwnAction.commit (L := simpleExpr) SourceSemantics.Player.alice 20 .bool
-      (PublicationResult.success true),
+      (some (PublicationResult.success true)),
      SourceProgram.OwnAction.reveal SourceSemantics.Player.alice 20 true] := by
   rfl
-
-private def pairRuntime : EventGraphRuntime pairGraph := ⟨fun _ => 3⟩
-
-private def pendingInitial : EventGraphRuntime.State pairGraph :=
-  EventGraphRuntime.State.initial (fun input => nomatch input)
-
-private def preparedSecond : EventGraphRuntime.State pairGraph :=
-  EventGraphRuntime.privateStep pendingInitial true (.prepare 0 ⟨.bool, true⟩)
-
-private def pendingSecond : Interaction.Message Bool (EventGraphRuntime.Payload pairGraph) :=
-  ⟨(true, 0), .commitment second (true, .prepared 0)⟩
-
-/-- Private preparation does not publish the selected binding's meaning. -/
-example : preparedSecond.publicView = pendingInitial.publicView := rfl
-
-/-- Independent initially ready events get independent activation entries. -/
-example : pendingInitial.activatedAt first = some 0 ∧
-    pendingInitial.activatedAt second = some 0 := by decide
-
-/-- The second source commitment has a live native inclusion window before
-the first source commitment is included. -/
-example : preparedSecond.WithinDeadline pairRuntime second := by
-  change 0 < 3
-  decide
-
-/-- The boundary belongs to expiry, not to packet acceptance. -/
-example : ¬ ({ preparedSecond with clock := 3 }).WithinDeadline pairRuntime second := by
-  change ¬ 3 < 3
-  decide
-
-example : EventGraphRuntime.handle pairRuntime { preparedSecond with clock := 3 }
-    pendingSecond = none := by
-  have ready : preparedSecond.config.cut.Ready second := second_ready
-  have late : ¬ ({ preparedSecond with clock := 3 }).WithinDeadline pairRuntime second := by
-    change ¬ 3 < 3
-    decide
-  simp only [EventGraphRuntime.handle, pendingSecond, dite_eq_left ready, dite_eq_right late]
-
-/-- A completed event cannot be accepted again, independently of its clock. -/
-example : EventGraphRuntime.handle pairRuntime
-    { preparedSecond with config := completedSecond } pendingSecond = none := by
-  have finished : ¬ completedSecond.cut.Ready second := by decide
-  simp only [EventGraphRuntime.handle, pendingSecond, dite_eq_right finished]
-
-example : EventGraphRuntime.handle pairRuntime pendingInitial
-    ⟨(true, 0), .malformed ⟨.bool, true⟩⟩ = none := rfl
-
-/-- A real event-addressed handler accepts the second source binding first. -/
-example : (EventGraphRuntime.handle pairRuntime preparedSecond pendingSecond).isSome = true := by
-  have ready : preparedSecond.config.cut.Ready second := second_ready
-  have timely : preparedSecond.WithinDeadline pairRuntime second := by
-    change 0 < 3
-    decide
-  have vacant : preparedSecond.accepted (.inr second) = none := rfl
-  have unused : preparedSecond.HandleUnused (true, .prepared 0) := by
-    intro field
-    cases field with
-    | inl input => nomatch input
-    | inr event =>
-        change (none : Option (EventGraphRuntime.Handle pairGraph)) ≠ some _
-        simp
-  simp only [EventGraphRuntime.handle, pendingSecond, dite_eq_left ready, dite_eq_left timely]
-  split
-  · rename_i owner payload outputEq _ _
-    change Vegas.EventGraph.EventField.binding true simpleExpr.bool =
-      .binding owner payload at outputEq
-    cases outputEq
-    simpa [Interaction.Message.sender, unused] using vacant
-  · rename_i owner payload binding checks outputEq _ _
-    change Vegas.EventGraph.EventField.binding true simpleExpr.bool =
-      .publication payload at outputEq
-    cases outputEq
-  · rename_i payload law outputEq _ _
-    change Vegas.EventGraph.EventField.binding true simpleExpr.bool =
-      .publicData payload at outputEq
-    cases outputEq
 
 end
 

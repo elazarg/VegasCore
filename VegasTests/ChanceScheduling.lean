@@ -1,13 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.SchedulerErasure
+import Vegas.Compile.EventGraphScheduling
 import Vegas.Expr.Simple
 
-/-! # Chance-aware scheduling and visible-coin policy obstruction
+/-! # Exact chance scheduling and a visible-coin policy obstruction
 
-Independent chance nodes have the same terminal store law under every adaptive
-public scheduler. A strategic policy can still react to a ready public coin;
-normalizing completion order does not erase the sampled public value.
+Compiler-generated chance graphs retain their full source configuration law
+under every public scheduler. In a graph with concurrent events, an actual
+strategic callback can respond to an intervening public sample.
 -/
 
 noncomputable section
@@ -35,49 +35,19 @@ private def coin {Field : Type} [DecidableEq Field]
     reads_mem := fun ref => nomatch ref
   }
 
-private abbrev chanceGraph : Vegas.EventGraph Bool simpleExpr where
-  inputCount := 0
-  order := parallelOrder
-  inputLayout := Fin.elim0
-  outputLayout _ := .publicData .bool
-  nodes _ := coin _
-  reads_available := by
-    intro event field member
-    simp [coin, EventCode.readFields] at member
-  payoffs := []
+private def chanceSource : SourceProgram Bool simpleExpr [] ∅ :=
+  .sample (payload := .bool) 0 (by decide) (.weighted fairBool) <|
+  .sample (payload := .bool) 1 (by decide) (.weighted fairBool) <| .ret []
 
-private def chanceProfile : chanceGraph.BehavioralProfile :=
-  fun _ event actor _ => by
-    change (none : Option Bool) = some _ at actor
-    cases actor
+private abbrev chanceGraph := toEventGraph chanceSource
+private def chanceProfile : SourceProgram.BehavioralProfile chanceSource := fun _ => PUnit.unit
 
-private theorem chanceIndependent : chanceGraph.ReadyIndependent chanceProfile :=
-  readyIndependent_of_ownerless chanceProfile (fun _ => rfl)
-
-/-- Actual adaptive scheduler independence for two nondegenerate chance nodes. -/
+/-- Adaptive public scheduling preserves the complete chance configuration law. -/
 example (scheduler : chanceGraph.PublicScheduler) :
-    (chanceGraph.runPolicies scheduler (chanceGraph.normalizeProfile chanceProfile)
-      (fun input => nomatch input)).map Config.store =
-    (chanceGraph.runPolicies chanceGraph.canonicalScheduler
-      (chanceGraph.normalizeProfile chanceProfile) (fun input => nomatch input)).map
-        Config.store :=
-  chanceIndependent.runPolicies_store_eq_canonical scheduler _
-
-private abbrev chanceInitial : chanceGraph.Config := Config.initial (fun input => nomatch input)
-
-private theorem chanceReady (event : chanceGraph.EventId) :
-    chanceInitial.cut.Ready event := by
-  simp [chanceInitial, Config.initial, EventOrder.Cut.Ready, EventOrder.Cut.empty,
-    chanceGraph, parallelOrder]
-
-/-- The local law retains the cut, typed store and original own-action recall. -/
-example :
-    (policyStepThen chanceProfile chanceInitial 0 1 (chanceReady 0) (chanceReady 1)
-      (by decide)).map chanceGraph.semanticKey =
-    (policyStepThen chanceProfile chanceInitial 1 0 (chanceReady 1) (chanceReady 0)
-      (by decide)).map chanceGraph.semanticKey :=
-  chanceIndependent.policyStepThen_map_semanticKey_comm chanceInitial 0 1
-    (chanceReady 0) (chanceReady 1) (by decide)
+    (chanceGraph.terminalOutcomes scheduler (compileEventProfile chanceSource chanceProfile)
+      (encodeInputs (Env.empty (CellVal simpleExpr)))).map (terminalConfig chanceSource) =
+      SourceProgram.run chanceSource chanceProfile (Env.empty (CellVal simpleExpr)) :=
+  scheduled_terminalConfig_law chanceSource scheduler chanceProfile _
 
 private abbrev mixedOutputs : Fin 2 → EventField Bool simpleExpr :=
   Fin.cases (.publicData .bool) fun _ => .binding false .bool
@@ -107,16 +77,24 @@ private theorem mixedReady (event : mixedGraph.EventId) : mixedInitial.cut.Ready
 
 private def visibleCoinPolicy : mixedGraph.BehavioralProfile := fun who event =>
   Fin.cases
-    (fun actor _ => False.elim (by
+    (fun actor _ _ => False.elim (by
       change (none : Option Bool) = some who at actor
       cases actor))
     (fun tail => Fin.cases
-      (fun _ observation =>
-        PMF.pure (.success ((observation.store (.inr 0)).getD false)))
+      (fun _ observation _ =>
+        PMF.pure (some (.success ((observation.store (.inr 0)).getD false))))
       (fun impossible => Fin.elim0 impossible) tail) event
 
 private abbrev sampledTrue : mixedGraph.Config :=
   mixedInitial.complete 0 (mixedReady 0) PUnit.unit true
+
+private theorem initially_active (who : Bool) : who ∉ mixedInitial.defaulted := by
+  change who ∉ (∅ : Finset Bool)
+  simp
+
+private theorem sampled_active (who : Bool) : who ∉ sampledTrue.defaulted := by
+  change who ∉ (∅ : Finset Bool)
+  simp
 
 /-- The obstructing coin result has positive mass in the original evaluator. -/
 private theorem trueSupported : true ∈ fairBool.denote.support := by
@@ -131,36 +109,25 @@ private theorem sampleSupported :
     (by rfl), PMF.support_map]
   exact ⟨true, trueSupported, rfl⟩
 
-private theorem normalized_before :
-    normalizedAction visibleCoinPolicy mixedInitial 1 =
-      PMF.pure (PublicationResult.success false) := by rfl
+private theorem before_sample :
+    visibleCoinPolicy false 1 rfl (mixedGraph.playerObserve false mixedInitial)
+      (initially_active false) = PMF.pure (some (PublicationResult.success false)) := by rfl
 
-private theorem normalized_after :
-    normalizedAction visibleCoinPolicy sampledTrue 1 =
-      PMF.pure (PublicationResult.success true) := by rfl
+private theorem after_sample :
+    visibleCoinPolicy false 1 rfl (mixedGraph.playerObserve false sampledTrue)
+      (sampled_active false) = PMF.pure (some (PublicationResult.success true)) := by rfl
 
-/-- Even without a dependency edge, the actual normalized binding kernel sees
-an intervening public sample. Action stability therefore remains necessary. -/
-example : ¬ mixedGraph.ReadyIndependent visibleCoinPolicy := by
-  intro independent
-  have same := independent.normalizedAction_complete mixedInitial 1 0 (mixedReady 1)
-    (mixedReady 0) (by decide) PUnit.unit true
-  change normalizedAction visibleCoinPolicy sampledTrue 1 =
-    normalizedAction visibleCoinPolicy mixedInitial 1 at same
-  rw [normalized_before, normalized_after] at same
-  have mass := congrArg
-    (fun law : PMF (PublicationResult Bool) => law (.success true)) same
-  simp at mass
-
-/-- The observation change used by the obstruction occurs on actual support. -/
+/-- A supported public sample changes the actual active player's action law. -/
 example : ∃ next ∈ (mixedInitial.step 0 (mixedReady 0) PUnit.unit).support,
-    normalizedAction visibleCoinPolicy next 1 ≠
-      normalizedAction visibleCoinPolicy mixedInitial 1 := by
-  refine ⟨sampledTrue, sampleSupported, ?_⟩
-  rw [normalized_before, normalized_after]
+    ∃ active : false ∉ next.defaulted,
+      visibleCoinPolicy false 1 rfl (mixedGraph.playerObserve false next) active ≠
+        visibleCoinPolicy false 1 rfl (mixedGraph.playerObserve false mixedInitial)
+          (initially_active false) := by
+  refine ⟨sampledTrue, sampleSupported, sampled_active false, ?_⟩
+  rw [before_sample, after_sample]
   intro same
   have mass := congrArg
-    (fun law : PMF (PublicationResult Bool) => law (.success true)) same
+    (fun law : PMF (Option (PublicationResult Bool)) => law (some (.success true))) same
   simp at mass
 
 end VegasTests.ChanceScheduling

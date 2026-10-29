@@ -74,8 +74,10 @@ private theorem option_value_cast_roundtrip
   cases same
   rfl
 
-/-- Completing a resolution through its graph step stores exactly its
-deterministic resolution result.  The statement transports the endpoint
+variable [DecidableEq Player]
+
+/-- Completing a resolution stores exactly the result of its effective disclosure,
+with defaulted owners withheld automatically. The statement transports the endpoint
 value back across the public-output identification so callers need not expose
 the evaluator's dependent casts. -/
 theorem Config.resolution_step_output
@@ -89,10 +91,12 @@ theorem Config.resolution_step_output
     (action : graph.Action event)
     (member : next ∈ (config.step event ready action).support) :
     EventCode.resolveOutput? binding checks
-        (cast (congrArg EventField.Action outputEq) action) config.store =
+        (if owner ∈ config.defaulted then false else
+          cast (congrArg EventField.Action outputEq) action) config.store =
       cast (congrArg Option (congrArg EventField.Value outputEq))
         (next.outputs event) := by
-  let disclose := cast (congrArg EventField.Action outputEq) action
+  let requested := cast (congrArg EventField.Action outputEq) action
+  let disclose := if owner ∈ config.defaulted then false else requested
   have readsEq : (graph.nodes event).readFields =
       insert binding.field (GuardCheck.listReadFields checks) := by
     calc
@@ -116,13 +120,16 @@ theorem Config.resolution_step_output
   | none => simp [resolved] at defined
   | some result =>
       have graphLaw := config.step_eq_map_of_code event ready outputEq
-        (.resolve owner payload binding checks) codeEq disclose (PMF.pure result)
-      rw [EventCode.resolve_eval?, resolved] at graphLaw
+        (.resolve owner payload binding checks) codeEq requested (PMF.pure result)
+      rw [EventCode.resolve_eval?] at graphLaw
+      change (EventCode.resolveOutput? binding checks disclose config.store).map PMF.pure =
+        some (PMF.pure result) → _ at graphLaw
+      rw [resolved] at graphLaw
       specialize graphLaw rfl
       simp only [PMF.pure_map] at graphLaw
       have actionRoundtrip :
-          cast (congrArg EventField.Action outputEq.symm) disclose = action := by
-        simp [disclose]
+          cast (congrArg EventField.Action outputEq.symm) requested = action := by
+        simp [requested]
       rw [actionRoundtrip] at graphLaw
       rw [graphLaw, PMF.mem_support_pure_iff _ _] at member
       subst next
@@ -175,6 +182,7 @@ theorem Config.Reachable.publication_binding {inputs : graph.Inputs} {config : g
           after.store before.store storedEq
         rwa [viewEq] at published
 
+omit [DecidableEq Player] in
 /-- The deferred checks of a publication read only inputs and outputs of its
 predecessors. A store that retains those outputs keeps their verdict. -/
 theorem Config.publication_guards_retained (event : graph.EventId) (owner : Player)

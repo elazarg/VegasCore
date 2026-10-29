@@ -5,9 +5,9 @@ import Vegas.EventGraph.Execution
 /-! # Local commutation of independent ready events
 
 Two distinct events that are ready at the same cut cannot read one another's
-outputs. Consequently, fixing both event actions makes their local semantic
-effects commute after chronological history is projected away. This file does
-not claim scheduler- or policy-level schedule invariance.
+outputs. Their evaluator footprints and typed output writes therefore remain independent.
+The actual executor also carries absorbing defaults; no general law commuting
+its completed decisions is asserted.
 -/
 
 noncomputable section
@@ -28,6 +28,8 @@ theorem output_not_mem_reads_of_ready {config : graph.Config}
   intro read
   exact writerReady.1 (readerReady.2
     (graph.reads_available reader (.inr writer) read))
+
+variable [DecidableEq Player]
 
 /-- Completing one of two simultaneously ready events does not change any
 field in the other event's evaluator footprint. -/
@@ -94,58 +96,6 @@ theorem store_complete_comm {config : graph.Config} {left right : graph.EventId}
         · simp [Config.store, Config.complete, Function.update, eventLeft, eventRight]
 
 
-private def outputLaw (config : graph.Config) (event : graph.EventId)
-    (ready : config.cut.Ready event) (action : graph.Action event) :
-    PMF (graph.outputLayout event).Value :=
-  ((graph.nodes event).eval? action config.store).get
-    (EventCode.eval?_isSome_of_reads (graph.nodes event) action config.store
-      (fun _ read => config.read_available ready read))
-
-private theorem outputLaw_after_complete {config : graph.Config}
-    {completed reader : graph.EventId}
-    (completedReady : config.cut.Ready completed)
-    (readerReady : config.cut.Ready reader)
-    (different : completed ≠ reader)
-    (completedAction : graph.Action completed)
-    (value : (graph.outputLayout completed).Value)
-    (readerAction : graph.Action reader) :
-    outputLaw (config.complete completed completedReady completedAction value) reader
-        (readerReady.after_complete completedReady different.symm) readerAction =
-      outputLaw config reader readerReady readerAction := by
-  have evalEq := eval?_after_complete completedReady readerReady completedAction value
-    readerAction
-  have present := EventCode.eval?_isSome_of_reads (graph.nodes reader) readerAction
-    (config.complete completed completedReady completedAction value).store
-    (fun _ read => (config.complete completed completedReady completedAction value).read_available
-      (readerReady.after_complete completedReady different.symm) read)
-  cases hleft : (graph.nodes reader).eval? readerAction
-      (config.complete completed completedReady completedAction value).store with
-  | none => simp [hleft] at present
-  | some law =>
-      rw [hleft] at evalEq
-      have hright : (graph.nodes reader).eval? readerAction config.store = some law :=
-        evalEq.symm
-      simp [outputLaw, hleft, hright]
-
-private theorem step_eq_outputLaw_map (config : graph.Config)
-    (event : graph.EventId) (ready : config.cut.Ready event)
-    (action : graph.Action event) :
-    config.step event ready action =
-      (outputLaw config event ready action).map
-        (config.complete event ready action) := rfl
-
-private theorem map_store_step (config : graph.Config)
-    (event : graph.EventId) (ready : config.cut.Ready event)
-    (action : graph.Action event) :
-    (config.step event ready action).map Config.store =
-      (outputLaw config event ready action).map fun value =>
-        Function.update config.store (.inr event) (some value) := by
-  rw [step_eq_outputLaw_map, PMF.map_comp]
-  apply congrArg (fun observable =>
-    PMF.map observable (outputLaw config event ready action))
-  funext value
-  exact store_complete config event ready action value
-
 /-- Execute two fixed actions in sequence, using support evidence only to
 transport readiness through the first actual `Config.step`. -/
 def stepThen (config : graph.Config) (first second : graph.EventId)
@@ -156,61 +106,5 @@ def stepThen (config : graph.Config) (first second : graph.EventId)
     afterFirst.step second (by
       rw [config.step_cut first firstReady firstAction afterFirst member]
       exact secondReady.after_complete firstReady different.symm) secondAction
-
-private theorem stepThen_map_store (config : graph.Config) (first second : graph.EventId)
-    (firstReady : config.cut.Ready first) (secondReady : config.cut.Ready second)
-    (different : first ≠ second) (firstAction : graph.Action first)
-    (secondAction : graph.Action second) :
-    (stepThen config first second firstReady secondReady different
-      firstAction secondAction).map Config.store =
-    (outputLaw config first firstReady firstAction).bind fun firstValue =>
-      (outputLaw config second secondReady secondAction).map fun secondValue =>
-        ((config.complete first firstReady firstAction firstValue).complete second
-          (secondReady.after_complete firstReady different.symm)
-          secondAction secondValue).store := by
-  unfold stepThen
-  rw [map_bindOnSupport]
-  rw [bindOnSupport_eq_bind_of_eq_on_support _ (g := fun (afterFirst : graph.Config) =>
-    (outputLaw config second secondReady secondAction).map fun secondValue =>
-      Function.update afterFirst.store (.inr second)
-        (show Option (graph.layout (.inr second)).Value from some secondValue))]
-  · rw [step_eq_outputLaw_map, PMF.bind_map]
-    apply bind_congr_on_support _
-    intro firstValue _
-    apply congrArg (fun observable =>
-      PMF.map observable (outputLaw config second secondReady secondAction))
-    funext secondValue
-    exact (store_complete
-      (config.complete first firstReady firstAction firstValue) second
-      (secondReady.after_complete firstReady different.symm)
-      secondAction secondValue).symm
-  · intro afterFirst member
-    rw [step_eq_outputLaw_map, PMF.support_map] at member
-    obtain ⟨firstValue, _, rfl⟩ := member
-    rw [map_store_step]
-    rw [outputLaw_after_complete firstReady secondReady different firstAction firstValue
-      secondAction]
-
-/-- Fixed actions at two distinct simultaneously ready events commute after
-chronological history is projected away to the typed partial store. -/
-theorem stepThen_map_store_comm (config : graph.Config)
-    (left right : graph.EventId)
-    (leftReady : config.cut.Ready left) (rightReady : config.cut.Ready right)
-    (different : left ≠ right)
-    (leftAction : graph.Action left) (rightAction : graph.Action right) :
-    (stepThen config left right leftReady rightReady different
-      leftAction rightAction).map Config.store =
-    (stepThen config right left rightReady leftReady different.symm
-      rightAction leftAction).map Config.store := by
-  rw [stepThen_map_store, stepThen_map_store]
-  simp only [← PMF.bind_pure_comp, Function.comp_def]
-  rw [PMF.bind_comm]
-  apply bind_congr_on_support _
-  intro rightValue _
-  apply bind_congr_on_support _
-  intro leftValue _
-  congr 1
-  exact store_complete_comm leftReady rightReady different leftAction rightAction
-    leftValue rightValue
 
 end Vegas.EventGraph
