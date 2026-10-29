@@ -124,3 +124,23 @@ theorem EventCode.resolve_eval?_playerStore {owner : Player} {payload : L.Ty}
   rw [EventCode.resolveOutput?_playerStore]
 
 end Vegas.EventGraph
+
+namespace Vegas.EventGraph.EventCode
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+/-- Owner-local observation determines the complete guarded resolution result. -/
+theorem resolveOutput?_eq_of_playerObserve_eq {owner : Player} {payload : L.Ty}
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload)) (left right : graph.Config)
+    (observations : graph.playerObserve owner left = graph.playerObserve owner right)
+    (disclose : Bool) :
+    resolveOutput? binding checks disclose left.store =
+      resolveOutput? binding checks disclose right.store := by
+  have stores := congrArg PlayerObservation.store observations
+  change graph.playerStore owner left.store = graph.playerStore owner right.store at stores
+  rw [← resolveOutput?_playerStore binding checks left.store disclose,
+    ← resolveOutput?_playerStore binding checks right.store disclose, stores]
+
+end Vegas.EventGraph.EventCode

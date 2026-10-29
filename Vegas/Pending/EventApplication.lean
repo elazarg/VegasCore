@@ -349,6 +349,16 @@ def playerView (state : State graph) (who : Player) : PlayerView graph where
   observation := graph.playerObserve who state.config
   candidates := fun slot => state.candidates.lookup (who, slot)
 
+/-- Equal native views retain equal graph observations, including default history. -/
+theorem playerView_observation_eq (left right : State graph) (who : Player)
+    (views : left.playerView who = right.playerView who) :
+    graph.playerObserve who left.config = graph.playerObserve who right.config := by
+  apply PlayerObservation.ext graph
+  · exact congrArg (fun view : PlayerView graph => view.observation.completionOrder) views
+  · exact congrArg (fun view : PlayerView graph => view.observation.store) views
+  · exact congrArg (fun view : PlayerView graph => view.observation.ownActions) views
+  · exact congrArg (fun view : PlayerView graph => view.observation.defaults) views
+
 /-- Complete one deterministic event and refresh all event-relative clocks. -/
 def complete (state : State graph) (event : graph.EventId)
     (ready : state.config.cut.Ready event) (action : graph.Action event)

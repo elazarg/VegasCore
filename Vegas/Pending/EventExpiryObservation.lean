@@ -30,6 +30,8 @@ theorem environmentStep_expire_playerView_congr
   have views : left.playerView focal = right.playerView focal := by
     unfold State.playerView
     congr 1
+  have statusEq : left.config.defaulted = right.config.defaulted :=
+    congrArg PlayerObservation.defaulted observationEq
   have cuts := cut_eq_of_completionOrder_eq left.config right.config
     (congrArg PlayerObservation.completionOrder observationEq)
   have clockEq : left.clock = right.clock := congrArg PublicView.clock publicEq
@@ -76,7 +78,10 @@ theorem environmentStep_expire_playerView_congr
               subst rightNext
               exact State.complete_playerView_congr left right focal publicEq observationEq
                 candidatesEq event leftReady rightReady _ _ _ _
-                (fun _ => rfl) (fun _ => rfl)
+                (fun _ => rfl) (fun _ => rfl) (by
+                  rw [left.config.completion_bind_none_defaultEvent event owner payload
+                    outputEq codeEq, right.config.completion_bind_none_defaultEvent event
+                    owner payload outputEq codeEq, statusEq])
           | resolve owner payload binding checks outputEq codeEq =>
               rw [environmentStep_expire_resolve_eq runtime left event leftReady entered
                 leftActivated due owner payload binding checks outputEq codeEq view,
@@ -88,7 +93,10 @@ theorem environmentStep_expire_playerView_congr
               subst rightNext
               exact State.complete_playerView_congr left right focal publicEq observationEq
                 candidatesEq event leftReady rightReady _ _ _ _
-                (fun _ => rfl) (fun _ => rfl)
+                (fun _ => rfl) (fun _ => rfl) (by
+                  rw [left.config.completion_resolve_defaultEvent event owner payload binding
+                    checks outputEq codeEq, right.config.completion_resolve_defaultEvent event
+                    owner payload binding checks outputEq codeEq, statusEq])
         · have rightNotDue : ¬runtime.deadline event ≤ right.clock - entered := by
             rw [← clockEq]; exact due
           rw [environmentStep_expire_of_not_due runtime left event leftReady entered leftActivated

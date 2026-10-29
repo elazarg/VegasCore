@@ -22,16 +22,9 @@ private theorem handle_playerView_transport_of_sender (runtime : EventGraphRunti
       after.playerView focal = next.playerView focal := by
   have publicEq : left.publicView = right.publicView :=
     congrArg PlayerView.publicView views
-  have observationEq : graph.playerObserve focal left.config =
-      graph.playerObserve focal right.config := by
-    have observed := congrArg
-      (fun view : PlayerView graph =>
-        (view.observation.completionOrder, view.observation.store,
-          view.observation.ownActions)) views
-    apply PlayerObservation.ext graph
-    · exact congrArg Prod.fst observed
-    · exact congrArg (fun value => value.2.1) observed
-    · exact congrArg (fun value => value.2.2) observed
+  have observationEq := left.playerView_observation_eq right focal views
+  have statusEq : left.config.defaulted = right.config.defaulted :=
+    congrArg PlayerObservation.defaulted observationEq
   have candidatesEq : (fun slot => left.candidates.lookup (focal, slot)) =
       fun slot => right.candidates.lookup (focal, slot) :=
     congrArg PlayerView.candidates views
@@ -59,10 +52,10 @@ private theorem handle_playerView_transport_of_sender (runtime : EventGraphRunti
   rcases message with ⟨id, packet⟩
   change id.1 = focal at sender
   cases packet with
-  | malformed raw => cases accepted
+  | malformed raw => simp [handle] at accepted
   | commitment event candidate =>
-      obtain ⟨ready, timely, owner, payload, outputEq, codeEq, view, senderOwner, handleOwner,
-        vacant, unused, afterEq⟩ :=
+      obtain ⟨active, ready, timely, owner, payload, outputEq, codeEq, view, senderOwner,
+        handleOwner, vacant, unused, afterEq⟩ :=
         (handle_commitment_iff runtime left after id event candidate).mp accepted
       have ownerEq : owner = focal := senderOwner.symm.trans sender
       cases ownerEq
@@ -82,7 +75,7 @@ private theorem handle_playerView_transport_of_sender (runtime : EventGraphRunti
         rw [congrFun candidatesEq slot]
       have rightAccepted := handle_commitment_eq runtime right id event (focal, slot) focal
         payload outputEq codeEq view (readyTransport ready) (timelyTransport timely)
-        senderOwner rfl rightVacant rightUnused
+        (by simpa only [← statusEq] using active) senderOwner rfl rightVacant rightUnused
       refine ⟨_, rightAccepted, ?_⟩
       rw [afterEq]
       apply State.acceptHandle_playerView_congr
@@ -92,9 +85,12 @@ private theorem handle_playerView_transport_of_sender (runtime : EventGraphRunti
         rw [resultEq]
       · intro _
         rw [resultEq]
+      · rw [left.config.completion_bind_some_defaultEvent event focal payload outputEq codeEq,
+          right.config.completion_bind_some_defaultEvent event focal payload outputEq codeEq]
   | opening event candidate raw =>
-      obtain ⟨ready, timely, owner, payload, binding, checks, outputEq, codeEq, value, result,
-        view, senderOwner, handleOwner, associated, rawEq, verified, stored, resolved, afterEq⟩ :=
+      obtain ⟨active, ready, timely, owner, payload, binding, checks, outputEq, codeEq, value,
+        result, view, senderOwner, handleOwner, associated, rawEq, verified, stored,
+        resolved, afterEq⟩ :=
         (handle_opening_iff runtime left after id event candidate raw).mp accepted
       have ownerEq : owner = focal := senderOwner.symm.trans sender
       cases ownerEq
@@ -120,13 +116,19 @@ private theorem handle_playerView_transport_of_sender (runtime : EventGraphRunti
         exact resolved
       have rightAccepted := handle_opening_eq runtime right id event (focal, slot) focal
         payload binding checks outputEq codeEq view (readyTransport ready)
-        (timelyTransport timely) senderOwner rfl rightAssociated value rightVerified rightStored
+        (timelyTransport timely) (by simpa only [← statusEq] using active)
+        senderOwner rfl rightAssociated value rightVerified rightStored
         result rightResolved
       rw [rawEq]
       refine ⟨_, rightAccepted, ?_⟩
       rw [afterEq]
       apply State.complete_playerView_congr left right focal publicEq observationEq candidatesEq
-        event ready (readyTransport ready) <;> exact fun _ => rfl
+        event ready (readyTransport ready)
+      · exact fun _ => rfl
+      · exact fun _ => rfl
+      · rw [left.config.completion_resolve_defaultEvent event focal payload binding checks
+          outputEq codeEq, right.config.completion_resolve_defaultEvent event focal payload
+          binding checks outputEq codeEq, statusEq]
 
 /-- Handling the same focal-authored packet has the same focal observation in
 two states with equal focal views. Foreign candidate meanings, binding values,
@@ -164,16 +166,9 @@ private theorem handle_commitment_playerView_transport (runtime : EventGraphRunt
       after.playerView focal = next.playerView focal := by
   have publicEq : left.publicView = right.publicView :=
     congrArg PlayerView.publicView views
-  have observationEq : graph.playerObserve focal left.config =
-      graph.playerObserve focal right.config := by
-    have observed := congrArg
-      (fun view : PlayerView graph =>
-        (view.observation.completionOrder, view.observation.store,
-          view.observation.ownActions)) views
-    apply PlayerObservation.ext graph
-    · exact congrArg Prod.fst observed
-    · exact congrArg (fun value => value.2.1) observed
-    · exact congrArg (fun value => value.2.2) observed
+  have observationEq := left.playerView_observation_eq right focal views
+  have statusEq : left.config.defaulted = right.config.defaulted :=
+    congrArg PlayerObservation.defaulted observationEq
   have candidatesEq := congrArg PlayerView.candidates views
   have acceptedEq : left.accepted = right.accepted :=
     congrArg PublicView.accepted publicEq
@@ -185,7 +180,7 @@ private theorem handle_commitment_playerView_transport (runtime : EventGraphRunt
       (congrArg PlayerObservation.completionOrder observationEq)
   change (fun slot => left.candidates.lookup (focal, slot)) =
     (fun slot => right.candidates.lookup (focal, slot)) at candidatesEq
-  obtain ⟨ready, timely, owner, payload, outputEq, codeEq, view, sender, handleOwner,
+  obtain ⟨active, ready, timely, owner, payload, outputEq, codeEq, view, sender, handleOwner,
     vacant, unused, afterEq⟩ :=
     (handle_commitment_iff runtime left after id event candidate).mp accepted
   have rightReady : right.config.cut.Ready event := by simpa only [← cutEq] using ready
@@ -209,7 +204,8 @@ private theorem handle_commitment_playerView_transport (runtime : EventGraphRunt
     unfold State.bindingResult
     rw [congrFun candidatesEq slot]
   have rightAccepted := handle_commitment_eq runtime right id event candidate owner payload
-    outputEq codeEq view rightReady rightTimely sender handleOwner rightVacant rightUnused
+    outputEq codeEq view rightReady rightTimely
+    (by simpa only [← statusEq] using active) sender handleOwner rightVacant rightUnused
   refine ⟨_, rightAccepted, ?_⟩
   rw [afterEq]
   apply State.acceptHandle_playerView_congr
@@ -227,6 +223,8 @@ private theorem handle_commitment_playerView_transport (runtime : EventGraphRunt
       rw [← EventCode.actor_cast outputEq (graph.nodes event), codeEq]
       rfl
     rw [resultEq (Option.some.inj (ownerActor.symm.trans focalActor))]
+  · rw [left.config.completion_bind_some_defaultEvent event owner payload outputEq codeEq,
+      right.config.completion_bind_some_defaultEvent event owner payload outputEq codeEq]
 
 /-- Commitment packets have the same acceptance status and focal result under
 equal focal views, regardless of their sender.  A foreign binding result may

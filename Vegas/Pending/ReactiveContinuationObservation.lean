@@ -15,16 +15,6 @@ open GameTheory.Math.Probability Interaction EventGraph
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-theorem State.playerView_observation_eq (left right : State graph) (who : Player)
-    (views : left.playerView who = right.playerView who) :
-    graph.playerObserve who left.config = graph.playerObserve who right.config := by
-  have observed := congrArg (fun view : PlayerView graph =>
-    (view.observation.completionOrder, view.observation.store, view.observation.ownActions)) views
-  apply PlayerObservation.ext graph
-  · exact congrArg Prod.fst observed
-  · exact congrArg (fun value => value.2.1) observed
-  · exact congrArg (fun value => value.2.2) observed
-
 theorem Submission.register_playerView_congr (submission : Submission graph)
     (left right : State graph) (who : Player)
     (views : left.playerView who = right.playerView who) :

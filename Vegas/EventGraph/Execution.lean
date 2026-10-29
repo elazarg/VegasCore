@@ -670,4 +670,75 @@ theorem path_defaulted_mono {before after : graph.Config}
   | @head before middle moved _ ih => exact moved.defaulted_mono.trans ih
 
 end Step
+
+/-- A typed code identification determines the exact new public default entry. -/
+theorem completion_defaultEvent_of_code (config : graph.Config) (event : graph.EventId)
+    {output : EventField Player L} (outputEq : graph.outputLayout event = output)
+    (code : EventCode graph.layout output)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) = code)
+    (action : output.Action) (value : output.Value) :
+    (Completion.fromDecision event
+      (config.actualDecision event (cast (congrArg EventField.Action outputEq.symm) action))
+      (cast (congrArg EventField.Value outputEq.symm) value)).defaultEvent =
+      (code.actualDecision config.defaulted action).bind
+        (fun chosen => code.defaultEvent chosen value) := by
+  cases outputEq
+  subst code
+  rfl
+
+/-- Admitting an opaque binding is not a public default, regardless of its hidden value. -/
+theorem completion_bind_some_defaultEvent (config : graph.Config) (event : graph.EventId)
+    (owner : Player) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind owner payload)
+    (choice value : PublicationResult (L.Val payload)) :
+    (Completion.fromDecision event
+      (config.actualDecision event
+        (cast (congrArg EventField.Action outputEq.symm) (some choice)))
+      (cast (congrArg EventField.Value outputEq.symm) value)).defaultEvent = none := by
+  rw [config.completion_defaultEvent_of_code event outputEq (.bind owner payload)
+    codeEq (some choice) value]
+  by_cases inactive : owner ∈ config.defaulted <;>
+    simp [EventCode.actualDecision, EventCode.actor, EventCode.defaultEvent,
+      EventCode.causesDefault, inactive]
+
+/-- An omission records a new default precisely when its owner was still active. -/
+theorem completion_bind_none_defaultEvent (config : graph.Config) (event : graph.EventId)
+    (owner : Player) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind owner payload)
+    (value : PublicationResult (L.Val payload)) :
+    (Completion.fromDecision event
+      (config.actualDecision event
+        (cast (congrArg EventField.Action outputEq.symm)
+          (none : Option (PublicationResult (L.Val payload)))))
+      (cast (congrArg EventField.Value outputEq.symm) value)).defaultEvent =
+      if owner ∈ config.defaulted then none else some owner := by
+  rw [config.completion_defaultEvent_of_code event outputEq (.bind owner payload)
+    codeEq none value]
+  by_cases inactive : owner ∈ config.defaulted <;>
+    simp [EventCode.actualDecision, EventCode.actor, EventCode.defaultEvent,
+      EventCode.causesDefault, inactive]
+
+/-- A publication's new public default depends on its result and prior status. -/
+theorem completion_resolve_defaultEvent (config : graph.Config) (event : graph.EventId)
+    (owner : Player) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .resolve owner payload binding checks)
+    (disclose : Bool) (value : PublicationResult (L.Val payload)) :
+    (Completion.fromDecision event
+      (config.actualDecision event (cast (congrArg EventField.Action outputEq.symm) disclose))
+      (cast (congrArg EventField.Value outputEq.symm) value)).defaultEvent =
+      if owner ∈ config.defaulted then none else if value.isFailure then some owner else none := by
+  rw [config.completion_defaultEvent_of_code event outputEq
+    (.resolve owner payload binding checks) codeEq disclose value]
+  by_cases inactive : owner ∈ config.defaulted <;>
+    simp [EventCode.actualDecision, EventCode.actor, EventCode.defaultEvent,
+      EventCode.causesDefault, inactive]
+
 end Vegas.EventGraph.Config

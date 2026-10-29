@@ -223,6 +223,16 @@ preserves the truth of carried opening certificates through arbitrary raw
 responses, forwarding, rejected calls and automatic completion. These facts
 retain their original hypotheses; they impose no honesty or service premise.
 
+[EventCompletionObservation](../Vegas/Pending/EventCompletionObservation.lean)
+compares the exact new public default entry and proves that automatic service
+preserves equal focal views. Its focal-authored call, arbitrary commitment and
+expiry corollaries in [EventHandleObservation](../Vegas/Pending/EventHandleObservation.lean)
+and [EventExpiryObservation](../Vegas/Pending/EventExpiryObservation.lean)
+derive that entry from retained observations. Their hypotheses are unchanged;
+foreign hidden candidate meanings need not agree. The graph-observation
+projection of a native player view is owned by the application layer and
+shared by [continuation observation](../Vegas/Pending/ReactiveContinuationObservation.lean).
+
 These are operational support/refinement laws; they do not establish the
 probabilistic client/compiler law or equilibrium preservation.
 
@@ -237,8 +247,10 @@ Only checked theorems close these obligations:
    correlated private/public setup laws.
 3. Ledger inclusion, expiry and automatic draining have checked finite-path
    graph refinement, initialized-history invariants, immutable candidate/handle
-   provenance and signed-emission/certificate soundness. Port receipt-failure
-   provenance and observation adapters to the single application.
+   provenance and signed-emission/certificate soundness. Native focal-call,
+   commitment, expiry and automatic-service observation congruence is checked.
+   Port receipt-failure provenance and the remaining physical chance/service
+   observation adapters to the single application.
 4. Reprove the bounded-client law with complete readout and the service contract.
 5. Port Nash deviation translation and sequential consistency/rationality;
    equilibrium-path outcome agreement alone is insufficient.
