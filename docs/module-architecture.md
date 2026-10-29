@@ -41,6 +41,11 @@ a consistent bounded-menu completion uniformly for each source equilibrium.
 identifies complete physical continuations and source-independent client laws.
 The [compiler guide](semantic-client-compiler.md) distinguishes this semantic
 construction from executable synthesis and from game-specific diagnostics.
+[Physical rationality](../Interaction/ReactiveMenuRationality.lean) transports
+whole-continuation comparisons to menu-admissible physical policies without
+adding a game or an equilibrium definition. Client observable closure and
+funding monotonicity live alongside the compiler; common-assessment utility
+linearity belongs to the generic protocol analysis layer.
 
 Use `rg` and `python lean-defs.py <files>` to inspect owners before adding
 definitions. Share actual operations and isolate hypotheses that vary with a

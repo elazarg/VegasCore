@@ -49,6 +49,14 @@ ledger clients agree at every legal raw history when no pending data is delivere
 This is separate from the ordinary all-source-profile capstones above and
 from executable numerical equilibrium synthesis.
 
+The clients have direct physical whole-continuation incentive inequalities
+against every menu-admissible policy, using the selected assessment's beliefs.
+Observable closure preserves arbitrary stochastic readouts of the joint law;
+outcome-set coverage includes every intended SE law among clean target laws.
+Larger deposits retain certification, and one common assessment is closed under
+nonnegative utility combinations. These reuse the same execution and assessment
+definitions and add no compiler-specification premise.
+
 ## Hypotheses and observations
 
 The outcome theorems use `AsyncServiceSpec`, its public-barrier ordering premise,

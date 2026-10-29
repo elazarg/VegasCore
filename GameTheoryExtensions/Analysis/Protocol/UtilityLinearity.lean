@@ -83,4 +83,3 @@ theorem isSequentialEquilibriumFor_nonnegative_linear [Fintype ι] [DecidableEq 
     first_equilibrium.2⟩
 
 end GameTheory.Protocol.InformationModel.BehavioralAssessment
-

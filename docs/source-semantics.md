@@ -13,6 +13,16 @@ distinguish these views. The runtime additionally accounts for silence through
 expiry and the stated failure rule; failure in the source evaluator must not be
 silently identified with every runtime continuation.
 
+Permanent exclusion is a controller over the same graph-step semantics:
+`Vegas.EventGraphRuntime.RecoveryState.completeAutomatic_step` represents each
+automatic completion by an ordinary supported graph step. It changes future
+choices and exit utilities, rather than introducing another graph evaluator.
+Replacing the source's continuing failures by absorbing default would change
+the game: a player can currently withhold one reveal and open a later binding.
+The [absorbing-default design](https://github.com/elazarg/VegasCore/blob/b14c1df915a2ef4ef9a528044294a399a1496752/docs/source-absorbing-failure.md)
+isolates that semantic replacement and its source, information-order and
+preservation obligations; it is not a second production source semantics.
+
 The non-concurrent SE results start with an intended-game equilibrium. They
 construct a raw-runtime equilibrium with no failures on its supported path,
 while proving rationality at off-path runtime information sets. Their failure

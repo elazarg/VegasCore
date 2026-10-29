@@ -13,6 +13,7 @@ import Vegas.Game.AsyncClientObservables
 import Vegas.Game.ProgramPaymentAsyncNash
 import Vegas.Game.OnePacketExtension
 import Vegas.Game.RecoverySequentialCompilation
+import Vegas.Game.RecoveryClientObservables
 import Vegas.Game.RecoveryPaymentPreservation
 import Vegas.Game.ServiceRosterAsync
 import Vegas.Examples.LateLeak
@@ -764,6 +765,36 @@ theorem recovery_intended_raw_sequential_equilibrium [Fintype Player] [IExpr.Res
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.recovery_intended_raw_sequential_equilibrium
+
+/-- info: 'Vegas.RecoveryClientSpec.compile_correct' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryClientSpec.compile_correct
+
+/-- info: 'Vegas.RecoveryClientCompilation.clients_sequentiallyRational' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryClientCompilation.clients_sequentiallyRational
+
+/-- info: 'Vegas.RecoveryClientSpec.compile_ledger_correct' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryClientSpec.compile_ledger_correct
+
+/-- info: 'Vegas.RecoveryClientCompilation.ledgerClients_sequentiallyRational' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryClientCompilation.ledgerClients_sequentiallyRational
+
+/-- info: 'Vegas.RecoveryClientSpec.intended_outcomeLaws_subset' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryClientSpec.intended_outcomeLaws_subset
+
+/-- info: 'Vegas.RecoveryClientCompilation.clients_postprocessLaw' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.RecoveryClientCompilation.clients_postprocessLaw
 
 end Vegas.Paper
 
