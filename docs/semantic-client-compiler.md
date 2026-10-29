@@ -127,6 +127,13 @@ conclusion as set inclusion: every intended SE joint law belongs to the clean
 bounded-runtime SE laws. Additional runtime equilibria and their outcome laws
 are not characterized by this inclusion.
 
+[Funding monotonicity](../Vegas/Game/RecoveryClientFunding.lean) is packaged as
+`Vegas.RecoveryClientSpec.withDeposit`: every pointwise larger deposit produces
+another certified specification for the same source, runtime and evidence
+service. It normalizes the declared observation-rate lower bound to be
+nonnegative, without adding a hypothesis or changing the actual observations.
+Recompilation preserves the intended law; its off-path completion can change.
+
 ## Ledger observation scope
 
 `Interaction.MessageNetwork.ObservationRule.DeliversNothing` states that every
