@@ -7,6 +7,7 @@ import VegasTests.CompilerCorrectness
 import VegasTests.Disclosure
 import VegasTests.EventCompilation
 import VegasTests.EventGraph
+import VegasTests.EventGraphDefault
 import VegasTests.EventGraphReadout
 import VegasTests.EventMessages
 import VegasTests.EventStrategies

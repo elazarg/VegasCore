@@ -40,7 +40,7 @@ abbrev Value : EventField Player L → Type
 abbrev Action : EventField Player L → Type
   | .publicData _ => PUnit
   | .privateInput _ _ => PEmpty
-  | .binding _ payload => PublicationResult (L.Val payload)
+  | .binding _ payload => Option (PublicationResult (L.Val payload))
   | .publication _ => Bool
 
 end EventField
@@ -803,7 +803,7 @@ def eval? {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} :
     {output : EventField Player L} → (code : EventCode layout output) →
       EventField.Action output → Store layout → Option (PMF output.Value)
-  | _, .bind _ _, action, _ => some (PMF.pure action)
+  | _, .bind _ _, action, _ => some (PMF.pure (action.getD .failure))
   | _, .resolve _ _ binding checks, disclose, store =>
       (resolveOutput? binding checks disclose store).map PMF.pure
   | _, .sample _ law, _, store => law.eval? store
@@ -860,7 +860,7 @@ theorem eval?_eq_pure_of_actor {Field : Type} [DecidableEq Field]
     (available : ∀ field ∈ code.readFields, (store field).isSome = true) :
     ∃ value, code.eval? action store = some (PMF.pure value) := by
   cases code with
-  | bind who payload => exact ⟨action, rfl⟩
+  | bind who payload => exact ⟨action.getD .failure, rfl⟩
   | resolve who payload binding checks =>
       have present := resolveOutput?_isSome binding checks action store available
       cases result : resolveOutput? binding checks action store with
@@ -884,3 +884,120 @@ theorem eval?_congr {Field : Type} [DecidableEq Field]
 end EventCode
 
 end Vegas.EventGraph
+
+namespace Vegas.EventGraph.EventCode
+
+open GameTheory.Math.Probability
+
+variable {Player : Type} {L : IExpr} [IExpr.ResultTypes L]
+  {Field : Type} [DecidableEq Field] {layout : Field → EventField Player L}
+  {output : EventField Player L}
+
+/-- The automatic action of a strategic node whose owner has already defaulted. -/
+def failureAction (code : EventCode layout output) (owner : Player)
+    (owned : code.actor = some owner) : code.Action := by
+  cases code with
+  | bind => exact none
+  | resolve => exact false
+  | sample => simp [actor] at owned
+
+/-- The result of this node constitutes an owned public failure. An accepted
+unopenable binding is distinct from an omitted binding. -/
+def causesDefault : {output : EventField Player L} →
+    (code : EventCode layout output) → code.Action → output.Value → Bool
+  | _, .bind _ _, action, _ => action.isNone
+  | _, .resolve _ _ _ _, _, value => value.isFailure
+  | _, .sample _ _, _, _ => false
+
+/-- A candidate default event before excluding automatic completions. -/
+def defaultEvent (code : EventCode layout output) (action : code.Action)
+    (value : output.Value) : Option Player :=
+  if code.causesDefault action value then code.actor else none
+
+@[simp] theorem bind_eval? (owner : Player) (payload : L.Ty)
+    (action : Option (PublicationResult (L.Val payload))) (store : Store layout) :
+    (EventCode.bind owner payload).eval? action store =
+      some (PMF.pure (action.getD .failure)) := rfl
+
+@[simp] theorem bind_causesDefault_none (owner : Player) (payload : L.Ty)
+    (value : PublicationResult (L.Val payload)) :
+    (EventCode.bind (layout := layout) owner payload).causesDefault none value = true := rfl
+
+@[simp] theorem bind_causesDefault_some (owner : Player) (payload : L.Ty)
+    (action value : PublicationResult (L.Val payload)) :
+    (EventCode.bind (layout := layout) owner payload).causesDefault (some action) value = false :=
+  rfl
+
+/-- The canonical automatic action evaluates to a failure result. -/
+theorem failureAction_eval? (code : EventCode layout output) (owner : Player)
+    (owned : code.actor = some owner) (store : Store layout)
+    (available : ∀ field ∈ code.readFields, (store field).isSome = true) :
+    ∃ value, code.eval? (code.failureAction owner owned) store = some (PMF.pure value) ∧
+      code.causesDefault (code.failureAction owner owned) value = true := by
+  cases code with
+  | bind who payload => exact ⟨.failure, rfl, rfl⟩
+  | resolve who payload binding checks =>
+      refine ⟨.failure, ?_, rfl⟩
+      simp only [failureAction, eval?,
+        resolveOutput?_false_eq_failure binding checks store available, Option.map_some]
+  | sample => simp [actor] at owned
+
+end Vegas.EventGraph.EventCode
+
+namespace Vegas.EventGraph.EventCode
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {Field : Type} [DecidableEq Field] {layout : Field → EventField Player L}
+  {output : EventField Player L}
+
+/-- The requested action, replaced by mechanical failure for a defaulted owner. -/
+def effectiveAction (code : EventCode layout output) (defaulted : Finset Player)
+    (requested : code.Action) : code.Action :=
+  match owned : code.actor with
+  | some owner => if owner ∈ defaulted then code.failureAction owner owned else requested
+  | none => requested
+
+/-- Only an active strategic node records an actual decision. -/
+def actualDecision (code : EventCode layout output) (defaulted : Finset Player)
+    (requested : code.Action) : Option code.Action :=
+  match code.actor with
+  | some owner => if owner ∈ defaulted then none else some requested
+  | none => none
+
+theorem actualDecision_effectiveAction (code : EventCode layout output)
+    (defaulted : Finset Player) (requested : code.Action) :
+    code.actualDecision defaulted (code.effectiveAction defaulted requested) =
+      code.actualDecision defaulted requested := by
+  cases code with
+  | bind owner payload =>
+      by_cases inactive : owner ∈ defaulted
+      · simp [actualDecision, actor, inactive]
+      · simp [actualDecision, effectiveAction, actor, inactive]
+  | resolve owner payload binding checks =>
+      by_cases inactive : owner ∈ defaulted
+      · simp [actualDecision, actor, inactive]
+      · simp [actualDecision, effectiveAction, actor, inactive]
+  | sample => rfl
+
+theorem effectiveAction_of_defaulted (code : EventCode layout output)
+    (defaulted : Finset Player) (owner : Player) (owned : code.actor = some owner)
+    (inactive : owner ∈ defaulted) (requested : code.Action) :
+    code.effectiveAction defaulted requested = code.failureAction owner owned := by
+  cases code with
+  | bind who payload =>
+      have same : who = owner := Option.some.inj owned
+      subst who
+      simp [effectiveAction, actor, failureAction, inactive]
+  | resolve who payload binding checks =>
+      have same : who = owner := Option.some.inj owned
+      subst who
+      simp [effectiveAction, actor, failureAction, inactive]
+  | sample => simp [actor] at owned
+
+theorem actualDecision_of_defaulted (code : EventCode layout output)
+    (defaulted : Finset Player) (owner : Player) (owned : code.actor = some owner)
+    (inactive : owner ∈ defaulted) (requested : code.Action) :
+    code.actualDecision defaulted requested = none := by
+  simp [actualDecision, owned, inactive]
+
+end Vegas.EventGraph.EventCode

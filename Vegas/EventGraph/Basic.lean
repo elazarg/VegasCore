@@ -2,6 +2,7 @@
 
 import Vegas.EventGraph.Order
 import Vegas.EventGraph.Code
+import Vegas.Foundation.DefaultHistory
 
 /-! # Dependency-driven event graphs
 
@@ -76,18 +77,53 @@ abbrev Outcome := (field : graph.Field) → (graph.layout field).Value
 original disclosure Boolean even when validation stores failure. -/
 abbrev Action (event : graph.EventId) := (graph.nodes event).Action
 
-/-- One chronological completion record with its original supplied action. -/
+/-- One completed event with its actual decision and newly public default. -/
 structure Completion where
   event : graph.EventId
-  action : graph.Action event
+  decision : Option (graph.Action event)
+  defaultEvent : Option Player
 
 namespace Completion
 
-@[simp] theorem event_mk (event : graph.EventId) (action : graph.Action event) :
-    (Completion.mk event action : graph.Completion).event = event := rfl
+@[simp] theorem event_mk (event : graph.EventId) (decision : Option (graph.Action event))
+    (defaultEvent : Option Player) :
+    (Completion.mk event decision defaultEvent : graph.Completion).event = event := rfl
 
 end Completion
 
 end EventGraph
 
 end Vegas
+
+namespace Vegas.EventGraph.Completion
+
+variable {Player : Type} {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+/-- Complete an event, retaining only an actual strategic decision. Mechanical
+completions record no new default, including subsequent failures of an excluded owner. -/
+def fromDecision (event : graph.EventId) (decision : Option (graph.Action event))
+    (value : (graph.outputLayout event).Value) : graph.Completion :=
+  ⟨event, decision, decision.bind fun action => (graph.nodes event).defaultEvent action value⟩
+
+/-- The public projection of an event completion contains no action material. -/
+def publicEvent (completion : graph.Completion) : graph.EventId × Option Player :=
+  (completion.event, completion.defaultEvent)
+
+/-- The source-compatible public default history, derived from chronological completions. -/
+def defaults (history : List graph.Completion) : DefaultHistory Player :=
+  ⟨(history.map Completion.defaultEvent).reverse⟩
+
+@[simp] theorem defaults_append (history : List graph.Completion)
+    (completion : graph.Completion) :
+    defaults (history ++ [completion]) = (defaults history).record completion.defaultEvent := by
+  simp [defaults, DefaultHistory.record]
+
+/-- Public defaults persist when another event completes. -/
+theorem defaults_mono [DecidableEq Player]
+    (history : List graph.Completion) (completion : graph.Completion) :
+    (defaults history).defaulted ⊆ (defaults (history ++ [completion])).defaulted := by
+  rw [defaults_append]
+  exact DefaultHistory.defaulted_mono _ _
+
+end Vegas.EventGraph.Completion

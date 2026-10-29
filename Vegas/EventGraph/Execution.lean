@@ -6,9 +6,9 @@ import Vegas.EventGraph.Basic
 
 Configurations store initial values separately from optional event outputs.
 Their invariant says exactly that an output is present when its event belongs
-to the completed cut. Completion history is chronological and retains the
-supplied dependent action, including a resolving `true` whose checked result
-is failure.
+to the completed cut. Completion history is chronological and retains actual
+strategic choices and public default events, including a resolving `true` whose
+checked result is failure.
 -/
 
 noncomputable section
@@ -37,6 +37,23 @@ structure Config (graph : Vegas.EventGraph Player L) where
 namespace Config
 
 variable {graph : Vegas.EventGraph Player L}
+
+/-- Public default events are derived from the one chronological completion history. -/
+def defaults (config : graph.Config) : DefaultHistory Player :=
+  Completion.defaults config.history
+
+/-- The current public default set has no independent stored copy. -/
+def defaulted [DecidableEq Player] (config : graph.Config) : Finset Player :=
+  config.defaults.defaulted
+
+def effectiveAction [DecidableEq Player] (config : graph.Config) (event : graph.EventId)
+    (requested : graph.Action event) : graph.Action event :=
+  (graph.nodes event).effectiveAction config.defaulted requested
+
+def actualDecision [DecidableEq Player] (config : graph.Config) (event : graph.EventId)
+    (requested : graph.Action event) : Option (graph.Action event) :=
+  (graph.nodes event).actualDecision config.defaulted requested
+
 
 instance (cut : graph.order.Cut) : Decidable cut.Terminal := by
   unfold EventOrder.Cut.Terminal
@@ -100,8 +117,9 @@ def terminalPayoffs (config : graph.Config) (terminal : config.cut.Terminal) :
       (PublicExpr.eval?_isSome payoff.2 config.store
         (fun field _ => config.store_available_of_terminal terminal field))⟩
 
-/-- Store one event output, extend the cut, and append the original action to
-the chronological history. -/
+variable [DecidableEq Player]
+
+/-- Store one event output, extend the cut, and retain actual decisions and public default. -/
 def complete (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event)
     (value : (graph.outputLayout event).Value) : graph.Config where
@@ -115,13 +133,15 @@ def complete (config : graph.Config) (event : graph.EventId)
       simp [Function.update]
     · simp only [Function.update, same]
       simpa [EventOrder.Cut.mem_complete, same] using config.output_available query
-  history := config.history ++ [⟨event, action⟩]
+  history := config.history ++
+    [Completion.fromDecision event (config.actualDecision event action) value]
   history_nodup := by
     rw [List.map_append]
     simp only [List.map_cons, List.map_nil, List.nodup_append]
     refine ⟨config.history_nodup, by simp, ?_⟩
     intro prior priorMem appended appendedMem
-    have appendedEq : appended = event := by simpa using appendedMem
+    have appendedEq : appended = event := by
+      simpa [Completion.fromDecision] using appendedMem
     subst appended
     intro priorEq
     subst prior
@@ -129,7 +149,8 @@ def complete (config : graph.Config) (event : graph.EventId)
   history_exact := by
     intro query
     simp only [List.map_append, List.map_cons, List.map_nil,
-      List.mem_append, List.mem_singleton, EventOrder.Cut.mem_complete]
+      List.mem_append, List.mem_singleton, EventOrder.Cut.mem_complete,
+      Completion.fromDecision]
     rw [config.history_exact]
     tauto
 
@@ -142,7 +163,8 @@ def complete (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event)
     (value : (graph.outputLayout event).Value) :
     (config.complete event ready action value).history =
-      config.history ++ [⟨event, action⟩] := rfl
+      config.history ++
+        [Completion.fromDecision event (config.actualDecision event action) value] := rfl
 
 /-- The completed event stores precisely the evaluator output supplied to
 `complete`; in particular, bind results retain their original value. -/
@@ -164,8 +186,9 @@ law rather than being replaced by an external choice. -/
 def step (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event) :
     PMF graph.Config :=
-  ((graph.nodes event).eval? action config.store).get
-    (EventCode.eval?_isSome_of_reads (graph.nodes event) action config.store
+  ((graph.nodes event).eval? (config.effectiveAction event action) config.store).get
+    (EventCode.eval?_isSome_of_reads (graph.nodes event)
+      (config.effectiveAction event action) config.store
       (fun _ read => config.read_available ready read)) |>.map
         (config.complete event ready action)
 
@@ -174,7 +197,8 @@ theorem step_support_finite (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event) :
     (config.step event ready action).support.Finite := by
   rw [step, PMF.support_map]
-  exact (EventCode.eval?_support_finite (graph.nodes event) action config.store
+  exact (EventCode.eval?_support_finite (graph.nodes event)
+    (config.effectiveAction event action) config.store
     (Option.some_get _).symm).image _
 
 /-- A local evaluator law determines the actual configuration transition.
@@ -182,7 +206,8 @@ The readiness proof supplies availability; it does not change the law. -/
 theorem step_eq_map_of_eval (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event)
     (law : PMF (graph.outputLayout event).Value)
-    (evaluates : (graph.nodes event).eval? action config.store = some law) :
+    (evaluates : (graph.nodes event).eval? (config.effectiveAction event action)
+      config.store = some law) :
     config.step event ready action = law.map (config.complete event ready action) := by
   unfold step
   simp only [evaluates, Option.get_some]
@@ -196,7 +221,8 @@ theorem step_eq_map_of_code (config : graph.Config) (event : graph.EventId)
     (code : EventCode graph.layout output)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) = code)
     (action : output.Action) (law : PMF output.Value)
-    (evaluates : code.eval? action config.store = some law) :
+    (evaluates : code.eval? (code.effectiveAction config.defaulted action)
+      config.store = some law) :
     config.step event ready (cast (congrArg EventField.Action outputEq.symm) action) =
       law.map (fun value => config.complete event ready
         (cast (congrArg EventField.Action outputEq.symm) action)
@@ -213,12 +239,23 @@ theorem step_eq_map_of_code (config : graph.Config) (event : graph.EventId)
   obtain ⟨value, _, rfl⟩ := member
   rfl
 
-@[simp] theorem step_history (config : graph.Config) (event : graph.EventId)
+/-- Every step records its effective value and actual strategic decision. -/
+theorem step_completion (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event)
     (next : graph.Config) (member : next ∈ (config.step event ready action).support) :
-    next.history = config.history ++ [⟨event, action⟩] := by
+    ∃ value, next.outputs event = some value ∧ next.history = config.history ++
+      [Completion.fromDecision event (config.actualDecision event action) value] := by
   rw [step, PMF.support_map] at member
   obtain ⟨value, _, rfl⟩ := member
+  exact ⟨value, config.complete_output_same event ready action value, rfl⟩
+
+/-- The chronological event list still records every automatic and strategic completion. -/
+@[simp] theorem step_history_events (config : graph.Config) (event : graph.EventId)
+    (ready : config.cut.Ready event) (action : graph.Action event)
+    (next : graph.Config) (member : next ∈ (config.step event ready action).support) :
+    next.history.map Completion.event = config.history.map Completion.event ++ [event] := by
+  obtain ⟨value, _, history⟩ := config.step_completion event ready action next member
+  rw [history, List.map_append]
   rfl
 
 /-- A graph completion writes only its previously unavailable output field. -/
@@ -274,10 +311,9 @@ theorem Reachable.predecessor_idxOf_lt {inputs : graph.Inputs} {config : graph.C
   | step priorReachable newEvent ready action next supported ih =>
       rename_i priorConfig
       have cutEq := Config.step_cut _ _ ready action next supported
-      have historyEq := Config.step_history _ _ ready action next supported
+      have historyEq := Config.step_history_events _ _ ready action next supported
       rw [cutEq, EventOrder.Cut.mem_complete] at completed
-      rw [historyEq, List.map_append]
-      simp only [List.map_cons, List.map_nil]
+      rw [historyEq]
       rcases completed with rfl | completedBefore
       · have predecessorBefore : predecessor ∈
             priorConfig.cut.completed := ready.2 isPredecessor
@@ -303,6 +339,8 @@ theorem Reachable.predecessor_idxOf_lt {inputs : graph.Inputs} {config : graph.C
         exact ih completedBefore
 
 end Config
+
+variable [DecidableEq Player]
 
 /-- A causal execution plan may randomize and adapt its next ready event and
 action to the entire current semantic configuration. It cannot select an unready event.
@@ -386,6 +424,7 @@ theorem run_reachable (graph : Vegas.EventGraph Player L) (inputs : graph.Inputs
 def Config.remaining {graph : Vegas.EventGraph Player L} (config : graph.Config) : Nat :=
   graph.order.eventCount - config.cut.completed.card
 
+omit [DecidableEq Player] in
 theorem Config.terminal_iff_remaining_zero {graph : Vegas.EventGraph Player L}
     (config : graph.Config) : config.cut.Terminal ↔ config.remaining = 0 := by
   constructor
@@ -460,3 +499,88 @@ theorem run_terminal (graph : Vegas.EventGraph Player L) (inputs : graph.Inputs)
 end EventGraph
 
 end Vegas
+
+namespace Vegas.EventGraph.Config
+
+open GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+/-- Completing one event records one public default entry in the derived history. -/
+@[simp] theorem complete_defaults (config : graph.Config) (event : graph.EventId)
+    (ready : config.cut.Ready event) (action : graph.Action event)
+    (value : (graph.outputLayout event).Value) :
+    (config.complete event ready action value).defaults = config.defaults.record
+      (Completion.fromDecision event (config.actualDecision event action) value).defaultEvent := by
+  exact Completion.defaults_append config.history _
+
+/-- Every event completion preserves all already public defaults. -/
+theorem complete_defaulted_mono (config : graph.Config) (event : graph.EventId)
+    (ready : config.cut.Ready event) (action : graph.Action event)
+    (value : (graph.outputLayout event).Value) :
+    config.defaulted ⊆ (config.complete event ready action value).defaulted := by
+  change config.defaults.defaulted ⊆
+    (config.complete event ready action value).defaults.defaulted
+  rw [complete_defaults]
+  exact DefaultHistory.defaulted_mono _ _
+
+/-- No supported step can restore a defaulted player. -/
+theorem defaulted_step (config : graph.Config) (event : graph.EventId)
+    (ready : config.cut.Ready event) (action : graph.Action event)
+    (next : graph.Config) (supported : next ∈ (config.step event ready action).support) :
+    config.defaulted ⊆ next.defaulted := by
+  rw [step, PMF.support_map] at supported
+  obtain ⟨value, _, rfl⟩ := supported
+  exact config.complete_defaulted_mono event ready action value
+
+/-- A defaulted owner contributes no further actual decision. -/
+theorem actualDecision_of_defaulted (config : graph.Config) (event : graph.EventId)
+    (owner : Player) (owned : (graph.nodes event).actor = some owner)
+    (inactive : owner ∈ config.defaulted) (action : graph.Action event) :
+    config.actualDecision event action = none :=
+  (graph.nodes event).actualDecision_of_defaulted config.defaulted owner owned inactive action
+
+/-- Mechanical completions retain event chronology without adding an actual choice or default. -/
+theorem complete_history_of_defaulted (config : graph.Config) (event : graph.EventId)
+    (ready : config.cut.Ready event) (owner : Player)
+    (owned : (graph.nodes event).actor = some owner) (inactive : owner ∈ config.defaulted)
+    (action : graph.Action event) (value : (graph.outputLayout event).Value) :
+    (config.complete event ready action value).history =
+      config.history ++ [⟨event, none, none⟩] := by
+  rw [complete_history, config.actualDecision_of_defaulted event owner owned inactive action]
+  rfl
+
+/-- A suppressed requested action has no effect on completion metadata. -/
+theorem complete_eq_of_defaulted (config : graph.Config) (event : graph.EventId)
+    (ready : config.cut.Ready event) (owner : Player)
+    (owned : (graph.nodes event).actor = some owner) (inactive : owner ∈ config.defaulted)
+    (first second : graph.Action event) (value : (graph.outputLayout event).Value) :
+    config.complete event ready first value = config.complete event ready second value := by
+  have firstSilent := config.actualDecision_of_defaulted event owner owned inactive first
+  have secondSilent := config.actualDecision_of_defaulted event owner owned inactive second
+  simp only [complete, firstSilent, secondSilent]
+
+/-- All requested actions of an excluded owner induce exactly the same graph step. -/
+theorem step_eq_of_defaulted (config : graph.Config) (event : graph.EventId)
+    (ready : config.cut.Ready event) (owner : Player)
+    (owned : (graph.nodes event).actor = some owner) (inactive : owner ∈ config.defaulted)
+    (first second : graph.Action event) :
+    config.step event ready first = config.step event ready second := by
+  have firstEffective :=
+    (graph.nodes event).effectiveAction_of_defaulted config.defaulted owner owned inactive first
+  have secondEffective :=
+    (graph.nodes event).effectiveAction_of_defaulted config.defaulted owner owned inactive second
+  have effectiveSame : config.effectiveAction event first =
+      config.effectiveAction event second := firstEffective.trans secondEffective.symm
+  have evaluatedSame := congrArg
+    (fun action : graph.Action event => (graph.nodes event).eval? action config.store) effectiveSame
+  have completeSame : config.complete event ready first = config.complete event ready second := by
+    funext value
+    exact config.complete_eq_of_defaulted event ready owner owned inactive first second value
+  unfold step
+  refine congrArg₂ PMF.map completeSame ?_
+  apply Option.some.inj
+  exact (Option.some_get _).trans (evaluatedSame.trans (Option.some_get _).symm)
+
+end Vegas.EventGraph.Config

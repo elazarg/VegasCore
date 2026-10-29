@@ -5,8 +5,9 @@ later resume successful play. The replacement belongs to the ordinary intended
 game -> source -> dependency graph -> ledger tower: the intended game restricts
 source menus, and each remaining level has one authoritative executor.
 
-This research branch implements the absorbing source kernel and ports its
-protocol presentation. Graph execution, ledger unification and the compiler's
+This research branch implements absorbing source and graph execution and ports
+the source protocol presentation. Graph information and policies, ledger
+unification and the compiler's
 ordinary and equilibrium theorems still require ports. A checked source module
 does not establish source-to-ledger preservation, and the full branch is not a
 verified replacement for the maintained tower. The paper and its pins are
@@ -54,7 +55,8 @@ permits an intervening successful binding before the bad opening becomes public.
 
 [DefaultHistory](../Vegas/Foundation/DefaultHistory.lean) is the single
 authoritative public default record. Each completed source instruction adds one
-entry, newest first: a newly defaulted player, or no new default. `Config.defaulted`
+entry, newest first: a newly defaulted player, or no new default.
+`Vegas.SourceProgram.Config.defaulted`
 is derived from this record. The initial record is empty, regardless of hidden
 input binding values.
 
@@ -114,12 +116,21 @@ boundedness on extra impossible records must not become a hidden new premise.
 
 ## Graph and ledger port
 
-Binding decisions in the graph need the same accepted/omitted distinction;
-stored binding values remain publication results. The existing `Config.step`
-must normalize actions of defaulted owners and update public failure control.
-Graph completion history retains every completed event, while its optional
+Binding decisions in [Code](../Vegas/EventGraph/Code.lean) use the same
+accepted/omitted distinction; stored binding values remain publication results.
+The single [executor](../Vegas/EventGraph/Execution.lean), `Config.step`, normalizes
+actions of defaulted owners and updates public failure control. Its public
+default history is derived from completion history, with no independently stored
+control set. Every event completion remains in that history; its optional
 decision distinguishes actual player choices from automatic or chance steps.
-Player recall includes actual choices only.
+
+The executor checks persistent defaults, unchanged step laws under every
+suppressed requested action, field persistence, chronological predecessors,
+cut progress and termination. [EventGraphDefault](../VegasTests/EventGraphDefault.lean)
+checks actual two-binding execution: omission suppresses a later requested
+successful binding, while an accepted unopenable binding permits it. The graph
+observation and policy ports must retain this public history and recall actual
+choices only; their correspondence is still open.
 
 Public omissions introduce information dependencies. If Alice's source binding
 precedes Bob's, Bob may condition on Alice's default. Scheduling Bob first can
