@@ -16,6 +16,7 @@ import Vegas.Game.AsyncServiceSpec
 import Vegas.Game.BindingRepairBlock
 import Vegas.Game.ConditionedSourceBayes
 import Vegas.Game.ConditionedSourceReach
+import Vegas.Game.CompilerCorrectness
 import Vegas.Game.DecodedRevelations
 import Vegas.Game.EventCompilation
 import Vegas.Game.EventScheduling

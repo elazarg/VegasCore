@@ -4,6 +4,8 @@ import Vegas.Source.Safety
 import Vegas.Compile.EventGraphScheduling
 import Vegas.Compile.EventGraphDeviation
 import Vegas.Game.EventCompilation
+import Vegas.Game.CompilerCorrectness
+import Vegas.Pending.GraphRefinement
 import Vegas.Game.IntendedPreservation
 import Vegas.Game.IntendedNash
 import Vegas.Game.AsyncServiceRawNash
@@ -836,11 +838,20 @@ open Vegas in
 open Vegas.SourceProgram.Setup in
 #print axioms revealed
 
-/-- info: 'Vegas.canonical_setup_law' depends on axioms:
+/-- info: 'Vegas.EventGraphRuntime.reactive_protocol_graph_refinement' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-open Vegas in
-#print axioms canonical_setup_law
+#print axioms Vegas.EventGraphRuntime.reactive_protocol_graph_refinement
+
+/-- info: 'Vegas.AsyncServiceSpec.firstTurnClientProfile_graph_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.AsyncServiceSpec.firstTurnClientProfile_graph_law
+
+/-- info: 'Vegas.AsyncServiceSpec.firstTurnClientProfile_outcome_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.AsyncServiceSpec.firstTurnClientProfile_outcome_law
 
 /-- info: 'Vegas.scheduled_setup_deviation_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

@@ -14,9 +14,9 @@ subtree; imports do not preserve unused research modules merely to keep a name.
 | Vegas.Foundation / Vegas.Expr | Typed values, environments and executable expressions. |
 | Vegas.Source | Source instructions, initial law, information and guard/completion invariants. |
 | Vegas.EventGraph | Typed dependencies, execution, observations and readout. |
-| Vegas.Pending | Submission, inclusion, relative deadlines, permanent-exclusion controller, service and count-audit contracts. |
+| Vegas.Pending | Submission, inclusion, relative deadlines, operational graph refinement, permanent-exclusion controller, service and count-audit contracts. |
 | Vegas.Compile | Source-to-graph compiler and source/scheduler correspondence. |
-| Vegas.Game | Intended-source extension, Nash correspondence and raw non-concurrent SE preservation. |
+| Vegas.Game | Ordinary compiler correctness, intended-source extension, Nash correspondence and raw non-concurrent SE preservation. |
 | Tests and examples | Retained semantic regressions and concrete consumers. |
 
 Start with [recovery preservation](../Vegas/Game/RecoverySequentialCompilation.lean),
@@ -25,6 +25,11 @@ the [one-packet raw extension](../Vegas/Game/OnePacketExtension.lean).
 Their imports identify the actual proof adapters. The
 [open-problems guide](sequential-se-open-problems.md) distinguishes hypotheses
 from future service, audit and source refinements.
+
+The [ordinary compiler capstones](../Vegas/Game/CompilerCorrectness.lean)
+compare actual bounded clients with source and canonical graph execution.
+The [operational refinement](../Vegas/Pending/GraphRefinement.lean) covers
+arbitrary raw responses and schedulers, with completion conditional on service.
 
 The [Odds–Evens raw instance](../Vegas/Examples/OddsEvensRecoveryRawEquilibrium.lean)
 consumes the forced-exit theorem and the

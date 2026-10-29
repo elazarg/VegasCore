@@ -51,6 +51,14 @@ graph scheduling, not concurrent raw-ledger SE preservation. The plain and
 forced-exit implementations remain where the retained theorems use them.
 There is no API compatibility requirement.
 
+The [ordinary compiler capstones](Vegas/Game/CompilerCorrectness.lean) preserve
+the exact law of every total typed-terminal-store reader on the actual bounded
+ledger clients, including failures, without an equilibrium or audit premise.
+They compare those same clients with canonical execution of the compiled graph.
+[Operational refinement](Vegas/Pending/GraphRefinement.lean) separately covers
+arbitrary raw responses. The [completion guide](docs/compiler-correctness-plan.md)
+records their hypotheses and the optional stronger graph-policy interface.
+
 Checked late-leak examples delimit preservation and show sufficient payoff
 conditions in their stated finite games. Their impossibility conclusions do
 not extend automatically to every runtime or compiler. The small auction and

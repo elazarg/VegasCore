@@ -2,6 +2,7 @@
 
 import VegasTests.ChanceScheduling
 import VegasTests.ConditionalPublicPrior
+import VegasTests.CompilerCorrectness
 import VegasTests.Disclosure
 import VegasTests.EventCompilation
 import VegasTests.EventGraph

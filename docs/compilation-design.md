@@ -8,8 +8,13 @@ distinct from partially observed concurrent raw-ledger SE preservation.
 The compiled graph is instantiated as an Interaction application, and actual
 ledger clients use its translated policies. The checked source-client laws
 already preserve the exact source outcome distribution on that bounded target.
-The [compiler correctness plan](compiler-correctness-plan.md) exposes the
-guarantees of both passes and the end-to-end law as paper-facing capstones.
+The [ordinary compiler capstones](../Vegas/Game/CompilerCorrectness.lean)
+expose both passes and the end-to-end law for every total typed-store reader.
+They need no equilibrium, audit, utility bound or independent-prior premise.
+The [operational capstone](../Vegas/Pending/GraphRefinement.lean) exposes
+stuttering graph refinement of arbitrary raw protocol transitions and
+initialized histories. These results and their scope are listed in the
+[compiler correctness plan](compiler-correctness-plan.md).
 A standalone compiler for arbitrary graph policies is a separate generalization.
 
 The retained raw SE theorems use the sequential forced-exit

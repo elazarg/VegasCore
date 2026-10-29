@@ -65,6 +65,7 @@ import Vegas.Pending.ExclusionStoppedBoundary
 import Vegas.Pending.ExclusionStoppedLaw
 import Vegas.Pending.ExclusionTerminalClearance
 import Vegas.Pending.ExclusionTransitionMass
+import Vegas.Pending.GraphRefinement
 import Vegas.Pending.OnePacketValueSwap
 import Vegas.Pending.OpeningEvidence
 import Vegas.Pending.PublicFailureEvidence
