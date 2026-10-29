@@ -8,6 +8,7 @@ The maintained development centers on checked non-concurrent SE preservation.
 * [Module ownership and reuse](module-architecture.md).
 * [Source semantics](source-semantics.md).
 * [Compilation and runtime boundary](compilation-design.md).
+* [Compiler correctness completion plan](compiler-correctness-plan.md).
 * [Ideal authentication and commitments](ideal-commitment-capabilities.md).
 * [Archived research and restart material](archives.md).
 

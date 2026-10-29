@@ -5,6 +5,12 @@ instructions to an event graph. Source-law and Nash correspondence hold under
 their stated public graph schedulers. Concurrent event-graph scheduling is
 distinct from partially observed concurrent raw-ledger SE preservation.
 
+The [compiler correctness plan](compiler-correctness-plan.md) specifies the
+remaining independent graph-to-Interaction policy and outcome laws, their
+composition with the source compiler, and the capstones to state and pin in
+the paper. It separates those proof obligations from the existing checked
+source-specific client laws.
+
 The retained raw SE theorems use the sequential forced-exit
 controller. Players send authenticated envelopes to a pending network. A
 scheduler chooses activations, inclusion, clock advances and expiry; the
