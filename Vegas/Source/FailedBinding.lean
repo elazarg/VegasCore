@@ -45,7 +45,7 @@ omit [IExpr.ResultTypes L] in
 theorem FailedBinding.commit {who owner : Player} {name : VarId} {payload : L.Ty}
     {config : Config Player L Γ} (failed : config.FailedBinding who unresolved)
     (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ owner name payload)
-    (choice : PublicationResult (L.Val payload)) :
+    (choice : Option (PublicationResult (L.Val payload))) :
     (commitSuccessor name guard config choice).FailedBinding who (insert name unresolved) where
   unique := namesNodup_cons fresh failed.unique
   pending := by
@@ -57,9 +57,22 @@ theorem failedBinding_commit {who : Player} {name : VarId} {payload : L.Ty}
     (config : Config Player L Γ) (unique : (Γ.map Prod.fst).Nodup)
     (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ who name payload)
     (unresolved : Finset VarId) :
-    (commitSuccessor name guard config .failure).FailedBinding who (insert name unresolved) where
+    (commitSuccessor name guard config (some .failure)).FailedBinding who
+      (insert name unresolved) where
   unique := namesNodup_cons fresh unique
-  pending := ⟨name, payload, .here, Finset.mem_insert_self _ _, rfl⟩
+  pending := ⟨name, payload, .here, Finset.mem_insert_self _ _, by
+    by_cases inactive : who ∈ config.defaulted <;> simp [commitSuccessor, inactive]⟩
+
+omit [IExpr.ResultTypes L] in
+/-- Public omission stores an unresolved failed binding until its automatic opening. -/
+theorem failedBinding_omission {who : Player} {name : VarId} {payload : L.Ty}
+    (config : Config Player L Γ) (unique : (Γ.map Prod.fst).Nodup)
+    (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ who name payload)
+    (unresolved : Finset VarId) :
+    (commitSuccessor name guard config none).FailedBinding who (insert name unresolved) where
+  unique := namesNodup_cons fresh unique
+  pending := ⟨name, payload, .here, Finset.mem_insert_self _ _, by
+    by_cases inactive : who ∈ config.defaulted <;> simp [commitSuccessor, inactive]⟩
 
 omit [IExpr.ResultTypes L] in
 theorem FailedBinding.reveal {who owner : Player} {payload : L.Ty} {name published : VarId}
@@ -157,7 +170,7 @@ theorem failedBinding_step (who : Player) : {Γ : SourceCtx Player L} → {O : F
 theorem failedReveals_pos_of_failedBinding (who : Player) :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (state : ProtocolState program) →
-    FailedBinding who program state → {terminal : State L program.terminalCtx} →
+    FailedBinding who program state → {terminal : Config Player L program.terminalCtx} →
     readout program state = some terminal →
       1 ≤ failedReveals program who (publicOutcome program terminal)
   | _, _, .ret _, _, failed, _, _ => (Config.FailedBinding.not_resolved failed).elim
@@ -174,12 +187,12 @@ theorem failedReveals_pos_of_failedBinding (who : Player) :
       | inl _ => cases read
       | inr rest =>
           rcases failed with ⟨own, publication⟩ | failed
-          · have holds : terminal.get (terminalRef next .here) = .failure :=
-              (terminalRef_get next terminal .here).trans
+          · have holds : terminal.state.get (terminalRef next .here) = .failure :=
+              (terminalRef_get next terminal.state .here).trans
                 ((congrArg (fun state => state.get .here)
                   (initialState_of_readout next rest read)).trans publication)
             subst own
-            refine failedReveals_reveal_pos (publicOutcome next terminal) ?_
+            refine failedReveals_reveal_pos terminal ?_
             simp [RevealCell.failed, publicOutcome, sourcePublicEnv_get_publicRef, holds,
               PublicationResult.isSuccess]
           · exact (failedReveals_pos_of_failedBinding who next rest failed read).trans

@@ -11,9 +11,8 @@ unopenable candidate and opens it is worth nothing; the translation binds a real
 value instead and must therefore refuse to open it, or the published value would
 change the payoff.
 
-This is the concrete check that the translation refuses at exactly the cells it
-replaced. The general outcome-law comparison is
-`Vegas.SourceProgram.bindValues_publicOutcome_eq`.
+The translation must refuse at exactly the cells it replaced, preserving the
+public outcome and complete public default history.
 -/
 
 namespace VegasTests.ValueBinding

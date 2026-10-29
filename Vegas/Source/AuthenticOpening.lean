@@ -4,23 +4,12 @@ import Vegas.Source.DisclosureOpening
 import Vegas.Source.IntendedPlay
 import Vegas.Source.ProtocolBehavioralPolicy
 
-/-! # Effective openings
+/-! # Authentic source openings
 
-The effective opening of a source policy keeps its binding kernels and, at each
-own reveal, discloses exactly when a disclosure is effective at the registry and
-publication status the program carries to that point
-(`Vegas.SourceProgram.BehavioralPolicy.effectiveOpening`). It opens effectively
-by construction and keeps the policy's admission.
-
-The registry and publication status of a source configuration are fixed by its
-program point: a source point reached from an entry whose configuration
-carries the given registry and publication status carries, at every program
-point, the ones the program carries there
-(`Vegas.SourceProgram.ProtocolState.staticAt_step`). At such a point that is
-also a point of the intended game, the effective opening of a policy that
-always discloses has the policy's own source action law
-(`Vegas.SourceProgram.BehavioralPolicy.protocolAction_effectiveOpening`): every
-disclosure there is effective.
+An authentic opening retains every binding kernel and opens every own binding
+that contains a value, including attempts rejected by deferred guards. Its
+source action law agrees with an always-disclosing policy at intended points.
+The static registry and revelation invariant also follows the source syntax.
 -/
 
 noncomputable section
@@ -29,42 +18,19 @@ namespace Vegas.SourceProgram
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-/-- **The effective opening.** Keep every binding kernel, and at every own
-reveal disclose exactly when a disclosure is effective at the registry and
-publication status carried by the program. -/
-def BehavioralPolicy.effectiveOpening {who : Player} :
-    {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → Registry Γ → Revelations Γ →
-    BehavioralPolicy who program → BehavioralPolicy who program
-  | _, _, .ret _, _, _, policy => policy
-  | _, _, .sample _ _ _ next, registry, revelations, policy =>
-      effectiveOpening next registry.weaken revelations.weaken policy
-  | _, _, .commit (payload := payload) name owner _ guard next, registry, revelations,
-      policy =>
-      (policy.1, effectiveOpening next
-        ({ owner := owner, subject := name, payload := payload, source := .here,
-            guard := guard.weaken } :: registry.weaken) revelations.weaken policy.2)
-  | _, _, .reveal published _ _ _ selected _ next, registry, revelations, policy =>
-      (fun own view => PMF.pure
-        (effectiveDisclosureView published selected registry revelations (own.symm ▸ view.1)
-          true),
-        effectiveOpening next registry.weaken
-          (revelations.reveal (published := published) selected) policy.2)
-
-/-- The effective opening keeps the policy's admission. -/
-theorem BehavioralPolicy.admitted_effectiveOpening {who : Player} :
+/-- Authentic openings retain the original binding admission guarantee. -/
+theorem BehavioralPolicy.admitted_authenticOpening {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (admission : CommitmentInterface program) →
-    (registry : Registry Γ) → (revelations : Revelations Γ) →
     (policy : BehavioralPolicy who program) → policy.Admitted program admission →
-    (policy.effectiveOpening program registry revelations).Admitted program admission
-  | _, _, .ret _, _, _, _, _, _ => trivial
-  | _, _, .sample _ _ _ next, admission, _, _, policy, permitted =>
-      admitted_effectiveOpening next admission _ _ policy permitted
-  | _, _, .commit _ _ _ _ next, _, _, _, policy, permitted =>
-      ⟨permitted.1, admitted_effectiveOpening next _ _ _ policy.2 permitted.2⟩
-  | _, _, .reveal _ _ _ _ _ _ next, admission, _, _, policy, permitted =>
-      admitted_effectiveOpening next admission _ _ policy.2 permitted
+    (policy.authenticOpening program).Admitted program admission
+  | _, _, .ret _, _, _, _ => trivial
+  | _, _, .sample _ _ _ next, admission, policy, permitted =>
+      admitted_authenticOpening next admission policy permitted
+  | _, _, .commit _ _ _ _ next, _, policy, permitted =>
+      ⟨permitted.1, admitted_authenticOpening next _ policy.2 permitted.2⟩
+  | _, _, .reveal _ _ _ _ _ _ next, admission, policy, permitted =>
+      admitted_authenticOpening next admission policy.2 permitted
 
 namespace ProtocolState
 
@@ -148,73 +114,68 @@ theorem staticAt_step : {Γ : SourceCtx Player L} → {O : Finset VarId} →
 end ProtocolState
 
 omit [IExpr.ResultTypes L] in
-/-- A disclosure at an intended configuration is effective. -/
-theorem Config.Intended.disclosure_effective {Γ : SourceCtx Player L}
+/-- Every binding is authentic at an intended source configuration. -/
+theorem Config.Intended.binding_isSuccess {Γ : SourceCtx Player L}
     {unresolved : Finset VarId} {config : Config Player L Γ}
     (intended : config.Intended unresolved) {owner : Player} {payload : L.Ty} {name : VarId}
-    (published : VarId) (source : HasVar Γ name (.commitment owner payload)) :
-    effectiveDisclosure published source config true = true := by
+    (source : HasVar Γ name (.commitment owner payload)) :
+    (config.state.get source).isSuccess = true := by
   obtain ⟨value, bound⟩ := intended.bound source
-  have state := intended.reveal_state (published := published) source
-  unfold SourceProgram.effectiveDisclosure disclosureResult
-  rw [state, Env.cons_get_here]
-  change (match (bindingOf config source) with
-    | .failure => false
-    | .success _ => true) = true
-  rw [show bindingOf config source = .success value from bound]
+  rw [bound]
+  rfl
 
-/-- **Effective openings agree at intended points.** At an intended source
-point carrying the program's registry and publication status, the effective
-opening of a policy that always discloses has the policy's source action law. -/
-theorem BehavioralPolicy.protocolAction_effectiveOpening {who : Player} :
+/-- At an intended source point an authentic opening has the same action law
+as the original always-disclosing policy. Static metadata agreement is unnecessary. -/
+theorem BehavioralPolicy.protocolAction_authenticOpening {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → (registry : Registry Γ) →
-    (revelations : Revelations Γ) → (policy : BehavioralPolicy who program) →
+    (program : SourceProgram Player L Γ O) → (policy : BehavioralPolicy who program) →
     Disclosing program policy → (state : ProtocolState program) →
-    ProtocolState.StaticAt program registry revelations state →
     ProtocolState.Intended program state →
-    (policy.effectiveOpening program registry revelations).protocolAction program
+    (policy.authenticOpening program).protocolAction program
         (ProtocolState.observe who program state) =
       policy.protocolAction program (ProtocolState.observe who program state)
-  | _, _, .ret _, _, _, _, _, _, _, _ => rfl
-  | _, _, .sample _ _ _ next, _, _, policy, disclosing, state, holds, intended => by
+  | _, _, .ret _, _, _, _, _ => rfl
+  | _, _, .sample _ _ _ next, policy, disclosing, state, intended => by
+      cases state with
+      | inl _ => rfl
+      | inr rest => exact protocolAction_authenticOpening next policy disclosing rest intended
+  | _, _, .commit _ _ _ _ next, policy, disclosing, state, intended => by
       cases state with
       | inl _ => rfl
       | inr rest =>
-          exact protocolAction_effectiveOpening next _ _ policy disclosing rest holds intended
-  | _, _, .commit _ _ _ _ next, _, _, policy, disclosing, state, holds, intended => by
-      cases state with
-      | inl _ => rfl
-      | inr rest =>
-          exact protocolAction_effectiveOpening next _ _ policy.2 disclosing rest holds intended
-  | _, _, .reveal published owner name _ selected _ next, registry, revelations, policy,
-      disclosing, state, holds, intended => by
+          exact protocolAction_authenticOpening next policy.2 disclosing rest intended
+  | _, _, .reveal _ owner name _ selected _ next, policy, disclosing, state, intended => by
       cases state with
       | inl config =>
-          obtain ⟨registryEq, revelationsEq⟩ := holds
+          simp only [authenticOpening, forceDisclose, normalizeDisclosures,
+            PMF.pure_map, Bool.true_and]
           change (if own : owner = who then
-              (PMF.pure (effectiveDisclosureView published selected registry revelations
-                (own.symm ▸ (config.view who).1) true)).map
-                (fun disclose => some (OwnAction.reveal owner name disclose))
+              if active : who ∉ (config.view who).defaulted then
+                (PMF.pure
+                  (((config.view who).observation.cells.get (own ▸ selected)).getD
+                    .failure).isSuccess).map
+                  (fun disclose => some (OwnAction.reveal owner name disclose))
+              else PMF.pure none
             else PMF.pure none) =
             (if own : owner = who then
-              (policy.1 own (config.view who)).map
-                (fun disclose => some (OwnAction.reveal owner name disclose))
+              if active : who ∉ (config.view who).defaulted then
+                (policy.1 own (config.view who) active).map
+                  (fun disclose => some (OwnAction.reveal owner name disclose))
+              else PMF.pure none
             else PMF.pure none)
           by_cases own : owner = who
-          · subst own
+          · subst who
             rw [dite_eq_left (show owner = owner from rfl),
-              dite_eq_left (show owner = owner from rfl),
-              eq_pure_true_of_false_not_mem (disclosing.1 rfl (config.view owner))]
-            congr 2
-            rw [← registryEq, ← revelationsEq]
-            change effectiveDisclosureView published selected config.registry config.revelations
-              (sourceObserve owner config.state) true = true
-            rw [effectiveDisclosureView_observe]
-            exact intended.1.disclosure_effective published selected
+              dite_eq_left (show owner = owner from rfl)]
+            by_cases active : owner ∉ (config.view owner).defaulted
+            · rw [dite_eq_left active, dite_eq_left active,
+                eq_pure_true_of_false_not_mem (disclosing.1 rfl (config.view owner) active)]
+              congr 2
+              simpa only [Config.view, sourceObserve, Env.get, ite_true, Option.getD_some] using
+                intended.1.binding_isSuccess selected
+            · rw [dite_eq_right active, dite_eq_right active]
           · rw [dite_eq_right own, dite_eq_right own]
       | inr rest =>
-          exact protocolAction_effectiveOpening next _ _ policy.2 disclosing.2 rest holds
-            intended.2
+          exact protocolAction_authenticOpening next policy.2 disclosing.2 rest intended.2
 
 end Vegas.SourceProgram

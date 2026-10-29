@@ -13,7 +13,6 @@ import Vegas.Game.AsyncServiceDeviationBound
 import Vegas.Game.AsyncServiceNash
 import Vegas.Game.AsyncServiceRawNash
 import Vegas.Game.AsyncServiceSpec
-import Vegas.Game.BindingRepairBlock
 import Vegas.Game.ConditionedSourceBayes
 import Vegas.Game.ConditionedSourceReach
 import Vegas.Game.CompilerCorrectness

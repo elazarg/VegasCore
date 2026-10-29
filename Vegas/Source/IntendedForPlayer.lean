@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Source.FailedBindingDeviation
-import Vegas.Source.DisclosureAliases
 import GameTheory.Math.Probability.Convergence
 
 /-! # Play intended for one player
@@ -43,6 +42,7 @@ revealed commitments publishing their bindings, and every retained guard of the
 player predicted to accept its subject's binding. -/
 structure IntendedFor (who : Player) (unresolved : Finset VarId) (config : Config Player L Γ) :
     Prop where
+  active : who ∉ config.defaulted
   unique : (Γ.map Prod.fst).Nodup
   accounted : Accounted config.revelations unresolved
   bound : ∀ {x : VarId} {payload : L.Ty} (cell : HasVar Γ x (.commitment who payload)),
@@ -58,6 +58,7 @@ omit [IExpr.ResultTypes L] in
 /-- An intended configuration is intended for every player. -/
 theorem Intended.intendedFor (intended : config.Intended unresolved) (who : Player) :
     config.IntendedFor who unresolved where
+  active := intended.not_defaulted who
   unique := intended.unique
   accounted := intended.accounted
   bound cell := intended.bound cell
@@ -87,6 +88,7 @@ theorem IntendedFor.sample {name : VarId} {payload : L.Ty}
     (intended : config.IntendedFor who unresolved) (fresh : name ∉ Γ.map Prod.fst)
     (value : L.Val payload) :
     (sampleSuccessor name config value).IntendedFor who unresolved where
+  active := intended.active
   unique := unique_cons' fresh intended.unique
   accounted :=
     Accounted.weaken_noncommitment (by intro _ _ equal; cases equal) intended.accounted
@@ -101,8 +103,17 @@ omit [IExpr.ResultTypes L] in
 theorem IntendedFor.commit_other {name : VarId} {owner : Player} {payload : L.Ty}
     (intended : config.IntendedFor who unresolved) (fresh : name ∉ Γ.map Prod.fst)
     (guard : SourceGuard L Γ owner name payload) (different : owner ≠ who)
-    (choice : PublicationResult (L.Val payload)) :
+    (choice : Option (PublicationResult (L.Val payload))) :
     (commitSuccessor name guard config choice).IntendedFor who (insert name unresolved) where
+  active := by
+    cases choice with
+    | none =>
+        rw [commitSuccessor_defaulted_of_omission]
+        exact fun member => (Finset.mem_insert.mp member).elim
+          (Ne.symm different) intended.active
+    | some value =>
+        rw [commitSuccessor_defaulted_of_accepted]
+        exact intended.active
   unique := unique_cons' fresh intended.unique
   accounted := Accounted.commit fresh intended.accounted
   bound cell := by
@@ -123,19 +134,22 @@ theorem IntendedFor.commit_own {name : VarId} {payload : L.Ty}
     (intended : config.IntendedFor who unresolved) (fresh : name ∉ Γ.map Prod.fst)
     (guard : SourceGuard L Γ who name payload) (value : L.Val payload)
     (accepted : guard.predicts (sourceObserve who config.state) value = true) :
-    (commitSuccessor name guard config (.success value)).IntendedFor who
+    (commitSuccessor name guard config (some (.success value))).IntendedFor who
       (insert name unresolved) where
+  active := by rw [commitSuccessor_defaulted_of_accepted]; exact intended.active
   unique := unique_cons' fresh intended.unique
   accounted := Accounted.commit fresh intended.accounted
   bound cell := by
     cases cell with
-    | here => exact ⟨value, rfl⟩
+    | here => exact ⟨value, by simp [commitSuccessor, intended.active]⟩
     | there cell => exact intended.bound cell
   publishes := PublishesBindings.weaken _ intended.publishes
   predicted := by
     intro obligation member own bound bindsBound
     rcases List.mem_cons.mp member with rfl | member
-    · cases bindsBound
+    · simp only [commitSuccessor, intended.active, ite_false,
+        Option.getD_some, Env.cons_get_here] at bindsBound
+      cases bindsBound
       exact (SourceGuard.predicts_weaken _ _ _ _).trans accepted
     · exact intended.predicted_weaken _ obligation member own bound bindsBound
 
@@ -146,23 +160,14 @@ theorem IntendedFor.indebted_commit {name : VarId} {payload : L.Ty}
     (intended : config.IntendedFor who unresolved) (fresh : name ∉ Γ.map Prod.fst)
     (guard : SourceGuard L Γ who name payload) (value : L.Val payload)
     (rejected : guard.predicts (sourceObserve who config.state) value = false) :
-    (commitSuccessor name guard config (.success value)).Indebted who
+    (commitSuccessor name guard config (some (.success value))).Indebted who
       (insert name unresolved) where
   unique := unique_cons' fresh intended.unique
   accounted := Accounted.commit fresh intended.accounted
   publishes := PublishesBindings.weaken _ intended.publishes
   pending := ⟨Obligation.mk who name payload .here guard.weaken, List.mem_cons_self .., rfl,
-    rfl, value, rfl, (SourceGuard.predicts_weaken _ _ _ _).trans rejected⟩
-
-omit [IExpr.ResultTypes L] in
-/-- The player's binding of a failure leaves the player with a failed
-binding. -/
-theorem IntendedFor.failedBinding_commit {name : VarId} {payload : L.Ty}
-    (intended : config.IntendedFor who unresolved) (fresh : name ∉ Γ.map Prod.fst)
-    (guard : SourceGuard L Γ who name payload) :
-    (commitSuccessor name guard config .failure).FailedBinding who (insert name unresolved) where
-  unique := unique_cons' fresh intended.unique
-  pending := ⟨name, payload, .here, Finset.mem_insert_self _ _, rfl⟩
+    rfl, value, by simp [commitSuccessor, intended.active],
+    (SourceGuard.predicts_weaken _ _ _ _).trans rejected⟩
 
 omit [IExpr.ResultTypes L] in
 /-- Every obligation a reveal of the player completes accepts the opened
@@ -202,12 +207,20 @@ theorem IntendedFor.reveal_own {payload : L.Ty} {name published : VarId}
   have state : (revealSuccessor published source config true).state =
       Env.cons (Val := CellVal (Player := Player) L) (x := published)
         (τ := .publication payload) (bindingOf config source) config.state := by
-    simp only [revealSuccessor, ↓reduceIte, intended.completed_accept source]
-  refine ⟨{ unique := unique_cons' fresh intended.unique
+    simp only [revealSuccessor, intended.active, ite_false, ite_true,
+      intended.completed_accept source]
+  refine ⟨{ active := ?_
+            unique := unique_cons' fresh intended.unique
             accounted := Accounted.reveal source intended.unique intended.accounted
             bound := ?_
             publishes := ?_
             predicted := ?_ }, value, ?_⟩
+  · have opened : (revealSuccessor published source config true).state.get .here =
+          .success value := by rw [state]; exact bound
+    unfold Config.defaulted
+    rw [revealSuccessor_defaults, opened]
+    simpa only [PublicationResult.isFailure, Bool.false_eq_true, ite_false, ite_self,
+      DefaultHistory.defaulted_record_none, Config.defaulted] using intended.active
   · intro x σ cell
     cases cell with
     | there cell =>
@@ -228,6 +241,13 @@ theorem IntendedFor.reveal_other {owner : Player} {payload : L.Ty} {name publish
     (disclose : Bool) :
     (revealSuccessor published source config disclose).IntendedFor who
       (unresolved.erase name) where
+  active := by
+    unfold Config.defaulted
+    rw [revealSuccessor_defaults]
+    have active : who ∉ config.defaults.defaulted := intended.active
+    split_ifs <;> simp only [DefaultHistory.defaulted_record_none,
+      DefaultHistory.defaulted_record_some, Finset.mem_insert, not_or]
+    all_goals first | exact active | exact ⟨Ne.symm different, active⟩
   unique := unique_cons' fresh intended.unique
   accounted := Accounted.reveal source intended.unique intended.accounted
   bound cell := by
@@ -306,17 +326,21 @@ theorem intendedFor_step (who : Player) : {Γ : SourceCtx Player L} → {O : Fin
           by_cases same : owner = who
           · subst same
             cases choice with
-            | failure =>
-                exact Or.inr (Or.inr (failedBinding_entry next _
-                  (Config.IntendedFor.failedBinding_commit intended fresh guard)))
-            | success value =>
-                cases predicted : guard.predicts (sourceObserve owner config.state) value with
-                | true =>
-                    exact Or.inl (intendedFor_entry next _
-                      (Config.IntendedFor.commit_own intended fresh guard value predicted))
-                | false =>
-                    exact Or.inr (Or.inl (indebted_entry next _
-                      (Config.IntendedFor.indebted_commit intended fresh guard value predicted)))
+            | none => exact Or.inr (Or.inr (failedBinding_entry next _
+                (Config.failedBinding_omission config intended.unique fresh guard _)))
+            | some result =>
+                cases result with
+                | failure => exact Or.inr (Or.inr (failedBinding_entry next _
+                    (Config.failedBinding_commit config intended.unique fresh guard _)))
+                | success value =>
+                    cases predicted : guard.predicts (sourceObserve owner config.state) value with
+                    | true =>
+                        exact Or.inl (intendedFor_entry next _
+                          (Config.IntendedFor.commit_own intended fresh guard value predicted))
+                    | false =>
+                        exact Or.inr (Or.inl (indebted_entry next _
+                          (Config.IntendedFor.indebted_commit intended fresh guard value
+                            predicted)))
           · exact Or.inl (intendedFor_entry next _
               (Config.IntendedFor.commit_other intended fresh guard same choice))
       | inr rest =>
@@ -339,7 +363,7 @@ theorem intendedFor_step (who : Player) : {Γ : SourceCtx Player L} → {O : Fin
             | false =>
                 refine Or.inr (Or.inl (Or.inl ⟨rfl, ?_⟩))
                 rw [base_entry]
-                exact disclosureResult_false published source _
+                exact revealSuccessor_result_of_withholding published source _
           · exact Or.inl (intendedFor_entry next _
               (Config.IntendedFor.reveal_other intended fresh source same disclose))
       | inr rest =>

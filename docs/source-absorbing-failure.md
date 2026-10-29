@@ -51,8 +51,16 @@ finite-player or posterior-reconstruction premise. Defaulted owners' private
 intention lists can differ; full configuration equality is not asserted.
 [DisclosureOpening](../Vegas/Source/DisclosureOpening.lean) and
 [DisclosureSupport](../Vegas/Source/DisclosureSupport.lean) use the same
-authentic-binding criterion. Intended-strategy consumers remain acceptance
-obligations.
+authentic-binding criterion.
+
+[ValueBinding](../Vegas/Source/ValueBinding.lean) excludes accepted unusable
+bindings while retaining public omission. [Honest](../Vegas/Source/Honest.lean)
+requires successful admission at every active binding and disclosure at every
+active reveal; omission is not honest play. Its initialized execution law
+proves successful typed cells and an empty default set.
+[IntendedPlay](../Vegas/Source/IntendedPlay.lean) checks that intended play keeps
+this clear-default invariant. The intended-opening adapter uses the same
+[authentic opening](../Vegas/Source/AuthenticOpening.lean) transformation.
 
 Policy callbacks accept proof that their owner is active. This removes unused
 inactive responses from the strategy type and permits exact strategy
@@ -263,13 +271,38 @@ shared by [continuation observation](../Vegas/Pending/ReactiveContinuationObserv
 [PublicFailureEvidence](../Vegas/Pending/PublicFailureEvidence.lean) lifts
 native receipt footprints and failure persistence along finite completion
 paths, and [ExclusionNativeFailure](../Vegas/Pending/ExclusionNativeFailure.lean)
-reads default monotonicity directly from graph configurations. Exact
-first-default/receipt provenance remains a separate constructor proof.
+reads default monotonicity directly from graph configurations.
 [ReactiveSampleLikelihood](../Vegas/Pending/ReactiveSampleLikelihood.lean)
 retains the actual physical chance law through atomic draining, while
 [ReactiveServiceProgress](../Vegas/Pending/ReactiveServiceProgress.lean)
 preserves clocks, completed events and unfinished-event deadlines through
 arbitrary responses and environment operations.
+
+[ExclusionEvidence](../Vegas/Pending/ExclusionEvidence.lean) proves the native
+failure/default correspondence through admission, opening, chance, expiry,
+clock changes, private submission and automatic completion. Initialized
+histories identify the publicly failed event owners with graph default
+membership, without a finite-player premise.
+[Activation origins](../Vegas/Pending/ReactiveServiceOpportunity.lean) hold
+through arbitrary raw operations: live activation times are retained or
+created no earlier than the operation's entry clock.
+
+The [runtime decision translator](../Vegas/Pending/ReactivePolicy.lean) sends
+an authentic requested opening even when its public guard fails. Native
+acceptability permits this call, and the handler records its actual failure
+result. The count verdict checks authentication, typing, signed binding
+association and first use; it does not require guard success. The separate
+successful-content predicate for settled auditing retains its stricter guard
+condition. An all-profile client theorem cannot infer that stricter predicate
+merely from emission.
+
+[Source checkpoints](../Vegas/Game/SourceServiceCheckpoint.lean) now retain
+typed cells, actual own choices and the complete public default history.
+The [prefix decoder](../Vegas/Game/SourceServicePrefix.lean) copies that history
+from the native graph configuration. [Information reconstruction](../Vegas/Game/ServiceInformation.lean)
+and [active-view reconstruction](../Vegas/Game/ServiceObservation.lean) use
+the same log and the actual callback domain. These are checked information
+adapters, rather than an end-to-end probabilistic client law.
 
 These are operational support/refinement laws; they do not establish the
 probabilistic client/compiler law or equilibrium preservation.
@@ -287,8 +320,9 @@ Only checked theorems close these obligations:
    graph refinement, initialized-history invariants, immutable candidate/handle
    provenance and signed-emission/certificate soundness. Native focal-call,
    commitment, expiry and automatic-service observation congruence is checked.
-   Port receipt-failure provenance and the remaining physical chance/service
-   observation adapters to the single application.
+   Receipt-failure provenance, activation origins and the native information
+   adapters are checked. Port the remaining physical service/client consumers
+   to these finite paths and complete default-aware readouts.
 4. Reprove the bounded-client law with complete readout and the service contract.
 5. Source-to-graph Nash deviation translation is checked. Port the ledger
    client deviation correspondence and sequential consistency/rationality;

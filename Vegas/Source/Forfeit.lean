@@ -81,7 +81,8 @@ def RevealCell.failed {Γ : SourceCtx Player L} (cell : RevealCell Γ)
 /-- How many of a player's reveals failed in a public outcome. -/
 def failedReveals {Γ : SourceCtx Player L} {O : Finset VarId}
     (p : SourceProgram Player L Γ O) (who : Player) (outcome : PublicOutcome p) : ℕ :=
-  ((revealCells p).filter fun cell => decide (cell.owner = who) && cell.failed outcome).length
+  ((revealCells p).filter fun cell =>
+    decide (cell.owner = who) && cell.failed outcome.values).length
 
 /-- A utility with a forfeit of `forfeit` for each failed reveal a player owns. -/
 def forfeitUtility {Γ : SourceCtx Player L} {O : Finset VarId} {Parameter : Type}
@@ -94,15 +95,16 @@ variable {Γ : SourceCtx Player L} {O : Finset VarId}
 
 /-- A cell holding a value is not failed in the public outcome. -/
 theorem RevealCell.failed_publicOutcome_of_success (p : SourceProgram Player L Γ O)
-    (cell : RevealCell p.terminalCtx) (terminal : State L p.terminalCtx)
-    {value : L.Val cell.payload} (holds : terminal.get cell.cell = .success value) :
-    cell.failed (publicOutcome p terminal) = false := by
+    (cell : RevealCell p.terminalCtx) (terminal : Config Player L p.terminalCtx)
+    {value : L.Val cell.payload} (holds : terminal.state.get cell.cell = .success value) :
+    cell.failed (publicOutcome p terminal).values = false := by
   simp [RevealCell.failed, publicOutcome, sourcePublicEnv_get_publicRef, holds,
     PublicationResult.isSuccess]
 
 /-- No reveal fails on a terminal state in which no cell records a failure. -/
 theorem failedReveals_publicOutcome_of_successful (p : SourceProgram Player L Γ O)
-    (terminal : State L p.terminalCtx) (successful : Successful terminal) (who : Player) :
+    (terminal : Config Player L p.terminalCtx) (successful : Successful terminal.state)
+    (who : Player) :
     failedReveals p who (publicOutcome p terminal) = 0 := by
   rw [failedReveals, List.length_eq_zero_iff, List.filter_eq_nil_iff]
   intro cell _
@@ -113,8 +115,8 @@ theorem failedReveals_publicOutcome_of_successful (p : SourceProgram Player L Γ
 a failure. -/
 theorem forfeitUtility_of_successful {Parameter : Type} (p : SourceProgram Player L Γ O)
     (forfeit : ℝ) (utility : Parameter × PublicOutcome p → Player → ℝ)
-    (parameter : Parameter) (terminal : State L p.terminalCtx)
-    (successful : Successful terminal) (who : Player) :
+    (parameter : Parameter) (terminal : Config Player L p.terminalCtx)
+    (successful : Successful terminal.state) (who : Player) :
     forfeitUtility p forfeit utility (parameter, publicOutcome p terminal) who =
       utility (parameter, publicOutcome p terminal) who := by
   simp [forfeitUtility, failedReveals_publicOutcome_of_successful p terminal successful]

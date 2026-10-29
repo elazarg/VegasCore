@@ -46,8 +46,12 @@ theorem source_initial_traffic_eq
   have first := SourceCheckpoint.initial (mode := mode) setup left
   have second := SourceCheckpoint.initial (mode := mode) setup right
   have observed := checkpoint_playerObservation_eq_of_order setup _ 0
-    (ContextRefs.initial_coversPrefix setup.program) focal _ _ _ _ (by rfl) first.ordered
-    second.ordered first.agrees second.agrees first.history second.history same
+    (ContextRefs.initial_coversPrefix setup.program) focal _ _ _ _
+    EventGraph.Config.Reachable.initial EventGraph.Config.Reachable.initial
+    (by change focal ∉ (∅ : Finset Player); simp)
+    (by change focal ∉ (∅ : Finset Player); simp)
+    (by rfl) first.ordered second.ordered first.agrees second.agrees first.history
+    second.history (by rfl) (by rfl) same
   have publics : (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
         (setup.eventInputs left)).publicView =
       (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
@@ -62,7 +66,7 @@ theorem source_initial_traffic_eq
       (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
         (setup.eventInputs right)).playerView focal := by
     unfold EventGraphRuntime.State.playerView
-    rw [publics, observed, candidates]
+    congr 1
   unfold EventGraphRuntime.bindingTraffic
   dsimp only [ReactiveApplication.Execution.initial]
   rw [views, publics]
@@ -108,16 +112,5 @@ theorem source_initial_memory_factorization
   simp only [noise, Function.comp_apply, dite_eq_left present, PMF.pure_map]
   rw [show read initial = read present.choose from
     source_initial_traffic_eq setup leaks focal initial present.choose present.choose_spec.2.symm]
-
-omit [IExpr.ResultTypes L] in
-private theorem commit_view_reflects {Γ : SourceCtx Player L} {owner : Player}
-    {payload : L.Ty} (focal : Player) (name : VarId)
-    (guard : SourceGuard L Γ owner name payload) (left right : Config Player L Γ)
-    (first second : PublicationResult (L.Val payload))
-    (same : (commitSuccessor name guard left first).view focal =
-      (commitSuccessor name guard right second).view focal) :
-    left.view focal = right.view focal := by
-  have earlier := congrArg (DecisionView.back (decide (owner = focal))) same
-  simpa only [back_commit_view] using earlier
 
 end Vegas

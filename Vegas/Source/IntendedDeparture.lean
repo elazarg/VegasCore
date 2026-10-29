@@ -48,15 +48,18 @@ theorem intended_or_owesFailure_step : {Γ : SourceCtx Player L} → {O : Finset
           simp only [step, Sum.elim_inl, PMF.mem_support_pure_iff] at reached
           subst reached
           cases bound : OwnAction.binding owner name payload (joint owner) with
-          | failure =>
-              exact Or.inr ⟨owner, Or.inr (failedBinding_entry next _
-                (Config.failedBinding_commit config intended.1.unique fresh guard _))⟩
-          | success value =>
-              by_cases accepted : guard.predicts (sourceObserve owner config.state) value = true
-              · exact Or.inl (intended_entry next _ (intended.1.commit fresh guard value accepted)
-                  (intended.2.2 value accepted))
-              · exact Or.inr ⟨owner, Or.inl (indebted_entry next _
-                  (intended.1.indebted_commit fresh guard value (by simpa using accepted)))⟩
+          | none => exact Or.inr ⟨owner, Or.inr (failedBinding_entry next _
+              (Config.failedBinding_omission config intended.1.unique fresh guard _))⟩
+          | some result =>
+              cases result with
+              | failure => exact Or.inr ⟨owner, Or.inr (failedBinding_entry next _
+                  (Config.failedBinding_commit config intended.1.unique fresh guard _))⟩
+              | success value =>
+                  by_cases accepted : guard.predicts (sourceObserve owner config.state) value = true
+                  · exact Or.inl (intended_entry next _
+                      (intended.1.commit fresh guard value accepted) (intended.2.2 value accepted))
+                  · exact Or.inr ⟨owner, Or.inl (indebted_entry next _
+                      (intended.1.indebted_commit fresh guard value (by simpa using accepted)))⟩
       | inr rest =>
           simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
           obtain ⟨after, supported, rfl⟩ := reached

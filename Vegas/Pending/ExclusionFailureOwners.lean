@@ -1,57 +1,61 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionPairedTransition
+import Vegas.Pending.ExclusionEvidence
 
-/-! # Exact failed-owner labels at paired exclusion boundaries -/
+/-! # Public failure owners in native execution -/
 
 noncomputable section
 
 namespace Vegas.EventGraphRuntime
 
-variable {Player : Type} [DecidableEq Player] [Fintype Player]
+open Interaction GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-/-- All owners with a publicly missed binding or failed publication. -/
+/-- Owners of completed public failures, enumerated by the finite event set. -/
 def State.failureOwners (state : State graph) : Finset Player := by
   classical
-  exact Finset.univ.filter fun owner =>
-    ∃ event, graph.actor? event = some owner ∧ state.PublicFailure event
+  exact Finset.univ.biUnion fun event =>
+    if state.PublicFailure event then (graph.actor? event).toFinset else ∅
 
-/-- The public failure record determines the permanent excluded-owner set. -/
-theorem ExclusionEvidence.failureOwners_eq {state : RecoveryState graph}
-    (valid : ExclusionEvidence 0 ∅ state) : state.native.failureOwners = state.excluded := by
+/-- Public failure labels require no finite-player hypothesis. -/
+theorem State.mem_failureOwners (state : State graph) (owner : Player) :
+    owner ∈ state.failureOwners ↔
+      ∃ event, graph.actor? event = some owner ∧ state.PublicFailure event := by
   classical
+  simp only [State.failureOwners, Finset.mem_biUnion, Finset.mem_univ, true_and]
+  constructor
+  · rintro ⟨event, member⟩
+    by_cases failed : state.PublicFailure event
+    · rw [ite_eq_left failed] at member
+      exact ⟨event, by simpa using member, failed⟩
+    · rw [ite_eq_right failed] at member
+      exact (Finset.notMem_empty _ member).elim
+  · rintro ⟨event, acting, failed⟩
+    refine ⟨event, ?_⟩
+    rw [ite_eq_left failed]
+    simpa using acting
+
+/-- The native failure readout equals the authoritative graph default set. -/
+theorem ExclusionEvidence.failureOwners_eq {state : State graph}
+    (valid : ExclusionEvidence 0 ∅ state) : state.failureOwners = state.config.defaulted := by
   ext owner
-  simp only [State.failureOwners, Finset.mem_filter, Finset.mem_univ, true_and]
-  exact (valid.excluded_zero owner).symm
+  exact (state.mem_failureOwners owner).trans (valid.defaulted_zero owner).symm
 
-namespace RecoveryProjection
+/-- Initialized native histories identify failure owners with graph default membership. -/
+theorem ExclusionEvidence.history_failureOwners_eq (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (inputs : PMF graph.Inputs) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    {state : (runtime.reactiveApplication leaks).ProtocolState}
+    (trace : ((runtime.reactiveApplication leaks).protocol (inputs.map State.initial)
+      horizon scheduler).Trace state) :
+    ReactiveApplication.stateInvariant
+      (fun native : State graph => native.failureOwners = native.config.defaulted) state := by
+  have valid := ExclusionEvidence.history runtime leaks inputs horizon scheduler trace
+  cases state with
+  | none => trivial
+  | some control => exact valid.failureOwners_eq
 
-variable (runtime : EventGraphRuntime graph)
-  (leaks : Interaction.MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-
-/-- The failed owners in the actual native endpoint, prior to recovery drain. -/
-def nativeFailureOwners : (runtime.reactiveApplication leaks).ProtocolState → Finset Player
-  | none => ∅
-  | some control => control.execution.application.failureOwners
-
-/-- The actual permanent excluded set at the recovery endpoint. -/
-def recoveryFailureOwners : (runtime.recoveryApplication leaks).ProtocolState → Finset Player
-  | none => ∅
-  | some control => control.execution.application.excluded
-
-/-- The natural coupled step preserves the complete first failed-owner label,
-including outcomes where recovery drains additional automatic failures. -/
-theorem PairedExclusionRecord.failureOwners_eq
-    {first : (runtime.reactiveApplication leaks).ProtocolState}
-    {second : (runtime.recoveryApplication leaks).ProtocolState}
-    (record : PairedExclusionRecord runtime leaks first second) :
-    nativeFailureOwners runtime leaks first = recoveryFailureOwners runtime leaks second := by
-  cases first <;> cases second
-  · rfl
-  · exact record.elim
-  · exact record.elim
-  · exact ExclusionEvidence.failureOwners_eq record
-
-end RecoveryProjection
 end Vegas.EventGraphRuntime

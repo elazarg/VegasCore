@@ -3,12 +3,10 @@
 import Vegas.Pending.ReactiveCompiledMenu
 import Vegas.Pending.ReactiveDisclosure
 
-/-! # Guarded opening classification in the full-source retained menu
+/-! # Authentic opening responses in the full-source retained menu
 
-Successful public guard checks identify an actual retained source disclosure.
-The test keeps arbitrary hidden values and deferred guards. Own recall enforces
-the separate once-per-event rule; authentic phase records must establish that
-rule when an external auditor uses this classification.
+Successful bindings identify authentic source disclosures independently of public guards.
+Own recall enforces the separate once-per-event rule.
 -/
 
 noncomputable section
@@ -22,9 +20,9 @@ variable {Player : Type} [DecidableEq Player]
   (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
-/-- The actual successful compiler response is the unique semantic normal form
+/-- The authentic compiler response is the unique semantic normal form
 of its matching certificate, including forwarding aliases. -/
-theorem serviceDecision_successful_opening
+theorem serviceDecision_authentic_opening
     (execution : (runtime.reactiveApplication leaks).Execution)
     (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
     (owner : Player) (event : graph.EventId) (payload : L.Ty)
@@ -38,8 +36,8 @@ theorem serviceDecision_successful_opening
     (associated : execution.application.accepted binding.field = some candidate)
     (owned : candidate.1 = owner)
     (fixed : execution.application.candidates.lookup candidate = .openable ⟨payload, value⟩)
-    (resolved : EventCode.resolveOutput? binding checks true execution.application.config.store =
-      some (.success value)) :
+    (active : owner ∉ execution.application.config.defaulted)
+    (stored : binding.get? execution.application.config.store = some (.success value)) :
     let app := runtime.reactiveApplication leaks
     runtime.serviceDecision leaks owner (execution.recall owner) (execution.observe app owner)
       event (cast (congrArg EventField.Action outputEq.symm) true) =
@@ -47,16 +45,15 @@ theorem serviceDecision_successful_opening
           owner
           (app.observePlayer execution.application owner) (execution.network.known owner))⟩ := by
   intro app
-  have localResult : EventCode.resolveOutput? binding checks true
+  have localResult : binding.get?
       (app.observePlayer execution.application owner).observation.store =
       some (.success value) := by
-    change EventCode.resolveOutput? binding checks true
-      (graph.playerStore owner execution.application.config.store) = _
-    rw [EventCode.resolveOutput?_playerStore]
-    exact resolved
+    change binding.get? (graph.playerStore owner execution.application.config.store) = _
+    rw [binding.get?_playerStore owner execution.application.config.store rfl]
+    exact stored
   have packet := reactiveResolutionPacket_opening owner event payload binding checks outputEq
     (cast (congrArg EventField.Action outputEq.symm) true)
-    (app.observePlayer execution.application owner) (by simp only [cast_cast, cast_eq]) value
+    (app.observePlayer execution.application owner) active (by simp only [cast_cast, cast_eq]) value
     localResult candidate associated owned
   have localFixed : (app.observePlayer execution.application owner).candidates candidate.2 =
       .openable ⟨payload, value⟩ := by
@@ -70,7 +67,10 @@ theorem serviceDecision_successful_opening
     (execution.recall owner) (execution.observe app owner) at known
   have view : (execution.observe app owner).application =
       app.observePlayer execution.application owner := rfl
-  simp only [serviceDecision, view, reactiveDecision, node, packet, Option.map_some, normalized]
+  have activeView : owner ∉
+      (app.observePlayer execution.application owner).publicView.observation.defaulted := active
+  simp only [serviceDecision, view, reactiveDecision, ite_eq_right activeView, node, packet,
+    Option.map_some, normalized]
   change (⟨some ((disclosureSubmission (.opening event candidate
       ⟨payload, value⟩)).normalizeReactive
           owner

@@ -7,7 +7,8 @@ import Vegas.Source.ProtocolBehavioralPolicy
 
 A behavioral policy is admitted by the value interface
 (`Vegas.SourceProgram.CommitmentInterface.values`) exactly when it never
-chooses a failed binding, which is the value-binding condition
+chooses an accepted unusable binding. Public omission is admitted. This is the
+value-binding condition
 (`Vegas.SourceProgram.ValueBinding`). The policies of the source protocol model
 under the value interface are therefore the value-binding policies.
 -/
@@ -26,14 +27,17 @@ theorem BehavioralPolicy.admitted_values_iff_valueBinding {who : Player} :
   | _, _, .commit _ _ _ _ next, policy => by
       refine and_congr ?_ (admitted_values_iff_valueBinding next policy.2)
       constructor
-      · intro admits own view failed
-        have admitted := admits own view _ failed
+      · intro admits own view active failed
+        have admitted := admits own view active _ failed
         simp only [CommitmentInterface.values, CommitmentAdmission.admits_failure,
           reduceCtorEq] at admitted
-      · intro binding own view choice member
+      · intro binding own view active choice member
         cases choice with
-        | success value => trivial
-        | failure => exact absurd member (binding own view)
+        | none => trivial
+        | some result =>
+            cases result with
+            | success value => trivial
+            | failure => exact absurd member (binding own view active)
   | _, _, .reveal _ _ _ _ _ _ next, policy => admitted_values_iff_valueBinding next policy.2
 
 /-- Successful value bindings are admitted by every commitment interface. -/
@@ -48,10 +52,13 @@ theorem BehavioralPolicy.admitted_of_valueBinding {who : Player} :
   | _, _, .commit _ _ _ _ next, policy, binding, admission => by
       refine ⟨?_, admitted_of_valueBinding next policy.2 binding.2
         (fun site => admission (some site))⟩
-      intro own view choice member
+      intro own view active choice member
       cases choice with
-      | success value => exact CommitmentAdmission.admits_success _ value
-      | failure => exact absurd member (binding.1 own view)
+      | none => trivial
+      | some result =>
+          cases result with
+          | success value => exact CommitmentAdmission.admits_success _ value
+          | failure => exact absurd member (binding.1 own view active)
   | _, _, .reveal _ _ _ _ _ _ next, policy, binding, admission =>
       admitted_of_valueBinding next policy.2 binding admission
 

@@ -30,32 +30,34 @@ def decodeSourcePrefix? {Field : Type} [DecidableEq Field]
     (program : SourceProgram Player L Γ openNames) → ContextRefs layout Γ →
     Registry Γ → Revelations Γ →
     (∀ event, EventGraph.FieldRef layout (outputLayout program event)) →
-    Nat → EventGraph.Store layout → History Player L → Option (ProtocolState program)
-  | _, _, program, refs, registry, revelations, _, 0, store, history =>
+    Nat → EventGraph.Store layout → History Player L → DefaultHistory Player →
+      Option (ProtocolState program)
+  | _, _, program, refs, registry, revelations, _, 0, store, history, defaults =>
       (decodeState? refs store).map fun state =>
-        ProtocolState.entry program ⟨state, registry, revelations, history⟩
-  | _, _, .ret _, _, _, _, _, _ + 1, _, _ => none
+        ProtocolState.entry program ⟨state, registry, revelations, history, defaults⟩
+  | _, _, .ret _, _, _, _, _, _ + 1, _, _, _ => none
   | _, _, .sample (payload := payload) _ _ _ next,
-      refs, registry, revelations, outputs, count + 1, store, history =>
+      refs, registry, revelations, outputs, count + 1, store, history, defaults =>
       let headRef : EventGraph.FieldRef layout (.publicData payload) := by
         simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
       (decodeSourcePrefix? next (refs.cons headRef) registry.weaken revelations.weaken
-        (fun tail => outputs tail.succ) count store history).map Sum.inr
+        (fun tail => outputs tail.succ) count store history defaults).map Sum.inr
   | _, _, .commit (payload := payload) name owner _ guard next,
-      refs, registry, revelations, outputs, count + 1, store, history =>
+      refs, registry, revelations, outputs, count + 1, store, history, defaults =>
       let headRef : EventGraph.FieldRef layout (.binding owner payload) := by
         simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
       let nextRegistry :=
         { owner := owner, subject := name, payload := payload, source := HasVar.here,
           guard := guard.weaken } :: registry.weaken
       (decodeSourcePrefix? next (refs.cons headRef) nextRegistry revelations.weaken
-        (fun tail => outputs tail.succ) count store history).map Sum.inr
+        (fun tail => outputs tail.succ) count store history defaults).map Sum.inr
   | _, _, .reveal (payload := payload) _ _ _ _ selected _ next,
-      refs, registry, revelations, outputs, count + 1, store, history =>
+      refs, registry, revelations, outputs, count + 1, store, history, defaults =>
       let headRef : EventGraph.FieldRef layout (.publication payload) := by
         simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
       (decodeSourcePrefix? next (refs.cons headRef) registry.weaken
-        (revelations.reveal selected) (fun tail => outputs tail.succ) count store history).map
+        (revelations.reveal selected) (fun tail => outputs tail.succ)
+        count store history defaults).map
           Sum.inr
 
 /-- Current typed agreement reconstructs the whole source configuration,
@@ -68,7 +70,7 @@ theorem decodeSourcePrefix?_zero_of_agrees
     (source : Config Player L Γ) (store : EventGraph.Store layout)
     (agrees : refs.Agrees source.state store) :
     decodeSourcePrefix? program refs source.registry source.revelations outputs 0
-      store source.history = some (ProtocolState.entry program source) := by
+      store source.history source.defaults = some (ProtocolState.entry program source) := by
   rw [decodeSourcePrefix?, decodeState?_eq_some refs source.state store agrees]
   rfl
 
@@ -81,11 +83,13 @@ theorem decodeSourcePrefix?_sample
     (refs : ContextRefs layout Γ) (registry : Registry Γ) (revelations : Revelations Γ)
     (outputs : ∀ event, EventGraph.FieldRef layout
       (outputLayout (.sample name fresh law next) event))
-    (count : Nat) (store : EventGraph.Store layout) (history : History Player L) :
+    (count : Nat) (store : EventGraph.Store layout) (history : History Player L)
+    (defaults : DefaultHistory Player) :
     decodeSourcePrefix? (.sample name fresh law next) refs registry revelations outputs
-        (count + 1) store history =
+        (count + 1) store history defaults =
       (decodeSourcePrefix? next (refs.cons (outputs ⟨0, by simp [eventCount]⟩)) registry.weaken
-        revelations.weaken (fun tail => outputs tail.succ) count store history).map Sum.inr := rfl
+        revelations.weaken (fun tail => outputs tail.succ) count store history defaults).map
+        Sum.inr := rfl
 
 theorem decodeSourcePrefix?_commit
     {Field : Type} [DecidableEq Field] {layout : Field → EventGraph.EventField Player L}
@@ -97,13 +101,15 @@ theorem decodeSourcePrefix?_commit
     (refs : ContextRefs layout Γ) (registry : Registry Γ) (revelations : Revelations Γ)
     (outputs : ∀ event, EventGraph.FieldRef layout
       (outputLayout (.commit name owner fresh guard next) event))
-    (count : Nat) (store : EventGraph.Store layout) (history : History Player L) :
+    (count : Nat) (store : EventGraph.Store layout) (history : History Player L)
+    (defaults : DefaultHistory Player) :
     decodeSourcePrefix? (.commit name owner fresh guard next) refs registry revelations outputs
-        (count + 1) store history =
+        (count + 1) store history defaults =
       (decodeSourcePrefix? next (refs.cons (outputs ⟨0, by simp [eventCount]⟩))
         ({ owner := owner, subject := name, payload := payload, source := HasVar.here,
            guard := guard.weaken } :: registry.weaken)
-        revelations.weaken (fun tail => outputs tail.succ) count store history).map Sum.inr := rfl
+        revelations.weaken (fun tail => outputs tail.succ) count store history defaults).map
+        Sum.inr := rfl
 
 theorem decodeSourcePrefix?_reveal
     {Field : Type} [DecidableEq Field] {layout : Field → EventGraph.EventField Player L}
@@ -116,11 +122,13 @@ theorem decodeSourcePrefix?_reveal
     (refs : ContextRefs layout Γ) (registry : Registry Γ) (revelations : Revelations Γ)
     (outputs : ∀ event, EventGraph.FieldRef layout
       (outputLayout (.reveal published owner name fresh selected unresolved next) event))
-    (count : Nat) (store : EventGraph.Store layout) (history : History Player L) :
+    (count : Nat) (store : EventGraph.Store layout) (history : History Player L)
+    (defaults : DefaultHistory Player) :
     decodeSourcePrefix? (.reveal published owner name fresh selected unresolved next)
-        refs registry revelations outputs (count + 1) store history =
+        refs registry revelations outputs (count + 1) store history defaults =
       (decodeSourcePrefix? next (refs.cons (outputs ⟨0, by simp [eventCount]⟩)) registry.weaken
-        (revelations.reveal selected) (fun tail => outputs tail.succ) count store history).map
+        (revelations.reveal selected) (fun tail => outputs tail.succ)
+        count store history defaults).map
           Sum.inr := rfl
 
 /-- Decoding the full instruction count of a program yields a terminal
@@ -132,9 +140,10 @@ theorem decodeSourcePrefix?_terminal
     (registry : Registry Γ) (revelations : Revelations Γ)
     (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
     (store : EventGraph.Store layout) (history : History Player L)
+    (defaults : DefaultHistory Player)
     (state : ProtocolState program)
     (decoded : decodeSourcePrefix? program refs registry revelations outputs (eventCount program)
-      store history = some state) : ProtocolState.terminal program state := by
+      store history defaults = some state) : ProtocolState.terminal program state := by
   induction program with
   | ret _ => trivial
   | sample name fresh distribution next ih =>
@@ -161,7 +170,7 @@ def serviceSourcePrefix? (setup : Setup (Player := Player) (L := L))
     (ContextRefs.initial setup.context (outputLayout setup.program)) []
     (Revelations.initial setup.context) (outputRef setup.program) rank config.store
     (decodeHistory setup.program (config.history.map
-      (setup.eventGraph.fromModeCompletion mode)))
+      (setup.eventGraph.fromModeCompletion mode))) config.defaults
 
 /-- The readout on the default sequential graph. -/
 abbrev sourceServicePrefix? (setup : Setup (Player := Player) (L := L)) :
@@ -193,9 +202,9 @@ theorem SourceCheckpoint.decode
         (outputLayout program event)) :
     decodeSourcePrefix? program refs source.registry source.revelations outputs 0 native.store
       (decodeHistory setup.program (native.history.map
-        (setup.eventGraph.fromModeCompletion mode))) =
+        (setup.eventGraph.fromModeCompletion mode))) native.defaults =
       some (ProtocolState.entry program source) := by
-  rw [checkpoint.history]
+  rw [checkpoint.history, checkpoint.defaults]
   exact decodeSourcePrefix?_zero_of_agrees program refs outputs source native.store
     checkpoint.agrees
 
@@ -256,7 +265,7 @@ theorem SourcePrefixCheckpoint.decode {setup : Setup (Player := Player) (L := L)
     (native : (serviceGraph setup mode).Config), SourcePrefixCheckpoint setup program refs registry
     revelations outputs offset count state native → decodeSourcePrefix? program refs registry
     revelations outputs count native.store (decodeHistory setup.program (native.history.map
-          (setup.eventGraph.fromModeCompletion mode))) = some state := by
+          (setup.eventGraph.fromModeCompletion mode))) native.defaults = some state := by
   intro Γ openNames program refs registry revelations outputs offset count
   induction count generalizing Γ openNames program refs registry revelations outputs offset with
   | zero =>

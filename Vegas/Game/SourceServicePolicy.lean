@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.ServiceInformation
-import Vegas.Pending.ReactiveCompiledMenu
+import Vegas.Pending.ReactivePolicy
 import GameTheory.Math.Probability.ConditionalObservation
 import GameTheory.Math.Probability.ExpectationConditioning
 
@@ -14,9 +14,8 @@ arbitrary outstanding source guards and does not freeze the candidate catalogue
 or accepted handles at initialization.
 
 These are actual response-law equalities. Finite-menu coverage, complete service
-execution, and sequential rationality require separate proofs. In particular,
-erasing an ineffective private disclosure intention uses the checked source
-normalization argument, not an equality of private action histories.
+execution, and sequential rationality require separate proofs. Excluded players
+make no source decision and transmit nothing.
 -/
 
 noncomputable section
@@ -41,10 +40,12 @@ def sourceServicePolicy (profile : BehavioralProfile setup.program) (who : Playe
     | none => PMF.pure ⟨none⟩
     | some event =>
         if owned : (graph setup).actor? event = some who then
-          ((compileEventProfile setup.program profile) who event owned
-            (setup.eventGraph.fromModeObservation .sequential who
-              (identity ▸ view.application.observation))).map
-            ((runtime setup).serviceDecision leaks who past view event)
+          let observed := setup.eventGraph.fromModeObservation .sequential who
+            (identity ▸ view.application.observation)
+          if active : who ∉ observed.defaulted then
+            ((compileEventProfile setup.program profile) who event owned observed active).map
+              ((runtime setup).serviceDecision leaks who past view event)
+          else PMF.pure ⟨none⟩
         else PMF.pure ⟨none⟩
   else PMF.pure ⟨none⟩
 

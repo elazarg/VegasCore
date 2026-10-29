@@ -1,15 +1,15 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.ReactiveGuardConformance
-import Vegas.Pending.ReactiveBindingAllocation
+import Vegas.Pending.EventPublicState
 
 /-! # Public conformance for binding and guarded disclosure phases
 
 The checker reads the public view, its prior ledger and a signed envelope. It
 admits, for a ready event within its deadline, the first canonical opaque
 binding regardless of hidden opening material, and one certified opening whose
-public guards succeed. Authorization is readiness: no service cursor is
-consulted, so conformance does not depend on how an order serves ready events.
+public guards succeed. It uses public readiness and ledger metadata, with no
+service cursor, so conformance does not depend on how an order serves ready events.
 Already published envelopes and the current pending envelope remain
 permitted. Serial evidence detects another fresh envelope without requiring
 the auditor to have sampled the earlier one; it counts distinct identifiers,
@@ -82,7 +82,7 @@ theorem freshServiceEnvelope_ready (view : PublicView graph)
   cases call : message.payload.call with
   | commitment event candidate =>
       simp only [freshServiceEnvelope, call, PublicView.BindingIncludable] at permitted
-      exact ⟨event, rfl, permitted.1.1⟩
+      exact ⟨event, rfl, permitted.1.2.1⟩
   | opening event candidate raw =>
       simp only [freshServiceEnvelope, call] at permitted
       exact ⟨event, rfl, permitted.1⟩
@@ -103,10 +103,10 @@ theorem freshServiceEnvelope_owned (view : PublicView graph)
       cases node : nodeView graph event with
       | bind owner payload outputEq codeEq =>
           simp only [node] at bound
-          have authored : message.sender = owner := bound.2.2.1
+          have authored : message.sender = owner := bound.2.2.2.1
           have actor := congrArg EventCode.actor codeEq
           rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
-          exact ⟨event, rfl, bound.1, authored ▸ actor⟩
+          exact ⟨event, rfl, bound.2.1, authored ▸ actor⟩
       | sample payload kernel outputEq codeEq =>
           simp only [node, and_false] at bound
       | resolve owner payload binding checks outputEq codeEq =>
@@ -149,7 +149,7 @@ theorem freshServiceEnvelope_binding_shape
         evidence token).mp permitted
       have includable := allowed.1
       simp only [PublicView.BindingIncludable, node] at includable
-      have authored : id.1 = owner := includable.2.2.1
+      have authored : id.1 = owner := includable.2.2.2.1
       refine ⟨authored, ?_⟩
       have canonical := runtime.freshServiceEnvelope_binding_packet view id event candidate
         evidence token permitted

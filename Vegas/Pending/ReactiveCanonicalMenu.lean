@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.ReactiveCanonicalDecision
+import Vegas.Pending.ReactivePolicyFacts
 
 /-! # Canonical retained responses under an arbitrary scheduler
 
@@ -35,19 +36,29 @@ theorem canonicalReactiveDecision_transmission (runtime : EventGraphRuntime grap
       ∃ material,
         (runtime.canonicalReactiveDecision leaks who event choice view).transmission =
             some material ∧ material.call.packet.event? graph = some event := by
-  unfold canonicalReactiveDecision
-  split
-  · exact Or.inl rfl
-  · cases selected : canonicalFreshSlot who view with
-    | none => exact Or.inl rfl
-    | some serial => exact Or.inr ⟨_, rfl, rfl⟩
-  · rename_i owner payload binding checks outputEq codeEq nodeEq
-    cases sent : reactiveResolutionPacket who event payload binding checks outputEq choice view with
-    | none => exact Or.inl (by simp only [Option.map_none])
-    | some packet =>
-        exact Or.inr ⟨_, by simp only [Option.map_some]; rfl,
-          reactiveResolutionPacket_event who event payload binding checks outputEq choice view
-            packet sent⟩
+  by_cases inactive : who ∈ view.publicView.observation.defaulted
+  · exact Or.inl (by simp only [canonicalReactiveDecision, ite_eq_left inactive])
+  · simp only [canonicalReactiveDecision, ite_eq_right inactive]
+    cases node : nodeView graph event with
+    | sample => exact Or.inl rfl
+    | bind owner payload outputEq codeEq =>
+        simp only
+        cases chosen : (cast (congrArg EventField.Action outputEq) choice :
+            Option (PublicationResult (L.Val payload))) with
+        | none => exact Or.inl rfl
+        | some result =>
+            cases selected : canonicalFreshSlot who view with
+            | none => exact Or.inl rfl
+            | some serial => exact Or.inr ⟨_, rfl, rfl⟩
+    | resolve owner payload binding checks outputEq codeEq =>
+        simp only
+        cases sent : reactiveResolutionPacket who event payload binding checks outputEq choice
+            view with
+        | none => exact Or.inl (by simp only [Option.map_none])
+        | some packet =>
+            exact Or.inr ⟨_, by simp only [Option.map_some]; rfl,
+              reactiveResolutionPacket_event who event payload binding checks outputEq choice view
+                packet sent⟩
 
 /-- A canonical decision is silent or names exactly its decision event. -/
 theorem canonicalServiceDecision_cases (runtime : EventGraphRuntime graph)
@@ -118,8 +129,8 @@ def canonicalChoices (event : graph.EventId) : Finset (graph.Action event) :=
   match nodeView graph event with
   | .sample .. => ∅
   | .bind _ payload outputEq _ =>
-      (bounds.typedValues payload).image fun value =>
-        cast (congrArg EventField.Action outputEq.symm) (PublicationResult.success value)
+      (bounds.bindingChoices payload).image fun choice =>
+        cast (congrArg EventField.Action outputEq.symm) choice
   | .resolve _ _ _ _ outputEq _ =>
       Finset.univ.image fun disclose : Bool =>
         cast (congrArg EventField.Action outputEq.symm) disclose
@@ -341,16 +352,21 @@ theorem canonical_binding_value_retained (who : Player)
     (capacity : serial < bounds.candidateCount)
     (value : L.Val payload) (included : (⟨payload, value⟩ : Raw L) ∈ bounds.values) :
     runtime.canonicalServiceDecision leaks who past view event
-        (cast (congrArg EventField.Action outputEq.symm) (PublicationResult.success value)) ∈
+        (cast (congrArg EventField.Action outputEq.symm) (some (PublicationResult.success value))) ∈
       bounds.canonicalActions runtime leaks who past view := by
   classical
+  by_cases inactive : who ∈ view.application.publicView.observation.defaulted
+  · rw [runtime.canonicalServiceDecision_defaulted leaks who past view event _ inactive]
+    exact bounds.silence_canonical runtime leaks who past view
   apply bounds.canonical_decision_retained runtime leaks who past view event _ turn owned ready
     timely unsent
   · simp only [canonicalChoices, node]
+    refine Finset.mem_image.mpr ⟨some (.success value), ?_, rfl⟩
+    apply Finset.mem_union_right
     exact Finset.mem_image.mpr ⟨value, (bounds.typedValues_mem payload value).mpr
       ⟨⟨payload, value⟩, included, Raw.as?_mk payload value⟩, rfl⟩
   · rw [runtime.canonicalServiceDecision_binding leaks who past view event payload outputEq
-      codeEq node serial selected]
+      codeEq node inactive serial selected]
     rw [← runtime.reactiveBinding_normal_of_fresh leaks who past view event payload
       (.success value) serial (canonicalFreshSlot_spec who view.application serial selected)]
     exact bounds.binding_normalized_available runtime leaks who past view event payload _ serial
@@ -359,7 +375,7 @@ theorem canonical_binding_value_retained (who : Player)
         exact included)
 
 /-- Both resolution choices are retained whenever their actual selected packet
-fits the bounds. Failed guards and withholding normalize to silence. -/
+fits the bounds. Withholding and unavailable opening material use silence. -/
 theorem canonical_resolution_retained (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
@@ -383,6 +399,9 @@ theorem canonical_resolution_retained (who : Player)
         (cast (congrArg EventField.Action outputEq.symm) choice) ∈
       bounds.canonicalActions runtime leaks who past view := by
   classical
+  by_cases inactive : who ∈ view.application.publicView.observation.defaulted
+  · rw [runtime.canonicalServiceDecision_defaulted leaks who past view event _ inactive]
+    exact bounds.silence_canonical runtime leaks who past view
   apply bounds.canonical_decision_retained runtime leaks who past view event _ turn owned ready
     timely unsent
   · simp only [canonicalChoices, node]
@@ -391,13 +410,13 @@ theorem canonical_resolution_retained (who : Player)
     cases sent : reactiveResolutionPacket who event payload binding checks outputEq
         (cast (congrArg EventField.Action outputEq.symm) choice) view.application with
     | none =>
-      simp only [canonicalReactiveDecision, node, sent, Option.map_none]
+      simp only [canonicalReactiveDecision, ite_eq_right inactive, node, sent, Option.map_none]
       exact (ReactiveApplication.ResponseMenu.fromSubmissions_mem
         (app := runtime.reactiveApplication leaks)
         (fun _ past view => bounds.submissions
           (ReactiveApplication.ResponseMenu.knownPackets past view)) who past view _).mpr trivial
     | some packet =>
-    simp only [canonicalReactiveDecision, node, sent, Option.map_some]
+    simp only [canonicalReactiveDecision, ite_eq_right inactive, node, sent, Option.map_some]
     apply (ReactiveApplication.ResponseMenu.fromSubmissions_mem
       (app := runtime.reactiveApplication leaks)
       (fun _ past view => bounds.submissions

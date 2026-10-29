@@ -46,18 +46,20 @@ theorem resolutionPacket_allowed {owner : Player} (who : Player) (event : graph.
     bounds.AllowsPacket packet := by
   dsimp only [reactiveResolutionPacket] at sent
   split at sent
+  · cases sent
   · split at sent
-    · rename_i value resolved
-      split at sent
-      · rename_i candidate accepted
+    · split at sent
+      · rename_i value resolved
         split at sent
-        · cases sent
-          exact ⟨handles binding.field candidate accepted, values value⟩
+        · rename_i candidate accepted
+          split at sent
+          · cases sent
+            exact ⟨handles binding.field candidate accepted, values value⟩
+          · cases sent
         · cases sent
       · cases sent
+      · cases sent
     · cases sent
-    · cases sent
-  · cases sent
 
 variable [Fintype Player]
 

@@ -6,10 +6,10 @@ import Vegas.EventGraph.SequentialLaw
 
 /-! # Source information recovered from native owner observations
 
-The decoder reads the existing masked graph store and the owner's retained
-completion actions. It uses neither a hidden setup draw nor network inputs.
-Typed store and completion-history agreement therefore recover the exact
-source decision view, including correlated private inputs. Reconstruction of
+The decoder reads the masked graph store, public default record and owner's
+retained completion actions. It uses neither a hidden setup draw nor network
+inputs. Typed store, default-record and completion-history agreement recover
+the exact source decision view, including correlated private inputs. Reconstruction of
 the additional runtime fields and complete information fibers is separate.
 -/
 
@@ -47,10 +47,11 @@ def decisionView? {Γ : SourceCtx Player L}
     let observed : (serviceGraph setup mode).PlayerObservation who := same ▸
         view.application.observation
     (decodeObservation? who refs observed.store).map fun source =>
-      (source, decodeCompletions setup.program
-        (observed.ownActions.map (setup.eventGraph.fromModeCompletion mode)))
+      ⟨source, observed.defaults, decodeCompletions setup.program
+        (observed.ownActions.map (setup.eventGraph.fromModeCompletion mode))⟩
   else none
 
+/-- Compiler agreement recovers all three components of the source view exactly. -/
 theorem decisionView?_observe {Γ : SourceCtx Player L}
     (refs : ContextRefs (graphLayout setup.program) Γ) (who : Player)
     (source : Config Player L Γ)
@@ -58,7 +59,8 @@ theorem decisionView?_observe {Γ : SourceCtx Player L}
     (store : refs.Agrees source.state execution.application.config.store)
     (history : decodeHistory setup.program
         (execution.application.config.history.map
-          (setup.eventGraph.fromModeCompletion mode)) = source.history) :
+          (setup.eventGraph.fromModeCompletion mode)) = source.history)
+    (defaults : execution.application.config.defaults = source.defaults) :
     decisionView? setup leaks refs who
         (execution.observe (serviceApplication setup mode deadline leaks) who) =
       some (source.view who) := by
@@ -68,17 +70,18 @@ theorem decisionView?_observe {Γ : SourceCtx Player L}
           who).application.who = who from rfl)]
   change (decodeObservation? who refs
       ((serviceGraph setup mode).playerStore who execution.application.config.store)).map
-        (fun observed => (observed, decodeCompletions setup.program
+        (fun observed => DecisionView.mk observed execution.application.config.defaults
+          (decodeCompletions setup.program
           (((serviceGraph setup mode).ownCompletions who execution.application.config.history).map
             (setup.eventGraph.fromModeCompletion mode)))) = _
   rw [decodeObservation?_playerStore_eq_some (graph := serviceGraph setup mode) refs who
           source.state execution.application.config.store store, Option.map_some,
           ownCompletions_fromModeCompletion]
-  change some (sourceObserve who source.state,
-    decodeHistory setup.program
+  change some (DecisionView.mk (sourceObserve who source.state)
+    execution.application.config.defaults (decodeHistory setup.program
       (execution.application.config.history.map
-        (setup.eventGraph.fromModeCompletion mode)) who) = _
-  rw [history]
+        (setup.eventGraph.fromModeCompletion mode)) who)) = _
+  rw [history, defaults]
   rfl
 
 /-- A native information fiber cannot identify two different source decision
@@ -95,12 +98,15 @@ theorem source_view_eq_of_observe_eq {Γ : SourceCtx Player L}
     (rightHistory : decodeHistory setup.program
         (nativeRight.application.config.history.map
           (setup.eventGraph.fromModeCompletion mode)) = right.history)
+    (leftDefaults : nativeLeft.application.config.defaults = left.defaults)
+    (rightDefaults : nativeRight.application.config.defaults = right.defaults)
     (same : nativeLeft.observe (serviceApplication setup mode deadline leaks) who =
       nativeRight.observe (serviceApplication setup mode deadline leaks) who) : left.view who =
           right.view who := by
-  have first := decisionView?_observe setup leaks refs who left nativeLeft leftStore leftHistory
+  have first := decisionView?_observe setup leaks refs who left nativeLeft leftStore
+    leftHistory leftDefaults
   have second := decisionView?_observe setup leaks refs who right nativeRight
-    rightStore rightHistory
+    rightStore rightHistory rightDefaults
   rw [same] at first
   exact Option.some.inj (first.symm.trans second)
 

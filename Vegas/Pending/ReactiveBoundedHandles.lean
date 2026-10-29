@@ -114,9 +114,13 @@ theorem executionHandles_environment (runtime : EventGraphRuntime graph)
                 message with
             | none => exact valid.1
             | some state =>
-                exact bounds.acceptedHandles_handle runtime execution.application
-                  state ⟨message.id, message.payload.call⟩ valid.1
-                  (valid.2.lookup id message found) (reactiveHandle_call accepted)
+                change bounds.AcceptedHandles state
+                obtain ⟨native, handled, drained⟩ := reactiveHandle_call accepted
+                rw [← drained]
+                simpa only [AcceptedHandles, native.drain_tables.1] using
+                  bounds.acceptedHandles_handle runtime execution.application
+                    native ⟨message.id, message.payload.call⟩ valid.1
+                    (valid.2.lookup id message found) handled
       · change (execution.includePending (runtime.reactiveApplication leaks) id).network.Satisfies _
         rw [ReactiveApplication.includePending_network]
         exact valid.2.includePending id
@@ -125,7 +129,8 @@ theorem executionHandles_environment (runtime : EventGraphRuntime graph)
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       refine ⟨?_, valid.2⟩
       simpa only [AcceptedHandles,
-        (environmentStep_tables runtime execution.application state command changed).1]
+        (reactiveApplication_environment_tables runtime leaks execution.application state command
+          changed).1]
         using valid.1
 
 /-- The same bounds hold before normalization, for every raw response admitted

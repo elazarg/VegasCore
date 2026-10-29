@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.EffectiveOpening
+import Vegas.Source.AuthenticOpening
 import Vegas.Game.IntendedOpeningExtension
 import Vegas.Game.IntendedPreservation
 

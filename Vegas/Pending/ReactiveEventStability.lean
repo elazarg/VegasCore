@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.ReactiveEntryStability
-import Vegas.Pending.ReactiveFreshCallAcceptance
 import Vegas.Pending.EventAssociationInvariant
 import Vegas.Pending.EventBindingInvariant
 import Vegas.Pending.PublicFailureEvidence
@@ -20,15 +19,6 @@ changed only at the outputs of those events, which had none before
 graph, scheduler and arbitrary responses; graph certificates then say which
 events can be ready together.
 
-On a graph whose simultaneously ready events have different actors, a
-commitment that was includable on the view its author saw stays includable
-while its event is unfinished and within its deadline
-(`Vegas.EventGraphRuntime.bindingIncludable_accepted_of_extends`): the other
-completed events belong to other owners, so its event's output field stays
-vacant and no other event can have consumed the author's handle. On a
-reveal, the events completed since are independent reveals, which its guards
-do not read, so every acceptable fresh call is accepted at such a state
-(`Vegas.EventGraphRuntime.freshServiceAcceptable_accepted_of_extends`).
 -/
 
 noncomputable section
@@ -100,6 +90,74 @@ theorem ready_of_eventReady_extends {view : PublicView graph} {state : State gra
   rw [order]
   exact List.mem_append_left _ (ready.2 predecessor inside)
 
+private theorem ready_view_completion_step (saved : PublicView graph)
+    (before after : State graph) (moved : CompletionStep before after)
+    (valid : ∀ event, saved.EventReady event → event ∉ before.config.cut.completed →
+      ∃ extra, before.publicView.observation.completionOrder =
+          saved.observation.completionOrder ++ extra ∧
+        (∀ other ∈ extra, graph.ReadyTogether other event) ∧
+        (∀ owner, graph.actor? event = some owner → ∀ entered,
+          saved.activatedAt event = some entered → before.activatedAt event = some entered) ∧
+        ∀ field, before.accepted field ≠ saved.accepted field →
+          saved.accepted field = none ∧ ∃ other ∈ extra, field = .inr other) :
+    ∀ event, saved.EventReady event → event ∉ after.config.cut.completed →
+      ∃ extra, after.publicView.observation.completionOrder =
+          saved.observation.completionOrder ++ extra ∧
+        (∀ other ∈ extra, graph.ReadyTogether other event) ∧
+        (∀ owner, graph.actor? event = some owner → ∀ entered,
+          saved.activatedAt event = some entered → after.activatedAt event = some entered) ∧
+        ∀ field, after.accepted field ≠ saved.accepted field →
+          saved.accepted field = none ∧ ∃ other ∈ extra, field = .inr other := by
+  intro event ready unfinished
+  have unfinishedBefore : event ∉ before.config.cut.completed :=
+    fun completed => unfinished (moved.completed_mono completed)
+  obtain ⟨extra, order, together, activated, acceptedChanged⟩ :=
+    valid event ready unfinishedBefore
+  rcases moved with ⟨configEq, acceptedEq, activatedEq⟩ |
+      ⟨completed, completedReady, action, member, activatedEq, acceptedOnly⟩
+  · refine ⟨extra, ?_, together, fun owner owned entered seen => ?_,
+      fun field changed => ?_⟩
+    · change after.config.history.map Completion.event = _
+      rw [configEq]
+      exact order
+    · rw [activatedEq]
+      exact activated owner owned entered seen
+    · rw [acceptedEq] at changed
+      exact acceptedChanged field changed
+  · have readyBefore : before.config.cut.Ready event :=
+      ready_of_eventReady_extends order ready unfinishedBefore
+    have historyEq := before.config.step_history_events completed completedReady
+      action _ member
+    refine ⟨extra ++ [completed], ?_, fun other inside => ?_,
+      fun owner owned entered seen => ?_, fun field changed => ?_⟩
+    · change after.config.history.map Completion.event = _
+      rw [historyEq, ← List.append_assoc]
+      exact congrArg (· ++ [completed]) order
+    · rcases List.mem_append.mp inside with old | new
+      · exact together other old
+      · cases List.mem_singleton.mp new
+        exact ⟨before.config.cut, completedReady, readyBefore⟩
+    · have readyNow : after.config.cut.Ready event := by
+        rw [before.config.step_cut completed completedReady action _ member]
+        exact readyBefore.after_complete completedReady (fun same => unfinished (by
+          rw [before.config.step_cut completed completedReady action _ member,
+            EventOrder.Cut.mem_complete]
+          exact Or.inl same))
+      rw [activatedEq]
+      simp [State.refreshActivated, readyNow, owned, activated owner owned entered seen]
+    · by_cases same : after.accepted field = before.accepted field
+      · rw [same] at changed
+        obtain ⟨vacant, other, inside, fieldEq⟩ := acceptedChanged field changed
+        exact ⟨vacant, other, List.mem_append_left _ inside, fieldEq⟩
+      · obtain ⟨vacantBefore, fieldEq⟩ := acceptedOnly field same
+        by_cases kept : before.accepted field =
+            saved.accepted field
+        · exact ⟨kept ▸ vacantBefore, completed,
+            List.mem_append_right _ (List.mem_singleton_self _), fieldEq⟩
+        · obtain ⟨vacant, _⟩ := acceptedChanged field kept
+          exact ⟨vacant, completed, List.mem_append_right _ (List.mem_singleton_self _),
+            fieldEq⟩
+
 /-- Recorded views of ready events keep these facts, for every scheduler and
 arbitrary responses. -/
 theorem entryEventStable_serviceInvariant
@@ -128,64 +186,27 @@ theorem entryEventStable_serviceInvariant
   environment execution next command valid _ reached := by
     let app := runtime.reactiveApplication leaks
     have recallEq := app.environmentStep_recall execution next command reached
-    intro observer entry member event ready unfinished
+    intro observer entry member
     rw [recallEq] at member
-    have stepped := completionStep_reactive_environmentStep runtime leaks execution next command
-      reached
-    have unfinishedBefore : event ∉ execution.application.config.cut.completed := by
-      intro completed
-      rcases stepped with ⟨configEq, _, _⟩ | ⟨completedEvent, completedReady, action, member,
-          _, _⟩
-      · exact unfinished (configEq ▸ completed)
-      · rw [execution.application.config.step_cut completedEvent completedReady action _ member,
-          EventOrder.Cut.mem_complete] at unfinished
-        exact unfinished (Or.inr completed)
-    obtain ⟨extra, order, together, activated, acceptedChanged⟩ :=
-      valid observer entry member event ready unfinishedBefore
-    rcases stepped with ⟨configEq, acceptedEq, activatedEq⟩ |
-        ⟨completed, completedReady, action, member, activatedEq, acceptedOnly⟩
-    · refine ⟨extra, ?_, together, fun owner owned entered seen => ?_,
-        fun field changed => ?_⟩
-      · change next.application.config.history.map Completion.event = _
-        rw [configEq]
-        exact order
-      · rw [activatedEq]
-        exact activated owner owned entered seen
-      · rw [acceptedEq] at changed
-        exact acceptedChanged field changed
-    · have readyBefore : execution.application.config.cut.Ready event :=
-        ready_of_eventReady_extends order ready unfinishedBefore
-      have historyEq := execution.application.config.step_history completed completedReady
-        action _ member
-      refine ⟨extra ++ [completed], ?_, fun other inside => ?_,
-        fun owner owned entered seen => ?_, fun field changed => ?_⟩
-      · change next.application.config.history.map Completion.event = _
-        rw [historyEq, List.map_append, List.map_singleton, ← List.append_assoc]
-        exact congrArg (· ++ [completed]) order
-      · rcases List.mem_append.mp inside with old | new
-        · exact together other old
-        · cases List.mem_singleton.mp new
-          exact ⟨execution.application.config.cut, completedReady, readyBefore⟩
-      · have readyNow : next.application.config.cut.Ready event := by
-          rw [execution.application.config.step_cut completed completedReady action _ member]
-          exact readyBefore.after_complete completedReady (fun same => unfinished (by
-            rw [execution.application.config.step_cut completed completedReady action _ member,
-              EventOrder.Cut.mem_complete]
-            exact Or.inl same))
-        rw [activatedEq]
-        simp [State.refreshActivated, readyNow, owned, activated owner owned entered seen]
-      · by_cases same : next.application.accepted field = execution.application.accepted field
-        · rw [same] at changed
-          obtain ⟨vacant, other, inside, fieldEq⟩ := acceptedChanged field changed
-          exact ⟨vacant, other, List.mem_append_left _ inside, fieldEq⟩
-        · obtain ⟨vacantBefore, fieldEq⟩ := acceptedOnly field same
-          by_cases kept : execution.application.accepted field =
-              entry.beforeView.application.publicView.accepted field
-          · exact ⟨kept ▸ vacantBefore, completed,
-              List.mem_append_right _ (List.mem_singleton_self _), fieldEq⟩
-          · obtain ⟨vacant, _⟩ := acceptedChanged field kept
-            exact ⟨vacant, completed, List.mem_append_right _ (List.mem_singleton_self _),
-              fieldEq⟩
+    let saved := entry.beforeView.application.publicView
+    let retained (current : State graph) : Prop :=
+      ∀ event, saved.EventReady event → event ∉ current.config.cut.completed →
+      ∃ extra, current.publicView.observation.completionOrder =
+          saved.observation.completionOrder ++ extra ∧
+        (∀ other ∈ extra, graph.ReadyTogether other event) ∧
+        (∀ owner, graph.actor? event = some owner → ∀ entered,
+          saved.activatedAt event = some entered → current.activatedAt event = some entered) ∧
+        ∀ field, current.accepted field ≠ saved.accepted field →
+          saved.accepted field = none ∧ ∃ other ∈ extra, field = .inr other
+    have preserved : ∀ {before after : State graph},
+        Relation.ReflTransGen CompletionStep before after → retained before → retained after := by
+      intro before after path
+      induction path using Relation.ReflTransGen.head_induction_on with
+      | refl => exact id
+      | @head before middle moved _ ih =>
+          exact fun prior => ih (ready_view_completion_step saved before middle moved prior)
+    exact preserved (completionPath_reactive_environmentStep runtime leaks execution next command
+      reached) (valid observer entry member)
 
 /-- Recorded views of ready events keep these facts at every legal history. -/
 theorem entryEventStable_history (initial : PMF (State graph)) (horizon : Nat)
@@ -197,7 +218,6 @@ theorem entryEventStable_history (initial : PMF (State graph)) (horizon : Nat)
     (fun state _ who entry member => by
       simp [ReactiveApplication.Execution.initial] at member) trace
 
-omit [DecidableEq Player] in
 /-- A graph step leaves every store field in place except the completed
 event's output, which was unavailable before. -/
 theorem step_store_eq_or_output {config next : graph.Config} {event : graph.EventId}
@@ -232,6 +252,68 @@ def EntryStoreStable (execution : (runtime.reactiveApplication leaks).Execution)
           ∃ event, field = .inr event ∧
             event ∉ entry.beforeView.application.publicView.observation.completionOrder
 
+private theorem store_view_completion_step (saved : PublicView graph)
+    (before after : State graph) (moved : CompletionStep before after)
+    (valid : saved.observation.completionOrder <+:
+        before.publicView.observation.completionOrder ∧
+      ∀ field, before.publicView.observation.store field ≠ saved.observation.store field →
+        saved.observation.store field = none ∧
+          ∃ event, field = .inr event ∧ event ∉ saved.observation.completionOrder) :
+    saved.observation.completionOrder <+:
+        after.publicView.observation.completionOrder ∧
+      ∀ field, after.publicView.observation.store field ≠ saved.observation.store field →
+        saved.observation.store field = none ∧
+          ∃ event, field = .inr event ∧ event ∉ saved.observation.completionOrder := by
+  obtain ⟨prefixBefore, changedBefore⟩ := valid
+  rcases moved with ⟨configEq, _, _⟩ | ⟨completed, completedReady, action, stepped, _, _⟩
+  · have publicEq : after.publicView.observation =
+        before.publicView.observation := by
+      change graph.publicObserve after.config =
+        graph.publicObserve before.config
+      rw [configEq]
+    rw [publicEq]
+    exact ⟨prefixBefore, changedBefore⟩
+  · have historyEq := before.config.step_history_events completed completedReady
+      action _ stepped
+    have orderEq : after.publicView.observation.completionOrder =
+        before.publicView.observation.completionOrder ++ [completed] := by
+      change after.config.history.map Completion.event = _
+      rw [historyEq]
+      rfl
+    refine ⟨orderEq ▸ prefixBefore.trans (List.prefix_append _ _), fun field changed => ?_⟩
+    by_cases kept : after.publicView.observation.store field =
+        before.publicView.observation.store field
+    · exact changedBefore field (kept ▸ changed)
+    · have stepEq := step_store_eq_or_output stepped field
+      change graph.publicStore after.config.store field ≠
+        graph.publicStore before.config.store field at kept
+      unfold EventGraph.publicStore at kept
+      split at kept
+      · rcases stepEq with same | ⟨fieldEq, absent⟩
+        · exact (kept same).elim
+        · have unseen : completed ∉
+              saved.observation.completionOrder := by
+            intro seen
+            apply completedReady.1
+            apply (before.config.history_exact completed).mp
+            obtain ⟨rest, split⟩ := prefixBefore
+            change completed ∈ before.publicView.observation.completionOrder
+            rw [← split]
+            exact List.mem_append_left _ seen
+          have beforeNone : before.publicView.observation.store field =
+              none := by
+            change graph.publicStore before.config.store field = none
+            unfold EventGraph.publicStore
+            rw [absent]
+            split <;> rfl
+          refine ⟨?_, completed, fieldEq, unseen⟩
+          by_cases same : before.publicView.observation.store field =
+              saved.observation.store field
+          · rw [← same]
+            exact beforeNone
+          · exact (changedBefore field same).1
+      · exact (kept rfl).elim
+
 /-- Recorded public views keep these facts, for every scheduler and arbitrary
 responses. -/
 theorem entryStoreStable_serviceInvariant
@@ -253,56 +335,22 @@ theorem entryStoreStable_serviceInvariant
     have recallEq := app.environmentStep_recall execution next command reached
     intro observer entry member
     rw [recallEq] at member
-    obtain ⟨prefixBefore, changedBefore⟩ := valid observer entry member
-    rcases completionStep_reactive_environmentStep runtime leaks execution next command reached
-      with ⟨configEq, _, _⟩ | ⟨completed, completedReady, action, stepped, _, _⟩
-    · have publicEq : next.application.publicView.observation =
-          execution.application.publicView.observation := by
-        change graph.publicObserve next.application.config =
-          graph.publicObserve execution.application.config
-        rw [configEq]
-      rw [publicEq]
-      exact ⟨prefixBefore, changedBefore⟩
-    · have historyEq := execution.application.config.step_history completed completedReady
-        action _ stepped
-      have orderEq : next.application.publicView.observation.completionOrder =
-          execution.application.publicView.observation.completionOrder ++ [completed] := by
-        change next.application.config.history.map Completion.event = _
-        rw [historyEq, List.map_append, List.map_singleton]
-        rfl
-      refine ⟨orderEq ▸ prefixBefore.trans (List.prefix_append _ _), fun field changed => ?_⟩
-      by_cases kept : next.application.publicView.observation.store field =
-          execution.application.publicView.observation.store field
-      · exact changedBefore field (kept ▸ changed)
-      · have stepEq := step_store_eq_or_output stepped field
-        change graph.publicStore next.application.config.store field ≠
-          graph.publicStore execution.application.config.store field at kept
-        unfold EventGraph.publicStore at kept
-        split at kept
-        · rcases stepEq with same | ⟨fieldEq, absent⟩
-          · exact (kept same).elim
-          · have unseen : completed ∉
-                entry.beforeView.application.publicView.observation.completionOrder := by
-              intro seen
-              apply completedReady.1
-              apply (execution.application.config.history_exact completed).mp
-              obtain ⟨rest, split⟩ := prefixBefore
-              change completed ∈ execution.application.publicView.observation.completionOrder
-              rw [← split]
-              exact List.mem_append_left _ seen
-            have beforeNone : execution.application.publicView.observation.store field =
-                none := by
-              change graph.publicStore execution.application.config.store field = none
-              unfold EventGraph.publicStore
-              rw [absent]
-              split <;> rfl
-            refine ⟨?_, completed, fieldEq, unseen⟩
-            by_cases same : execution.application.publicView.observation.store field =
-                entry.beforeView.application.publicView.observation.store field
-            · rw [← same]
-              exact beforeNone
-            · exact (changedBefore field same).1
-        · exact (kept rfl).elim
+    let saved := entry.beforeView.application.publicView
+    let retained (current : State graph) : Prop :=
+      saved.observation.completionOrder <+:
+        current.publicView.observation.completionOrder ∧
+      ∀ field, current.publicView.observation.store field ≠ saved.observation.store field →
+        saved.observation.store field = none ∧
+          ∃ event, field = .inr event ∧ event ∉ saved.observation.completionOrder
+    have preserved : ∀ {before after : State graph},
+        Relation.ReflTransGen CompletionStep before after → retained before → retained after := by
+      intro before after path
+      induction path using Relation.ReflTransGen.head_induction_on with
+      | refl => exact id
+      | @head before middle moved _ ih =>
+          exact fun prior => ih (store_view_completion_step saved before middle moved prior)
+    exact preserved (completionPath_reactive_environmentStep runtime leaks execution next command
+      reached) (valid observer entry member)
 
 /-- Recorded public stores are retained at every legal history. -/
 theorem entryStoreStable_history (initial : PMF (State graph)) (horizon : Nat)
@@ -313,167 +361,5 @@ theorem entryStoreStable_history (initial : PMF (State graph)) (horizon : Nat)
   (entryStoreStable_serviceInvariant runtime leaks scheduler).history initial horizon
     (fun state _ who entry member => by
       simp [ReactiveApplication.Execution.initial] at member) trace
-
-/-- **A commitment stays includable.** On a graph whose simultaneously ready
-events have different actors, a commitment includable on a recorded view of its
-ready event is accepted at a later state where the event is unfinished and
-within its deadline, when the events completed since were ready together with
-it and accepted handles changed only at their vacant output fields. -/
-theorem bindingIncludable_accepted_of_extends (relaxed : graph.RevealRelaxedOrdered)
-    (state : State graph) (view : PublicView graph) (id : MessageId Player)
-    (event : graph.EventId) (candidate : Handle graph)
-    (includable : view.BindingIncludable runtime ⟨id, .commitment event candidate⟩)
-    {extra : List graph.EventId}
-    (order : state.publicView.observation.completionOrder =
-      view.observation.completionOrder ++ extra)
-    (together : ∀ other ∈ extra, graph.ReadyTogether other event)
-    (acceptedChanged : ∀ field, state.accepted field ≠ view.accepted field →
-      view.accepted field = none ∧ ∃ other ∈ extra, field = .inr other)
-    (unfinished : event ∉ state.config.cut.completed)
-    (timely : state.WithinDeadline runtime event)
-    (invariant : state.BindingInvariant) :
-    ∃ next, handle runtime state ⟨id, .commitment event candidate⟩ = some next := by
-  obtain ⟨ready, _, owned⟩ := includable
-  have readyNow := ready_of_eventReady_extends order ready unfinished
-  have completedExtra : ∀ other ∈ extra, other ∈ state.config.cut.completed := by
-    intro other inside
-    apply (state.config.history_exact other).mp
-    change other ∈ state.publicView.observation.completionOrder
-    rw [order]
-    exact List.mem_append_right _ inside
-  cases node : nodeView graph event with
-  | resolve _ _ _ _ _ _ => rw [node] at owned; exact owned.elim
-  | sample _ _ _ _ => rw [node] at owned; exact owned.elim
-  | bind owner payload outputEq codeEq =>
-      rw [node] at owned
-      obtain ⟨sender, handleOwner, vacant, unused⟩ := owned
-      have eventActor := graph.actor?_of_outputLayout_binding outputEq
-      have vacantNow : state.accepted (.inr event) = none := by
-        by_contra occupied
-        have changed : state.accepted (.inr event) ≠ view.accepted (.inr event) := by
-          rw [vacant]
-          exact occupied
-        obtain ⟨_, other, inside, same⟩ := acceptedChanged _ changed
-        cases Sum.inr.inj same
-        exact unfinished (completedExtra _ inside)
-      have unusedNow : state.HandleUnused candidate := by
-        intro field stored
-        by_cases kept : state.accepted field = view.accepted field
-        · exact unused field (kept ▸ stored)
-        · obtain ⟨_, other, inside, rfl⟩ := acceptedChanged field kept
-          obtain ⟨otherPayload, layoutEq⟩ := invariant.accepted_typed _ candidate stored
-          have otherActor := graph.actor?_of_outputLayout_binding (owner := candidate.1)
-            (payload := otherPayload) layoutEq
-          have different : other ≠ event := fun same =>
-            unfinished (same ▸ completedExtra other inside)
-          obtain ⟨cut, otherReady, eventReady⟩ := together other inside
-          obtain ⟨otherOwner, eventOwner, otherIs, eventIs, owners⟩ :=
-            relaxed.ready_pair_actors otherReady eventReady different
-          rw [otherActor] at otherIs
-          rw [eventActor] at eventIs
-          exact owners ((Option.some.inj otherIs).symm.trans
-            (handleOwner.trans (Option.some.inj eventIs)))
-      exact ⟨_, runtime.handle_commitment_eq state id event candidate owner payload outputEq
-        codeEq node readyNow timely sender handleOwner vacantNow unusedNow⟩
-
-/-- **An acceptable fresh call stays acceptable.** On a graph whose
-simultaneously ready events have different actors and reveals ready together
-are independent, a packet acceptable on a recorded view of its ready event is
-accepted at a later state where the event is unfinished and within its
-deadline, when the events completed since were ready together with it,
-accepted handles changed only at their vacant output fields, and public fields
-changed only at outputs of events that had not completed then. -/
-theorem freshServiceAcceptable_accepted_of_extends (relaxed : graph.RevealRelaxedOrdered)
-    (state : State graph) (view : PublicView graph)
-    (message : Message Player (WitnessedPacket graph))
-    (conforming : runtime.freshServiceAcceptable view message)
-    (event : graph.EventId) (named : message.payload.call.event? graph = some event)
-    {extra : List graph.EventId}
-    (order : state.publicView.observation.completionOrder =
-      view.observation.completionOrder ++ extra)
-    (together : ∀ other ∈ extra, graph.ReadyTogether other event)
-    (acceptedChanged : ∀ field, state.accepted field ≠ view.accepted field →
-      view.accepted field = none ∧ ∃ other ∈ extra, field = .inr other)
-    (storeChanged : ∀ field, state.publicView.observation.store field ≠
-        view.observation.store field →
-      view.observation.store field = none ∧
-        ∃ other, field = .inr other ∧ other ∉ view.observation.completionOrder)
-    (unfinished : event ∉ state.config.cut.completed)
-    (timely : state.WithinDeadline runtime event)
-    (certified : ∀ fact ∈ message.payload.evidence.toList, fact.Holds state)
-    (invariant : state.BindingInvariant) :
-    ∃ next, handle runtime state ⟨message.id, message.payload.call⟩ = some next := by
-  rcases message with ⟨id, ⟨packet, evidence, token⟩⟩
-  cases packet with
-  | malformed raw => exact conforming.elim
-  | commitment actual candidate =>
-      change some actual = some event at named
-      have actualEq : actual = event := Option.some.inj named
-      subst actualEq
-      exact bindingIncludable_accepted_of_extends runtime relaxed state view
-        id actual candidate conforming.1 order together acceptedChanged unfinished timely
-        invariant
-  | opening actual candidate raw =>
-      change some actual = some event at named
-      have actualEq : actual = event := Option.some.inj named
-      subst actualEq
-      cases node : nodeView graph actual with
-      | resolve owner payload binding checks outputEq codeEq =>
-          obtain ⟨ready, _, certifiedPacket, guards, sender, owned, associated, _, _⟩ :=
-            (runtime.freshServiceEnvelope_opening_iff view id actual owner payload binding checks
-              outputEq codeEq node candidate raw evidence token).mp conforming
-          have readyNow := ready_of_eventReady_extends order ready unfinished
-          obtain ⟨value, rawEq, publicChecks⟩ :=
-            (view.openingGuardsAccepted_iff owner actual payload binding checks outputEq codeEq
-              node candidate raw evidence).mp guards
-          subst raw
-          have evidenceEq : evidence = some ⟨candidate, ⟨payload, value⟩⟩ := by
-            cases evidence with
-            | none => simp only [certifiedOpening, Bool.false_eq_true] at certifiedPacket
-            | some fact =>
-                simp only [certifiedOpening, decide_eq_true_eq] at certifiedPacket
-                exact congrArg some certifiedPacket
-          have verified : state.candidates.lookup candidate = .openable ⟨payload, value⟩ :=
-            certified ⟨candidate, ⟨payload, value⟩⟩ (by simp [evidenceEq])
-          have associatedNow : state.accepted binding.field = some candidate := by
-            by_contra changed
-            have vacant := (acceptedChanged binding.field
-              (fun same => changed (same.trans associated))).1
-            rw [associated] at vacant
-            cases vacant
-          have stored := invariant.opening_stored binding candidate value associatedNow verified
-          have readsOf : ∀ field ∈ GuardCheck.listReadFields checks,
-              field ∈ (graph.nodes actual).readFields := by
-            intro field member
-            rw [← EventCode.readFields_cast outputEq (graph.nodes actual), codeEq]
-            exact Finset.mem_insert_of_mem member
-          have agree : Store.AgreeOn view.observation.store state.publicView.observation.store
-              (GuardCheck.listReadFields checks) := by
-            intro field member
-            by_contra different
-            obtain ⟨_, other, rfl, unseen⟩ := storeChanged _ (Ne.symm different)
-            exact unseen (ready.2 other
-              (graph.reads_available actual (.inr other) (readsOf _ member)))
-          have acceptedChecks : GuardCheck.allAccepted? checks state.config.store
-              (.success value) = some true := by
-            rw [GuardCheck.allAccepted?_congr checks _ _ _ agree] at publicChecks
-            change GuardCheck.allAccepted? checks (graph.publicStore state.config.store)
-              (.success value) = some true at publicChecks
-            rwa [GuardCheck.allAccepted?_publicStore] at publicChecks
-          have resolved : EventCode.resolveOutput? binding checks true state.config.store =
-              some (.success value) := by
-            simp only [EventCode.resolveOutput?, stored, Option.bind_eq_bind, Option.bind_some,
-              ↓reduceIte, acceptedChecks, Option.pure_def]
-          exact ⟨_, runtime.handle_opening_eq state id actual candidate owner payload binding
-            checks outputEq codeEq node readyNow timely sender owned associatedNow value
-            verified stored (.success value) resolved⟩
-      | bind _ _ _ _ =>
-          have absent := conforming.2.2.2.2
-          rw [node] at absent
-          exact absent.elim
-      | sample _ _ _ _ =>
-          have absent := conforming.2.2.2.2
-          rw [node] at absent
-          exact absent.elim
 
 end Vegas.EventGraphRuntime

@@ -16,9 +16,9 @@ needs a public deadline obligation, not just an audit of emitted packets.
 Fresh openings are permitted once per unique event, using existing own response
 recall. Once submitted, a pending canonical opening remains available for inclusion.
 
-At a resolution, failed owner-local validation and withholding use silence.
-Their eventual publication failure requires the existing protected expiry
-service. This file supplies the local finite menu and coverage, not that whole
+At a resolution, an unavailable authentic opening and withholding use silence.
+Guard rejection is evaluated by the handler after authentic transmission.
+This file supplies the local finite menu and coverage, not that whole
 service or sequential-equilibrium correspondence.
 -/
 
@@ -30,17 +30,6 @@ open Interaction EventGraph GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-
-/-- The existing prescribed decision with private response aliases
-normalized. A withheld publication sends nothing and is settled by expiry. -/
-def serviceDecision (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (event : graph.EventId) (choice : graph.Action event) :
-    (runtime.reactiveApplication leaks).Action :=
-  (runtime.reactiveNormalization leaks).action who past view
-    (runtime.reactiveDecision leaks who event choice view.application)
 
 theorem reactiveBinding_normal_of_fresh (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -62,6 +51,11 @@ variable (bounds : MessageBounds graph)
 
 def typedValues (payload : L.Ty) : Finset (L.Val payload) :=
   ((bounds.values.toList.filterMap fun raw => raw.as? payload)).toFinset
+
+open Classical in
+/-- Binding decisions include omission, opaque admission, and covered typed values. -/
+def bindingChoices (payload : L.Ty) : Finset (Option (PublicationResult (L.Val payload))) :=
+  {none, some .failure} ∪ (bounds.typedValues payload).image (fun value => some (.success value))
 
 omit [DecidableEq Player] in
 theorem typedValues_mem (payload : L.Ty) (value : L.Val payload) :
@@ -106,9 +100,9 @@ def decisionActions (who : Player)
         match nodeView graph event with
         | .sample .. => {⟨none⟩}
         | .bind _ payload outputEq _ =>
-            (bounds.typedValues payload).image fun value =>
+            (bounds.bindingChoices payload).image fun choice =>
               runtime.serviceDecision leaks who past view event
-                (cast (congrArg EventField.Action outputEq.symm) (PublicationResult.success value))
+                (cast (congrArg EventField.Action outputEq.symm) choice)
         | .resolve _ _ _ _ outputEq _ =>
             Finset.univ.image fun disclose : Bool =>
               runtime.serviceDecision leaks who past view event

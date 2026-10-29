@@ -1,16 +1,15 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import Vegas.Pending.ExclusionActivationOrigin
 import Vegas.Pending.ReactiveStateInvariant
-import Vegas.Pending.EventActivationOrigin
+import Vegas.Pending.ReactiveServiceProgress
 
-/-! # Timely recurring owner opportunities after dependency settlement
+/-! # Activation origins in the reactive application
 
-The existing reactive epoch visits every event before its one clock tick.
-An event newly activated during an arbitrary epoch is at most one tick old
-at the boundary. Its next reserved owner activation therefore remains timely
-when the configured deadline is at least two, unless another allowed action
-has already completed the event. Player omissions, malformed submissions,
-passive leaks, and network reactions are unrestricted.
+Native inclusion and environment service refresh activation times and then
+complete automatic events at the same clock. A live timestamp is retained or
+created no earlier than the operation's entry clock. The statement covers raw
+states as well as initialized executions.
 -/
 
 noncomputable section
@@ -22,38 +21,64 @@ open GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-/-- Every operation of the reactive application starts timers exactly: a
-timestamp is kept, or a newly activated event is stamped with the clock at the
-operation. This covers arbitrary submissions, inclusions and environment
-commands. -/
-theorem reactiveActivationStart (runtime : EventGraphRuntime graph)
+/-- Every application operation retains a live activation timestamp or creates
+it no earlier than the operation's entry clock. -/
+theorem reactiveActivationOrigin (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
-    (runtime.reactiveApplication leaks).StepRelation State.ActivationStart where
-  refl _ := State.activationStart_of_activatedEq rfl
-  submit state who material := State.activationStart_of_activatedEq
+    (runtime.reactiveApplication leaks).StepRelation State.ActivationOrigin where
+  refl _ := State.activationOrigin_of_activatedEq rfl
+  submit state who material := State.activationOrigin_of_activatedEq
     (congrArg PublicView.activatedAt
       (runtime.reactiveApplication_submit_publicView leaks state who material))
-  handle state message next accepted := State.activationStart_of_refreshEq
-    (handle_clock_activated runtime state next ⟨message.id, message.payload.call⟩
-      (reactiveHandle_call accepted)).2
+  handle state message next accepted := by
+    obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
+    rw [← nextEq]
+    have first := State.activationOrigin_of_refreshEq
+      (handle_clock_activated runtime state native ⟨message.id, message.payload.call⟩ handled).2
+    exact first.trans native.drain_activationOrigin
+      (le_of_eq (handle_clock_activated runtime state native
+        ⟨message.id, message.payload.call⟩ handled).1.symm)
+      (native.drainFuel_completed_subset _)
   environment state command next reached := by
-    cases command with
-    | advanceClock =>
-        simp only [reactiveApplication, environmentStep, PMF.mem_support_pure_iff _ _]
-          at reached
-        subst next
-        exact State.activationStart_of_activatedEq rfl
-    | executeSample event =>
-        obtain ⟨_, stutter | changed⟩ :=
-          runtime.environmentStep_executeSample_config_activated state next event reached
-        · exact State.activationStart_of_activatedEq stutter.2
-        · obtain ⟨_, _, _, activated⟩ := changed
-          exact State.activationStart_of_refreshEq activated
-    | expire event =>
-        obtain ⟨_, stutter | changed⟩ :=
-          runtime.environmentStep_expire_config_activated state next event reached
-        · exact State.activationStart_of_activatedEq stutter.2
-        · obtain ⟨_, _, _, activated⟩ := changed
-          exact State.activationStart_of_refreshEq activated
+    change next ∈ ((environmentStep runtime state command).map State.drain).support at reached
+    obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ reached
+    have first : State.ActivationOrigin state native := by
+      cases command with
+      | advanceClock =>
+          cases (PMF.mem_support_pure_iff _ _).mp moved
+          exact State.activationOrigin_of_activatedEq rfl
+      | executeSample event =>
+          rcases (runtime.environmentStep_executeSample_config_activated state native event
+            moved).2 with stutter | ⟨_, _, _, activated⟩
+          · exact State.activationOrigin_of_activatedEq stutter.2
+          · exact State.activationOrigin_of_refreshEq activated
+      | expire event =>
+          rcases (runtime.environmentStep_expire_config_activated state native event
+            moved).2 with stutter | ⟨_, _, _, activated⟩
+          · exact State.activationOrigin_of_activatedEq stutter.2
+          · exact State.activationOrigin_of_refreshEq activated
+    exact first.trans native.drain_activationOrigin
+      (by rw [environmentStep_clock runtime state native command moved]; omega)
+      (native.drainFuel_completed_subset _)
+
+/-- A physical response retains activation origins, including private candidate
+registration and submission. -/
+theorem reactive_respond_activationOrigin (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
+    (action : (runtime.reactiveApplication leaks).Action) :
+    State.ActivationOrigin execution.application
+      (execution.respond (runtime.reactiveApplication leaks) who action).application :=
+  (reactiveActivationOrigin runtime leaks).respond execution who action
+
+/-- Every scheduler command retains activation origins through its finite
+automatic completion path. -/
+theorem reactive_environmentStep_activationOrigin (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (execution next : (runtime.reactiveApplication leaks).Execution)
+    (command : (runtime.reactiveApplication leaks).Command)
+    (reached : next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
+      command).support) : State.ActivationOrigin execution.application next.application :=
+  (reactiveActivationOrigin runtime leaks).environmentStep execution next command reached
 
 end Vegas.EventGraphRuntime

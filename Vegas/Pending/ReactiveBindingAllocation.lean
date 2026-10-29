@@ -19,12 +19,6 @@ open Interaction EventGraph GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-def PublicView.bindingCount (view : PublicView graph) (who : Player) : Nat :=
-  view.observation.completionOrder.countP fun event =>
-    match graph.outputLayout event with
-    | .binding owner _ => decide (owner = who)
-    | .publicData _ | .privateInput _ _ | .publication _ => false
-
 def State.PreparedPrefix (state : State graph) (who : Player) : Prop :=
   ∀ serial, state.candidates.lookup (who, .prepared serial) = .fresh ↔
     state.publicView.bindingCount who ≤ serial

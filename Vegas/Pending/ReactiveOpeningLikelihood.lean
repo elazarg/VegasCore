@@ -102,17 +102,19 @@ theorem bindingTraffic_maintenance (runtime : EventGraphRuntime graph)
   have changes := maintenance_playerView_congr runtime left.application right.application focal
     command maintenance views
   simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp]
-  change ((environmentStep runtime left.application command).map _) =
-    ((environmentStep runtime right.application command).map _)
+  change (((environmentStep runtime left.application command).map State.drain).map _) =
+    (((environmentStep runtime right.application command).map State.drain).map _)
+  rw [PMF.map_comp, PMF.map_comp]
   rw [← PMF.bind_pure_comp, Function.comp_def, ← PMF.bind_pure_comp, Function.comp_def]
   apply bind_eq_of_map_eq _ _ _ _ changes
   intro before _ after _ equal
+  have drained := State.drain_playerView_congr before after focal equal
   apply congrArg PMF.pure
   dsimp only [bindingTraffic, Function.comp_apply]
-  rw [networks, receipts, environments, environment, recalled, equal]
+  rw [networks, receipts, environments, environment, recalled, drained]
   exact congrArg (fun publicView => (right.network, right.receipts,
     right.environmentRecall ++ [⟨right.observeEnvironment app, .application command⟩],
-      right.recall focal, after.playerView focal, publicView))
-        (congrArg PlayerView.publicView equal)
+      right.recall focal, after.drain.playerView focal, publicView))
+        (congrArg PlayerView.publicView drained)
 
 end Vegas.EventGraphRuntime

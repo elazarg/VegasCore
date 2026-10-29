@@ -14,10 +14,9 @@ import Vegas.Source.Disclosure
 import Vegas.Source.DefaultControl
 import Vegas.Source.DisclosureAliases
 import Vegas.Source.DisclosureBehavioral
-import Vegas.Source.DisclosureNormalization
 import Vegas.Source.DisclosureOpening
 import Vegas.Source.DisclosureSupport
-import Vegas.Source.EffectiveOpening
+import Vegas.Source.AuthenticOpening
 import Vegas.Source.Exclusion
 import Vegas.Source.FailedBinding
 import Vegas.Source.FailedBindingDeviation
@@ -36,6 +35,7 @@ import Vegas.Source.Metadata
 import Vegas.Source.ObservationRecall
 import Vegas.Source.PrivateInputs
 import Vegas.Source.PrivateInputsIndependent
+import Vegas.Source.PublicObservation
 import Vegas.Source.Protocol
 import Vegas.Source.ProtocolBehavioralEvaluation
 import Vegas.Source.ProtocolBehavioralPolicy

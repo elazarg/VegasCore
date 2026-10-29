@@ -10,7 +10,7 @@ import Interaction.ReactiveTrafficContinuation
 import Vegas.Game.SourceServiceDisclosure
 import Vegas.Game.SourceServicePrefix
 import Vegas.Game.SourceStateKernel
-import Vegas.Source.DisclosureNormalization
+import Vegas.Source.DisclosureBehavioral
 import Vegas.Source.DisclosureSupport
 
 /-! # Typed support of every retained full-source prefix

@@ -164,4 +164,11 @@ theorem State.publicView_bindingIncludable (runtime : EventGraphRuntime graph)
     · simp [handle, Message.sender, inactive, ready, timely]
   · simp [handle, Message.sender, inactive, ready]
 
+/-- The number of completed binding instructions owned by this player. -/
+def PublicView.bindingCount (view : PublicView graph) (who : Player) : Nat :=
+  view.observation.completionOrder.countP fun event =>
+    match graph.outputLayout event with
+    | .binding owner _ => decide (owner = who)
+    | .publicData _ | .privateInput _ _ | .publication _ => false
+
 end Vegas.EventGraphRuntime

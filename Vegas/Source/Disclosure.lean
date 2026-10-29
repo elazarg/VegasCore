@@ -27,8 +27,8 @@ open GameTheory GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-/-- A policy that never withholds what it bound. The dual of `ValueBinding`:
-together they are what an honest profile means. -/
+/-- A policy that never refuses an active disclosure. An honest policy also
+submits a value at every active commitment. -/
 def Disclosing {who : Player} : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (p : SourceProgram Player L Γ O) → BehavioralPolicy who p → Prop
   | _, _, .ret _, _ => True

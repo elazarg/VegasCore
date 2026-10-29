@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.ObservationRecall
-import GameTheory.Math.Probability.ConditionalObservation
-import GameTheory.Math.Probability.ExpectationConditioning
+import Vegas.Source.PublicObservation
 
 /-! # Ineffective disclosure choices are private action aliases
 
@@ -11,7 +9,7 @@ and publication status. Only the owner's action history differs. Whether a
 disclosure would be effective is determined by that owner's observation and
 the registry and publication status fixed at the program point.
 
-These are operational facts about the existing source executor. They do not
+These are operational facts about the source executor. They do not
 assert that an arbitrary strategy can discard its private action history.
 -/
 
@@ -24,7 +22,7 @@ open GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
   {Γ : SourceCtx Player L} {name : VarId} {owner : Player} {payload : L.Ty}
 
-/-- The existing reveal's publication, including the deferred guard checks. -/
+/-- The reveal's publication, including default control and deferred guard checks. -/
 def disclosureResult (published : VarId)
     (source : HasVar Γ name (.commitment owner payload))
     (config : Config Player L Γ) (disclose : Bool) : PublicationResult (L.Val payload) :=
@@ -33,8 +31,7 @@ def disclosureResult (published : VarId)
 @[simp] theorem disclosureResult_false (published : VarId)
     (source : HasVar Γ name (.commitment owner payload)) (config : Config Player L Γ) :
     disclosureResult published source config false = .failure := by
-  simp only [disclosureResult, revealSuccessor, Bool.false_eq_true, ite_false, ite_self,
-    Env.cons_get_here]
+  simp [disclosureResult, revealSuccessor]
 
 /-- Guard rejection is observable before choosing, without reading any other
 player's unpublished binding or private input. -/
@@ -43,10 +40,13 @@ theorem disclosureResult_observation_congr (published : VarId)
     (left right : Config Player L Γ)
     (registry : left.registry = right.registry)
     (revelations : @left.revelations = @right.revelations)
-    (observed : sourceObserve owner left.state = sourceObserve owner right.state)
+    (sameView : left.view owner = right.view owner)
     (disclose : Bool) :
     disclosureResult published source left disclose =
       disclosureResult published source right disclose := by
+  have observed := congrArg DecisionView.observation sameView
+  have defaults := congrArg DecisionView.defaulted sameView
+  change left.defaulted = right.defaulted at defaults
   have own : left.state.get source = right.state.get source := by
     have same := congrArg (fun view => view.cells.get source) observed
     change (if owner = owner then some (left.state.get source) else none) =
@@ -73,7 +73,8 @@ theorem disclosureResult_observation_congr (published : VarId)
       (fun cell => match cell with
         | .here => rfl
         | .there prior => publicationEq prior)
-  simp only [disclosureResult, revealSuccessor, Env.cons_get_here, registry, revelations, own]
+  simp only [disclosureResult, revealSuccessor, Env.cons_get_here, registry, revelations, own,
+    defaults]
   rw [accepted]
 
 /-- The canonical Boolean choice suppresses an ineffective request to reveal. -/
@@ -94,7 +95,7 @@ theorem effectiveDisclosure_observation_congr (published : VarId)
     (left right : Config Player L Γ)
     (registry : left.registry = right.registry)
     (revelations : @left.revelations = @right.revelations)
-    (observed : sourceObserve owner left.state = sourceObserve owner right.state)
+    (observed : left.view owner = right.view owner)
     (disclose : Bool) :
     effectiveDisclosure published source left disclose =
       effectiveDisclosure published source right disclose := by

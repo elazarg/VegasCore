@@ -141,6 +141,7 @@ revelations, a value in every commitment cell, revealed commitments publishing
 their bindings, and every retained guard predicted to accept its subject's
 binding. -/
 structure Intended (unresolved : Finset VarId) (config : Config Player L Γ) : Prop where
+  clear : config.defaulted = ∅
   unique : (Γ.map Prod.fst).Nodup
   accounted : Accounted config.revelations unresolved
   bound : ∀ {x : VarId} {owner : Player} {payload : L.Ty}
@@ -150,6 +151,12 @@ structure Intended (unresolved : Finset VarId) (config : Config Player L Γ) : P
   predicted : ∀ obligation ∈ config.registry, ∀ value,
     config.state.get obligation.source = .success value →
       obligation.guard.predicts (sourceObserve obligation.owner config.state) value = true
+
+/-- Every owner is still active at an intended configuration. -/
+theorem Intended.not_defaulted {unresolved : Finset VarId} {config : Config Player L Γ}
+    (intended : Intended unresolved config) (who : Player) : who ∉ config.defaulted := by
+  rw [intended.clear]
+  exact Finset.notMem_empty _
 
 /-- A configuration in which `who` owes a failed reveal: an obligation of
 `who`, not yet checked, whose guard is predicted to reject the bound value,
@@ -191,6 +198,7 @@ private theorem unique_cons {name : VarId} {cell : CellTy Player L}
 theorem Intended.sample {name : VarId} {payload : L.Ty} (intended : config.Intended unresolved)
     (fresh : name ∉ Γ.map Prod.fst) (value : L.Val payload) :
     (sampleSuccessor name config value).Intended unresolved where
+  clear := intended.clear
   unique := unique_cons fresh intended.unique
   accounted :=
     Accounted.weaken_noncommitment (by intro _ _ equal; cases equal) intended.accounted
@@ -204,18 +212,23 @@ theorem Intended.commit {name : VarId} {owner : Player} {payload : L.Ty}
     (intended : config.Intended unresolved) (fresh : name ∉ Γ.map Prod.fst)
     (guard : SourceGuard L Γ owner name payload) (value : L.Val payload)
     (accepted : guard.predicts (sourceObserve owner config.state) value = true) :
-    (commitSuccessor name guard config (.success value)).Intended (insert name unresolved) where
+    (commitSuccessor name guard config (some (.success value))).Intended
+      (insert name unresolved) where
+  clear := (commitSuccessor_defaulted_of_accepted name guard config (.success value)).trans
+    intended.clear
   unique := unique_cons fresh intended.unique
   accounted := Accounted.commit fresh intended.accounted
   bound cell := by
     cases cell with
-    | here => exact ⟨value, rfl⟩
+    | here => exact ⟨value, by simp [commitSuccessor, intended.not_defaulted owner]⟩
     | there cell => exact intended.bound cell
   publishes who := PublishesBindings.weaken _ (intended.publishes who)
   predicted := by
     intro obligation member bound bindsBound
     rcases List.mem_cons.mp member with rfl | member
-    · cases bindsBound
+    · simp only [commitSuccessor, intended.not_defaulted owner, ite_false,
+        Option.getD_some, Env.cons_get_here] at bindsBound
+      cases bindsBound
       exact (SourceGuard.predicts_weaken _ _ _ _).trans accepted
     · exact intended.predicted_weaken _ obligation member bound bindsBound
 
@@ -242,7 +255,8 @@ theorem Intended.reveal_state {owner : Player} {payload : L.Ty} {name published 
     (revealSuccessor published source config true).state =
       Env.cons (Val := CellVal (Player := Player) L) (x := published)
         (τ := .publication payload) (bindingOf config source) config.state := by
-  simp only [revealSuccessor, ↓reduceIte, intended.completed_accept source]
+  simp only [revealSuccessor, intended.not_defaulted owner, ite_false, ite_true,
+    intended.completed_accept source]
 
 /-- An intended reveal opens a value and keeps the invariant. -/
 theorem Intended.reveal {owner : Player} {payload : L.Ty} {name published : VarId}
@@ -253,11 +267,18 @@ theorem Intended.reveal {owner : Player} {payload : L.Ty} {name published : VarI
         .success value := by
   obtain ⟨value, bound⟩ := intended.bound source
   have state := intended.reveal_state (published := published) source
-  refine ⟨{ unique := unique_cons fresh intended.unique
+  refine ⟨{ clear := ?_
+            unique := unique_cons fresh intended.unique
             accounted := Accounted.reveal source intended.unique intended.accounted
             bound := ?_
             publishes := fun who => ?_
             predicted := ?_ }, value, ?_⟩
+  · have opened : (revealSuccessor published source config true).state.get .here =
+          .success value := by rw [state]; exact bound
+    unfold Config.defaulted
+    rw [revealSuccessor_defaults, opened]
+    simpa only [PublicationResult.isFailure, Bool.false_eq_true, ite_false, ite_self,
+      DefaultHistory.defaulted_record_none, Config.defaulted] using intended.clear
   · intro x other τ cell
     cases cell with
     | there cell =>
@@ -287,7 +308,8 @@ theorem Indebted.sample {who : Player} {name : VarId} {payload : L.Ty}
 
 theorem Indebted.commit {who owner : Player} {name : VarId} {payload : L.Ty}
     (indebted : config.Indebted who unresolved) (fresh : name ∉ Γ.map Prod.fst)
-    (guard : SourceGuard L Γ owner name payload) (choice : PublicationResult (L.Val payload)) :
+    (guard : SourceGuard L Γ owner name payload)
+    (choice : Option (PublicationResult (L.Val payload))) :
     (commitSuccessor name guard config choice).Indebted who (insert name unresolved) where
   unique := unique_cons fresh indebted.unique
   accounted := Accounted.commit fresh indebted.accounted
@@ -303,14 +325,15 @@ theorem Intended.indebted_commit {who : Player} {name : VarId} {payload : L.Ty}
     (intended : config.Intended unresolved) (fresh : name ∉ Γ.map Prod.fst)
     (guard : SourceGuard L Γ who name payload) (value : L.Val payload)
     (rejected : guard.predicts (sourceObserve who config.state) value = false) :
-    (commitSuccessor name guard config (.success value)).Indebted who
+    (commitSuccessor name guard config (some (.success value))).Indebted who
       (insert name unresolved) where
   unique := unique_cons fresh intended.unique
   accounted := Accounted.commit fresh intended.accounted
   publishes := PublishesBindings.weaken _ (intended.publishes who)
   pending := ⟨Obligation.mk who name payload .here guard.weaken, List.mem_cons_self .., rfl,
     rfl,
-    value, rfl, (SourceGuard.predicts_weaken _ _ _ _).trans rejected⟩
+    value, by simp [commitSuccessor, intended.not_defaulted who],
+    (SourceGuard.predicts_weaken _ _ _ _).trans rejected⟩
 
 omit [DecidableEq Player] in
 private theorem opened_of_ne_failure {α : Type} {accepted : Prop} [Decidable accepted]
@@ -344,7 +367,9 @@ theorem Indebted.reveal {who owner : Player} {payload : L.Ty} {name published : 
       completed
     have failed : (revealSuccessor published source config disclose).state.get .here =
         .failure := by
-      simp only [revealSuccessor, Env.cons_get_here]
+      by_cases inactive : owner ∈ config.defaulted
+      · exact revealSuccessor_result_of_defaulted published source config inactive disclose
+      simp only [revealSuccessor, Env.cons_get_here, inactive, ite_false]
       cases disclose with
       | false => simp
       | true =>
@@ -413,33 +438,37 @@ theorem failedReveals_reveal_of_not_failed {published name : VarId} {owner : Pla
     {payload : L.Ty} {fresh : published ∉ Γ.map Prod.fst}
     {source : HasVar Γ name (.commitment owner payload)} {unresolved : name ∈ O}
     {next : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
-    (who : Player) (outcome : PublicOutcome next)
+    (who : Player) (terminal : Config Player L next.terminalCtx)
     (kept : (headRevealCell (fresh := fresh) (source := source) (unresolved := unresolved)
-      next).failed outcome = false) :
-    failedReveals (.reveal published owner name fresh source unresolved next) who outcome =
-      failedReveals next who outcome := by
-  simp [failedReveals, revealCells, kept]
+      next).failed (publicOutcome next terminal).values = false) :
+    failedReveals (.reveal published owner name fresh source unresolved next) who
+        (publicOutcome _ terminal) =
+      failedReveals next who (publicOutcome next terminal) := by
+  simp only [headRevealCell, publicOutcome] at kept
+  simp [failedReveals, revealCells, publicOutcome, kept]
 
 theorem failedReveals_reveal_le {published name : VarId} {owner : Player}
     {payload : L.Ty} {fresh : published ∉ Γ.map Prod.fst}
     {source : HasVar Γ name (.commitment owner payload)} {unresolved : name ∈ O}
     {next : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
-    (who : Player) (outcome : PublicOutcome next) :
-    failedReveals next who outcome ≤
-      failedReveals (.reveal published owner name fresh source unresolved next) who outcome := by
-  simp only [failedReveals, revealCells, List.filter_cons]
+    (who : Player) (terminal : Config Player L next.terminalCtx) :
+    failedReveals next who (publicOutcome next terminal) ≤
+      failedReveals (.reveal published owner name fresh source unresolved next) who
+        (publicOutcome _ terminal) := by
+  simp only [failedReveals, revealCells, publicOutcome, List.filter_cons]
   split <;> simp
 
 theorem failedReveals_reveal_pos {published name : VarId} {owner : Player}
     {payload : L.Ty} {fresh : published ∉ Γ.map Prod.fst}
     {source : HasVar Γ name (.commitment owner payload)} {unresolved : name ∈ O}
     {next : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
-    (outcome : PublicOutcome next)
+    (terminal : Config Player L next.terminalCtx)
     (failed : (headRevealCell (fresh := fresh) (source := source) (unresolved := unresolved)
-      next).failed outcome = true) :
+      next).failed (publicOutcome next terminal).values = true) :
     1 ≤ failedReveals (.reveal published owner name fresh source unresolved next) owner
-      outcome := by
-  simp [failedReveals, revealCells, failed]
+      (publicOutcome _ terminal) := by
+  simp only [headRevealCell, publicOutcome] at failed
+  simp [failedReveals, revealCells, publicOutcome, failed]
 
 end Count
 
@@ -538,8 +567,8 @@ theorem base_step : {Γ : SourceCtx Player L} → {O : Finset VarId} →
 from. -/
 theorem initialState_of_readout : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (state : ProtocolState program) →
-    {terminal : State L program.terminalCtx} → readout program state = some terminal →
-    initialState program terminal = base program state
+    {terminal : Config Player L program.terminalCtx} → readout program state = some terminal →
+    initialState program terminal.state = base program state
   | _, _, .ret _, _, _, read => by
       cases read
       rfl
@@ -563,7 +592,7 @@ theorem initialState_of_readout : {Γ : SourceCtx Player L} → {O : Finset VarI
 theorem exists_readout_of_terminal : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (state : ProtocolState program) →
     terminal program state → ∃ terminal, readout program state = some terminal
-  | _, _, .ret _, config, _ => ⟨config.state, rfl⟩
+  | _, _, .ret _, config, _ => ⟨config, rfl⟩
   | _, _, .sample _ _ _ next, state, stopped => by
       cases state with
       | inl _ => exact stopped.elim
@@ -704,7 +733,8 @@ theorem intended_step : {Γ : SourceCtx Player L} → {O : Finset VarId} →
           have ownerLegal := legal owner
           revert ownerLegal
           cases chosen : joint owner with
-          | none => exact fun inactive => (inactive rfl).elim
+          | none => exact fun inactive => (inactive (by simp [ProtocolView.actor, observe,
+              intended.1.not_defaulted owner])).elim
           | some action =>
               rintro ⟨_, value, offered, rfl⟩
               have accepted := (mem_intendedValues_self guard _ intended.2.1 value).mp offered
@@ -724,7 +754,8 @@ theorem intended_step : {Γ : SourceCtx Player L} → {O : Finset VarId} →
           have ownerLegal := legal owner
           revert ownerLegal
           cases chosen : joint owner with
-          | none => exact fun inactive => (inactive rfl).elim
+          | none => exact fun inactive => (inactive (by simp [ProtocolView.actor, observe,
+              intended.1.not_defaulted owner])).elim
           | some action =>
               rintro ⟨_, rfl⟩
               obtain ⟨kept, opened⟩ := intended.1.reveal fresh source
@@ -769,7 +800,7 @@ theorem intended_step_of_actors : {Γ : SourceCtx Player L} → {O : Finset VarI
           simp only [step, Sum.elim_inl, PMF.mem_support_pure_iff] at reached
           subst reached
           obtain ⟨action, chosen, value, offered, rfl⟩ :=
-            legal owner (by simp [ProtocolView.actor, observe])
+            legal owner (by simp [ProtocolView.actor, observe, intended.1.not_defaulted owner])
           have accepted := (mem_intendedValues_self guard _ intended.2.1 value).mp offered
           rw [chosen, OwnAction.binding_commit]
           exact intended_entry next _ (intended.1.commit fresh guard value accepted)
@@ -784,7 +815,8 @@ theorem intended_step_of_actors : {Γ : SourceCtx Player L} → {O : Finset VarI
       | inl config =>
           simp only [step, Sum.elim_inl, PMF.mem_support_pure_iff] at reached
           subst reached
-          obtain ⟨action, chosen, opened⟩ := legal owner (by simp [ProtocolView.actor, observe])
+          obtain ⟨action, chosen, opened⟩ := legal owner
+            (by simp [ProtocolView.actor, observe, intended.1.not_defaulted owner])
           have same : action = .reveal owner name true := opened
           subst same
           rw [chosen]
@@ -803,7 +835,7 @@ from a point of the intended game. -/
 theorem failedReveals_eq_zero_of_intended (who : Player) :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (state : ProtocolState program) →
-    Intended program state → {terminal : State L program.terminalCtx} →
+    Intended program state → {terminal : Config Player L program.terminalCtx} →
     readout program state = some terminal →
       failedReveals program who (publicOutcome program terminal) = 0
   | _, _, .ret _, _, _, _, _ => rfl
@@ -820,8 +852,8 @@ theorem failedReveals_eq_zero_of_intended (who : Player) :
       | inl _ => cases read
       | inr rest =>
           obtain ⟨⟨value, opened⟩, rest_intended⟩ := intended
-          have holds : terminal.get (terminalRef next .here) = .success value :=
-            (terminalRef_get next terminal .here).trans
+          have holds : terminal.state.get (terminalRef next .here) = .success value :=
+            (terminalRef_get next terminal.state .here).trans
               ((congrArg (fun state => state.get .here)
                 (initialState_of_readout next rest read)).trans opened)
           rw [failedReveals_reveal_of_not_failed who _ ?_]
@@ -833,7 +865,7 @@ indebted records a failed reveal of `who`. -/
 theorem failedReveals_pos_of_indebted (who : Player) :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (state : ProtocolState program) →
-    Indebted who program state → {terminal : State L program.terminalCtx} →
+    Indebted who program state → {terminal : Config Player L program.terminalCtx} →
     readout program state = some terminal →
       1 ≤ failedReveals program who (publicOutcome program terminal)
   | _, _, .ret _, _, indebted, _, _ => (Config.Indebted.not_resolved indebted).elim
@@ -850,12 +882,12 @@ theorem failedReveals_pos_of_indebted (who : Player) :
       | inl _ => cases read
       | inr rest =>
           rcases indebted with ⟨own, failed⟩ | indebted
-          · have holds : terminal.get (terminalRef next .here) = .failure :=
-              (terminalRef_get next terminal .here).trans
+          · have holds : terminal.state.get (terminalRef next .here) = .failure :=
+              (terminalRef_get next terminal.state .here).trans
                 ((congrArg (fun state => state.get .here)
                   (initialState_of_readout next rest read)).trans failed)
             subst own
-            refine failedReveals_reveal_pos (publicOutcome next terminal) ?_
+            refine failedReveals_reveal_pos terminal ?_
             simp [RevealCell.failed, publicOutcome, sourcePublicEnv_get_publicRef, holds,
               PublicationResult.isSuccess]
           · exact (failedReveals_pos_of_indebted who next rest indebted read).trans

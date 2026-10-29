@@ -4,15 +4,12 @@ import Vegas.Pending.ReactiveNormalization
 
 /-! # Prescribed graph decisions in one activation
 
-The prescribed policy samples once, remembers its original intention, and
-submits in the same action. A recovery continuation can submit again after an
-earlier deviation, reusing a supported remembered choice. Disclosures open only
-when owner-local validation predicts successful publication; every failed result
-withholds. Accepted packets and matching silent decisions restore their original
-intentions; a silent sampled decision also prevents a later redraw.
-The source-service reachable-frontier induction proves initialized source
-correctness under protected timely sequential and concurrent-binding service.
-Off-path strategic comparisons and native audit payoffs require separate evidence.
+A binding omission transmits nothing; an admitted binding transmits an opaque
+handle, including when its private meaning is unusable. A requested authentic
+opening is transmitted without predicting whether its public guards succeed.
+The handler evaluates those guards. Defaulted owners transmit nothing.
+The turn-counted client determines when a source choice is sampled, including
+the persistent choice of omission; these translators do not sample it again.
 -/
 
 noncomputable section
@@ -43,12 +40,12 @@ theorem reactiveFreshSlot_spec (view : PlayerView graph) (serial : Nat)
 
 def reactiveResolutionPacket {owner : Player} (who : Player) (event : graph.EventId)
     (payload : L.Ty) (binding : FieldRef graph.layout (.binding owner payload))
-    (checks : List (GuardCheck graph.layout payload))
+    (_checks : List (GuardCheck graph.layout payload))
     (outputEq : graph.outputLayout event = .publication payload)
     (action : graph.Action event) (view : PlayerView graph) : Option (Payload graph) :=
   let disclose : Bool := cast (congrArg EventField.Action outputEq) action
-  if disclose then
-    match EventCode.resolveOutput? binding checks true view.observation.store with
+  if who ∈ view.publicView.observation.defaulted then none else if disclose then
+    match binding.get? view.observation.store with
     | some (.success value) => match view.publicView.accepted binding.field with
       | some handle => if handle.1 = who then some (.opening event handle ⟨payload, value⟩)
           else none
@@ -80,22 +77,30 @@ def reactiveDecision (runtime : EventGraphRuntime graph)
     (who : Player) (event : graph.EventId)
     (action : graph.Action event) (view : PlayerView graph) :
     (runtime.reactiveApplication leaks).Action where
-  transmission := match nodeView graph event with
+  transmission := if who ∈ view.publicView.observation.defaulted then none else
+    match nodeView graph event with
     | .sample .. => none
     | .bind _owner payload outputEq _codeEq =>
-        (reactiveFreshSlot view).map fun serial =>
-          ⟨⟨.commitment event (who, .prepared serial),
-            match (cast (congrArg EventField.Action outputEq) action :
-                PublicationResult (L.Val payload)) with
-            | .failure => none
-            | .success value => some ⟨payload, value⟩⟩, .none⟩
+        (cast (congrArg EventField.Action outputEq) action :
+          Option (PublicationResult (L.Val payload))).bind fun result =>
+          (reactiveFreshSlot view).map fun serial =>
+            ⟨⟨.commitment event (who, .prepared serial),
+              match result with
+              | .failure => none
+              | .success value => some ⟨payload, value⟩⟩, .none⟩
     | .resolve _owner payload binding checks outputEq _codeEq =>
         (reactiveResolutionPacket who event payload binding checks outputEq action view).map
           fun packet => (disclosureSubmission packet).normalizeReactive who view []
 
-end Vegas.EventGraphRuntime
+/-- The prescribed native decision with private response aliases normalized.
+An omitted binding or withheld publication sends nothing and is settled by expiry. -/
+def serviceDecision (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (event : graph.EventId) (choice : graph.Action event) :
+    (runtime.reactiveApplication leaks).Action :=
+  (runtime.reactiveNormalization leaks).action who past view
+    (runtime.reactiveDecision leaks who event choice view.application)
 
--- Compiler correctness remains to be proved:
--- Prove source observation reconstruction and realization of each sampled
--- decision throughout protected service, then compose the compiler and deviation laws.
--- The command-service theorem does not supply this edge.
+end Vegas.EventGraphRuntime

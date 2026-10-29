@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.ReactiveCompiledMenu
-import Vegas.Pending.ReactiveBindingAllocation
 
 /-! # Prescribed decisions at the audit's canonical slot
 
@@ -69,15 +68,17 @@ def canonicalReactiveDecision (runtime : EventGraphRuntime graph)
     (who : Player) (event : graph.EventId)
     (action : graph.Action event) (view : PlayerView graph) :
     (runtime.reactiveApplication leaks).Action where
-  transmission := match nodeView graph event with
+  transmission := if who ∈ view.publicView.observation.defaulted then none else
+    match nodeView graph event with
     | .sample .. => none
     | .bind _owner payload outputEq _codeEq =>
-        (canonicalFreshSlot who view).map fun serial =>
-          ⟨⟨.commitment event (who, .prepared serial),
-            match (cast (congrArg EventField.Action outputEq) action :
-                PublicationResult (L.Val payload)) with
-            | .failure => none
-            | .success value => some ⟨payload, value⟩⟩, .none⟩
+        (cast (congrArg EventField.Action outputEq) action :
+          Option (PublicationResult (L.Val payload))).bind fun result =>
+          (canonicalFreshSlot who view).map fun serial =>
+            ⟨⟨.commitment event (who, .prepared serial),
+              match result with
+              | .failure => none
+              | .success value => some ⟨payload, value⟩⟩, .none⟩
     | .resolve _owner payload binding checks outputEq _codeEq =>
         (reactiveResolutionPacket who event payload binding checks outputEq action view).map
           fun packet => (disclosureSubmission packet).normalizeReactive who view []
@@ -109,6 +110,32 @@ theorem canonicalReactiveDecision_eq_of_not_bind (runtime : EventGraphRuntime gr
   | bind owner payload outputEq codeEq => exact (notBind owner payload outputEq codeEq node).elim
   | resolve => rfl
 
+/-- A canonical client sends no traffic after its public default. -/
+theorem canonicalServiceDecision_defaulted (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (event : graph.EventId) (choice : graph.Action event)
+    (inactive : who ∈ view.application.publicView.observation.defaulted) :
+    runtime.canonicalServiceDecision leaks who past view event choice = ⟨none⟩ := by
+  simp only [canonicalServiceDecision, canonicalReactiveDecision, ite_eq_left inactive]
+  rfl
+
+/-- A transmitted canonical decision belongs to an owner who has not publicly defaulted. -/
+theorem canonicalServiceDecision_active (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (event : graph.EventId) (choice : graph.Action event)
+    (material : (runtime.reactiveApplication leaks).Submission)
+    (submits : (runtime.canonicalServiceDecision leaks who past view event choice).transmission =
+      some material) :
+    who ∉ view.application.publicView.observation.defaulted := by
+  intro inactive
+  rw [runtime.canonicalServiceDecision_defaulted leaks who past view event choice inactive]
+    at submits
+  cases submits
+
 theorem canonicalServiceDecision_eq_of_not_bind (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -122,7 +149,7 @@ theorem canonicalServiceDecision_eq_of_not_bind (runtime : EventGraphRuntime gra
   rw [runtime.canonicalReactiveDecision_eq_of_not_bind leaks who event choice view.application
     notBind]
 
-/-- A binding decision submits the canonical binding at the selected slot. -/
+/-- An admitted binding submits the canonical binding at the selected slot. -/
 theorem canonicalServiceDecision_binding (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -132,22 +159,40 @@ theorem canonicalServiceDecision_binding (runtime : EventGraphRuntime graph)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind who payload)
     (node : nodeView graph event = .bind who payload outputEq codeEq)
+    (active : who ∉ view.application.publicView.observation.defaulted)
     (serial : Nat) (selected : canonicalFreshSlot who view.application = some serial)
     (result : PublicationResult (L.Val payload)) :
     runtime.canonicalServiceDecision leaks who past view event
-      (cast (congrArg EventField.Action outputEq.symm) result) =
+      (cast (congrArg EventField.Action outputEq.symm) (some result)) =
       runtime.reactiveBinding leaks who event payload result serial := by
   have fresh := canonicalFreshSlot_spec who view.application serial selected
   have normalized : runtime.canonicalServiceDecision leaks who past view event
-      (cast (congrArg EventField.Action outputEq.symm) result) =
+      (cast (congrArg EventField.Action outputEq.symm) (some result)) =
       (runtime.reactiveNormalization leaks).action who past view
         (runtime.reactiveBinding leaks who event payload result serial) := by
-    simp only [canonicalServiceDecision, canonicalReactiveDecision, node, selected,
-      Option.map_some, cast_cast, cast_eq]
+    simp only [canonicalServiceDecision, canonicalReactiveDecision, ite_eq_right active,
+      node, selected, Option.map_some, cast_cast, cast_eq, Option.bind_some]
     rfl
   rw [normalized]
   exact runtime.reactiveBinding_normal_of_fresh leaks who past view event payload result serial
     fresh
+
+/-- A selected binding omission stays silent, including when candidate slots are available. -/
+theorem canonicalServiceDecision_binding_none (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (event : graph.EventId) (owner : Player) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) =
+      .bind owner payload)
+    (node : nodeView graph event = .bind owner payload outputEq codeEq) :
+    runtime.canonicalServiceDecision leaks who past view event
+      (cast (congrArg EventField.Action outputEq.symm)
+        (none : Option (PublicationResult (L.Val payload)))) = ⟨none⟩ := by
+  simp only [canonicalServiceDecision, canonicalReactiveDecision, node, cast_cast, cast_eq,
+    Option.bind_none, ite_self]
+  rfl
 
 /-- The public deadline still admits inclusion of a packet for `event`. -/
 def PublicView.WithinDeadline (runtime : EventGraphRuntime graph) (view : PublicView graph)

@@ -2,12 +2,14 @@
 
 import Vegas.Pending.ReactiveStateInvariant
 import Interaction.ReactiveRecallInvariant
+import Vegas.Pending.PublicFailureEvidence
 
 /-! # Recorded public views stay current until an event completes
 
-Every scheduler command either leaves the graph configuration, the accepted
-handles and the activation times unchanged, or appends one completion to the
-history. Player responses change none of them. So a recorded response's public
+Every scheduler command has a finite completion footprint. Elementary
+footprints preserve the graph, accepted handles and activation times, or
+append one completion to the history. Player responses change none of them.
+A recorded response's public
 view has a completion order that is a prefix of the current one, and while no
 event has completed since, its public observation, accepted handles and
 activation times are the current ones. This holds at every legal history, for
@@ -25,85 +27,6 @@ variable {Player : Type} [DecidableEq Player]
   (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
-omit [DecidableEq Player] in
-/-- Either the configuration, accepted handles and activation times are
-unchanged, or one completion is appended to the history. -/
-def PublicStep (before after : State graph) : Prop :=
-  (after.config = before.config ∧ after.accepted = before.accepted ∧
-      after.activatedAt = before.activatedAt) ∨
-    ∃ completion, after.config.history = before.config.history ++ [completion]
-
-omit [DecidableEq Player] in
-theorem PublicStep.refl (state : State graph) : PublicStep state state :=
-  Or.inl ⟨rfl, rfl, rfl⟩
-
-theorem publicStep_handle (state next : State graph) (message : Message Player (Payload graph))
-    (accepted : handle runtime state message = some next) : PublicStep state next := by
-  obtain ⟨event, _, ready, action, member⟩ :=
-    handle_config_mem_step runtime state next message accepted
-  exact Or.inr ⟨⟨event, action⟩, state.config.step_history event ready action next.config member⟩
-
-omit [DecidableEq Player] in
-theorem publicStep_environmentStep (state next : State graph) (command : EnvironmentCommand graph)
-    (member : next ∈ (environmentStep runtime state command).support) :
-    PublicStep state next := by
-  have accepted := (environmentStep_tables runtime state next command member).1
-  cases command with
-  | advanceClock =>
-      simp only [environmentStep, PMF.mem_support_pure_iff] at member
-      subst next
-      exact Or.inl ⟨rfl, rfl, rfl⟩
-  | executeSample event =>
-      rcases (environmentStep_executeSample_config_activated runtime state next event member).2
-        with ⟨configEq, activatedEq⟩ | ⟨ready, action, stepped, _⟩
-      · exact Or.inl ⟨configEq, accepted, activatedEq⟩
-      · exact Or.inr ⟨⟨event, action⟩, state.config.step_history event ready action _ stepped⟩
-  | expire event =>
-      rcases (environmentStep_expire_config_activated runtime state next event member).2
-        with ⟨configEq, activatedEq⟩ | ⟨ready, action, stepped, _⟩
-      · exact Or.inl ⟨configEq, accepted, activatedEq⟩
-      · exact Or.inr ⟨⟨event, action⟩, state.config.step_history event ready action _ stepped⟩
-
-/-- Every scheduler command takes one public step of the application. -/
-theorem publicStep_reactive_environmentStep
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (command : (runtime.reactiveApplication leaks).Command)
-    (reached : next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
-      command).support) :
-    PublicStep execution.application next.application := by
-  unfold ReactiveApplication.Execution.environmentStep at reached
-  rw [PMF.support_map] at reached
-  obtain ⟨updated, supported, rfl⟩ := reached
-  cases command with
-  | activate who =>
-      rw [PMF.support_map] at supported
-      obtain ⟨_, _, rfl⟩ := supported
-      exact PublicStep.refl _
-  | wait =>
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      exact PublicStep.refl _
-  | «include» id =>
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      change PublicStep execution.application
-        (execution.includePending (runtime.reactiveApplication leaks) id).application
-      unfold ReactiveApplication.Execution.includePending
-      cases execution.network.includePending id with
-      | mk envelope network =>
-          cases envelope with
-          | none => exact PublicStep.refl _
-          | some envelope =>
-              change PublicStep execution.application
-                (((runtime.reactiveApplication leaks).handle execution.application
-                  envelope).getD execution.application)
-              cases accepted : (runtime.reactiveApplication leaks).handle execution.application
-                  envelope with
-              | none => exact PublicStep.refl _
-              | some next => exact publicStep_handle runtime _ next _ (reactiveHandle_call accepted)
-  | application command =>
-      rw [PMF.support_map] at supported
-      obtain ⟨state, changed, rfl⟩ := supported
-      exact publicStep_environmentStep runtime _ state command changed
-
 /-- A recorded response's public view: its completion order is a prefix of the
 current one, and while no event has completed since, its public observation,
 accepted handles and activation times are the current ones. -/
@@ -119,6 +42,38 @@ def EntryStable (execution : (runtime.reactiveApplication leaks).Execution) : Pr
             execution.application.publicView.accepted ∧
           entry.beforeView.application.publicView.activatedAt =
             execution.application.publicView.activatedAt)
+
+private theorem retained_public_view_step (saved : PublicView graph)
+    (before after : State graph) (step : CompletionStep before after)
+    (valid : saved.observation.completionOrder <+: before.publicView.observation.completionOrder ∧
+      (saved.observation.completionOrder = before.publicView.observation.completionOrder →
+        saved.observation = before.publicView.observation ∧
+          saved.accepted = before.accepted ∧ saved.activatedAt = before.activatedAt)) :
+    saved.observation.completionOrder <+: after.publicView.observation.completionOrder ∧
+      (saved.observation.completionOrder = after.publicView.observation.completionOrder →
+        saved.observation = after.publicView.observation ∧
+          saved.accepted = after.accepted ∧ saved.activatedAt = after.activatedAt) := by
+  obtain ⟨prefixBefore, equalBefore⟩ := valid
+  rcases step with ⟨configEq, acceptedEq, activatedEq⟩ |
+      ⟨event, ready, action, supported, _activated, _accepted⟩
+  · have observationEq : after.publicView.observation = before.publicView.observation := by
+      change graph.publicObserve after.config = graph.publicObserve before.config
+      rw [configEq]
+    have orderEq : after.publicView.observation.completionOrder =
+        before.publicView.observation.completionOrder := by rw [observationEq]
+    refine ⟨orderEq ▸ prefixBefore, fun equal => ?_⟩
+    obtain ⟨sameObservation, sameAccepted, sameActivated⟩ := equalBefore (equal.trans orderEq)
+    exact ⟨sameObservation.trans observationEq.symm,
+      sameAccepted.trans acceptedEq.symm, sameActivated.trans activatedEq.symm⟩
+  · have orderEq : after.publicView.observation.completionOrder =
+        before.publicView.observation.completionOrder ++ [event] := by
+      exact before.config.step_history_events event ready action after.config supported
+    refine ⟨orderEq ▸ prefixBefore.trans (List.prefix_append _ _), fun equal => ?_⟩
+    exfalso
+    have lengths := congrArg List.length equal
+    rw [orderEq, List.length_append, List.length_singleton] at lengths
+    have bounded := prefixBefore.length_le
+    omega
 
 /-- Recorded public views stay current until an event completes, for every
 scheduler and arbitrary responses. -/
@@ -142,37 +97,21 @@ theorem entryStable_serviceInvariant (scheduler : (runtime.reactiveApplication l
     have recallEq := app.environmentStep_recall execution next command reached
     intro observer entry member
     rw [recallEq] at member
-    obtain ⟨prefixBefore, equalBefore⟩ := valid observer entry member
-    rcases publicStep_reactive_environmentStep runtime leaks execution next command reached with
-      ⟨configEq, acceptedEq, activatedEq⟩ | ⟨completion, historyEq⟩
-    · have observationEq : next.application.publicView.observation =
-          execution.application.publicView.observation := by
-        change graph.publicObserve next.application.config =
-          graph.publicObserve execution.application.config
-        rw [configEq]
-      have orderEq : next.application.publicView.observation.completionOrder =
-          execution.application.publicView.observation.completionOrder := by
-        rw [observationEq]
-      refine ⟨orderEq ▸ prefixBefore, fun equal => ?_⟩
-      obtain ⟨sameObservation, sameAccepted, sameActivated⟩ := equalBefore (equal.trans orderEq)
-      refine ⟨sameObservation.trans observationEq.symm, ?_, ?_⟩
-      · change _ = next.application.accepted
-        rw [acceptedEq]
-        exact sameAccepted
-      · change _ = next.application.activatedAt
-        rw [activatedEq]
-        exact sameActivated
-    · have orderEq : next.application.publicView.observation.completionOrder =
-          execution.application.publicView.observation.completionOrder ++ [completion.event] := by
-        change next.application.config.history.map EventGraph.Completion.event =
-          execution.application.config.history.map EventGraph.Completion.event ++ [completion.event]
-        rw [historyEq, List.map_append, List.map_singleton]
-      refine ⟨orderEq ▸ prefixBefore.trans (List.prefix_append _ _), fun equal => ?_⟩
-      exfalso
-      have lengths := congrArg List.length equal
-      rw [orderEq, List.length_append, List.length_singleton] at lengths
-      have bounded := prefixBefore.length_le
-      omega
+    let saved := entry.beforeView.application.publicView
+    let retained (current : State graph) : Prop :=
+      saved.observation.completionOrder <+: current.publicView.observation.completionOrder ∧
+        (saved.observation.completionOrder = current.publicView.observation.completionOrder →
+          saved.observation = current.publicView.observation ∧
+            saved.accepted = current.accepted ∧ saved.activatedAt = current.activatedAt)
+    have preserved : ∀ {before after : State graph},
+        Relation.ReflTransGen CompletionStep before after → retained before → retained after := by
+      intro before after path
+      induction path using Relation.ReflTransGen.head_induction_on with
+      | refl => exact id
+      | @head before middle moved _ ih =>
+          exact fun prior => ih (retained_public_view_step saved before middle moved prior)
+    exact preserved (completionPath_reactive_environmentStep runtime leaks execution next command
+      reached) (valid observer entry member)
 
 /-- Recorded public views stay current until an event completes, at every
 legal history. -/

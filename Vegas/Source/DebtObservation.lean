@@ -2,7 +2,7 @@
 
 import Vegas.Source.FailedBindingDeviation
 import Vegas.Source.Exclusion
-import Vegas.Source.EffectiveOpening
+import Vegas.Source.AuthenticOpening
 
 /-! # Owing a failure is observed
 

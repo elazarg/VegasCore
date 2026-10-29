@@ -10,8 +10,8 @@ Against the first-turn clients of a source profile, under a scheduler
 satisfying the asynchronous contract, every native policy of one player has the
 typed outcome law of a source deviation that may bind failure
 (`Vegas.asyncDeviation_readout_law`). Binding failure buys a pure policy
-nothing: a value-binding policy has the same law of initial parameter and public
-result (`Vegas.SourceProgram.bindValues_run_publicOutcome_eq`), and every policy
+nothing when its value-binding normalization preserves the joint initial
+parameter and public-default outcome law. Every policy
 is a mixture of pure ones (`Vegas.SourceProgram.exists_pureMixture_run`). With a
 nonnegative deposit, audit charges only lower the realized payoff. Hence every
 native policy against the first-turn clients has audited expected payoff at

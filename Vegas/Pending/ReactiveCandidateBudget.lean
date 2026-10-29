@@ -187,11 +187,15 @@ theorem candidateRecall_environment (runtime : EventGraphRuntime graph)
             message with
         | none => exact valid who serial absent
         | some state =>
-            exact candidateRecall_handle runtime leaks execution state message valid
+            change state.candidates.lookup (who, .prepared serial) = .fresh
+            obtain ⟨native, handled, drained⟩ := reactiveHandle_call accepted
+            rw [← drained, native.drain_tables.2.1]
+            exact candidateRecall_handle runtime leaks execution native message valid
               (provenance.pending message (List.mem_of_find?_eq_some found))
-              (reactiveHandle_call accepted) who serial absent
+              handled who serial absent
   · intro command state changed
-    rw [(environmentStep_tables runtime execution.application state command changed).2]
+    rw [(reactiveApplication_environment_tables runtime leaks execution.application state command
+      changed).2]
     exact valid who serial absent
 
 theorem candidateRecall_history (runtime : EventGraphRuntime graph)
