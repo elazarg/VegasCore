@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import VegasTests.AbsorbingFailure
 import VegasTests.ChanceScheduling
 import VegasTests.ConditionalPublicPrior
 import VegasTests.CompilerCorrectness
