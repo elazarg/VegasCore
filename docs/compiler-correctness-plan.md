@@ -1,10 +1,26 @@
 # Compiler correctness: completion plan
 
-The target is ordinary correctness of the two compiler passes, from the typed
-source language through event graphs to the bounded Interaction message model.
-Completion requires independently usable results for both passes and their
-composition. The new results below are proof obligations, not checked claims.
-Only their capstones will be added to Paper.lean and stated in the manuscript.
+The source compiler already constructs a dependency graph, instantiates its
+ledger application in Interaction, and translates source policies into actual
+bounded-runtime clients. Exact source-to-ledger outcome preservation is checked.
+The target here is to expose the ordinary correctness guarantees of that
+existing tower as explicit capstones and align their presentation in the paper.
+This does not require a new compiler for arbitrary independently authored graph
+policies. Only paper-stated capstones receive pins in Paper.lean.
+
+## The implemented tower and its checked guarantees
+
+| Boundary | Construction and existing checked result |
+| --- | --- |
+| Intended game to source game | The intended game restricts the source action menus. Under the forfeit hypotheses, its assessments extend to source assessments; this is an equilibrium-extension result, not another AST lowering. See [intended preservation](../Vegas/Game/IntendedPreservation.lean). |
+| Source to dependency graph | [Graph assembly](../Vegas/Compile/EventGraphAssembly.lean) lowers the program. [Policy translation](../Vegas/Compile/EventGraphPolicy.lean) supplies graph strategies, and [scheduled terminal-state preservation](../Vegas/Compile/EventGraphScheduling.lean) proves the exact source law. |
+| Dependency graph to ledger model | [The runtime](../Vegas/Pending/EventApplication.lean) is parameterized by a graph. [Its reactive application](../Vegas/Pending/ReactiveRuntime.lean) instantiates Interaction's message operations. [Canonical clients](../Vegas/Game/SourceServiceCanonicalPolicy.lean) use the compiled graph policy to produce actual runtime responses. |
+| Source to bounded ledger execution | [The exact client settlement law](../Vegas/Game/AsyncServiceRawNash.lean) quantifies over every admitted source profile without an equilibrium premise. [The monetary specialization](../Vegas/Game/ProgramPaymentAsyncNash.lean) preserves typed outcomes and executable transfers and already has a guarded pin in Paper.lean. |
+
+The proofs of the last boundary use source syntax and source-compiled policies.
+That is sufficient to establish correctness of the source compiler. A more
+general intermediate-language API is a possible strengthening, not evidence
+that this compilation or its end-to-end correctness is missing.
 
 ## Semantic contract
 
@@ -22,15 +38,15 @@ Only their capstones will be added to Paper.lean and stated in the manuscript.
   profile, under the existing all-history opportunity, protected-inclusion,
   completion and strict deadline-margin conditions. Finite execution fuel
   alone must not be presented as successful application completion.
-* The second-pass outcome theorem must not require a source program. Its graph
-  domain includes sequential graphs and the public-barrier graphs emitted by
-  the first pass, with concurrent bindings of different owners. General DAGs
-  and concurrent public revelations are outside this completion target.
-* The reference for a general graph policy is its canonical graph execution.
-  Runtime clients normalize scheduling metadata. Equality with execution under
-  other graph public schedulers needs the existing normalization and scheduling
-  laws and their policy hypotheses; it is not asserted for arbitrary policies
-  that inspect chronological completion order.
+* The second-pass outcome statement covers graphs and policy translations
+  produced by the source compiler, in sequential and public-barrier modes.
+  Source parameters or compiler-image hypotheses are legitimate in that
+  statement. Do not require arbitrary graph policies to establish correctness
+  of the supported compilation pipeline.
+* Compare the actual ledger clients with the compiled graph's canonical law,
+  and use the existing first-pass scheduler theorem where applicable. Do not
+  assert scheduler independence for arbitrary graph policies that inspect
+  chronological completion order.
 * Retain arbitrary pending observation and correlated initial laws. Ordinary
   correctness must not acquire private-input independence, utility bounds,
   deposits or evidence-coverage assumptions from the SE proof chain.
@@ -50,44 +66,41 @@ Record which proof uses each premise before trying to weaken it.
 | --- | --- | --- |
 | Source-to-graph outcome law | [Canonical laws](../Vegas/Compile/EventGraphCanonical.lean), [public scheduling law](../Vegas/Compile/EventGraphScheduling.lean), [typed readout](../Vegas/Compile/EventGraphReadout.lean) | Preserve the existing theorem's scope and use it as the first-pass capstone. |
 | Interaction operations respect graph execution | [Native step relation](../Vegas/Pending/ExclusionNativeFailure.lean), [initialized invariant](../Vegas/Pending/ReactiveStateInvariant.lean), [completion origins](../Vegas/Pending/ReactiveCompletion.lean) | Expose initialized trace projection, stuttering, store agreement and conditional terminal completeness as one graph-level capstone. |
-| Stable graph decision observations | [Barrier information](../Vegas/EventGraph/BarrierInformation.lean), [normalized policies](../Vegas/EventGraph/NormalizedPolicy.lean), [scheduler erasure](../Vegas/EventGraph/SchedulerErasure.lean) | Relate the observation at activation to the observation at eventual completion, without reading runtime-only information. |
-| Ineffective disclosure and original own recall | [Source behavioral realization](../Vegas/Source/DisclosureBehavioral.lean), [observed-choice kernels](../GameTheoryExtensions/Math/Probability/ObservedChoice.lean) | Supply the graph-policy adapter: rank-indexed decisions and graph completion recall replace syntax-indexed source continuations. |
-| Packet realization and first opportunities | [Canonical decisions](../Vegas/Pending/ReactiveCanonicalDecision.lean), [opening provenance](../Vegas/Pending/ReactiveDisclosure.lean), [first-opportunity bound](../Vegas/Pending/ReactiveFirstOpportunity.lean), [service contract](../Vegas/Pending/ReactiveAsyncContract.lean) | Lift local decisions to complete source-independent clients and prove exact conditional decision laws through inclusion or expiry. |
-| Whole-run exact runtime law | [Source client law](../Vegas/Game/ServiceHonestLaw.lean), [bounded raw client settlement law](../Vegas/Game/AsyncServiceRawNash.lean) | Factor the graph-level execution argument, then recover the source results by instantiation and composition. |
+| Stable graph decision observations | [Barrier information](../Vegas/EventGraph/BarrierInformation.lean), [normalized policies](../Vegas/EventGraph/NormalizedPolicy.lean), [scheduler erasure](../Vegas/EventGraph/SchedulerErasure.lean) | Reuse the current compiler-policy observation arguments when exposing the second-pass capstone. |
+| Ineffective disclosure and original own recall | [Source behavioral realization](../Vegas/Source/DisclosureBehavioral.lean), [observed-choice kernels](../GameTheoryExtensions/Math/Probability/ObservedChoice.lean) | Retain the existing checked normalization inside the actual client compiler. General graph-policy normalization is optional. |
+| Packet realization and first opportunities | [Canonical decisions](../Vegas/Pending/ReactiveCanonicalDecision.lean), [opening provenance](../Vegas/Pending/ReactiveDisclosure.lean), [first-opportunity bound](../Vegas/Pending/ReactiveFirstOpportunity.lean), [service contract](../Vegas/Pending/ReactiveAsyncContract.lean) | Expose their established role in the bounded client construction and retain the existing service hypotheses. |
+| Whole-run exact runtime law | [Source client law](../Vegas/Game/ServiceHonestLaw.lean), [bounded raw client settlement law](../Vegas/Game/AsyncServiceRawNash.lean) | Package the existing exact law as the end-to-end capstone; compare it with the first-pass graph law to expose the second-pass compiler-image result. |
 
 Search the owning layers with rg and inspect declaration surfaces with
 lean-defs.py before implementing an adapter. Extend the existing probability,
 recall and execution APIs where possible. Do not introduce another runtime,
 application transition system or commitment model.
 
-Graph policy normalization belongs in Vegas.EventGraph; generic clients,
-service realization and refinement belong in Vegas.Pending; source
-instantiation and composition belong in Vegas.Compile or Vegas.Game according
-to their dependencies. The generic graph and pending proof owners must not
-import source-specific proofs. Extract shared probability operations to an
-existing appropriate foundation owner only when both adapters actually need
-them.
+Generic operational refinement belongs in Vegas.Pending. Source instantiation,
+the supported second-pass law and composition belong in Vegas.Compile or
+Vegas.Game according to their dependencies. Keep the underlying graph/runtime
+operations shared. Factor a proof only where the exposed interface needs it;
+a source-indexed correctness proof is not itself an architectural defect.
 
 ## Proof sequence and acceptance gates
 
 ### Fix the second-pass interface
 
-- [ ] Specify graph inputs, graph policy semantics, Interaction initialization,
-  compiled clients, bounded-menu restriction and a terminal decoder returning
-  an explicit unfinished result. The decoder must have no default payload.
-- [ ] Use the canonical reference law for graph policies. Make completion-order
-  normalization an explicit compiler operation and prove its canonical-law
-  preservation using the existing graph normalization API.
-- [ ] Express structural requirements through the existing public-barrier and
-  information-discipline interfaces. Prove that the first-pass outputs and
-  their sequential mode satisfy them.
-- [ ] Enumerate the new local hypotheses needed by the runtime proof. None may
-  assume the desired whole-run outcome equality or its equivalent.
+- [ ] Display the actual composition of graph assembly, graph policy
+  translation, runtime application, canonical decisions and bounded clients.
+  Identify each existing definition rather than introducing a new interpreter.
+- [ ] Specify the second-pass capstone on the compiler's supported graph/policy
+  image, using the existing canonical graph semantics and actual source/ledger
+  terminal decoders. No decoder may introduce a default payload.
+- [ ] Reuse the checked public-barrier and information-discipline certificates
+  for first-pass outputs and their sequential mode.
+- [ ] Classify each desired capstone as an existing theorem, a direct
+  consequence, or a genuine additional proof obligation. Do not list an
+  established source-client law as an absent compiler edge.
 
-Gate: the second-pass signature is source-independent, identifies the actual
-bounded target and covers both currently compiled dependency modes. A theorem
-restricted to the image of the source compiler is an intermediate result, not
-completion of this interface.
+Gate: every arrow of the paper's tower names an actual construction and the
+correct kind of preservation result. The statements cover the supported
+compiler image without importing a broader arbitrary-graph target.
 
 ### Complete operational refinement
 
@@ -108,89 +121,52 @@ Gate: arbitrary raw responses, malformed or competing packets, failed
 openings and expiry remain in scope. No claim about probabilities follows
 from this support-level refinement alone.
 
-### Preserve policies when disclosure intentions are erased
+### Expose the supported second-pass outcome law
 
-- [ ] Implement graph-level effective-disclosure normalization and prove that
-  it preserves the complete canonical terminal-store law.
-- [ ] Preserve the influence of original private actions on later decisions.
-  Adapt the existing posterior/disintegration construction to graph recall;
-  simply replacing an ineffective true disclosure by false is insufficient.
-- [ ] Prove that normalization uses only the player's graph observation and
-  actual recall. Do not add a private memory command to runtime actions.
-- [ ] Establish the joint initial-store/output law for arbitrary correlated
-  finite initial laws. Keep any supported-observation qualifications explicit.
-- [ ] Identify the effective graph-policy condition needed by the runtime
-  realization proof and derive it from normalization, rather than requiring
-  users to discard policies with ineffective disclosures.
+- [ ] Compare the existing exact ledger law and the existing canonical graph
+  law through their common full typed source readout. This yields a
+  graph-to-ledger equality for the compiled graph and the actual compiled
+  clients without a new arbitrary-graph policy algorithm.
+- [ ] Preserve the full terminal source store, including initial cells, and
+  executable payouts. If the paper additionally states equality of complete
+  graph stores, derive the graph-field reconstruction adapter explicitly.
+- [ ] Expose the existing disclosure normalization in the compiler composition.
+  Retain its checked treatment of remembered original actions and later
+  decisions. Do not replace it with a simple true-to-false action rewrite.
+- [ ] Retain bounded raw-menu coverage, candidate capacity, correlated initial
+  laws, arbitrary pending observation, configured relative deadlines and the
+  existing all-history service premises. The result is probability equality,
+  not only graph reachability or equal expected utility.
+- [ ] Check both sequential and public-barrier compiler outputs. Reuse the
+  current service instances and exact client law rather than restricting the
+  theorem to the fixed rank calendar or zero inclusion latency.
 
-Gate: an owner can make a later binding depend on an earlier reveal intention
-whose publication failed, and the translated policy still preserves its
-terminal law. This is the main semantic proof risk.
-
-### Realize graph policies in the message model
-
-- [ ] Factor source-independent clients from the existing canonical decisions,
-  event-recording checks and first-opportunity policy. Clients read normalized
-  graph observations and ignore extra clock and pending-message signals when
-  choosing a graph action.
-- [ ] Prove each decision is sampled once. A pending submission is not
-  resampled, and a silent failed or withheld disclosure is not redrawn at a
-  later activation.
-- [ ] Prove binding candidate freshness and fixed meaning, authentic opening
-  provenance, sole-identifier protection, and realization before the supplied
-  relative deadline. Silence realizes failure through expiry.
-- [ ] Prove that normalized decision observations remain stable while other
-  owners' independent hidden bindings complete. Reuse the barrier observation
-  and commutation results.
-- [ ] Show compiled responses belong to the actual bounded raw menu using
-  value coverage and a derived candidate budget. Do not stop at an unbounded
-  or privileged client interface.
-
-Gate: local conditional kernels are derived from the existing operations and
-all-history service conditions, including histories of rejected traffic.
-
-### Prove the independent second-pass outcome law
-
-- [ ] Prove the exact law first on sequential graphs, then on public-barrier
-  graphs with concurrent private bindings. This is an implementation order;
-  both cases are required for completion.
-- [ ] Compare the compiled Interaction run with the canonical graph run of
-  the original profile, composing the disclosure-normalization realization.
-  Prove probability equality, not only support inclusion or equal expectations.
-- [ ] Preserve the whole typed graph outcome, including initial fields. The
-  Interaction readout returns some outcome with probability one under the
-  service premises. Obtain payout and other total store-derived observations
-  by mapping that same law.
-- [ ] Quantify over supplied relative deadlines, timely service schedulers and
-  arbitrary pending observation. Do not specialize the capstone to the rank
-  calendar, empty pending observation or zero inclusion latency.
-- [ ] Instantiate the generic service on a checked concrete scheduler. Reuse
-  and factor the existing roster producer as needed; do not treat an assumed
-  completion contract as its own operational implementation.
-
-Gate: the capstone quantifies over a graph and graph policies without source
-syntax, source histories or source equilibrium hypotheses.
+Gate: the paper can state the exact second-pass guarantee for its supported
+compilation pipeline and point to a checked capstone. Source-indexed parameters
+are permitted and stated honestly.
 
 ### Compose both passes and consolidate consumers
 
-- [ ] Prove source-to-Interaction preservation by composing the two pass laws
-  through the actual terminal decoder. Preserve the joint initial data,
-  complete typed source state, public result and executable payouts.
-- [ ] Instantiate the theorem for every source profile, including failed
-  commitments, failed guards and withholding, in both compiled graph modes.
-- [ ] Refactor source-specific client laws to consume the generic graph
-  theorem. Update all callers and docs without compatibility aliases or a
-  parallel source-only implementation of the same execution proof.
-- [ ] Establish the policy/response agreement needed by existing strategic
-  consumers, including the off-path sites they use. Equal terminal laws alone
-  do not justify replacing clients inside an SE proof.
+- [ ] Expose the existing source-to-Interaction exact law as the end-to-end
+  capstone, showing its agreement with the two displayed pass laws through
+  the actual terminal decoder. Preserve the joint initial data, complete
+  typed source state, public result and executable payouts.
+- [ ] Keep its quantification over every admitted source profile, including
+  failed commitments, failed guards and withholding, in both compiled modes.
+- [ ] Consolidate duplicated theorem presentations only where needed. Update
+  callers and docs without compatibility aliases; do not replace established
+  client algorithms to satisfy an unnecessary stronger interface.
+- [ ] Any client refactor must establish the policy/response agreement needed
+  by existing strategic consumers, including their off-path sites. Equal
+  terminal laws alone do not justify replacing clients inside an SE proof.
 - [ ] Retain the exact hypotheses and conclusions of the checked Nash,
   recovery SE and monetary capstones. A generic backtranslation of arbitrary
   Interaction deviations and concurrent raw-runtime SE are separate targets.
 
-Gate: the composed theorem is a consequence of the two pass capstones, and
-the existing strategic and monetary consumers build against the consolidated
-implementation.
+Gate: the two pass statements and end-to-end capstone describe the same actual
+clients, and existing strategic and monetary consumers retain their scope.
+Do not infer source-to-ledger SE preservation from a source-to-ledger Nash
+theorem: the checked recovery SE result has its own controller and hypotheses.
 
 ## Capstones and manuscript changes
 
@@ -202,8 +178,8 @@ Checklist labels and step numbers must not enter declaration names or docstrings
 | --- | --- |
 | Source-to-graph semantics | Retain the existing scheduled terminal-state law, with its full source-profile and public graph-scheduler quantification. State it in the graph section. |
 | Interaction-to-graph operational refinement | Every initialized raw trace projects to graph execution with typed-store agreement; service-complete terminal traces decode successfully. State it in the runtime section. |
-| Graph-to-Interaction semantics | Source-independent exact terminal-outcome law for compiled graph policies on the supported graph class and the actual bounded target, under explicit service and representation premises. State it in the runtime section. |
-| Composed compiler semantics | Exact joint initialized source-state/result/payout law for the actual two-pass clients, without an equilibrium premise. State it beside the compiler tower and distinguish it from strategic preservation. |
+| Graph-to-Interaction semantics | Exact terminal-outcome law for the graph and policies produced by the source compiler and the actual bounded clients, under explicit service and representation premises. Derive it from the checked graph and runtime laws and state it in the runtime section. |
+| Composed compiler semantics | Expose the checked exact joint initialized source-state/result/payout law for the actual two-pass clients, without an equilibrium premise. State it beside the compiler tower and distinguish it from strategic preservation. |
 
 - [ ] Add or retain only these ordinary-correctness capstones in Paper.lean.
   Each new paper-facing theorem must have its exact standard-axiom guard
@@ -225,13 +201,13 @@ Checklist labels and step numbers must not enter declaration names or docstrings
 
 ## Validation and checkpoints
 
-Use checked Lean consumers that exercise the semantic boundaries: a graph
-constructed without a source program, remembered ineffective disclosure,
-withholding and expiry, both hidden-binding completion orders, correlated
-initial inputs, partial pending observation and positive inclusion latency with
-non-rank deadlines. Include empty and chance-only graphs where they expose
-boundary cases. Extend existing examples when they already exercise a case.
-Runtime sampling experiments are not a substitute for exact-law proofs.
+Use checked Lean consumers that exercise the actual compiler boundaries:
+remembered ineffective disclosure, withholding and expiry, both hidden-binding
+completion orders, correlated initial inputs, partial pending observation and
+positive inclusion latency with non-rank deadlines. Include empty and
+chance-only programs where they expose boundary cases. Extend existing
+examples when they already exercise a case. Runtime sampling experiments are
+not a substitute for exact-law proofs.
 
 Check the owning modules after each proof checkpoint. At consolidation, run
 the ordinary full `lake build`, including Paper and all retained examples;
@@ -240,10 +216,21 @@ the repository checker unit tests. Check manuscript annotations against actual
 capstone signatures and guards. Build the maintained paper, check references,
 page limits and overflow, and render/inspect the changed pages.
 
-Commit and push each stable, verified checkpoint: operational refinement;
-policy normalization; client realization and second-pass semantics; composition
-and consumer consolidation; and final Paper/manuscript synchronization. Keep
-the root artifact and separately managed manuscript revisions explicit.
+Commit and push each stable, verified checkpoint: capstone interface and
+operational refinement; supported second-pass and end-to-end statements;
+consumer consolidation if needed; and final Paper/manuscript synchronization.
+Keep the root artifact and separately managed manuscript revisions explicit.
 Completion requires every gate above, checked capstones with only standard
 axioms, matching paper statements and no pending proof obligations hidden by
 an adapter assumption.
+
+## Optional intermediate-language generalization
+
+A source-independent policy compiler for all canonical policies on arbitrary
+public-barrier graphs would be a stronger library API. Its proof would need
+graph-level disclosure normalization preserving original private recall, exact
+client realization and a generic bounded-menu outcome law. That work may
+reuse the existing source normalization and service arguments, but it is not
+required to establish the implemented source compiler's correctness or the
+paper's tower. A graph constructed independently of source syntax is a useful
+consumer for that extension, not an acceptance gate for this completion plan.
