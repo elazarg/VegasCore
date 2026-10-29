@@ -152,11 +152,11 @@ private def RealizesDisclosure {who : Player} {Γ : SourceCtx Player L}
     (remember : DecisionView who Γ → PMF (List (OwnAction Player L)))
     (state : State L Γ) (history : History Player L),
     ((remember (sourceObserve who state, history who)).bind fun past =>
-      runWith program (Function.update profile who policy) state registry revelations
-        (Function.update history who past)) =
-      runWith program (Function.update profile who
-        (policy.normalizeDisclosureFrom program registry revelations remember))
-        state registry revelations history
+      runFrom program (Function.update profile who policy) ⟨state, registry, revelations,
+        (Function.update history who past)⟩) =
+      runFrom program (Function.update profile who
+        (policy.normalizeDisclosureFrom program registry revelations remember)) ⟨state, registry,
+          revelations, history⟩
 
 private theorem realizesDisclosure_commit {Γ : SourceCtx Player L} {O : Finset VarId}
     {who : Player} (name : VarId) (owner : Player) {payload : L.Ty}
@@ -169,14 +169,15 @@ private theorem realizesDisclosure_commit {Γ : SourceCtx Player L} {O : Finset 
   · subst who
     let view : DecisionView owner _ := (sourceObserve owner state, history owner)
     let law := bindingMemoryLaw name payload remember (policy.1 rfl) view
-    simp only [runWith, commitKernel, Function.update_self, afterCommit_update,
+    simp only [runFrom, Config.view, commitSuccessor, commitKernel,
+      Function.update_self, afterCommit_update,
       Function.update_idem, BehavioralPolicy.normalizeDisclosureFrom]
     erw [bindingMemoryLaw_disintegrate name payload remember (policy.1 rfl) view
-      (fun binding past => runWith next (Function.update (afterCommit profile) owner policy.2)
-        (Env.cons binding state)
-        (({ owner := owner, subject := name, payload := payload, source := .here,
-            guard := guard.weaken } : Obligation _) :: registry.weaken)
-        revelations.weaken (Function.update history owner past))]
+      (fun binding past => runFrom next (Function.update (afterCommit profile) owner policy.2)
+        ⟨Env.cons binding state,
+          (({ owner := owner, subject := name, payload := payload,
+              source := .here, guard := guard.weaken } : Obligation _) :: registry.weaken),
+          revelations.weaken, Function.update history owner past⟩)]
     change ((law.map Prod.fst).bind _) = ((law.map Prod.fst).bind _)
     apply bind_congr_on_support _
     intro binding _
@@ -198,7 +199,8 @@ private theorem realizesDisclosure_commit {Γ : SourceCtx Player L} {O : Finset 
       dite_true, Function.update_self, back_sourceObserve, ite_true,
       List.dropLast_concat, observed, Option.getD_some,
       Function.update_idem, law, view] using step
-  · simp only [runWith, commitKernel, Function.update_of_ne owned, afterCommit_update]
+  · simp only [runFrom, Config.view, commitSuccessor, commitKernel,
+      Function.update_of_ne owned, afterCommit_update]
     rw [PMF.bind_comm]
     apply bind_congr_on_support _
     intro binding _
@@ -216,7 +218,7 @@ private theorem realizesDisclosure_commit {Γ : SourceCtx Player L} {O : Finset 
       dite_eq_right owned, Function.update_of_ne (Ne.symm owned), back_sourceObserve,
       Bool.false_eq_true, ite_false, Function.update_comm (Ne.symm owned)] using step
 
-private theorem runWith_reveal_result {Γ : SourceCtx Player L} {O : Finset VarId}
+private theorem runFrom_reveal_result {Γ : SourceCtx Player L} {O : Finset VarId}
     (published : VarId) (owner : Player) (name : VarId) {payload : L.Ty}
     (fresh : published ∉ Γ.map Prod.fst)
     (selected : HasVar Γ name (.commitment owner payload)) (unresolved : name ∈ O)
@@ -224,14 +226,13 @@ private theorem runWith_reveal_result {Γ : SourceCtx Player L} {O : Finset VarI
     (profile : BehavioralProfile (.reveal published owner name fresh selected unresolved next))
     (state : State L Γ) (registry : Registry Γ) (revelations : Revelations Γ)
     (history : History Player L) :
-    runWith (.reveal published owner name fresh selected unresolved next)
-        profile state registry revelations history =
+    runFrom (.reveal published owner name fresh selected unresolved next) profile ⟨state,
+      registry, revelations, history⟩ =
       (revealKernel profile (sourceObserve owner state, history owner)).bind fun disclose =>
-        runWith next (afterReveal profile)
-          (Env.cons (disclosureResult published selected
-            ⟨state, registry, revelations, fun _ => []⟩ disclose) state)
-          registry.weaken (revelations.reveal (published := published) selected)
-          (Function.update history owner (history owner ++ [.reveal owner name disclose])) := rfl
+        runFrom next (afterReveal profile) ⟨(Env.cons (disclosureResult published selected
+            ⟨state, registry, revelations, fun _ => []⟩ disclose) state), registry.weaken,
+              (revelations.reveal (published := published) selected), (Function.update history
+              owner (history owner ++ [.reveal owner name disclose]))⟩ := rfl
 
 private theorem realizesDisclosure_reveal {Γ : SourceCtx Player L} {O : Finset VarId}
     {who : Player} (published : VarId) (owner : Player) (name : VarId) {payload : L.Ty}
@@ -255,14 +256,13 @@ private theorem realizesDisclosure_reveal {Γ : SourceCtx Player L} {O : Finset 
       exact (congrArg result (effectiveDisclosureView_observe published selected config
         disclose)).trans
           (disclosureResult_effectiveDisclosure published selected config disclose)
-    simp only [runWith_reveal_result, revealKernel, Function.update_self, afterReveal_update,
+    simp only [runFrom_reveal_result, revealKernel, Function.update_self, afterReveal_update,
       Function.update_idem, BehavioralPolicy.normalizeDisclosureFrom]
     have disintegration := disclosureMemoryLaw_disintegrate published selected registry
       revelations remember (policy.1 rfl) view (fun response past =>
-        runWith next (Function.update (afterReveal profile) owner policy.2)
-          (Env.cons (result response) state) registry.weaken
-          (revelations.reveal (published := published) selected)
-          (Function.update history owner past))
+        runFrom next (Function.update (afterReveal profile) owner policy.2) ⟨(Env.cons (result
+          response) state), registry.weaken, (revelations.reveal (published := published)
+          selected), (Function.update history owner past)⟩)
     simp only [normalizedResult, view] at disintegration
     erw [disintegration]
     change ((law.map Prod.fst).bind _) = ((law.map Prod.fst).bind _)
@@ -281,7 +281,7 @@ private theorem realizesDisclosure_reveal {Γ : SourceCtx Player L} {O : Finset 
       dite_true, Function.update_self, back_sourceObserve, ite_true,
       List.dropLast_concat, List.getLast?_concat, OwnAction.disclosure,
       Function.update_idem, law, view] using step
-  · simp only [runWith_reveal_result, revealKernel, Function.update_of_ne owned,
+  · simp only [runFrom_reveal_result, revealKernel, Function.update_of_ne owned,
       afterReveal_update]
     rw [PMF.bind_comm]
     apply bind_congr_on_support _
@@ -311,22 +311,22 @@ theorem normalizeDisclosureFrom_realize {who : Player} :
     (remember : DecisionView who Γ → PMF (List (OwnAction Player L))) →
     (state : State L Γ) → (history : History Player L) →
     ((remember (sourceObserve who state, history who)).bind fun past =>
-      runWith program (Function.update profile who policy) state registry revelations
-        (Function.update history who past)) =
-      runWith program (Function.update profile who
-        (policy.normalizeDisclosureFrom program registry revelations remember))
-        state registry revelations history
-  | _, _, .ret _, _, _, _, _, _, _, _ => by simp only [runWith, PMF.bind_const]
+      runFrom program (Function.update profile who policy) ⟨state, registry, revelations,
+        (Function.update history who past)⟩) =
+      runFrom program (Function.update profile who
+        (policy.normalizeDisclosureFrom program registry revelations remember)) ⟨state, registry,
+          revelations, history⟩
+  | _, _, .ret _, _, _, _, _, _, _, _ => by simp only [runFrom, PMF.bind_const]
   | _, _, .sample name fresh law next, profile, policy, registry, revelations,
       remember, state, history => by
-      simp only [runWith, afterSample_update]
+      simp only [runFrom, afterSample_update]
       rw [PMF.bind_comm]
       apply bind_congr_on_support _
       intro value _
       have step := normalizeDisclosureFrom_realize next (afterSample profile) policy
         registry.weaken revelations.weaken (fun view => remember (view.back false))
         (Env.cons value state) history
-      simpa only [BehavioralPolicy.normalizeDisclosureFrom,
+      simpa only [sampleSuccessor, BehavioralPolicy.normalizeDisclosureFrom,
         back_sourceObserve, Bool.false_eq_true, ite_false] using step
   | _, _, .commit name owner fresh guard next, profile, policy,
       registry, revelations, remember, state, history =>

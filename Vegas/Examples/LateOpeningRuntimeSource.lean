@@ -169,7 +169,7 @@ theorem run_constant (bit : Bool) (label : Fin 3) (aliceOpens : Bool)
     SourceProgram.run program (constantProfile aliceOpens answer bobOpens)
       (sourceInitial bit label) =
       PMF.pure (finalState bit label aliceOpens answer bobOpens) := by
-  simp only [SourceProgram.run, runWith, program, constantProfile,
+  simp only [SourceProgram.run, runFrom, program, constantProfile,
     revealKernel, commitKernel, afterReveal, afterCommit, PMF.pure_bind]
   congr 1
   cases aliceOpens <;> cases bobOpens <;> rfl
@@ -467,7 +467,7 @@ def randomizedAnswerProfile (answers : Bool → PMF Answer) : BehavioralProfile 
 theorem run_randomizedAnswer (answers : Bool → PMF Answer) (bit : Bool) (label : Fin 3) :
     SourceProgram.run program (randomizedAnswerProfile answers) (sourceInitial bit label) =
       (answers bit).map (fun answer => finalState bit label true answer true) := by
-  simp only [SourceProgram.run, runWith, program, randomizedAnswerProfile,
+  simp only [SourceProgram.run, runFrom, program, randomizedAnswerProfile,
     revealKernel, commitKernel, afterReveal, afterCommit, PMF.pure_bind]
   change ((answers bit).map PublicationResult.success).bind _ = _
   rw [PMF.bind_map]

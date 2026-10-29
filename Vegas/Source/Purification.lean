@@ -88,7 +88,7 @@ theorem exists_pureMixture {who : Player} :
         mixture.bind fun choice =>
           runFrom p (Function.update profile who (PurePolicy.toBehavioral p choice)) config
   | _, _, .ret _, _, _, _, _, _ =>
-      ⟨PMF.pure PUnit.unit, by simp, fun config _ => by simp [runFrom, runWith]⟩
+      ⟨PMF.pure PUnit.unit, by simp, fun config _ => by simp [runFrom]⟩
   | Γ, _, .sample name (payload := payload) fresh law k, profile, policy,
       profileFinite, policyFinite, configs => by
       obtain ⟨mixture, mixtureFinite, hmixture⟩ :=

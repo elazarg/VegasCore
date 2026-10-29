@@ -35,7 +35,7 @@ theorem initialState_runFrom {Γ : SourceCtx Player L} {O : Finset VarId}
     initialState p outcome = config.state := by
   induction p with
   | ret payoffs =>
-      simpa [runFrom, runWith, initialState] using supported
+      simpa [runFrom, initialState] using supported
   | sample name fresh law k ih =>
       simp only [runFrom_sample, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨value, _, supported⟩ := supported

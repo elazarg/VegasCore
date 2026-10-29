@@ -47,7 +47,7 @@ private def final (openSecond : Bool) : State simpleExpr twoOpenings.terminalCtx
 
 private theorem run_twoOpenings (openSecond : Bool) :
     twoOpenings.run (withholdingThen openSecond) initial = PMF.pure (final openSecond) := by
-  simp only [SourceProgram.run, twoOpenings, withholdingThen, runWith,
+  simp only [SourceProgram.run, twoOpenings, withholdingThen, runFrom,
     revealKernel, afterReveal, PMF.pure_bind]
   cases openSecond <;> rfl
 

@@ -226,7 +226,7 @@ private def withheldState : State simpleExpr (mixedProgram.terminalCtx) :=
 
 macro "solve_mixed_run" : tactic =>
   `(tactic|
-    simp only [SourceProgram.run, mixedProgram, mixedProfile, SourceProgram.runWith,
+    simp only [SourceProgram.run, mixedProgram, mixedProfile, SourceProgram.runFrom,
       SourceProgram.commitKernel, SourceProgram.revealKernel,
       SourceProgram.afterCommit, SourceProgram.afterReveal,
       PMF.pure_bind, ← PMF.bind_pure_comp, Function.comp_def])
@@ -312,10 +312,10 @@ private def falseGuardState : State simpleExpr (falseGuardProgram.terminalCtx) :
 private theorem false_guard_run : falseGuardProgram.run falseProfile
     (Env.empty (CellVal simpleExpr)) = PMF.pure falseGuardState := by
   unfold SourceProgram.run falseGuardProgram
-  rw [SourceProgram.runWith]
+  rw [SourceProgram.runFrom]
   dsimp only [SourceProgram.commitKernel, falseProfile]
   rw [PMF.pure_bind]
-  rw [SourceProgram.runWith]
+  rw [SourceProgram.runFrom]
   dsimp only [SourceProgram.revealKernel, SourceProgram.afterCommit, falseProfile]
   rw [PMF.pure_bind]
   rfl

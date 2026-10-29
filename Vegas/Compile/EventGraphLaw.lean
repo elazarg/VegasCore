@@ -43,7 +43,7 @@ private theorem canonical_ready_least
 /-- Exact execution law at every compiled suffix.  The `Option` result is the
 actual partial decoder; the theorem proves it is `some` on the entire source
 law rather than choosing a default for malformed stores. -/
-theorem runWith_option_law
+theorem runFrom_option_law
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
     (wholeProfile : BehavioralProfile whole) :
@@ -70,14 +70,14 @@ theorem runWith_option_law
           (eventCount program) config).map
         (fun final => decodeState? (terminalRefsWith program refs embedding.ref)
           final.store) =
-      (runWith program profile state registry revelations history).map some := by
+      (runFrom program profile ⟨state, registry, revelations, history⟩).map some := by
   intro Γ openNames program
   induction program with
   | ret payoffs =>
       intro profile refs revelations registry embedding refsBefore offset aligned
         config ordered state refsAgree history historyAgree
       simp only [eventCount, Vegas.EventGraph.runPlan, PMF.pure_map,
-        terminalRefsWith, runWith]
+        terminalRefsWith, runFrom]
       rw [decodeState?_eq_some refs state config.store refsAgree]
   | sample name fresh law next ih =>
       intro profile refs revelations registry embedding refsBefore offset aligned
@@ -112,7 +112,7 @@ theorem runWith_option_law
         (compileEventProfile whole wholeProfile) (eventCount next)
         config event ready least ownerless, suppliedAction]
       rw [sample_step config event ready outputEq refs law codeEq state refsAgree]
-      simp only [PMF.bind_map, PMF.map_bind, runWith, Function.comp_def]
+      simp only [PMF.bind_map, PMF.map_bind, runFrom, Function.comp_def]
       apply bind_congr_on_support _
       intro value valueMem
       let action := cast (congrArg Vegas.EventGraph.EventField.Action outputEq.symm)
@@ -198,7 +198,7 @@ theorem runWith_option_law
       rw [Vegas.EventGraph.runPlan_canonical_actor
         (compileEventProfile whole wholeProfile) (eventCount next)
         config event ready least owner actor, policyLaw']
-      simp only [PMF.bind_map, PMF.map_bind, runWith, Function.comp_def]
+      simp only [PMF.bind_map, PMF.map_bind, runFrom, Function.comp_def]
       apply bind_congr_on_support _
       intro binding bindingMem
       let action := cast
@@ -300,7 +300,7 @@ theorem runWith_option_law
       rw [Vegas.EventGraph.runPlan_canonical_actor
         (compileEventProfile whole wholeProfile) (eventCount next)
         config event ready least owner actor, policyLaw']
-      simp only [PMF.bind_map, PMF.map_bind, runWith, Function.comp_def]
+      simp only [PMF.bind_map, PMF.map_bind, runFrom, Function.comp_def]
       apply bind_congr_on_support _
       intro (disclose : Bool) discloseMem
       let proposal : PublicationResult _ :=

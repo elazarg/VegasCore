@@ -30,7 +30,7 @@ theorem sourceBitProfile_run (first second : PMF Bool) :
       first.bind (fun e => second.map (bitTerminal e)) := by
   unfold Setup.run setup SourceProgram.run
   simp only [PMF.pure_bind]
-  simp only [program, runWith, sourceBitProfile, commitKernel, afterCommit,
+  simp only [program, runFrom, sourceBitProfile, commitKernel, afterCommit,
     revealKernel, afterReveal, PMF.bind_map, PMF.pure_bind]
   congr 1
 

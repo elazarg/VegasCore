@@ -35,7 +35,7 @@ theorem canonical_terminalState_law
     SourceProgram.run program profile state := by
   apply pmf_map_injective (f := some) (Option.some_injective _)
   rw [terminalOutcomes_map_decode]
-  have law := runWith_option_law program profile program profile
+  have law := runFrom_option_law program profile program profile
     (ContextRefs.initial Γ (outputLayout program)) (Revelations.initial Γ) []
     (outputEmbedding program) (initialRefsBefore program) 0
     (CompiledPolicySuffix.whole program profile)
@@ -43,7 +43,7 @@ theorem canonical_terminalState_law
       (graph := toEventGraph program) (encodeInputs state))
     (Vegas.EventOrder.Cut.empty_isPrefix (toEventGraph program).order)
     state (initialConfig_agrees program state) (fun _ => []) rfl
-  change _ = (runWith program profile state [] (Revelations.initial Γ) (fun _ => [])).map some
+  change _ = (runFrom program profile ⟨state, [], (Revelations.initial Γ), (fun _ => [])⟩).map some
   rw [← law]
   rw [PMF.map_comp]
   rfl

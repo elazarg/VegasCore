@@ -98,7 +98,7 @@ theorem play_truthful :
     setup.valueBindingGame.play (profile 5) = PMF.pure (result (.success 5) (.success 4)) := by
   simp only [Setup.valueBindingGame, Setup.publicRun, Setup.run, setup, valueBindingProfile,
     profile, aliceStrategy, bobStrategy, alicePolicy, bobPolicy, SourceProgram.run,
-    program, runWith, commitKernel, revealKernel, afterCommit, afterReveal,
+    program, runFrom, commitKernel, revealKernel, afterCommit, afterReveal,
     PMF.pure_bind, PMF.pure_map]
   rfl
 
@@ -106,7 +106,7 @@ theorem play_misreport :
     setup.valueBindingGame.play (profile 6) = PMF.pure (result (.success 6) .failure) := by
   simp only [Setup.valueBindingGame, Setup.publicRun, Setup.run, setup, valueBindingProfile,
     profile, aliceStrategy, bobStrategy, alicePolicy, bobPolicy, SourceProgram.run,
-    program, runWith, commitKernel, revealKernel, afterCommit, afterReveal,
+    program, runFrom, commitKernel, revealKernel, afterCommit, afterReveal,
     PMF.pure_bind, PMF.pure_map]
   rfl
 

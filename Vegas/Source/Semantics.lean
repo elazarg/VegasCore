@@ -329,44 +329,7 @@ theorem revealed_of_mem_completedBy {published : VarId}
 
 end Registry
 
-def runWith : {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (p : SourceProgram Player L Γ O) → BehavioralProfile p → State L Γ →
-    Registry Γ → Revelations Γ → History Player L → PMF (State L (terminalCtx p))
-  | _, _, .ret _, _, s, _, _, _ => PMF.pure s
-  | _, _, .sample _ _ d k, profile, s, r, revelations, history =>
-      (L.evalDist d (sourcePublicEnv s)).bind fun a =>
-        runWith k (afterSample profile) (Env.cons a s) r.weaken revelations.weaken history
-  | _, _, .commit name owner _ g k, profile, s, r, revelations, history =>
-      (commitKernel profile (sourceObserve owner s, history owner)).bind fun b =>
-        let obligation : Obligation _ :=
-          { owner := owner, subject := name, payload := _, source := .here, guard := g.weaken }
-        let history' := Function.update history owner
-          (history owner ++ [OwnAction.commit owner name _ b])
-        runWith k (afterCommit profile) (Env.cons b s) (obligation :: r.weaken)
-          revelations.weaken history'
-  | _, _, .reveal published owner name _ h _ k, profile, s, r, revelations, history =>
-      (revealKernel profile (sourceObserve owner s, history owner)).bind fun disclose =>
-        let proposal := if disclose then s.get h else .failure
-        let revealed : Revelations _ := revelations.reveal (published := published) h
-        let accepted :=
-          if (r.completedBy (published := published) revelations h).all
-            (·.accepts revealed (Env.cons proposal s))
-          then proposal else .failure
-        let history' := Function.update history owner
-          (history owner ++ [OwnAction.reveal owner name disclose])
-        runWith k (afterReveal profile) (Env.cons accepted s) r.weaken revealed history'
-
-def run (p : SourceProgram Player L Γ O) (profile : BehavioralProfile p) (s : State L Γ) :=
-  runWith p profile s [] (Revelations.initial Γ) (fun _ => [])
-
-/-! ## Execution as a configuration transformer
-
-The same steps `runWith` takes, named: what a program point threads, what each
-constructor does to it, and that replacing one player's policy commutes with
-taking a step. Reasoning about a run proceeds by these rather than by unfolding
-`runWith` at each use. -/
-
-/-- Everything `runWith` threads through a program point. -/
+/-- The typed store, deferred guards, revelations and own-action recall of a program point. -/
 structure Config (Player : Type) (L : IExpr) (Γ : SourceCtx Player L) where
   /-- The cells bound so far. -/
   state : State L Γ
@@ -376,12 +339,6 @@ structure Config (Player : Type) (L : IExpr) (Γ : SourceCtx Player L) where
   revelations : Revelations Γ
   /-- What each player did so far. -/
   history : History Player L
-
-/-- Run a program from a configuration. -/
-def runFrom {Γ : SourceCtx Player L} {O : Finset VarId} (p : SourceProgram Player L Γ O)
-    (profile : BehavioralProfile p) (config : Config Player L Γ) :
-    PMF (State L (terminalCtx p)) :=
-  runWith p profile config.state config.registry config.revelations config.history
 
 /-- What a player sees at a configuration. -/
 def Config.view {Γ : SourceCtx Player L} (who : Player)
@@ -427,6 +384,26 @@ def revealSuccessor {owner : Player} (published : VarId)
     Registry.weaken config.registry, revealed,
     Function.update config.history owner
       (config.history owner ++ [OwnAction.reveal owner name disclose])⟩
+
+/-- Execute a source program from its authoritative configuration. Every
+instruction uses the same successor function as the source protocol. -/
+def runFrom : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (p : SourceProgram Player L Γ O) → BehavioralProfile p → Config Player L Γ →
+      PMF (State L (terminalCtx p))
+  | _, _, .ret _, _, config => PMF.pure config.state
+  | _, _, .sample name _ law next, profile, config =>
+      (L.evalDist law (sourcePublicEnv config.state)).bind fun value =>
+        runFrom next (afterSample profile) (sampleSuccessor name config value)
+  | _, _, .commit name owner _ guard next, profile, config =>
+      (commitKernel profile (config.view owner)).bind fun choice =>
+        runFrom next (afterCommit profile) (commitSuccessor name guard config choice)
+  | _, _, .reveal published owner _ _ source _ next, profile, config =>
+      (revealKernel profile (config.view owner)).bind fun disclose =>
+        runFrom next (afterReveal profile) (revealSuccessor published source config disclose)
+
+/-- Execute a source program from its initial typed store. -/
+def run (p : SourceProgram Player L Γ O) (profile : BehavioralProfile p) (state : State L Γ) :=
+  runFrom p profile ⟨state, [], Revelations.initial Γ, fun _ => []⟩
 
 variable {O : Finset VarId}
 

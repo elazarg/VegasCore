@@ -19,6 +19,10 @@ subtree; imports do not preserve unused research modules merely to keep a name.
 | Vegas.Game | Ordinary compiler correctness, intended-source extension, Nash correspondence and raw non-concurrent SE preservation. |
 | Tests and examples | Retained semantic regressions and concrete consumers. |
 
+Source execution has one configuration-based evaluator, `SourceProgram.runFrom`.
+The source protocol uses the same sample, binding and revelation successors;
+it does not reproduce their state updates in another interpreter.
+
 Start with [recovery preservation](../Vegas/Game/RecoverySequentialCompilation.lean),
 [monetary preservation](../Vegas/Game/RecoveryPaymentPreservation.lean) and
 the [one-packet raw extension](../Vegas/Game/OnePacketExtension.lean).

@@ -86,7 +86,7 @@ theorem publicRun_initial (report : Player → Int → Int) (types : Player → 
     (program.run (profile report) (initial types)).map (publicOutcome program) =
       PMF.pure (result (report .alice (types .alice)) (report .bob (types .bob))) := by
   simp only [SourceProgram.run, program, profile, alicePolicy, bobPolicy, initial,
-    runWith, commitKernel, revealKernel, afterCommit, afterReveal, PMF.pure_bind,
+    runFrom, commitKernel, revealKernel, afterCommit, afterReveal, PMF.pure_bind,
     PMF.pure_map]
   rfl
 

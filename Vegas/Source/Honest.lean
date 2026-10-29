@@ -83,7 +83,7 @@ theorem runFrom_successful :
     GuardsAcceptFrom p profile config →
     ∀ terminal ∈ (runFrom p profile config).support, Successful terminal
   | _, _, .ret _, _, _, _, hconfig, _, terminal, hterminal => by
-      rw [runFrom, runWith, PMF.mem_support_pure_iff _ _] at hterminal
+      rw [runFrom, PMF.mem_support_pure_iff _ _] at hterminal
       exact hterminal ▸ hconfig
   | _, _, .sample sampleName _ _ k, profile, honest, config, hconfig, guards,
       terminal, hterminal => by

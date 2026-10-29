@@ -78,7 +78,7 @@ theorem continuationLaw_behavioral_step (setup : Setup (Player := Player) (L := 
   cases state with
   | none =>
       simp [protocolStep, continuationLaw, PMF.bind_const, PMF.bind_map,
-        run, initialConfig, SourceProgram.run, SourceProgram.runFrom, Function.comp_def]
+        run, initialConfig, SourceProgram.run, Function.comp_def]
   | some state =>
       simpa only [protocolStep, continuationLaw, PMF.bind_bind, PMF.bind_map,
           Function.comp_def] using

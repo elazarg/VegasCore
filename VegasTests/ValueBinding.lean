@@ -52,7 +52,7 @@ example :
     (program.run (profileOf failingPolicy) (Env.empty (CellVal simpleExpr))).map
       program.evaluatePayoffs = PMF.pure [((), 0)] := by
   simp only [SourceProgram.run, program, profileOf, failingPolicy,
-    PurePolicy.toBehavioral, SourceProgram.runWith, SourceProgram.commitKernel,
+    PurePolicy.toBehavioral, SourceProgram.runFrom, SourceProgram.commitKernel,
     SourceProgram.revealKernel, SourceProgram.afterCommit, PMF.pure_bind,
     PMF.pure_map]
   rfl
@@ -64,7 +64,7 @@ example :
         (Env.empty (CellVal simpleExpr))).map
       program.evaluatePayoffs = PMF.pure [((), 0)] := by
   simp only [SourceProgram.run, program, profileOf, failingPolicy, PurePolicy.bindValues,
-    PurePolicy.bindValuesFrom, PurePolicy.toBehavioral, SourceProgram.runWith,
+    PurePolicy.bindValuesFrom, PurePolicy.toBehavioral, SourceProgram.runFrom,
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
     PMF.pure_bind, PMF.pure_map]
   rfl
@@ -79,7 +79,7 @@ example :
     (program.run (profileOf genuinePolicy) (Env.empty (CellVal simpleExpr))).map
       program.evaluatePayoffs = PMF.pure [((), 1)] := by
   simp only [SourceProgram.run, program, profileOf, genuinePolicy,
-    PurePolicy.toBehavioral, SourceProgram.runWith, SourceProgram.commitKernel,
+    PurePolicy.toBehavioral, SourceProgram.runFrom, SourceProgram.commitKernel,
     SourceProgram.revealKernel, SourceProgram.afterCommit, PMF.pure_bind,
     PMF.pure_map]
   rfl
@@ -91,7 +91,7 @@ example :
         (Env.empty (CellVal simpleExpr))).map
       program.evaluatePayoffs = PMF.pure [((), 1)] := by
   simp only [SourceProgram.run, program, profileOf, genuinePolicy, PurePolicy.bindValues,
-    PurePolicy.bindValuesFrom, PurePolicy.toBehavioral, SourceProgram.runWith,
+    PurePolicy.bindValuesFrom, PurePolicy.toBehavioral, SourceProgram.runFrom,
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
     PMF.pure_bind, PMF.pure_map]
   rfl

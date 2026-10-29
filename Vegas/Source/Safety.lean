@@ -159,14 +159,14 @@ private theorem consistent_weaken {Γ : SourceCtx Player L} {name : VarId}
   exact consistent original originalMember revealed
 
 /-- Every reachable terminal state keeps every published obligation accepted. -/
-theorem runWith_consistent {Γ : SourceCtx Player L} {O : Finset VarId}
+theorem runFrom_consistent {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) :
     ∀ (profile : BehavioralProfile program) (state : State L Γ)
       (registry : Registry Γ) (revelations : Revelations Γ) (history : History Player L),
       (Γ.map Prod.fst).Nodup → Accounted revelations O →
       (∀ obligation ∈ registry, obligation.revealed revelations = true →
         obligation.accepts revelations state = true) →
-      ∀ outcome ∈ (runWith program profile state registry revelations history).support,
+      ∀ outcome ∈ (runFrom program profile ⟨state, registry, revelations, history⟩).support,
         ∀ obligation ∈ finalRegistry program registry,
           obligation.revealed (finalRevelations program revelations) = true →
             obligation.accepts (finalRevelations program revelations) outcome = true := by
@@ -179,7 +179,7 @@ theorem runWith_consistent {Γ : SourceCtx Player L} {O : Finset VarId}
   | sample name fresh law next ih =>
       intro profile state registry revelations history unique accounted consistent
         outcome supported
-      simp only [runWith, PMF.support_bind, Set.mem_iUnion] at supported
+      simp only [runFrom, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨value, _, supported⟩ := supported
       exact ih (afterSample profile) (Env.cons value state) registry.weaken revelations.weaken
         history (by simp [fresh, unique])
@@ -189,7 +189,7 @@ theorem runWith_consistent {Γ : SourceCtx Player L} {O : Finset VarId}
   | commit name owner fresh guard next ih =>
       intro profile state registry revelations history unique accounted consistent
         outcome supported
-      simp only [runWith, PMF.support_bind, Set.mem_iUnion] at supported
+      simp only [runFrom, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨binding, _, supported⟩ := supported
       apply ih (afterCommit profile) (Env.cons binding state) _ revelations.weaken _
         (by simp [fresh, unique]) (Accounted.commit fresh accounted) _ outcome supported
@@ -202,7 +202,7 @@ theorem runWith_consistent {Γ : SourceCtx Player L} {O : Finset VarId}
   | reveal published owner name fresh source unresolved next ih =>
       intro profile state registry revelations history unique accounted consistent
         outcome supported
-      simp only [runWith, PMF.support_bind, Set.mem_iUnion] at supported
+      simp only [runFrom, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨disclose, _, supported⟩ := supported
       apply ih (afterReveal profile) _ registry.weaken
         (revelations.reveal (published := published) source) _ (by simp [fresh, unique])
@@ -269,7 +269,7 @@ theorem Setup.terminal_guards_hold
     | commitment cell => exact setup.revealed cell
   simp only [Setup.run, PMF.support_bind, Set.mem_iUnion] at supported
   obtain ⟨initial, _, reached⟩ := supported
-  have accepts := runWith_consistent setup.program profile initial []
+  have accepts := runFrom_consistent setup.program profile initial []
     (Revelations.initial setup.context) (fun _ => []) setup.namesNodup
     (setup.accounts ▸ Accounted.initial setup.context) (by simp) outcome reached
     obligation member revealed

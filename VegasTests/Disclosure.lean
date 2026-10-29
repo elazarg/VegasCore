@@ -66,7 +66,7 @@ private def payoffLaw {p : SourceProgram Unit simpleExpr [] ∅}
 
 /-- Withholding where opening pays is worth nothing. -/
 example : payoffLaw withholdOpen = PMF.pure [((), 0)] := by
-  simp only [payoffLaw, SourceProgram.run, openPays, withholdOpen, SourceProgram.runWith,
+  simp only [payoffLaw, SourceProgram.run, openPays, withholdOpen, SourceProgram.runFrom,
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
     PMF.pure_bind, PMF.pure_map]
   rfl
@@ -75,14 +75,14 @@ example : payoffLaw withholdOpen = PMF.pure [((), 0)] := by
 example :
     payoffLaw (BehavioralPolicy.forceDisclose openPays withholdOpen) = PMF.pure [((), 1)] := by
   simp only [payoffLaw, SourceProgram.run, openPays, withholdOpen,
-    BehavioralPolicy.forceDisclose, SourceProgram.runWith, SourceProgram.commitKernel,
+    BehavioralPolicy.forceDisclose, SourceProgram.runFrom, SourceProgram.commitKernel,
     SourceProgram.revealKernel, SourceProgram.afterCommit, PMF.pure_bind, PMF.pure_map]
   rfl
 
 /-- Where refusing is what pays, the same forcing destroys the payoff, so the
 premise cannot hold there. -/
 example : payoffLaw withholdRefusal = PMF.pure [((), 1)] := by
-  simp only [payoffLaw, SourceProgram.run, refusalPays, withholdRefusal, SourceProgram.runWith,
+  simp only [payoffLaw, SourceProgram.run, refusalPays, withholdRefusal, SourceProgram.runFrom,
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
     PMF.pure_bind, PMF.pure_map]
   rfl
@@ -91,7 +91,7 @@ example :
     payoffLaw (BehavioralPolicy.forceDisclose refusalPays withholdRefusal) =
       PMF.pure [((), 0)] := by
   simp only [payoffLaw, SourceProgram.run, refusalPays, withholdRefusal,
-    BehavioralPolicy.forceDisclose, SourceProgram.runWith, SourceProgram.commitKernel,
+    BehavioralPolicy.forceDisclose, SourceProgram.runFrom, SourceProgram.commitKernel,
     SourceProgram.revealKernel, SourceProgram.afterCommit, PMF.pure_bind, PMF.pure_map]
   rfl
 
@@ -123,7 +123,7 @@ example :
     unfold payOnSuccess
     split <;> norm_num
   refine ⟨fun _ config => ?_, trivial⟩
-  simp only [runFrom, runWith, expect_pure, publishedPays, revealSuccessor,
+  simp only [runFrom, expect_pure, publishedPays, revealSuccessor,
     Env.cons_get_here, Bool.false_eq_true, ite_false, ite_self]
   exact nonneg _
 
@@ -136,7 +136,7 @@ example :
     ⟨Env.cons (Val := CellVal simpleExpr) (x := bid) (τ := .commitment () .bool)
       (.success false) (Env.empty (CellVal simpleExpr)),
       [], Revelations.initial _, fun _ => []⟩
-  simp [runFrom, runWith, refusalPaysValue, revealSuccessor, payOnSuccess, expect_pure,
+  simp [runFrom, refusalPaysValue, revealSuccessor, payOnSuccess, expect_pure,
     Registry.completedBy] at applied
   norm_num at applied
 

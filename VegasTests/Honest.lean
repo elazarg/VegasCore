@@ -86,7 +86,7 @@ example : ∀ terminal ∈ (program.run (fun _ => honestPolicy)
 example :
     (program.run (fun _ => honestPolicy) (Env.empty (CellVal simpleExpr))).map
       program.evaluatePayoffs = PMF.pure [((), 1)] := by
-  simp only [SourceProgram.run, program, honestPolicy, SourceProgram.runWith,
+  simp only [SourceProgram.run, program, honestPolicy, SourceProgram.runFrom,
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
     PMF.pure_bind, PMF.pure_map]
   rfl
@@ -102,7 +102,7 @@ example : ¬ GuardsAcceptFrom program (fun _ => rejectedPolicy) start := by
 example :
     (program.run (fun _ => rejectedPolicy) (Env.empty (CellVal simpleExpr))).map
       program.evaluatePayoffs = PMF.pure [((), 0)] := by
-  simp only [SourceProgram.run, program, rejectedPolicy, SourceProgram.runWith,
+  simp only [SourceProgram.run, program, rejectedPolicy, SourceProgram.runFrom,
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
     PMF.pure_bind, PMF.pure_map]
   rfl

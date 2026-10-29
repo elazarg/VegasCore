@@ -637,16 +637,16 @@ theorem bindValues_publicOutcome_eq {who : Player} :
     (state state' : State L Γ) → (registry : Registry Γ) → (revelations : Revelations Γ) →
     (history history' : History Player L) →
     Patched unpatch patched state state' history history' →
-    (runWith p profile' state' registry revelations history').map (publicOutcome p) =
-      (runWith p profile state registry revelations history).map (publicOutcome p)
+    (runFrom p profile' ⟨state', registry, revelations, history'⟩).map (publicOutcome p) =
+      (runFrom p profile ⟨state, registry, revelations, history⟩).map (publicOutcome p)
   | _, _, .ret payoffs, _, _, _, profile, profile', _, _, _, state, state', registry,
       revelations, history, history', inv => by
-      simp only [runWith, PMF.pure_map]
+      simp only [runFrom, PMF.pure_map]
       exact congrArg PMF.pure
         (sourcePublicEnv_congr state' state inv.publicEq inv.publicationEq)
   | _, _, .sample sampleName fresh law k, unpatch, patched, policy, profile, profile',
       agree, isOrig, isTrans, state, state', registry, revelations, history, history', inv => by
-      simp only [runWith, PMF.map_bind]
+      simp only [runFrom, PMF.map_bind]
       rw [sourcePublicEnv_congr state' state inv.publicEq inv.publicationEq]
       refine bind_congr_on_support _ fun a _ => ?_
       exact bindValues_publicOutcome_eq k (unpatch.afterSample sampleName _)
@@ -655,7 +655,7 @@ theorem bindValues_publicOutcome_eq {who : Player} :
   | _, _, .commit (payload := payload) cellName owner fresh guard k, unpatch, patched, policy,
       profile, profile', agree, isOrig, isTrans, state, state', registry, revelations,
       history, history', inv => by
-      simp only [runWith, PMF.map_bind]
+      simp only [runFrom, Config.view, commitSuccessor, PMF.map_bind]
       by_cases hw : owner = who
       · subst hw
         have hview : unpatch (sourceObserve owner state', history' owner) =
@@ -713,7 +713,7 @@ theorem bindValues_publicOutcome_eq {who : Player} :
           (fun h => match h with
             | .here => rfl
             | .there h' => inv.publicationEq h')
-      simp only [runWith, PMF.map_bind]
+      simp only [runFrom, Config.view, revealSuccessor, PMF.map_bind]
       by_cases hw : owner = who
       · subst hw
         have hview : unpatch (sourceObserve owner state', history' owner) =

@@ -133,7 +133,7 @@ theorem hasIntegrableDeviations (bonus : Int) (choice : Bool) :
 
 theorem run_profile (bonus : Int) (choice : Bool) :
     (program bonus).run (profile bonus choice) initial = PMF.pure (final bonus choice) := by
-  simp only [SourceProgram.run, program, profile, policy, runWith, commitKernel, revealKernel,
+  simp only [SourceProgram.run, program, profile, policy, runFrom, commitKernel, revealKernel,
     afterCommit, PMF.pure_bind]
   rfl
 

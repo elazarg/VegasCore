@@ -181,7 +181,7 @@ def constantProfile (guess helper : Bool) : BehavioralProfile program := fun _ =
 theorem run_constant (bit guess helper : Bool) :
     program.run (constantProfile guess helper) (sourceInitial bit) =
       PMF.pure (finalState bit guess helper) := by
-  simp only [SourceProgram.run, program, constantProfile, sourceInitial, runWith,
+  simp only [SourceProgram.run, program, constantProfile, sourceInitial, runFrom,
     commitKernel, revealKernel, afterCommit, afterReveal, PMF.pure_bind]
   rfl
 
@@ -298,7 +298,7 @@ theorem run_alice_payoff (profile : BehavioralProfile program)
     (program.run profile (sourceInitial bit)).map (fun terminal => utility terminal alice) =
       ((profile alice).1 rfl (sourceObserve alice (sourceInitial false), [])).map
         (guessReward bit) := by
-  simp only [SourceProgram.run, program, runWith, commitKernel, revealKernel,
+  simp only [SourceProgram.run, program, runFrom, Config.view, commitKernel, revealKernel,
     afterCommit, afterReveal, opening, PMF.pure_bind, PMF.map_bind]
   rw [alice_initial_observation bit false]
   apply bind_congr_on_support _

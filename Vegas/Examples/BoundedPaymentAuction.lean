@@ -230,7 +230,7 @@ theorem play_truthful (penalty : Int) :
     (setup penalty).gameForm.play (profile penalty (bid 5)) =
       PMF.pure (result penalty (.success (bid 5)) (.success (bid 4))) := by
   simp only [Setup.gameForm, Setup.publicRun, Setup.run, setup, SourceProgram.run,
-    program, profile, alicePolicy, bobPolicy, runWith, commitKernel, revealKernel,
+    program, profile, alicePolicy, bobPolicy, runFrom, commitKernel, revealKernel,
     afterCommit, afterReveal, PMF.pure_bind, PMF.pure_map]
   rfl
 
@@ -238,7 +238,7 @@ theorem play_misreport (penalty : Int) :
     (setup penalty).gameForm.play (profile penalty (bid 6)) =
       PMF.pure (result penalty (.success (bid 6)) .failure) := by
   simp only [Setup.gameForm, Setup.publicRun, Setup.run, setup, SourceProgram.run,
-    program, profile, alicePolicy, bobPolicy, runWith, commitKernel, revealKernel,
+    program, profile, alicePolicy, bobPolicy, runFrom, commitKernel, revealKernel,
     afterCommit, afterReveal, PMF.pure_bind, PMF.pure_map]
   rfl
 

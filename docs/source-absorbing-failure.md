@@ -48,10 +48,11 @@ then follows the ordinary source -> dependency graph -> ledger tower.
 Absorbing default is part of each level's operational semantics. There is no
 failure-mode parameter, alternative source protocol or second graph evaluator.
 
-At source, refactor evaluation around the typed `SourceProgram.Config` already
-used by the execution protocol. Add a public `defaulted : Finset Player` field.
-Use one recursive evaluator over this configuration, instead of maintaining
-both separately threaded execution state and configuration execution.
+Source execution uses one recursive `SourceProgram.runFrom` over the typed
+`SourceProgram.Config`. Its sample, binding and revelation successors are also
+the transitions used by the source protocol. Add a public
+`defaulted : Finset Player` field to this authoritative configuration; no
+separately threaded evaluator or failure-mode parameter is needed.
 
 Commitment decisions must distinguish accepted binding from omission. One
 small sum type suffices: `bind result`, where `result` may itself be unopenable,
@@ -151,6 +152,6 @@ Restricting the ordinary statements to sequential graphs would be an explicit
 loss of scope, not a strengthening.
 
 The branch is suitable for a semantic replacement experiment. It is not ready
-to replace the maintained tower: the replacement evaluator, graph and ledger
+to replace the maintained tower: absorbing source transitions, graph and ledger
 unification, ordinary law and equilibrium ports remain unimplemented. No paper
 statement or axiom pin is changed.

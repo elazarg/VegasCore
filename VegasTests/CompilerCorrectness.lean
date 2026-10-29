@@ -68,7 +68,7 @@ example (bonus : Int) (binding : PublicationResult Bool) (disclose : Bool) :
   have run : (setup bonus).run (chosenProfile bonus binding disclose) =
       PMF.pure (terminal bonus binding disclose) := by
     simp only [Setup.run, setup, PMF.pure_bind, SourceProgram.run, program,
-      chosenProfile, runWith, commitKernel, revealKernel, afterCommit]
+      chosenProfile, runFrom, commitKernel, revealKernel, afterCommit]
     cases binding with
     | failure => cases disclose <;> rfl
     | success value => cases value <;> cases disclose <;> rfl
