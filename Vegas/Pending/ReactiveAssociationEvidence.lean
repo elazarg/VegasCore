@@ -1,26 +1,27 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactivePacketEvidence
+import Interaction.ReactiveInvariant
 import Vegas.Pending.EventBindingInvariant
+import Vegas.Pending.ReactiveRuntime
 
-/-! # Previously observed openings authenticate later accepted bindings
+/-! # Immutable binding provenance in raw ledger histories
 
-A player may observe a candidate certificate before that candidate is used
-by the game. Once its accepted association becomes public, the same evidence
-certifies the typed graph binding. No new opening call, certificate delivery,
-or successful opening receipt is required. The conclusion holds throughout
-the observer's information set, including histories off the equilibrium path.
+Successful bindings and accepted handles retain their exact candidate meanings
+through arbitrary player responses, inclusion, expiry and automatic completion.
 -/
 
 noncomputable section
 
 namespace Vegas.EventGraphRuntime
 
-open GameTheory.Math.Probability Interaction
+open EventGraph GameTheory.Math.Probability Interaction
 
-variable {Player : Type} [DecidableEq Player]
-  {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
 
+
+/-- Arbitrary responses, admissions and environment commands preserve binding
+provenance in the single reactive application, including automatic completion. -/
 theorem reactiveBindingInvariant (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
     (runtime.reactiveApplication leaks).Invariant State.BindingInvariant where
@@ -30,12 +31,18 @@ theorem reactiveBindingInvariant (runtime : EventGraphRuntime graph)
     cases material.call.registrationCommand who with
     | none => exact valid
     | some command => exact privateStep_bindingInvariant state valid who command
-  handle state message next valid accepted :=
-    handle_bindingInvariant runtime state next ⟨message.id, message.payload.call⟩ valid
-      (reactiveHandle_call accepted)
-  environment state command next valid reached :=
-    environmentStep_bindingInvariant runtime state next command valid reached
+  handle state message next valid accepted := by
+    obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
+    rw [← nextEq]
+    exact (handle_bindingInvariant runtime state native ⟨message.id, message.payload.call⟩
+      valid handled).drain
+  environment state command next valid reached := by
+    change next ∈ ((environmentStep runtime state command).map State.drain).support at reached
+    obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ reached
+    exact (environmentStep_bindingInvariant runtime state native command valid moved).drain
 
+/-- Exact binding provenance holds at every initialized raw history, including
+deviations and scheduler choices outside a reserved service. -/
 theorem reactiveBindingInvariant_history (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : PMF graph.Inputs) (horizon : Nat)

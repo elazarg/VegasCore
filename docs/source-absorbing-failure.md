@@ -212,6 +212,17 @@ quiescence on initialized physical histories.
 [RuntimeDefault](../VegasTests/RuntimeDefault.lean) distinguishes early silence,
 accepted unusability, due omission, atomic application draining and rejection
 at an otherwise ready, timely event after default.
+[EventBindingInvariant](../Vegas/Pending/EventBindingInvariant.lean) retains
+exact immutable binding/handle provenance through native and automatic steps.
+[ReactiveAssociationEvidence](../Vegas/Pending/ReactiveAssociationEvidence.lean)
+extends it to every initialized physical history.
+[ReactiveSignedCommitments](../Vegas/Pending/ReactiveSignedCommitments.lean)
+connects accepted event handles to their owner's actual signed emission recall,
+while [ReactivePacketEvidence](../Vegas/Pending/ReactivePacketEvidence.lean)
+preserves the truth of carried opening certificates through arbitrary raw
+responses, forwarding, rejected calls and automatic completion. These facts
+retain their original hypotheses; they impose no honesty or service premise.
+
 These are operational support/refinement laws; they do not establish the
 probabilistic client/compiler law or equilibrium preservation.
 
@@ -225,8 +236,9 @@ Only checked theorems close these obligations:
    source profiles, initial states and public schedulers, including distributed
    correlated private/public setup laws.
 3. Ledger inclusion, expiry and automatic draining have checked finite-path
-   graph refinement and initialized-history invariants. Port receipt provenance,
-   candidate/handle invariants and observation adapters to the single application.
+   graph refinement, initialized-history invariants, immutable candidate/handle
+   provenance and signed-emission/certificate soundness. Port receipt-failure
+   provenance and observation adapters to the single application.
 4. Reprove the bounded-client law with complete readout and the service contract.
 5. Port Nash deviation translation and sequential consistency/rationality;
    equilibrium-path outcome agreement alone is insufficient.

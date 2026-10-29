@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.EventAssociationInvariant
+import Vegas.Pending.ExclusionCompletion
 
 /-! # Binding-handle provenance for the event pending runtime
 
@@ -91,7 +92,6 @@ theorem BindingInvariant.of_successes_before {before after : State graph}
     · simpa only [acceptedEq] using accepted
     · simpa only [candidatesEq] using candidate
 
-omit [DecidableEq Player] in
 /-- Completing one field preserves all earlier binding successes when the new
 output itself cannot be a binding success. -/
 theorem complete_success_before (state : State graph) (event : graph.EventId)
@@ -150,7 +150,6 @@ theorem complete_success_before (state : State graph) (event : graph.EventId)
             action output different
     exact (ref.get?_congr _ _ fieldEq).symm.trans stored
 
-omit [DecidableEq Player] in
 /-- State completion preserves binding provenance whenever its new output is
 not a successful binding. -/
 theorem BindingInvariant.complete_of_no_success {state : State graph}
@@ -168,7 +167,6 @@ theorem BindingInvariant.complete_of_no_success {state : State graph}
   intro owner payload ref value stored
   exact complete_success_before state event ready action output noSuccess ref value stored
 
-omit [DecidableEq Player] in
 /-- Completing a non-binding output cannot introduce a successful binding. -/
 theorem BindingInvariant.complete_nonbinding {state : State graph}
     (invariant : state.BindingInvariant) (event : graph.EventId)
@@ -235,7 +233,6 @@ theorem initial_bindingInvariant (inputs : graph.Inputs) :
 
 end State
 
-omit [DecidableEq Player] in
 private theorem bindingInvariant_of_nonbinding_step
     {state next : State graph} (invariant : state.BindingInvariant)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
@@ -305,14 +302,14 @@ theorem BindingInvariant.acceptBinding {state : State graph}
     (unused : state.HandleUnused handle) :
     ({ (state.complete event ready
         (cast (congrArg EventField.Action outputEq.symm)
-          (state.bindingResult handle payload))
+          (some (state.bindingResult handle payload)))
         (cast (congrArg EventField.Value outputEq.symm)
           (state.bindingResult handle payload))) with
       accepted := Function.update state.accepted (.inr event) (some handle)
       candidates := state.candidates.freeze handle }).BindingInvariant := by
   let result := state.bindingResult handle payload
   let completed := state.complete event ready
-    (cast (congrArg EventField.Action outputEq.symm) result)
+    (cast (congrArg EventField.Action outputEq.symm) (some result))
     (cast (congrArg EventField.Value outputEq.symm) result)
   let next : State graph := { completed with
     accepted := Function.update state.accepted (.inr event) (some handle)
@@ -363,7 +360,7 @@ theorem BindingInvariant.acceptBinding {state : State graph}
       have outputStored : completed.config.store (.inr event) =
           some (cast (congrArg EventField.Value outputEq.symm) result) := by
         exact EventGraph.Config.complete_output_same state.config event ready
-          (cast (congrArg EventField.Action outputEq.symm) result)
+          (cast (congrArg EventField.Action outputEq.symm) (some result))
           (cast (congrArg EventField.Value outputEq.symm) result)
       have resultSuccess : result = PublicationResult.success value := by
         unfold FieldRef.get? at stored
@@ -398,7 +395,7 @@ theorem BindingInvariant.acceptBinding {state : State graph}
                 apply same
                 rw [fieldCase, queryEq]
               exact EventGraph.Config.complete_output_of_ne state.config event query ready
-                (cast (congrArg EventField.Action outputEq.symm) result)
+                (cast (congrArg EventField.Action outputEq.symm) (some result))
                 (cast (congrArg EventField.Value outputEq.symm) result) different
         unfold FieldRef.get? at stored ⊢
         rw [show next.config = completed.config by rfl, fieldEq] at stored
@@ -422,42 +419,23 @@ theorem handle_bindingInvariant (runtime : EventGraphRuntime graph)
   cases packet with
   | malformed raw => simp [handle] at accepted
   | commitment event candidate =>
-      by_cases ready : state.config.cut.Ready event
-      · by_cases timely : state.WithinDeadline runtime event
-        · cases view : nodeView graph event with
-          | resolve owner payload binding checks outputEq codeEq =>
-              simp [handle, ready, timely, view] at accepted
-          | sample payload law outputEq codeEq =>
-              simp [handle, ready, timely, view] at accepted
-          | bind owner payload outputEq codeEq =>
-              simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
-              split at accepted
-              · simp_all only [dite_eq_ite, Option.ite_none_right_eq_some,
-                    Option.some.injEq]
-                rcases accepted with ⟨_ownerEq, _vacant, unused, rfl⟩
-                exact invariant.acceptBinding event ready owner payload outputEq candidate
-                  (by assumption) unused
-              · simp_all only [reduceCtorEq]
-        · simp [handle, ready, timely] at accepted
-      · simp [handle, ready] at accepted
+      obtain ⟨_active, ready, _timely, owner, payload, outputEq, _codeEq, _view, _sender,
+        handleOwner, _vacant, unused, nextEq⟩ :=
+        (handle_commitment_iff runtime state next id event candidate).mp accepted
+      rw [nextEq]
+      exact invariant.acceptBinding event ready owner payload outputEq candidate handleOwner unused
   | opening event candidate raw =>
-      obtain ⟨completed, _, ready, action, member⟩ :=
-        handle_config_mem_step runtime state next ⟨id, .opening event candidate raw⟩ accepted
-      have completedEq : completed = event := by simp_all [Payload.event?]
-      subst completed
+      obtain ⟨ready, action, member, _clock, _activation, _owner, _payload,
+        _binding, _checks, outputEq, _codeEq, _view, _action⟩ :=
+        handle_opening_config_step runtime state next id event candidate raw accepted
       obtain ⟨acceptedEq, candidatesEq⟩ := handle_resolution_tables runtime state next
         ⟨id, .opening event candidate raw⟩ (by simp) accepted
       apply bindingInvariant_of_nonbinding_step invariant event ready action member
         acceptedEq candidatesEq
       intro owner payload bindingEq
-      cases view : nodeView graph event with
-      | bind => simp [handle, ready, view] at accepted
-      | sample => simp [handle, ready, view] at accepted
-      | resolve resolveOwner resolvePayload binding checks outputEq codeEq =>
-          rw [outputEq] at bindingEq
-          cases bindingEq
+      rw [outputEq] at bindingEq
+      cases bindingEq
 
-omit [DecidableEq Player] in
 /-- Every supported environment command preserves binding provenance. -/
 theorem environmentStep_bindingInvariant (runtime : EventGraphRuntime graph)
     (state next : State graph) (command : EnvironmentCommand graph)
@@ -564,5 +542,50 @@ theorem submitStep_bindingInvariant (state : State graph)
   rw [submitStep_lookup_of_not_fresh state who packet candidate]
   · exact meaning
   · simp [meaning]
+
+namespace State
+
+/-- Automatic failure introduces no successful binding and retains all
+accepted immutable handle associations. -/
+theorem BindingInvariant.completeAutomatic {state : State graph}
+    (invariant : state.BindingInvariant) (event : graph.EventId)
+    (eligible : state.AutomaticReady event) :
+    (state.completeAutomatic event eligible).BindingInvariant := by
+  obtain ⟨owner, acting, _inactive⟩ := eligible.owned
+  change (state.completeFailure event eligible.1).BindingInvariant
+  cases view : nodeView graph event with
+  | bind actor payload outputEq codeEq =>
+      rw [completeFailure, view]
+      apply invariant.complete_of_no_success
+      intro newOwner newPayload newEq value
+      have kinds : EventField.binding actor payload = .binding newOwner newPayload :=
+        outputEq.symm.trans newEq
+      cases kinds
+      simp
+  | resolve actor payload binding checks outputEq codeEq =>
+      rw [completeFailure, view]
+      apply invariant.complete_nonbinding
+      intro bindingOwner bindingPayload bindingEq
+      rw [outputEq] at bindingEq
+      cases bindingEq
+  | sample payload law outputEq codeEq =>
+      have ownerless : graph.actor? event = none :=
+        (EventCode.actor_cast outputEq (graph.nodes event)).symm.trans
+          (congrArg EventCode.actor codeEq)
+      rw [ownerless] at acting
+      cases acting
+
+/-- Every bounded automatic-completion trace preserves binding provenance. -/
+theorem BindingInvariant.drainFuel {state : State graph} (invariant : state.BindingInvariant)
+    (fuel : Nat) : (drainFuel fuel state).BindingInvariant :=
+  drainFuel_induction (fun current => current.BindingInvariant)
+    (fun _ event eligible valid => valid.completeAutomatic event eligible) fuel state invariant
+
+/-- Draining automatic completions preserves exact immutable binding provenance. -/
+theorem BindingInvariant.drain {state : State graph} (invariant : state.BindingInvariant) :
+    state.drain.BindingInvariant :=
+  invariant.drainFuel state.config.remaining
+
+end State
 
 end Vegas.EventGraphRuntime

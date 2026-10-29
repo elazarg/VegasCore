@@ -88,6 +88,24 @@ theorem handle_tables_cases (state next : State graph) (message : Message Player
       exact Or.inr (handle_resolution_tables runtime state next _
         (fun _ _ same => by cases same) accepted)
 
+/-- Inclusion with automatic service has the native admission table effect. -/
+theorem reactiveHandle_tables_cases (state next : State graph)
+    (message : Message Player (WitnessedPacket graph))
+    (accepted : (runtime.reactiveApplication leaks).handle state message = some next) :
+    (∃ event candidate, message.payload.call = .commitment event candidate ∧
+      next.candidates = state.candidates.freeze candidate ∧
+      next.accepted = Function.update state.accepted (.inr event) (some candidate) ∧
+      candidate.1 = message.id.1) ∨
+    (next.accepted = state.accepted ∧ next.candidates = state.candidates) := by
+  obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
+  rw [← nextEq]
+  rcases handle_tables_cases runtime state native ⟨message.id, message.payload.call⟩ handled with
+    ⟨event, candidate, call, candidates, handles, owner⟩ | ⟨handles, candidates⟩
+  · exact Or.inl ⟨event, candidate, call, native.drain_tables.2.1.trans candidates,
+      native.drain_tables.1.trans handles, owner⟩
+  · exact Or.inr ⟨native.drain_tables.1.trans handles,
+      native.drain_tables.2.1.trans candidates⟩
+
 /-- **Fixed candidates stay fixed** under every runtime operation. -/
 theorem fixesCandidates_step :
     (runtime.reactiveApplication leaks).StepRelation FixesCandidates where
@@ -99,14 +117,14 @@ theorem fixesCandidates_step :
     rw [submitStep_lookup_of_not_fresh _ _ _ _ (registered ▸ fixed), registered]
     exact fixed
   handle state message next accepted handle fixed := by
-    rcases handle_tables_cases runtime state next _ (reactiveHandle_call accepted) with
+    rcases reactiveHandle_tables_cases runtime leaks state next message accepted with
       ⟨_, candidate, _, candidates, _⟩ | ⟨_, candidates⟩
     · rw [candidates, state.candidates.lookup_freeze_eq_of_not_fresh handle candidate fixed]
       exact fixed
     · rw [candidates]
       exact fixed
   environment state command next reached handle fixed := by
-    rw [(environmentStep_tables runtime state next command reached).2]
+    rw [(reactiveApplication_environment_tables runtime leaks state next command reached).2]
     exact fixed
 
 /-- **Initial input handles stay accepted** under every runtime operation. -/
@@ -118,12 +136,12 @@ theorem keepsInputHandles_step :
       material.call.packet).accepted (.inl input) = _
     rw [submitStep_accepted, Submission.register_accepted]
   handle state message next accepted input := by
-    rcases handle_tables_cases runtime state next _ (reactiveHandle_call accepted) with
+    rcases reactiveHandle_tables_cases runtime leaks state next message accepted with
       ⟨event, _, _, _, acceptedEq, _⟩ | ⟨acceptedEq, _⟩
     · rw [acceptedEq, Function.update_of_ne (by simp)]
     · rw [acceptedEq]
   environment state command next reached input := by
-    rw [(environmentStep_tables runtime state next command reached).1]
+    rw [(reactiveApplication_environment_tables runtime leaks state next command reached).1]
 
 /-- An accepted inclusion either installs, for a binding event, the handle its
 envelope commits to, or leaves every accepted handle of a binding event as it
@@ -149,8 +167,8 @@ theorem includePending_accepted (execution : (runtime.reactiveApplication leaks)
           exact Or.inl installed
       | some next =>
           simp only [accepted, Option.getD_some] at installed
-          rcases handle_tables_cases runtime execution.application next _
-              (reactiveHandle_call accepted) with
+          rcases reactiveHandle_tables_cases runtime leaks execution.application next envelope
+              accepted with
             ⟨named, committed, call, _, acceptedEq, owner⟩ | ⟨acceptedEq, _⟩
           · rw [acceptedEq] at installed
             by_cases same : event = named
@@ -331,7 +349,8 @@ theorem SignedCommitments.environmentStep
       | application command =>
           obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
           obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-          rw [(environmentStep_tables runtime execution.application state command changed).1]
+          rw [(reactiveApplication_environment_tables runtime leaks execution.application state
+            command changed).1]
             at accepted
           exact Or.inl accepted
     rcases origin with old | signed

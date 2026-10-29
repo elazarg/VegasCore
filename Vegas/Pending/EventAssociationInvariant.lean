@@ -129,7 +129,6 @@ theorem initial_associationInvariant (inputs : graph.Inputs) :
       rfl
     rw [castSome (congrArg EventField.Value layout), result]
 
-omit [DecidableEq Player] in
 theorem AssociationInvariant.complete {state : State graph}
     (valid : state.AssociationInvariant) (event : graph.EventId)
     (ready : state.config.cut.Ready event) (action : graph.Action event)
@@ -144,7 +143,8 @@ theorem AssociationInvariant.acceptBinding {state : State graph}
     (outputEq : graph.outputLayout event = .binding owner payload)
     (selected : Handle graph) :
     ({ (state.complete event ready
-        (cast (congrArg EventField.Action outputEq.symm) (state.bindingResult selected payload))
+        (cast (congrArg EventField.Action outputEq.symm)
+          (some (state.bindingResult selected payload)))
         (cast (congrArg EventField.Value outputEq.symm)
           (state.bindingResult selected payload))) with
       accepted := Function.update state.accepted (.inr event) (some selected)

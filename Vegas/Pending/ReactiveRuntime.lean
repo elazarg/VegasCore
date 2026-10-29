@@ -100,6 +100,17 @@ theorem reactiveApplication_handle_of_not_tokenValid (runtime : EventGraphRuntim
     (runtime.reactiveApplication leaks).handle state message = none := by
   simp only [reactiveApplication_handle, invalid, Bool.false_eq_true, ite_false]
 
+/-- Automatic service preserves both tables after native environment service. -/
+theorem reactiveApplication_environment_tables (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (state next : State graph) (command : EnvironmentCommand graph)
+    (supported : next ∈ ((runtime.reactiveApplication leaks).environment state command).support) :
+    next.accepted = state.accepted ∧ next.candidates = state.candidates := by
+  change next ∈ ((environmentStep runtime state command).map State.drain).support at supported
+  obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ supported
+  have prior := environmentStep_tables runtime state native command moved
+  exact ⟨native.drain_tables.1.trans prior.1, native.drain_tables.2.1.trans prior.2⟩
+
 /-- Submission does not change the public contract state, so the emitted
 token is the one issued in the state the sender saw. -/
 theorem reactiveApplication_submit_publicView (runtime : EventGraphRuntime graph)

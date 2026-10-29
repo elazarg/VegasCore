@@ -40,12 +40,14 @@ theorem openingFactInvariant (runtime : EventGraphRuntime graph)
     have fixed : state.candidates.lookup fact.handle ≠ .fresh := by
       rw [valid]
       simp
-    exact (handle_lookup_of_not_fresh runtime state next
-      ⟨message.id, message.payload.call⟩ fact.handle fixed
-      (reactiveHandle_call accepted)).trans valid
+    obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
+    change next.candidates.lookup fact.handle = .openable fact.raw
+    rw [← nextEq, native.drain_tables.2.1]
+    exact (handle_lookup_of_not_fresh runtime state native
+      ⟨message.id, message.payload.call⟩ fact.handle fixed handled).trans valid
   environment state command next valid reached := by
     change next.candidates.lookup fact.handle = .openable fact.raw
-    rw [(environmentStep_tables runtime state next command reached).2]
+    rw [(reactiveApplication_environment_tables runtime leaks state next command reached).2]
     exact valid
 
 /-- Issuance and forwarding instantiate the generic all-history evidence theorem. -/
