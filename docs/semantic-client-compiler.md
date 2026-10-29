@@ -114,6 +114,19 @@ finite-menu restriction, policy decoder and recorded-response origin theorem.
 The compiler instantiates it with a common consistent equilibrium completion;
 no game-specific client policy is an input.
 
+## Observable laws and coverage
+
+[Observable closure](../Vegas/Game/RecoveryClientObservables.lean) exports
+`RecoveryClientCompilation.clients_postprocessLaw` and its ledger counterpart.
+Any common stochastic observation of the certified terminal-store/payoff pair
+has exactly the intended law. Deterministic readers are the pure-kernel case;
+the observation kernel itself needs no finite-support premise.
+
+`Vegas.RecoveryClientSpec.intended_outcomeLaws_subset` states the coverage
+conclusion as set inclusion: every intended SE joint law belongs to the clean
+bounded-runtime SE laws. Additional runtime equilibria and their outcome laws
+are not characterized by this inclusion.
+
 ## Ledger observation scope
 
 `Interaction.MessageNetwork.ObservationRule.DeliversNothing` states that every

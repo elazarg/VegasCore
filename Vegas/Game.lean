@@ -293,6 +293,7 @@ import Vegas.Game.RecoveryChanceStoppedLaw
 import Vegas.Game.RecoveryClearDecisionSites
 import Vegas.Game.RecoveryClearForced
 import Vegas.Game.RecoveryClientCompiler
+import Vegas.Game.RecoveryClientObservables
 import Vegas.Game.RecoveryCommitmentBeliefValue
 import Vegas.Game.RecoveryCommitmentComparisons
 import Vegas.Game.RecoveryCommitmentFreshCall
