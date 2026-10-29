@@ -2,6 +2,7 @@
 
 import Vegas.Source.Honest
 import Vegas.Source.PrivateInputs
+import Vegas.Source.Utility
 
 /-! # Forfeiting failed reveals
 
@@ -12,8 +13,8 @@ publication cells present at setup are not reveal sites and are not listed.
 publications of a player's reveals, and `Vegas.SourceProgram.forfeitUtility`
 subtracts a forfeit for each of them from a utility. Nothing is subtracted on a
 terminal state in which no cell records a failure.
-`Vegas.SourceProgram.exclusionUtility` instead pays a player with a failed
-reveal a fixed exclusion payoff, and every other player its utility.
+The canonical fixed exit-utility rule is defined in
+`Vegas.SourceProgram.exclusionUtility` using public default history.
 -/
 
 noncomputable section
@@ -117,28 +118,6 @@ theorem forfeitUtility_of_successful {Parameter : Type} (p : SourceProgram Playe
     forfeitUtility p forfeit utility (parameter, publicOutcome p terminal) who =
       utility (parameter, publicOutcome p terminal) who := by
   simp [forfeitUtility, failedReveals_publicOutcome_of_successful p terminal successful]
-
-/-- A utility under exclusion: a player with a failed reveal receives its fixed
-exclusion payoff, every other player its utility. -/
-def exclusionUtility {Parameter : Type} (p : SourceProgram Player L Γ O)
-    (excludedPayoff : Player → ℝ) (utility : Parameter × PublicOutcome p → Player → ℝ) :
-    Parameter × PublicOutcome p → Player → ℝ :=
-  fun outcome who =>
-    if failedReveals p who outcome.2 = 0 then utility outcome who else excludedPayoff who
-
-theorem exclusionUtility_of_failedReveals_eq_zero {Parameter : Type}
-    (p : SourceProgram Player L Γ O) (excludedPayoff : Player → ℝ)
-    (utility : Parameter × PublicOutcome p → Player → ℝ) {outcome : Parameter × PublicOutcome p}
-    {who : Player} (noFailure : failedReveals p who outcome.2 = 0) :
-    exclusionUtility p excludedPayoff utility outcome who = utility outcome who := by
-  simp [exclusionUtility, noFailure]
-
-theorem exclusionUtility_of_failedReveals_pos {Parameter : Type}
-    (p : SourceProgram Player L Γ O) (excludedPayoff : Player → ℝ)
-    (utility : Parameter × PublicOutcome p → Player → ℝ) {outcome : Parameter × PublicOutcome p}
-    {who : Player} (failed : 1 ≤ failedReveals p who outcome.2) :
-    exclusionUtility p excludedPayoff utility outcome who = excludedPayoff who := by
-  simp [exclusionUtility, Nat.one_le_iff_ne_zero.mp failed]
 
 end SourceProgram
 

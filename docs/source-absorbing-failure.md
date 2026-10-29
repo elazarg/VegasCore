@@ -82,12 +82,19 @@ and its joint parameter/public-result law through the full configuration readout
 
 ## Utility and transfers
 
-[Utility](../Vegas/Source/Utility.lean) defines fixed utility after public
-default. For an active player, the ordinary valuation can read all typed cells
+[Utility](../Vegas/Source/Utility.lean) defines the canonical `exclusionUtility`
+from public default membership, including binding omission. Its public-outcome
+rule agrees definitionally with `Config.utility`. For an active player, the
+ordinary valuation can read all typed cells
 and the complete public default history. A defaulted player receives its
 declared exit utility under every continuation. The source proof gives fixed
 expected utility and integrability for an already defaulted player without a
 finiteness or bounded-valuation hypothesis.
+
+Failed-reveal counts remain a diagnostic of publication cells. They are not the
+control state for source utility. Count-only utility laws for arbitrary public
+outcomes do not apply to the canonical rule; consumers must use public membership
+or prove a reachable-outcome correspondence.
 
 Exit utility and exit transfer remain distinct. The monetary readout must return
 the declared exit transfer after default; external valuation must be included
@@ -100,6 +107,10 @@ The preservation theorem's premises, including the exit floor, remain proof
 obligations for its port. Restricting surviving players' valuations to ignore
 public default history would be an additional assumption and is not part of
 this design.
+
+The ambient public-record type admits impossible histories. Utility-range ports
+must use their actual execution domain or a bounded extension outside it;
+boundedness on extra impossible records must not become a hidden new premise.
 
 ## Graph and ledger port
 
