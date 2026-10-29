@@ -36,6 +36,17 @@ existing settlement theorem and quantifies over arbitrary total observations.
 It retains the actual client algorithms, their checked disclosure normalization,
 remembered private actions and bounded-menu recovery behavior.
 
+## Equilibrium client compilation
+
+The [uniform semantic compiler](semantic-client-compiler.md) takes a fixed
+certified source/runtime specification and any intended equilibrium, and returns
+the selected raw assessment with its proof and actual physical clients. It
+reuses the existing preservation completion and decoder. General realization
+theorems identify strategies and complete continuation laws; ledger clients
+agree at every legal raw history when the interface supplies no pending data.
+This is separate from the ordinary all-source-profile capstones above and
+from executable numerical equilibrium synthesis.
+
 ## Hypotheses and observations
 
 The outcome theorems use `AsyncServiceSpec`, its public-barrier ordering premise,

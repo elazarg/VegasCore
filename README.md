@@ -59,6 +59,13 @@ They compare those same clients with canonical execution of the compiled graph.
 arbitrary raw responses. The [completion guide](docs/compiler-correctness-plan.md)
 records their hypotheses and the optional stronger graph-policy interface.
 
+The [uniform semantic client compiler](docs/semantic-client-compiler.md) takes
+any supplied intended equilibrium and returns a certified runtime assessment
+and physical player clients. It reuses the preservation completion and policy
+decoder. Ledger clients agree at every legal raw history when the interface
+delivers no pending data. The completion backend is nonconstructive;
+executable numerical synthesis and client code generation are separate work.
+
 Checked late-leak examples delimit preservation and show sufficient payoff
 conditions in their stated finite games. Their impossibility conclusions do
 not extend automatically to every runtime or compiler. The small auction and

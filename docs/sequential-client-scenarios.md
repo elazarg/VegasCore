@@ -1,5 +1,10 @@
 # Client decisions after runtime irregularities
 
+The [uniform semantic compiler](semantic-client-compiler.md) supplies the
+source-indexed client construction and its general correctness proofs. The
+examples below diagnose operational and information cases; they do not supply
+per-game strategy choices to that compiler.
+
 The strict contract removes many operational decisions. It also permits useful
 information to arrive in a rejected packet. The following scenarios use the
 existing Odds–Evens program, sequential graph, six-tick deadlines and forced-exit
@@ -50,7 +55,7 @@ public after inclusion. Authentication matters. The useful signal identifies
 the immutable value of the accepted handle; an unsupported claim or a
 certificate for a different candidate supplies different information.
 
-## An explicit ledger-reading candidate
+## A diagnostic ledger-reading policy
 
 [The client](../Vegas/Examples/OddsEvensLedgerClient.lean) sends each ordinary
 packet once, requests its valid opening when ready, continues after the
@@ -73,12 +78,10 @@ marks its certificate-bearing packet forbidden. The checked recipient reads
 the bit from the ledger and requests the opposite commitment. This variant
 needs no extra activation between acceptance and Odd's ordinary turn.
 
-The client proof target concerns histories consistent with the focal player's
-own policy, while allowing opponents to deviate. A full equilibrium assessment
-may separately complete histories involving that player's own earlier errors.
-The [client correctness analysis](ledger-client-correctness.md) states this
-target precisely and isolates its remaining belief obligation. The complete
-sequential rationality of this candidate is open.
+For this manually prescribed policy, the [client correctness analysis](ledger-client-correctness.md)
+isolates its remaining belief obligation. Its complete sequential rationality
+is open. The uniform compiler instead selects the existing checked completion
+and realizes that strategy without assuming this policy's fair fallback.
 
 ## Verification scope
 

@@ -9,6 +9,7 @@ The maintained development centers on checked non-concurrent SE preservation.
 * [Source semantics](source-semantics.md).
 * [Compilation and runtime boundary](compilation-design.md).
 * [Compiler correctness completion plan](compiler-correctness-plan.md).
+* [Uniform semantic client compiler and realization proofs](semantic-client-compiler.md).
 * [Ideal authentication and commitments](ideal-commitment-capabilities.md).
 * [Archived research and restart material](archives.md).
 

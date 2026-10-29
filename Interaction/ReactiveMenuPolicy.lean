@@ -38,6 +38,22 @@ def restrictPolicy (who : Principal) (policy : app.Policy) :
       else PMF.pure ⟨some (menu.nonempty who past view).choose,
         _, (menu.nonempty who past view).choose_spec, rfl⟩
 
+/-- Restriction at a decision uses only the physical response law at that input. -/
+theorem restrictPolicy_congr_at (who : Principal) (first second : app.Policy)
+    (past : List app.PlayerEntry) (view : app.PlayerView)
+    (same : first past view = second past view) :
+    menu.restrictPolicy initial horizon scheduler who first (some (past, view)) =
+      menu.restrictPolicy initial horizon scheduler who second (some (past, view)) := by
+  classical
+  let represent (law : PMF app.Action) :
+      PMF ((menu.information initial horizon scheduler).Choice who (some (past, view))) :=
+    if covered : ∀ action ∈ law.support, action ∈ menu.actions who past view then
+      law.bindOnSupport fun action supported =>
+        PMF.pure ⟨some action, action, covered action supported, rfl⟩
+    else PMF.pure ⟨some (menu.nonempty who past view).choose,
+      _, (menu.nonempty who past view).choose_spec, rfl⟩
+  exact congrArg represent same
+
 theorem embed_restrictPolicy (who : Principal) (policy : app.Policy)
     (past : List app.PlayerEntry) (view : app.PlayerView)
     (covered : ∀ action ∈ (policy past view).support, action ∈ menu.actions who past view) :

@@ -1,5 +1,11 @@
 # Ledger-reading honest clients
 
+The [uniform semantic compiler](semantic-client-compiler.md) supplies certified
+clients for every supplied intended equilibrium. This note analyzes a manually
+prescribed diagnostic policy and the additional belief argument needed to
+identify that particular policy with an equilibrium. The generic compiler
+uses the preservation theorem's selected completion instead.
+
 The client uses contract state, ledger packets and receipts, its private game
 values, and its own submission history. It ignores pending messages throughout
 its recall. Other players may deviate. This is the deployment target for the
@@ -98,11 +104,12 @@ the assessment may select a rational completion. This retains the ordinary
 equilibrium notion and gives a concrete implementation throughout every
 history the honest player can encounter against deviations.
 
-The existing preservation capstone supplies an assessment and exact supported
-outcome law. Agreement with the ledger client on all compatible decisions
-remains an additional obligation. Full source failure subgames can require
-program-specific continuation choices; the always-open payoff argument above
-uses the actual Odds–Evens settlement rule.
+The semantic compiler's ledger clients agree with their selected assessment
+at every legal raw history under no pending delivery, including every
+compatible history described here. Agreement with the manually prescribed
+Odds–Evens candidate remains a separate obligation. Full source failure
+subgames can require program-specific continuation choices; the always-open
+payoff argument above uses the actual Odds–Evens settlement rule.
 
 ## Scope of pending information
 
@@ -116,8 +123,8 @@ recipient commits, even when the ledger has not yet disclosed it. The
 protected-inclusion premise covers permitted traffic, so it does not by itself
 force a forbidden revealing packet onto the ledger before that decision.
 
-The implemented candidate performs no pending inspection. Its current checked
+The diagnostic candidate performs no pending inspection. Its current checked
 results are information factorization, repeat and exclusion behavior, concrete
 ledger observations and conditional payoff comparisons. Sequential rationality,
-the compatible-history agreement theorem and the complete initialized client
-outcome law remain open.
+agreement with that specific policy and its complete initialized outcome law
+remain open. They are not premises of the uniform semantic compiler.

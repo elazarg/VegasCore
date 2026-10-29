@@ -35,11 +35,12 @@ The [Odds–Evens raw instance](../Vegas/Examples/OddsEvensRecoveryRawEquilibriu
 consumes the forced-exit theorem and the
 [imperfect-evidence adapter](../Vegas/Pending/ThinnedCountCollection.lean).
 The [instance guide](sequential-se-instances.md) describes their exact scope.
-The [ledger client](../Vegas/Examples/OddsEvensLedgerClient.lean) reuses canonical
-packet decisions and own submission recall. Its network-information restriction
-is supplied by [ledger policies](../Interaction/ReactiveLedgerPolicy.lean);
-the [client analysis](ledger-client-correctness.md) separates checked policy
-properties from the remaining equilibrium-identification theorem.
+The [semantic client compiler](../Vegas/Game/RecoveryClientCompiler.lean) selects
+the existing certified completion uniformly for each source equilibrium.
+[Ledger assessment realization](../Interaction/ReactiveLedgerAssessment.lean)
+identifies complete physical continuations and source-independent client laws.
+The [compiler guide](semantic-client-compiler.md) distinguishes this semantic
+construction from executable synthesis and from game-specific diagnostics.
 
 Use `rg` and `python lean-defs.py <files>` to inspect owners before adding
 definitions. Share actual operations and isolate hypotheses that vary with a
