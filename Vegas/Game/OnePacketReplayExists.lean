@@ -362,7 +362,7 @@ theorem intendedHistory?_isSome (assessment : setup.intendedModel.BehavioralAsse
                 ⟨_, legalStart⟩).support := by
             rw [decodedPoint_initial]
             change _ ∈ (setup.initialLaw.map fun initial =>
-              some (ProtocolState.entry setup.program (setup.initialConfig initial))).support
+              some (ProtocolState.entry setup.program (Config.initial initial))).support
             exact (PMF.mem_support_map_iff _ _ _).mpr ⟨initial, initialSupported, rfl⟩
           obtain ⟨next, extended⟩ := extendIntended?_isSome legalStart reachedStart
           exact ⟨next, extended⟩

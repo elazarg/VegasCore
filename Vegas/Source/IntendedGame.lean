@@ -215,7 +215,7 @@ structure WellFormed : Prop where
       (cell : HasVar setup.context x (.commitment owner payload)),
       ∃ value, initial.get cell = .success value
   guardsSatisfiable : ∀ initial ∈ setup.initialLaw.support,
-    GuardsSatisfiableFrom setup.program (setup.initialConfig initial)
+    GuardsSatisfiableFrom setup.program (Config.initial initial)
 
 /-- The intended actions at a setup protocol state. -/
 def intendedAvailable (state : setup.ProtocolState) (who : Player) : Set (OwnAction Player L) :=

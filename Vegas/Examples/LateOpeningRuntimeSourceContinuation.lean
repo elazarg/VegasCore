@@ -55,7 +55,7 @@ def bobAnswerLaw (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) (
 
 def boundConfig (bit : Bool) (label : Fin 3) (answer : Answer) :=
   commitSuccessor 3 answerGuard
-    (revealSuccessor 2 .here (setup.initialConfig (sourceInitial bit label)) true) (.success answer)
+    (revealSuccessor 2 .here (Config.initial (sourceInitial bit label)) true) (.success answer)
 
 def boundState (bit : Bool) (label : Fin 3) (answer : Answer) : setup.ProtocolState :=
   some (.inr (.inr (.inl (boundConfig bit label answer))))
@@ -84,7 +84,7 @@ private theorem binding_step (bit : Bool) (label : Fin 3) (answer : Answer) :
       ⟨bindingJoint answer, bindingJointLegal bit label answer⟩ =
       PMF.pure (boundState bit label answer) := by
   change (ProtocolState.step program
-    (.inr (.inl (revealSuccessor 2 .here (setup.initialConfig (sourceInitial bit label)) true)))
+    (.inr (.inl (revealSuccessor 2 .here (Config.initial (sourceInitial bit label)) true)))
       (bindingJoint answer)).map some = _
   simp only [ProtocolState.step, program, Sum.elim_inr, Sum.elim_inl,
     bindingJoint, ↓reduceIte, OwnAction.binding_commit, PMF.pure_map]

@@ -155,7 +155,7 @@ theorem decodedState_history_of_stepClosed
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
     {property : ProtocolState setup.program → Prop} (closed : StepClosed setup property)
     (initialized : ∀ initial ∈ setup.initialLaw.support,
-      property (ProtocolState.entry setup.program (setup.initialConfig initial)))
+      property (ProtocolState.entry setup.program (Config.initial initial)))
     (menu : (application setup runtime leaks).ResponseMenu) (horizon : Nat)
     (scheduler : (application setup runtime leaks).Scheduler) :
     ∀ {state} (_trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace state)

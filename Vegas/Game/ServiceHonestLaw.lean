@@ -777,14 +777,14 @@ theorem firstTurn_initialized_law [Fintype Player]
       setup.initialLaw.bind fun initial =>
         ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program profile))^[
           eventCount setup.program]
-          (PMF.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).map
+          (PMF.pure (ProtocolState.entry setup.program (Config.initial initial)))).map
             some := by
   let app := serviceApplication setup mode deadline leaks
   let players := serviceTurnPolicy setup mode deadline leaks bound turns
     (firstTurnTiming setup turns mode) profile
   let Seed := {initial // initial ∈ setup.initialLaw.support}
   let prior : PMF Seed := pmfToSubtype setup.initialLaw (fun _ member => member)
-  let source := fun seed : Seed => setup.initialConfig seed.val
+  let source := fun seed : Seed => Config.initial seed.val
   let execution := fun seed : Seed => ReactiveApplication.Execution.initial app
     (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
       (setup.eventInputs seed.val))
@@ -814,7 +814,7 @@ theorem firstTurn_initialized_law [Fintype Player]
   let sourcePrefix := fun initial : State L setup.context =>
     ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program profile))^[
       eventCount setup.program]
-      (PMF.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).map some
+      (PMF.pure (ProtocolState.entry setup.program (Config.initial initial)))).map some
   have nativeLaw : prior.bind (fun seed => combined seed.val) =
       setup.initialLaw.bind combined := by
     refine (PMF.bind_map prior Subtype.val combined).symm.trans ?_

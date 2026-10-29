@@ -47,16 +47,17 @@ theorem continuationLaw_behavioral_step : {Γ : SourceCtx Player L} → {O : Fin
       profile, state, running, joint, marginal => by
       cases state with
       | inl config =>
-          have law := congrArg (fun law => law.bind (fun action =>
-            runFrom next (fun who => (profile who).2)
-              (commitSuccessor name guard config (OwnAction.binding owner name payload action))))
-            (marginal owner)
-          simp only [PMF.bind_map, BehavioralPolicy.protocolAction, observe,
-            Sum.elim_inl, Sum.elim_inr, dite_true, OwnAction.binding_commit, step,
+          have ownerLaw := congrArg
+            (fun law => law.map (OwnAction.binding owner name payload)) (marginal owner)
+          simp only [observe, Sum.elim_inl] at ownerLaw
+          rw [BehavioralPolicy.protocolAction_commit_binding] at ownerLaw
+          have law := congrArg (fun law => law.bind fun choice =>
+            runFrom next (afterCommit profile) (commitSuccessor name guard config choice)) ownerLaw
+          simp only [PMF.bind_map, PMF.map_comp, Function.comp_def, step,
+            Sum.elim_inl, Sum.elim_inr,
             PMF.bind_bind, PMF.pure_bind, continuationLaw, continuationLaw_entry,
-            runFrom_commit, commitKernel, Config.view, Function.comp_def] at law ⊢
-          convert law using 1
-          rfl
+            runFrom_commit, Config.view] at law ⊢
+          convert law using 1 <;> rfl
       | inr rest =>
           simpa only [step, continuationLaw, Sum.elim_inr, PMF.bind_bind,
             PMF.bind_map, Function.comp_def] using
@@ -66,16 +67,17 @@ theorem continuationLaw_behavioral_step : {Γ : SourceCtx Player L} → {O : Fin
       profile, state, running, joint, marginal => by
       cases state with
       | inl config =>
-          have law := congrArg (fun law => law.bind (fun action =>
-            runFrom next (fun who => (profile who).2)
-              (revealSuccessor published source config (OwnAction.disclosure action))))
-            (marginal owner)
-          simp only [PMF.bind_map, BehavioralPolicy.protocolAction, observe,
-            Sum.elim_inl, Sum.elim_inr, dite_true, OwnAction.disclosure, step,
+          have ownerLaw := congrArg (fun law => law.map OwnAction.disclosure) (marginal owner)
+          simp only [observe, Sum.elim_inl] at ownerLaw
+          rw [BehavioralPolicy.protocolAction_reveal_disclosure] at ownerLaw
+          have law := congrArg (fun law => law.bind fun disclose =>
+            runFrom next (afterReveal profile) (revealSuccessor published source config disclose))
+            ownerLaw
+          simp only [PMF.bind_map, PMF.map_comp, Function.comp_def, step,
+            Sum.elim_inl, Sum.elim_inr,
             PMF.bind_bind, PMF.pure_bind, continuationLaw, continuationLaw_entry,
-            runFrom_reveal, revealKernel, Config.view, Function.comp_def] at law ⊢
-          convert law using 1
-          rfl
+            runFrom_reveal, Config.view] at law ⊢
+          convert law using 1 <;> rfl
       | inr rest =>
           simpa only [step, continuationLaw, Sum.elim_inr, PMF.bind_bind,
             PMF.bind_map, Function.comp_def] using

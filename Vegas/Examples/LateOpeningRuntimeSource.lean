@@ -475,11 +475,11 @@ theorem run_randomizedAnswer (answers : Bool → PMF Answer) (bit : Bool) (label
   congr 1
 
 def drawnState (bit : Bool) (label : Fin 3) : setup.ProtocolState :=
-  some (.inl (setup.initialConfig (sourceInitial bit label)))
+  some (.inl (Config.initial (sourceInitial bit label)))
 
 def openedState (bit : Bool) (label : Fin 3) : setup.ProtocolState :=
   some (.inr (.inl (revealSuccessor 2 .here
-    (setup.initialConfig (sourceInitial bit label)) true)))
+    (Config.initial (sourceInitial bit label)) true)))
 
 private theorem initialJointLegal : setup.intendedProtocol.Legal none (fun _ => none) := by
   change ¬ False ∧ ∀ _ : Player, ¬ False
@@ -490,7 +490,7 @@ private theorem initialDraw_supported (bit : Bool) (label : Fin 3) :
       (setup.intendedProtocol.step none ⟨fun _ => none, initialJointLegal⟩).support := by
   change drawnState bit label ∈
     (setup.initialLaw.map (fun initial => some (ProtocolState.entry program
-      (setup.initialConfig initial)))).support
+      (Config.initial initial)))).support
   rw [PMF.support_map]
   exact ⟨sourceInitial bit label, (initialLaw_support _).mpr ⟨bit, label, rfl⟩, rfl⟩
 
@@ -520,7 +520,7 @@ private theorem opening_supported (bit : Bool) (label : Fin 3) :
         ⟨aliceJoint, aliceJointLegal bit label⟩).support := by
   change openedState bit label ∈
     ((PMF.pure (Sum.inr (Sum.inl (revealSuccessor 2 .here
-      (setup.initialConfig (sourceInitial bit label)) true)) : ProtocolState program)).map
+      (Config.initial (sourceInitial bit label)) true)) : ProtocolState program)).map
         some).support
   rw [PMF.pure_map]
   exact (PMF.mem_support_pure_iff _ _).mpr rfl
@@ -622,7 +622,7 @@ private theorem opening_round
   have step : setup.intendedProtocol.step (drawnHistory bit label).state
       ⟨aliceJoint, aliceJointLegal bit label⟩ = PMF.pure (openedState bit label) := by
     change (PMF.pure (Sum.inr (Sum.inl (revealSuccessor 2 .here
-      (setup.initialConfig (sourceInitial bit label)) true)) : ProtocolState program)).map some = _
+      (Config.initial (sourceInitial bit label)) true)) : ProtocolState program)).map some = _
     rw [PMF.pure_map]
     rfl
   apply pmf_eq_pure_of_support_subset_singleton

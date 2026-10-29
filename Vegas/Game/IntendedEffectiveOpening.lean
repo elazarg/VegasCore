@@ -86,7 +86,7 @@ theorem staticState_trace :
       cases before with
       | none =>
           change _ ∈ (setup.initialLaw.map fun initial =>
-            some (ProtocolState.entry setup.program (setup.initialConfig initial))).support
+            some (ProtocolState.entry setup.program (Config.initial initial))).support
               at realized
           rw [PMF.support_map] at realized
           obtain ⟨initial, _, rfl⟩ := realized

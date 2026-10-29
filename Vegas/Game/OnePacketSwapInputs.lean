@@ -194,7 +194,7 @@ def InitialCellsAt (initial : State L setup.context) (point : ProtocolState setu
 
 /-- The entry point of a setup draw finds its cells. -/
 theorem initialCellsAt_entry (initial : State L setup.context) :
-    InitialCellsAt initial (ProtocolState.entry setup.program (setup.initialConfig initial)) := by
+    InitialCellsAt initial (ProtocolState.entry setup.program (Config.initial initial)) := by
   intro name kind source
   rw [ProtocolState.cell?_entry]
   exact State.cell?_eq_of_hasVar source setup.namesNodup initial
@@ -219,7 +219,7 @@ theorem exists_initialCellsAt {state : setup.intendedProtocol.State}
       cases before with
       | none =>
           change some point ∈ (setup.initialLaw.map fun initial =>
-            some (ProtocolState.entry setup.program (setup.initialConfig initial))).support
+            some (ProtocolState.entry setup.program (Config.initial initial))).support
             at realized
           rw [PMF.support_map] at realized
           obtain ⟨initial, member, entered⟩ := realized

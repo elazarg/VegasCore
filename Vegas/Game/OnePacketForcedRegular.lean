@@ -371,7 +371,7 @@ theorem intended_of_regular (wellFormed : setup.WellFormed)
           cases Option.some.inj same
           obtain ⟨initial, initialMem, rfl⟩ := PMF.support_map .. ▸ supported
           exact ⟨_, decodedPoint_initial initial, ProtocolState.intended_entry setup.program _
-            (setup.initialConfig_intended wellFormed initialMem)
+            (Config.initial_intended wellFormed initialMem)
             (wellFormed.guardsSatisfiable initial initialMem)⟩
       | some current =>
           have recordCurrent := publicRecord_of_transition (runtime := runtime) prior joint

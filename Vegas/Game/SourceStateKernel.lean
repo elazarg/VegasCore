@@ -227,7 +227,7 @@ theorem behavioralStateStep_none
     (profile : Profile (setup.informationModel admission).behavioralSignature) :
     setup.behavioralStateStep admission profile none =
       setup.initialLaw.map (fun initial =>
-        some (ProtocolState.entry setup.program (setup.initialConfig initial))) := by
+        some (ProtocolState.entry setup.program (Config.initial initial))) := by
   simp [behavioralStateStep, protocolStep, PMF.bind_const]
 
 /-- Encoding the syntactic policies gives exactly their action-marginal

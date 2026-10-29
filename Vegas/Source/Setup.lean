@@ -51,7 +51,7 @@ theorem initialLaw_support_finite (setup : Setup (Player := Player) (L := L))
 
 def run (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) :
-    PMF (State L setup.program.terminalCtx) :=
+    PMF (Config Player L setup.program.terminalCtx) :=
   setup.initialLaw.bind fun initial => SourceProgram.run setup.program profile initial
 
 /-- The public result law of a profile. `run` keeps the complete terminal

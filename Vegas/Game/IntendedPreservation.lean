@@ -92,15 +92,15 @@ theorem owesFailureState_of_deviation (admission : CommitmentInterface setup.pro
 
 theorem initialConfig_intended (wellFormed : setup.WellFormed) {initial : State L setup.context}
     (supported : initial ∈ setup.initialLaw.support) :
-    (setup.initialConfig initial).Intended setup.obligations where
+    (Config.initial initial).Intended setup.obligations where
   unique := setup.namesNodup
   accounted := by
     rw [setup.accounts]
     exact Accounted.initial setup.context
   bound := wellFormed.initialValues initial supported
   publishes _ _ _ _ revealed := by
-    simp [initialConfig, Revelations.initial, Revelation.isRevealed] at revealed
-  predicted _ member := by simp [initialConfig] at member
+    simp [Config.initial, Revelations.initial, Revelation.isRevealed] at revealed
+  predicted _ member := by simp [Config.initial] at member
 
 /-- Every history of the intended game ends in a state of the intended game. -/
 theorem intendedState_trace (wellFormed : setup.WellFormed) :
@@ -111,12 +111,12 @@ theorem intendedState_trace (wellFormed : setup.WellFormed) :
       cases before with
       | none =>
           change _ ∈ (setup.initialLaw.map fun initial =>
-            some (ProtocolState.entry setup.program (setup.initialConfig initial))).support
+            some (ProtocolState.entry setup.program (Config.initial initial))).support
               at realized
           rw [PMF.support_map] at realized
           obtain ⟨initial, supported, rfl⟩ := realized
           exact ProtocolState.intended_entry setup.program _
-            (setup.initialConfig_intended wellFormed supported)
+            (Config.initial_intended wellFormed supported)
             (wellFormed.guardsSatisfiable initial supported)
       | some before =>
           change _ ∈ ((ProtocolState.step setup.program before joint).map some).support

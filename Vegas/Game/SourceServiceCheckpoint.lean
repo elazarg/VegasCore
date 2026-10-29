@@ -39,7 +39,7 @@ structure SourceCheckpoint (setup : Setup (Player := Player) (L := L))
 
 theorem SourceCheckpoint.initial (setup : Setup (Player := Player) (L := L))
     {mode : EventGraph.ExecutionMode} (initial : State L setup.context) : SourceCheckpoint setup
-    (setup.initialConfig initial) (ContextRefs.initial setup.context (outputLayout setup.program)) 0
+    (Config.initial initial) (ContextRefs.initial setup.context (outputLayout setup.program)) 0
     (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
         (setup.eventInputs initial)).config :=
     ⟨initial_agrees setup initial, initial_history setup initial, EventOrder.Cut.empty_isPrefix _⟩

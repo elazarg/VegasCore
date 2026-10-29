@@ -30,12 +30,14 @@ def initialState : {Γ : SourceCtx Player L} → {O : Finset VarId} →
 /-- Every supported execution retains the initial environment exactly. -/
 theorem initialState_runFrom {Γ : SourceCtx Player L} {O : Finset VarId}
     (p : SourceProgram Player L Γ O) (profile : BehavioralProfile p)
-    (config : Config Player L Γ) (outcome : State L p.terminalCtx)
+    (config : Config Player L Γ) (outcome : Config Player L p.terminalCtx)
     (supported : outcome ∈ (runFrom p profile config).support) :
-    initialState p outcome = config.state := by
+    initialState p outcome.state = config.state := by
   induction p with
   | ret payoffs =>
-      simpa [runFrom, initialState] using supported
+      have same := (PMF.mem_support_pure_iff _ _).mp supported
+      subst outcome
+      rfl
   | sample name fresh law k ih =>
       simp only [runFrom_sample, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨value, _, supported⟩ := supported
@@ -62,9 +64,9 @@ namespace Setup
 The parameter reader is fixed before play and never reads newly chosen bindings. -/
 def parameterOutcome {Parameter : Type} (setup : Setup (Player := Player) (L := L))
     (parameter : State L setup.context → Parameter)
-    (terminal : State L setup.program.terminalCtx) :
+    (terminal : Config Player L setup.program.terminalCtx) :
     Parameter × PublicOutcome setup.program :=
-  (parameter (initialState setup.program terminal), publicOutcome setup.program terminal)
+  (parameter (initialState setup.program terminal.state), publicOutcome setup.program terminal)
 
 /-- Draw the initial state once and retain its parameter jointly with the result. -/
 def parameterRun {Parameter : Type} (setup : Setup (Player := Player) (L := L))
@@ -89,7 +91,8 @@ theorem run_map_parameterOutcome {Parameter : Type}
   intro terminal supported
   unfold parameterOutcome
   rw [initialState_runFrom setup.program profile
-    ⟨initial, [], Revelations.initial setup.context, fun _ => []⟩ terminal supported]
+    (Config.initial initial) terminal supported]
+  rfl
 
 end Setup
 end Vegas.SourceProgram

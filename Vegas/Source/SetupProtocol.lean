@@ -19,10 +19,6 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-def initialConfig (setup : Setup (Player := Player) (L := L))
-    (state : State L setup.context) : Config Player L setup.context :=
-  ⟨state, [], Revelations.initial setup.context, fun _ => []⟩
-
 /-- `none` is the single position before setup; `some` retains a complete
 source position after the draw. The setup is never sampled again. -/
 abbrev ProtocolState (setup : Setup (Player := Player) (L := L)) :=
@@ -45,7 +41,7 @@ def protocolStep (setup : Setup (Player := Player) (L := L)) :
     setup.ProtocolState → (Player → Option (OwnAction Player L)) → PMF setup.ProtocolState
   | none, _ => setup.initialLaw.map
       (fun initial => some (SourceProgram.ProtocolState.entry setup.program
-        (setup.initialConfig initial)))
+        (Config.initial initial)))
   | some state, joint => (SourceProgram.ProtocolState.step setup.program state joint).map some
 
 def executionProtocol (setup : Setup (Player := Player) (L := L))

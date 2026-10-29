@@ -4,10 +4,10 @@ import Vegas.Source.Basic
 
 /-! # Commitment admission at source sites
 
-Admission describes the source game. It is independent of which preservation
-theorem an analysis requests. A site that admits forfeiture lets its owner
-irrevocably surrender disclosure; the existing failure-aware core carries that
-choice as a failed binding. Publication timing and visibility are unchanged.
+Admission describes the source game. Both interfaces allow public omission.
+The full interface also admits opaque unopenable bindings: these store failure
+without publishing default until a failed opening. Admission constrains actual
+active choices; automatic completion belongs to source execution.
 -/
 
 namespace Vegas.SourceProgram
@@ -17,19 +17,20 @@ inductive CommitmentAdmission where
   | forfeiture
   deriving DecidableEq
 
-/-- Both interfaces admit every ordinary payload; only the full interface
-admits an irrevocably failed binding. -/
-def CommitmentAdmission.Admits {α : Type} : CommitmentAdmission → PublicationResult α → Prop
-  | _, .success _ => True
-  | admission, .failure => admission = .forfeiture
+/-- Both interfaces admit omission and ordinary payloads; only the full interface
+admits an accepted unopenable binding. -/
+def CommitmentAdmission.Admits {α : Type} :
+    CommitmentAdmission → Option (PublicationResult α) → Prop
+  | _, none | _, some (.success _) => True
+  | admission, some .failure => admission = .forfeiture
 
 @[simp] theorem CommitmentAdmission.admits_success {α : Type}
-    (admission : CommitmentAdmission) (value : α) : admission.Admits (.success value) :=
+    (admission : CommitmentAdmission) (value : α) : admission.Admits (some (.success value)) :=
   trivial
 
 @[simp] theorem CommitmentAdmission.admits_failure {α : Type}
     (admission : CommitmentAdmission) :
-    admission.Admits (PublicationResult.failure (α := α)) ↔ admission = .forfeiture :=
+    admission.Admits (some (PublicationResult.failure (α := α))) ↔ admission = .forfeiture :=
   Iff.rfl
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]

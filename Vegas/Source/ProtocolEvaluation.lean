@@ -23,8 +23,8 @@ namespace ProtocolState
 /-- Select the existing source continuation at this program point. -/
 def continuationLaw : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (BehavioralProfile program) →
-    ProtocolState program → PMF (State L program.terminalCtx)
-  | _, _, .ret _ => fun _ config => PMF.pure config.state
+    ProtocolState program → PMF (Config Player L program.terminalCtx)
+  | _, _, .ret _ => fun _ config => PMF.pure config
   | _, _, .sample name fresh law next => fun profile =>
       Sum.elim
         (fun config => runFrom (.sample name fresh law next)
@@ -51,8 +51,8 @@ def continuationLaw : {Γ : SourceCtx Player L} → {O : Finset VarId} →
 /-- Read a terminal store only at a return point. -/
 def readout : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → ProtocolState program →
-    Option (State L program.terminalCtx)
-  | _, _, .ret _ => fun config => some config.state
+    Option (Config Player L program.terminalCtx)
+  | _, _, .ret _ => fun config => some config
   | _, _, .sample _ _ _ next => Sum.elim (fun _ => none) (readout next)
   | _, _, .commit _ _ _ _ next => Sum.elim (fun _ => none) (readout next)
   | _, _, .reveal _ _ _ _ _ _ next => Sum.elim (fun _ => none) (readout next)

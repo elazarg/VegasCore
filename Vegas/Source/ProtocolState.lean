@@ -71,8 +71,10 @@ def actor (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → ProtocolView who program → Option Player
   | _, _, .ret _ => fun _ => none
   | _, _, .sample _ _ _ next => Sum.elim (fun _ => none) (actor who next)
-  | _, _, .commit _ owner _ _ next => Sum.elim (fun _ => some owner) (actor who next)
-  | _, _, .reveal _ owner _ _ _ _ next => Sum.elim (fun _ => some owner) (actor who next)
+  | _, _, .commit _ owner _ _ next =>
+      Sum.elim (fun view => if owner ∈ view.defaulted then none else some owner) (actor who next)
+  | _, _, .reveal _ owner _ _ _ _ next =>
+      Sum.elim (fun view => if owner ∈ view.defaulted then none else some owner) (actor who next)
 
 /-- Available actions depend on the public program point and its admission
 interface. In particular they do not depend on another player's hidden value. -/
@@ -84,7 +86,7 @@ def available (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} 
       Sum.elim (fun _ => ∅) (available who next admission)
   | _, _, .commit (payload := payload) name owner _ _ next => fun admission =>
       Sum.elim
-        (fun _ => { action | ∃ choice : PublicationResult (L.Val payload),
+        (fun _ => { action | ∃ choice : Option (PublicationResult (L.Val payload)),
           (admission none).Admits choice ∧ action = .commit owner name payload choice })
         (available who next (fun site => admission (some site)))
   | _, _, .reveal _ owner name _ _ _ next => fun admission =>

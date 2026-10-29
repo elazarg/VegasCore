@@ -19,12 +19,12 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 def continuationLaw (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program) :
-    setup.ProtocolState → PMF (State L setup.program.terminalCtx)
+    setup.ProtocolState → PMF (Config Player L setup.program.terminalCtx)
   | none => setup.run profile
   | some state => SourceProgram.ProtocolState.continuationLaw setup.program profile state
 
 def protocolReadout (setup : Setup (Player := Player) (L := L))
-    (state : setup.ProtocolState) : Option (State L setup.program.terminalCtx) :=
+    (state : setup.ProtocolState) : Option (Config Player L setup.program.terminalCtx) :=
   state.bind (SourceProgram.ProtocolState.readout setup.program)
 
 theorem continuationLaw_terminal (setup : Setup (Player := Player) (L := L))

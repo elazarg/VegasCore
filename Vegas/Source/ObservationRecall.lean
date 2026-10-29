@@ -1,17 +1,15 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.ValueBinding
-import GameTheory.Math.Probability.ConditionalObservation
 import Vegas.Source.Protocol
-import Vegas.Source.ProtocolState
 import Vegas.Source.ProtocolTermination
+import GameTheory.Math.Probability.ConditionalObservation
 
 /-! # Recovering earlier source observations
 
-Source instructions extend the immutable environment and append only the
-actor's original choice. The existing `Vegas.SourceProgram.DecisionView.back` therefore recovers
-the prior view exactly, including at histories of probability zero under a
-given policy. These are observation projections of the existing protocol.
+Each instruction extends the immutable environment and public default record.
+The prior public record determines whether an owned step recorded a real choice.
+Dropping those extensions recovers the previous view at every supported history,
+including automatic completion and histories of probability zero under a policy.
 -/
 
 noncomputable section
@@ -22,24 +20,61 @@ open GameTheory.Protocol GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
+/-- Undo one completed instruction. An own action is removed only when the
+owner was active before that instruction; automatic completion chose no action. -/
+def DecisionView.back {who : Player} {Γ : SourceCtx Player L} {x : VarId}
+    {c : CellTy Player L} (ownStep : Bool) (view : DecisionView who ((x, c) :: Γ)) :
+    DecisionView who Γ :=
+  ⟨⟨fun _ cell member => view.observation.cells _ cell (.there member)⟩,
+    view.defaults.back,
+    if ownStep && decide (who ∉ view.defaults.back.defaulted) then
+      view.history.dropLast else view.history⟩
+
+omit [IExpr.ResultTypes L] in
+@[simp] theorem sourceObserve_tail_cons {who : Player} {Γ : SourceCtx Player L} {x : VarId}
+    {c : CellTy Player L} (value : CellVal L c) (state : State L Γ) :
+    (SourceObservation.mk (fun name cell member =>
+      (sourceObserve who (Env.cons (x := x) value state)).cells name cell (.there member))) =
+      sourceObserve who state := by
+  apply congrArg SourceObservation.mk
+  funext name cell member
+  cases cell <;> rfl
+
+omit [IExpr.ResultTypes L] in
+/-- Public-record rollback and conditional own-action rollback are exact,
+without a freshness or reachability premise on the incoming record. -/
+@[simp] theorem back_sourceObserve {who : Player} {Γ : SourceCtx Player L} {x : VarId}
+    {c : CellTy Player L} (value : CellVal L c) (state : State L Γ)
+    (defaults : DefaultHistory Player) (history : List (OwnAction Player L))
+    (ownStep : Bool) (event : Option Player) (action : OwnAction Player L) :
+    DecisionView.back ownStep
+      ⟨sourceObserve who (Env.cons (x := x) value state), defaults.record event,
+        if ownStep && decide (who ∉ defaults.defaulted) then history ++ [action] else history⟩ =
+      ⟨sourceObserve who state, defaults, history⟩ := by
+  by_cases active : who ∉ defaults.defaulted <;> cases ownStep <;>
+    simp [DecisionView.back, active]
+
 omit [IExpr.ResultTypes L] in
 @[simp] theorem back_sample_view {Γ : SourceCtx Player L} {payload : L.Ty}
     (who : Player) (name : VarId) (config : Config Player L Γ) (value : L.Val payload) :
     ((sampleSuccessor name config value).view who).back false = config.view who := by
-  exact back_sourceObserve (c := .publicData payload) value config.state (config.history who) false
+  simp [Config.view, sampleSuccessor, DecisionView.back]
 
 omit [IExpr.ResultTypes L] in
 @[simp] theorem back_commit_view {Γ : SourceCtx Player L} {owner : Player}
     {payload : L.Ty} (who : Player) (name : VarId)
     (guard : SourceGuard L Γ owner name payload) (config : Config Player L Γ)
-    (choice : PublicationResult (L.Val payload)) :
+    (choice : Option (PublicationResult (L.Val payload))) :
     ((commitSuccessor name guard config choice).view who).back (decide (owner = who)) =
       config.view who := by
-  simp only [Config.view, commitSuccessor, back_sourceObserve]
-  by_cases same : owner = who
+  by_cases own : owner = who
   · subst who
-    simp
-  · simp [same, Function.update_of_ne (Ne.symm same)]
+    by_cases inactive : owner ∈ config.defaults.defaulted <;>
+      simp [Config.view, commitSuccessor, DecisionView.back, Config.defaulted, inactive]
+  · by_cases inactive : owner ∈ config.defaults.defaulted
+    · simp [Config.view, commitSuccessor, DecisionView.back, Config.defaulted, inactive, own]
+    · simp [Config.view, commitSuccessor, DecisionView.back, Config.defaulted, inactive, own,
+        Function.update_of_ne (Ne.symm own)]
 
 omit [IExpr.ResultTypes L] in
 @[simp] theorem back_reveal_view {Γ : SourceCtx Player L} {name : VarId}
@@ -48,15 +83,17 @@ omit [IExpr.ResultTypes L] in
     (config : Config Player L Γ) (disclose : Bool) :
     ((revealSuccessor published selected config disclose).view who).back
         (decide (owner = who)) = config.view who := by
-  simp only [Config.view, revealSuccessor, back_sourceObserve]
-  by_cases same : owner = who
+  by_cases own : owner = who
   · subst who
-    simp
-  · simp [same, Function.update_of_ne (Ne.symm same)]
+    by_cases inactive : owner ∈ config.defaults.defaulted <;>
+      simp [Config.view, revealSuccessor, DecisionView.back, Config.defaulted, inactive]
+  · by_cases inactive : owner ∈ config.defaults.defaulted
+    · simp [Config.view, revealSuccessor, DecisionView.back, Config.defaulted, inactive, own]
+    · simp [Config.view, revealSuccessor, DecisionView.back, Config.defaulted, inactive, own,
+        Function.update_of_ne (Ne.symm own)]
 
 omit [IExpr.ResultTypes L] in
-/-- Equality after a reveal implies equality before it, even when the two
-supplied choices differ and even when a guard rejects the publication. -/
+/-- Later public default status does not erase an earlier decision view. -/
 theorem reveal_view_reflects {Γ : SourceCtx Player L} {name : VarId}
     {owner : Player} {payload : L.Ty} (who : Player) (published : VarId)
     (selected : HasVar Γ name (.commitment owner payload))

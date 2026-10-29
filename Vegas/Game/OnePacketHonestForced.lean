@@ -60,7 +60,7 @@ theorem decodedState_intended_or_owes (wellFormed : setup.WellFormed)
     trace control current
   intro initial member
   exact Or.inl (ProtocolState.intended_entry setup.program _
-    (setup.initialConfig_intended wellFormed member)
+    (Config.initial_intended wellFormed member)
     (wellFormed.guardsSatisfiable initial member))
 
 section Domination

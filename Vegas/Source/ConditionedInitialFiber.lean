@@ -73,7 +73,7 @@ theorem conditionInitial_protocolStep_of_component
       change after ∈ (setup.initialLaw.map _).support at reached
       obtain ⟨initial, present, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp reached
       change signal (ProtocolState.base setup.program
-        (ProtocolState.entry setup.program (setup.initialConfig initial))) = value at inside
+        (ProtocolState.entry setup.program (Config.initial initial))) = value at inside
       rw [ProtocolState.base_entry] at inside
       exact (PMF.mem_support_map_iff _ _ _).mpr ⟨initial, by
         change initial ∈ (fiberPosterior setup.initialLaw signal value).support

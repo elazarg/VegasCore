@@ -35,7 +35,7 @@ theorem run_update_normalizeDisclosureProfile [Finite Player]
   unfold Setup.run
   apply bind_congr_on_support _
   intro initial _
-  let config := setup.initialConfig initial
+  let config := Config.initial initial
   let normalized := normalizeDisclosureProfile setup.program []
     (Revelations.initial setup.context) original
   have own := normalizeDisclosures_runFrom setup.program
@@ -50,7 +50,7 @@ theorem run_update_normalizeDisclosureProfile [Finite Player]
     · subst player
       simp only [Function.update_self, normalizeDisclosureProfile]
     · simp only [Function.update_of_ne same, normalized, normalizeDisclosureProfile, config,
-        Setup.initialConfig]
+        Config.initial]
   change SourceProgram.run setup.program (Function.update normalized who policy) initial =
     SourceProgram.run setup.program (Function.update original who policy) initial
   unfold SourceProgram.run

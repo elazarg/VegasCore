@@ -45,12 +45,12 @@ theorem intended_of_history (wellFormed : setup.WellFormed) :
       cases before with
       | none =>
           change some point ∈ (setup.initialLaw.map fun initial => some
-            (ProtocolState.entry setup.program (setup.initialConfig initial))).support
+            (ProtocolState.entry setup.program (Config.initial initial))).support
             at realized
           obtain ⟨initial, supported, same⟩ := (PMF.mem_support_map_iff _ _ _).mp realized
           cases Option.some.inj same
           exact ProtocolState.intended_entry setup.program _
-            (setup.initialConfig_intended wellFormed supported)
+            (Config.initial_intended wellFormed supported)
             (wellFormed.guardsSatisfiable initial supported)
       | some current =>
           change some point ∈ ((ProtocolState.step setup.program current joint).map some).support

@@ -34,7 +34,7 @@ theorem source_initial_traffic_eq
     {deadline : (serviceGraph setup mode).EventId → Nat}
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     (focal : Player) (left right : State L setup.context)
-    (same : (setup.initialConfig left).view focal = (setup.initialConfig right).view focal) :
+    (same : (Config.initial left).view focal = (Config.initial right).view focal) :
     (serviceRuntime setup mode deadline).bindingTraffic leaks focal
         (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks)
           (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
@@ -77,13 +77,13 @@ theorem source_initial_memory_factorization
     (focal : Player) :
     ∃ noise : DecisionView focal setup.context → PMF _,
       setup.initialLaw.map (fun initial =>
-        ((setup.initialConfig initial, setup.initialConfig initial),
+        ((Config.initial initial, Config.initial initial),
           (serviceRuntime setup mode deadline).bindingTraffic leaks focal
             (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks)
               (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
                 (setup.eventInputs initial))))) =
       (setup.initialLaw.map fun initial =>
-        (setup.initialConfig initial, setup.initialConfig initial)).bind fun pair =>
+        (Config.initial initial, Config.initial initial)).bind fun pair =>
           (noise (pair.1.view focal)).map fun extra => (pair, extra) := by
   classical
   let read := fun initial : State L setup.context =>
@@ -93,17 +93,17 @@ theorem source_initial_memory_factorization
             (setup.eventInputs initial)))
   let noise := fun view : DecisionView focal setup.context =>
     if present : ∃ initial ∈ setup.initialLaw.support,
-        (setup.initialConfig initial).view focal = view then
+        (Config.initial initial).view focal = view then
       PMF.pure (read present.choose)
     else PMF.pure (read setup.initialLaw.support_nonempty.choose)
   refine ⟨noise, ?_⟩
   rw [PMF.bind_map]
   change setup.initialLaw.bind (fun initial => PMF.pure
-      ((setup.initialConfig initial, setup.initialConfig initial), read initial)) = _
+      ((Config.initial initial, Config.initial initial), read initial)) = _
   apply bind_congr_on_support _
   intro initial supported
   have present : ∃ other ∈ setup.initialLaw.support,
-      (setup.initialConfig other).view focal = (setup.initialConfig initial).view focal :=
+      (Config.initial other).view focal = (Config.initial initial).view focal :=
     ⟨initial, supported, rfl⟩
   simp only [noise, Function.comp_apply, dite_eq_left present, PMF.pure_map]
   rw [show read initial = read present.choose from

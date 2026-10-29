@@ -2,98 +2,168 @@
 
 import Vegas.Expr.Simple
 import Vegas.Source.Semantics
-import Vegas.Pending.ExclusionApplication
 
-/-! # A withheld opening followed by a successful opening
-
-The source evaluator permits an owner to resume disclosure after a failure.
-The exact laws below separate that behavior from permanent withholding. The
-runtime trigger lemmas distinguish accepted opaque bindings from expiry.
--/
+/-! # Whole-run absorbing failure and hidden unopenable bindings -/
 
 noncomputable section
 
 namespace VegasTests
 
-open Vegas Vegas.SourceProgram Vegas.EventGraphRuntime
-  GameTheory.Math.Probability
+open Vegas Vegas.SourceProgram GameTheory.Math.Probability
 
-private inductive Owner where
-  | alice
-  deriving DecidableEq
+private abbrev sourceBindings : SourceCtx Unit simpleExpr :=
+  [(1, .commitment () .bool), (0, .commitment () .bool)]
 
-private abbrev initialContext : SourceCtx Owner simpleExpr :=
-  [(1, .commitment .alice .bool), (0, .commitment .alice .bool)]
+private def openGuard {Γ : SourceCtx Unit simpleExpr} (bindingName : VarId) :
+    SourceGuard simpleExpr Γ () bindingName .bool where
+  schema := []
+  schemaNames := by decide
+  subjectFresh := by simp
+  code := .constBool true
+  reads := fun member => nomatch member
 
-private def twoOpenings : SourceProgram Owner simpleExpr initialContext {0, 1} :=
-  .reveal 2 .alice 0 (by decide) (.there .here) (by decide) <|
-  .reveal 3 .alice 1 (by decide) (.there .here) (by decide) <|
+private def twoOpenings : SourceProgram Unit simpleExpr sourceBindings {0, 1} :=
+  .reveal 2 () 0 (by decide) (.there .here) (by decide) <|
+  .reveal 3 () 1 (by decide) (.there .here) (by decide) <|
   .ret []
 
-private def initial : State simpleExpr initialContext :=
-  Env.cons (.success true) (Env.cons (.success true) (Env.empty (CellVal simpleExpr)))
+private def withholdThenOpen : BehavioralProfile twoOpenings :=
+  fun _ => (fun _ _ _ => PMF.pure false, fun _ _ _ => PMF.pure true, PUnit.unit)
 
-private def withholdingThen (openSecond : Bool) : BehavioralProfile twoOpenings :=
-  fun _ => (fun _ _ => PMF.pure false,
-    (fun _ _ => PMF.pure openSecond, PUnit.unit))
+private def initialBindings : State simpleExpr sourceBindings :=
+  Env.cons (.success true) (Env.cons (.success false) (Env.empty (CellVal simpleExpr)))
 
-private def publications (state : State simpleExpr twoOpenings.terminalCtx) :
-    PublicationResult Bool × PublicationResult Bool :=
-  (state.get (.there .here), state.get .here)
+private def openingSummary (final : Config Unit simpleExpr twoOpenings.terminalCtx) :=
+  (final.state.get (.there .here), final.state.get .here, final.defaulted, final.history ())
 
-private def final (openSecond : Bool) : State simpleExpr twoOpenings.terminalCtx :=
-  Env.cons (if openSecond then .success true else .failure)
-    (Env.cons .failure initial)
+/-- A second prescribed disclosure never runs after the first public failure. -/
+example : (twoOpenings.run withholdThenOpen initialBindings).map openingSummary =
+    PMF.pure (PublicationResult.failure, PublicationResult.failure, ({()} : Finset Unit),
+      [OwnAction.reveal () 0 false]) := by
+  simp only [SourceProgram.run, runFrom, twoOpenings, withholdThenOpen, afterReveal,
+    revealKernel, Config.initial, Config.view, revealSuccessor,
+    Registry.completedBy, Registry.weaken, PublicationResult.isFailure,
+    Config.defaulted, DecisionView.defaulted, DefaultHistory.defaulted, DefaultHistory.record]
+  simp [PMF.pure_map, openingSummary, Config.defaulted, DefaultHistory.defaulted]
 
-private theorem run_twoOpenings (openSecond : Bool) :
-    twoOpenings.run (withholdingThen openSecond) initial = PMF.pure (final openSecond) := by
-  simp only [SourceProgram.run, twoOpenings, withholdingThen, runFrom,
-    revealKernel, afterReveal, PMF.pure_bind]
-  cases openSecond <;> rfl
+private def twoBindings : SourceProgram Unit simpleExpr [] ∅ :=
+  .commit 0 () (by decide) (openGuard 0) <|
+  .commit 1 () (by decide) (openGuard 1) <|
+  .reveal 2 () 0 (by decide) (.there .here) (by decide) <|
+  .reveal 3 () 1 (by decide) (.there .here) (by decide) <|
+  .ret []
 
-/-- The source evaluator admits successful disclosure after the same owner's
-earlier withheld disclosure. -/
-theorem source_can_open_after_withholding :
-    (twoOpenings.run (withholdingThen true) initial).map publications =
-      PMF.pure (.failure, .success true) := by
-  rw [run_twoOpenings, PMF.pure_map]
+private def omitThenBind : BehavioralProfile twoBindings :=
+  fun _ => (fun _ _ _ => PMF.pure none,
+    fun _ _ _ => PMF.pure (some (.success true)),
+    fun _ _ _ => PMF.pure true, fun _ _ _ => PMF.pure true, PUnit.unit)
+
+private def bindingSummary (final : Config Unit simpleExpr twoBindings.terminalCtx) :=
+  (final.state.get (.there (.there (.there .here))),
+    final.state.get (.there (.there .here)), final.state.get (.there .here),
+    final.state.get .here, final.defaulted, final.history ())
+
+/-- Binding omission suppresses every later own binding and opening callback. -/
+example : (twoBindings.run omitThenBind (Env.empty (CellVal simpleExpr))).map bindingSummary =
+    PMF.pure (PublicationResult.failure, PublicationResult.failure,
+      PublicationResult.failure, PublicationResult.failure, ({()} : Finset Unit),
+      [OwnAction.commit (L := simpleExpr) () 0 .bool none]) := by
+  simp only [SourceProgram.run, runFrom, twoBindings, omitThenBind, afterCommit, afterReveal,
+    commitKernel, revealKernel, Config.initial, Config.view, commitSuccessor, revealSuccessor,
+    Registry.completedBy, Registry.weaken, PublicationResult.isFailure,
+    Config.defaulted, DecisionView.defaulted, DefaultHistory.defaulted, DefaultHistory.record]
+  simp [PMF.pure_map, bindingSummary, Config.defaulted, DefaultHistory.defaulted]
+
+private def unusableThenBind : BehavioralProfile twoBindings :=
+  fun _ => (fun _ _ _ => PMF.pure (some .failure),
+    fun _ _ _ => PMF.pure (some (.success true)),
+    fun _ _ _ => PMF.pure true, fun _ _ _ => PMF.pure true, PUnit.unit)
+
+/-- An accepted unusable binding permits a later binding before its failed opening. -/
+example : (twoBindings.run unusableThenBind (Env.empty (CellVal simpleExpr))).map bindingSummary =
+    PMF.pure (PublicationResult.failure, PublicationResult.success true,
+      PublicationResult.failure, PublicationResult.failure, ({()} : Finset Unit),
+      [OwnAction.commit (L := simpleExpr) () 0 .bool (some .failure),
+        OwnAction.commit (L := simpleExpr) () 1 .bool (some (.success true)),
+        OwnAction.reveal () 0 true]) := by
+  simp only [SourceProgram.run, runFrom, twoBindings, unusableThenBind, afterCommit, afterReveal,
+    commitKernel, revealKernel, Config.initial, Config.view, commitSuccessor, revealSuccessor,
+    Registry.completedBy, Obligation.accepts, openGuard,
+    SourceGuard.accepts, Registry.weaken, PublicationResult.isFailure,
+    Config.defaulted, DecisionView.defaulted, DefaultHistory.defaulted, DefaultHistory.record]
+  simp [PMF.pure_map, bindingSummary, Config.defaulted, DefaultHistory.defaulted]
+
+/-- Hidden setup bindings do not publish an initial default. -/
+example : (Config.initial (Env.cons (.success true)
+      (Env.cons (PublicationResult.failure : PublicationResult Bool)
+        (Env.empty (CellVal simpleExpr))) : State simpleExpr sourceBindings)).defaulted = ∅ :=
   rfl
 
-/-- Permanent withholding changes an observable source law. -/
-theorem source_permanent_withholding_changes_law :
-    (twoOpenings.run (withholdingThen true) initial).map publications ≠
-      (twoOpenings.run (withholdingThen false) initial).map publications := by
-  rw [source_can_open_after_withholding]
-  have silent : (twoOpenings.run (withholdingThen false) initial).map publications =
-      PMF.pure (.failure, .failure) := by
-    rw [run_twoOpenings, PMF.pure_map]
-    rfl
-  rw [silent]
+/-- Admitting an unusable binding has no immediate public default effect. -/
+example : (commitSuccessor 0 (openGuard 0)
+      (Config.initial (Env.empty (CellVal simpleExpr))) (some .failure)).defaulted = ∅ := by
+  exact commitSuccessor_unopenable_opaque 0 (openGuard 0) _
+
+end VegasTests
+
+namespace VegasTests
+
+open Vegas Vegas.SourceProgram
+
+private def acceptGuard {Γ : SourceCtx Bool simpleExpr} (owner : Bool) (binding : VarId) :
+    SourceGuard simpleExpr Γ owner binding .bool where
+  schema := []
+  schemaNames := by decide
+  subjectFresh := by simp
+  code := .constBool true
+  reads := fun member => nomatch member
+
+private abbrev AliceCtx : SourceCtx Bool simpleExpr := [(0, .commitment false .bool)]
+private abbrev BobCtx : SourceCtx Bool simpleExpr :=
+  [(1, .commitment true .bool), (0, .commitment false .bool)]
+private abbrev OpenCtx : SourceCtx Bool simpleExpr :=
+  [(2, .publication .bool), (1, .commitment true .bool), (0, .commitment false .bool)]
+
+private def aliceBinding (choice : Option (PublicationResult Bool)) :
+    Config Bool simpleExpr AliceCtx :=
+  commitSuccessor 0 (acceptGuard false 0)
+    (Config.initial (Env.empty (CellVal simpleExpr))) choice
+
+private def bobBinding (choice : Option (PublicationResult Bool)) :
+    Config Bool simpleExpr BobCtx :=
+  commitSuccessor 1 (acceptGuard true 1) (aliceBinding choice) (some (.success false))
+
+private def bobAfterOpening (choice : Option (PublicationResult Bool)) :
+    DecisionView true OpenCtx :=
+  (revealSuccessor 2 (.there .here) (bobBinding choice) true).view true
+
+/-- Bob observes whether Alice defaulted before his binding. -/
+example : (aliceBinding none).view true ≠ (aliceBinding (some .failure)).view true := by
   intro same
-  have mass := congrArg (fun law : PMF (PublicationResult Bool × PublicationResult Bool) =>
-    law (.failure, .success true)) same
-  simp [PMF.pure_apply] at mass
+  have status := congrArg DecisionView.defaulted same
+  change ({false} : Finset Bool) = ∅ at status
+  have contains : false ∈ ({false} : Finset Bool) := by simp
+  rw [status] at contains
+  exact Finset.notMem_empty false contains
 
-section RuntimeTriggers
+/-- Alice's failed opening eventually gives the two histories the same current status. -/
+example : (bobAfterOpening none).defaulted = (bobAfterOpening (some .failure)).defaulted := rfl
 
-variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {graph : Vegas.EventGraph Player L}
+/-- Bob's current typed observation and own chosen action list can also coincide. -/
+example : (bobAfterOpening none).observation = (bobAfterOpening (some .failure)).observation ∧
+    (bobAfterOpening none).history = (bobAfterOpening (some .failure)).history := by
+  constructor <;> rfl
 
-/-- Accepting a commitment does not itself exclude its owner, independently
-of the hidden binding result. -/
-theorem accepted_binding_does_not_exclude (state : RecoveryState graph)
-    (event : graph.EventId) (handle : Handle graph) (native : State graph) :
-    (state.inclusionResult (.commitment event handle) native).excluded = state.excluded := rfl
+/-- The public history keeps the earlier omission distinct from the later failed opening. -/
+example : (bobAfterOpening none).defaults.events = [none, none, some false] ∧
+    (bobAfterOpening (some .failure)).defaults.events = [some false, none, none] := by
+  constructor <;> rfl
 
-/-- Completing an owned expiry publicly excludes that owner. -/
-theorem completed_expiry_excludes_owner (state : RecoveryState graph)
-    (event : graph.EventId) (native : State graph) (owner : Player)
-    (unfinished : event ∉ state.native.config.cut.completed)
-    (completed : event ∈ native.config.cut.completed) (owned : graph.actor? event = some owner) :
-    (state.environmentResult (.expire event) native).excluded = insert owner state.excluded := by
-  simp only [RecoveryState.environmentResult, unfinished, not_false_eq_true, completed,
-    and_self, ↓reduceIte, RecoveryState.excludeEvent, owned]
-
-end RuntimeTriggers
+/-- Retaining public timing prevents the two later views from merging. -/
+example : bobAfterOpening none ≠ bobAfterOpening (some .failure) := by
+  intro same
+  have record := congrArg (fun view : DecisionView true OpenCtx => view.defaults.events) same
+  change [none, none, some false] = [some false, none, none] at record
+  cases record
 
 end VegasTests

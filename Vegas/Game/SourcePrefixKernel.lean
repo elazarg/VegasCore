@@ -28,7 +28,7 @@ theorem encoded_prefix_state (setup : Setup (Player := Player) (L := L))
       (count + 1)).map History.state =
     setup.initialLaw.bind fun initial =>
       ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program profile))^[count]
-        (PMF.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).map
+        (PMF.pure (ProtocolState.entry setup.program (Config.initial initial)))).map
           some := by
   rw [InformationModel.runBehavioral, setup.runBehavioralFrom_state]
   change (fun law => law.bind (setup.behavioralStateStep admission

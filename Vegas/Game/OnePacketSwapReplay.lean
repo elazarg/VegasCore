@@ -389,7 +389,7 @@ theorem intendedHistory?_mapTrace {first second : setup.intendedProtocol.History
           exact (Option.some.inj this).symm
         have swappedDecoded : (decodedPoint setup next.execution.application.config).map
             ((CellSwap.between setup.program p q).protocolState setup.program) =
-            some (ProtocolState.entry setup.program (setup.initialConfig initialValues)) := by
+            some (ProtocolState.entry setup.program (Config.initial initialValues)) := by
           rw [← decodedPoint_betweenPairs (publicAgree := publicAgree) (succeed := succeed),
             swappedConfig, ← initialStateEq, decodedPoint_initial]
         have reaches : replay.state.map
@@ -398,7 +398,7 @@ theorem intendedHistory?_mapTrace {first second : setup.intendedProtocol.History
               (actingJoint setup previous'.state none)).support := by
           rw [previousNone, replayStateEq, swappedDecoded]
           change _ ∈ (setup.initialLaw.map fun initial =>
-            some (ProtocolState.entry setup.program (setup.initialConfig initial))).support
+            some (ProtocolState.entry setup.program (Config.initial initial))).support
           exact (PMF.mem_support_map_iff _ _ _).mpr ⟨initialValues, valuesMember, rfl⟩
         obtain ⟨image, extended, imagePrefix, imageLength⟩ := extendIntended?_between
           (admission := CommitmentInterface.forfeiture setup.program) firstState secondState

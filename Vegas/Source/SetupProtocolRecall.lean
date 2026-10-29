@@ -6,12 +6,9 @@ import GameTheory.Protocol.DecisionRecall
 
 /-! # Perfect recall of the source protocol
 
-A source view keeps the player's own action list, and
-`Vegas.SourceProgram.ProtocolView.entryView` recovers the view at the start of
-every instruction already passed. The record of a player's own moves, each with
-the view it was taken at, is therefore a function of the current view
-(`Vegas.SourceProgram.ProtocolView.ownPlay`). Hence the setup protocol has
-perfect recall, and decision recall, under every commitment interface.
+Every source view recovers earlier decision views and actual own choices.
+Automatic instructions record no strategic choice. Consequently source setup
+protocols have perfect recall and decision recall under every commitment interface.
 -/
 
 noncomputable section
@@ -37,16 +34,18 @@ def ownPlay (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} �
   | _, _, .commit _ owner _ _ next, view =>
       view.elim (fun _ => []) fun later =>
         (ownPlay who next later).map (Prod.map Sum.inr id) ++
-          if owner = who then
-            ((entryView who next later).2.getLast?.map fun action =>
+          if owner = who ∧
+              who ∉ ((entryView who next later).back (decide (owner = who))).defaulted then
+            ((entryView who next later).history.getLast?.map fun action =>
               (Sum.inl ((entryView who next later).back (decide (owner = who))),
                 action)).toList
           else []
   | _, _, .reveal _ owner _ _ _ _ next, view =>
       view.elim (fun _ => []) fun later =>
         (ownPlay who next later).map (Prod.map Sum.inr id) ++
-          if owner = who then
-            ((entryView who next later).2.getLast?.map fun action =>
+          if owner = who ∧
+              who ∉ ((entryView who next later).back (decide (owner = who))).defaulted then
+            ((entryView who next later).history.getLast?.map fun action =>
               (Sum.inl ((entryView who next later).back (decide (owner = who))),
                 action)).toList
           else []
@@ -104,15 +103,25 @@ theorem ownPlay_step (who : Player) : {Γ : SourceCtx Player L} → {O : Finset 
           subst after
           by_cases same : owner = who
           · subst who
-            cases chosen : joint owner with
-            | none =>
-                rw [chosen] at legal
-                exact (legal rfl).elim
-            | some action =>
-                rw [chosen] at legal
-                obtain ⟨_, choice, _, rfl⟩ := legal
-                simp [ProtocolState.observe, ownPlay, Config.view, commitSuccessor]
-          · rw [eq_none_of_actor_ne who legal (by simpa [actor, ProtocolState.observe] using same)]
+            by_cases inactive : owner ∈ config.defaults.defaulted
+            · have idle := eq_none_of_actor_ne owner legal
+                (by simp [actor, ProtocolState.observe, Config.defaulted, inactive])
+              simp [ProtocolState.observe, ownPlay, Config.view, commitSuccessor,
+                inactive, Config.defaulted, DecisionView.defaulted, DecisionView.back,
+                idle]
+            · cases chosen : joint owner with
+              | none =>
+                  rw [chosen] at legal
+                  exact (legal (by
+                    simp [actor, ProtocolState.observe, Config.defaulted, inactive])).elim
+              | some action =>
+                  rw [chosen] at legal
+                  obtain ⟨_, choice, _, rfl⟩ := legal
+                  simp [ProtocolState.observe, ownPlay, Config.view, commitSuccessor,
+                    inactive, Config.defaulted, DecisionView.defaulted, DecisionView.back]
+          · rw [eq_none_of_actor_ne who legal (by
+              simp only [actor, ProtocolState.observe, Sum.elim_inl]
+              split <;> simp_all)]
             simp [ProtocolState.observe, ownPlay, same]
       | inr rest =>
           simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map,
@@ -132,16 +141,26 @@ theorem ownPlay_step (who : Player) : {Γ : SourceCtx Player L} → {O : Finset 
           subst after
           by_cases same : owner = who
           · subst who
-            cases chosen : joint owner with
-            | none =>
-                rw [chosen] at legal
-                exact (legal rfl).elim
-            | some action =>
-                rw [chosen] at legal
-                obtain ⟨_, disclose, rfl⟩ := legal
-                simp [ProtocolState.observe, ownPlay, Config.view, revealSuccessor,
-                  OwnAction.disclosure]
-          · rw [eq_none_of_actor_ne who legal (by simpa [actor, ProtocolState.observe] using same)]
+            by_cases inactive : owner ∈ config.defaults.defaulted
+            · have idle := eq_none_of_actor_ne owner legal
+                (by simp [actor, ProtocolState.observe, Config.defaulted, inactive])
+              simp [ProtocolState.observe, ownPlay, Config.view, revealSuccessor,
+                inactive, Config.defaulted, DecisionView.defaulted, DecisionView.back,
+                idle]
+            · cases chosen : joint owner with
+              | none =>
+                  rw [chosen] at legal
+                  exact (legal (by
+                    simp [actor, ProtocolState.observe, Config.defaulted, inactive])).elim
+              | some action =>
+                  rw [chosen] at legal
+                  obtain ⟨_, disclose, rfl⟩ := legal
+                  simp [ProtocolState.observe, ownPlay, Config.view, revealSuccessor,
+                    inactive, Config.defaulted, DecisionView.defaulted, DecisionView.back,
+                    OwnAction.disclosure]
+          · rw [eq_none_of_actor_ne who legal (by
+              simp only [actor, ProtocolState.observe, Sum.elim_inl]
+              split <;> simp_all)]
             simp [ProtocolState.observe, ownPlay, same]
       | inr rest =>
           simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map,

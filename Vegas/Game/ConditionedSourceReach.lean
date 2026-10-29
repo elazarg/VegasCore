@@ -69,10 +69,10 @@ theorem conditionInitial_behavioralJoint_probability
 omit [Fintype Player] in
 private theorem initialEntry_injective :
     Function.Injective (fun initial : State L setup.context =>
-      some (ProtocolState.entry setup.program (setup.initialConfig initial))) := by
+      some (ProtocolState.entry setup.program (Config.initial initial))) := by
   intro first second same
   have bases := congrArg (fun point => point.map (ProtocolState.base setup.program)) same
-  simpa only [Option.map_some, ProtocolState.base_entry, Option.some.injEq, initialConfig]
+  simpa only [Option.map_some, ProtocolState.base_entry, Option.some.injEq, Config.initial]
     using bases
 
 omit [Fintype Player] in
@@ -84,16 +84,16 @@ theorem conditionInitial_protocolStep_initial_scale
     (joint : Player → Option (OwnAction Player L)) :
     (setup.initialLaw.map signal) value *
         (setup.conditionInitial signal value).protocolStep none joint
-          (some (ProtocolState.entry setup.program (setup.initialConfig initial))) =
+          (some (ProtocolState.entry setup.program (Config.initial initial))) =
       setup.protocolStep none joint
-        (some (ProtocolState.entry setup.program (setup.initialConfig initial))) := by
+        (some (ProtocolState.entry setup.program (Config.initial initial))) := by
   change (setup.initialLaw.map signal) value *
     ((fiberPosterior setup.initialLaw signal value).map
-      (fun initial => some (ProtocolState.entry setup.program (setup.initialConfig initial))))
-        (some (ProtocolState.entry setup.program (setup.initialConfig initial))) = _
+      (fun initial => some (ProtocolState.entry setup.program (Config.initial initial))))
+        (some (ProtocolState.entry setup.program (Config.initial initial))) = _
   rw [pmf_map_apply_of_injective _ (initialEntry_injective setup),
     show setup.protocolStep none joint = setup.initialLaw.map
-      (fun initial => some (ProtocolState.entry setup.program (setup.initialConfig initial)))
+      (fun initial => some (ProtocolState.entry setup.program (Config.initial initial)))
         from rfl,
     pmf_map_apply_of_injective _ (initialEntry_injective setup)]
   exact setup.conditionInitial_initialLaw_scale signal value supported initial same
@@ -134,7 +134,7 @@ theorem conditionInitial_stepProb_initial
           (fun who => setup.conditionInitial_policy signal value who (policies who)) trace
             ⟨joint, legal⟩ after := by
   change after ∈ ((fiberPosterior setup.initialLaw signal value).map
-    (fun initial => some (ProtocolState.entry setup.program (setup.initialConfig initial)))).support
+    (fun initial => some (ProtocolState.entry setup.program (Config.initial initial)))).support
       at realized
   obtain ⟨initial, present, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp realized
   have same := (mem_support_fiberPosterior supported present).1

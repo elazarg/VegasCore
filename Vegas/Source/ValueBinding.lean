@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Source.Setup
+import Vegas.Source.ObservationRecall
 
 /-! # Policies that bind a value
 
@@ -54,16 +55,6 @@ theorem valueBinding_bindingPolicy (who : Player) :
   | _, _, .commit _ _ _ _ k =>
       ⟨fun _ _ => by simp [bindingPolicy], valueBinding_bindingPolicy who k⟩
   | _, _, .reveal _ _ _ _ _ _ k => valueBinding_bindingPolicy who k
-
-/-- The decision view one step earlier: drop the newest cell, and drop the
-newest own action when that step was this player's own. How far back a view has
-to be carried is fixed by position in the program, which is why a pure policy
-can recompute a decision it made earlier instead of remembering it. -/
-def DecisionView.back {who : Player} {Γ : SourceCtx Player L} {x : VarId}
-    {c : CellTy Player L} (ownStep : Bool) (view : DecisionView who ((x, c) :: Γ)) :
-    DecisionView who Γ :=
-  (⟨fun _ cell h => view.1.cells _ cell (.there h)⟩,
-    if ownStep then view.2.dropLast else view.2)
 
 /-- Which private cells hold a binding the translation put there, as a function
 of the translated player's current view. -/
@@ -250,18 +241,6 @@ structure Patched {who : Player} {Γ : SourceCtx Player L}
   /-- The carried view map really does undo the replacement. -/
   unpatchEq : unpatch (sourceObserve who state', history' who) =
     (sourceObserve who state, history who)
-
-omit [IExpr.ResultTypes L] in
-@[simp] theorem back_sourceObserve {who : Player} {Γ : SourceCtx Player L} {x : VarId}
-    {c : CellTy Player L} (value : CellVal L c) (state : State L Γ)
-    (history : List (OwnAction Player L)) (ownStep : Bool) :
-    DecisionView.back (who := who) (x := x) ownStep
-        (sourceObserve who (Env.cons (x := x) value state), history) =
-      (sourceObserve who state, if ownStep then history.dropLast else history) := by
-  refine Prod.ext ?_ rfl
-  refine congrArg SourceObservation.mk ?_
-  funext n cell h
-  cases cell <;> rfl
 
 /-! ## Invariant preservation, step by step -/
 

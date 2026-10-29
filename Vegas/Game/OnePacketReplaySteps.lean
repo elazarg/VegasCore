@@ -32,13 +32,13 @@ point of that draw. -/
 theorem decodedPoint_initial (initial : State L setup.context) :
     decodedPoint setup (EventGraphRuntime.State.initial (graph := graph setup)
       (setup.eventInputs initial)).config =
-      some (ProtocolState.entry setup.program (setup.initialConfig initial)) :=
+      some (ProtocolState.entry setup.program (Config.initial initial)) :=
   decodedPoint_eq (SourceResidual.initial setup (failureProfile setup.program) initial)
 
 /-- Distinct setup draws have distinct entry points. -/
 theorem entry_initialConfig_injective :
     Function.Injective fun initial : State L setup.context =>
-      some (ProtocolState.entry setup.program (setup.initialConfig initial)) := by
+      some (ProtocolState.entry setup.program (Config.initial initial)) := by
   intro first second same
   have configs := ProtocolState.entry_injective setup.program (Option.some.inj same)
   exact congrArg Config.state configs
@@ -65,8 +65,8 @@ theorem initialMass_eq (initial : State L setup.context) :
         (setup.eventInputs initial))).toReal := by
   rw [decodedPoint_initial]
   change ((setup.initialLaw.map fun initial =>
-      some (ProtocolState.entry setup.program (setup.initialConfig initial)))
-        (some (ProtocolState.entry setup.program (setup.initialConfig initial)))).toReal =
+      some (ProtocolState.entry setup.program (Config.initial initial)))
+        (some (ProtocolState.entry setup.program (Config.initial initial)))).toReal =
     ((setup.initialLaw.map fun initial => EventGraphRuntime.State.initial (graph := graph setup)
       (setup.eventInputs initial)) (EventGraphRuntime.State.initial (graph := graph setup)
         (setup.eventInputs initial))).toReal

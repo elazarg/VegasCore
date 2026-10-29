@@ -58,9 +58,9 @@ private theorem initial_native_boundary (wellFormed : setup.WellFormed)
   obtain ⟨inputs, supported, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp member
   let residual := SourceResidual.initial setup profile inputs
   have intended : ProtocolState.Intended setup.program
-      (ProtocolState.entry setup.program (setup.initialConfig inputs)) :=
+      (ProtocolState.entry setup.program (Config.initial inputs)) :=
     ProtocolState.intended_entry setup.program _
-      (setup.initialConfig_intended wellFormed supported)
+      (Config.initial_intended wellFormed supported)
       (wellFormed.guardsSatisfiable inputs supported)
   refine ⟨_, ?_, residual.decode, intended⟩
   apply reachedBoundary_of_onePacket bounds start

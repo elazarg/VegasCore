@@ -229,7 +229,7 @@ theorem decodedState_intendedFor_or_owes (wellFormed : setup.WellFormed) (who : 
     menu horizon scheduler trace control current
   intro initial member
   exact Or.inl (ProtocolState.intendedFor_entry setup.program _
-    ((setup.initialConfig_intended wellFormed member).intendedFor who))
+    ((Config.initial_intended wellFormed member).intendedFor who))
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}

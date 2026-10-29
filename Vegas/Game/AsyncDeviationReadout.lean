@@ -83,7 +83,7 @@ theorem sourceServiceClientProfile_run [Finite Player]
   unfold Setup.run
   apply bind_congr_on_support _
   intro initial _
-  exact normalizeDisclosureProfile_runFrom setup.program original (setup.initialConfig initial)
+  exact normalizeDisclosureProfile_runFrom setup.program original (Config.initial initial)
 
 end Clients
 
@@ -254,14 +254,14 @@ theorem asyncDeviation_initialized_factorization
           (setup.initialLaw.bind fun initial =>
             ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program
               (Function.update profile who policy)))^[eventCount setup.program]
-              (PMF.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).map
+              (PMF.pure (ProtocolState.entry setup.program (Config.initial initial)))).map
                 some).bind fun state =>
               (noise (setup.protocolObserve who state)).map fun extra => (state, extra) := by
   intro players
   let app := serviceApplication setup mode deadline leaks
   let Seed := {initial // initial ∈ setup.initialLaw.support}
   let prior : PMF Seed := pmfToSubtype setup.initialLaw (fun _ member => member)
-  let source := fun seed : Seed => setup.initialConfig seed.val
+  let source := fun seed : Seed => Config.initial seed.val
   let execution := fun seed : Seed => ReactiveApplication.Execution.initial app
     (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
       (setup.eventInputs seed.val))
@@ -274,12 +274,12 @@ theorem asyncDeviation_initialized_factorization
     have projected := congrArg (PMF.map fun pair => (pair.1.1, pair.2)) initialFactor
     dsimp only [prior, source, execution]
     rw [map_pmfToSubtype setup.initialLaw (fun _ member => member)
-      (fun initial => (setup.initialConfig initial,
+      (fun initial => (Config.initial initial,
         (serviceRuntime setup mode deadline).bindingTraffic leaks who
           (ReactiveApplication.Execution.initial app
             (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
               (setup.eventInputs initial))))),
-      map_pmfToSubtype setup.initialLaw (fun _ member => member) setup.initialConfig]
+      map_pmfToSubtype setup.initialLaw (fun _ member => member) Config.initial]
     simpa only [PMF.map_comp, PMF.map_bind, PMF.bind_map, Function.comp_def]
       using projected
   have initialBoundary (seed : Seed) : CompletionBoundary setup leaks scheduler players 0
@@ -313,7 +313,7 @@ theorem asyncDeviation_initialized_factorization
   let sourcePrefix := fun initial : State L setup.context =>
     ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program
       (Function.update profile who policy)))^[eventCount setup.program]
-      (PMF.pure (ProtocolState.entry setup.program (setup.initialConfig initial)))).map some
+      (PMF.pure (ProtocolState.entry setup.program (Config.initial initial)))).map some
   have nativeLaw : prior.bind (fun seed => combined seed.val) =
       setup.initialLaw.bind combined := by
     refine (PMF.bind_map prior Subtype.val combined).symm.trans ?_

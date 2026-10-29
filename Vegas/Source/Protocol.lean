@@ -25,13 +25,13 @@ open Classical in
 totalizes the function: the execution protocol excludes incorrectly addressed
 actions through its availability predicate. -/
 def binding (owner : Player) (name : VarId) (payload : L.Ty)
-    (action : Option (OwnAction Player L)) : PublicationResult (L.Val payload) :=
+    (action : Option (OwnAction Player L)) : Option (PublicationResult (L.Val payload)) :=
   if found : ∃ choice, action = some (.commit owner name payload choice)
-  then found.choose else .failure
+  then found.choose else none
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
 @[simp] theorem binding_commit (owner : Player) (name : VarId) (payload : L.Ty)
-    (choice : PublicationResult (L.Val payload)) :
+    (choice : Option (PublicationResult (L.Val payload))) :
     binding owner name payload (some (.commit owner name payload choice)) = choice := by
   have found : ∃ value, some (OwnAction.commit owner name payload choice) =
       some (.commit owner name payload value) := ⟨choice, rfl⟩
@@ -106,36 +106,42 @@ theorem progress : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (state : ProtocolState program) →
     ∃ joint : Player → Option (OwnAction Player L), ∀ who,
       ProtocolView.menu who program admission (observe who program state) (joint who)
-  | _, _, .ret _, _, _ => ⟨fun _ => none, fun _ => by simp [ProtocolView.menu,
-      ProtocolView.actor]⟩
+  | _, _, .ret _, _, _ => ⟨fun _ => none, fun _ => by
+      simp [ProtocolView.menu, ProtocolView.actor]⟩
   | _, _, .sample _ _ _ next, admission, state => by
       cases state with
-      | inl config =>
-          exact ⟨fun _ => none, fun _ => by
-            simp [ProtocolView.menu, ProtocolView.actor, observe]⟩
+      | inl config => exact ⟨fun _ => none, fun _ => by
+          simp [ProtocolView.menu, ProtocolView.actor, observe]⟩
       | inr rest => exact progress next admission rest
   | _, _, .commit (payload := payload) name owner _ _ next, admission, state => by
       cases state with
       | inl config =>
-          refine ⟨fun who => if owner = who then
-            some (.commit owner name payload (.success (L.someValue payload))) else none, ?_⟩
-          intro who
-          by_cases same : owner = who
-          · simp only [same, ↓reduceIte, ProtocolView.menu, observe, Sum.elim_inl,
-              ProtocolView.actor, ProtocolView.available]
-            exact ⟨trivial, .success (L.someValue payload), trivial, rfl⟩
-          · simp [same, ProtocolView.menu, observe, ProtocolView.actor]
+          by_cases inactive : owner ∈ config.defaulted
+          · exact ⟨fun _ => none, fun _ => by
+              simp [ProtocolView.menu, ProtocolView.actor, observe, inactive]⟩
+          · refine ⟨fun who => if owner = who then
+              some (.commit owner name payload none) else none, ?_⟩
+            intro who
+            by_cases own : owner = who
+            · subst who
+              simp [ProtocolView.menu, ProtocolView.actor, ProtocolView.available, observe,
+                inactive, CommitmentAdmission.Admits]
+            · simp [ProtocolView.menu, ProtocolView.actor, observe, inactive, own]
       | inr rest => exact progress next (fun site => admission (some site)) rest
   | _, _, .reveal _ owner name _ _ _ next, admission, state => by
       cases state with
       | inl config =>
-          refine ⟨fun who => if owner = who then some (.reveal owner name false) else none, ?_⟩
-          intro who
-          by_cases same : owner = who
-          · simp only [same, ↓reduceIte, ProtocolView.menu, observe, Sum.elim_inl,
-              ProtocolView.actor, ProtocolView.available]
-            exact ⟨trivial, false, rfl⟩
-          · simp [same, ProtocolView.menu, observe, ProtocolView.actor]
+          by_cases inactive : owner ∈ config.defaulted
+          · exact ⟨fun _ => none, fun _ => by
+              simp [ProtocolView.menu, ProtocolView.actor, observe, inactive]⟩
+          · refine ⟨fun who => if owner = who then
+              some (.reveal owner name false) else none, ?_⟩
+            intro who
+            by_cases own : owner = who
+            · subst who
+              simp [ProtocolView.menu, ProtocolView.actor, ProtocolView.available, observe,
+                inactive]
+            · simp [ProtocolView.menu, ProtocolView.actor, observe, inactive, own]
       | inr rest => exact progress next admission rest
 
 end ProtocolState

@@ -106,7 +106,7 @@ omit [Fintype Player] in
 theorem owesFailure_entry_of_inputFailed {who : Player} (initial : State L setup.context)
     (failed : InputFailed setup who (setup.eventInputs initial)) :
     ProtocolState.OwesFailure who setup.program
-      (ProtocolState.entry setup.program (setup.initialConfig initial)) := by
+      (ProtocolState.entry setup.program (Config.initial initial)) := by
   obtain ⟨input, payload, layoutEq, failedValue⟩ := failed
   obtain ⟨name, kind, source, rfl⟩ := exists_inputId setup.context input
   have kindEq : cellField kind = .binding who payload :=

@@ -25,7 +25,7 @@ def BehavioralPolicy.Admitted {who : Player} : {Γ : SourceCtx Player L} → {O 
   | _, _, .ret _, _, _ => True
   | _, _, .sample _ _ _ next, admission, policy => Admitted next admission policy
   | _, _, .commit _ owner _ _ next, admission, policy =>
-      (∀ (own : owner = who) view choice, choice ∈ (policy.1 own view).support →
+      (∀ (own : owner = who) view active choice, choice ∈ (policy.1 own view active).support →
         (admission none).Admits choice) ∧
       Admitted next (fun site => admission (some site)) policy.2
   | _, _, .reveal _ _ _ _ _ _ next, admission, policy => Admitted next admission policy.2
@@ -40,13 +40,17 @@ def BehavioralPolicy.protocolAction {who : Player} :
   | _, _, .commit (payload := payload) name owner _ _ next => fun policy =>
       Sum.elim
         (fun view => if own : owner = who then
-          (policy.1 own view).map (fun choice => some (.commit owner name payload choice))
+          if active : who ∉ view.defaulted then
+            (policy.1 own view active).map (fun choice => some (.commit owner name payload choice))
+          else PMF.pure none
           else PMF.pure none)
         (protocolAction next policy.2)
   | _, _, .reveal _ owner name _ _ _ next => fun policy =>
       Sum.elim
         (fun view => if own : owner = who then
-          (policy.1 own view).map (fun disclose => some (.reveal owner name disclose))
+          if active : who ∉ view.defaulted then
+            (policy.1 own view active).map (fun disclose => some (.reveal owner name disclose))
+          else PMF.pure none
           else PMF.pure none)
         (protocolAction next policy.2)
 
@@ -72,10 +76,16 @@ theorem BehavioralPolicy.protocolAction_mem_menu {who : Player} :
       cases view with
       | inl current =>
           by_cases own : owner = who
-          · simp only [protocolAction, Sum.elim_inl, own, dite_true, PMF.support_map] at member
-            obtain ⟨choice, supported, rfl⟩ := member
-            exact ⟨by simp [ProtocolView.actor, own], choice,
-              permitted.1 own current choice supported, by simp [own]⟩
+          · by_cases active : who ∉ current.defaulted
+            · simp only [protocolAction, Sum.elim_inl, dite_eq_left own,
+                dite_eq_left active, PMF.support_map] at member
+              obtain ⟨choice, supported, rfl⟩ := member
+              exact ⟨by simp [ProtocolView.actor, own, active], choice,
+                permitted.1 own current active choice supported, by simp [own]⟩
+            · simp only [protocolAction, Sum.elim_inl, dite_eq_left own,
+                dite_eq_right active, PMF.mem_support_pure_iff _ _] at member
+              subst action
+              simp [ProtocolView.menu, ProtocolView.actor, own, active]
           · simp only [protocolAction, Sum.elim_inl, own, dite_false,
               PMF.mem_support_pure_iff _ _] at member
             subst action
@@ -87,9 +97,15 @@ theorem BehavioralPolicy.protocolAction_mem_menu {who : Player} :
       cases view with
       | inl current =>
           by_cases own : owner = who
-          · simp only [protocolAction, Sum.elim_inl, own, dite_true, PMF.support_map] at member
-            obtain ⟨disclose, _, rfl⟩ := member
-            exact ⟨by simp [ProtocolView.actor, own], disclose, by simp [own]⟩
+          · by_cases active : who ∉ current.defaulted
+            · simp only [protocolAction, Sum.elim_inl, dite_eq_left own,
+                dite_eq_left active, PMF.support_map] at member
+              obtain ⟨disclose, _, rfl⟩ := member
+              exact ⟨by simp [ProtocolView.actor, own, active], disclose, by simp [own]⟩
+            · simp only [protocolAction, Sum.elim_inl, dite_eq_left own,
+                dite_eq_right active, PMF.mem_support_pure_iff _ _] at member
+              subst action
+              simp [ProtocolView.menu, ProtocolView.actor, own, active]
           · simp only [protocolAction, Sum.elim_inl, own, dite_false,
               PMF.mem_support_pure_iff _ _] at member
             subst action
@@ -124,11 +140,12 @@ def BehavioralPolicy.fromProtocol {who : Player} :
   | _, _, .sample _ _ _ next, admission, policy =>
       fromProtocol next admission (fun view => policy (Sum.inr view))
   | _, _, .commit (payload := payload) name owner _ _ next, admission, policy =>
-      (fun _ view => (policy (Sum.inl view)).map
+      (fun _ view _active => (policy (Sum.inl view)).map
         (fun choice => OwnAction.binding owner name payload choice.1),
         fromProtocol next (fun site => admission (some site)) (fun view => policy (Sum.inr view)))
   | _, _, .reveal _ _ _ _ _ _ next, admission, policy =>
-      (fun _ view => (policy (Sum.inl view)).map (fun choice => OwnAction.disclosure choice.1),
+      (fun _ view _active =>
+        (policy (Sum.inl view)).map (fun choice => OwnAction.disclosure choice.1),
         fromProtocol next admission (fun view => policy (Sum.inr view)))
 
 theorem BehavioralPolicy.admitted_fromProtocol {who : Player} :
@@ -143,11 +160,11 @@ theorem BehavioralPolicy.admitted_fromProtocol {who : Player} :
       admitted_fromProtocol next admission (fun view => policy (Sum.inr view))
   | _, _, .commit _ owner _ _ next, admission, policy => by
       constructor
-      · intro own view choice member
+      · intro own view active choice member
         obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ member
         have legal := selected.2
         cases action : selected.1 with
-        | none => simp [ProtocolView.menu, ProtocolView.actor, action, own] at legal
+        | none => simp [ProtocolView.menu, ProtocolView.actor, action, own, active] at legal
         | some actionValue =>
             simp only [ProtocolView.menu, action, ProtocolView.available,
               Sum.elim_inl, Set.mem_ofPred_eq] at legal
@@ -168,19 +185,19 @@ theorem BehavioralPolicy.from_toProtocol {who : Player} :
       from_toProtocol next admission policy permitted
   | _, _, .commit _ _ _ _ next, admission, policy, permitted => by
       apply Prod.ext
-      · funext own view
+      · funext own view active
         dsimp only [fromProtocol]
         rw [toProtocol, map_pmfToSubtype]
-        simp only [protocolAction, Sum.elim_inl, dite_eq_left own,
+        simp only [protocolAction, Sum.elim_inl, dite_eq_left own, dite_eq_left active,
           PMF.map_comp, Function.comp_def, OwnAction.binding_commit]
         exact PMF.map_id _
       · exact from_toProtocol next (fun site => admission (some site)) policy.2 permitted.2
   | _, _, .reveal _ _ _ _ _ _ next, admission, policy, permitted => by
       apply Prod.ext
-      · funext own view
+      · funext own view active
         dsimp only [fromProtocol]
         rw [toProtocol, map_pmfToSubtype]
-        simp only [protocolAction, Sum.elim_inl, dite_eq_left own,
+        simp only [protocolAction, Sum.elim_inl, dite_eq_left own, dite_eq_left active,
           PMF.map_comp, Function.comp_def, OwnAction.disclosure]
         exact PMF.map_id _
       · exact from_toProtocol next admission policy.2 permitted
@@ -225,18 +242,24 @@ theorem BehavioralPolicy.protocolAction_fromProtocol {who : Player} :
       cases view with
       | inl current =>
           by_cases own : owner = who
-          · simp only [fromProtocol, protocolAction, Sum.elim_inl, dite_eq_left own,
-              PMF.map_comp]
-            apply map_congr_on_support _
-            intro choice _
-            have legal := choice.2
-            cases selected : choice.1 with
-            | none => simp [ProtocolView.menu, ProtocolView.actor, selected, own] at legal
-            | some action =>
-                simp only [ProtocolView.menu, selected, ProtocolView.available,
-                  Sum.elim_inl, Set.mem_ofPred_eq] at legal
-                obtain ⟨value, _, actionEq⟩ := legal.2
-                simp [selected, actionEq]
+          · by_cases active : who ∉ current.defaulted
+            · simp only [fromProtocol, protocolAction, Sum.elim_inl, dite_eq_left own,
+                dite_eq_left active,
+                PMF.map_comp]
+              apply map_congr_on_support _
+              intro choice _
+              have legal := choice.2
+              cases selected : choice.1 with
+              | none => simp [ProtocolView.menu, ProtocolView.actor, selected, own, active] at legal
+              | some action =>
+                  simp only [ProtocolView.menu, selected, ProtocolView.available,
+                    Sum.elim_inl, Set.mem_ofPred_eq] at legal
+                  obtain ⟨value, _, actionEq⟩ := legal.2
+                  simp [selected, actionEq]
+            · simp only [protocolAction, Sum.elim_inl, dite_eq_left own,
+                dite_eq_right active]
+              exact (protocolLaw_idle _ admission (Sum.inl current)
+                (by simp [ProtocolView.actor, own, active]) (policy (Sum.inl current))).symm
           · simp only [protocolAction, Sum.elim_inl, dite_eq_right own]
             exact (protocolLaw_idle _ admission (Sum.inl current)
               (by simp [ProtocolView.actor, own]) (policy (Sum.inl current))).symm
@@ -247,18 +270,24 @@ theorem BehavioralPolicy.protocolAction_fromProtocol {who : Player} :
       cases view with
       | inl current =>
           by_cases own : owner = who
-          · simp only [fromProtocol, protocolAction, Sum.elim_inl, dite_eq_left own,
-              PMF.map_comp]
-            apply map_congr_on_support _
-            intro choice _
-            have legal := choice.2
-            cases selected : choice.1 with
-            | none => simp [ProtocolView.menu, ProtocolView.actor, selected, own] at legal
-            | some action =>
-                simp only [ProtocolView.menu, selected, ProtocolView.available,
-                  Sum.elim_inl, Set.mem_ofPred_eq] at legal
-                obtain ⟨disclose, actionEq⟩ := legal.2
-                simp [selected, actionEq, OwnAction.disclosure]
+          · by_cases active : who ∉ current.defaulted
+            · simp only [fromProtocol, protocolAction, Sum.elim_inl, dite_eq_left own,
+                dite_eq_left active,
+                PMF.map_comp]
+              apply map_congr_on_support _
+              intro choice _
+              have legal := choice.2
+              cases selected : choice.1 with
+              | none => simp [ProtocolView.menu, ProtocolView.actor, selected, own, active] at legal
+              | some action =>
+                  simp only [ProtocolView.menu, selected, ProtocolView.available,
+                    Sum.elim_inl, Set.mem_ofPred_eq] at legal
+                  obtain ⟨disclose, actionEq⟩ := legal.2
+                  simp [selected, actionEq, OwnAction.disclosure]
+            · simp only [protocolAction, Sum.elim_inl, dite_eq_left own,
+                dite_eq_right active]
+              exact (protocolLaw_idle _ admission (Sum.inl current)
+                (by simp [ProtocolView.actor, own, active]) (policy (Sum.inl current))).symm
           · simp only [protocolAction, Sum.elim_inl, dite_eq_right own]
             exact (protocolLaw_idle _ admission (Sum.inl current)
               (by simp [ProtocolView.actor, own]) (policy (Sum.inl current))).symm
@@ -279,5 +308,45 @@ def behavioralPolicyEquiv {Γ : SourceCtx Player L} {O : Finset VarId}
     funext view
     apply pmf_map_injective Subtype.val_injective
     rw [BehavioralPolicy.toProtocol_map_val, BehavioralPolicy.protocolAction_fromProtocol]
+
+/-- Decoding the owner's commitment response gives exactly the evaluator's
+choice law, including automatic default without a strategic callback. -/
+theorem BehavioralPolicy.protocolAction_commit_binding {Γ : SourceCtx Player L}
+    {O : Finset VarId} {name : VarId} {owner : Player} {payload : L.Ty}
+    {fresh : name ∉ Γ.map Prod.fst} {guard : SourceGuard L Γ owner name payload}
+    {next : SourceProgram Player L ((name, .commitment owner payload) :: Γ) (insert name O)}
+    (profile : BehavioralProfile (.commit name owner fresh guard next))
+    (view : DecisionView owner Γ) :
+    ((profile owner).protocolAction (.commit name owner fresh guard next) (Sum.inl view)).map
+        (OwnAction.binding owner name payload) =
+      if inactive : owner ∈ view.defaulted then PMF.pure none
+        else commitKernel profile view inactive := by
+  by_cases inactive : owner ∈ view.defaulted
+  · simp [protocolAction, inactive, PMF.pure_map, OwnAction.binding]
+  · simp only [protocolAction, Sum.elim_inl, dite_true, not_false_eq_true,
+      inactive, dite_false, commitKernel, PMF.map_comp, Function.comp_def,
+      OwnAction.binding_commit]
+    exact PMF.map_id _
+
+/-- Decoding the owner's disclosure response gives exactly the evaluator's
+choice law, with automatic withholding after default. -/
+theorem BehavioralPolicy.protocolAction_reveal_disclosure {Γ : SourceCtx Player L}
+    {O : Finset VarId} {published name : VarId} {owner : Player} {payload : L.Ty}
+    {fresh : published ∉ Γ.map Prod.fst} {source : HasVar Γ name (.commitment owner payload)}
+    {unresolved : name ∈ O}
+    {next : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
+    (profile : BehavioralProfile (.reveal published owner name fresh source unresolved next))
+    (view : DecisionView owner Γ) :
+    ((profile owner).protocolAction
+        (.reveal published owner name fresh source unresolved next) (Sum.inl view)).map
+        OwnAction.disclosure =
+      if inactive : owner ∈ view.defaulted then PMF.pure false
+        else revealKernel profile view inactive := by
+  by_cases inactive : owner ∈ view.defaulted
+  · simp [protocolAction, inactive, PMF.pure_map, OwnAction.disclosure]
+  · simp only [protocolAction, Sum.elim_inl, dite_true, not_false_eq_true,
+      inactive, dite_false, revealKernel, PMF.map_comp, Function.comp_def,
+      OwnAction.disclosure]
+    exact PMF.map_id _
 
 end Vegas.SourceProgram

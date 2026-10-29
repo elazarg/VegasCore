@@ -1,19 +1,20 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Source.Basic
+import Vegas.Foundation.DefaultHistory
 import GameTheory.Core.Form
 
 /-! # Source policies and exact execution
 
-Observation-local policies choose immutable bindings and disclosure decisions.
+Policies decide only while their owner has not publicly defaulted.
 Execution follows source order and interprets chance through the exact finite
 law carried by source syntax. Each retained guard obligation is checked once, at
 the reveal that publishes the last of its inputs; a rejected check makes that
 publication fail. Execution produces the detailed terminal state, which is what
 the laws below are stated over. The public game interpretation projects to
 public results; the parameter interpretation additionally retains initial types.
-`evaluatePayoffs` is a separate, explicit settlement projection and does not
-itself impose utilities.
+The public terminal projection retains both typed values and default status.
+Executable transfers are evaluated separately from policy execution.
 -/
 
 noncomputable section
@@ -109,18 +110,25 @@ end SourceObserve
 
 
 namespace SourceProgram
-variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [resultTypes : IExpr.ResultTypes L]
 variable {Γ : SourceCtx Player L} {O : Finset VarId} {name x : VarId} {owner : Player}
 variable {payload : L.Ty} {c : CellTy Player L}
 
 inductive OwnAction (Player : Type) (L : IExpr) where
   | commit (owner : Player) (name : VarId) (payload : L.Ty)
-      (choice : PublicationResult (L.Val payload))
+      (choice : Option (PublicationResult (L.Val payload)))
   | reveal (owner : Player) (name : VarId) (disclose : Bool)
 
 abbrev History (Player : Type) (L : IExpr) := Player → List (OwnAction Player L)
-abbrev DecisionView (who : Player) (Γ : SourceCtx Player L) :=
-  SourceObservation L who Γ × List (OwnAction Player L)
+/-- The cells, public default status and actual own choices visible to a player. -/
+structure DecisionView (who : Player) (Γ : SourceCtx Player L) where
+  observation : SourceObservation L who Γ
+  defaults : DefaultHistory Player
+  history : List (OwnAction Player L)
+
+/-- The current public default set, derived from its complete public history. -/
+def DecisionView.defaulted {who : Player} (view : DecisionView who Γ) : Finset Player :=
+  view.defaults.defaulted
 
 /-- A policy prescribing a law over actions at every decision point this player
 owns. Reducible on purpose: its projections have to line up at reducible
@@ -130,10 +138,10 @@ abbrev BehavioralPolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Fins
   | _, _, .ret _ => PUnit
   | _, _, .sample _ _ _ k => BehavioralPolicy who k
   | Γ, _, .commit (payload := payload) _ owner _ _ k =>
-      ((owner = who) → DecisionView who Γ →
-        PMF (PublicationResult (L.Val payload))) × BehavioralPolicy who k
+      ((owner = who) → (view : DecisionView who Γ) → who ∉ view.defaulted →
+        PMF (Option (PublicationResult (L.Val payload)))) × BehavioralPolicy who k
   | Γ, _, .reveal _ owner _ _ _ _ k =>
-      ((owner = who) → DecisionView who Γ → PMF Bool) ×
+      ((owner = who) → (view : DecisionView who Γ) → who ∉ view.defaulted → PMF Bool) ×
         BehavioralPolicy who k
 
 /-- One policy per player. A profile here is a plain function, so a deviation
@@ -157,10 +165,11 @@ abbrev PurePolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset Var
   | _, _, .ret _ => PUnit
   | _, _, .sample _ _ _ k => PurePolicy who k
   | Γ, _, .commit (payload := payload) _ owner _ _ k =>
-      ((owner = who) → DecisionView who Γ → PublicationResult (L.Val payload)) ×
+      ((owner = who) → (view : DecisionView who Γ) → who ∉ view.defaulted →
+        Option (PublicationResult (L.Val payload))) ×
         PurePolicy who k
   | Γ, _, .reveal _ owner _ _ _ _ k =>
-      ((owner = who) → DecisionView who Γ → Bool) × PurePolicy who k
+      ((owner = who) → (view : DecisionView who Γ) → who ∉ view.defaulted → Bool) × PurePolicy who k
 
 /-- Read a pure policy as a behavioral one. -/
 def PurePolicy.toBehavioral {who : Player} : {Γ : SourceCtx Player L} → {O : Finset VarId} →
@@ -168,9 +177,9 @@ def PurePolicy.toBehavioral {who : Player} : {Γ : SourceCtx Player L} → {O : 
   | _, _, .ret _, _ => PUnit.unit
   | _, _, .sample _ _ _ k, policy => toBehavioral k policy
   | _, _, .commit _ _ _ _ k, policy =>
-      (fun own view => PMF.pure (policy.1 own view), toBehavioral k policy.2)
+      (fun own view active => PMF.pure (policy.1 own view active), toBehavioral k policy.2)
   | _, _, .reveal _ _ _ _ _ _ k, policy =>
-      (fun own view => PMF.pure (policy.1 own view), toBehavioral k policy.2)
+      (fun own view active => PMF.pure (policy.1 own view active), toBehavioral k policy.2)
 
 /-- Failure actions make the policy space inhabited without any payload or
 guard satisfiability assumption. -/
@@ -179,9 +188,9 @@ def failurePolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset Var
   | _, _, .ret _ => PUnit.unit
   | _, _, .sample _ _ _ k => failurePolicy who k
   | _, _, .commit _ _ _ _ k =>
-      (fun _ _ => PMF.pure .failure, failurePolicy who k)
+      (fun _ _ _ => PMF.pure none, failurePolicy who k)
   | _, _, .reveal _ _ _ _ _ _ k =>
-      (fun _ _ => PMF.pure false, failurePolicy who k)
+      (fun _ _ _ => PMF.pure false, failurePolicy who k)
 
 def failureProfile (p : SourceProgram Player L Γ O) : BehavioralProfile p :=
   fun who => failurePolicy who p
@@ -209,7 +218,8 @@ def commitKernel {Γ : SourceCtx Player L} {O : Finset VarId} {name : VarId} {ow
     {payload : L.Ty} {fresh : name ∉ Γ.map Prod.fst} {g : SourceGuard L Γ owner name payload}
     {k : SourceProgram Player L ((name, .commitment owner payload) :: Γ) (insert name O)}
     (p : BehavioralProfile (SourceProgram.commit name owner fresh g k)) :
-    DecisionView owner Γ → PMF (PublicationResult (L.Val payload)) :=
+    (view : DecisionView owner Γ) → owner ∉ view.defaulted →
+      PMF (Option (PublicationResult (L.Val payload))) :=
   (p owner).1 rfl
 
 def revealKernel {Γ : SourceCtx Player L} {O : Finset VarId} {published name : VarId}
@@ -217,7 +227,7 @@ def revealKernel {Γ : SourceCtx Player L} {O : Finset VarId} {published name : 
     {source : HasVar Γ name (.commitment owner payload)} {unresolved : name ∈ O}
     {k : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
     (p : BehavioralProfile (SourceProgram.reveal published owner name fresh source unresolved k)) :
-    DecisionView owner Γ → PMF Bool :=
+    (view : DecisionView owner Γ) → owner ∉ view.defaulted → PMF Bool :=
   (p owner).1 rfl
 
 @[reducible] def terminalCtx : {Γ : SourceCtx Player L} → {O : Finset VarId} →
@@ -329,115 +339,289 @@ theorem revealed_of_mem_completedBy {published : VarId}
 
 end Registry
 
-/-- The typed store, deferred guards, revelations and own-action recall of a program point. -/
+/-- The authoritative execution configuration, including public absorbing default. -/
 structure Config (Player : Type) (L : IExpr) (Γ : SourceCtx Player L) where
-  /-- The cells bound so far. -/
   state : State L Γ
-  /-- The obligations retained so far. -/
   registry : Registry Γ
-  /-- What has been published so far. -/
   revelations : Revelations Γ
-  /-- What each player did so far. -/
   history : History Player L
+  defaults : DefaultHistory Player
 
-/-- What a player sees at a configuration. -/
-def Config.view {Γ : SourceCtx Player L} (who : Player)
-    (config : Config Player L Γ) : DecisionView who Γ :=
-  (sourceObserve who config.state, config.history who)
+/-- The authoritative public default set is derived from the event record. -/
+def Config.defaulted (config : Config Player L Γ) : Finset Player :=
+  config.defaults.defaulted
 
-section Successors
+/-- Initial hidden binding failure is not public default. -/
+def Config.initial (state : State L Γ) : Config Player L Γ :=
+  ⟨state, [], Revelations.initial Γ, fun _ => [], ⟨[]⟩⟩
 
-variable {Γ : SourceCtx Player L} {name : VarId} {payload : L.Ty}
+/-- Every player sees the same public default status and its own action recall. -/
+def Config.view (who : Player) (config : Config Player L Γ) : DecisionView who Γ :=
+  ⟨sourceObserve who config.state, config.defaults, config.history who⟩
 
-/-- The configuration a public sample reaches. -/
+omit resultTypes in
+@[simp] theorem Config.view_defaulted (who : Player) (config : Config Player L Γ) :
+    (config.view who).defaulted = config.defaulted := rfl
+
+/-- A public sample leaves defaults and strategic recall unchanged. -/
 def sampleSuccessor (name : VarId) (config : Config Player L Γ) (value : L.Val payload) :
     Config Player L ((name, .publicData payload) :: Γ) :=
   ⟨Env.cons value config.state, Registry.weaken config.registry,
-    Revelations.weaken config.revelations, config.history⟩
+    Revelations.weaken config.revelations, config.history, config.defaults.record none⟩
 
-/-- The configuration a binding reaches. -/
+/-- A missing binding publicly defaults its owner; an accepted unopenable
+binding stays hidden. Already defaulted owners make no new strategic choice. -/
 def commitSuccessor {owner : Player} (name : VarId)
     (guard : SourceGuard L Γ owner name payload) (config : Config Player L Γ)
-    (choice : PublicationResult (L.Val payload)) :
+    (choice : Option (PublicationResult (L.Val payload))) :
     Config Player L ((name, .commitment owner payload) :: Γ) :=
-  ⟨Env.cons choice config.state,
+  let effective := if owner ∈ config.defaulted then none else choice
+  ⟨Env.cons (effective.getD .failure) config.state,
     { owner := owner, subject := name, payload := payload, source := .here,
       guard := guard.weaken } :: Registry.weaken config.registry,
     Revelations.weaken config.revelations,
-    Function.update config.history owner
-      (config.history owner ++ [OwnAction.commit owner name payload choice])⟩
+    if owner ∈ config.defaulted then config.history else
+      Function.update config.history owner
+        (config.history owner ++ [OwnAction.commit owner name payload effective]),
+    config.defaults.record
+      (if owner ∈ config.defaulted then none else if effective.isNone then some owner else none)⟩
 
-/-- The configuration a publication reaches, guards included. -/
+/-- A publication runs all newly completed checks on the actual proposal.
+Failure defaults its owner; automatic failure retains guard bookkeeping. -/
 def revealSuccessor {owner : Player} (published : VarId)
     (source : HasVar Γ name (.commitment owner payload))
     (config : Config Player L Γ) (disclose : Bool) :
     Config Player L ((published, .publication payload) :: Γ) :=
+  let effective := if owner ∈ config.defaulted then false else disclose
   let proposal : PublicationResult (L.Val payload) :=
-    if disclose then config.state.get source else .failure
+    if effective then config.state.get source else .failure
   let revealed : Revelations ((published, .publication payload) :: Γ) :=
     Revelations.reveal (published := published) config.revelations source
-  ⟨Env.cons
-      (if (Registry.completedBy (published := published) config.registry config.revelations
-          source).all (·.accepts revealed (Env.cons proposal config.state))
-        then proposal else .failure)
-      config.state,
-    Registry.weaken config.registry, revealed,
-    Function.update config.history owner
-      (config.history owner ++ [OwnAction.reveal owner name disclose])⟩
+  let accepted :=
+    if (Registry.completedBy (published := published) config.registry config.revelations
+        source).all (·.accepts revealed (Env.cons proposal config.state))
+      then proposal else .failure
+  ⟨Env.cons accepted config.state, Registry.weaken config.registry, revealed,
+    if owner ∈ config.defaulted then config.history else
+      Function.update config.history owner
+        (config.history owner ++ [OwnAction.reveal owner name effective]),
+    config.defaults.record
+      (if owner ∈ config.defaulted then none else if accepted.isFailure then some owner else none)⟩
 
-/-- Execute a source program from its authoritative configuration. Every
-instruction uses the same successor function as the source protocol. -/
+/-- Execute exactly one authoritative source semantics, retaining its complete
+terminal configuration. No callback exists at a defaulted owner's instruction. -/
 def runFrom : {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (p : SourceProgram Player L Γ O) → BehavioralProfile p → Config Player L Γ →
-      PMF (State L (terminalCtx p))
-  | _, _, .ret _, _, config => PMF.pure config.state
+    (program : SourceProgram Player L Γ O) → BehavioralProfile program → Config Player L Γ →
+      PMF (Config Player L program.terminalCtx)
+  | _, _, .ret _, _, config => PMF.pure config
   | _, _, .sample name _ law next, profile, config =>
       (L.evalDist law (sourcePublicEnv config.state)).bind fun value =>
         runFrom next (afterSample profile) (sampleSuccessor name config value)
   | _, _, .commit name owner _ guard next, profile, config =>
-      (commitKernel profile (config.view owner)).bind fun choice =>
-        runFrom next (afterCommit profile) (commitSuccessor name guard config choice)
+      (if inactive : owner ∈ config.defaulted then PMF.pure none
+        else commitKernel profile (config.view owner) inactive).bind fun choice =>
+          runFrom next (afterCommit profile) (commitSuccessor name guard config choice)
   | _, _, .reveal published owner _ _ source _ next, profile, config =>
-      (revealKernel profile (config.view owner)).bind fun disclose =>
-        runFrom next (afterReveal profile) (revealSuccessor published source config disclose)
+      (if inactive : owner ∈ config.defaulted then PMF.pure false
+        else revealKernel profile (config.view owner) inactive).bind fun disclose =>
+          runFrom next (afterReveal profile) (revealSuccessor published source config disclose)
 
-/-- Execute a source program from its initial typed store. -/
-def run (p : SourceProgram Player L Γ O) (profile : BehavioralProfile p) (state : State L Γ) :=
-  runFrom p profile ⟨state, [], Revelations.initial Γ, fun _ => []⟩
+/-- Start with no public defaults, regardless of hidden input binding results. -/
+def run (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
+    (state : State L Γ) : PMF (Config Player L program.terminalCtx) :=
+  runFrom program profile (Config.initial state)
 
-variable {O : Finset VarId}
+section Successors
+
+omit [IExpr.ResultTypes L]
+
+variable {Γ : SourceCtx Player L} {O : Finset VarId} {name : VarId} {payload : L.Ty}
+
+@[simp] theorem Config.initial_defaulted (state : State L Γ) :
+    (Config.initial state).defaulted = (∅ : Finset Player) := rfl
+
+/-- Equality of any player's views entails equality of public default status. -/
+theorem Config.defaulted_eq_of_view_eq (who : Player) (left right : Config Player L Γ)
+    (same : left.view who = right.view who) : left.defaulted = right.defaulted :=
+  congrArg DecisionView.defaulted same
+
+@[simp] theorem sampleSuccessor_defaulted (sampleName : VarId) (config : Config Player L Γ)
+    (value : L.Val payload) :
+    (sampleSuccessor sampleName config value).defaulted = config.defaulted := rfl
+
+/-- No binding decision restores an already defaulted player. -/
+theorem commitSuccessor_defaulted_mono {owner : Player} (bindingName : VarId)
+    (guard : SourceGuard L Γ owner bindingName payload) (config : Config Player L Γ)
+    (choice : Option (PublicationResult (L.Val payload))) :
+    config.defaulted ⊆ (commitSuccessor bindingName guard config choice).defaulted := by
+  exact config.defaults.defaulted_mono _
+
+/-- Accepting any hidden binding result leaves public default status unchanged. -/
+theorem commitSuccessor_defaulted_of_accepted {owner : Player} (bindingName : VarId)
+    (guard : SourceGuard L Γ owner bindingName payload) (config : Config Player L Γ)
+    (value : PublicationResult (L.Val payload)) :
+    (commitSuccessor bindingName guard config (some value)).defaulted = config.defaulted := by
+  by_cases inactive : owner ∈ config.defaulted <;> simp_all [commitSuccessor, Config.defaulted]
+
+/-- An accepted unopenable binding does not reveal itself through exclusion. -/
+theorem commitSuccessor_unopenable_opaque {owner : Player} (bindingName : VarId)
+    (guard : SourceGuard L Γ owner bindingName payload) (config : Config Player L Γ) :
+    (commitSuccessor bindingName guard config (some .failure)).defaulted = config.defaulted :=
+  commitSuccessor_defaulted_of_accepted bindingName guard config .failure
+
+/-- Omitting an owned binding publicly defaults that owner. -/
+theorem commitSuccessor_defaulted_of_omission {owner : Player} (bindingName : VarId)
+    (guard : SourceGuard L Γ owner bindingName payload) (config : Config Player L Γ) :
+    (commitSuccessor bindingName guard config none).defaulted = insert owner config.defaulted := by
+  by_cases inactive : owner ∈ config.defaulted <;> simp_all [commitSuccessor, Config.defaulted]
+
+/-- The next binding of a defaulted owner fails under every requested action. -/
+theorem commitSuccessor_binding_of_defaulted {owner : Player} (bindingName : VarId)
+    (guard : SourceGuard L Γ owner bindingName payload) (config : Config Player L Γ)
+    (inactive : owner ∈ config.defaulted) (choice : Option (PublicationResult (L.Val payload))) :
+    (commitSuccessor bindingName guard config choice).state.get .here = .failure := by
+  simp [commitSuccessor, inactive]
+
+/-- Automatic completion records no action the owner did not choose. -/
+theorem commitSuccessor_history_of_defaulted {owner : Player} (bindingName : VarId)
+    (guard : SourceGuard L Γ owner bindingName payload) (config : Config Player L Γ)
+    (inactive : owner ∈ config.defaulted) (choice : Option (PublicationResult (L.Val payload))) :
+    (commitSuccessor bindingName guard config choice).history = config.history := by
+  simp [commitSuccessor, inactive]
+
+/-- Every publication preserves prior defaults, independently of the guard verdict. -/
+theorem revealSuccessor_defaulted_mono {owner : Player} (published : VarId)
+    (source : HasVar Γ name (.commitment owner payload)) (config : Config Player L Γ)
+    (disclose : Bool) :
+    config.defaulted ⊆ (revealSuccessor published source config disclose).defaulted := by
+  exact config.defaults.defaulted_mono _
+
+/-- Each publication records its first public default, or an empty completion entry. -/
+theorem revealSuccessor_defaults {owner : Player} (published : VarId)
+    (source : HasVar Γ name (.commitment owner payload)) (config : Config Player L Γ)
+    (disclose : Bool) :
+    (revealSuccessor published source config disclose).defaults = config.defaults.record
+      (if owner ∈ config.defaulted then none else
+        if ((revealSuccessor published source config disclose).state.get .here).isFailure then
+          some owner else none) := rfl
+
+/-- A failed accepted publication inserts its owner in public default status. -/
+theorem revealSuccessor_defaulted_of_failure {owner : Player} (published : VarId)
+    (source : HasVar Γ name (.commitment owner payload)) (config : Config Player L Γ)
+    (disclose : Bool)
+    (failed : (revealSuccessor published source config disclose).state.get .here = .failure) :
+    (revealSuccessor published source config disclose).defaulted =
+      insert owner config.defaulted := by
+  unfold Config.defaulted
+  rw [revealSuccessor_defaults, failed]
+  by_cases inactive : owner ∈ config.defaulted <;>
+    simp_all [Config.defaulted, PublicationResult.isFailure]
+
+/-- Withholding fails a publication under arbitrary guards and prior state. -/
+theorem revealSuccessor_result_of_withholding {owner : Player} (published : VarId)
+    (source : HasVar Γ name (.commitment owner payload)) (config : Config Player L Γ) :
+    (revealSuccessor published source config false).state.get .here = .failure := by
+  simp [revealSuccessor]
+
+/-- Withholding publicly defaults its owner. -/
+theorem revealSuccessor_defaulted_of_withholding {owner : Player} (published : VarId)
+    (source : HasVar Γ name (.commitment owner payload)) (config : Config Player L Γ) :
+    (revealSuccessor published source config false).defaulted = insert owner config.defaulted :=
+  revealSuccessor_defaulted_of_failure published source config false
+    (revealSuccessor_result_of_withholding published source config)
+
+/-- A defaulted owner's publication fails under every requested action. -/
+theorem revealSuccessor_result_of_defaulted {owner : Player} (published : VarId)
+    (source : HasVar Γ name (.commitment owner payload)) (config : Config Player L Γ)
+    (inactive : owner ∈ config.defaulted) (disclose : Bool) :
+    (revealSuccessor published source config disclose).state.get .here = .failure := by
+  simp [revealSuccessor, inactive]
+
+/-- Automatic publication records no strategic action. -/
+theorem revealSuccessor_history_of_defaulted {owner : Player} (published : VarId)
+    (source : HasVar Γ name (.commitment owner payload)) (config : Config Player L Γ)
+    (inactive : owner ∈ config.defaulted) (disclose : Bool) :
+    (revealSuccessor published source config disclose).history = config.history := by
+  simp [revealSuccessor, inactive]
+
+/-- A defaulted owner's publication still resolves the outstanding binding. -/
+theorem revealSuccessor_revelations {owner : Player} (published : VarId)
+    (source : HasVar Γ name (.commitment owner payload)) (config : Config Player L Γ)
+    (disclose : Bool) :
+    @Eq (Revelations ((published, .publication payload) :: Γ))
+      (@Config.revelations Player L _ (revealSuccessor published source config disclose))
+      (@Revelations.reveal Player L Γ owner payload name published
+        (@Config.revelations Player L Γ config) source) := rfl
+
+/-- A defaulted owner's publication retains the guard registry with correct weakening. -/
+theorem revealSuccessor_registry {owner : Player} (published : VarId)
+    (source : HasVar Γ name (.commitment owner payload)) (config : Config Player L Γ)
+    (disclose : Bool) :
+    (revealSuccessor published source config disclose).registry = config.registry.weaken := rfl
+
+include resultTypes
 
 theorem runFrom_sample {fresh : name ∉ Γ.map Prod.fst}
     {law : L.DistExpr (SourcePublicCtx L Γ) payload}
-    {k : SourceProgram Player L ((name, .publicData payload) :: Γ) O}
-    (profile : BehavioralProfile (SourceProgram.sample name fresh law k))
+    {next : SourceProgram Player L ((name, .publicData payload) :: Γ) O}
+    (profile : BehavioralProfile (SourceProgram.sample name fresh law next))
     (config : Config Player L Γ) :
-    runFrom (SourceProgram.sample name fresh law k) profile config =
+    runFrom (SourceProgram.sample name fresh law next) profile config =
       (L.evalDist law (sourcePublicEnv config.state)).bind fun value =>
-        runFrom k (afterSample profile) (sampleSuccessor name config value) := rfl
+        runFrom next (afterSample profile) (sampleSuccessor name config value) := rfl
 
 theorem runFrom_commit {owner : Player} {fresh : name ∉ Γ.map Prod.fst}
     {guard : SourceGuard L Γ owner name payload}
-    {k : SourceProgram Player L ((name, .commitment owner payload) :: Γ) (insert name O)}
-    (profile : BehavioralProfile (SourceProgram.commit name owner fresh guard k))
+    {next : SourceProgram Player L ((name, .commitment owner payload) :: Γ) (insert name O)}
+    (profile : BehavioralProfile (SourceProgram.commit name owner fresh guard next))
     (config : Config Player L Γ) :
-    runFrom (SourceProgram.commit name owner fresh guard k) profile config =
-      (commitKernel profile (Config.view owner config)).bind fun choice =>
-        runFrom k (afterCommit profile) (commitSuccessor name guard config choice) := rfl
+    runFrom (SourceProgram.commit name owner fresh guard next) profile config =
+      (if inactive : owner ∈ config.defaulted then PMF.pure none
+        else commitKernel profile (config.view owner) inactive).bind fun choice =>
+          runFrom next (afterCommit profile) (commitSuccessor name guard config choice) := rfl
 
 theorem runFrom_reveal {published : VarId} {owner : Player}
     {fresh : published ∉ Γ.map Prod.fst}
     {source : HasVar Γ name (.commitment owner payload)} {unresolved : name ∈ O}
-    {k : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
+    {next : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
     (profile : BehavioralProfile
-      (SourceProgram.reveal published owner name fresh source unresolved k))
+      (SourceProgram.reveal published owner name fresh source unresolved next))
     (config : Config Player L Γ) :
-    runFrom (SourceProgram.reveal published owner name fresh source unresolved k)
+    runFrom (SourceProgram.reveal published owner name fresh source unresolved next)
         profile config =
-      (revealKernel profile (Config.view owner config)).bind fun disclose =>
-        runFrom k (afterReveal profile) (revealSuccessor published source config disclose) := rfl
+      (if inactive : owner ∈ config.defaulted then PMF.pure false
+        else revealKernel profile (config.view owner) inactive).bind fun disclose =>
+          runFrom next (afterReveal profile)
+            (revealSuccessor published source config disclose) := rfl
 
 end Successors
+
+/-- Every supported source continuation preserves all public defaults. -/
+theorem runFrom_defaulted_mono : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (profile : BehavioralProfile program) →
+    (config : Config Player L Γ) → ∀ final ∈ (runFrom program profile config).support,
+      config.defaulted ⊆ final.defaulted
+  | _, _, .ret _, _, config, final, reached => by
+      have same := (PMF.mem_support_pure_iff _ _).mp reached
+      subst final
+      exact Finset.Subset.refl config.defaulted
+  | _, _, .sample name _ law next, profile, config, final, reached => by
+      simp only [runFrom, PMF.support_bind, Set.mem_iUnion] at reached
+      obtain ⟨value, _, reached⟩ := reached
+      exact runFrom_defaulted_mono next (afterSample profile)
+        (sampleSuccessor name config value) final reached
+  | _, _, .commit name _ _ guard next, profile, config, final, reached => by
+      simp only [runFrom, PMF.support_bind, Set.mem_iUnion] at reached
+      obtain ⟨choice, _, reached⟩ := reached
+      exact (commitSuccessor_defaulted_mono name guard config choice).trans
+        (runFrom_defaulted_mono next (afterCommit profile)
+          (commitSuccessor name guard config choice) final reached)
+  | _, _, .reveal published _ _ _ source _ next, profile, config, final, reached => by
+      simp only [runFrom, PMF.support_bind, Set.mem_iUnion] at reached
+      obtain ⟨disclose, _, reached⟩ := reached
+      exact (revealSuccessor_defaulted_mono published source config disclose).trans
+        (runFrom_defaulted_mono next (afterReveal profile)
+          (revealSuccessor published source config disclose) final reached)
 
 section Steps
 
@@ -482,16 +666,23 @@ theorem afterReveal_update {published : VarId} {owner : Player}
 
 end Steps
 
-/-- What a completed program produces: its publications and public samples,
-and nothing a player kept to itself. This is exactly the context settlement
-reads, so no payoff can depend on more than an outcome records. -/
-abbrev PublicOutcome (p : SourceProgram Player L Γ O) :=
-  Env L.Val (SourcePublicCtx L (terminalCtx p))
+/-- The public terminal result retains both expression-readable values and default status. -/
+structure PublicOutcome (program : SourceProgram Player L Γ O) where
+  values : Env L.Val (SourcePublicCtx L program.terminalCtx)
+  defaults : DefaultHistory Player
 
-/-- The public result of a terminal state. -/
-def publicOutcome (p : SourceProgram Player L Γ O) (s : State L (terminalCtx p)) :
-    PublicOutcome p :=
-  sourcePublicEnv s
+/-- Current public defaults are read from the public terminal history. -/
+def PublicOutcome.defaulted {program : SourceProgram Player L Γ O}
+    (outcome : PublicOutcome program) : Finset Player := outcome.defaults.defaulted
+
+/-- Public default status is never discarded by the terminal projection. -/
+def publicOutcome (program : SourceProgram Player L Γ O)
+    (config : Config Player L program.terminalCtx) : PublicOutcome program :=
+  ⟨sourcePublicEnv config.state, config.defaults⟩
+
+@[simp] theorem publicOutcome_defaulted (program : SourceProgram Player L Γ O)
+    (config : Config Player L program.terminalCtx) :
+    (publicOutcome program config).defaulted = config.defaulted := rfl
 
 def gameSignature (p : SourceProgram Player L Γ O) : GameSignature Player where
   Strategy := fun who => BehavioralPolicy who p

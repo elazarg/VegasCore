@@ -173,10 +173,10 @@ theorem serviceSourcePrefix?_initial (setup : Setup (Player := Player) (L := L))
     mode 0
     (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
         (setup.eventInputs initial)).config =
-      some (ProtocolState.entry setup.program (setup.initialConfig initial)) := by
+      some (ProtocolState.entry setup.program (Config.initial initial)) := by
   unfold serviceSourcePrefix?
   rw [initial_history setup initial]
-  exact decodeSourcePrefix?_zero_of_agrees setup.program _ _ (setup.initialConfig initial) _
+  exact decodeSourcePrefix?_zero_of_agrees setup.program _ _ (Config.initial initial) _
     (initial_agrees setup initial)
 
 /-- A semantic runtime checkpoint supplies the readout identity directly;

@@ -11,6 +11,7 @@ import Vegas.Source.ConditionedInitialLaw
 import Vegas.Source.ConditionedInitialPolicy
 import Vegas.Source.DebtObservation
 import Vegas.Source.Disclosure
+import Vegas.Source.DefaultControl
 import Vegas.Source.DisclosureAliases
 import Vegas.Source.DisclosureBehavioral
 import Vegas.Source.DisclosureNormalization
@@ -45,6 +46,7 @@ import Vegas.Source.Purification
 import Vegas.Source.RevealSequence
 import Vegas.Source.Safety
 import Vegas.Source.Semantics
+import Vegas.Source.Utility
 import Vegas.Source.Setup
 import Vegas.Source.SetupProtocol
 import Vegas.Source.SetupProtocolBehavioral

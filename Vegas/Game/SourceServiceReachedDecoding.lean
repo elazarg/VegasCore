@@ -97,7 +97,7 @@ def SourceResidual.initial (initial : State L setup.context) :
   names := setup.obligations
   program := setup.program
   residualProfile := profile
-  source := setup.initialConfig initial
+  source := Config.initial initial
   refs := ContextRefs.initial setup.context (outputLayout setup.program)
   embedding := outputEmbedding setup.program
   refsBefore := initialRefsBefore setup.program

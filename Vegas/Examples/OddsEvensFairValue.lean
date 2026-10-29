@@ -35,7 +35,7 @@ theorem sourceBitProfile_run (first second : PMF Bool) :
   congr 1
 
 def firstConfig : Config Player simpleExpr [] :=
-  setup.initialConfig (Env.empty _)
+  Config.initial (Env.empty _)
 
 def secondConfig (bit : Bool) :=
   commitSuccessor 0 (acceptGuard even 0) firstConfig (.success bit)
