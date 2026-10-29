@@ -147,7 +147,8 @@ dependent action itself, rather than attempting to reconstruct it from the
 event's possibly failed output. -/
 def ownCompletions (who : Player) (history : List graph.Completion) :
     List graph.Completion :=
-  history.filter fun completion => graph.actor? completion.event = some who
+  history.filter fun completion =>
+    graph.actor? completion.event = some who ∧ completion.decision.isSome
 
 /-- Completing a field hidden from a player leaves that player's entire store
 projection unchanged. The public completion order still changes. -/
@@ -178,23 +179,26 @@ theorem ownCompletions_complete_of_not_actor (who : Player) (config : graph.Conf
     (notOwned : graph.actor? event ≠ some who) :
     graph.ownCompletions who (config.complete event ready action value).history =
       graph.ownCompletions who config.history := by
-  simp [Config.complete_history, ownCompletions, notOwned]
+  simp [Config.complete_history, ownCompletions, Completion.fromDecision, notOwned]
 
 /-- The public scheduler observes public store contents and completion order. -/
 structure PublicObservation where
   completionOrder : List graph.EventId
   store : EventGraph.Store graph.layout
+  defaults : DefaultHistory Player
 
 namespace PublicObservation
 
 omit [DecidableEq Player] in
 @[ext] theorem ext {left right : graph.PublicObservation}
     (completionOrder : left.completionOrder = right.completionOrder)
-    (store : left.store = right.store) : left = right := by
+    (store : left.store = right.store)
+    (defaults : left.defaults = right.defaults) : left = right := by
   cases left
   cases right
   cases completionOrder
   cases store
+  cases defaults
   rfl
 
 end PublicObservation
@@ -205,6 +209,7 @@ structure PlayerObservation (who : Player) where
   completionOrder : List graph.EventId
   store : EventGraph.Store graph.layout
   ownActions : List graph.Completion
+  defaults : DefaultHistory Player
 
 namespace PlayerObservation
 
@@ -212,12 +217,14 @@ omit [DecidableEq Player] in
 @[ext] theorem ext {who : Player} {left right : graph.PlayerObservation who}
     (completionOrder : left.completionOrder = right.completionOrder)
     (store : left.store = right.store)
-    (ownActions : left.ownActions = right.ownActions) : left = right := by
+    (ownActions : left.ownActions = right.ownActions)
+    (defaults : left.defaults = right.defaults) : left = right := by
   cases left
   cases right
   cases completionOrder
   cases store
   cases ownActions
+  cases defaults
   rfl
 
 end PlayerObservation
@@ -226,12 +233,14 @@ end PlayerObservation
 def publicObserve (config : graph.Config) : graph.PublicObservation where
   completionOrder := config.history.map Completion.event
   store := graph.publicStore config.store
+  defaults := config.defaults
 
 /-- Actual player observation of a coherent execution configuration. -/
 def playerObserve (who : Player) (config : graph.Config) : graph.PlayerObservation who where
   completionOrder := config.history.map Completion.event
   store := graph.playerStore who config.store
   ownActions := graph.ownCompletions who config.history
+  defaults := config.defaults
 
 omit [DecidableEq Player] in
 @[simp] theorem publicObserve_completionOrder (config : graph.Config) :
@@ -255,6 +264,7 @@ theorem publicObserve_congr (left right : graph.Config)
       right.history.map Completion.event := congrArg _ history
   have storeEq := graph.publicStore_congr left.store right.store stores
   exact PublicObservation.ext graph orderEq storeEq
+    (congrArg (Completion.defaults (graph := graph)) history)
 
 /-- Player observations agree when chronological histories and all fields
 visible to that player agree. Foreign bindings need not agree. -/
@@ -269,6 +279,7 @@ theorem playerObserve_congr (who : Player) (left right : graph.Config)
   have actionsEq : graph.ownCompletions who left.history =
       graph.ownCompletions who right.history := congrArg _ history
   exact PlayerObservation.ext graph orderEq storeEq actionsEq
+    (congrArg (Completion.defaults (graph := graph)) history)
 
 /-- A declared logical decision interface. It deliberately omits actual
 completion-order metadata. -/
@@ -291,6 +302,7 @@ def declaredOwnActions (schema : graph.LogicalSchema) (event : graph.EventId)
 structure LogicalObservation where
   store : EventGraph.Store graph.layout
   ownActions : List graph.Completion
+  defaults : DefaultHistory Player
 
 /-- Project an actual player observation to a declared logical interface. -/
 def logicalObserve (schema : graph.LogicalSchema) (event : graph.EventId)
@@ -298,6 +310,7 @@ def logicalObserve (schema : graph.LogicalSchema) (event : graph.EventId)
     graph.LogicalObservation where
   store := graph.restrictStore (schema.fields event) observation.store
   ownActions := graph.declaredOwnActions schema event observation.ownActions
+  defaults := observation.defaults
 
 /-- Availability of a graph field at a completed cut. Inputs are initially
 available; an output is available exactly when its producer is complete. -/
@@ -406,7 +419,7 @@ theorem logicalObserve_ownActions_of_history_exact (config : graph.Config)
   have completed : completion.event ∈ config.cut.completed :=
     (config.history_exact completion.event).mp inHistory
   have owned : graph.actor? completion.event = some who :=
-    of_decide_eq_true memberFiltered.2
+    (of_decide_eq_true memberFiltered.2).1
   have inOwned : completion.event ∈ graph.completedOwnEvents who config.cut := by
     simp [completedOwnEvents, completed, owned]
   rw [← exactHistory] at inOwned
@@ -442,3 +455,69 @@ end InformationDiscipline
 end EventGraph
 
 end Vegas
+
+namespace Vegas.EventGraph
+
+variable {Player : Type} {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+/-- The player's current default set is derived from the complete public log. -/
+def PlayerObservation.defaulted [DecidableEq Player] {who : Player}
+    (observation : graph.PlayerObservation who) : Finset Player :=
+  observation.defaults.defaulted
+
+/-- The scheduler's current default set is derived from the same public log. -/
+def PublicObservation.defaulted [DecidableEq Player]
+    (observation : graph.PublicObservation) : Finset Player :=
+  observation.defaults.defaulted
+
+/-- Logical policy observations retain the same public default history. -/
+def LogicalObservation.defaulted [DecidableEq Player]
+    (observation : graph.LogicalObservation) : Finset Player :=
+  observation.defaults.defaulted
+
+/-- Public observation retains every completed instruction's default event. -/
+@[simp] theorem publicObserve_defaults (config : graph.Config) :
+    (graph.publicObserve config).defaults = config.defaults := rfl
+
+/-- Every player receives the authoritative public default history. -/
+@[simp] theorem playerObserve_defaults [DecidableEq Player] (who : Player)
+    (config : graph.Config) :
+    (graph.playerObserve who config).defaults = config.defaults := rfl
+
+/-- Logical projection does not erase any public default information. -/
+@[simp] theorem logicalObserve_defaults (schema : graph.LogicalSchema)
+    (event : graph.EventId) (who : Player) (observation : graph.PlayerObservation who) :
+    (graph.logicalObserve schema event who observation).defaults = observation.defaults := rfl
+
+@[simp] theorem publicObserve_defaulted [DecidableEq Player] (config : graph.Config) :
+    (graph.publicObserve config).defaulted = config.defaulted := rfl
+
+@[simp] theorem playerObserve_defaulted [DecidableEq Player] (who : Player)
+    (config : graph.Config) :
+    (graph.playerObserve who config).defaulted = config.defaulted := rfl
+
+@[simp] theorem logicalObserve_defaulted [DecidableEq Player] (schema : graph.LogicalSchema)
+    (event : graph.EventId) (who : Player) (observation : graph.PlayerObservation who) :
+    (graph.logicalObserve schema event who observation).defaulted = observation.defaulted := rfl
+
+/-- Own recall contains precisely actual decisions at the player's completed events. -/
+@[simp] theorem mem_ownCompletions [DecidableEq Player] (who : Player)
+    (history : List graph.Completion) (completion : graph.Completion) :
+    completion ∈ graph.ownCompletions who history ↔
+      completion ∈ history ∧ graph.actor? completion.event = some who ∧
+        completion.decision.isSome := by
+  simp [ownCompletions]
+
+/-- An automatic completion adds no actual decision to any player's recall. -/
+theorem ownCompletions_complete_of_defaulted [DecidableEq Player] (who : Player)
+    (config : graph.Config) (event : graph.EventId) (ready : config.cut.Ready event)
+    (owner : Player) (owned : graph.actor? event = some owner)
+    (inactive : owner ∈ config.defaulted) (action : graph.Action event)
+    (value : (graph.outputLayout event).Value) :
+    graph.ownCompletions who (config.complete event ready action value).history =
+      graph.ownCompletions who config.history := by
+  rw [config.complete_history_of_defaulted event ready owner owned inactive action value]
+  simp [ownCompletions]
+
+end Vegas.EventGraph

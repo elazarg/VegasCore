@@ -6,9 +6,9 @@ game -> source -> dependency graph -> ledger tower: the intended game restricts
 source menus, and each remaining level has one authoritative executor.
 
 This research branch implements absorbing source and graph execution and ports
-the source protocol presentation. Graph information and policies, ledger
-unification and the compiler's
-ordinary and equilibrium theorems still require ports. A checked source module
+the source protocol presentation and graph information/policies. Ledger
+unification and the compiler's ordinary and equilibrium theorems still require
+ports. A checked source module
 does not establish source-to-ledger preservation, and the full branch is not a
 verified replacement for the maintained tower. The paper and its pins are
 unchanged.
@@ -128,9 +128,20 @@ The executor checks persistent defaults, unchanged step laws under every
 suppressed requested action, field persistence, chronological predecessors,
 cut progress and termination. [EventGraphDefault](../VegasTests/EventGraphDefault.lean)
 checks actual two-binding execution: omission suppresses a later requested
-successful binding, while an accepted unopenable binding permits it. The graph
-observation and policy ports must retain this public history and recall actual
-choices only; their correspondence is still open.
+successful binding, while an accepted unopenable binding permits it.
+
+The [graph observations](../Vegas/EventGraph/Information.lean) retain this public
+history, and actual recall filters out automatic completions. Logical policy
+observations keep the same public log. [Policies](../Vegas/EventGraph/Semantics.lean)
+have active-only callbacks and supply automatic failure after default; their
+executor still checks finite branching and termination under public scheduling.
+
+[Observation congruence](../Vegas/EventGraph/ObservationStep.lean) compares every
+public effect, including the newly public default entry. Equal hidden stored
+failure values alone do not give equal public observations: foreign omission
+and accepted unusability can differ publicly. This is a calculated effect in
+the observation lemma, not an added compiler or environmental assumption.
+Source-to-graph strategy and observation correspondence remains open.
 
 Public omissions introduce information dependencies. If Alice's source binding
 precedes Bob's, Bob may condition on Alice's default. Scheduling Bob first can

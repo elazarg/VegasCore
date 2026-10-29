@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.Execution
+import Vegas.EventGraph.Semantics
 import Vegas.Expr.Simple
 
 /-! # Binding omission, unusable admission and public default records -/
@@ -120,6 +120,19 @@ example : (afterUnusable.step ⟨1, by decide⟩ secondBinding_ready_afterUnusab
       [some (some PublicationResult.failure), some (some (PublicationResult.success true))]) := by
   unfold Config.step
   change ((PMF.pure (PublicationResult.success true : PublicationResult Bool)).map _).map _ = _
+  rw [PMF.pure_map, PMF.pure_map]
+  rfl
+
+/-- Public default timing remains visible, while automatic completion contributes
+no action to the player's actual recall. -/
+example : (afterOmission.step ⟨1, by decide⟩ secondBinding_ready_afterOmission
+      (some (.success true))).map (fun final =>
+        ((twoBindings.publicObserve final).defaults.events,
+          (twoBindings.playerObserve () final).ownActions.map fun completion =>
+            (completion.decision : Option (Option (PublicationResult Bool))))) =
+    PMF.pure ([none, some ()], [some none]) := by
+  unfold Config.step
+  change ((PMF.pure (PublicationResult.failure : PublicationResult Bool)).map _).map _ = _
   rw [PMF.pure_map, PMF.pure_map]
   rfl
 

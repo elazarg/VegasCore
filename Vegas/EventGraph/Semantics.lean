@@ -23,7 +23,8 @@ variable {L : IExpr} [R : IExpr.ResultTypes L]
 player, from the player's actual graph observation. -/
 def BehavioralPolicy (graph : Vegas.EventGraph Player L) (who : Player) : Type :=
   ∀ (event : graph.EventId), graph.actor? event = some who →
-    graph.PlayerObservation who → PMF (graph.Action event)
+    (observation : graph.PlayerObservation who) → who ∉ observation.defaulted →
+      PMF (graph.Action event)
 
 /-- A playerwise behavioral profile. -/
 abbrev BehavioralProfile (graph : Vegas.EventGraph Player L) :=
@@ -32,17 +33,17 @@ abbrev BehavioralProfile (graph : Vegas.EventGraph Player L) :=
 /-- Every local action law of the profile has finite support. -/
 def ProfileFiniteSupport (graph : Vegas.EventGraph Player L)
     (profile : graph.BehavioralProfile) : Prop :=
-  ∀ who event actor observation, (profile who event actor observation).support.Finite
+  ∀ who event actor observation active,
+    (profile who event actor observation active).support.Finite
 
 /-- Every event has finitely many actions, so every behavioral policy of the
 graph, including every deviation, branches finitely. -/
 def FiniteActions (graph : Vegas.EventGraph Player L) : Prop :=
   ∀ event, Finite (graph.Action event)
 
-omit [DecidableEq Player] in
 theorem FiniteActions.profileFiniteSupport {graph : Vegas.EventGraph Player L}
     (finite : graph.FiniteActions) (profile : graph.BehavioralProfile) :
-    graph.ProfileFiniteSupport profile := fun _ event _ _ =>
+    graph.ProfileFiniteSupport profile := fun _ event _ _ _ =>
   have := finite event
   Set.toFinite _
 
@@ -103,10 +104,14 @@ def policyPlan (graph : Vegas.EventGraph Player L)
           (EventOrder.Cut.mem_enabled _ _).mp selected.2
         let readyEvent : {event : graph.EventId // config.cut.Ready event} :=
           ⟨selected.1, ready⟩
-        match ownerEq : graph.actor? selected.1 with
+        match ownerEq : (graph.nodes selected.1).actor with
         | some owner =>
-            (profile owner selected.1 ownerEq (graph.playerObserve owner config)).map
-              fun action => ⟨readyEvent, action⟩
+            if inactive : owner ∈ config.defaulted then
+              PMF.pure ⟨readyEvent,
+                (graph.nodes selected.1).failureAction owner ownerEq⟩
+            else
+              (profile owner selected.1 ownerEq (graph.playerObserve owner config)
+                inactive).map fun action => ⟨readyEvent, action⟩
         | none =>
             PMF.pure ⟨readyEvent,
               EventCode.actionOfActorNone (graph.nodes selected.1) ownerEq⟩
@@ -128,9 +133,12 @@ theorem policyPlan_support_finite (graph : Vegas.EventGraph Player L)
   unfold policyPlan
   rw [PMF.support_bind]
   refine (Set.toFinite _).biUnion fun selected _ => ?_
+  dsimp only
   split
-  · rw [PMF.support_map]
-    exact (finiteProfile _ _ _ _).image _
+  · split
+    · simp
+    · rw [PMF.support_map]
+      exact (finiteProfile _ _ _ _ _).image _
   · simp
 
 theorem runPolicies_support_finite (graph : Vegas.EventGraph Player L)
