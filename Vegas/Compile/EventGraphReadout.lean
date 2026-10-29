@@ -3,6 +3,8 @@
 import Vegas.Compile.EventGraphObservation
 import Vegas.Compile.EventGraphState
 import Vegas.EventGraph.Semantics
+import Vegas.Compile.EventGraphHistory
+import Vegas.Source.Metadata
 
 /-! # Typed source-state readout from event-graph stores
 
@@ -224,5 +226,77 @@ theorem terminalPayouts_eq_source {Γ : SourceCtx Player L}
   rw [stateEq, terminalPayouts,
     terminalPayoffs_eq_source program result.1 result.2 state agree]
   simp [SourceProgram.evaluatePayoffs, List.map_map]
+
+end Vegas
+
+namespace Vegas
+
+open SourceProgram
+
+variable {Player : Type} [DecidableEq Player]
+variable {L : IExpr} [R : IExpr.ResultTypes L]
+
+/-- Reconstruct a terminal source configuration from the graph's typed store,
+actual decisions, public default record, and syntax-determined metadata. -/
+def decodeConfig?
+    {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
+    (whole : SourceProgram Player L wholeΓ wholeOpen)
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames)
+    (refs : ContextRefs (graphLayout whole) Γ)
+    (revelations : Revelations Γ) (registry : Registry Γ)
+    (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole) program)
+    (final : (toEventGraph whole).Config) :
+    Option (SourceProgram.Config Player L program.terminalCtx) :=
+  (decodeState? (terminalRefsWith program refs embedding.ref) final.store).map fun state =>
+    ⟨state, finalRegistry program registry, finalRevelations program revelations,
+      decodeHistory whole final.history, final.defaults⟩
+
+/-- Read the complete terminal source configuration without inventing missing
+values. Terminality supplies availability of every referenced typed field. -/
+def terminalConfig {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames)
+    (result : {config : (toEventGraph program).Config // config.cut.Terminal}) :
+    SourceProgram.Config Player L program.terminalCtx :=
+  ⟨terminalState program result, finalRegistry program [],
+    finalRevelations program (Revelations.initial Γ),
+    decodeHistory program result.1.history, result.1.defaults⟩
+
+/-- At a completed graph execution, the partial full-configuration readout is
+exactly the total terminal readout. -/
+theorem decodeConfig?_terminal {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames)
+    (result : {config : (toEventGraph program).Config // config.cut.Terminal}) :
+    decodeConfig? program program (ContextRefs.initial Γ (outputLayout program))
+        (Revelations.initial Γ) [] (outputEmbedding program) result.1 =
+      some (terminalConfig program result) := by
+  have decoded : decodeState? (terminalRefs program) result.1.store =
+      some (terminalState program result) := by
+    exact (Option.some_get _).symm
+  unfold decodeConfig?
+  change (decodeState? (terminalRefs program) result.1.store).map _ = _
+  rw [decoded]
+  rfl
+
+/-- The total terminal configuration law is the partial readout of the actual
+graph execution law; the terminality certificate adds no semantic information. -/
+theorem terminalOutcomes_map_decodeConfig
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames)
+    (scheduler : (toEventGraph program).PublicScheduler)
+    (profile : (toEventGraph program).BehavioralProfile)
+    (inputs : (toEventGraph program).Inputs) :
+    (((toEventGraph program).terminalOutcomes scheduler profile inputs).map
+        (terminalConfig program)).map some =
+      ((toEventGraph program).runPolicies scheduler profile inputs).map
+        (decodeConfig? program program (ContextRefs.initial Γ (outputLayout program))
+          (Revelations.initial Γ) [] (outputEmbedding program)) := by
+  have decodeTerminal : (some ∘ terminalConfig program) =
+      (decodeConfig? program program (ContextRefs.initial Γ (outputLayout program))
+        (Revelations.initial Γ) [] (outputEmbedding program)) ∘ Subtype.val := by
+    funext result
+    exact (decodeConfig?_terminal program result).symm
+  rw [PMF.map_comp, decodeTerminal, ← PMF.map_comp,
+    (toEventGraph program).terminalOutcomes_map_val]
 
 end Vegas

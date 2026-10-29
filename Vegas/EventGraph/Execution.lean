@@ -607,3 +607,25 @@ theorem step_eq_of_defaulted (config : graph.Config) (event : graph.EventId)
   exact (Option.some_get _).trans (evaluatedSame.trans (Option.some_get _).symm)
 
 end Vegas.EventGraph.Config
+
+namespace Vegas.EventGraph.Config
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+/-- The typed compiler code certificate also identifies the exact public default event. -/
+theorem complete_defaults_of_code (config : graph.Config) (event : graph.EventId)
+    (ready : config.cut.Ready event) {output : EventField Player L}
+    (outputEq : graph.outputLayout event = output)
+    (code : EventCode graph.layout output)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) = code)
+    (action : output.Action) (value : output.Value) :
+    (config.complete event ready (cast (congrArg EventField.Action outputEq.symm) action)
+      (cast (congrArg EventField.Value outputEq.symm) value)).defaults =
+        config.defaults.record ((code.actualDecision config.defaulted action).bind fun chosen =>
+          code.defaultEvent chosen value) := by
+  cases outputEq
+  subst code
+  exact config.complete_defaults event ready action value
+
+end Vegas.EventGraph.Config

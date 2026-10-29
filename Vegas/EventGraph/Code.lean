@@ -1001,3 +1001,23 @@ theorem actualDecision_of_defaulted (code : EventCode layout output)
   simp [actualDecision, owned, inactive]
 
 end Vegas.EventGraph.EventCode
+
+namespace Vegas.EventGraph.EventCode
+
+variable {Player : Type} {L : IExpr} [IExpr.ResultTypes L]
+  {Field : Type} [DecidableEq Field] {layout : Field → EventField Player L}
+  {left right : EventField Player L}
+
+/-- Identifying typed node code transports its automatic action along the same equality. -/
+theorem failureAction_eq_cast (same : left = right) (original : EventCode layout left)
+    (code : EventCode layout right)
+    (codeEq : cast (congrArg (EventCode layout) same) original = code)
+    (owner : Player) (ownedOriginal : original.actor = some owner)
+    (ownedCode : code.actor = some owner) :
+    original.failureAction owner ownedOriginal =
+      cast (congrArg EventField.Action same.symm) (code.failureAction owner ownedCode) := by
+  cases same
+  subst code
+  rfl
+
+end Vegas.EventGraph.EventCode

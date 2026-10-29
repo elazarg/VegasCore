@@ -43,13 +43,14 @@ structure CompiledPolicySuffix
       eventOwner? program index
   policyEq : ∀ (who : Player) (index : Fin (eventCount program))
       (actor : (toEventGraph whole).actor? (embedding.event index) = some who)
-      (observation : (toEventGraph whole).PlayerObservation who),
+      (observation : (toEventGraph whole).PlayerObservation who)
+      (active : who ∉ observation.defaulted),
     cast (congrArg PMF
       (congrArg Vegas.EventGraph.EventField.Action (embedding.layout_eq index)))
       ((compileEventProfile whole wholeProfile) who
-        (embedding.event index) actor observation) =
+        (embedding.event index) actor observation active) =
     compilePolicyTable program refs embedding.ref who
-      (profile who) index observation.store
+      (profile who) index observation.store observation.defaults
       (decodeCompletions whole observation.ownActions)
   actionEq : ∀ (index : Fin (eventCount program))
       (action : Vegas.EventGraph.EventField.Action
@@ -71,7 +72,7 @@ theorem CompiledPolicySuffix.whole
   · exact CompiledSuffix.whole program
   · intro index
     exact (eventOwner?_eq_actor program index).symm
-  · intro who index actor observation
+  · intro who index actor observation active
     rfl
   · intro index action
     rfl
@@ -115,12 +116,13 @@ theorem CompiledPolicySuffix.sampleTail
   · intro index
     simpa [OutputEmbedding.tail, eventOwner?, eventCount, Fin.cases_succ] using
       aligned.actorEq (Fin.succ index)
-  · intro who index actor observation
-    have current := aligned.policyEq who (Fin.succ index) actor observation
+  · intro who index actor observation active
+    have current := aligned.policyEq who (Fin.succ index) actor observation active
     change _ = compilePolicyTable next
       (refs.cons (embedding.ref ⟨0, by simp [eventCount]⟩))
       (fun tail => embedding.ref (Fin.succ tail)) who (profile who) index
-      observation.store (decodeCompletions whole observation.ownActions) at current
+      observation.store observation.defaults
+      (decodeCompletions whole observation.ownActions) at current
     have outputsEq : (fun tail => embedding.ref (Fin.succ tail)) =
         (embedding.tail next (by simp [eventCount]) (fun _ => rfl)).ref := by
       funext tail
@@ -174,12 +176,13 @@ theorem CompiledPolicySuffix.commitTail
   · intro index
     simpa [OutputEmbedding.tail, eventOwner?, eventCount, Fin.cases_succ] using
       aligned.actorEq (Fin.succ index)
-  · intro who index actor observation
-    have current := aligned.policyEq who (Fin.succ index) actor observation
+  · intro who index actor observation active
+    have current := aligned.policyEq who (Fin.succ index) actor observation active
     change _ = compilePolicyTable next
       (refs.cons (embedding.ref ⟨0, by simp [eventCount]⟩))
       (fun tail => embedding.ref (Fin.succ tail)) who ((profile who).2) index
-      observation.store (decodeCompletions whole observation.ownActions) at current
+      observation.store observation.defaults
+      (decodeCompletions whole observation.ownActions) at current
     have outputsEq : (fun tail => embedding.ref (Fin.succ tail)) =
         (embedding.tail next (by simp [eventCount]) (fun _ => rfl)).ref := by
       funext tail
@@ -238,16 +241,17 @@ theorem CompiledPolicySuffix.revealTail
   · intro index
     simpa [OutputEmbedding.tail, eventOwner?, eventCount, Fin.cases_succ] using
       aligned.actorEq (Fin.succ index)
-  · intro who index actor observation
+  · intro who index actor observation active
     let resultRef : Vegas.EventGraph.FieldRef (graphLayout whole)
         (.publication payload) := by
       simpa [outputLayout, eventCount] using
         embedding.ref ⟨0, by simp [eventCount]⟩
-    have current := aligned.policyEq who (Fin.succ index) actor observation
+    have current := aligned.policyEq who (Fin.succ index) actor observation active
     change _ = compilePolicyTable next
       (refs.cons resultRef)
       (fun tail => embedding.ref (Fin.succ tail)) who ((profile who).2) index
-      observation.store (decodeCompletions whole observation.ownActions) at current
+      observation.store observation.defaults
+      (decodeCompletions whole observation.ownActions) at current
     have outputsEq : (fun tail => embedding.ref (Fin.succ tail)) =
         (embedding.tail next (by simp [eventCount]) (fun _ => rfl)).ref := by
       funext tail
@@ -256,7 +260,7 @@ theorem CompiledPolicySuffix.revealTail
     change _ = compilePolicyTable next
       (refs.cons resultRef)
       (embedding.tail next (by simp [eventCount]) (fun _ => rfl)).ref who
-      ((profile who).2) index observation.store
+      ((profile who).2) index observation.store observation.defaults
       (decodeCompletions whole observation.ownActions)
     exact current
   · intro index action

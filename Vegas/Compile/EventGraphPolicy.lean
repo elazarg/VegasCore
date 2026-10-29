@@ -8,8 +8,9 @@ import Vegas.EventGraph.Semantics
 
 Event identities retain the source operation that produced them, so dependent
 graph actions can be decoded without consulting a possibly failed output.
-Policy observation decoding remains partial and falls back only to the genuine
-failure action at malformed, unreachable graph views.
+Policy observation decoding remains partial. Inactive owners and malformed
+binding views select omission. An active malformed reveal view attempts an
+opening, which the runtime materializes only when its owner's binding opens.
 -/
 
 noncomputable section
@@ -146,13 +147,14 @@ theorem decodeEventAction_owner : {Γ : SourceCtx Player L} →
         (fun _ => rfl) (fun tail action => decodeEventAction_owner next tail action)
         event action
 
-/-- Decode every strategic completion in chronological order. -/
+/-- Decode actual strategic decisions in chronological order. Mechanical
+completions contribute no fabricated source action. -/
 def decodeCompletions {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
     (history : List (toEventGraph program).Completion) :
     List (OwnAction Player L) :=
   history.filterMap fun completion =>
-    decodeEventAction program completion.event completion.action
+    completion.decision.bind (decodeEventAction program completion.event)
 
 @[simp] theorem decodeCompletions_nil {Γ : SourceCtx Player L}
     {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames) :
@@ -166,8 +168,8 @@ def decodeCompletions {Γ : SourceCtx Player L} {openNames : Finset VarId}
   simp [decodeCompletions, List.filterMap_append]
 
 /-- Compile one source policy into a table indexed by every event in the
-current source suffix. `history` is already decoded from the actor's retained
-dependent graph actions. -/
+current source suffix. The complete public default history is retained, and
+own recall contains only actual decoded decisions. -/
 def compilePolicyTable {Field : Type}
     {layout : Field → Vegas.EventGraph.EventField Player L} :
     {Γ : SourceCtx Player L} → {openNames : Finset VarId} →
@@ -177,48 +179,49 @@ def compilePolicyTable {Field : Type}
       (outputLayout program event)) →
     (who : Player) → BehavioralPolicy who program →
     (event : Fin (eventCount program)) → Vegas.EventGraph.Store layout →
-    List (OwnAction Player L) →
+    DefaultHistory Player → List (OwnAction Player L) →
       PMF (Vegas.EventGraph.EventField.Action (outputLayout program event))
-  | _, _, .ret _, _, _, _, _, event, _, _ => nomatch event
+  | _, _, .ret _, _, _, _, _, event, _, _, _ => nomatch event
   | _, _, .sample name fresh law next, refs, outputs,
-      who, policy, event, store, history =>
+      who, policy, event, store, defaults, history =>
       let headRef : Vegas.EventGraph.FieldRef layout (.publicData _) := by
         simpa [outputLayout, eventCount] using
           outputs ⟨0, by simp [eventCount]⟩
-      Fin.cases (fun _ _ => PMF.pure PUnit.unit)
+      Fin.cases (fun _ _ _ => PMF.pure PUnit.unit)
         (compilePolicyTable next (refs.cons headRef)
-          (fun tail => outputs (Fin.succ tail)) who policy) event store history
+          (fun tail => outputs (Fin.succ tail)) who policy) event store defaults history
   | _, _, .commit (payload := payload) name owner fresh guard next, refs,
-      outputs, who, policy, event, store, history =>
+      outputs, who, policy, event, store, defaults, history =>
       let headRef : Vegas.EventGraph.FieldRef layout (.binding owner payload) := by
         simpa [outputLayout, eventCount] using
           outputs ⟨0, by simp [eventCount]⟩
       Fin.cases
-        (fun store history =>
-          if same : owner = who then
+        (fun store defaults history =>
+          if inactive : who ∈ defaults.defaulted then PMF.pure none
+          else if same : owner = who then
             match decodeObservation? who refs store with
-            | some observation =>
-                policy.1 same (observation, history)
-            | none => PMF.pure PublicationResult.failure
-          else PMF.pure PublicationResult.failure)
+            | some observation => policy.1 same ⟨observation, defaults, history⟩ inactive
+            | none => PMF.pure none
+          else PMF.pure none)
         (compilePolicyTable next (refs.cons headRef)
-          (fun tail => outputs (Fin.succ tail)) who policy.2) event store history
+          (fun tail => outputs (Fin.succ tail)) who policy.2) event store defaults history
   | Γ, _, .reveal (payload := payload) published owner name fresh selected unresolved
-      next, refs, outputs, who, policy, event, store, history =>
+      next, refs, outputs, who, policy, event, store, defaults, history =>
       let headRef : Vegas.EventGraph.FieldRef layout (.publication payload) := by
         simpa [outputLayout, eventCount] using
           outputs ⟨0, by simp [eventCount]⟩
       Fin.cases
-        (fun store history =>
-          if same : owner = who then
+        (fun store defaults history =>
+          if inactive : who ∈ defaults.defaulted then PMF.pure false
+          else if same : owner = who then
             match decodeObservation? who refs store with
-            | some observation => policy.1 same (observation, history)
+            | some observation => policy.1 same ⟨observation, defaults, history⟩ inactive
             | none => PMF.pure true
           else PMF.pure false)
         (compilePolicyTable next (refs.cons headRef)
-          (fun tail => outputs (Fin.succ tail)) who policy.2) event store history
+          (fun tail => outputs (Fin.succ tail)) who policy.2) event store defaults history
 
-/-- At a well-formed commit observation, the compiled head kernel is exactly
+/-- At an active decoded commit observation, the compiled head kernel is exactly
 the source kernel. -/
 theorem compilePolicyTable_commit_of_decode {Field : Type}
     {layout : Field → Vegas.EventGraph.EventField Player L}
@@ -234,21 +237,23 @@ theorem compilePolicyTable_commit_of_decode {Field : Type}
     (policy : BehavioralPolicy who
       (.commit (payload := payload) name owner fresh guard next))
     (same : owner = who) (store : Vegas.EventGraph.Store layout)
+    (defaults : DefaultHistory Player) (active : who ∉ defaults.defaulted)
     (history : List (OwnAction Player L)) (observation : SourceObservation L who Γ)
     (decoded : decodeObservation? who refs store = some observation) :
     compilePolicyTable (.commit (payload := payload) name owner fresh guard next)
         refs outputs who policy
-        ⟨0, Nat.zero_lt_succ (eventCount next)⟩ store history =
-      policy.1 same (observation, history) := by
-  change (if same' : owner = who then
+        ⟨0, Nat.zero_lt_succ (eventCount next)⟩ store defaults history =
+      policy.1 same ⟨observation, defaults, history⟩ active := by
+  change (if inactive : who ∈ defaults.defaulted then PMF.pure none
+    else if same' : owner = who then
       match decodeObservation? who refs store with
       | some observation =>
-          policy.1 same' (observation, history)
-      | none => PMF.pure PublicationResult.failure
-    else PMF.pure PublicationResult.failure) = _
-  simp [same, decoded]
+          policy.1 same' ⟨observation, defaults, history⟩ inactive
+      | none => PMF.pure none
+    else PMF.pure none) = _
+  simp [same, decoded, active]
 
-/-- At a well-formed reveal observation, the compiled head kernel is exactly
+/-- At an active decoded reveal observation, the compiled head kernel is exactly
 the source disclosure kernel. -/
 theorem compilePolicyTable_reveal_of_decode {Field : Type}
     {layout : Field → Vegas.EventGraph.EventField Player L}
@@ -265,21 +270,23 @@ theorem compilePolicyTable_reveal_of_decode {Field : Type}
     (policy : BehavioralPolicy who
       (.reveal (payload := payload) published owner name fresh selected unresolved next))
     (same : owner = who) (store : Vegas.EventGraph.Store layout)
+    (defaults : DefaultHistory Player) (active : who ∉ defaults.defaulted)
     (history : List (OwnAction Player L)) (observation : SourceObservation L who Γ)
     (decoded : decodeObservation? who refs store = some observation) :
     compilePolicyTable
         (.reveal (payload := payload) published owner name fresh selected unresolved next)
         refs outputs who policy
-        ⟨0, Nat.zero_lt_succ (eventCount next)⟩ store history =
-      policy.1 same (observation, history) := by
-  change (if same' : owner = who then
+        ⟨0, Nat.zero_lt_succ (eventCount next)⟩ store defaults history =
+      policy.1 same ⟨observation, defaults, history⟩ active := by
+  change (if inactive : who ∈ defaults.defaulted then PMF.pure false
+    else if same' : owner = who then
       match decodeObservation? who refs store with
-      | some observation => policy.1 same' (observation, history)
+      | some observation => policy.1 same' ⟨observation, defaults, history⟩ inactive
       | none => PMF.pure true
     else PMF.pure false) = _
-  simp [same, decoded]
+  simp [same, decoded, active]
 
-/-- A reveal view that cannot be decoded attempts the opening; the runtime sends
+/-- An active reveal view that cannot be decoded attempts the opening; the runtime sends
 it only when the owner's own stored commitment opens. -/
 theorem compilePolicyTable_reveal_of_decode_none {Field : Type}
     {layout : Field → Vegas.EventGraph.EventField Player L}
@@ -296,19 +303,21 @@ theorem compilePolicyTable_reveal_of_decode_none {Field : Type}
     (policy : BehavioralPolicy who
       (.reveal (payload := payload) published owner name fresh selected unresolved next))
     (same : owner = who) (store : Vegas.EventGraph.Store layout)
+    (defaults : DefaultHistory Player) (active : who ∉ defaults.defaulted)
     (history : List (OwnAction Player L))
     (decoded : decodeObservation? who refs store = none) :
     compilePolicyTable
         (.reveal (payload := payload) published owner name fresh selected unresolved next)
         refs outputs who policy
-        ⟨0, Nat.zero_lt_succ (eventCount next)⟩ store history =
+        ⟨0, Nat.zero_lt_succ (eventCount next)⟩ store defaults history =
       PMF.pure true := by
-  change (if same' : owner = who then
+  change (if inactive : who ∈ defaults.defaulted then PMF.pure false
+    else if same' : owner = who then
       match decodeObservation? who refs store with
-      | some observation => policy.1 same' (observation, history)
+      | some observation => policy.1 same' ⟨observation, defaults, history⟩ inactive
       | none => PMF.pure true
     else PMF.pure false) = _
-  simp [same, decoded]
+  simp [same, decoded, active]
 
 /-- Compile one source policy to the actual behavioral-policy interface of the
 assembled ideal event graph. -/
@@ -317,10 +326,10 @@ def compileEventPolicy {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (who : Player)
     (policy : BehavioralPolicy who program) :
     (toEventGraph program).BehavioralPolicy who :=
-  fun event _actor observation =>
+  fun event _actor observation _active =>
     compilePolicyTable program
       (ContextRefs.initial Γ (outputLayout program))
-      (outputRef program) who policy event observation.store
+      (outputRef program) who policy event observation.store observation.defaults
       (decodeCompletions program observation.ownActions)
 
 /-- Compile a complete source behavioral profile playerwise. -/

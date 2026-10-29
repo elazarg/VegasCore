@@ -5,13 +5,11 @@ later resume successful play. The replacement belongs to the ordinary intended
 game -> source -> dependency graph -> ledger tower: the intended game restricts
 source menus, and each remaining level has one authoritative executor.
 
-This research branch implements absorbing source and graph execution and ports
-the source protocol presentation and graph information/policies. Ledger
-unification and the compiler's ordinary and equilibrium theorems still require
-ports. A checked source module
-does not establish source-to-ledger preservation, and the full branch is not a
-verified replacement for the maintained tower. The paper and its pins are
-unchanged.
+This research branch implements absorbing source and graph execution and checks
+source-to-graph compilation for every source profile and public scheduler.
+Graph-to-ledger integration, deviation backtranslation, monetary interpretation
+and equilibrium preservation still require ports. The full branch is not a
+verified replacement for the maintained tower. The paper and its pins are unchanged.
 
 ## Authoritative source execution
 
@@ -144,7 +142,8 @@ public effect, including the newly public default entry. Equal hidden stored
 failure values alone do not give equal public observations: foreign omission
 and accepted unusability can differ publicly. This is a calculated effect in
 the observation lemma, not an added compiler or environmental assumption.
-Source-to-graph strategy and observation correspondence remains open.
+The source policy compiler preserves this complete decision view at each aligned
+prefix. Arbitrary graph-deviation backtranslation remains a separate port.
 
 Public omissions introduce information dependencies. If Alice's source binding
 precedes Bob's, Bob may condition on Alice's default. Scheduling Bob first can
@@ -154,7 +153,24 @@ every earlier source instruction as a dependency, using the sequential order
 and cut lemmas in [Order](../Vegas/EventGraph/Order.lean). This supplies the
 required order without a scheduler assumption. Typed node lowering, local
 evaluation, state/reference agreement and input encoding are checked with this
-constructor. Whole-run strategy and outcome correspondence remains open.
+constructor.
+
+[Law](../Vegas/Compile/EventGraphLaw.lean) proves the full configuration law at
+every aligned suffix using the single source and graph executors.
+[Canonical](../Vegas/Compile/EventGraphCanonical.lean) instantiates it with actual
+initial configurations and an arbitrary private/public setup law.
+[Scheduling](../Vegas/Compile/EventGraphScheduling.lean) proves that every public
+scheduler has the same complete graph law, even for arbitrary graph profiles:
+the compiler-generated order makes the enabled-event type a singleton.
+Consequently `scheduled_terminalConfig_law` and `scheduled_setup_law` preserve
+all five source configuration fields for every source profile. No finite
+payload, finite-history, independence or service premise enters these laws.
+Typed-store and raw expression-payout laws are projections; the latter do not
+replace the outstanding exit-transfer settlement port.
+
+The regressions include withholding, omission and accepted unusability under
+arbitrary schedulers, plus a two-player response to public omission under the
+greatest-enabled scheduler. The response cannot be moved before its public cause.
 More concurrency requires a separate information-preservation proof.
 Unconditional commutation of same-owner events and unconditional independence
 of different owners' binding decisions are false for this semantics.
@@ -172,8 +188,9 @@ Only checked theorems close these obligations:
 
 1. The source protocol, whole-continuation and perfect-recall correspondence is
    checked under every commitment interface, including automatic instructions.
-2. Prove source-to-graph typed-store, public-history and own-action correspondence
-   for arbitrary source profiles and the compiler-generated dependencies.
+2. Source-to-graph full-configuration correspondence is checked for arbitrary
+   source profiles, initial states and public schedulers, including distributed
+   correlated private/public setup laws.
 3. Prove ledger inclusion, expiry and automatic draining refine finite sequences
    of those graph steps, retaining public failure provenance.
 4. Reprove the bounded-client law with complete readout and the service contract.
@@ -184,4 +201,4 @@ Only checked theorems close these obligations:
    sequential equilibrium.
 
 The ordinary full build, examples and paper guards remain acceptance gates for
-replacing the maintained tower. Targeted source checks do not close them.
+replacing the maintained tower. Targeted source/compiler checks do not close them.

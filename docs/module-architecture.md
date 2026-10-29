@@ -23,6 +23,12 @@ Source execution has one configuration-based evaluator, `SourceProgram.runFrom`.
 The source protocol uses the same sample, binding and revelation successors;
 it does not reproduce their state updates in another interpreter.
 
+The [absorbing-default port](source-absorbing-failure.md) checks that this source
+executor and the graph executor preserve full configurations under compilation.
+The first pass generates sequential dependencies to retain public default timing;
+its scheduling proof uses the unique ready event. The ledger and strategic ports
+remain acceptance obligations for replacing the complete tower.
+
 Start with [recovery preservation](../Vegas/Game/RecoverySequentialCompilation.lean),
 [monetary preservation](../Vegas/Game/RecoveryPaymentPreservation.lean) and
 the [one-packet raw extension](../Vegas/Game/OnePacketExtension.lean).

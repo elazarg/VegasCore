@@ -111,7 +111,7 @@ def payoffs {Γ : SourceCtx Player L} {openNames : Finset VarId}
 /-- Compile the complete source language to a dependency-driven event graph.
 Every earlier instruction is a dependency because binding omission is public.
 Node code and causal-read certificates come from one ranked recursion. The graph itself
-can be evaluated; the execution laws defined on it use real-valued finite
+can be evaluated; the execution laws defined on it use real-valued probability
 distributions and cannot. -/
 def toEventGraph {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
