@@ -76,6 +76,15 @@ state law with the assessment's state law. Its `clients_outcomeLaw` composes
 that identity with source preservation, retaining the full typed terminal
 readout jointly with the settled payoff vector.
 
+`RecoveryClientCompilation.clients_sequentiallyRational` states the incentive
+guarantee directly for physical policies: at every information set, the
+assessment's belief average of the actual physical continuation payoff cannot
+increase under any `app.Policy` satisfying the menu's `Admissible` predicate.
+Admissibility requires menu coverage at every legal decision history, including
+off-path histories; it imposes no condition on inconsistent callback inputs.
+This is the physical form of the same bounded-menu guarantee, with no extra
+service, observation or prior premise.
+
 `RecoveryClientCompilation.clients_noExclusions` and
 `RecoveryClientCompilation.clients_noCharges` transfer clean-path guarantees
 to supported ordinary physical runs. They require no empty-observation
@@ -92,6 +101,9 @@ For interfaces delivering no pending observations:
   zero-probability decision histories.
 * `RecoveryClientCompilation.ledgerClients_continuation` identifies complete
   physical continuation laws from legal bounded-menu histories.
+* `RecoveryClientCompilation.ledgerClients_sequentiallyRational` compares the
+  actual ledger clients against every admissible physical continuation policy,
+  using the same beliefs at on-path and off-path information sets.
 * `RecoveryClientCompilation.ledgerClients_finish_eq_clients` identifies the
   initialized ledger and ordinary physical runs. The ledger outcome and
   clean-path lemmas follow from the ordinary-client results.
