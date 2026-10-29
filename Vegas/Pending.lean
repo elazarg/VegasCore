@@ -23,7 +23,6 @@ import Vegas.Pending.EventValueSwap
 import Vegas.Pending.EvidenceNormalization
 import Vegas.Pending.ExclusionAcceptedOutput
 import Vegas.Pending.ExclusionActivationOrigin
-import Vegas.Pending.ExclusionApplication
 import Vegas.Pending.ExclusionBoundedBelief
 import Vegas.Pending.ExclusionBoundedHistory
 import Vegas.Pending.ExclusionBoundedInformationHistory
@@ -128,6 +127,7 @@ import Vegas.Pending.ReactiveFiniteCompiler
 import Vegas.Pending.ReactiveFiniteResponses
 import Vegas.Pending.ReactiveFirstOpportunity
 import Vegas.Pending.ReactiveFreshCallAcceptance
+import Vegas.Pending.ReactiveGraphSteps
 import Vegas.Pending.ReactiveGuardConformance
 import Vegas.Pending.ReactiveGuardedResponse
 import Vegas.Pending.ReactiveHiddenInclusion

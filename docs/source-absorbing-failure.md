@@ -7,8 +7,9 @@ source menus, and each remaining level has one authoritative executor.
 
 This research branch implements absorbing source and graph execution and checks
 source-to-graph compilation for every source profile and public scheduler.
-Graph-to-ledger integration, deviation backtranslation, monetary interpretation
-and equilibrium preservation still require ports. The full branch is not a
+The unified ledger application also has checked operational graph refinement.
+Probabilistic client correspondence, deviation backtranslation, monetary
+interpretation and equilibrium preservation still require ports. The full branch is not a
 verified replacement for the maintained tower. The paper and its pins are unchanged.
 
 ## Authoritative source execution
@@ -27,10 +28,10 @@ A binding decision is `Option (PublicationResult payload)`:
 
 The binding cell stores a `PublicationResult`. Equal hidden cell contents do
 not imply equal public default events. In particular, the source cannot infer
-public default from hidden failed binding values. The runtime's corresponding
-distinction is receipt-based: see
-[ExclusionApplication](../Vegas/Pending/ExclusionApplication.lean) and
-[PublicFailureEvidence](../Vegas/Pending/PublicFailureEvidence.lean).
+public default from hidden failed binding values. The native runtime records this distinction through the same graph completion:
+[EventApplication](../Vegas/Pending/EventApplication.lean) admits a handle with
+`some result`, and records a missing binding with `none` at its due expiry.
+Receipt-provenance consumers remain part of the ledger port.
 
 An active owner's attempted reveal runs the retained guard checks. Withholding,
 an unopenable binding or a rejected publication produces public failure and
@@ -175,12 +176,44 @@ More concurrency requires a separate information-preservation proof.
 Unconditional commutation of same-owner events and unconditional independence
 of different owners' binding decisions are false for this semantics.
 
-At ledger level, accepted handles implement accepted bindings, owned expiry
-implements omission, and accepted failed openings implement failed resolution.
-Automatic draining must use the graph's one failure step. The permanent-exclusion
-controller must be consolidated into the compiled application; no second graph
-evaluator or failure-mode parameter is introduced. Raw packets after default
-remain network actions, with semantic rejection and count-audit treatment.
+## Authoritative ledger execution
+
+[EventApplication](../Vegas/Pending/EventApplication.lean) retains one native
+`State`, containing the graph configuration, accepted handles, immutable
+candidate meanings and relative-clock metadata. Public default is derived
+from its graph configuration; there is no separate exclusion set or wrapper
+application. Accepted unusable bindings remain opaque. Physical silence
+stutters until an owned deadline is due. Calls authored after public default
+are rejected even when their addressed event is ready and timely.
+
+[ExclusionCompletion](../Vegas/Pending/ExclusionCompletion.lean) performs bounded
+automatic service directly on that state. Each automatic completion is a
+supported step of the graph executor, records no new decision or default,
+and preserves default membership, handles, candidates and the clock. The drain
+terminates with no ready event owned by a defaulted player.
+[ExclusionInvariant](../Vegas/Pending/ExclusionInvariant.lean) proves that it
+preserves native reachability, stored cells and existing activation timestamps
+for unfinished events.
+
+[ReactiveRuntime](../Vegas/Pending/ReactiveRuntime.lean) is the sole compiled
+application. Successful inclusion and environment service atomically drain
+automatic completions. Its observations contain the graph's public default
+history, without copying that history into another state field.
+[ReactiveGraphSteps](../Vegas/Pending/ReactiveGraphSteps.lean) and
+[GraphRefinement](../Vegas/Pending/GraphRefinement.lean) prove that arbitrary raw
+responses and public schedulers follow finite supported graph paths. No
+finiteness, visibility, service or monotone-withholding assumption is added.
+Completion remains conditional on the same `CompletesPlay` service predicate;
+that predicate is not an existence theorem for a completing scheduler.
+
+[ReactiveStateInvariant](../Vegas/Pending/ReactiveStateInvariant.lean) proves
+reachability, clock coherence, permanent stored values and automatic-service
+quiescence on initialized physical histories.
+[RuntimeDefault](../VegasTests/RuntimeDefault.lean) distinguishes early silence,
+accepted unusability, due omission, atomic application draining and rejection
+at an otherwise ready, timely event after default.
+These are operational support/refinement laws; they do not establish the
+probabilistic client/compiler law or equilibrium preservation.
 
 ## Remaining acceptance obligations
 
@@ -191,8 +224,9 @@ Only checked theorems close these obligations:
 2. Source-to-graph full-configuration correspondence is checked for arbitrary
    source profiles, initial states and public schedulers, including distributed
    correlated private/public setup laws.
-3. Prove ledger inclusion, expiry and automatic draining refine finite sequences
-   of those graph steps, retaining public failure provenance.
+3. Ledger inclusion, expiry and automatic draining have checked finite-path
+   graph refinement and initialized-history invariants. Port receipt provenance,
+   candidate/handle invariants and observation adapters to the single application.
 4. Reprove the bounded-client law with complete readout and the service contract.
 5. Port Nash deviation translation and sequential consistency/rationality;
    equilibrium-path outcome agreement alone is insufficient.

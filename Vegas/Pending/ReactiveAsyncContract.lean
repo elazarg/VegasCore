@@ -97,17 +97,6 @@ def ProtectedInclusion (initial : PMF (runtime.reactiveApplication leaks).State)
         control.execution.application.clock →
       ∃ accepted, (message.id, accepted) ∈ control.execution.receipts
 
-/-- **Complete play.** Every legal terminal state has completed every event:
-the scheduler eventually samples, includes or expires each one. -/
-def CompletesPlay (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler) : Prop :=
-  ∀ (control : (runtime.reactiveApplication leaks).Control),
-    ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
-      (some control) →
-    ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).terminal
-      (some control) →
-    control.execution.application.config.cut.Terminal
-
 /-- The asynchronous service contract for a fixed horizon and scheduler, with
 per-event reaction bounds `delay` and inclusion bounds `bound`. Finite
 branching of the scheduler is a separate instance (`FiniteNature`). -/

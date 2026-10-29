@@ -123,8 +123,8 @@ later player decision. No player chooses before the initial draw.
 
 The retained views support this premise structurally: player-store masking
 keeps a player's own private inputs in [Information](../Vegas/EventGraph/Information.lean),
-and the [recovery](../Vegas/Pending/ExclusionApplication.lean) player view retains
-the native player view even after exclusion. The formal adapter still needs the input
+and the [ledger](../Vegas/Pending/ReactiveRuntime.lean) player view retains
+the native player observation even after public default. The formal adapter still needs the input
 store invariant and initial-to-runtime encoding identity, rather than merely
 the view definitions.
 

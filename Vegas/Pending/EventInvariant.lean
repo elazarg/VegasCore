@@ -36,7 +36,6 @@ structure Invariant (inputs : graph.Inputs) (state : State graph) : Prop where
   activated_le : ∀ event entered,
     state.activatedAt event = some entered → entered ≤ state.clock
 
-omit [DecidableEq Player] in
 /-- Fields outside the graph configuration, clock, and activation table are
 irrelevant to this invariant. -/
 theorem Invariant.copy {inputs : graph.Inputs} {before after : State graph}
@@ -90,7 +89,6 @@ theorem refreshActivated_le (config : graph.Config) (clock : Nat)
             exact priorLe event entered previous
   · simp [refreshActivated, ready] at activated
 
-omit [DecidableEq Player] in
 /-- Refreshing activation metadata around one supported graph step preserves
 the invariant.  This is the common semantic core of accepted packets, samples,
 and due expiries. -/
@@ -110,7 +108,6 @@ theorem Invariant.refreshStep {inputs : graph.Inputs} {state : State graph}
     exact refreshActivated_le config state.clock state.activatedAt
       invariant.activated_le query entered activated
 
-omit [DecidableEq Player] in
 /-- A supported graph step can only enlarge the completed frontier. -/
 theorem completed_subset_of_mem_step
     (config : graph.Config) (event : graph.EventId)
@@ -134,7 +131,6 @@ theorem refreshActivated_eq_of_ready (config : graph.Config) (clock : Nat)
   | none => simp [actorEq] at actor
   | some owner => simp [activated]
 
-omit [DecidableEq Player] in
 /-- A different completion cannot reset the timestamp of an event that was
 ready before the step and is still unfinished afterwards. -/
 theorem Invariant.refreshStep_activatedAt_of_not_completed
@@ -234,7 +230,6 @@ theorem handle_activatedAt_of_not_completed {inputs : graph.Inputs}
   exact invariant.refreshStep_activatedAt_of_not_completed completed query ready action
     next.config member entered activated unfinished
 
-omit [DecidableEq Player] in
 /-- Environment commands advance the clock by exactly their declared tick
 count.  Sample and expiry commands contribute zero ticks. -/
 theorem environmentStep_clock (runtime : EventGraphRuntime graph)
@@ -255,7 +250,6 @@ theorem environmentStep_clock (runtime : EventGraphRuntime graph)
         environmentStep_expire_config_activated runtime state next event member
       simpa [EnvironmentCommand.clockTicks] using clockEq
 
-omit [DecidableEq Player] in
 /-- Every supported environment command preserves graph reachability and exact
 activation metadata. -/
 theorem environmentStep_invariant {inputs : graph.Inputs}
@@ -297,7 +291,6 @@ theorem environmentStep_invariant {inputs : graph.Inputs}
           invariant.refreshStep event ready action next.config configMem
         exact refreshedInvariant.copy rfl clockEq activatedEq
 
-omit [DecidableEq Player] in
 /-- Environment commands cannot undo completed events. -/
 theorem environmentStep_completed_subset (runtime : EventGraphRuntime graph)
     (state next : State graph) (command : EnvironmentCommand graph)
@@ -323,7 +316,6 @@ theorem environmentStep_completed_subset (runtime : EventGraphRuntime graph)
       · exact State.completed_subset_of_mem_step state.config event ready action
           next.config configMem
 
-omit [DecidableEq Player] in
 /-- An environment command preserves the timestamp of every event that stays
 unfinished. -/
 theorem environmentStep_activatedAt_of_not_completed {inputs : graph.Inputs}
@@ -358,7 +350,6 @@ theorem environmentStep_activatedAt_of_not_completed {inputs : graph.Inputs}
         exact invariant.refreshStep_activatedAt_of_not_completed event query ready action
           next.config configMem entered activated unfinished
 
-omit [DecidableEq Player] in
 /-- A ready strategic event has a concrete activation timestamp. -/
 theorem State.Invariant.activatedAt_eq_some_of_ready_actor
     {inputs : graph.Inputs} {state : State graph}

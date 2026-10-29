@@ -509,7 +509,7 @@ private def acceptBinding (state : State graph) (event : graph.EventId)
     State graph := by
   let result := state.bindingResult handle payload
   let action : graph.Action event :=
-    cast (congrArg EventField.Action outputEq.symm) result
+    cast (congrArg EventField.Action outputEq.symm) (some result)
   let value : (graph.outputLayout event).Value :=
     cast (congrArg EventField.Value outputEq.symm) result
   let next := state.complete event ready action value
@@ -626,24 +626,24 @@ theorem nodeView_eq_sample {graph : Vegas.EventGraph Player L} {event : graph.Ev
       cases code.symm.trans codeEq
       rfl
 
-omit [DecidableEq Player] in
 private theorem bind_complete_mem_step (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (owner : Player) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind owner payload)
-    (result : PublicationResult (L.Val payload)) :
+    (choice : Option (PublicationResult (L.Val payload))) :
     state.config.complete event ready
-        (cast (congrArg EventField.Action outputEq.symm) result)
-        (cast (congrArg EventField.Value outputEq.symm) result) ∈
+        (cast (congrArg EventField.Action outputEq.symm) choice)
+        (cast (congrArg EventField.Value outputEq.symm)
+          ((if owner ∈ state.config.defaulted then none else choice).getD .failure)) ∈
       (state.config.step event ready
-        (cast (congrArg EventField.Action outputEq.symm) result)).support := by
+        (cast (congrArg EventField.Action outputEq.symm) choice)).support := by
   rw [state.config.step_eq_map_of_code event ready outputEq (.bind owner payload)
-    codeEq result (PMF.pure result) rfl]
+    codeEq choice
+    (PMF.pure ((if owner ∈ state.config.defaulted then none else choice).getD .failure)) rfl]
   simp
 
-omit [DecidableEq Player] in
 private theorem resolve_complete_mem_step (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (owner : Player) (payload : L.Ty)
@@ -653,8 +653,9 @@ private theorem resolve_complete_mem_step (state : State graph)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (disclose : Bool) (result : PublicationResult (L.Val payload))
-    (resultEq : EventCode.resolveOutput? binding checks disclose state.config.store =
-      some result) :
+    (resultEq : EventCode.resolveOutput? binding checks
+      (if owner ∈ state.config.defaulted then false else disclose) state.config.store =
+        some result) :
     state.config.complete event ready
         (cast (congrArg EventField.Action outputEq.symm) disclose)
         (cast (congrArg EventField.Value outputEq.symm) result) ∈
@@ -664,7 +665,10 @@ private theorem resolve_complete_mem_step (state : State graph)
     (.resolve owner payload binding checks) codeEq disclose
     (PMF.pure result)]
   · simp
-  · rw [EventCode.resolve_eval?, resultEq]
+  · change (EventCode.resolveOutput? binding checks
+      (if owner ∈ state.config.defaulted then false else disclose) state.config.store).map
+        PMF.pure = _
+    rw [resultEq]
     rfl
 
 omit [DecidableEq Player] in
@@ -699,7 +703,7 @@ for them. -/
 def handle (runtime : EventGraphRuntime graph) (state : State graph)
     (message : Message Player (Payload graph)) : Option (State graph) := by
   classical
-  exact match message.payload with
+  exact if message.sender ∈ state.config.defaulted then none else match message.payload with
   | .malformed _ => none
   | .commitment event handle =>
       if ready : state.config.cut.Ready event then
@@ -754,18 +758,20 @@ theorem handle_commitment_eq
     (view : nodeView graph event = .bind owner payload outputEq codeEq)
     (ready : state.config.cut.Ready event)
     (timely : state.WithinDeadline runtime event)
+    (active : id.1 ∉ state.config.defaulted)
     (sender : id.1 = owner) (handleOwner : candidate.1 = owner)
     (vacant : state.accepted (.inr event) = none)
     (unused : state.HandleUnused candidate) :
     handle runtime state ⟨id, .commitment event candidate⟩ =
       some { (state.complete event ready
         (cast (congrArg EventField.Action outputEq.symm)
-          (state.bindingResult candidate payload))
+          (some (state.bindingResult candidate payload)))
         (cast (congrArg EventField.Value outputEq.symm)
           (state.bindingResult candidate payload))) with
         accepted := Function.update state.accepted (.inr event) (some candidate)
         candidates := state.candidates.freeze candidate } := by
-  simp only [handle, dite_eq_left ready, dite_eq_left timely, view, Message.sender, sender,
+  simp only [handle, Message.sender, ite_eq_right active]
+  simp only [dite_eq_left ready, dite_eq_left timely, view, sender,
     dite_eq_left, handleOwner, vacant, unused, acceptBinding]
 
 /-- A verified opening executes the retained graph resolution kernel,
@@ -782,6 +788,7 @@ theorem handle_opening_eq
     (view : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
     (ready : state.config.cut.Ready event)
     (timely : state.WithinDeadline runtime event)
+    (active : id.1 ∉ state.config.defaulted)
     (sender : id.1 = owner) (handleOwner : candidate.1 = owner)
     (associated : state.accepted binding.field = some candidate)
     (value : L.Val payload)
@@ -795,7 +802,8 @@ theorem handle_opening_eq
         (cast (congrArg EventField.Value outputEq.symm) result)) := by
   have verification : state.candidates.verify candidate ⟨payload, value⟩ = true :=
     (CommitmentCandidates.verify_eq_true_iff _ _ _).mpr verified
-  simp only [handle, dite_eq_left ready, dite_eq_left timely, view, Message.sender, sender,
+  simp only [handle, Message.sender, ite_eq_right active]
+  simp only [dite_eq_left ready, dite_eq_left timely, view, sender,
     dite_eq_left, handleOwner, associated, verification]
   split
   · rename_i impossible
@@ -811,6 +819,7 @@ including failure. -/
 theorem handle_commitment_iff (runtime : EventGraphRuntime graph) (state next : State graph)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph) :
     handle runtime state ⟨id, .commitment event candidate⟩ = some next ↔
+      id.1 ∉ state.config.defaulted ∧
       ∃ (ready : state.config.cut.Ready event) (_ : state.WithinDeadline runtime event)
         (owner : Player) (payload : L.Ty)
         (outputEq : graph.outputLayout event = .binding owner payload)
@@ -821,23 +830,28 @@ theorem handle_commitment_iff (runtime : EventGraphRuntime graph) (state next : 
           state.HandleUnused candidate ∧
           next = { (state.complete event ready
             (cast (congrArg EventField.Action outputEq.symm)
-              (state.bindingResult candidate payload))
+              (some (state.bindingResult candidate payload)))
             (cast (congrArg EventField.Value outputEq.symm)
               (state.bindingResult candidate payload))) with
             accepted := Function.update state.accepted (.inr event) (some candidate)
             candidates := state.candidates.freeze candidate } := by
   constructor
   · intro accepted
+    have active : id.1 ∉ state.config.defaulted := by
+      intro inactive
+      simp [handle, Message.sender, inactive] at accepted
+    refine ⟨active, ?_⟩
     have accepted' := accepted
     by_cases ready : state.config.cut.Ready event
     · by_cases timely : state.WithinDeadline runtime event
       · cases view : nodeView graph event with
         | resolve owner payload binding checks outputEq codeEq =>
-            simp [handle, ready, timely, view] at accepted
+            simp [handle, Message.sender, active, ready, timely, view] at accepted
         | sample payload law outputEq codeEq =>
-            simp [handle, ready, timely, view] at accepted
+            simp [handle, Message.sender, active, ready, timely, view] at accepted
         | bind owner payload outputEq codeEq =>
-            simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
+            simp only [handle, Message.sender, active, ↓reduceIte,
+              dite_eq_left ready, dite_eq_left timely, view] at accepted
             split at accepted
             · rename_i sender
               simp only [dite_eq_ite, Option.ite_none_right_eq_some] at accepted
@@ -846,21 +860,22 @@ theorem handle_commitment_iff (runtime : EventGraphRuntime graph) (state next : 
                 vacant, unused, ?_⟩
               exact Option.some.inj (accepted'.symm.trans
                 (handle_commitment_eq runtime state id event candidate owner payload
-                  outputEq codeEq view ready timely sender handleOwner vacant unused))
+                  outputEq codeEq view ready timely active sender handleOwner vacant unused))
             · simp_all only [reduceCtorEq]
-      · simp [handle, ready, timely] at accepted
-    · simp [handle, ready] at accepted
-  · rintro ⟨ready, timely, owner, payload, outputEq, codeEq, view, sender, handleOwner,
+      · simp [handle, Message.sender, active, ready, timely] at accepted
+    · simp [handle, Message.sender, active, ready] at accepted
+  · rintro ⟨active, ready, timely, owner, payload, outputEq, codeEq, view, sender, handleOwner,
       vacant, unused, nextEq⟩
     rw [nextEq]
     exact handle_commitment_eq runtime state id event candidate owner payload outputEq codeEq
-      view ready timely sender handleOwner vacant unused
+      view ready timely active sender handleOwner vacant unused
 
 /-- Opening acceptance records the authenticated typed value and actual
 resolution result, including rejected guards. -/
 theorem handle_opening_iff (runtime : EventGraphRuntime graph) (state next : State graph)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L) :
     handle runtime state ⟨id, .opening event candidate raw⟩ = some next ↔
+      id.1 ∉ state.config.defaulted ∧
       ∃ (ready : state.config.cut.Ready event) (_ : state.WithinDeadline runtime event)
         (owner : Player) (payload : L.Ty)
         (binding : FieldRef graph.layout (.binding owner payload))
@@ -878,16 +893,21 @@ theorem handle_opening_iff (runtime : EventGraphRuntime graph) (state next : Sta
             (cast (congrArg EventField.Value outputEq.symm) result) := by
   constructor
   · intro accepted
+    have active : id.1 ∉ state.config.defaulted := by
+      intro inactive
+      simp [handle, Message.sender, inactive] at accepted
+    refine ⟨active, ?_⟩
     by_cases ready : state.config.cut.Ready event
     · by_cases timely : state.WithinDeadline runtime event
       · cases view : nodeView graph event with
         | bind owner payload outputEq codeEq =>
-            simp [handle, ready, timely, view] at accepted
+            simp [handle, Message.sender, active, ready, timely, view] at accepted
         | sample payload law outputEq codeEq =>
-            simp [handle, ready, timely, view] at accepted
+            simp [handle, Message.sender, active, ready, timely, view] at accepted
         | resolve owner payload binding checks outputEq codeEq =>
             have accepted' := accepted
-            simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
+            simp only [handle, Message.sender, active, ↓reduceIte,
+              dite_eq_left ready, dite_eq_left timely, view] at accepted
             split at accepted
             · rename_i sender
               simp only [dite_eq_ite, Option.ite_none_right_eq_some] at accepted
@@ -928,18 +948,18 @@ theorem handle_opening_iff (runtime : EventGraphRuntime graph) (state next : Sta
                         codeEq, value, result, rfl, sender, handleOwner, associated, rfl,
                         lookupEq, stored, resolved, ?_⟩
                       have direct := handle_opening_eq runtime state id event candidate
-                        owner payload binding checks outputEq codeEq view ready timely sender
+                        owner payload binding checks outputEq codeEq view ready timely active sender
                         handleOwner associated value lookupEq stored result resolved
                       exact Option.some.inj (accepted'.symm.trans direct)
                 · simp [stored] at accepted
             · simp_all only [reduceCtorEq]
-      · simp [handle, ready, timely] at accepted
-    · simp [handle, ready] at accepted
-  · rintro ⟨ready, timely, owner, payload, binding, checks, outputEq, codeEq, value, result,
+      · simp [handle, Message.sender, active, ready, timely] at accepted
+    · simp [handle, Message.sender, active, ready] at accepted
+  · rintro ⟨active, ready, timely, owner, payload, binding, checks, outputEq, codeEq, value, result,
       view, sender, handleOwner, associated, rawEq, verified, stored, resolved, nextEq⟩
     rw [rawEq, nextEq]
     exact handle_opening_eq runtime state id event candidate owner payload binding checks
-      outputEq codeEq view ready timely sender handleOwner associated value verified stored
+      outputEq codeEq view ready timely active sender handleOwner associated value verified stored
       result resolved
 
 private theorem handle_commitment_config_step
@@ -950,13 +970,16 @@ private theorem handle_commitment_config_step
       next.config ∈ (state.config.step event ready action).support ∧
         next.clock = state.clock ∧
         next.activatedAt = State.refreshActivated next.config state.clock state.activatedAt := by
-  obtain ⟨ready, _timely, owner, payload, outputEq, codeEq, _view, _sender,
+  obtain ⟨active, ready, _timely, owner, payload, outputEq, codeEq, _view, _sender,
     _handleOwner, _vacant, _unused, nextEq⟩ :=
     (handle_commitment_iff runtime state next id event candidate).mp accepted
   rw [nextEq]
   let result := state.bindingResult candidate payload
-  exact ⟨ready, cast (congrArg EventField.Action outputEq.symm) result,
-    bind_complete_mem_step state event ready owner payload outputEq codeEq result, rfl, rfl⟩
+  refine ⟨ready, cast (congrArg EventField.Action outputEq.symm) (some result),
+    ?_, rfl, rfl⟩
+  simpa only [State.complete, ite_eq_right (by simpa only [_sender] using active),
+    Option.getD_some] using
+    bind_complete_mem_step state event ready owner payload outputEq codeEq (some result)
 
 /-- An accepted opening executes its resolution with the original `true`
 action, retaining the precise node and action witnesses. -/
@@ -977,14 +1000,16 @@ theorem handle_opening_config_step
             (graph.nodes event) = .resolve owner payload binding checks),
           nodeView graph event = .resolve owner payload binding checks outputEq codeEq ∧
             action = cast (congrArg EventField.Action outputEq.symm) true := by
-  obtain ⟨ready, _timely, owner, payload, binding, checks, outputEq, codeEq, _value,
+  obtain ⟨active, ready, _timely, owner, payload, binding, checks, outputEq, codeEq, _value,
     result, view, _sender, _handleOwner, _associated, _rawEq, _verified, _stored,
     resolved, nextEq⟩ :=
     (handle_opening_iff runtime state next id event candidate raw).mp accepted
   rw [nextEq]
   exact ⟨ready, cast (congrArg EventField.Action outputEq.symm) true,
     resolve_complete_mem_step state event ready owner payload binding checks outputEq codeEq
-      true result resolved, rfl, rfl, owner, payload, binding, checks, outputEq, codeEq,
+      true result (by
+        simpa only [ite_eq_right (by simpa only [_sender] using active)] using resolved),
+    rfl, rfl, owner, payload, binding, checks, outputEq, codeEq,
     view, rfl⟩
 
 /-- Commitment acceptance freezes exactly its addressed handle and installs
@@ -996,7 +1021,7 @@ theorem handle_commitment_tables (runtime : EventGraphRuntime graph)
     next.candidates = state.candidates.freeze candidate ∧
       next.accepted = Function.update state.accepted (.inr event) (some candidate) ∧
       candidate.1 = id.1 := by
-  obtain ⟨_ready, _timely, _owner, _payload, _outputEq, _codeEq, _view, sender,
+  obtain ⟨_active, _ready, _timely, _owner, _payload, _outputEq, _codeEq, _view, sender,
     handleOwner, _vacant, _unused, nextEq⟩ :=
     (handle_commitment_iff runtime state next id event candidate).mp accepted
   rw [nextEq]
@@ -1010,10 +1035,10 @@ theorem handle_resolution_tables (runtime : EventGraphRuntime graph)
     next.accepted = state.accepted ∧ next.candidates = state.candidates := by
   rcases message with ⟨id, packet⟩
   cases packet with
-  | malformed raw => cases accepted
+  | malformed raw => simp [handle] at accepted
   | commitment event candidate => exact (noncommitment event candidate rfl).elim
   | opening event candidate raw =>
-      obtain ⟨_ready, _timely, _owner, _payload, _binding, _checks, _outputEq, _codeEq,
+      obtain ⟨_active, _ready, _timely, _owner, _payload, _binding, _checks, _outputEq, _codeEq,
         _value, _result, _view, _sender, _handleOwner, _associated, _rawEq, _verified,
         _stored, _resolved, nextEq⟩ :=
         (handle_opening_iff runtime state next id event candidate raw).mp accepted
@@ -1090,7 +1115,8 @@ private def expire (runtime : EventGraphRuntime graph) (state : State graph)
           | .bind _owner payload outputEq _codeEq =>
               let failed : PublicationResult (L.Val payload) := .failure
               state.complete event ready
-                (cast (congrArg EventField.Action outputEq.symm) failed)
+                (cast (congrArg EventField.Action outputEq.symm)
+                  (none : Option (PublicationResult (L.Val payload))))
                 (cast (congrArg EventField.Value outputEq.symm) failed)
           | .resolve owner payload binding checks outputEq _codeEq =>
               (acceptResolution state event ready owner payload binding checks
@@ -1105,7 +1131,6 @@ def environmentStep (runtime : EventGraphRuntime graph) (state : State graph) :
   | .executeSample event => executeSample state event
   | .expire event => PMF.pure (expire runtime state event)
 
-omit [DecidableEq Player] in
 /-- Environment service never changes commitment admission tables. -/
 theorem environmentStep_tables
     (runtime : EventGraphRuntime graph)
@@ -1160,7 +1185,6 @@ theorem environmentStep_tables
           · exact ⟨rfl, rfl⟩
       · exact ⟨rfl, rfl⟩
 
-omit [DecidableEq Player] in
 /-- Executing a certified ready sample is exactly the graph chance step, with
 only the runtime activation metadata refreshed around each sampled result. -/
 theorem environmentStep_executeSample_eq
@@ -1180,14 +1204,12 @@ theorem environmentStep_executeSample_eq
               activatedAt := State.refreshActivated config state.clock state.activatedAt } := by
   simp only [environmentStep, executeSample, dite_eq_left ready, viewEq]
 
-omit [DecidableEq Player] in
 theorem environmentStep_executeSample_of_not_ready
     (runtime : EventGraphRuntime graph) (state : State graph)
     (event : graph.EventId) (ready : ¬state.config.cut.Ready event) :
     environmentStep runtime state (.executeSample event) = PMF.pure state := by
   simp only [environmentStep, executeSample, dite_eq_right ready]
 
-omit [DecidableEq Player] in
 theorem environmentStep_executeSample_of_nonsample
     (runtime : EventGraphRuntime graph) (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
@@ -1200,7 +1222,6 @@ theorem environmentStep_executeSample_of_nonsample
   | sample payload law outputEq codeEq =>
       exact (view payload law outputEq codeEq actual).elim
 
-omit [DecidableEq Player] in
 /-- Once a ready binding deadline is due, expiry is exactly the binding's
 failure graph completion. -/
 theorem environmentStep_expire_bind_eq
@@ -1216,7 +1237,7 @@ theorem environmentStep_expire_bind_eq
     environmentStep runtime state (.expire event) =
       PMF.pure (state.complete event ready
         (cast (congrArg EventField.Action outputEq.symm)
-          (PublicationResult.failure : PublicationResult (L.Val payload)))
+          (none : Option (PublicationResult (L.Val payload))))
         (cast (congrArg EventField.Value outputEq.symm)
           (PublicationResult.failure : PublicationResult (L.Val payload)))) := by
   simp only [environmentStep, expire, dite_eq_left ready]
@@ -1229,7 +1250,6 @@ theorem environmentStep_expire_bind_eq
     subst actual
     simp only [dite_eq_left due, viewEq]
 
-omit [DecidableEq Player] in
 /-- Once a ready resolution deadline is due, expiry executes source FALSE,
 which is total and stores publication failure. -/
 theorem environmentStep_expire_resolve_eq
@@ -1262,7 +1282,6 @@ theorem environmentStep_expire_resolve_eq
     subst actual
     simp [due, viewEq, acceptResolution, resultEq]
 
-omit [DecidableEq Player] in
 /-- A supported expiry command either stutters or performs exactly one graph
 step at its addressed event. The stutter cases are not-ready, unactivated,
 not-due, or sample events; ready resolution reads make FALSE execution total. -/
@@ -1288,9 +1307,10 @@ theorem environmentStep_expire_config_eq_or_mem_step
         | bind owner payload outputEq codeEq =>
             let failed : PublicationResult (L.Val payload) := .failure
             exact Or.inr ⟨ready,
-              cast (congrArg EventField.Action outputEq.symm) failed,
-              bind_complete_mem_step state event ready owner payload outputEq
-                codeEq failed⟩
+              cast (congrArg EventField.Action outputEq.symm)
+                (none : Option (PublicationResult (L.Val payload))),
+              by simpa only [State.complete, ite_self, Option.getD_none] using
+                bind_complete_mem_step state event ready owner payload outputEq codeEq none⟩
         | resolve owner payload binding checks outputEq codeEq =>
             have resultEq := resolveOutput?_false_eq_failure_of_ready state event ready
               owner payload binding checks outputEq codeEq
@@ -1299,18 +1319,16 @@ theorem environmentStep_expire_config_eq_or_mem_step
             simpa only [view, acceptResolution, resultEq, bind, pure, State.complete,
               Option.bind_some, Option.getD_some] using
                 resolve_complete_mem_step state event ready owner payload binding
-                  checks outputEq codeEq false .failure resultEq
+                  checks outputEq codeEq false .failure (by simpa only [ite_self] using resultEq)
       · exact Or.inl rfl
   · exact Or.inl rfl
 
-omit [DecidableEq Player] in
 theorem environmentStep_expire_of_not_ready
     (runtime : EventGraphRuntime graph) (state : State graph)
     (event : graph.EventId) (ready : ¬state.config.cut.Ready event) :
     environmentStep runtime state (.expire event) = PMF.pure state := by
   simp only [environmentStep, expire, dite_eq_right ready]
 
-omit [DecidableEq Player] in
 theorem environmentStep_expire_of_not_activated
     (runtime : EventGraphRuntime graph) (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
@@ -1323,7 +1341,6 @@ theorem environmentStep_expire_of_not_activated
     rw [activated] at actual
     contradiction
 
-omit [DecidableEq Player] in
 theorem environmentStep_expire_of_not_due
     (runtime : EventGraphRuntime graph) (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
@@ -1339,7 +1356,6 @@ theorem environmentStep_expire_of_not_due
     subst actualEntered
     simp only [dite_eq_right due]
 
-omit [DecidableEq Player] in
 theorem environmentStep_expire_sample_eq
     (runtime : EventGraphRuntime graph) (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
@@ -1360,7 +1376,6 @@ theorem environmentStep_expire_sample_eq
     subst actualEntered
     simp only [dite_eq_left due, viewEq]
 
-omit [DecidableEq Player] in
 /-- A supported sample command either stutters or performs its addressed graph
 step and refreshes activation metadata. -/
 theorem environmentStep_executeSample_config_activated
@@ -1397,7 +1412,6 @@ theorem environmentStep_executeSample_config_activated
     subst next
     exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
 
-omit [DecidableEq Player] in
 /-- A supported expiry command either stutters or performs its addressed graph
 step and refreshes activation metadata. -/
 theorem environmentStep_expire_config_activated
@@ -1433,9 +1447,11 @@ theorem environmentStep_expire_config_activated
               subst next
               let failed : PublicationResult (L.Val payload) := .failure
               exact ⟨rfl, Or.inr ⟨ready,
-                cast (congrArg EventField.Action outputEq.symm) failed,
-                bind_complete_mem_step state event ready owner payload outputEq
-                  codeEq failed, rfl⟩⟩
+                cast (congrArg EventField.Action outputEq.symm)
+                (none : Option (PublicationResult (L.Val payload))),
+                by simpa only [State.complete, ite_self, Option.getD_none] using
+                  bind_complete_mem_step state event ready owner payload outputEq codeEq none,
+                rfl⟩⟩
           | resolve owner payload binding checks outputEq codeEq =>
               rw [environmentStep_expire_resolve_eq runtime state event ready entered
                 activated due owner payload binding checks outputEq codeEq view,
@@ -1446,7 +1462,7 @@ theorem environmentStep_expire_config_activated
               exact ⟨rfl, Or.inr ⟨ready,
                 cast (congrArg EventField.Action outputEq.symm) false,
                 resolve_complete_mem_step state event ready owner payload binding checks
-                  outputEq codeEq false .failure resultEq, rfl⟩⟩
+                  outputEq codeEq false .failure (by simpa only [ite_self] using resultEq), rfl⟩⟩
         · rw [environmentStep_expire_of_not_due runtime state event ready entered
             activated due, PMF.mem_support_pure_iff _ _] at member
           subst next
@@ -1456,7 +1472,6 @@ theorem environmentStep_expire_config_activated
     subst next
     exact ⟨rfl, Or.inl ⟨rfl, rfl⟩⟩
 
-omit [DecidableEq Player] in
 /-- Only a sample execution randomizes, and graph chance laws are exact finite
 tables, so every environment step is finitely supported. -/
 theorem environmentStep_support_finite (runtime : EventGraphRuntime graph) (state : State graph)

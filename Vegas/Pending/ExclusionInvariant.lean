@@ -1,130 +1,148 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionApplication
-import Interaction.ReactiveInvariant
+import Vegas.Pending.ExclusionCompletion
+import Vegas.Pending.EventInvariant
 
-/-! # Lifetime invariants of the permanent-exclusion runtime -/
+/-! # Invariants of automatic graph completion
+
+Automatic service preserves the same native invariant, typed cells and
+relative deadlines as inclusion, samples and expiry.
+-/
 
 noncomputable section
 
-namespace Vegas.EventGraphRuntime
+namespace Vegas.EventGraphRuntime.State
 
-open EventGraph Interaction
+open EventGraph GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
 
-namespace State
-
-omit [DecidableEq Player] in
-theorem completeFailure_activated (state : State graph) (event : graph.EventId)
-    (ready : state.config.cut.Ready event) {owner : Player}
-    (acting : graph.actor? event = some owner) :
-    (state.completeFailure event ready).activatedAt =
-      refreshActivated (state.completeFailure event ready).config state.clock
-        state.activatedAt := by
+/-- Automatic completion uses the native activation refresh around its graph step. -/
+theorem completeAutomatic_activatedAt (state : State graph) (event : graph.EventId)
+    (eligible : state.AutomaticReady event) :
+    (state.completeAutomatic event eligible).activatedAt =
+      refreshActivated (state.completeAutomatic event eligible).config
+        state.clock state.activatedAt := by
+  obtain ⟨owner, acting, _inactive⟩ := eligible.owned
   cases view : nodeView graph event with
-  | bind _ _ _ _ => simp only [completeFailure, view, complete]
-  | resolve _ _ _ _ _ _ => simp only [completeFailure, view, complete]
+  | bind actor payload outputEq codeEq =>
+      simp only [completeAutomatic, completeFailure, view, complete]
+  | resolve actor payload binding checks outputEq codeEq =>
+      simp only [completeAutomatic, completeFailure, view, complete]
   | sample payload law outputEq codeEq =>
-      have actorEq : graph.actor? event = none :=
+      have ownerless : graph.actor? event = none :=
         (EventCode.actor_cast outputEq (graph.nodes event)).symm.trans
           (congrArg EventCode.actor codeEq)
-      rw [actorEq] at acting
+      rw [ownerless] at acting
       cases acting
 
-omit [DecidableEq Player] in
-theorem completeFailure_invariant {state : State graph} {inputs : graph.Inputs}
-    (valid : state.Invariant inputs) (event : graph.EventId)
-    (ready : state.config.cut.Ready event) {owner : Player}
-    (acting : graph.actor? event = some owner) :
-    (state.completeFailure event ready).Invariant inputs := by
-  obtain ⟨action, realized⟩ := state.completeFailure_step event ready acting
-  have completed := valid.refreshStep event ready action _ realized
-  apply completed.copy
+/-- Native automatic completion preserves graph reachability and activation clocks. -/
+theorem Invariant.completeAutomatic {inputs : graph.Inputs} {state : State graph}
+    (invariant : state.Invariant inputs) (event : graph.EventId)
+    (eligible : state.AutomaticReady event) :
+    (state.completeAutomatic event eligible).Invariant inputs := by
+  obtain ⟨action, supported⟩ := state.completeAutomatic_step event eligible
+  have refreshed := invariant.refreshStep event eligible.1 action
+    (state.completeAutomatic event eligible).config supported
+  apply refreshed.copy
   · rfl
-  · exact (state.completeFailure_tables event ready).2.2
-  · exact state.completeFailure_activated event ready acting
+  · exact (state.completeFailure_tables event eligible.1).2.2
+  · exact state.completeAutomatic_activatedAt event eligible
 
-end State
+/-- The bounded automatic trace preserves the same native invariant. -/
+theorem Invariant.drainFuel {inputs : graph.Inputs} {state : State graph}
+    (invariant : state.Invariant inputs) (fuel : Nat) :
+    (drainFuel fuel state).Invariant inputs := by
+  exact drainFuel_induction (fun current => current.Invariant inputs)
+    (fun _ event eligible valid => valid.completeAutomatic event eligible)
+    fuel state invariant
 
-namespace RecoveryState
+/-- Fully draining automatic events preserves the same native invariant. -/
+theorem Invariant.drain {inputs : graph.Inputs} {state : State graph}
+    (invariant : state.Invariant inputs) : state.drain.Invariant inputs :=
+  invariant.drainFuel state.config.remaining
 
-theorem drainFuel_invariant (fuel : Nat) (state : RecoveryState graph) {inputs : graph.Inputs}
-    (valid : state.native.Invariant inputs) :
-    (drainFuel fuel state).native.Invariant inputs := by
-  apply drainFuel_induction (fun next => next.native.Invariant inputs)
-    (fun before event eligible previous => ?_) fuel state valid
-  obtain ⟨owner, acting, _⟩ := eligible.owned
-  exact State.completeFailure_invariant previous event eligible.1 acting
+/-- Automatic completion retains every existing typed cell without reachability assumptions. -/
+theorem completeAutomatic_store_of_some (state : State graph) (event : graph.EventId)
+    (eligible : state.AutomaticReady event) (field : graph.Field)
+    (value : (graph.layout field).Value) (stored : state.config.store field = some value) :
+    (state.completeAutomatic event eligible).config.store field = some value := by
+  obtain ⟨action, supported⟩ := state.completeAutomatic_step event eligible
+  exact state.config.step_store_of_some _ event eligible.1 action supported field value stored
 
-theorem drain_invariant (state : RecoveryState graph) {inputs : graph.Inputs}
-    (valid : state.native.Invariant inputs) : state.drain.native.Invariant inputs :=
-  drainFuel_invariant _ _ valid
+/-- The bounded automatic trace retains every existing typed cell. -/
+theorem drainFuel_store_of_some (fuel : Nat) (state : State graph) (field : graph.Field)
+    (value : (graph.layout field).Value) (stored : state.config.store field = some value) :
+    (drainFuel fuel state).config.store field = some value := by
+  exact drainFuel_induction (fun current => current.config.store field = some value)
+    (fun before event eligible current =>
+      before.completeAutomatic_store_of_some event eligible field value current)
+    fuel state stored
 
-/-- Every externally visible recovery state has coherent native metadata and
-no ready event belonging to an excluded owner. -/
-structure Invariant (inputs : graph.Inputs) (state : RecoveryState graph) : Prop where
-  native : state.native.Invariant inputs
-  quiescent : ∀ event, ¬ state.AutomaticReady event
+/-- Fully draining automatic events retains every existing typed cell. -/
+theorem drain_store_of_some (state : State graph) (field : graph.Field)
+    (value : (graph.layout field).Value) (stored : state.config.store field = some value) :
+    state.drain.config.store field = some value :=
+  drainFuel_store_of_some state.config.remaining state field value stored
 
-namespace Invariant
+/-- An unrelated automatic completion cannot reset an unfinished event's deadline. -/
+theorem Invariant.completeAutomatic_activatedAt_of_not_completed
+    {inputs : graph.Inputs} {state : State graph} (invariant : state.Invariant inputs)
+    (event : graph.EventId) (eligible : state.AutomaticReady event)
+    (query : graph.EventId) (entered : Nat) (activated : state.activatedAt query = some entered)
+    (unfinished : query ∉ (state.completeAutomatic event eligible).config.cut.completed) :
+    (state.completeAutomatic event eligible).activatedAt query = some entered := by
+  obtain ⟨action, supported⟩ := state.completeAutomatic_step event eligible
+  rw [state.completeAutomatic_activatedAt event eligible]
+  exact invariant.refreshStep_activatedAt_of_not_completed event query eligible.1 action
+    (state.completeAutomatic event eligible).config supported entered activated unfinished
 
-variable {state : RecoveryState graph} {inputs : graph.Inputs}
+/-- Automatic completion can only enlarge the completed frontier. -/
+theorem completeAutomatic_completed_subset (state : State graph) (event : graph.EventId)
+    (eligible : state.AutomaticReady event) :
+    state.config.cut.completed ⊆
+      (state.completeAutomatic event eligible).config.cut.completed := by
+  obtain ⟨action, supported⟩ := state.completeAutomatic_step event eligible
+  exact completed_subset_of_mem_step state.config event eligible.1 action _ supported
 
-theorem initial (inputs : graph.Inputs) :
-    Invariant inputs (⟨State.initial inputs, ∅⟩ : RecoveryState graph) := by
-  refine ⟨State.initial_invariant inputs, ?_⟩
-  intro event eligible
-  obtain ⟨owner, _, member⟩ := eligible.owned
-  exact Finset.notMem_empty _ member
+/-- The bounded automatic trace can only enlarge the completed frontier. -/
+theorem drainFuel_completed_subset (fuel : Nat) (state : State graph) :
+    state.config.cut.completed ⊆ (drainFuel fuel state).config.cut.completed := by
+  exact drainFuel_induction
+    (fun current => state.config.cut.completed ⊆ current.config.cut.completed)
+    (fun before event eligible prior =>
+      prior.trans (before.completeAutomatic_completed_subset event eligible))
+    fuel state (Finset.Subset.refl _)
 
-theorem submit (valid : state.Invariant inputs) (who : Player)
-    (submission : WitnessedSubmission graph) : (state.submit who submission).Invariant inputs := by
-  refine ⟨?_, state.submit_quiescent who submission valid.quiescent⟩
-  apply valid.native.copy
-  · change (submitStep _ who _).config = _
-    rw [submitStep_config, (submission.call.register_facts who state.native).1]
-  · have same := (submitStep_publicView (submission.call.register state.native who) who
-        submission.call.packet).trans (submission.call.register_facts who state.native).2
-    exact congrArg PublicView.clock same
-  · have same := (submitStep_publicView (submission.call.register state.native who) who
-        submission.call.packet).trans (submission.call.register_facts who state.native).2
-    exact congrArg PublicView.activatedAt same
+/-- A whole automatic drain retains an existing deadline for an unfinished event. -/
+theorem Invariant.drainFuel_activatedAt_of_not_completed
+    {inputs : graph.Inputs} {state : State graph} (invariant : state.Invariant inputs)
+    (fuel : Nat) (query : graph.EventId) (entered : Nat)
+    (activated : state.activatedAt query = some entered)
+    (unfinished : query ∉ (State.drainFuel fuel state).config.cut.completed) :
+    (State.drainFuel fuel state).activatedAt query = some entered := by
+  have preserved := drainFuel_induction
+    (fun current => current.Invariant inputs ∧
+      (query ∉ current.config.cut.completed → current.activatedAt query = some entered))
+    (fun before event eligible prior => by
+      refine ⟨prior.1.completeAutomatic event eligible, ?_⟩
+      intro remains
+      have earlier : query ∉ before.config.cut.completed :=
+        fun completed =>
+          remains (before.completeAutomatic_completed_subset event eligible completed)
+      exact prior.1.completeAutomatic_activatedAt_of_not_completed event eligible query entered
+        (prior.2 earlier) remains)
+    fuel state ⟨invariant, fun _ => activated⟩
+  exact preserved.2 unfinished
 
-theorem handle (valid : state.Invariant inputs) (runtime : EventGraphRuntime graph)
-    (message : Message Player (WitnessedPacket graph)) (next : RecoveryState graph)
-    (accepted : state.handle runtime message = some next) : next.Invariant inputs := by
-  unfold RecoveryState.handle at accepted
-  split at accepted
-  · cases accepted
-  · split at accepted
-    · obtain ⟨native, rawAccepted, rfl⟩ := Option.map_eq_some_iff.mp accepted
-      have first := handle_invariant runtime state.native native
-        ⟨message.id, message.payload.call⟩ valid.native rawAccepted
-      exact ⟨drain_invariant _ first, drain_quiescent _⟩
-    · cases accepted
+/-- Draining automatic events cannot reset an unfinished event's deadline. -/
+theorem Invariant.drain_activatedAt_of_not_completed
+    {inputs : graph.Inputs} {state : State graph} (invariant : state.Invariant inputs)
+    (query : graph.EventId) (entered : Nat) (activated : state.activatedAt query = some entered)
+    (unfinished : query ∉ state.drain.config.cut.completed) :
+    state.drain.activatedAt query = some entered :=
+  invariant.drainFuel_activatedAt_of_not_completed state.config.remaining query entered
+    activated unfinished
 
-theorem environment (valid : state.Invariant inputs) (runtime : EventGraphRuntime graph)
-    (command : EnvironmentCommand graph) (next : RecoveryState graph)
-    (realized : next ∈ (state.environment runtime command).support) : next.Invariant inputs := by
-  rw [RecoveryState.environment, PMF.support_map] at realized
-  obtain ⟨native, reached, rfl⟩ := realized
-  have first := environmentStep_invariant runtime state.native native command valid.native reached
-  exact ⟨drain_invariant _ first, drain_quiescent _⟩
-
-end Invariant
-end RecoveryState
-
-/-- Permanent exclusions can only grow under actual recovery execution steps. -/
-theorem recoveryApplication_exclusion_monotone (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
-    (recoveryApplication runtime leaks).StepRelation
-      (fun before after => before.excluded ⊆ after.excluded) where
-  refl _ := fun _ member => member
-  submit _ _ _ := fun _ member => member
-  handle state message next accepted := state.handle_excluded_subset runtime next message accepted
-  environment state command next realized :=
-    state.environment_excluded_subset runtime next command realized
-
-end Vegas.EventGraphRuntime
+end Vegas.EventGraphRuntime.State

@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionApplication
+import Vegas.Pending.ReactiveRuntime
 import Interaction.ReactiveSubmissionSerial
 import Interaction.ReactiveResponseNormalization
 

@@ -3,6 +3,8 @@
 import Interaction.ReactiveInvariant
 import Vegas.Pending.ReactiveRuntime
 import Vegas.Pending.EventStore
+import Vegas.Pending.ExclusionInvariant
+import Vegas.Pending.ReactiveGraphSteps
 
 /-! # Reachability and stored values in reactive continuations -/
 
@@ -46,11 +48,15 @@ theorem reactiveStateInvariant (runtime : EventGraphRuntime graph)
     · exact congrArg PublicView.activatedAt
         ((submitStep_publicView _ who material.call.packet).trans
           (material.call.register_facts who state).2)
-  handle state message next valid accepted :=
-    handle_invariant runtime state next ⟨message.id, message.payload.call⟩ valid
-      (reactiveHandle_call accepted)
-  environment state command next valid supported :=
-    environmentStep_invariant runtime state next command valid supported
+  handle state message next valid accepted := by
+    obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
+    rw [← nextEq]
+    exact (handle_invariant runtime state native ⟨message.id, message.payload.call⟩
+      valid handled).drain
+  environment state command next valid supported := by
+    change next ∈ ((environmentStep runtime state command).map State.drain).support at supported
+    obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ supported
+    exact (environmentStep_invariant runtime state native command valid moved).drain
 
 theorem reactiveStoreInvariant (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -62,12 +68,56 @@ theorem reactiveStoreInvariant (runtime : EventGraphRuntime graph)
       material.call.packet).config.store field = _
     rw [submitStep_config, (material.call.register_facts who state).1]
     exact stored
-  handle state message next stored accepted :=
-    handle_store_of_some runtime state next ⟨message.id, message.payload.call⟩
-      (reactiveHandle_call accepted)
-      field value stored
-  environment state command next stored supported :=
-    environmentStep_store_of_some runtime state next command supported field value stored
+  handle state message next stored accepted := by
+    obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
+    rw [← nextEq]
+    exact native.drain_store_of_some field value
+      (handle_store_of_some runtime state native ⟨message.id, message.payload.call⟩ handled
+        field value stored)
+  environment state command next stored supported := by
+    change next ∈ ((environmentStep runtime state command).map State.drain).support at supported
+    obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ supported
+    exact native.drain_store_of_some field value
+      (environmentStep_store_of_some runtime state native command moved field value stored)
+
+/-- Every successful application operation leaves automatic service quiescent. -/
+theorem reactiveQuiescentInvariant (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
+    (runtime.reactiveApplication leaks).Invariant
+      (fun state => ∀ event, ¬ state.AutomaticReady event) where
+  submit state who material clear := by
+    have same : ((runtime.reactiveApplication leaks).submit state who material).config =
+        state.config :=
+      (submitStep_config _ who material.call.packet).trans
+        (material.call.register_facts who state).1
+    intro event eligible
+    apply clear event
+    simpa only [State.AutomaticReady, same] using eligible
+  handle state message next _clear accepted := by
+    obtain ⟨native, _handled, nextEq⟩ := reactiveHandle_call accepted
+    rw [← nextEq]
+    exact native.drain_quiescent
+  environment state command next _clear supported := by
+    change next ∈ ((environmentStep runtime state command).map State.drain).support at supported
+    obtain ⟨native, _moved, rfl⟩ := PMF.support_map .. ▸ supported
+    exact native.drain_quiescent
+
+/-- Initialized physical histories never leave an automatic completion pending. -/
+theorem reactive_history_quiescent (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (inputs : PMF graph.Inputs) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler) {state}
+    (trace : ((runtime.reactiveApplication leaks).protocol
+      (inputs.map State.initial) horizon scheduler).Trace state) :
+    ReactiveApplication.stateInvariant (fun state : State graph =>
+      ∀ event, ¬ state.AutomaticReady event) state := by
+  apply (reactiveQuiescentInvariant runtime leaks).history
+    (inputs.map State.initial) horizon scheduler ?_ trace
+  intro state supported
+  obtain ⟨setup, _chosen, rfl⟩ := PMF.support_map .. ▸ supported
+  intro event eligible
+  obtain ⟨owner, _, inactive⟩ := eligible.owned
+  exact Finset.notMem_empty owner inactive
 
 /-- Every initialized native history satisfies the runtime invariant of some
 supported setup: its configuration is reachable by the original graph rules,

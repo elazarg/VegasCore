@@ -629,3 +629,45 @@ theorem complete_defaults_of_code (config : graph.Config) (event : graph.EventId
   exact config.complete_defaults event ready action value
 
 end Vegas.EventGraph.Config
+
+namespace Vegas.EventGraph.Config
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+/-- One supported transition of the graph's authoritative executor. -/
+def Step (before after : graph.Config) : Prop :=
+  ∃ event, ∃ ready : before.cut.Ready event, ∃ action : graph.Action event,
+    after ∈ (before.step event ready action).support
+
+namespace Step
+
+/-- A supported transition preserves reachability from fixed inputs. -/
+theorem reachable {before after : graph.Config} (moved : Step before after)
+    {inputs : graph.Inputs} (reachable : before.Reachable inputs) : after.Reachable inputs := by
+  obtain ⟨event, ready, action, supported⟩ := moved
+  exact .step reachable event ready action after supported
+
+/-- A supported transition preserves all public defaults. -/
+theorem defaulted_mono {before after : graph.Config} (moved : Step before after) :
+    before.defaulted ⊆ after.defaulted := by
+  obtain ⟨event, ready, action, supported⟩ := moved
+  exact before.defaulted_step event ready action after supported
+
+/-- Any finite supported execution path preserves reachability from fixed inputs. -/
+theorem path_reachable {before after : graph.Config}
+    (path : Relation.ReflTransGen Step before after) {inputs : graph.Inputs} :
+    before.Reachable inputs → after.Reachable inputs := by
+  induction path using Relation.ReflTransGen.head_induction_on with
+  | refl => exact id
+  | @head before middle moved _ ih => exact fun valid => ih (moved.reachable valid)
+
+/-- Any finite supported execution path preserves all public defaults. -/
+theorem path_defaulted_mono {before after : graph.Config}
+    (path : Relation.ReflTransGen Step before after) : before.defaulted ⊆ after.defaulted := by
+  induction path using Relation.ReflTransGen.head_induction_on with
+  | refl => exact Finset.Subset.refl _
+  | @head before middle moved _ ih => exact moved.defaulted_mono.trans ih
+
+end Step
+end Vegas.EventGraph.Config

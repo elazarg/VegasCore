@@ -2,6 +2,7 @@
 
 import Interaction.ReactiveRecall
 import Vegas.Pending.OpeningEvidence
+import Vegas.Pending.ExclusionCompletion
 
 /-! # The event application under explicit network scheduling
 
@@ -9,6 +10,8 @@ One activation optionally transmits one packet. Private strategy memory is
 absent from game actions. Fresh commitment material is fixed by submission. The
 scheduler receives the authored envelope, while the player retains its own output.
 No private staging command is a strategic action of this protocol.
+Public default triggers bounded automatic completion in the same transition;
+the graph configuration is the sole authority for default status.
 An independent observation rule supplies partial knowledge of foreign pending
 packets at activation; its samples are hidden from scheduling.
 -/
@@ -35,8 +38,8 @@ def reactiveApplication (runtime : EventGraphRuntime graph)
   submit state who submission :=
     submitStep (submission.call.register state who) who submission.call.packet
   handle state message := if message.payload.tokenValid then
-      handle runtime state ⟨message.id, message.payload.call⟩ else none
-  environment := environmentStep runtime
+      (handle runtime state ⟨message.id, message.payload.call⟩).map State.drain else none
+  environment state command := (environmentStep runtime state command).map State.drain
   observePlayer := State.playerView
   observePublic := State.publicView
   observePending := leaks
@@ -48,14 +51,14 @@ theorem reactiveApplication_handle (runtime : EventGraphRuntime graph)
     (state : State graph) (message : Message Player (WitnessedPacket graph)) :
     (runtime.reactiveApplication leaks).handle state message =
       if message.payload.tokenValid then
-        handle runtime state ⟨message.id, message.payload.call⟩ else none := rfl
+        (handle runtime state ⟨message.id, message.payload.call⟩).map State.drain else none := rfl
 
 theorem reactiveApplication_handle_of_tokenValid (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (state : State graph) (message : Message Player (WitnessedPacket graph))
     (valid : message.payload.tokenValid = true) :
     (runtime.reactiveApplication leaks).handle state message =
-      handle runtime state ⟨message.id, message.payload.call⟩ := by
+      (handle runtime state ⟨message.id, message.payload.call⟩).map State.drain := by
   simp only [reactiveApplication_handle, valid, ite_true]
 
 theorem reactiveApplication_handle_eq_some (runtime : EventGraphRuntime graph)
@@ -63,18 +66,20 @@ theorem reactiveApplication_handle_eq_some (runtime : EventGraphRuntime graph)
     (state next : State graph) (message : Message Player (WitnessedPacket graph))
     (accepted : (runtime.reactiveApplication leaks).handle state message = some next) :
     message.payload.tokenValid = true ∧
-      handle runtime state ⟨message.id, message.payload.call⟩ = some next := by
+      ∃ native, handle runtime state ⟨message.id, message.payload.call⟩ = some native ∧
+        native.drain = next := by
   rw [reactiveApplication_handle] at accepted
   split at accepted
-  · exact ⟨by assumption, accepted⟩
+  · exact ⟨by assumption, Option.map_eq_some_iff.mp accepted⟩
   · cases accepted
 
-/-- An accepted inclusion ran the contract's call handler. -/
+/-- An accepted inclusion runs the call handler followed by automatic completion. -/
 theorem reactiveHandle_call {runtime : EventGraphRuntime graph}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
     {state next : State graph} {message : Message Player (WitnessedPacket graph)}
     (accepted : (runtime.reactiveApplication leaks).handle state message = some next) :
-    handle runtime state ⟨message.id, message.payload.call⟩ = some next :=
+    ∃ native, handle runtime state ⟨message.id, message.payload.call⟩ = some native ∧
+      native.drain = next :=
   (reactiveApplication_handle_eq_some runtime leaks state next message accepted).2
 
 /-- A call the contract rejects is rejected whatever its token. -/
@@ -85,7 +90,7 @@ theorem reactiveHandle_none {runtime : EventGraphRuntime graph}
     (runtime.reactiveApplication leaks).handle state message = none := by
   rw [reactiveApplication_handle]
   split
-  · exact rejected
+  · simp only [rejected, Option.map_none]
   · rfl
 
 theorem reactiveApplication_handle_of_not_tokenValid (runtime : EventGraphRuntime graph)
@@ -131,7 +136,6 @@ theorem reactiveApplication_packet_none (runtime : EventGraphRuntime graph)
   change WitnessedPacket.mk _ _ _ = _
   exact congrArg _ token
 
-omit [DecidableEq Player] in
 /-- A finitely branching leak rule makes every reactive environment law finite:
 the graph's own environment steps already are. -/
 instance reactiveApplication_finiteEnvironment (runtime : EventGraphRuntime graph)
@@ -139,7 +143,10 @@ instance reactiveApplication_finiteEnvironment (runtime : EventGraphRuntime grap
     (runtime.reactiveApplication leaks).FiniteEnvironment where
   observePending_finite :=
     MessageNetwork.ObservationRule.FiniteSupport.support_finite (leaks := leaks)
-  environment_finite := runtime.environmentStep_support_finite
+  environment_finite state command := by
+    change ((environmentStep runtime state command).map State.drain).support.Finite
+    rw [PMF.support_map]
+    exact (environmentStep_support_finite runtime state command).image _
 
 /-- Atomically fix a fresh candidate and transmit its handle. Only the packet
 field enters the network; the opening is private submission material. -/
@@ -177,5 +184,18 @@ theorem reactiveBinding_result (runtime : EventGraphRuntime graph)
       rw [submitStep_bindingResult]
       simp only [State.bindingResult, CommitmentCandidates.lookup_prepare_self,
         fresh, Raw.as?_mk, Option.elim_some]
+
+/-- **Complete play.** Every legal terminal state has completed every event:
+the scheduler eventually samples, includes or expires each one. -/
+def CompletesPlay (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler) : Prop :=
+  ∀ (control : (runtime.reactiveApplication leaks).Control),
+    ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
+      (some control) →
+    ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).terminal
+      (some control) →
+    control.execution.application.config.cut.Terminal
 
 end Vegas.EventGraphRuntime

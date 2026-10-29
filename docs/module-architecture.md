@@ -14,7 +14,7 @@ subtree; imports do not preserve unused research modules merely to keep a name.
 | Vegas.Foundation / Vegas.Expr | Typed values, environments and executable expressions. |
 | Vegas.Source | Source instructions, initial law, information and guard/completion invariants. |
 | Vegas.EventGraph | Typed dependencies, execution, observations and readout. |
-| Vegas.Pending | Submission, inclusion, relative deadlines, operational graph refinement, permanent-exclusion controller, service and count-audit contracts. |
+| Vegas.Pending | Submission, inclusion, relative deadlines, operational graph refinement, automatic completion, service and count-audit contracts. |
 | Vegas.Compile | Source-to-graph compiler and source/scheduler correspondence. |
 | Vegas.Game | Ordinary compiler correctness, intended-source extension, Nash correspondence and raw non-concurrent SE preservation. |
 | Tests and examples | Retained semantic regressions and concrete consumers. |
@@ -26,8 +26,12 @@ it does not reproduce their state updates in another interpreter.
 The [absorbing-default port](source-absorbing-failure.md) checks that this source
 executor and the graph executor preserve full configurations under compilation.
 The first pass generates sequential dependencies to retain public default timing;
-its scheduling proof uses the unique ready event. The ledger and strategic ports
-remain acceptance obligations for replacing the complete tower.
+its scheduling proof uses the unique ready event. The sole ledger application
+derives default control from the graph configuration and performs bounded
+automatic completion. Its raw transitions refine finite supported graph paths;
+initialized histories retain reachability, cells, deadlines and quiescence.
+The probabilistic client and strategic ports remain acceptance obligations for
+replacing the complete tower.
 
 Start with [recovery preservation](../Vegas/Game/RecoverySequentialCompilation.lean),
 [monetary preservation](../Vegas/Game/RecoveryPaymentPreservation.lean) and

@@ -30,12 +30,10 @@ structure ServiceProgress (inputs : graph.Inputs) (ticks : Nat)
   activated : ∀ event entered, before.activatedAt event = some entered →
     event ∉ after.config.cut.completed → after.activatedAt event = some entered
 
-omit [DecidableEq Player] in
 theorem ServiceProgress.refl {inputs : graph.Inputs} {state : State graph}
     (invariant : state.Invariant inputs) : ServiceProgress inputs 0 state state :=
   ⟨invariant, Finset.Subset.refl _, by omega, fun _ _ same _ => same⟩
 
-omit [DecidableEq Player] in
 theorem ServiceProgress.trans {inputs : graph.Inputs} {first second : Nat}
     {before middle after : State graph}
     (left : ServiceProgress inputs first before middle)
@@ -48,7 +46,6 @@ theorem ServiceProgress.trans {inputs : graph.Inputs} {first second : Nat}
       (left.activated event entered activated (fun done => unfinished (right.completed done)))
       unfinished
 
-omit [DecidableEq Player] in
 theorem ServiceProgress.ready_or_completed {inputs : graph.Inputs} {ticks : Nat}
     {before after : State graph} (progress : ServiceProgress inputs ticks before after)
     (event : graph.EventId) (ready : before.config.cut.Ready event) :
@@ -69,7 +66,6 @@ theorem handle_progress (runtime : EventGraphRuntime graph)
   · simpa using (handle_clock_activated runtime state next message accepted).1
   · exact handle_activatedAt_of_not_completed runtime state next message invariant accepted
 
-omit [DecidableEq Player] in
 /-- Sampling completes any ready chance event, independently of the service driver. -/
 theorem environmentStep_sample_complete (runtime : EventGraphRuntime graph)
     (state next : State graph) (event : graph.EventId)
@@ -91,7 +87,6 @@ theorem environmentStep_sample_complete (runtime : EventGraphRuntime graph)
       rw [← configEq, EventGraph.Config.step_cut _ _ _ _ _ step]
       exact Finset.mem_insert_self _ _
 
-omit [DecidableEq Player] in
 /-- Expiry completes a ready strategic event once its original deadline is due. -/
 theorem environmentStep_expire_complete (runtime : EventGraphRuntime graph)
     (state next : State graph) (event : graph.EventId)

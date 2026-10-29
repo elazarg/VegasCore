@@ -33,7 +33,6 @@ theorem handle_store_of_some (runtime : EventGraphRuntime graph)
     handle_config_mem_step runtime state next message accepted
   exact state.config.step_store_of_some next.config event ready action member field value stored
 
-omit [DecidableEq Player] in
 /-- Chance, clocks, and expiry preserve every field already present. -/
 theorem environmentStep_store_of_some (runtime : EventGraphRuntime graph)
     (state next : State graph) (command : EnvironmentCommand graph)
@@ -63,7 +62,6 @@ theorem environmentStep_store_of_some (runtime : EventGraphRuntime graph)
         exact state.config.step_store_of_some next.config event ready action member
           field value stored
 
-omit [DecidableEq Player] in
 /-- An environment operation only appends semantic completions; it cannot
 remove or replace an action already recorded in the graph history. -/
 theorem environmentStep_history_prefix (runtime : EventGraphRuntime graph)
@@ -74,7 +72,9 @@ theorem environmentStep_history_prefix (runtime : EventGraphRuntime graph)
       (action : graph.Action event)
       (supported : next.config ∈ (state.config.step event ready action).support) :
       state.config.history.IsPrefix next.config.history := by
-    rw [state.config.step_history event ready action next.config supported]
+    obtain ⟨value, _, history⟩ :=
+      state.config.step_completion event ready action next.config supported
+    rw [history]
     exact ⟨_, rfl⟩
   cases command with
   | advanceClock =>
