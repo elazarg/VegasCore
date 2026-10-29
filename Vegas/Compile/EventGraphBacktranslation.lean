@@ -199,8 +199,8 @@ theorem encodeEventAction?_decodeEventAction_eq_some :
         exact encodeEventAction?_decodeEventAction_eq_some next tail graphAction
           sourceAction decoded
 
-/-- Encode a source action list against a concrete list of source-ranked event
-identities. Length or event/action mismatches fail explicitly. -/
+/-- Encode an active player's actions against their source-ranked events.
+Every retained choice has a decision and introduces no default of that player. -/
 def encodeCompletions? {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames) :
     List (Fin (eventCount program)) → List (OwnAction Player L) →
@@ -209,41 +209,48 @@ def encodeCompletions? {Γ : SourceCtx Player L} {openNames : Finset VarId}
   | event :: events, action :: actions => do
       let encoded ← encodeEventAction? program event action
       let tail ← encodeCompletions? program events actions
-      pure (⟨event, encoded⟩ :: tail)
+      pure (⟨event, some encoded, none⟩ :: tail)
   | _, _ => none
 
-/-- A completion list containing only strategic events is reconstructed exactly
-from its source-ranked event identities and decoded original actions. -/
+/-- An active player's retained completion list is recovered exactly from
+its event identities and decoded original actions. -/
 theorem encodeCompletions?_decodeCompletions_eq_some
     {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
     (completions : List (toEventGraph program).Completion)
     (strategic : ∀ completion ∈ completions,
-      ∃ sourceAction,
-        decodeEventAction program completion.event completion.action =
-          some sourceAction) :
+      ∃ action sourceAction, completion.decision = some action ∧
+        decodeEventAction program completion.event action = some sourceAction)
+    (noDefault : ∀ completion ∈ completions, completion.defaultEvent = none) :
     encodeCompletions? program (completions.map (·.event))
         (decodeCompletions program completions) = some completions := by
   induction completions with
   | nil => rfl
   | cons completion completions ih =>
-      obtain ⟨sourceAction, decoded⟩ := strategic completion (by simp)
+      obtain ⟨action, sourceAction, chosen, decoded⟩ := strategic completion (by simp)
+      have noNew := noDefault completion (by simp)
       have tailStrategic : ∀ candidate ∈ completions,
-          ∃ sourceAction,
-            decodeEventAction program candidate.event candidate.action =
-              some sourceAction := by
+          ∃ action sourceAction, candidate.decision = some action ∧
+            decodeEventAction program candidate.event action = some sourceAction := by
         intro candidate member
         exact strategic candidate (by simp [member])
-      have tailEncoded := ih tailStrategic
-      simp only [decodeCompletions, List.filterMap_cons, decoded]
+      have tailNoDefault : ∀ candidate ∈ completions, candidate.defaultEvent = none := by
+        intro candidate member
+        exact noDefault candidate (by simp [member])
+      have tailEncoded := ih tailStrategic tailNoDefault
+      simp only [decodeCompletions, List.filterMap_cons, chosen, Option.bind_some, decoded]
       change encodeCompletions? program
           (completion.event :: completions.map (·.event))
           (sourceAction :: decodeCompletions program completions) =
         some (completion :: completions)
-      rw [encodeCompletions?,
-        encodeEventAction?_decodeEventAction_eq_some program completion.event
-          completion.action sourceAction decoded,
-        tailEncoded]
-      rfl
+      rw [encodeCompletions?, encodeEventAction?_decodeEventAction_eq_some program
+        completion.event action sourceAction decoded, tailEncoded]
+      change some (⟨completion.event, some action, none⟩ :: completions) =
+        some (completion :: completions)
+      congr 2
+      cases completion
+      congr 1
+      · exact chosen.symm
+      · exact noNew.symm
 
 end Vegas

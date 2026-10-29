@@ -33,7 +33,7 @@ theorem ProtocolView.available_finite (who : Player) :
       | inl _ =>
           let := finite.1
           let := Fintype.ofFinite (L.Val payload)
-          apply (Set.finite_range (fun choice : PublicationResult (L.Val payload) =>
+          apply (Set.finite_range (fun choice : Option (PublicationResult (L.Val payload)) =>
             OwnAction.commit owner name payload choice)).subset
           rintro _ ⟨choice, _, rfl⟩
           exact ⟨choice, rfl⟩
@@ -76,7 +76,7 @@ theorem Setup.finite_choice (setup : Setup (Player := Player) (L := L))
   | some view => exact ProtocolView.finite_choice who setup.program finite admission view
 
 /-- Every abstract view has a legal choice: none for a player not on the move,
-a value binding at its own commitment and a withholding at its own reveal. -/
+a public omission at an active commitment and withholding at an active reveal. -/
 theorem ProtocolView.exists_menu (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (admission : CommitmentInterface program) →
     (view : ProtocolView who program) →
@@ -86,21 +86,21 @@ theorem ProtocolView.exists_menu (who : Player) : {Γ : SourceCtx Player L} → 
       cases view with
       | inl _ => exact ⟨none, by simp [ProtocolView.menu, ProtocolView.actor]⟩
       | inr later => exact exists_menu who next admission later
-  | _, _, .commit (payload := payload) name owner _ _ next, admission, view => by
+  | _, _, .commit (payload := payload) name owner fresh guard next, admission, view => by
       cases view with
-      | inl _ =>
-          by_cases own : owner = who
-          · exact ⟨some (.commit owner name payload (.success (L.someValue payload))),
-              by simp [ProtocolView.menu, ProtocolView.actor, ProtocolView.available, own]⟩
-          · exact ⟨none, by simp [ProtocolView.menu, ProtocolView.actor, own]⟩
+      | inl current =>
+          by_cases acts :
+              actor who (.commit name owner fresh guard next) (Sum.inl current) = some who
+          · exact ⟨some (.commit owner name payload none), acts, none, trivial, rfl⟩
+          · exact ⟨none, acts⟩
       | inr later => exact exists_menu who next (fun site => admission (some site)) later
-  | _, _, .reveal _ owner name _ _ _ next, admission, view => by
+  | _, _, .reveal published owner name fresh selected unresolved next, admission, view => by
       cases view with
-      | inl _ =>
-          by_cases own : owner = who
-          · exact ⟨some (.reveal owner name false),
-              by simp [ProtocolView.menu, ProtocolView.actor, ProtocolView.available, own]⟩
-          · exact ⟨none, by simp [ProtocolView.menu, ProtocolView.actor, own]⟩
+      | inl current =>
+          by_cases acts : actor who (.reveal published owner name fresh selected unresolved next)
+              (Sum.inl current) = some who
+          · exact ⟨some (.reveal owner name false), acts, false, rfl⟩
+          · exact ⟨none, acts⟩
       | inr later => exact exists_menu who next admission later
 
 /-- Every abstract setup information value has a legal choice. -/

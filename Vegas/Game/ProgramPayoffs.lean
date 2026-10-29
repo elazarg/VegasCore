@@ -23,11 +23,11 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- Evaluate the program's payment instructions on their exact public context. -/
 def publicPayoffs (program : SourceProgram Player L Γ O) (outcome : PublicOutcome program) :
     List (Player × Int) :=
-  program.terminalPayoffs.map fun entry => (entry.1, L.toInt (L.eval entry.2 outcome))
+  program.terminalPayoffs.map fun entry => (entry.1, L.toInt (L.eval entry.2 outcome.values))
 
 @[simp] theorem publicPayoffs_publicOutcome (program : SourceProgram Player L Γ O)
-    (state : State L program.terminalCtx) :
-    program.publicPayoffs (program.publicOutcome state) = program.evaluatePayoffs state := rfl
+    (state : Config Player L program.terminalCtx) :
+    program.publicPayoffs (program.publicOutcome state) = program.evaluatePayoffs state.state := rfl
 
 /-- Monetary receipts are the sum of every instruction for the player. -/
 def publicTransfers (program : SourceProgram Player L Γ O) (outcome : PublicOutcome program)
@@ -66,11 +66,11 @@ monetary component equal to evaluation of the program's payment instructions. -/
     (setup : Setup (Player := Player) (L := L))
     (parameter : State L setup.context → Parameter)
     (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)
-    (terminal : State L setup.program.terminalCtx) (who : Player) :
+    (terminal : Config Player L setup.program.terminalCtx) (who : Player) :
     setup.program.parameterPaymentUtility valuation
         (setup.parameterOutcome parameter terminal) who =
       valuation (setup.parameterOutcome parameter terminal) who +
-        (transferAmount (setup.program.evaluatePayoffs terminal) who : ℝ) := rfl
+        (transferAmount (setup.program.evaluatePayoffs terminal.state) who : ℝ) := rfl
 
 /-- Canonical compilation preserves each player's aggregated monetary receipt,
 not merely the syntax of the payment instruction list. -/
@@ -87,7 +87,8 @@ theorem canonical_transfer_law (program : SourceProgram Player L Γ O)
     (Vegas.canonical_payout_law program profile state)
   calc
     _ = (program.run profile state).map
-        (fun terminal who => (transferAmount (program.evaluatePayoffs terminal) who : ℝ)) := by
+        (fun terminal who =>
+          (transferAmount (program.evaluatePayoffs terminal.state) who : ℝ)) := by
       simpa only [PMF.map_comp, Function.comp_def] using law
     _ = _ := by
       congr 1

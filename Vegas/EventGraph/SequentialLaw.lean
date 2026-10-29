@@ -1,8 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.EventGraph.Sequential
-import Vegas.EventGraph.CanonicalNormalization
-import Vegas.EventGraph.StateCongruence
+import Vegas.EventGraph.CanonicalStep
 
 /-! # Canonical semantics of sequential dependency specialization -/
 
@@ -19,13 +18,15 @@ variable {L : IExpr} [R : IExpr.ResultTypes L]
 def toModeCompletion (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
     (completion : graph.Completion) : (graph.withMode mode).Completion where
   event := completion.event
-  action := completion.action
+  decision := completion.decision
+  defaultEvent := completion.defaultEvent
 
 /-- Forget the dependency mode from one chronological completion. -/
 def fromModeCompletion (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
     (completion : (graph.withMode mode).Completion) : graph.Completion where
   event := completion.event
-  action := completion.action
+  decision := completion.decision
+  defaultEvent := completion.defaultEvent
 
 /-- Reinterpret a player observation under a dependency mode. -/
 def toModeObservation (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
@@ -34,6 +35,7 @@ def toModeObservation (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
   completionOrder := observation.completionOrder
   store := observation.store
   ownActions := observation.ownActions.map (graph.toModeCompletion mode)
+  defaults := observation.defaults
 
 /-- Forget the dependency mode from a player observation. -/
 def fromModeObservation (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
@@ -42,6 +44,7 @@ def fromModeObservation (graph : Vegas.EventGraph Player L) (mode : ExecutionMod
   completionOrder := observation.completionOrder
   store := observation.store
   ownActions := observation.ownActions.map (graph.fromModeCompletion mode)
+  defaults := observation.defaults
 
 omit [DecidableEq Player] in
 @[simp] theorem fromModeCompletion_toModeCompletion
@@ -84,17 +87,17 @@ omit [DecidableEq Player] in
 def toModePolicy (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
     (who : Player) (policy : graph.BehavioralPolicy who) :
     (graph.withMode mode).BehavioralPolicy who :=
-  fun event actor observation =>
+  fun event actor observation active =>
     policy event (by exact actor)
-      (graph.fromModeObservation mode who observation)
+      (graph.fromModeObservation mode who observation) active
 
 /-- Forget a graph's dependency mode from a behavioral policy. -/
 def fromModePolicy (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
     (who : Player) (policy : (graph.withMode mode).BehavioralPolicy who) :
     graph.BehavioralPolicy who :=
-  fun event actor observation =>
+  fun event actor observation active =>
     policy event (by exact actor)
-      (graph.toModeObservation mode who observation)
+      (graph.toModeObservation mode who observation) active
 
 /-- Reinterpret a complete behavioral profile on a dependency mode. -/
 def toModeProfile (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
@@ -111,7 +114,7 @@ def fromModeProfile (graph : Vegas.EventGraph Player L) (mode : ExecutionMode)
 /-- Forget the additional sequential dependencies in a coherent configuration.
 Every dependency of the original graph is an earlier event, hence is already
 closed in the sequential cut. -/
-private def fromSequentialConfig (graph : Vegas.EventGraph Player L)
+def fromSequentialConfig (graph : Vegas.EventGraph Player L)
     (config : graph.sequentialize.Config) : graph.Config where
   inputs := config.inputs
   cut :=
@@ -200,6 +203,21 @@ omit [DecidableEq Player] in
     (graph.fromSequentialConfig config).cut.Terminal ↔ config.cut.Terminal := by
   rfl
 
+omit [DecidableEq Player] in
+/-- Forgetting sequential prerequisites preserves the entire public default history. -/
+@[simp] theorem fromSequentialConfig_defaults (graph : Vegas.EventGraph Player L)
+    (config : graph.sequentialize.Config) :
+    (graph.fromSequentialConfig config).defaults = config.defaults := by
+  simp [Config.defaults, fromSequentialConfig, Completion.defaults, fromModeCompletion,
+    List.map_map, Function.comp_def]
+
+/-- Forgetting sequential prerequisites preserves the derived default set. -/
+@[simp] theorem fromSequentialConfig_defaulted (graph : Vegas.EventGraph Player L)
+    (config : graph.sequentialize.Config) :
+    (graph.fromSequentialConfig config).defaulted = config.defaulted := by
+  change (graph.fromSequentialConfig config).defaults.defaulted = config.defaults.defaulted
+  rw [fromSequentialConfig_defaults]
+
 private theorem fromSequential_playerObserve (graph : Vegas.EventGraph Player L)
     (config : graph.sequentialize.Config) (who : Player) :
     graph.fromModeObservation .sequential who
@@ -216,43 +234,22 @@ private theorem fromSequential_playerObserve (graph : Vegas.EventGraph Player L)
   · change graph.playerStore who config.store =
       graph.playerStore who (graph.fromSequentialConfig config).store
     rw [fromSequentialConfig_store]
-  · simp only [fromModeObservation, playerObserve, ownCompletions,
-      fromSequentialConfig]
+  · simp only [fromModeObservation, playerObserve, ownCompletions, fromSequentialConfig]
     induction config.history with
     | nil => rfl
     | cons completion history ih =>
         simp only [List.filter_cons, List.map_cons]
-        have actorEq : graph.sequentialize.actor? completion.event =
-            graph.actor? completion.event := rfl
-        rw [actorEq]
-        split <;> simp_all [fromModeCompletion]
+        split <;> simp_all [fromModeCompletion, actor?, sequentialize, withMode]
+  · exact (graph.fromSequentialConfig_defaults config).symm
 
-omit [DecidableEq Player] in
-private theorem toModeObservation_normalizeObservation
-    (graph : Vegas.EventGraph Player L) (event : graph.EventId) (who : Player)
-    (observation : graph.PlayerObservation who) :
+private theorem toSequential_playerObserve (graph : Vegas.EventGraph Player L)
+    (config : graph.sequentialize.Config) (who : Player) :
     graph.toModeObservation .sequential who
-        (graph.normalizeObservation event who observation) =
-      graph.sequentialize.normalizeObservation event who
-        (graph.toModeObservation .sequential who observation) := by
-  apply PlayerObservation.ext graph.sequentialize
-  · rfl
-  · rfl
-  · rfl
-
-private theorem normalizedObservation_fromSequentialConfig
-    (graph : Vegas.EventGraph Player L) (config : graph.sequentialize.Config)
-    (event : graph.EventId) (who : Player) :
-    graph.toModeObservation .sequential who
-        (graph.normalizeObservation event who
-          (graph.playerObserve who (graph.fromSequentialConfig config))) =
-      graph.sequentialize.normalizeObservation event who
-        (graph.sequentialize.playerObserve who config) := by
+        (graph.playerObserve who (graph.fromSequentialConfig config)) =
+      graph.sequentialize.playerObserve who config := by
   rw [← graph.fromSequential_playerObserve config who]
-  rw [graph.toModeObservation_normalizeObservation]
-  rw [toModeObservation_fromModeObservation]
+  exact graph.toModeObservation_fromModeObservation .sequential who _
 
-omit [DecidableEq Player] in
 private theorem fromSequentialConfig_complete (graph : Vegas.EventGraph Player L)
     (config : graph.sequentialize.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event)
@@ -260,31 +257,51 @@ private theorem fromSequentialConfig_complete (graph : Vegas.EventGraph Player L
     graph.fromSequentialConfig (config.complete event ready action value) =
       (graph.fromSequentialConfig config).complete event
         (graph.fromSequentialReady config event ready) action value := by
+  have actual : (graph.fromSequentialConfig config).actualDecision event action =
+      config.actualDecision event action := by
+    unfold Config.actualDecision
+    rw [fromSequentialConfig_defaulted]
+    rfl
   apply Config.eq_of_data_eq
   · rfl
   · apply EventOrder.Cut.ext
     rfl
   · rfl
-  · simp [fromSequentialConfig, Config.complete, fromModeCompletion]
+  · change (config.history ++
+        [Completion.fromDecision (graph := graph.sequentialize) event
+          (config.actualDecision event action) value]).map
+          (graph.fromModeCompletion .sequential) =
+      config.history.map (graph.fromModeCompletion .sequential) ++
+        [Completion.fromDecision event
+          ((graph.fromSequentialConfig config).actualDecision event action) value]
+    rw [List.map_append, List.map_cons, List.map_nil, actual]
+    rfl
 
-omit [DecidableEq Player] in
 private theorem fromSequentialConfig_step (graph : Vegas.EventGraph Player L)
     (config : graph.sequentialize.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event) :
     (config.step event ready action).map graph.fromSequentialConfig =
       (graph.fromSequentialConfig config).step event
         (graph.fromSequentialReady config event ready) action := by
-  let law := ((graph.sequentialize.nodes event).eval? action config.store).get
-    (EventCode.eval?_isSome_of_reads (graph.sequentialize.nodes event) action config.store
+  let effective := config.effectiveAction event action
+  let law := ((graph.sequentialize.nodes event).eval? effective config.store).get
+    (EventCode.eval?_isSome_of_reads (graph.sequentialize.nodes event) effective config.store
       (fun _ read => config.read_available ready read))
   have sequentialEvaluates :
-      (graph.sequentialize.nodes event).eval? action config.store = some law := by
+      (graph.sequentialize.nodes event).eval? effective config.store = some law := by
     exact Option.eq_some_of_isSome
-      (EventCode.eval?_isSome_of_reads (graph.sequentialize.nodes event) action config.store
+      (EventCode.eval?_isSome_of_reads (graph.sequentialize.nodes event) effective config.store
         (fun _ read => config.read_available ready read))
+  have originalEffective : (graph.fromSequentialConfig config).effectiveAction event action =
+      effective := by
+    unfold Config.effectiveAction
+    rw [fromSequentialConfig_defaulted]
+    rfl
   have originalEvaluates :
-      (graph.nodes event).eval? action (graph.fromSequentialConfig config).store = some law := by
-    rw [fromSequentialConfig_store]
+      (graph.nodes event).eval?
+        ((graph.fromSequentialConfig config).effectiveAction event action)
+        (graph.fromSequentialConfig config).store = some law := by
+    rw [fromSequentialConfig_store, originalEffective]
     exact sequentialEvaluates
   rw [config.step_eq_map_of_eval event ready action law sequentialEvaluates]
   rw [(graph.fromSequentialConfig config).step_eq_map_of_eval event
@@ -294,53 +311,16 @@ private theorem fromSequentialConfig_step (graph : Vegas.EventGraph Player L)
   funext value
   exact graph.fromSequentialConfig_complete config event ready action value
 
-private theorem normalizedPolicyStep_fromSequential (graph : Vegas.EventGraph Player L)
-    (profile : graph.sequentialize.BehavioralProfile)
-    (config : graph.sequentialize.Config) (event : graph.EventId)
-    (ready : config.cut.Ready event) :
-    (graph.sequentialize.normalizedPolicyStep profile config event ready).map
-        graph.fromSequentialConfig =
-      graph.normalizedPolicyStep (graph.fromModeProfile .sequential profile)
-        (graph.fromSequentialConfig config) event
-        (graph.fromSequentialReady config event ready) := by
-  unfold normalizedPolicyStep
-  simp only [actor?, sequentialize_nodes]
-  split
-  · rename_i who actor
-    split
-    · rename_i originalWho originalActor
-      have same : originalWho = who := Option.some.inj (originalActor.symm.trans actor)
-      subst originalWho
-      simp only [PMF.map_bind]
-      unfold normalizePolicy fromModeProfile fromModePolicy
-      rw [graph.normalizedObservation_fromSequentialConfig config event who]
-      apply bind_congr_on_support _
-      intro action _
-      exact graph.fromSequentialConfig_step config event ready action
-    · rename_i ownerless
-      have impossible : (some who : Option Player) = none := actor.symm.trans ownerless
-      cases impossible
-  · rename_i ownerless
-    split
-    · rename_i who actor
-      have impossible : (none : Option Player) = some who := ownerless.symm.trans actor
-      cases impossible
-    · exact graph.fromSequentialConfig_step config event ready
-        (EventCode.actionOfActorNone (graph.sequentialize.nodes event) ownerless)
-
-private theorem runPlan_canonical_fromSequential
-    (graph : Vegas.EventGraph Player L)
-    (profile : graph.sequentialize.BehavioralProfile) :
+/-- Canonical execution transports the full configuration when sequential
+prerequisites are forgotten; both sides use their ordinary graph executor. -/
+theorem runPlan_canonical_fromSequential
+    (graph : Vegas.EventGraph Player L) (profile : graph.sequentialize.BehavioralProfile) :
     ∀ fuel (config : graph.sequentialize.Config),
       (graph.sequentialize.runPlan
-        (graph.sequentialize.policyPlan
-          (graph.sequentialize.normalizeProfile profile)
-          graph.sequentialize.canonicalScheduler)
+        (graph.sequentialize.policyPlan profile graph.sequentialize.canonicalScheduler)
         fuel config).map graph.fromSequentialConfig =
       graph.runPlan
-        (graph.policyPlan
-          (graph.normalizeProfile (graph.fromModeProfile .sequential profile))
-          graph.canonicalScheduler)
+        (graph.policyPlan (graph.fromModeProfile .sequential profile) graph.canonicalScheduler)
         fuel (graph.fromSequentialConfig config) := by
   intro fuel
   induction fuel with
@@ -350,95 +330,106 @@ private theorem runPlan_canonical_fromSequential
   | succ fuel ih =>
       intro config
       by_cases terminal : config.cut.Terminal
-      · have originalTerminal :
-          (graph.fromSequentialConfig config).cut.Terminal := by
-          simpa using terminal
+      · have originalTerminal : (graph.fromSequentialConfig config).cut.Terminal := terminal
         simp [runPlan, terminal, originalTerminal, PMF.pure_map]
       · let event := config.cut.enabled.min'
           (enabled_nonempty_of_not_terminal config terminal)
         have ready : config.cut.Ready event :=
           (EventOrder.Cut.mem_enabled _ _).mp (Finset.min'_mem _ _)
-        have least : ∀ other, other ∉ config.cut.completed →
-            event.val ≤ other.val :=
+        have least : ∀ other, other ∉ config.cut.completed → event.val ≤ other.val :=
           (canonical_min_ready_is_least_unfinished config.cut terminal).2
-        have originalNotTerminal :
-            ¬ (graph.fromSequentialConfig config).cut.Terminal := by
-          simpa using terminal
         have originalReady := graph.fromSequentialReady config event ready
         have originalLeast : ∀ other,
             other ∉ (graph.fromSequentialConfig config).cut.completed →
-              event.val ≤ other.val := by
-          intro other unfinished
-          exact least other unfinished
-        rw [graph.sequentialize.runPlan_canonical_normalized_step
-          profile fuel config event ready least]
-        rw [graph.runPlan_canonical_normalized_step
-          (graph.fromModeProfile .sequential profile) fuel
-          (graph.fromSequentialConfig config) event originalReady originalLeast]
-        rw [PMF.map_bind]
-        calc
-          _ = (graph.sequentialize.normalizedPolicyStep profile config event ready).bind
-                (fun next => graph.runPlan
-                  (graph.policyPlan
-                    (graph.normalizeProfile (graph.fromModeProfile .sequential profile))
-                    graph.canonicalScheduler)
-                  fuel (graph.fromSequentialConfig next)) := by
+              event.val ≤ other.val := fun other unfinished => least other unfinished
+        have continuation (action : graph.Action event) :
+            ((config.step event ready action).bind
+              (graph.sequentialize.runPlan
+                (graph.sequentialize.policyPlan profile graph.sequentialize.canonicalScheduler)
+                fuel)).map graph.fromSequentialConfig =
+            ((graph.fromSequentialConfig config).step event originalReady action).bind
+              (graph.runPlan
+                (graph.policyPlan (graph.fromModeProfile .sequential profile)
+                  graph.canonicalScheduler) fuel) := by
+          rw [PMF.map_bind]
+          calc
+            _ = (config.step event ready action).bind fun next =>
+                  graph.runPlan
+                    (graph.policyPlan (graph.fromModeProfile .sequential profile)
+                      graph.canonicalScheduler) fuel (graph.fromSequentialConfig next) := by
+                apply bind_congr_on_support _
+                intro next _
+                exact ih next
+            _ = ((config.step event ready action).map graph.fromSequentialConfig).bind
+                  (graph.runPlan
+                    (graph.policyPlan (graph.fromModeProfile .sequential profile)
+                      graph.canonicalScheduler) fuel) := by
+                rw [PMF.bind_map, Function.comp_def]
+            _ = _ := by rw [graph.fromSequentialConfig_step config event ready action]
+        cases actor : graph.actor? event with
+        | none =>
+            have sequentialActor : graph.sequentialize.actor? event = none := actor
+            rw [graph.sequentialize.runPlan_canonical_ownerless profile fuel config event ready
+              least sequentialActor, graph.runPlan_canonical_ownerless
+                (graph.fromModeProfile .sequential profile) fuel (graph.fromSequentialConfig config)
+                event originalReady originalLeast actor]
+            exact continuation _
+        | some who =>
+            have sequentialActor : graph.sequentialize.actor? event = some who := actor
+            by_cases inactive : who ∈ config.defaulted
+            · have originalInactive : who ∈ (graph.fromSequentialConfig config).defaulted := by
+                rwa [fromSequentialConfig_defaulted]
+              let action := (graph.nodes event).failureAction who actor
+              rw [graph.sequentialize.runPlan_canonical_defaulted profile fuel config event ready
+                least who sequentialActor inactive action, graph.runPlan_canonical_defaulted
+                  (graph.fromModeProfile .sequential profile) fuel
+                  (graph.fromSequentialConfig config)
+                  event originalReady originalLeast who actor originalInactive action]
+              exact continuation action
+            · have originalActive : who ∉ (graph.fromSequentialConfig config).defaulted := by
+                rwa [fromSequentialConfig_defaulted]
+              rw [graph.sequentialize.runPlan_canonical_actor profile fuel config event ready least
+                who sequentialActor inactive, graph.runPlan_canonical_actor
+                  (graph.fromModeProfile .sequential profile) fuel
+                  (graph.fromSequentialConfig config)
+                  event originalReady originalLeast who actor originalActive, PMF.map_bind]
+              simp only [fromModeProfile, fromModePolicy]
+              have kernel :
+                  profile who event actor
+                      (graph.toModeObservation .sequential who
+                        (graph.playerObserve who (graph.fromSequentialConfig config)))
+                      originalActive =
+                    profile who event sequentialActor
+                      (graph.sequentialize.playerObserve who config) inactive := by
+                congr 1
+                exact graph.toSequential_playerObserve config who
+              rw [kernel]
               apply bind_congr_on_support _
-              intro next _
-              exact ih next
-          _ = ((graph.sequentialize.normalizedPolicyStep profile config event ready).map
-                graph.fromSequentialConfig).bind
-                (graph.runPlan
-                  (graph.policyPlan
-                  (graph.normalizeProfile (graph.fromModeProfile .sequential profile))
-                    graph.canonicalScheduler)
-                  fuel) := by
-              rw [PMF.bind_map, Function.comp_def]
-          _ = _ := by
-              rw [graph.normalizedPolicyStep_fromSequential profile config event ready]
+              intro action _
+              exact continuation action
 
-/-- Canonical execution of the sequential dependency specialization has the
-same terminal store law as canonical execution of the original graph after
-forgetting the dependency mode from the profile. -/
-theorem canonical_fromSequential_store_law
-    (graph : Vegas.EventGraph Player L)
-    (profile : graph.sequentialize.BehavioralProfile)
+/-- Sequential specialization and the original graph have the same complete
+canonical execution law after forgetting only the added dependencies. -/
+theorem canonical_fromSequential_config_law
+    (graph : Vegas.EventGraph Player L) (profile : graph.sequentialize.BehavioralProfile)
     (inputs : graph.Inputs) :
-    (graph.sequentialize.runPolicies graph.sequentialize.canonicalScheduler
-      profile inputs).map Config.store =
-    (graph.runPolicies graph.canonicalScheduler
-      (graph.fromModeProfile .sequential profile) inputs).map Config.store := by
-  rw [graph.sequentialize.runPolicies_canonical_normalize_eq profile inputs]
-  rw [graph.runPolicies_canonical_normalize_eq
-    (graph.fromModeProfile .sequential profile) inputs]
-  let law := graph.sequentialize.runPlan
-      (graph.sequentialize.policyPlan
-        (graph.sequentialize.normalizeProfile profile)
-        graph.sequentialize.canonicalScheduler)
-      graph.order.eventCount (Config.initial inputs)
-  have transported : law.map graph.fromSequentialConfig =
-      graph.runPlan
-        (graph.policyPlan
-          (graph.normalizeProfile (graph.fromModeProfile .sequential profile))
-          graph.canonicalScheduler)
-        graph.order.eventCount
-          (graph.fromSequentialConfig (Config.initial inputs)) :=
-    graph.runPlan_canonical_fromSequential profile graph.order.eventCount
-      (Config.initial inputs)
-  change law.map Config.store =
-    (graph.runPlan
-      (graph.policyPlan
-        (graph.normalizeProfile (graph.fromModeProfile .sequential profile))
-        graph.canonicalScheduler)
-      graph.order.eventCount (Config.initial inputs)).map Config.store
-  calc
-    law.map Config.store =
-        (law.map graph.fromSequentialConfig).map Config.store := by
-        rw [PMF.map_comp]
-        apply congrArg (fun function => law.map function)
-        funext config
-        exact (graph.fromSequentialConfig_store config).symm
-    _ = _ := by
-        rw [transported, graph.fromSequentialConfig_initial]
+    (graph.sequentialize.runPolicies graph.sequentialize.canonicalScheduler profile inputs).map
+        graph.fromSequentialConfig =
+      graph.runPolicies graph.canonicalScheduler
+        (graph.fromModeProfile .sequential profile) inputs := by
+  exact graph.runPlan_canonical_fromSequential profile graph.order.eventCount
+    (Config.initial inputs)
+
+/-- Canonical sequential specialization retains the exact typed terminal-store law. -/
+theorem canonical_fromSequential_store_law
+    (graph : Vegas.EventGraph Player L) (profile : graph.sequentialize.BehavioralProfile)
+    (inputs : graph.Inputs) :
+    (graph.sequentialize.runPolicies graph.sequentialize.canonicalScheduler profile inputs).map
+        Config.store =
+      (graph.runPolicies graph.canonicalScheduler
+        (graph.fromModeProfile .sequential profile) inputs).map Config.store := by
+  have full := congrArg (PMF.map Config.store)
+    (graph.canonical_fromSequential_config_law profile inputs)
+  simpa only [PMF.map_comp, Function.comp_def, fromSequentialConfig_store] using full
 
 end Vegas.EventGraph

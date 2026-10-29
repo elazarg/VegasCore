@@ -94,7 +94,7 @@ def GuardsSatisfiableFrom : {Γ : SourceCtx Player L} → {O : Finset VarId} →
   | _, _, .commit name owner _ guard next, config =>
       (∃ value, guard.predicts (sourceObserve owner config.state) value = true) ∧
       ∀ value, guard.predicts (sourceObserve owner config.state) value = true →
-        GuardsSatisfiableFrom next (commitSuccessor name guard config (.success value))
+        GuardsSatisfiableFrom next (commitSuccessor name guard config (some (.success value)))
   | _, _, .reveal published _ _ _ source _ next, config =>
       GuardsSatisfiableFrom next (revealSuccessor published source config true)
 
@@ -109,8 +109,8 @@ def intendedAvailable (who : Player) : {Γ : SourceCtx Player L} → {O : Finset
   | _, _, .sample _ _ _ next => Sum.elim (fun _ => ∅) (intendedAvailable who next)
   | _, _, .commit (payload := payload) name owner _ guard next =>
       Sum.elim
-        (fun view => {action | ∃ value ∈ intendedValues who guard view.1,
-          action = .commit owner name payload (.success value)})
+        (fun view => {action | ∃ value ∈ intendedValues who guard view.observation,
+          action = .commit owner name payload (some (.success value))})
         (intendedAvailable who next)
   | _, _, .reveal _ owner name _ _ _ next =>
       Sum.elim (fun _ => {.reveal owner name true}) (intendedAvailable who next)
@@ -137,7 +137,7 @@ theorem intendedAvailable_subset (who : Player) : {Γ : SourceCtx Player L} → 
       cases view with
       | inl _ =>
           rintro action ⟨value, _, rfl⟩
-          exact ⟨.success value, CommitmentAdmission.admits_success _ _, rfl⟩
+          exact ⟨some (.success value), CommitmentAdmission.admits_success _ _, rfl⟩
       | inr later =>
           exact intendedAvailable_subset who next (fun site => admission (some site)) later
   | _, _, .reveal _ _ _ _ _ _ next, admission, view => by
@@ -177,28 +177,37 @@ theorem intendedProgress : {Γ : SourceCtx Player L} → {O : Finset VarId} →
   | _, _, .commit (payload := payload) name owner _ guard next, state => by
       cases state with
       | inl config =>
-          obtain ⟨value, intended⟩ :=
-            intendedValues_nonempty owner guard (sourceObserve owner config.state)
-          refine ⟨fun who => if owner = who then
-            some (.commit owner name payload (.success value)) else none, ?_⟩
-          intro who
-          by_cases same : owner = who
-          · subst same
-            simp only [↓reduceIte, ProtocolView.intendedMenu, observe, Sum.elim_inl,
-              ProtocolView.actor, ProtocolView.intendedAvailable, Config.view]
-            exact ⟨trivial, value, intended, rfl⟩
-          · simp [same, ProtocolView.intendedMenu, observe, ProtocolView.actor]
+          by_cases inactive : owner ∈ config.defaulted
+          · exact ⟨fun _ => none, fun _ => by
+              simp [ProtocolView.intendedMenu, ProtocolView.actor, observe, inactive]⟩
+          · obtain ⟨value, intended⟩ :=
+              intendedValues_nonempty owner guard (sourceObserve owner config.state)
+            refine ⟨fun who => if owner = who then
+              some (.commit owner name payload (some (.success value))) else none, ?_⟩
+            intro who
+            by_cases same : owner = who
+            · subst who
+              simp only [↓reduceIte, ProtocolView.intendedMenu]
+              refine ⟨?_, value, intended, rfl⟩
+              change (if owner ∈ config.defaulted then none else some owner) = some owner
+              simp only [inactive, ite_false]
+            · simp [same, ProtocolView.intendedMenu, observe, ProtocolView.actor, inactive]
       | inr rest => exact intendedProgress next rest
   | _, _, .reveal _ owner name _ _ _ next, state => by
       cases state with
       | inl config =>
-          refine ⟨fun who => if owner = who then some (.reveal owner name true) else none, ?_⟩
-          intro who
-          by_cases same : owner = who
-          · simp only [same, ↓reduceIte, ProtocolView.intendedMenu, observe, Sum.elim_inl,
-              ProtocolView.actor, ProtocolView.intendedAvailable]
-            exact ⟨trivial, rfl⟩
-          · simp [same, ProtocolView.intendedMenu, observe, ProtocolView.actor]
+          by_cases inactive : owner ∈ config.defaulted
+          · exact ⟨fun _ => none, fun _ => by
+              simp [ProtocolView.intendedMenu, ProtocolView.actor, observe, inactive]⟩
+          · refine ⟨fun who => if owner = who then some (.reveal owner name true) else none, ?_⟩
+            intro who
+            by_cases same : owner = who
+            · subst who
+              simp only [↓reduceIte, ProtocolView.intendedMenu]
+              refine ⟨?_, rfl⟩
+              change (if owner ∈ config.defaulted then none else some owner) = some owner
+              simp only [inactive, ite_false]
+            · simp [same, ProtocolView.intendedMenu, observe, ProtocolView.actor, inactive]
       | inr rest => exact intendedProgress next rest
 
 end ProtocolState

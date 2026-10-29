@@ -56,7 +56,8 @@ def BehavioralPolicy.HasFiniteSupport {who : Player} :
   | _, _, .ret _, _ => True
   | _, _, .sample _ _ _ next, policy => HasFiniteSupport next policy
   | _, _, .commit _ _ _ _ next, policy =>
-      (∀ own view, (policy.1 own view).support.Finite) ∧ HasFiniteSupport next policy.2
+      (∀ own view active, (policy.1 own view active).support.Finite) ∧
+        HasFiniteSupport next policy.2
   | _, _, .reveal _ _ _ _ _ _ next, policy => HasFiniteSupport next policy.2
 
 /-- Finite binding alphabets supply the policy-level support condition. -/
@@ -69,10 +70,219 @@ theorem BehavioralPolicy.hasFiniteSupport_of_finiteBindingTypes {who : Player} :
       hasFiniteSupport_of_finiteBindingTypes next finite policy
   | _, _, .commit _ _ _ _ next, finite, policy => by
       have := finite.1
-      exact ⟨fun _ _ => Set.toFinite _,
+      exact ⟨fun _ _ _ => Set.toFinite _,
         hasFiniteSupport_of_finiteBindingTypes next finite.2 policy.2⟩
   | _, _, .reveal _ _ _ _ _ _ next, finite, policy =>
       hasFiniteSupport_of_finiteBindingTypes next finite policy.2
+
+private def RealizesPureMixtures {who : Player} {Γ : SourceCtx Player L}
+    {O : Finset VarId} (program : SourceProgram Player L Γ O) : Prop :=
+  ∀ (profile : BehavioralProfile program) (policy : BehavioralPolicy who program),
+    (∀ player, (profile player).HasFiniteSupport program) → policy.HasFiniteSupport program →
+    ∀ configs : List (Config Player L Γ),
+      ∃ mixture : PMF (PurePolicy who program), mixture.support.Finite ∧ ∀ config ∈ configs,
+        runFrom program (Function.update profile who policy) config =
+          mixture.bind fun choice => runFrom program
+            (Function.update profile who (PurePolicy.toBehavioral program choice)) config
+
+private theorem realizesPureMixtures_commit {who : Player} {Γ : SourceCtx Player L}
+    {O : Finset VarId} (name : VarId) (owner : Player) {payload : L.Ty}
+    (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ owner name payload)
+    (next : SourceProgram Player L ((name, .commitment owner payload) :: Γ) (insert name O))
+    (ih : RealizesPureMixtures (who := who) next) :
+    RealizesPureMixtures (who := who) (.commit name owner fresh guard next) := by
+  intro profile policy profileFinite policyFinite configs
+  classical
+  by_cases hown : owner = who
+  · subst who
+    let choose (view : DecisionView owner Γ) :
+        PMF (Option (PublicationResult (L.Val payload))) :=
+      if inactive : owner ∈ view.defaulted then PMF.pure none
+      else policy.1 rfl view inactive
+    have chooseFinite : ∀ view : DecisionView owner Γ, (choose view).support.Finite := by
+      intro view
+      by_cases inactive : owner ∈ view.defaulted
+      · simpa only [choose, dite_eq_left inactive, PMF.support_pure] using
+          Set.finite_singleton (none : Option (PublicationResult (L.Val payload)))
+      · simpa only [choose, dite_eq_right inactive] using policyFinite.1 rfl view inactive
+    let successors : List (Config Player L ((name, .commitment owner payload) :: Γ)) :=
+      configs.flatMap fun (config : Config Player L Γ) =>
+        (supportList (α := Option (PublicationResult (L.Val payload)))
+          (choose (Config.view (Γ := Γ) owner config))
+          (chooseFinite (Config.view (Γ := Γ) owner config))).map
+          (commitSuccessor name guard config)
+    have tailExists := ih (afterCommit (k := next) profile) policy.2
+      (fun player => (profileFinite player).2) policyFinite.2 successors
+    obtain ⟨tail, tailFinite, htail⟩ := tailExists
+    refine ⟨(drawAtSites choose (configs.map (Config.view owner)).toFinset
+        (fun _ => none)).bind fun assigned =>
+      tail.bind fun rest => PMF.pure (fun _ view _ => assigned view, rest),
+      bind_support_finite (drawAtSites_support_finite _ _ _ fun view _ => chooseFinite view)
+        fun _ _ => bind_support_finite tailFinite fun _ _ => by simp,
+      fun config hconfig => ?_⟩
+    have hview : config.view owner ∈ configs.map (Config.view owner) :=
+      List.mem_map.mpr ⟨config, hconfig, rfl⟩
+    have hmember : ∀ choice ∈ (choose (config.view owner)).support,
+        commitSuccessor name guard config choice ∈ configs.flatMap fun other =>
+          (supportList (choose (other.view owner)) (chooseFinite _)).map
+            (commitSuccessor name guard other) := fun choice hchoice =>
+      List.mem_flatMap.mpr ⟨config, hconfig,
+        List.mem_map.mpr ⟨choice, mem_supportList _ hchoice, rfl⟩⟩
+    have hkernel : commitKernel (Function.update profile owner policy) = policy.1 rfl := by
+      simp [commitKernel]
+    have hpure : ∀ choice : PurePolicy owner (.commit name owner fresh guard next),
+        commitKernel (Function.update profile owner (PurePolicy.toBehavioral _ choice)) =
+          fun view active => PMF.pure (choice.1 rfl view active) := by
+      intro choice
+      simp [commitKernel, PurePolicy.toBehavioral, Function.update_self]
+    have hsnd : ∀ choice : PurePolicy owner (.commit name owner fresh guard next),
+        (PurePolicy.toBehavioral (.commit name owner fresh guard next) choice).2 =
+          PurePolicy.toBehavioral next choice.2 := fun _ => rfl
+    by_cases inactive : owner ∈ config.defaulted
+    · simp only [runFrom_commit, hkernel, hpure, hsnd, afterCommit_update, inactive,
+        dite_true, PMF.bind_bind, PMF.pure_bind]
+      rw [htail _ (hmember none (by simp [choose, inactive]))]
+      exact (PMF.bind_const _ _).symm
+    · simp only [runFrom_commit, hkernel, hpure, hsnd, afterCommit_update, inactive,
+        dite_false, PMF.bind_bind, PMF.pure_bind]
+      rw [drawAtSites_bind_apply choose (configs.map (Config.view owner)).toFinset
+        (fun _ => none) (List.mem_toFinset.mpr hview)
+        (fun choice => tail.bind fun rest =>
+          runFrom next (Function.update (afterCommit (k := next) profile) owner
+            (PurePolicy.toBehavioral next rest)) (commitSuccessor name guard config choice))]
+      simp only [choose, Config.view_defaulted, inactive, dite_false]
+      exact bind_congr_on_support _ fun choice hchoice =>
+        htail _ (hmember choice (by simpa [choose, inactive] using hchoice))
+  · let choose (config : Config Player L Γ) :
+        PMF (Option (PublicationResult (L.Val payload))) :=
+      if inactive : owner ∈ config.defaulted then PMF.pure none
+      else commitKernel profile (config.view owner) inactive
+    have chooseFinite (config : Config Player L Γ) : (choose config).support.Finite := by
+      unfold choose
+      split
+      · rw [PMF.support_pure]
+        exact Set.finite_singleton _
+      · exact (profileFinite owner).1 rfl (config.view owner) _
+    obtain ⟨tail, tailFinite, htail⟩ :=
+      ih (afterCommit (k := next) profile) policy.2
+        (fun player => (profileFinite player).2) policyFinite.2
+        (configs.flatMap fun config => (supportList (choose config) (chooseFinite _)).map
+          (commitSuccessor name guard config))
+    refine ⟨tail.bind fun rest => PMF.pure (fun own => absurd own hown, rest),
+      bind_support_finite tailFinite fun _ _ => by simp, fun config hconfig => ?_⟩
+    have hmember : ∀ choice ∈ (choose config).support,
+        commitSuccessor name guard config choice ∈ configs.flatMap fun other =>
+          (supportList (choose other) (chooseFinite _)).map
+            (commitSuccessor name guard other) := fun choice hchoice =>
+      List.mem_flatMap.mpr ⟨config, hconfig,
+        List.mem_map.mpr ⟨choice, mem_supportList _ hchoice, rfl⟩⟩
+    have hkernel : ∀ replacement : BehavioralPolicy who (.commit name owner fresh guard next),
+        commitKernel (Function.update profile who replacement) = commitKernel profile := by
+      intro replacement
+      simp [commitKernel, Function.update_of_ne hown]
+    have hsnd : ∀ choice : PurePolicy who (.commit name owner fresh guard next),
+        (PurePolicy.toBehavioral (.commit name owner fresh guard next) choice).2 =
+          PurePolicy.toBehavioral next choice.2 := fun _ => rfl
+    simp only [runFrom_commit, hkernel, hsnd, afterCommit_update, PMF.bind_bind,
+      PMF.pure_bind]
+    change (choose config).bind _ = tail.bind _
+    rw [bind_congr_on_support _ fun choice hchoice => htail _ (hmember choice hchoice),
+      PMF.bind_comm]
+
+private theorem realizesPureMixtures_reveal {who : Player} {Γ : SourceCtx Player L}
+    {O : Finset VarId} (published : VarId) (owner : Player) (name : VarId) {payload : L.Ty}
+    (fresh : published ∉ Γ.map Prod.fst)
+    (source : HasVar Γ name (.commitment owner payload)) (unresolved : name ∈ O)
+    (next : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name))
+    (ih : RealizesPureMixtures (who := who) next) :
+    RealizesPureMixtures (who := who)
+      (.reveal published owner name fresh source unresolved next) := by
+  intro profile policy profileFinite policyFinite configs
+  classical
+  by_cases hown : owner = who
+  · subst who
+    let choose (view : DecisionView owner Γ) :=
+      if inactive : owner ∈ view.defaulted then PMF.pure false
+      else policy.1 rfl view inactive
+    obtain ⟨tail, tailFinite, htail⟩ :=
+      ih (afterReveal profile) policy.2 profileFinite policyFinite
+        (configs.flatMap fun config =>
+          (supportList (choose (config.view owner)) (Set.toFinite _)).map
+            (revealSuccessor published source config))
+    refine ⟨(drawAtSites choose (configs.map (Config.view owner)).toFinset
+        (fun _ => false)).bind fun assigned =>
+      tail.bind fun rest => PMF.pure (fun _ view _ => assigned view, rest),
+      bind_support_finite (drawAtSites_support_finite _ _ _ fun _ _ => Set.toFinite _)
+        fun _ _ => bind_support_finite tailFinite fun _ _ => by simp,
+      fun config hconfig => ?_⟩
+    have hview : config.view owner ∈ configs.map (Config.view owner) :=
+      List.mem_map.mpr ⟨config, hconfig, rfl⟩
+    have hmember : ∀ disclose ∈ (choose (config.view owner)).support,
+        revealSuccessor published source config disclose ∈ configs.flatMap fun other =>
+          (supportList (choose (other.view owner)) (Set.toFinite _)).map
+            (revealSuccessor published source other) := fun disclose hdisclose =>
+      List.mem_flatMap.mpr ⟨config, hconfig,
+        List.mem_map.mpr ⟨disclose, mem_supportList _ hdisclose, rfl⟩⟩
+    have hkernel : revealKernel (Function.update profile owner policy) = policy.1 rfl := by
+      simp [revealKernel]
+    have hpure : ∀ choice :
+        PurePolicy owner (.reveal published owner name fresh source unresolved next),
+        revealKernel (Function.update profile owner (PurePolicy.toBehavioral _ choice)) =
+          fun view active => PMF.pure (choice.1 rfl view active) := by
+      intro choice
+      simp [revealKernel, PurePolicy.toBehavioral, Function.update_self]
+    have hsnd : ∀ choice :
+        PurePolicy owner (.reveal published owner name fresh source unresolved next),
+        (PurePolicy.toBehavioral
+          (.reveal published owner name fresh source unresolved next) choice).2 =
+          PurePolicy.toBehavioral next choice.2 := fun _ => rfl
+    by_cases inactive : owner ∈ config.defaulted
+    · simp only [runFrom_reveal, hkernel, hpure, hsnd, afterReveal_update, inactive,
+        dite_true, PMF.bind_bind, PMF.pure_bind]
+      rw [htail _ (hmember false (by simp [choose, inactive]))]
+      exact (PMF.bind_const _ _).symm
+    · simp only [runFrom_reveal, hkernel, hpure, hsnd, afterReveal_update, inactive,
+        dite_false, PMF.bind_bind, PMF.pure_bind]
+      rw [drawAtSites_bind_apply choose (configs.map (Config.view owner)).toFinset
+        (fun _ => false) (List.mem_toFinset.mpr hview)
+        (fun disclose => tail.bind fun rest =>
+          runFrom next (Function.update (afterReveal profile) owner
+            (PurePolicy.toBehavioral next rest))
+            (revealSuccessor published source config disclose))]
+      simp only [choose, Config.view_defaulted, inactive, dite_false]
+      exact bind_congr_on_support _ fun disclose hdisclose =>
+        htail _ (hmember disclose (by simpa [choose, inactive] using hdisclose))
+  · let choose (config : Config Player L Γ) :=
+      if inactive : owner ∈ config.defaulted then PMF.pure false
+      else revealKernel profile (config.view owner) inactive
+    obtain ⟨tail, tailFinite, htail⟩ :=
+      ih (afterReveal profile) policy.2 profileFinite policyFinite
+        (configs.flatMap fun config => (supportList (choose config) (Set.toFinite _)).map
+          (revealSuccessor published source config))
+    refine ⟨tail.bind fun rest => PMF.pure (fun own => absurd own hown, rest),
+      bind_support_finite tailFinite fun _ _ => by simp, fun config hconfig => ?_⟩
+    have hmember : ∀ disclose ∈ (choose config).support,
+        revealSuccessor published source config disclose ∈ configs.flatMap fun other =>
+          (supportList (choose other) (Set.toFinite _)).map
+            (revealSuccessor published source other) := fun disclose hdisclose =>
+      List.mem_flatMap.mpr ⟨config, hconfig,
+        List.mem_map.mpr ⟨disclose, mem_supportList _ hdisclose, rfl⟩⟩
+    have hkernel : ∀ replacement : BehavioralPolicy who
+          (.reveal published owner name fresh source unresolved next),
+        revealKernel (Function.update profile who replacement) = revealKernel profile := by
+      intro replacement
+      simp [revealKernel, Function.update_of_ne hown]
+    have hsnd : ∀ choice :
+        PurePolicy who (.reveal published owner name fresh source unresolved next),
+        (PurePolicy.toBehavioral
+          (.reveal published owner name fresh source unresolved next) choice).2 =
+          PurePolicy.toBehavioral next choice.2 := fun _ => rfl
+    simp only [runFrom_reveal, hkernel, hsnd, afterReveal_update, PMF.bind_bind,
+      PMF.pure_bind]
+    change (choose config).bind _ = tail.bind _
+    rw [bind_congr_on_support _ fun disclose hdisclose => htail _ (hmember disclose hdisclose),
+      PMF.bind_comm]
+
 
 /-- One mixture of pure policies reproduces a behavioral policy's law from every
 configuration in a list, against unchanged opponents. The list is what lets a
@@ -107,157 +317,14 @@ theorem exists_pureMixture {who : Player} :
       rw [bind_congr_on_support _ fun value hvalue => hmixture _ (member value hvalue),
         PMF.bind_comm]
       rfl
-  | Γ, _, .commit (payload := payload) name owner fresh guard k, profile, policy,
-      profileFinite, policyFinite, configs => by
-      classical
-      by_cases hown : owner = who
-      · subst hown
-        obtain ⟨tail, tailFinite, htail⟩ :=
-          exists_pureMixture k (afterCommit profile) policy.2
-            (fun player => (profileFinite player).2) policyFinite.2
-          (configs.flatMap fun config =>
-            (supportList (policy.1 rfl (Config.view owner config))
-              (policyFinite.1 rfl _)).map
-              (commitSuccessor name guard config))
-        refine ⟨(drawAtSites (policy.1 rfl)
-            (configs.map (Config.view owner)).toFinset
-            (fun _ => .failure)).bind fun assigned =>
-          tail.bind fun rest => PMF.pure (fun _ => assigned, rest),
-          bind_support_finite (drawAtSites_support_finite _ _ _
-            fun view _ => policyFinite.1 rfl view)
-            fun _ _ => bind_support_finite tailFinite fun _ _ => by simp,
-          fun config hconfig => ?_⟩
-        have hview : Config.view owner config ∈ configs.map (Config.view owner) :=
-          List.mem_map.mpr ⟨config, hconfig, rfl⟩
-        have hmember : ∀ choice ∈ (policy.1 rfl (Config.view owner config)).support,
-            commitSuccessor name guard config choice ∈ configs.flatMap fun other =>
-              (supportList (policy.1 rfl (Config.view owner other))
-                (policyFinite.1 rfl _)).map
-                (commitSuccessor name guard other) := fun choice hchoice =>
-          List.mem_flatMap.mpr ⟨config, hconfig, List.mem_map.mpr ⟨choice,
-            mem_supportList _ hchoice, rfl⟩⟩
-        have hkernel : commitKernel (Function.update profile owner policy) = policy.1 rfl := by
-          simp [commitKernel]
-        have hpure : ∀ choice : PurePolicy owner (.commit name owner fresh guard k),
-            commitKernel (Function.update profile owner (PurePolicy.toBehavioral _ choice)) =
-              fun view => PMF.pure (choice.1 rfl view) := by
-          intro choice
-          simp [commitKernel, PurePolicy.toBehavioral, Function.update_self]
-        have hsnd : ∀ choice : PurePolicy owner (.commit name owner fresh guard k),
-            (PurePolicy.toBehavioral (.commit name owner fresh guard k) choice).2 =
-              PurePolicy.toBehavioral k choice.2 := fun _ => rfl
-        simp only [runFrom_commit, hkernel, hpure, hsnd, afterCommit_update, PMF.bind_bind,
-          PMF.pure_bind]
-        rw [drawAtSites_bind_apply (policy.1 rfl)
-          (configs.map (Config.view owner)).toFinset (fun _ => PublicationResult.failure)
-          (List.mem_toFinset.mpr hview)
-          (fun choice => tail.bind fun rest =>
-            runFrom k (Function.update (afterCommit profile) owner
-              (PurePolicy.toBehavioral k rest)) (commitSuccessor name guard config choice))]
-        exact bind_congr_on_support _ fun choice hchoice => htail _ (hmember choice hchoice)
-      · obtain ⟨tail, tailFinite, htail⟩ :=
-          exists_pureMixture k (afterCommit profile) policy.2
-            (fun player => (profileFinite player).2) policyFinite.2
-          (configs.flatMap fun config =>
-            (supportList (commitKernel profile (Config.view owner config))
-              ((profileFinite owner).1 rfl _)).map
-              (commitSuccessor name guard config))
-        refine ⟨tail.bind fun rest => PMF.pure (fun own => absurd own hown, rest),
-          bind_support_finite tailFinite fun _ _ => by simp, fun config hconfig => ?_⟩
-        have hmember : ∀ choice ∈ (commitKernel profile (Config.view owner config)).support,
-            commitSuccessor name guard config choice ∈ configs.flatMap fun other =>
-              (supportList (commitKernel profile (Config.view owner other))
-                ((profileFinite owner).1 rfl _)).map
-                (commitSuccessor name guard other) := fun choice hchoice =>
-          List.mem_flatMap.mpr ⟨config, hconfig, List.mem_map.mpr ⟨choice,
-            mem_supportList _ hchoice, rfl⟩⟩
-        have hkernel : ∀ replacement : BehavioralPolicy who (.commit name owner fresh guard k),
-            commitKernel (Function.update profile who replacement) = commitKernel profile := by
-          intro replacement
-          simp [commitKernel, Function.update_of_ne hown]
-        have hsnd : ∀ choice : PurePolicy who (.commit name owner fresh guard k),
-            (PurePolicy.toBehavioral (.commit name owner fresh guard k) choice).2 =
-              PurePolicy.toBehavioral k choice.2 := fun _ => rfl
-        simp only [runFrom_commit, hkernel, hsnd, afterCommit_update, PMF.bind_bind,
-          PMF.pure_bind]
-        rw [bind_congr_on_support _ fun choice hchoice => htail _ (hmember choice hchoice),
-          PMF.bind_comm]
-  | Γ, _, .reveal (payload := payload) published owner name fresh source unresolved k,
-      profile, policy, profileFinite, policyFinite, configs => by
-      classical
-      by_cases hown : owner = who
-      · subst hown
-        obtain ⟨tail, tailFinite, htail⟩ :=
-          exists_pureMixture k (afterReveal profile) policy.2 profileFinite policyFinite
-          (configs.flatMap fun config =>
-            (supportList (policy.1 rfl (Config.view owner config)) (Set.toFinite _)).map
-              (revealSuccessor published source config))
-        refine ⟨(drawAtSites (policy.1 rfl)
-            (configs.map (Config.view owner)).toFinset
-            (fun _ => false)).bind fun assigned =>
-          tail.bind fun rest => PMF.pure (fun _ => assigned, rest),
-          bind_support_finite (drawAtSites_support_finite _ _ _ fun _ _ => Set.toFinite _)
-            fun _ _ => bind_support_finite tailFinite fun _ _ => by simp,
-          fun config hconfig => ?_⟩
-        have hview : Config.view owner config ∈ configs.map (Config.view owner) :=
-          List.mem_map.mpr ⟨config, hconfig, rfl⟩
-        have hmember : ∀ disclose ∈ (policy.1 rfl (Config.view owner config)).support,
-            revealSuccessor published source config disclose ∈ configs.flatMap fun other =>
-              (supportList (policy.1 rfl (Config.view owner other)) (Set.toFinite _)).map
-                (revealSuccessor published source other) := fun disclose hdisclose =>
-          List.mem_flatMap.mpr ⟨config, hconfig, List.mem_map.mpr ⟨disclose,
-            mem_supportList _ hdisclose, rfl⟩⟩
-        have hkernel : revealKernel (Function.update profile owner policy) = policy.1 rfl := by
-          simp [revealKernel]
-        have hpure : ∀ choice :
-            PurePolicy owner (.reveal published owner name fresh source unresolved k),
-            revealKernel (Function.update profile owner (PurePolicy.toBehavioral _ choice)) =
-              fun view => PMF.pure (choice.1 rfl view) := by
-          intro choice
-          simp [revealKernel, PurePolicy.toBehavioral, Function.update_self]
-        have hsnd : ∀ choice :
-            PurePolicy owner (.reveal published owner name fresh source unresolved k),
-            (PurePolicy.toBehavioral
-              (.reveal published owner name fresh source unresolved k) choice).2 =
-              PurePolicy.toBehavioral k choice.2 := fun _ => rfl
-        simp only [runFrom_reveal, hkernel, hpure, hsnd, afterReveal_update, PMF.bind_bind,
-          PMF.pure_bind]
-        rw [drawAtSites_bind_apply (policy.1 rfl)
-          (configs.map (Config.view owner)).toFinset (fun _ => false)
-          (List.mem_toFinset.mpr hview)
-          (fun disclose => tail.bind fun rest =>
-            runFrom k (Function.update (afterReveal profile) owner
-              (PurePolicy.toBehavioral k rest))
-              (revealSuccessor published source config disclose))]
-        exact bind_congr_on_support _ fun disclose hdisclose => htail _ (hmember disclose hdisclose)
-      · obtain ⟨tail, tailFinite, htail⟩ :=
-          exists_pureMixture k (afterReveal profile) policy.2 profileFinite policyFinite
-          (configs.flatMap fun config =>
-            (supportList (revealKernel profile (Config.view owner config)) (Set.toFinite _)).map
-              (revealSuccessor published source config))
-        refine ⟨tail.bind fun rest => PMF.pure (fun own => absurd own hown, rest),
-          bind_support_finite tailFinite fun _ _ => by simp, fun config hconfig => ?_⟩
-        have hmember : ∀ disclose ∈
-            (revealKernel profile (Config.view owner config)).support,
-            revealSuccessor published source config disclose ∈ configs.flatMap fun other =>
-              (supportList (revealKernel profile (Config.view owner other)) (Set.toFinite _)).map
-                (revealSuccessor published source other) := fun disclose hdisclose =>
-          List.mem_flatMap.mpr ⟨config, hconfig, List.mem_map.mpr ⟨disclose,
-            mem_supportList _ hdisclose, rfl⟩⟩
-        have hkernel : ∀ replacement : BehavioralPolicy who
-              (.reveal published owner name fresh source unresolved k),
-            revealKernel (Function.update profile who replacement) = revealKernel profile := by
-          intro replacement
-          simp [revealKernel, Function.update_of_ne hown]
-        have hsnd : ∀ choice :
-            PurePolicy who (.reveal published owner name fresh source unresolved k),
-            (PurePolicy.toBehavioral
-              (.reveal published owner name fresh source unresolved k) choice).2 =
-              PurePolicy.toBehavioral k choice.2 := fun _ => rfl
-        simp only [runFrom_reveal, hkernel, hsnd, afterReveal_update, PMF.bind_bind,
-          PMF.pure_bind]
-        rw [bind_congr_on_support _ fun disclose hdisclose => htail _ (hmember disclose hdisclose),
-          PMF.bind_comm]
+  | _, _, .commit name owner fresh guard next, profile, policy,
+      profileFinite, policyFinite, configs =>
+      realizesPureMixtures_commit name owner fresh guard next (exists_pureMixture next)
+        profile policy profileFinite policyFinite configs
+  | _, _, .reveal published owner name fresh source unresolved next, profile, policy,
+      profileFinite, policyFinite, configs =>
+      realizesPureMixtures_reveal published owner name fresh source unresolved next
+        (exists_pureMixture next) profile policy profileFinite policyFinite configs
 
 /-- One mixture of pure policies reproduces a behavioral policy's terminal state
 law across a whole setup, against unchanged opponents. The draw precedes the
@@ -275,7 +342,7 @@ theorem exists_pureMixture_run {who : Player} (setup : Setup (Player := Player) 
   obtain ⟨mixture, mixtureFinite, hmixture⟩ :=
     exists_pureMixture setup.program profile policy profileFinite policyFinite
     ((supportList setup.initialLaw setup.initialLaw_support_finite).map fun initial =>
-      ⟨initial, [], Revelations.initial setup.context, fun _ => []⟩)
+      Config.initial initial)
   refine ⟨mixture, mixtureFinite, ?_⟩
   have hrun : ∀ initial ∈ setup.initialLaw.support,
       SourceProgram.run setup.program (Function.update profile who policy) initial =

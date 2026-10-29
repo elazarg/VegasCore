@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.ValueBinding
+import Vegas.Source.Semantics
 
 /-! # Guard verdicts predicted from the author's observation
 

@@ -1,9 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.SchedulerMixture
+import Vegas.Compile.EventGraphScheduling
 import GameTheory.Core.MixtureSimulation
 
-/-! # Strategic equivalence of canonical and publicly scheduled EventGraphs -/
+/-! # Exact scheduling equivalence for compiler-generated graphs -/
 
 noncomputable section
 
@@ -40,104 +40,56 @@ theorem gameForm_play_map_terminalStore
     _ = (graph.runPolicies scheduler profile initial).map Config.store := by
       rw [graph.terminalOutcomes_map_val]
 
-/-- Canonical execution and execution under an arbitrary adaptive public
-scheduler form an exact unilateral-mixture simulation on typed terminal stores. -/
-def eventSchedulingSimulation (ordered : graph.BarrierOrdered) (finite : graph.FiniteActions)
-    (inputs : PMF graph.Inputs) (finiteInputs : inputs.support.Finite)
-    (scheduler : graph.PublicScheduler) :
-    GameForm.MixtureSimulationOn (graph.canonicalGame inputs)
-      (graph.gameForm inputs scheduler) graph.terminalStore graph.terminalStore
-      (fun _ _ => True) where
-  compileStrategy := graph.normalizePolicy
+end Vegas.EventGraph
+
+namespace Vegas.SourceProgram.Setup
+
+open GameTheory GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+/-- The compiled graph game under the supplied public scheduler. -/
+def eventGame (setup : Setup (Player := Player) (L := L))
+    (scheduler : setup.eventGraph.PublicScheduler) : GameForm Player :=
+  setup.eventGraph.gameForm
+    (setup.initialLaw.map fun initial => setup.eventInputs initial) scheduler
+
+/-- The same compiled game under its canonical scheduler. -/
+def canonicalEventGame (setup : Setup (Player := Player) (L := L)) : GameForm Player :=
+  setup.eventGame setup.eventGraph.canonicalScheduler
+
+/-- Generated dependencies make every public scheduler's full outcome law identical. -/
+theorem eventGame_play_eq (setup : Setup (Player := Player) (L := L))
+    (first second : setup.eventGraph.PublicScheduler)
+    (profile : setup.eventGraph.BehavioralProfile) :
+    (setup.eventGame first).play profile = (setup.eventGame second).play profile := by
+  unfold eventGame EventGraph.gameForm
+  simp only [PMF.bind_map]
+  apply bind_congr_on_support _
+  intro initial _
+  exact toEventGraph_terminalOutcomes_eq setup.program profile first second _
+
+/-- Scheduling preserves every terminal observation with unchanged player strategies.
+Each unilateral deviation has the same law as that one deviation canonically. -/
+def eventSchedulingSimulationOn {Observation : Type}
+    (setup : Setup (Player := Player) (L := L))
+    (scheduler : setup.eventGraph.PublicScheduler)
+    (observe : setup.eventGraph.gameSignature.Outcome → Observation) :
+    GameForm.MixtureSimulationOn setup.canonicalEventGame (setup.eventGame scheduler)
+      observe observe (fun _ _ => True) where
+  compileStrategy _ strategy := strategy
   honest_law profile := by
-    change graph.BehavioralProfile at profile
-    unfold canonicalGame
-    have targetProfile :
-        Profile.map (sig := graph.gameSignature) (target := graph.gameSignature)
-          graph.normalizePolicy profile = graph.normalizeProfile profile := rfl
-    rw [targetProfile, gameForm_play_map_terminalStore,
-      gameForm_play_map_terminalStore]
-    apply bind_congr_on_support _
-    intro initial _
-    calc
-      (graph.runPolicies scheduler (graph.normalizeProfile profile) initial).map
-          Config.store =
-        (graph.runPolicies graph.canonicalScheduler
-          (graph.normalizeProfile profile) initial).map Config.store :=
-            (ordered.readyIndependent profile).runPolicies_store_eq_canonical scheduler
-              initial
-      _ = (graph.runPolicies graph.canonicalScheduler profile initial).map
-          Config.store := by
-            rw [← graph.runPolicies_canonical_normalize_eq profile initial]
+    change ((setup.eventGame scheduler).play profile).map observe =
+      (setup.canonicalEventGame.play profile).map observe
+    exact congrArg (PMF.map observe)
+      (setup.eventGame_play_eq scheduler setup.eventGraph.canonicalScheduler profile)
   compiled_considered _ _ := trivial
   deviation_mixture profile who replacement _ := by
-    change graph.BehavioralProfile at profile
-    unfold canonicalGame
-    obtain ⟨mixture, -, law⟩ := ordered.exists_deviation_mixture finite inputs finiteInputs
-      scheduler profile who replacement
-    have sourceProfile :
-        Profile.map (sig := graph.gameSignature) (target := graph.gameSignature)
-          graph.normalizePolicy profile = graph.normalizeProfile profile := rfl
-    refine ⟨mixture, ?_⟩
-    rw [sourceProfile]
-    rw [gameForm_play_map_terminalStore]
-    calc
-      _ = mixture.bind (fun alternative => inputs.bind fun initial =>
-          (graph.runPolicies graph.canonicalScheduler
-            (Profile.update (sig := graph.gameSignature) profile who alternative)
-            initial).map Config.store) := by
-              simpa only [PMF.map_bind] using law
-      _ = _ := by
-        apply bind_congr_on_support _
-        intro alternative _
-        exact (gameForm_play_map_terminalStore inputs graph.canonicalScheduler
-          (Profile.update (sig := graph.gameSignature) profile who alternative)).symm
+    refine ⟨PMF.pure replacement, ?_⟩
+    rw [PMF.pure_bind]
+    change ((setup.eventGame scheduler).play (Profile.update profile who replacement)).map observe =
+      (setup.canonicalEventGame.play (Profile.update profile who replacement)).map observe
+    exact congrArg (PMF.map observe)
+      (setup.eventGame_play_eq scheduler setup.eventGraph.canonicalScheduler _)
 
-omit [DecidableEq Player] in
-/-- An observation the terminal store determines, presented as a total decoder
-that succeeds on every play. Stating it this way introduces no payload default,
-and it is exactly the restriction the edge needs: schedulers agree on stores,
-and disagree about completion order, so an observation of the order is not
-recoverable. -/
-private theorem map_some_observe {Ω : Type}
-    (observe : graph.gameSignature.Outcome → Ω)
-    (decode : EventGraph.Store graph.layout → Option Ω)
-    (factors : ∀ outcome, decode (graph.terminalStore outcome) = some (observe outcome))
-    (law : PMF graph.gameSignature.Outcome) :
-    (law.map observe).map some = (law.map graph.terminalStore).map decode := by
-  rw [PMF.map_comp, PMF.map_comp]
-  congr 1
-  funext outcome
-  exact (factors outcome).symm
-
-/-- The canonical-to-scheduled edge read through any observation the terminal
-store determines. This is what composes: an edge below supplies its own reading
-of a completed play, and the scheduler is invisible to it. -/
-def eventSchedulingSimulationOn {Ω : Type} (ordered : graph.BarrierOrdered)
-    (finite : graph.FiniteActions) (inputs : PMF graph.Inputs)
-    (finiteInputs : inputs.support.Finite) (scheduler : graph.PublicScheduler)
-    (observe : graph.gameSignature.Outcome → Ω)
-    (decode : EventGraph.Store graph.layout → Option Ω)
-    (factors : ∀ outcome, decode (graph.terminalStore outcome) = some (observe outcome)) :
-    GameForm.MixtureSimulationOn (graph.canonicalGame inputs)
-      (graph.gameForm inputs scheduler) observe observe (fun _ _ => True) where
-  compileStrategy := graph.normalizePolicy
-  honest_law profile := by
-    have base := (graph.eventSchedulingSimulation ordered finite inputs finiteInputs
-      scheduler).honest_law profile
-    simp only [eventSchedulingSimulation] at base
-    refine pmf_map_injective (Option.some_injective _) ?_
-    rw [graph.map_some_observe observe decode factors,
-      graph.map_some_observe observe decode factors, base]
-  compiled_considered _ _ := trivial
-  deviation_mixture profile who replacement considered := by
-    obtain ⟨mixture, law⟩ := (graph.eventSchedulingSimulation ordered finite inputs
-      finiteInputs scheduler).deviation_mixture profile who replacement considered
-    simp only [eventSchedulingSimulation] at law
-    refine ⟨mixture, pmf_map_injective (Option.some_injective _) ?_⟩
-    rw [graph.map_some_observe observe decode factors, law, PMF.map_bind]
-    rw [PMF.map_bind]
-    exact bind_congr_on_support _ fun alternative _ =>
-      (graph.map_some_observe observe decode factors _).symm
-
-end Vegas.EventGraph
+end Vegas.SourceProgram.Setup

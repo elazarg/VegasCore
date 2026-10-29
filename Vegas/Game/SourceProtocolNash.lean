@@ -58,12 +58,12 @@ omit [Fintype Player] in
 /-- An analysis projection of the existing typed execution; source strategies
 and observations are unchanged. -/
 def observedGameForm {Observation : Type}
-    (readout : State L setup.program.terminalCtx → Observation) : GameForm Player where
+    (readout : Config Player L setup.program.terminalCtx → Observation) : GameForm Player where
   sig := (SourceProgram.gameSignature setup.program).mapOutcome Observation
   play profile := (setup.run profile).map readout
 
 variable {Observation : Type}
-  (readout : State L setup.program.terminalCtx → Observation)
+  (readout : Config Player L setup.program.terminalCtx → Observation)
 
 /-- The whole utility-vector law agrees for every protocol profile, not only
 encoded equilibria. Undefined and infinite expectations are therefore preserved. -/
@@ -82,7 +82,8 @@ theorem protocol_payoff_law
         (fun final => setup.protocolReadout final.state) =
       (setup.run (setup.decodeBehavioralProfile admission profile)).map some :=
     setup.runBehavioralFrom_readout admission profile _ _ (Nat.le_refl _)
-  have valued := congrArg (PMF.map (fun output : Option (State L setup.program.terminalCtx) =>
+  have valued := congrArg (PMF.map
+    (fun output : Option (Config Player L setup.program.terminalCtx) =>
     fun who => output.elim 0 (fun terminal => utility (readout terminal) who)))
     law
   simpa only [PMF.map_comp, Function.comp_def, Option.elim_some, observedGameForm] using valued

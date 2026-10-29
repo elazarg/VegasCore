@@ -41,7 +41,7 @@ theorem eventGame_payment_approximate_nash_iff
         setup.program.paymentUtility valuation (setup.eventPublicOutcome outcome) who) := by
     funext outcome who
     simp only [paymentUtility_eq, publicTransfers, eventPublicOutcome,
-      publicPayoffs_publicOutcome, terminalPayouts_eq_source]
+      publicPayoffs_publicOutcome, terminalPayouts_eq_source, terminalConfig]
   rw [utility_eq]
   exact setup.eventGame_approximate_nash_iff finite scheduler
     (setup.program.paymentUtility valuation) ε profile
@@ -94,26 +94,7 @@ def eventParameterOutcome {Parameter : Type} (setup : Setup (Player := Player) (
     (parameter : State L setup.context → Parameter)
     (outcome : setup.eventGraph.gameSignature.Outcome) :
     Parameter × PublicOutcome setup.program :=
-  setup.parameterOutcome parameter (terminalState setup.program outcome)
-
-/-- The parameterized analysis reader factors through the terminal store. -/
-def eventParameterDecode {Parameter : Type} (setup : Setup (Player := Player) (L := L))
-    (parameter : State L setup.context → Parameter)
-    (store : Vegas.EventGraph.Store setup.eventGraph.layout) :
-    Option (Parameter × PublicOutcome setup.program) :=
-  (decodeState? (terminalRefs setup.program) store).map (setup.parameterOutcome parameter)
-
-theorem eventParameterDecode_terminalStore {Parameter : Type}
-    (setup : Setup (Player := Player) (L := L))
-    (parameter : State L setup.context → Parameter)
-    (outcome : setup.eventGraph.gameSignature.Outcome) :
-    setup.eventParameterDecode parameter (setup.eventGraph.terminalStore outcome) =
-      some (setup.eventParameterOutcome parameter outcome) := by
-  have hdecode : decodeState? (terminalRefs setup.program)
-      (setup.eventGraph.terminalStore outcome) =
-        some (terminalState setup.program outcome) := (Option.some_get _).symm
-  rw [eventParameterDecode, hdecode]
-  rfl
+  setup.parameterOutcome parameter (terminalConfig setup.program outcome)
 
 /-- The canonical compiler preserves the joint parameter/result law, including
 under every unilateral graph deviation. Its backtranslated policy is fixed
@@ -144,19 +125,12 @@ of source deviations drawn before private setup. No policy gains an observation.
 def parameterEventSimulation {Parameter : Type}
     (setup : Setup (Player := Player) (L := L))
     (parameter : State L setup.context → Parameter)
-    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (scheduler : setup.eventGraph.PublicScheduler) :
     GameForm.MixtureSimulationOn (setup.parameterGameForm parameter)
       (setup.eventGame scheduler) id (setup.eventParameterOutcome parameter)
       (fun _ _ => True) :=
   (setup.canonicalParameterEventSimulation parameter).trans
-    (setup.eventGraph.eventSchedulingSimulationOn
-      (toEventGraph_barrierOrdered setup.program)
-      (toEventGraph_finiteActions setup.program finite)
-      (setup.initialLaw.map fun initial => setup.eventInputs initial)
-      (by rw [PMF.support_map]; exact setup.initialLaw_support_finite.image _) scheduler
-      (setup.eventParameterOutcome parameter) (setup.eventParameterDecode parameter)
-      (setup.eventParameterDecode_terminalStore parameter))
+    (setup.eventSchedulingSimulationOn scheduler (setup.eventParameterOutcome parameter))
     (fun _ _ => trivial)
 
 /-- Arbitrary utility of the correlated initial parameter and public result has
@@ -173,7 +147,7 @@ theorem parameterEventGame_approximate_nash_iff {Parameter : Type}
         (fun outcome who => utility (setup.eventParameterOutcome parameter outcome) who)
         ε (compileEventProfile setup.program profile) ↔
       IsεNash (setup.parameterGameForm parameter) utility ε profile :=
-  ((setup.parameterEventSimulation parameter finite scheduler).isεNash_compileProfile_iff
+  ((setup.parameterEventSimulation parameter scheduler).isεNash_compileProfile_iff
     utility ε profile (fun _ _ => trivial)).trans (and_iff_left fun _ _ =>
       hasExpectation_of_payoffIntegrable (payoffIntegrable_of_finite_support _ _
         (setup.eventGame_play_support_finite finite scheduler _)))
@@ -202,7 +176,7 @@ theorem parameterEventGame_payment_approximate_nash_iff {Parameter : Type}
         (setup.eventParameterOutcome parameter outcome) who) := by
     funext outcome who
     simp only [parameterPaymentUtility_eq, publicTransfers, eventParameterOutcome,
-      parameterOutcome, publicPayoffs_publicOutcome, terminalPayouts_eq_source]
+      parameterOutcome, publicPayoffs_publicOutcome, terminalPayouts_eq_source, terminalConfig]
   rw [utility_eq]
   exact setup.parameterEventGame_approximate_nash_iff parameter finite scheduler
     (setup.program.parameterPaymentUtility valuation) ε profile

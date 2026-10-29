@@ -10,8 +10,8 @@ A cell swap commutes with looking a cell up
 cell it finds (`Vegas.SourceProgram.ProtocolState.cell?_step`): chance, commits
 and reveals only add cells under fresh names.
 
-**Prefixes.** Let two intended histories have the same length and end at p
-and q. Every prefix of the first has a prefix of the second of the same
+**Prefixes.** Let two intended histories have the same length and public default record,
+and end at p and q. Every prefix of the first has a prefix of the second of the same
 length, and the swap between p and q maps the state of the first prefix to
 the state of the second (`Vegas.SourceProgram.Setup.intended_prefix_between`).
 Every cell found at the earlier state is still found, with the same value, at
@@ -189,8 +189,10 @@ theorem ProtocolState.intended_actor_eq_choice : {Γ : SourceCtx Player L} →
       cases point with
       | inl config =>
           intro who acting
-          have mover : owner = who := by
+          have activeOwner : owner ∉ config.defaulted ∧ owner = who := by
             simpa [observe, ProtocolView.actor] using acting
+          have active := activeOwner.1
+          have mover := activeOwner.2
           subst mover
           have ownerLegal := legal owner
           cases chosen : joint owner with
@@ -208,7 +210,8 @@ theorem ProtocolState.intended_actor_eq_choice : {Γ : SourceCtx Player L} →
                   rw [chosen, OwnAction.binding_commit] at choiceReached
                   have successor := entry_injective next (Sum.inr.inj choiceReached)
                   have lists := congrArg (fun config => config.history owner) successor
-                  simp only [commitSuccessor, Function.update_self, List.append_cancel_left_eq,
+                  simp only [commitSuccessor, active, ite_false, Function.update_self,
+                    List.append_cancel_left_eq,
                     List.cons.injEq, OwnAction.commit.injEq, heq_eq_eq, true_and,
                     and_true] at lists
                   simp [OwnAction.binding] at lists
@@ -221,7 +224,8 @@ theorem ProtocolState.intended_actor_eq_choice : {Γ : SourceCtx Player L} →
                     at choiceReached
                   have successor := entry_injective next (Sum.inr.inj choiceReached)
                   have lists := congrArg (fun config => config.history owner) successor
-                  simp only [commitSuccessor, Function.update_self, List.append_cancel_left_eq,
+                  simp only [commitSuccessor, active, ite_false, Function.update_self,
+                    List.append_cancel_left_eq,
                     List.cons.injEq, OwnAction.commit.injEq, heq_eq_eq, true_and,
                     and_true] at lists
                   rw [lists]
@@ -238,8 +242,10 @@ theorem ProtocolState.intended_actor_eq_choice : {Γ : SourceCtx Player L} →
       cases point with
       | inl config =>
           intro who acting
-          have mover : owner = who := by
+          have activeOwner : owner ∉ config.defaulted ∧ owner = who := by
             simpa [observe, ProtocolView.actor] using acting
+          have active := activeOwner.1
+          have mover := activeOwner.2
           subst mover
           have ownerLegal := legal owner
           cases chosen : joint owner with
@@ -256,7 +262,8 @@ theorem ProtocolState.intended_actor_eq_choice : {Γ : SourceCtx Player L} →
               rw [chosen] at choiceReached
               have successor := entry_injective next (Sum.inr.inj choiceReached)
               have lists := congrArg (fun config => config.history owner) successor
-              simp only [revealSuccessor, Function.update_self, List.append_cancel_left_eq,
+              simp only [revealSuccessor, active, ite_false, Function.update_self,
+                List.append_cancel_left_eq,
                 List.cons.injEq, OwnAction.reveal.injEq, true_and, and_true] at lists
               cases choice with
               | none => simp [OwnAction.disclosure] at lists
@@ -342,13 +349,16 @@ private theorem foundAt_prefix {state target : setup.intendedProtocol.State}
   | extend _ joint _ realized ih => exact setup.foundAt_step (joint := joint) realized ih
 
 /-- **Prefixes of intended histories differ by the swap between their ends.**
-For two intended histories of equal length ending at p and q, every prefix of
+For two intended histories with equal length and public default record, ending
+at p and q, every prefix of
 the first has a prefix of the second of the same length, and the swap between
 p and q maps the state of the first prefix to the state of the second. -/
 theorem intended_prefix_between {first second : setup.intendedProtocol.History}
     {p q : SourceProgram.ProtocolState setup.program} (firstState : first.state = some p)
     (secondState : second.state = some q)
     (sameLength : first.trace.length = second.trace.length)
+    (sameDefaults : ProtocolState.defaults setup.program p =
+      ProtocolState.defaults setup.program q)
     {state : setup.ProtocolState} (prefixTrace : setup.intendedProtocol.Trace state)
     (isPrefix : TracePrefix prefixTrace first.trace) :
     ∃ (state' : setup.ProtocolState) (prefixTrace' : setup.intendedProtocol.Trace state'),
@@ -359,6 +369,16 @@ theorem intended_prefix_between {first second : setup.intendedProtocol.History}
   obtain ⟨state', prefixTrace', isPrefix', sameLength'⟩ :=
     exists_tracePrefix_of_le second.trace (isPrefix.length_le.trans sameLength.le)
   refine ⟨state', prefixTrace', isPrefix', sameLength', ?_⟩
+  have finalDefaults : setup.protocolDefaults first.state =
+      setup.protocolDefaults second.state := by
+    rw [firstState, secondState]
+    exact sameDefaults
+  have prefixDefaults := congrArg
+    (DefaultHistory.back^[first.trace.length - prefixTrace.length]) finalDefaults
+  rw [setup.protocolDefaults_prefix isPrefix] at prefixDefaults
+  have distance : first.trace.length - prefixTrace.length =
+      second.trace.length - prefixTrace'.length := by rw [sameLength, sameLength']
+  rw [distance, setup.protocolDefaults_prefix isPrefix'] at prefixDefaults
   cases state with
   | none =>
       exact setup.state_eq_none_of_length prefixTrace'
@@ -369,11 +389,11 @@ theorem intended_prefix_between {first second : setup.intendedProtocol.History}
           cases setup.state_eq_none_of_length prefixTrace
             (sameLength'.symm.trans (setup.trace_length_eq_zero prefixTrace' rfl))
       | some b =>
-          refine congrArg some (setup.intended_eq_swap (first := ⟨some a, prefixTrace⟩)
-            (second := ⟨some b, prefixTrace'⟩) rfl rfl sameLength'.symm _
+          refine congrArg some (setup.intended_eq_swap_of_defaults (first := ⟨some a, prefixTrace⟩)
+            (second := ⟨some b, prefixTrace'⟩) rfl rfl sameLength'.symm prefixDefaults _
             fun name kind value found => ?_)
-          have swapped := setup.intended_eq_between (first := ⟨some a, prefixTrace⟩)
-            (second := ⟨some b, prefixTrace'⟩) rfl rfl sameLength'.symm
+          have swapped := setup.intended_eq_between_of_defaults (first := ⟨some a, prefixTrace⟩)
+            (second := ⟨some b, prefixTrace'⟩) rfl rfl sameLength'.symm prefixDefaults
           have atSecond : ProtocolState.cell? setup.program b name kind =
               some ((CellSwap.between setup.program a b).cell name kind value) := by
             have lookup := congrArg

@@ -2,6 +2,8 @@
 
 import Vegas.Source.CellSwap
 import Vegas.Source.IntendedGame
+import Vegas.Source.DefaultControl
+import GameTheoryExtensions.Protocol.TracePrefix
 
 /-! # Intended states at a program point differ by a cell swap
 
@@ -9,18 +11,14 @@ In a context with distinct names, looking a cell up by name and kind
 (`Vegas.SourceProgram.State.cell?`) finds the value at the unique witness of
 that cell (`Vegas.SourceProgram.State.cell?_eq_of_hasVar`).
 
-Two states of the intended game reached in the same number of steps are at the
-same program point, carry the same obligations and publication status, and
-have action lists of the same shape: an entry records a commitment whose
-choice is the current value of the committed cell, or an opening reveal. Hence
-the swap between the two states (`Vegas.SourceProgram.CellSwap.between`) maps
-the first to the second
-(`Vegas.SourceProgram.Setup.intended_eq_between`); so does any swap that agrees
-with it on the values found in the first state
-(`Vegas.SourceProgram.Setup.intended_eq_swap`). Equal observations of one
-player put two states at the same program point, hence at the same history
-length (`Vegas.SourceProgram.Setup.intendedProtocol_length_eq_of_observe`), so
-the same holds for two intended states one player cannot tell apart
+Two states of the intended game reached in the same number of steps with the
+same complete public default record carry the same static metadata and matching
+own action lists. The swap between their typed cells therefore maps the complete
+configurations (`Vegas.SourceProgram.Setup.intended_eq_between_of_defaults`).
+The same holds for any swap agreeing on their found values
+(`Vegas.SourceProgram.Setup.intended_eq_swap_of_defaults`). Equal observations
+supply both equal program positions and the public default record, giving the
+observation specialization without additional hypotheses
 (`Vegas.SourceProgram.Setup.intended_eq_between_of_observe`).
 -/
 
@@ -106,8 +104,8 @@ private inductive ActionMatched {Γ : SourceCtx Player L} (first second : State 
       {firstChoice secondChoice : PublicationResult (L.Val payload)}
       (firstCell : State.cell? first name (.commitment owner payload) = some firstChoice)
       (secondCell : State.cell? second name (.commitment owner payload) = some secondChoice) :
-      ActionMatched first second (.commit owner name payload firstChoice)
-        (.commit owner name payload secondChoice)
+      ActionMatched first second (.commit owner name payload (some firstChoice))
+        (.commit owner name payload (some secondChoice))
   | reveal (owner : Player) (name : VarId) (disclose : Bool) :
       ActionMatched first second (.reveal owner name disclose) (.reveal owner name disclose)
 
@@ -136,15 +134,17 @@ private theorem ActionMatched.swap_action {Γ : SourceCtx Player L} {first secon
     swap.action firstAction = secondAction := by
   cases matched with
   | commit firstCell secondCell =>
-      simp only [CellSwap.action, cells _ _ _ firstCell, firstCell, secondCell, swapFound,
+      simp only [CellSwap.action, Option.map_some, cells _ _ _ firstCell,
+        firstCell, secondCell, swapFound,
         Equiv.swap_apply_left]
   | reveal => rfl
 
-/-- Two configurations with the same obligations and publication status whose
-action lists match entry by entry. -/
+/-- Two configurations with equal static metadata and public default records,
+whose action lists match entry by entry. -/
 private def ConfigMatched {Γ : SourceCtx Player L} (first second : Config Player L Γ) : Prop :=
   first.registry = second.registry ∧
     @Config.revelations Player L Γ first = @Config.revelations Player L Γ second ∧
+    first.defaults = second.defaults ∧
     ∀ who, List.Forall₂ (ActionMatched first.state second.state)
       (first.history who) (second.history who)
 
@@ -159,7 +159,7 @@ private theorem ConfigMatched.swap_config {Γ : SourceCtx Player L}
         swapFound (State.cell? first.state name kind) (State.cell? second.state name kind)
           value)
     (matched : ConfigMatched first second) : swap.config first = second := by
-  obtain ⟨registry, revelations, histories⟩ := matched
+  obtain ⟨registry, revelations, defaults, histories⟩ := matched
   have stateEq : swap.state first.state = second.state := by
     funext name kind source
     have found := State.cell?_eq_of_hasVar source distinct first.state
@@ -174,10 +174,10 @@ private theorem ConfigMatched.swap_config {Γ : SourceCtx Player L}
     induction lists with
     | nil => rfl
     | cons head _ tail => rw [List.map_cons, head.swap_action swap cells, tail]
-  obtain ⟨firstState, firstRegistry, firstRevelations, firstHistory⟩ := first
-  obtain ⟨secondState, secondRegistry, secondRevelations, secondHistory⟩ := second
-  simp only [CellSwap.config] at stateEq historyEq registry revelations ⊢
-  rw [stateEq, historyEq, registry, revelations]
+  obtain ⟨firstState, firstRegistry, firstRevelations, firstHistory, firstDefaults⟩ := first
+  obtain ⟨secondState, secondRegistry, secondRevelations, secondHistory, secondDefaults⟩ := second
+  simp only [CellSwap.config] at stateEq historyEq registry revelations defaults ⊢
+  rw [stateEq, historyEq, registry, revelations, defaults]
 
 /-- Two states at the same program point whose configurations there match. -/
 private def Matched : {Γ : SourceCtx Player L} → {O : Finset VarId} →
@@ -258,13 +258,34 @@ private theorem matched_swap : {Γ : SourceCtx Player L} → {O : Finset VarId} 
                 swap cells matched)
 
 omit [DecidableEq (CellTy Player L)] in
-/-- At an owner's reveal, an intended choice opens. -/
+private theorem binding_of_intendedMenu {Γ : SourceCtx Player L} {O : Finset VarId}
+    {name : VarId} {owner : Player} {payload : L.Ty} {fresh : name ∉ Γ.map Prod.fst}
+    {guard : SourceGuard L Γ owner name payload}
+    {next : SourceProgram Player L ((name, .commitment owner payload) :: Γ) (insert name O)}
+    {config : Config Player L Γ} {joint : Player → Option (OwnAction Player L)}
+    (active : owner ∉ config.defaulted)
+    (legal : ProtocolView.intendedMenu owner (.commit name owner fresh guard next)
+      (ProtocolState.observe owner (.commit name owner fresh guard next) (Sum.inl config))
+      (joint owner)) :
+    ∃ value, OwnAction.binding owner name payload (joint owner) = some (.success value) := by
+  cases chosen : joint owner with
+  | none =>
+      rw [chosen] at legal
+      exact (legal (by simp [ProtocolView.actor, ProtocolState.observe, active])).elim
+  | some action =>
+      rw [chosen] at legal
+      obtain ⟨_, value, _, rfl⟩ := legal
+      exact ⟨value, OwnAction.binding_commit ..⟩
+
+omit [DecidableEq (CellTy Player L)] in
+/-- An active owner's intended disclosure opens. -/
 private theorem disclosure_of_intendedMenu {Γ : SourceCtx Player L} {O : Finset VarId}
     {published name : VarId} {owner : Player} {payload : L.Ty}
     {fresh : published ∉ Γ.map Prod.fst} {source : HasVar Γ name (.commitment owner payload)}
     {unresolved : name ∈ O}
     {next : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
     {config : Config Player L Γ} {joint : Player → Option (OwnAction Player L)}
+    (active : owner ∉ config.defaulted)
     (legal : ProtocolView.intendedMenu owner
       (.reveal published owner name fresh source unresolved next)
       (ProtocolState.observe owner (.reveal published owner name fresh source unresolved next)
@@ -273,12 +294,12 @@ private theorem disclosure_of_intendedMenu {Γ : SourceCtx Player L} {O : Finset
   cases chosen : joint owner with
   | none =>
       rw [chosen] at legal
-      exact (legal rfl).elim
+      exact (legal (by simp [ProtocolView.actor, ProtocolState.observe, active])).elim
   | some action =>
       rw [chosen] at legal
       exact congrArg some legal.2
 
-/-- Matching is preserved by any pair of steps of intended joint actions. -/
+/-- Intended steps preserve action matching when their resulting public records agree. -/
 private theorem matched_step : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) →
     {firstBefore secondBefore firstAfter secondAfter : ProtocolState program} →
@@ -290,103 +311,126 @@ private theorem matched_step : {Γ : SourceCtx Player L} → {O : Finset VarId} 
       (ProtocolState.observe who program secondBefore) (secondJoint who)) →
     firstAfter ∈ (ProtocolState.step program firstBefore firstJoint).support →
     secondAfter ∈ (ProtocolState.step program secondBefore secondJoint).support →
+    ProtocolState.defaults program firstAfter = ProtocolState.defaults program secondAfter →
     Matched program firstAfter secondAfter
-  | _, _, .ret _, _, _, _, _, _, _, matched, _, _, firstReached, secondReached => by
+  | _, _, .ret _, _, _, _, _, _, _, matched, _, _, firstReached, secondReached, _ => by
       rw [(PMF.mem_support_pure_iff _ _).mp firstReached,
         (PMF.mem_support_pure_iff _ _).mp secondReached]
       exact matched
   | _, _, .sample _ fresh _ next, firstBefore, secondBefore, _, _, _, _, matched,
-      firstLegal, secondLegal, firstReached, secondReached => by
+      firstLegal, secondLegal, firstReached, secondReached, finalDefaults => by
       cases firstBefore with
       | inl first =>
           cases secondBefore with
           | inr _ => exact matched.elim
           | inl second =>
-              simp only [ProtocolState.step, Sum.elim_inl, PMF.support_map, Set.mem_image]
-                at firstReached secondReached
-              obtain ⟨firstValue, _, rfl⟩ := firstReached
-              obtain ⟨secondValue, _, rfl⟩ := secondReached
-              obtain ⟨registry, revelations, histories⟩ := matched
+              obtain ⟨firstValue, _, rfl⟩ := PMF.support_map .. ▸ firstReached
+              obtain ⟨secondValue, _, rfl⟩ := PMF.support_map .. ▸ secondReached
+              obtain ⟨registry, revelations, _, histories⟩ := matched
               exact matched_entry next ⟨by simp only [sampleSuccessor, registry],
                 by simp only [sampleSuccessor, revelations],
+                by simpa only [ProtocolState.defaults, Sum.elim_inr,
+                  ProtocolState.defaults_entry] using finalDefaults,
                 fun who => (histories who).imp fun _ _ =>
                   ActionMatched.weaken fresh (head := .publicData _) firstValue secondValue⟩
       | inr first =>
           cases secondBefore with
           | inl _ => exact matched.elim
           | inr second =>
-              simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map, Set.mem_image]
-                at firstReached secondReached
-              obtain ⟨_, firstInner, rfl⟩ := firstReached
-              obtain ⟨_, secondInner, rfl⟩ := secondReached
+              obtain ⟨_, firstInner, rfl⟩ := PMF.support_map .. ▸ firstReached
+              obtain ⟨_, secondInner, rfl⟩ := PMF.support_map .. ▸ secondReached
               exact matched_step next matched firstLegal secondLegal firstInner secondInner
-  | _, _, .commit (payload := payload) name owner fresh _ next, firstBefore, secondBefore,
+                finalDefaults
+  | _, _, .commit (payload := payload) name owner fresh guard next, firstBefore, secondBefore,
       _, _, firstJoint, secondJoint, matched, firstLegal, secondLegal, firstReached,
-      secondReached => by
+      secondReached, finalDefaults => by
       cases firstBefore with
       | inl first =>
           cases secondBefore with
           | inr _ => exact matched.elim
           | inl second =>
-              simp only [ProtocolState.step, Sum.elim_inl, PMF.mem_support_pure_iff]
-                at firstReached secondReached
-              subst firstReached secondReached
-              obtain ⟨registry, revelations, histories⟩ := matched
+              have firstEq := (PMF.mem_support_pure_iff _ _).mp firstReached
+              have secondEq := (PMF.mem_support_pure_iff _ _).mp secondReached
+              subst firstEq secondEq
+              obtain ⟨registry, revelations, defaults, histories⟩ := matched
+              have status : first.defaulted = second.defaulted :=
+                congrArg DefaultHistory.defaulted defaults
               refine matched_entry next ⟨by simp only [commitSuccessor, registry],
-                by simp only [commitSuccessor, revelations], fun who => ?_⟩
-              have weakened := fun who => (histories who).imp fun _ _ =>
-                ActionMatched.weaken fresh (head := .commitment owner payload)
-                  (OwnAction.binding owner name payload (firstJoint owner))
-                  (OwnAction.binding owner name payload (secondJoint owner))
-              by_cases mover : who = owner
-              · subst who
-                simp only [commitSuccessor, Function.update_self]
-                exact List.rel_append (weakened owner)
-                  (.cons (.commit (State.cell?_cons_self _ _) (State.cell?_cons_self _ _)) .nil)
-              · simp only [commitSuccessor, Function.update_of_ne mover]
-                exact weakened who
+                by simp only [commitSuccessor, revelations],
+                by simpa only [ProtocolState.defaults, Sum.elim_inr,
+                  ProtocolState.defaults_entry] using finalDefaults, fun who => ?_⟩
+              by_cases inactive : owner ∈ first.defaulted
+              · have secondInactive : owner ∈ second.defaulted := status ▸ inactive
+                simp only [commitSuccessor, inactive, secondInactive, ite_true]
+                exact (histories who).imp fun _ _ => ActionMatched.weaken fresh _ _
+              · have secondActive : owner ∉ second.defaulted := status ▸ inactive
+                obtain ⟨firstValue, firstChoice⟩ :=
+                  binding_of_intendedMenu inactive (firstLegal owner)
+                obtain ⟨secondValue, secondChoice⟩ :=
+                  binding_of_intendedMenu secondActive (secondLegal owner)
+                simp only [commitSuccessor, inactive, secondActive, ite_false,
+                  firstChoice, secondChoice, Option.getD_some]
+                have weakened := fun player => (histories player).imp fun _ _ =>
+                  ActionMatched.weaken fresh (head := .commitment owner payload)
+                    (.success firstValue) (.success secondValue)
+                by_cases mover : who = owner
+                · subst who
+                  simp only [Function.update_self]
+                  exact List.rel_append (weakened owner)
+                    (.cons (.commit (State.cell?_cons_self _ _) (State.cell?_cons_self _ _)) .nil)
+                · simp only [Function.update_of_ne mover]
+                  exact weakened who
       | inr first =>
           cases secondBefore with
           | inl _ => exact matched.elim
           | inr second =>
-              simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map, Set.mem_image]
-                at firstReached secondReached
-              obtain ⟨_, firstInner, rfl⟩ := firstReached
-              obtain ⟨_, secondInner, rfl⟩ := secondReached
+              obtain ⟨_, firstInner, rfl⟩ := PMF.support_map .. ▸ firstReached
+              obtain ⟨_, secondInner, rfl⟩ := PMF.support_map .. ▸ secondReached
               exact matched_step next matched firstLegal secondLegal firstInner secondInner
+                finalDefaults
   | _, _, .reveal published owner name fresh source _ next, firstBefore, secondBefore, _, _,
       firstJoint, secondJoint, matched, firstLegal, secondLegal, firstReached,
-      secondReached => by
+      secondReached, finalDefaults => by
       cases firstBefore with
       | inl first =>
           cases secondBefore with
           | inr _ => exact matched.elim
           | inl second =>
-              simp only [ProtocolState.step, Sum.elim_inl, PMF.mem_support_pure_iff]
-                at firstReached secondReached
-              subst firstReached secondReached
-              rw [disclosure_of_intendedMenu (firstLegal owner)]
-              rw [disclosure_of_intendedMenu (secondLegal owner)]
-              obtain ⟨registry, revelations, histories⟩ := matched
+              have firstEq := (PMF.mem_support_pure_iff _ _).mp firstReached
+              have secondEq := (PMF.mem_support_pure_iff _ _).mp secondReached
+              subst firstEq secondEq
+              obtain ⟨registry, revelations, defaults, histories⟩ := matched
+              have status : first.defaulted = second.defaulted :=
+                congrArg DefaultHistory.defaulted defaults
               refine matched_entry next ⟨by simp only [revealSuccessor, registry],
-                by simp only [revealSuccessor, revelations], fun who => ?_⟩
-              by_cases mover : who = owner
-              · subst who
-                simp only [revealSuccessor, Function.update_self]
-                exact List.rel_append
-                  ((histories owner).imp fun _ _ => ActionMatched.weaken fresh _ _)
-                  (.cons (.reveal owner name _) .nil)
-              · simp only [revealSuccessor, Function.update_of_ne mover]
+                by simp only [revealSuccessor, revelations],
+                by simpa only [ProtocolState.defaults, Sum.elim_inr,
+                  ProtocolState.defaults_entry] using finalDefaults, fun who => ?_⟩
+              by_cases inactive : owner ∈ first.defaulted
+              · have secondInactive : owner ∈ second.defaulted := status ▸ inactive
+                simp only [revealSuccessor, inactive, secondInactive, ite_true]
                 exact (histories who).imp fun _ _ => ActionMatched.weaken fresh _ _
+              · have secondActive : owner ∉ second.defaulted := status ▸ inactive
+                have firstChoice := disclosure_of_intendedMenu inactive (firstLegal owner)
+                have secondChoice := disclosure_of_intendedMenu secondActive (secondLegal owner)
+                simp only [revealSuccessor, inactive, secondActive, ite_false,
+                  firstChoice, secondChoice, OwnAction.disclosure]
+                by_cases mover : who = owner
+                · subst who
+                  simp only [Function.update_self]
+                  exact List.rel_append
+                    ((histories owner).imp fun _ _ => ActionMatched.weaken fresh _ _)
+                    (.cons (.reveal owner name _) .nil)
+                · simp only [Function.update_of_ne mover]
+                  exact (histories who).imp fun _ _ => ActionMatched.weaken fresh _ _
       | inr first =>
           cases secondBefore with
           | inl _ => exact matched.elim
           | inr second =>
-              simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map, Set.mem_image]
-                at firstReached secondReached
-              obtain ⟨_, firstInner, rfl⟩ := firstReached
-              obtain ⟨_, secondInner, rfl⟩ := secondReached
+              obtain ⟨_, firstInner, rfl⟩ := PMF.support_map .. ▸ firstReached
+              obtain ⟨_, secondInner, rfl⟩ := PMF.support_map .. ▸ secondReached
               exact matched_step next matched firstLegal secondLegal firstInner secondInner
+                finalDefaults
 
 end Matching
 
@@ -420,6 +464,27 @@ end ProtocolState
 
 namespace Setup
 
+/-- A history prefix retains exactly the older part of the public default record. -/
+theorem protocolDefaults_prefix (setup : Setup (Player := Player) (L := L))
+    {state target : setup.intendedProtocol.State}
+    {prefixTrace : setup.intendedProtocol.Trace state}
+    {trace : setup.intendedProtocol.Trace target}
+    (isPrefix : GameTheory.Protocol.ExecutionProtocol.TracePrefix prefixTrace trace) :
+    (DefaultHistory.back^[trace.length - prefixTrace.length]) (setup.protocolDefaults target) =
+      setup.protocolDefaults state := by
+  induction isPrefix with
+  | refl => simp only [Nat.sub_self, Function.iterate_zero, id_eq]
+  | @extend before after prior earlier joint legal realized ih =>
+      have bounded := earlier.length_le
+      have backwards := setup.protocolDefaults_back_step before after joint legal.1 realized
+      have distance : (prior.extend joint legal realized).length - prefixTrace.length =
+          (prior.length - prefixTrace.length) + 1 := by
+        simp only [GameTheory.Protocol.ExecutionProtocol.Trace.length]
+        omega
+      rw [distance, Function.iterate_succ_apply, backwards]
+      exact ih
+
+
 section Matching
 
 variable [DecidableEq (CellTy Player L)]
@@ -449,7 +514,8 @@ private theorem setupMatched_step (setup : Setup (Player := Player) (L := L))
     (firstLegal : setup.intendedProtocol.Legal firstBefore firstJoint)
     (secondLegal : setup.intendedProtocol.Legal secondBefore secondJoint)
     (firstReached : firstAfter ∈ (setup.protocolStep firstBefore firstJoint).support)
-    (secondReached : secondAfter ∈ (setup.protocolStep secondBefore secondJoint).support) :
+    (secondReached : secondAfter ∈ (setup.protocolStep secondBefore secondJoint).support)
+    (finalDefaults : setup.protocolDefaults firstAfter = setup.protocolDefaults secondAfter) :
     setup.SetupMatched firstAfter secondAfter := by
   cases firstBefore with
   | none =>
@@ -459,7 +525,7 @@ private theorem setupMatched_step (setup : Setup (Player := Player) (L := L))
           simp only [protocolStep, PMF.support_map, Set.mem_image] at firstReached secondReached
           obtain ⟨_, _, rfl⟩ := firstReached
           obtain ⟨_, _, rfl⟩ := secondReached
-          exact matched_entry setup.program ⟨rfl, rfl, fun _ => .nil⟩
+          exact matched_entry setup.program ⟨rfl, rfl, rfl, fun _ => .nil⟩
   | some first =>
       cases secondBefore with
       | none => exact matched.elim
@@ -468,53 +534,61 @@ private theorem setupMatched_step (setup : Setup (Player := Player) (L := L))
           obtain ⟨_, firstInner, rfl⟩ := firstReached
           obtain ⟨_, secondInner, rfl⟩ := secondReached
           exact matched_step setup.program matched (setup.intendedMenu_of_legal firstLegal)
-            (setup.intendedMenu_of_legal secondLegal) firstInner secondInner
+            (setup.intendedMenu_of_legal secondLegal) firstInner secondInner finalDefaults
 
 /-- Intended histories of equal length reach matched states. -/
 private theorem setupMatched_of_length (setup : Setup (Player := Player) (L := L)) :
     ∀ {first second : setup.ProtocolState}
       (firstTrace : setup.intendedProtocol.Trace first)
       (secondTrace : setup.intendedProtocol.Trace second),
-      firstTrace.length = secondTrace.length → setup.SetupMatched first second
-  | _, _, .start, .start, _ => trivial
-  | _, _, .start, .extend _ _ _ _, same => by simp [Trace.length] at same
-  | _, _, .extend _ _ _ _, .start, same => by simp [Trace.length] at same
-  | _, _, .extend firstPrior _ firstLegal firstReached,
-      .extend secondPrior _ secondLegal secondReached, same => by
+      firstTrace.length = secondTrace.length →
+      setup.protocolDefaults first = setup.protocolDefaults second → setup.SetupMatched first second
+  | _, _, .start, .start, _, _ => trivial
+  | _, _, .start, .extend _ _ _ _, same, _ => by simp [Trace.length] at same
+  | _, _, .extend _ _ _ _, .start, same, _ => by simp [Trace.length] at same
+  | _, _, .extend firstPrior firstJoint firstLegal firstReached,
+      .extend secondPrior secondJoint secondLegal secondReached, same, finalDefaults => by
       simp only [Trace.length, Nat.add_right_cancel_iff] at same
-      exact setup.setupMatched_step (setup.setupMatched_of_length firstPrior secondPrior same)
-        firstLegal secondLegal firstReached secondReached
+      have priorDefaults := congrArg DefaultHistory.back finalDefaults
+      rw [setup.protocolDefaults_back_step _ _ firstJoint firstLegal.1 firstReached,
+        setup.protocolDefaults_back_step _ _ secondJoint secondLegal.1 secondReached]
+        at priorDefaults
+      exact setup.setupMatched_step
+        (setup.setupMatched_of_length firstPrior secondPrior same priorDefaults)
+        firstLegal secondLegal firstReached secondReached finalDefaults
 
-/-- **Intended states at the same history length differ by any swap
-transposing their found values.** For two states of the intended game reached
-in the same number of steps, a swap that sends every value found in the first
-state to the value found under the same name and kind in the second maps the
-first state to the second. Only the found values of the first state matter. -/
-theorem intended_eq_swap (setup : Setup (Player := Player) (L := L))
+/-- At equal history lengths and public default records, any swap transposing
+the found typed values maps one complete intended state to the other. -/
+theorem intended_eq_swap_of_defaults (setup : Setup (Player := Player) (L := L))
     {first second : setup.intendedProtocol.History}
     {p q : SourceProgram.ProtocolState setup.program}
     (firstState : first.state = some p) (secondState : second.state = some q)
-    (sameLength : first.trace.length = second.trace.length) (swap : CellSwap Player L)
+    (sameLength : first.trace.length = second.trace.length)
+    (sameDefaults : ProtocolState.defaults setup.program p =
+      ProtocolState.defaults setup.program q) (swap : CellSwap Player L)
     (cells : ∀ name kind value, ProtocolState.cell? setup.program p name kind = some value →
       swap.cell name kind value = swapFound (ProtocolState.cell? setup.program p name kind)
         (ProtocolState.cell? setup.program q name kind) value) :
     q = swap.protocolState setup.program p := by
-  have matched := setup.setupMatched_of_length first.trace second.trace sameLength
+  have defaults : setup.protocolDefaults first.state = setup.protocolDefaults second.state := by
+    rw [firstState, secondState]
+    exact sameDefaults
+  have matched := setup.setupMatched_of_length first.trace second.trace sameLength defaults
   rw [firstState, secondState] at matched
   exact matched_swap setup.program setup.namesNodup swap cells matched
 
-/-- **Intended states at the same history length differ by the swap between
-them.** Two states of the intended game reached in the same number of steps
-are at the same program point, and the transposition, at every cell, of the
-two values found there maps the first state to the second, cells, action lists,
-obligations and publication status included. -/
-theorem intended_eq_between (setup : Setup (Player := Player) (L := L))
+/-- At equal history lengths and public default records, the swap between
+intended states maps their complete configurations, including actual action recall. -/
+theorem intended_eq_between_of_defaults (setup : Setup (Player := Player) (L := L))
     {first second : setup.intendedProtocol.History}
     {p q : SourceProgram.ProtocolState setup.program}
     (firstState : first.state = some p) (secondState : second.state = some q)
-    (sameLength : first.trace.length = second.trace.length) :
+    (sameLength : first.trace.length = second.trace.length)
+    (sameDefaults : ProtocolState.defaults setup.program p =
+      ProtocolState.defaults setup.program q) :
     q = (CellSwap.between setup.program p q).protocolState setup.program p :=
-  setup.intended_eq_swap firstState secondState sameLength _ fun _ _ _ _ => rfl
+  setup.intended_eq_swap_of_defaults firstState secondState sameLength sameDefaults _
+    fun _ _ _ _ => rfl
 
 end Matching
 
@@ -549,9 +623,11 @@ theorem intended_eq_between_of_observe [DecidableEq (CellTy Player L)]
     (firstState : first.state = some p) (secondState : second.state = some q) (who : Player)
     (sameView : ProtocolState.observe who setup.program p =
       ProtocolState.observe who setup.program q) :
-    q = (CellSwap.between setup.program p q).protocolState setup.program p :=
-  setup.intended_eq_between firstState secondState
+    q = (CellSwap.between setup.program p q).protocolState setup.program p := by
+  apply setup.intended_eq_between_of_defaults firstState secondState
     (setup.intendedProtocol_length_eq_of_observe firstState secondState who sameView)
+  have recorded := congrArg (ProtocolView.defaults who setup.program) sameView
+  simpa only [ProtocolState.defaults_observe] using recorded
 
 end Setup
 

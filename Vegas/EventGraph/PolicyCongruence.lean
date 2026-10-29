@@ -26,9 +26,10 @@ theorem runPolicies_canonical_eq_of_reachable
     (kernels : ∀ (config : graph.Config), config.Reachable inputs →
       ∀ (offset : Nat), config.cut.IsPrefix offset →
       ∀ (event : graph.EventId), config.cut.Ready event → event.val = offset →
-      ∀ (who : Player) (actor : graph.actor? event = some who),
-        left who event actor (graph.playerObserve who config) =
-          right who event actor (graph.playerObserve who config)) :
+      ∀ (who : Player) (actor : graph.actor? event = some who)
+        (active : who ∉ config.defaulted),
+        left who event actor (graph.playerObserve who config) active =
+          right who event actor (graph.playerObserve who config) active) :
     graph.runPolicies graph.canonicalScheduler left inputs =
       graph.runPolicies graph.canonicalScheduler right inputs := by
   have continuation : ∀ fuel (config : graph.Config), config.Reachable inputs →
@@ -71,13 +72,20 @@ theorem runPolicies_canonical_eq_of_reachable
               apply bind_congr_on_support _
               exact tails _
           | some who =>
-              rw [runPlan_canonical_actor left fuel config event ready least who actor,
-                runPlan_canonical_actor right fuel config event ready least who actor,
-                kernels config reachable offset ordered event ready rfl who actor]
-              apply bind_congr_on_support _
-              intro action _
-              apply bind_congr_on_support _
-              exact tails action
+              by_cases inactive : who ∈ config.defaulted
+              · rw [runPlan_canonical_defaulted left fuel config event ready least who actor
+                    inactive ((graph.nodes event).failureAction who actor),
+                  runPlan_canonical_defaulted right fuel config event ready least who actor
+                    inactive ((graph.nodes event).failureAction who actor)]
+                apply bind_congr_on_support _
+                exact tails _
+              · rw [runPlan_canonical_actor left fuel config event ready least who actor inactive,
+                  runPlan_canonical_actor right fuel config event ready least who actor inactive,
+                  kernels config reachable offset ordered event ready rfl who actor inactive]
+                apply bind_congr_on_support _
+                intro action _
+                apply bind_congr_on_support _
+                exact tails action
   exact continuation graph.order.eventCount (Config.initial inputs) .initial 0
     (EventOrder.Cut.empty_isPrefix graph.order)
 

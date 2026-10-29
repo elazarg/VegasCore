@@ -15,7 +15,7 @@ namespace Vegas.EventGraph
 
 open GameTheory.Math.Probability
 
-variable {Player : Type}
+variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
@@ -25,6 +25,7 @@ def RankPrefix (config : graph.Config) : Prop :=
     done.val < missing.val) ∧
   (config.history.map Completion.event).Pairwise fun left right => left.val < right.val
 
+omit [DecidableEq Player] in
 theorem rankPrefix_initial (inputs : graph.Inputs) :
     RankPrefix (Config.initial inputs) := by
   simp [RankPrefix, Config.initial, EventOrder.Cut.empty]
@@ -50,8 +51,8 @@ theorem rankPrefix_step {config next : graph.Config}
       have differentVal : done.val ≠ missing.val := fun same => different (Fin.ext same)
       omega
     · exact ordered.1 done doneBefore missing missingBefore
-  · rw [config.step_history event ready action next member, List.map_append]
-    simp only [List.map_cons, List.map_nil, List.pairwise_append]
+  · rw [config.step_history_events event ready action next member]
+    simp only [List.pairwise_append]
     refine ⟨ordered.2, by simp, ?_⟩
     intro prior priorMem last lastMem
     have lastEq : last = event := by simpa using lastMem
@@ -84,7 +85,6 @@ private theorem runPlan_rankPrefix (plan : graph.EventPlan)
           (rankPrefix_step ordered choice.1.1 choice.1.2 choice.2
             (least config terminal choice choiceMem) intermediateMem) nextMem
 
-variable [DecidableEq Player]
 
 theorem canonical_policyPlan_least (profile : graph.BehavioralProfile)
     (config : graph.Config) (notTerminal : ¬ config.cut.Terminal)
@@ -98,9 +98,13 @@ theorem canonical_policyPlan_least (profile : graph.BehavioralProfile)
     unfold policyPlan canonicalScheduler at member
     simp only [PMF.pure_bind] at member
     split at member
-    · rw [PMF.support_map] at member
-      obtain ⟨action, _, rfl⟩ := member
-      rfl
+    · split at member
+      · have same := (PMF.mem_support_pure_iff _ _).mp member
+        subst choice
+        rfl
+      · rw [PMF.support_map] at member
+        obtain ⟨action, _, rfl⟩ := member
+        rfl
     · have same := (PMF.mem_support_pure_iff _ _).mp member
       subst choice
       rfl

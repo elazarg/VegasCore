@@ -8,8 +8,10 @@ source menus, and each remaining level has one authoritative executor.
 This research branch implements absorbing source and graph execution and checks
 source-to-graph compilation for every source profile and public scheduler.
 The unified ledger application also has checked operational graph refinement.
-Probabilistic client correspondence, deviation backtranslation, monetary
-interpretation and equilibrium preservation still require ports. The full branch is not a
+Exact graph-deviation backtranslation and source-to-graph approximate Nash
+correspondence are checked, including parameter-dependent expression payments.
+Probabilistic ledger clients, default settlement and sequential equilibrium
+preservation still require ports. The full branch is not a
 verified replacement for the maintained tower. The paper and its pins are unchanged.
 
 ## Authoritative source execution
@@ -156,7 +158,9 @@ failure values alone do not give equal public observations: foreign omission
 and accepted unusability can differ publicly. This is a calculated effect in
 the observation lemma, not an added compiler or environmental assumption.
 The source policy compiler preserves this complete decision view at each aligned
-prefix. Arbitrary graph-deviation backtranslation remains a separate port.
+prefix. [Policy backtranslation](../Vegas/Compile/EventGraphPolicyBacktranslation.lean)
+reconstructs the complete active-player view and invokes the original graph
+callback. Automatic completions create no callback to reconstruct.
 
 Public omissions introduce information dependencies. If Alice's source binding
 precedes Bob's, Bob may condition on Alice's default. Scheduling Bob first can
@@ -180,6 +184,17 @@ all five source configuration fields for every source profile. No finite
 payload, finite-history, independence or service premise enters these laws.
 Typed-store and raw expression-payout laws are projections; the latter do not
 replace the outstanding exit-transfer settlement port.
+
+[Deviation](../Vegas/Compile/EventGraphDeviation.lean) backtranslates every
+graph deviation to one source policy, chosen before the initial state is drawn.
+Under every public scheduler the replacement preserves the entire terminal
+source configuration law, including arbitrary correlated setup laws. No
+mixture over source policies or finite-alphabet premise is needed for this law.
+[EventCompilation](../Vegas/Game/EventCompilation.lean) uses this exact
+deviation correspondence for source-to-graph approximate Nash equivalence.
+[ProgramPaymentNash](../Vegas/Game/ProgramPaymentNash.lean) retains the initial
+parameter, typed public values and public default history in its observation;
+the payment and Nash statements retain their stated integrability premises.
 
 The regressions include withholding, omission and accepted unusability under
 arbitrary schedulers, plus a two-player response to public omission under the
@@ -275,7 +290,8 @@ Only checked theorems close these obligations:
    Port receipt-failure provenance and the remaining physical chance/service
    observation adapters to the single application.
 4. Reprove the bounded-client law with complete readout and the service contract.
-5. Port Nash deviation translation and sequential consistency/rationality;
+5. Source-to-graph Nash deviation translation is checked. Port the ledger
+   client deviation correspondence and sequential consistency/rationality;
    equilibrium-path outcome agreement alone is insufficient.
 6. Recheck intended-SE preservation only after the source and target utilities
    and transfers agree. This does not assert preservation of every full-source
@@ -284,7 +300,7 @@ Only checked theorems close these obligations:
 The ordinary full build, examples and paper guards remain acceptance gates for
 replacing the maintained tower. Targeted source/compiler checks do not close them.
 
-## Scheduler and deviation proof boundary
+## Scheduler and deviation interface
 
 Two simultaneously ready actions need not commute under absorbing default.
 For two bindings owned by one player, omitting the first and then requesting a
@@ -296,9 +312,10 @@ Thus the unrestricted local-commutation statement in
 Foreign default announcements also invalidate observation-erasure arguments
 that retain only hidden field values.
 
-The compiler-generated order is sequential and already has an exact
-scheduler-independence theorem. The remaining deviation/scheduler interface
-must use that generated order instead of the generic commutation and foreign
-normalization argument. The full replacement is unproved until that interface,
-its strategic consumers and the other acceptance obligations above check.
-No additional scheduler or runtime assumption is authorized by this boundary.
+The compiler-generated order is sequential. Its exact scheduling simulation
+uses unchanged strategies and supports every reader of the full terminal
+outcome. The checked deviation interface uses that generated order directly,
+without generic commutation or foreign-observation erasure. This does not add a
+scheduler or runtime assumption. The remaining ledger and sequential strategic
+consumers and the acceptance obligations above must still check before the
+complete tower is replaced.

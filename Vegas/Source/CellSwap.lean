@@ -8,7 +8,7 @@ A *cell swap* (`Vegas.SourceProgram.CellSwap`) is an involution on the value of
 every cell, indexed by the cell's name and kind. It acts on a typed source
 state cell by cell, on an action by swapping a commitment's choice under the
 committed name, on the per-player action lists, and on configurations and
-program points, leaving the obligations and publication status unchanged
+program points, leaving obligations, publication status and public defaults unchanged
 (`Vegas.SourceProgram.CellSwap.protocolState`).
 
 The cells of a program point can be looked up by name and kind
@@ -39,7 +39,7 @@ def state {Γ : SourceCtx Player L} (cells : State L Γ) : State L Γ :=
 /-- The swap of an own action: a commitment's choice is swapped under its name. -/
 def action : OwnAction Player L → OwnAction Player L
   | .commit owner name payload choice =>
-      .commit owner name payload (swap.cell name (.commitment owner payload) choice)
+      .commit owner name payload (choice.map (swap.cell name (.commitment owner payload)))
   | .reveal owner name disclose => .reveal owner name disclose
 
 /-- The swap of every player's action list. -/
@@ -50,7 +50,8 @@ variable [IExpr.ResultTypes L]
 
 /-- The swap of a configuration: of its cells and its action lists. -/
 def config {Γ : SourceCtx Player L} (current : Config Player L Γ) : Config Player L Γ :=
-  ⟨swap.state current.state, current.registry, current.revelations, swap.history current.history⟩
+  ⟨swap.state current.state, current.registry, current.revelations, swap.history current.history,
+    current.defaults⟩
 
 variable [DecidableEq Player]
 
@@ -74,7 +75,11 @@ theorem action_involutive : Function.Involutive swap.action := by
   intro original
   cases original with
   | commit owner name payload choice =>
-      simp only [action, swap.cell_involutive name (.commitment owner payload) choice]
+      cases choice with
+      | none => rfl
+      | some value =>
+          simp only [action, Option.map_some,
+            swap.cell_involutive name (.commitment owner payload) value]
   | reveal => rfl
 
 omit [IExpr.ResultTypes L] [DecidableEq Player] in
@@ -88,7 +93,7 @@ theorem history_involutive : Function.Involutive swap.history := by
 omit [IExpr.ResultTypes L] [DecidableEq Player] in
 theorem config_involutive {Γ : SourceCtx Player L} :
     Function.Involutive (swap.config (Γ := Γ)) := by
-  rintro ⟨cells, registry, revelations, actions⟩
+  rintro ⟨cells, registry, revelations, actions, defaults⟩
   simp only [config, swap.state_involutive cells, swap.history_involutive actions]
 
 theorem protocolState_involutive : {Γ : SourceCtx Player L} → {O : Finset VarId} →

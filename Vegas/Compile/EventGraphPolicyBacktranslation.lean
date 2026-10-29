@@ -2,14 +2,13 @@
 
 import Vegas.Compile.EventGraphBacktranslation
 import Vegas.Compile.EventGraphObservationEncoding
-import Vegas.EventGraph.NormalizedPolicy
 import Vegas.EventGraph.Recall
 
 /-! # Canonical event-graph policy backtranslation
 
 An arbitrary policy of the compiled graph is interpreted as a source policy
 by reconstructing the canonical rank-prefix observation at each source
-decision. Malformed source views use genuine failure actions.
+decision. Malformed source views use omission or withholding choices.
 -/
 
 noncomputable section
@@ -37,8 +36,8 @@ def OutputEmbedding.castAction {inputCount totalCount : Nat}
   fun action => cast (congrArg Vegas.EventGraph.EventField.Action
     (embedding.layout_eq index)) action
 
-/-- Transport the action at an embedded commitment head to its concrete
-failure-aware binding value. -/
+/-- Transport an embedded commitment action to its source binding choice,
+retaining omission separately from accepted unusability. -/
 def OutputEmbedding.commitHeadAction {inputCount totalCount : Nat}
     {inputs : Fin inputCount → Vegas.EventGraph.EventField Player L}
     {outputs : Fin totalCount → Vegas.EventGraph.EventField Player L}
@@ -52,7 +51,7 @@ def OutputEmbedding.commitHeadAction {inputCount totalCount : Nat}
       (.commit name owner fresh guard next)) :
     Vegas.EventGraph.EventField.Action
         (outputs (embedding.event ⟨0, by simp [eventCount]⟩)) →
-      PublicationResult (L.Val payload) :=
+      Option (PublicationResult (L.Val payload)) :=
   let index : Fin (eventCount (.commit name owner fresh guard next)) :=
     ⟨0, by simp [eventCount]⟩
   let outputEq : outputLayout (.commit name owner fresh guard next) index =
@@ -85,9 +84,8 @@ def OutputEmbedding.revealHeadAction {inputCount totalCount : Nat}
   fun action => cast (congrArg Vegas.EventGraph.EventField.Action outputEq)
     (embedding.castAction index action)
 
-/-- Encode a source decision view as the canonical observation at one event.
-The store construction is total; history encoding fails rather than inventing
-an event identity or dependent action. -/
+/-- Encode the active source player's view at its fixed source-ranked event.
+The complete public default history is copied without erasure. -/
 def encodeDecisionView? {Γ₀ : SourceCtx Player L} {open₀ : Finset VarId}
     (whole : SourceProgram Player L Γ₀ open₀)
     {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout whole) Γ)
@@ -95,60 +93,114 @@ def encodeDecisionView? {Γ₀ : SourceCtx Player L} {open₀ : Finset VarId}
     (view : DecisionView who Γ) :
     Option ((toEventGraph whole).PlayerObservation who) := do
   let ownActions ← encodeCompletions? whole
-    ((toEventGraph whole).prefixSchema.ownHistory event) view.2
+    ((toEventGraph whole).prefixSchema.ownHistory event) view.history
   pure
-    { completionOrder := (toEventGraph whole).rankPrefix event
-      store := encodeObservationStore who refs view.1
-      ownActions := ownActions }
+    { completionOrder := (List.finRange (eventCount whole)).filter
+        (fun prior => prior.val < event.val)
+      store := encodeObservationStore who refs view.observation
+      ownActions := ownActions
+      defaults := view.defaults }
 
-/-- At a reachable canonical prefix, any source observation obtained by
-decoding the actual masked graph store re-encodes, together with the decoded
-original own actions, to the graph's normalized decision observation. This
-version needs no source-state simulation invariant. -/
-theorem encodeDecisionView?_decodeActual_eq_normalizeObservation
+/-- Successful encoding retains the source default record exactly. -/
+theorem encodeDecisionView?_defaults {Γ₀ : SourceCtx Player L} {open₀ : Finset VarId}
+    (whole : SourceProgram Player L Γ₀ open₀) {Γ : SourceCtx Player L}
+    (refs : ContextRefs (graphLayout whole) Γ) (who : Player)
+    (event : Fin (eventCount whole)) (view : DecisionView who Γ)
+    (observation : (toEventGraph whole).PlayerObservation who)
+    (encoded : encodeDecisionView? whole refs who event view = some observation) :
+    observation.defaults = view.defaults := by
+  unfold encodeDecisionView? at encoded
+  cases histories : encodeCompletions? whole
+      ((toEventGraph whole).prefixSchema.ownHistory event) view.history with
+  | none => simp [histories] at encoded
+  | some actions =>
+      simp only [histories, pure] at encoded
+      cases encoded
+      rfl
+
+private theorem compiled_history_pairwise
+    {Γ : SourceCtx Player L} {O : Finset VarId} (program : SourceProgram Player L Γ O)
+    {inputs : (toEventGraph program).Inputs} {config : (toEventGraph program).Config}
+    (reachable : config.Reachable inputs) :
+    (config.history.map Vegas.EventGraph.Completion.event).Pairwise
+      (fun left right => left.val < right.val) := by
+  induction reachable with
+  | initial => simp [Vegas.EventGraph.Config.initial]
+  | @step prior priorReachable event ready action next supported ih =>
+      obtain ⟨value, _, history⟩ := prior.step_completion event ready action next supported
+      rw [history, List.map_append]
+      simp only [List.map_cons, List.map_nil, List.pairwise_append]
+      refine ⟨ih, by simp, ?_⟩
+      intro earlier member later last
+      have same : later = event := by
+        have selected := List.mem_singleton.mp last
+        exact selected
+      subst later
+      have completed := (prior.history_exact earlier).mp member
+      exact (EventOrder.Cut.mem_completed_iff_lt_of_ready prior.cut ready).mp completed
+
+/-- The compiled sequential order determines its complete chronological prefix. -/
+private theorem compiled_history_eq_prefix
+    {Γ : SourceCtx Player L} {O : Finset VarId} (program : SourceProgram Player L Γ O)
+    {inputs : (toEventGraph program).Inputs} {config : (toEventGraph program).Config}
+    (reachable : config.Reachable inputs) (offset : Nat) (ordered : config.cut.IsPrefix offset)
+    (event : Fin (eventCount program)) (rank : event.val = offset) :
+    config.history.map Vegas.EventGraph.Completion.event =
+      (List.finRange (eventCount program)).filter (fun prior => prior.val < event.val) := by
+  apply (compiled_history_pairwise program reachable).eq_of_mem_iff
+    ((List.sortedLT_finRange (eventCount program)).pairwise.filter _)
+  intro prior
+  simp only [config.history_exact, ordered.2, List.mem_filter, List.mem_finRange, true_and]
+  rw [rank]
+  simp only [decide_eq_true_eq]
+
+/-- Decoding and re-encoding an active actual compiled view recovers that same
+view. All chronological and public default information is retained. -/
+theorem encodeDecisionView?_decodeActual_eq
     {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
     (whole : SourceProgram Player L wholeΓ wholeOpen)
     {Γ : SourceCtx Player L} (refs : ContextRefs (graphLayout whole) Γ)
     (offset : Nat) (covered : refs.CoversPrefix whole offset)
-    (inputs : (toEventGraph whole).Inputs)
-    (config : (toEventGraph whole).Config)
-    (reachable : config.Reachable inputs)
-    (ordered : config.cut.IsPrefix offset)
-    (event : Fin (eventCount whole)) (ready : config.cut.Ready event)
+    (inputs : (toEventGraph whole).Inputs) (config : (toEventGraph whole).Config)
+    (reachable : config.Reachable inputs) (ordered : config.cut.IsPrefix offset)
+    (event : Fin (eventCount whole)) (rank : event.val = offset)
+    (ready : config.cut.Ready event)
     (who : Player) (actor : (toEventGraph whole).actor? event = some who)
+    (active : who ∉ config.defaulted)
     (sourceObservation : SourceObservation L who Γ)
     (decodedStore : decodeObservation? who refs
-      ((toEventGraph whole).playerStore who config.store) =
-        some sourceObservation) :
+      ((toEventGraph whole).playerStore who config.store) = some sourceObservation) :
     encodeDecisionView? whole refs who event
-        (sourceObservation,
-          decodeCompletions whole
-            ((toEventGraph whole).ownCompletions who config.history)) =
-      some ((toEventGraph whole).normalizeObservation event who
-        ((toEventGraph whole).playerObserve who config)) := by
+        ⟨sourceObservation, config.defaults,
+          decodeCompletions whole ((toEventGraph whole).ownCompletions who config.history)⟩ =
+      some ((toEventGraph whole).playerObserve who config) := by
   let graph := toEventGraph whole
   let own := graph.ownCompletions who config.history
   have ownIds : own.map Vegas.EventGraph.Completion.event =
       graph.prefixSchema.ownHistory event :=
     (toEventGraph_barrierOrdered whole).informationDiscipline.ready_ownEventIds
-      reachable ready actor
+      reachable ready actor active
   have strategic : ∀ completion ∈ own,
-      ∃ sourceAction,
-        decodeEventAction whole completion.event completion.action = some sourceAction := by
+      ∃ action sourceAction, completion.decision = some action ∧
+        decodeEventAction whole completion.event action = some sourceAction := by
     intro completion member
     have filtered := List.mem_filter.mp member
-    have ownerLaw := decodeEventAction_owner whole completion.event completion.action
-    have actorLaw : graph.actor? completion.event = some who :=
-      of_decide_eq_true filtered.2
-    rw [eventOwner?_eq_actor whole completion.event, actorLaw] at ownerLaw
-    cases decoded : decodeEventAction whole completion.event completion.action with
+    have selected := of_decide_eq_true filtered.2
+    obtain ⟨action, chosen⟩ := Option.isSome_iff_exists.mp selected.2
+    have ownerLaw := decodeEventAction_owner whole completion.event action
+    rw [eventOwner?_eq_actor whole completion.event, selected.1] at ownerLaw
+    cases decoded : decodeEventAction whole completion.event action with
     | none => simp [decoded] at ownerLaw
-    | some sourceAction => exact ⟨sourceAction, rfl⟩
+    | some sourceAction => exact ⟨action, sourceAction, chosen, decoded⟩
+  have noDefault : ∀ completion ∈ own, completion.defaultEvent = none := by
+    intro completion member
+    have filtered := List.mem_filter.mp member
+    exact reachable.owned_defaultEvent_eq_none_of_active who active completion filtered.1
+      (of_decide_eq_true filtered.2).1
   have historyEncoded : encodeCompletions? whole
-      (graph.prefixSchema.ownHistory event) (decodeCompletions whole own) =
-        some own := by
+      (graph.prefixSchema.ownHistory event) (decodeCompletions whole own) = some own := by
     have reconstructed := encodeCompletions?_decodeCompletions_eq_some whole own
-      strategic
+      strategic noDefault
     rw [ownIds] at reconstructed
     exact reconstructed
   have storeEq : encodeObservationStore who refs sourceObservation =
@@ -162,8 +214,9 @@ theorem encodeDecisionView?_decodeActual_eq_normalizeObservation
   rw [historyEncoded]
   apply congrArg some
   apply Vegas.EventGraph.PlayerObservation.ext graph
-  · rfl
+  · exact (compiled_history_eq_prefix whole reachable offset ordered event rank).symm
   · exact storeEq
+  · rfl
   · rfl
 
 /-- Backtranslate one graph policy along a residual source program embedded in
@@ -202,13 +255,15 @@ def backtranslatePolicyTable
           (.binding owner payload) := by
         simpa [headIndex, outputLayout, eventCount] using embedding.ref headIndex
       let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
-      (fun same view =>
+      (fun same view _active =>
           have actor : (toEventGraph whole).actor? event = some who := by
             simpa [event, headIndex, eventOwner?, same] using actorEq headIndex
           match encodeDecisionView? whole refs who event view with
-          | none => PMF.pure .failure
+          | none => PMF.pure none
           | some observation =>
-              (policy event actor observation).map embedding.commitHeadAction,
+              if observedActive : who ∉ observation.defaulted then
+                (policy event actor observation observedActive).map embedding.commitHeadAction
+              else PMF.pure none,
         backtranslatePolicyTable whole who policy next
           (refs.cons headRef) tailEmbedding
           (fun index => by
@@ -224,13 +279,15 @@ def backtranslatePolicyTable
           (.publication payload) := by
         simpa [headIndex, outputLayout, eventCount] using embedding.ref headIndex
       let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
-      (fun same view =>
+      (fun same view _active =>
           have actor : (toEventGraph whole).actor? event = some who := by
             simpa [event, headIndex, eventOwner?, same] using actorEq headIndex
           match encodeDecisionView? whole refs who event view with
           | none => PMF.pure false
           | some observation =>
-              (policy event actor observation).map embedding.revealHeadAction,
+              if observedActive : who ∉ observation.defaulted then
+                (policy event actor observation observedActive).map embedding.revealHeadAction
+              else PMF.pure false,
         backtranslatePolicyTable whole who policy next
           (refs.cons resultRef) tailEmbedding
           (fun index => by
@@ -270,17 +327,17 @@ theorem backtranslatePolicyTable_commit_kernel
       (toEventGraph whole).actor? (embedding.event index) =
         eventOwner? (.commit name owner fresh guard next) index)
     (same : owner = who) (view : DecisionView who Γ)
-    (observation : (toEventGraph whole).PlayerObservation who)
+    (active : who ∉ view.defaulted) (observation : (toEventGraph whole).PlayerObservation who)
     (encoded : encodeDecisionView? whole refs who
-      (embedding.event ⟨0, by simp [eventCount]⟩) view = some observation) :
+      (embedding.event ⟨0, by simp [eventCount]⟩) view = some observation)
+    (observedActive : who ∉ observation.defaulted) :
     (backtranslatePolicyTable whole who policy
         (.commit name owner fresh guard next) refs embedding actorEq).1
-        same view =
+        same view active =
       (policy (embedding.event ⟨0, by simp [eventCount]⟩)
         (by simpa [eventOwner?, same] using actorEq ⟨0, by simp [eventCount]⟩)
-        observation).map embedding.commitHeadAction := by
-  simp only [backtranslatePolicyTable]
-  rw [encoded]
+        observation observedActive).map embedding.commitHeadAction := by
+  simp only [backtranslatePolicyTable, encoded, dite_eq_left observedActive]
 
 /-- The analogous resolution kernel transports its Boolean action across the
 suffix output-layout equality. -/
@@ -303,16 +360,16 @@ theorem backtranslatePolicyTable_reveal_kernel
       (toEventGraph whole).actor? (embedding.event index) =
         eventOwner? (.reveal published owner name fresh selected unresolved next) index)
     (same : owner = who) (view : DecisionView who Γ)
-    (observation : (toEventGraph whole).PlayerObservation who)
+    (active : who ∉ view.defaulted) (observation : (toEventGraph whole).PlayerObservation who)
     (encoded : encodeDecisionView? whole refs who
-      (embedding.event ⟨0, by simp [eventCount]⟩) view = some observation) :
+      (embedding.event ⟨0, by simp [eventCount]⟩) view = some observation)
+    (observedActive : who ∉ observation.defaulted) :
     (backtranslatePolicyTable whole who policy
         (.reveal published owner name fresh selected unresolved next) refs
-        embedding actorEq).1 same view =
+        embedding actorEq).1 same view active =
       (policy (embedding.event ⟨0, by simp [eventCount]⟩)
         (by simpa [eventOwner?, same] using actorEq ⟨0, by simp [eventCount]⟩)
-        observation).map embedding.revealHeadAction := by
-  simp only [backtranslatePolicyTable]
-  rw [encoded]
+        observation observedActive).map embedding.revealHeadAction := by
+  simp only [backtranslatePolicyTable, encoded, dite_eq_left observedActive]
 
 end Vegas
