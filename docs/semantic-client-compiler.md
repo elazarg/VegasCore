@@ -134,6 +134,14 @@ service. It normalizes the declared observation-rate lower bound to be
 nonnegative, without adding a hypothesis or changing the actual observations.
 Recompilation preserves the intended law; its off-path completion can change.
 
+[Utility linearity](../GameTheoryExtensions/Analysis/Protocol/UtilityLinearity.lean)
+applies to one fixed assessment and continuation runner: nonnegative playerwise
+linear combinations of utilities preserve sequential rationality when that
+assessment is rational for each component. The equilibrium theorem retains its
+consistency witness. Finite bounded-menu histories supply integrability. This
+does not mix different equilibria or assert that compiling different utilities
+selects a common completion.
+
 ## Ledger observation scope
 
 `Interaction.MessageNetwork.ObservationRule.DeliversNothing` states that every
