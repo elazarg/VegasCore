@@ -11,6 +11,8 @@ and imperfect audit coverage on the same forced-exit runtime as monetary preserv
 The [client scenarios](sequential-client-scenarios.md) check concrete failure
 responses and useful information in rejected traffic, separating simple
 fallback rules from an explicit client with full sequential rationality.
+The [ledger-client analysis](ledger-client-correctness.md) defines the honest
+implementation target and the remaining conditional-belief obligation.
 The [correlated-prior analysis](sequential-correlated-prior-analysis.md) gives a
 conditioning/gluing route for an existing signal known to every player, with
 its outstanding formal adapters. It does not settle generic correlated priors.

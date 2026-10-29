@@ -50,25 +50,35 @@ public after inclusion. Authentication matters. The useful signal identifies
 the immutable value of the accepted handle; an unsupported claim or a
 certificate for a different candidate supplies different information.
 
-## A practical candidate policy
+## An explicit ledger-reading candidate
 
-For this game, a compact candidate is to send each ordinary packet once, open
-one's valid commitment when its event is ready, continue after the opponent's
-exclusion, and stop after one's own exclusion. At Odd's commitment, use an
-authentic opening of Even's accepted handle if available; otherwise use the
-intended fair strategy. Invalid claims and unrelated candidates can be ignored.
+[The client](../Vegas/Examples/OddsEvensLedgerClient.lean) sends each ordinary
+packet once, requests its valid opening when ready, continues after the
+opponent's exclusion, and stops after its own exclusion. At Odd's commitment it
+reads authentic ledger certificates for Even's accepted handle. A matching
+Boolean certificate selects the opposite bit; otherwise it uses the intended
+fair strategy. Calls and certificates for other handles supply no value to
+this reader.
 
-This makes the remaining proof question precise: establish sequential
-rationality of this explicit policy on all relevant runtime information sets,
-including histories involving the player's own earlier errors. The current
-preservation theorem constructs a rational completion; it does not yet identify
-that completion with this candidate everywhere.
+The [ledger policy interface](../Interaction/ReactiveLedgerPolicy.lean) removes
+pending observations from the current view and every recorded earlier view.
+Its checked factorization theorem ensures that the candidate's decision law
+is independent of those observations. Private values, own actions and emitted
+packets, contract state and receipts remain available. Own submission recall
+suppresses retries before receipt, so monitoring a pending packet is unnecessary.
 
-The scenarios support simple fallback rules for several cases. They also show
-why preserving the source-game view alone does not settle every response to
-raw traffic: useful verified information can survive rejection. Runtime
-reasoning can be performed by the compiler or client author in advance; a
-deployed client can execute the resulting fixed policy.
+An opponent can also attach an authentic certificate to its original commitment
+submission. The native call accepts that commitment while the count audit
+marks its certificate-bearing packet forbidden. The checked recipient reads
+the bit from the ledger and requests the opposite commitment. This variant
+needs no extra activation between acceptance and Odd's ordinary turn.
+
+The client proof target concerns histories consistent with the focal player's
+own policy, while allowing opponents to deviate. A full equilibrium assessment
+may separately complete histories involving that player's own earlier errors.
+The [client correctness analysis](ledger-client-correctness.md) states this
+target precisely and isolates its remaining belief obligation. The complete
+sequential rationality of this candidate is open.
 
 ## Verification scope
 

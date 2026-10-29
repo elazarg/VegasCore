@@ -2,6 +2,7 @@
 
 import Vegas.Examples.OddsEvensRecoveryService
 import Vegas.Examples.OddsEvensFairValue
+import Vegas.Examples.OddsEvensLedgerClient
 import Vegas.Pending.ReactiveOpeningConformance
 import Vegas.Game.RecoveryExclusionPayoff
 import Vegas.Pending.ReactiveCountVerdict
@@ -74,12 +75,12 @@ private theorem firstAccepted (bit : Bool) :
     rfl rfl rfl (firstUnused bit)]
   rfl
 
-private theorem firstRecoveryAccepted (bit : Bool) :
+private theorem firstRecoveryAccepted (bit : Bool) (evidence : Option (OpeningFact compiled)) :
     app.handle (initial.respond app even (commit even 0 bit)).application
-      ⟨(even, 0), ⟨.commitment (event 0) (candidate even), none, some ⟨event 0⟩⟩⟩ =
+      ⟨(even, 0), ⟨.commitment (event 0) (candidate even), evidence, some ⟨event 0⟩⟩⟩ =
         some ⟨bound bit, ∅⟩ := by
   change RecoveryState.handle runtime (⟨submitted bit, ∅⟩ : RecoveryState compiled)
-    ⟨(even, 0), ⟨.commitment (event 0) (candidate even), none, some ⟨event 0⟩⟩⟩ =
+    ⟨(even, 0), ⟨.commitment (event 0) (candidate even), evidence, some ⟨event 0⟩⟩⟩ =
       some ⟨bound bit, ∅⟩
   simp only [RecoveryState.handle,
     RecoveryState.excludedCall_of_empty (⟨submitted bit, ∅⟩ : RecoveryState compiled) rfl,
@@ -242,6 +243,42 @@ example (e : Bool) :
       (fun o => (cash (.success e) (.success o) odd : ℝ)) = 100 :=
   uniform_opponent_value e odd
 
+example (other : PublicationResult Bool) (own : Bool) :
+    74 ≤ cash (.success own) other even ∧ cash .failure other even = 0 := by
+  cases other with
+  | failure => cases own <;> decide
+  | success bit => cases bit <;> cases own <;> decide
+
+private def oddConditionalValue (probability : ℝ) (choice : Bool) : ℝ :=
+  (1 - probability) * (cash (.success false) (.success choice) odd : ℝ) +
+    probability * (cash (.success true) (.success choice) odd : ℝ)
+
+private theorem oddConditionalValue_eq (probability : ℝ) :
+    oddConditionalValue probability false = 74 + 52 * probability ∧
+      oddConditionalValue probability true = 126 - 52 * probability := by
+  norm_num [oddConditionalValue, cash, even, odd]
+  constructor <;> ring
+
+example (probability : ℝ) :
+    (oddConditionalValue probability false ≤
+        (oddConditionalValue probability false + oddConditionalValue probability true) / 2 ∧
+      oddConditionalValue probability true ≤
+        (oddConditionalValue probability false + oddConditionalValue probability true) / 2) ↔
+      probability = 1 / 2 := by
+  rw [(oddConditionalValue_eq probability).1, (oddConditionalValue_eq probability).2]
+  constructor
+  · intro optimal
+    linarith [optimal.1, optimal.2]
+  · intro unbiased
+    rw [unbiased]
+    norm_num
+
+example (other : PublicationResult Bool) (own : Bool) :
+    74 ≤ cash other (.success own) odd ∧ cash other .failure odd = 0 := by
+  cases other with
+  | failure => cases own <;> decide
+  | success bit => cases bit <;> cases own <;> decide
+
 private def beforeTimeout (e : Bool) (clock : Nat) : RecoveryState compiled :=
   ⟨{ bound e with clock }, ∅⟩
 
@@ -383,5 +420,102 @@ example (e o : Bool) : ¬ CountPermits (traffic e o)
       some ⟨candidate even, raw e⟩, none⟩⟩ := by
   intro permitted
   exact Bool.false_ne_true permitted.1
+
+private abbrev client := Vegas.Examples.OddsEvensLedgerClient.policy
+
+private def disclosedCommit (bit : Bool) : app.Action :=
+  ⟨some ⟨⟨.commitment (event 0) (candidate even), some (raw bit)⟩,
+    .owned ⟨candidate even, raw bit⟩⟩⟩
+
+private def disclosedIncluded (bit : Bool) : app.Execution :=
+  (initial.respond app even (disclosedCommit bit)).includePending app (even, 0)
+
+private theorem disclosed_application (bit : Bool) :
+    (disclosedIncluded bit).application = ⟨bound bit, ∅⟩ := by
+  cases bit <;>
+    change (app.handle (initial.respond app even (commit even 0 _)).application
+      ⟨(even, 0), ⟨.commitment (event 0) (candidate even), some ⟨candidate even, raw _⟩,
+        some ⟨event 0⟩⟩⟩).getD _ = _
+  all_goals rw [firstRecoveryAccepted]; rfl
+
+example (bit : Bool) : (disclosedIncluded bit).receipts = [((even, 0), true)] := by
+  cases bit <;>
+    change [((even, 0), (app.handle (initial.respond app even (commit even 0 _)).application
+      ⟨(even, 0), ⟨.commitment (event 0) (candidate even), some ⟨candidate even, raw _⟩,
+        some ⟨event 0⟩⟩⟩).isSome)] = _
+  all_goals rw [firstRecoveryAccepted]; rfl
+
+private theorem disclosed_known (bit : Bool) :
+    Vegas.Examples.OddsEvensLedgerClient.acceptedBit?
+      ((disclosedIncluded bit).observe app odd) = some bit := by
+  cases bit <;>
+    simp only [Vegas.Examples.OddsEvensLedgerClient.acceptedBit?,
+      ReactiveApplication.Execution.observe, disclosed_application]
+  all_goals decide
+
+example (bit : Bool) : Vegas.Examples.OddsEvensLedgerClient.acceptedBit?
+    ((earlyOpening bit).observe app odd) = none := by
+  cases bit <;>
+    simp only [Vegas.Examples.OddsEvensLedgerClient.acceptedBit?, earlyOpening,
+      ReactiveApplication.Execution.respond, ReactiveApplication.Execution.observe,
+      first_application]
+  all_goals decide
+
+example (bit : Bool) : Vegas.Examples.OddsEvensLedgerClient.acceptedBit?
+    ((rejectedOpening bit).observe app odd) = some bit := by
+  cases bit <;>
+    simp only [Vegas.Examples.OddsEvensLedgerClient.acceptedBit?,
+      ReactiveApplication.Execution.observe, rejectedOpening, earlyOpening,
+      ReactiveApplication.Execution.includePending, ReactiveApplication.Execution.respond,
+      first_application]
+  all_goals decide
+
+example (bit : Bool) : Vegas.Examples.OddsEvensLedgerClient.oddBitLaw
+    ((disclosedIncluded bit).observe app odd) = PMF.pure (!bit) :=
+  Vegas.Examples.OddsEvensLedgerClient.oddBitLaw_of_known _ bit (disclosed_known bit)
+
+example (bit : Bool) : Vegas.Examples.OddsEvensLedgerClient.acceptedBit?
+    ((firstCommit bit).observe app odd) = none := by
+  cases bit <;>
+    simp only [Vegas.Examples.OddsEvensLedgerClient.acceptedBit?,
+      ReactiveApplication.Execution.observe, first_application]
+  all_goals decide
+
+example (bit : Bool) : client odd [] ((disclosedIncluded bit).observe app odd) =
+    PMF.pure (Vegas.Examples.OddsEvensLedgerClient.ordinaryResponse odd []
+      (((disclosedIncluded bit).observe app odd).ledgerOnly app)
+      (event 1) (PublicationResult.success (!bit))) := by
+  apply Vegas.Examples.OddsEvensLedgerClient.policy_at_informed_commitment
+  · change odd ∉ (disclosedIncluded bit).application.excluded
+    rw [disclosed_application]
+    simp
+  · change (disclosedIncluded bit).application.native.publicView.ownTurn? odd = some (event 1)
+    rw [disclosed_application]
+    cases bit <;> decide
+  · rfl
+  · exact disclosed_known bit
+
+example (bit choice : Bool) : Vegas.Examples.OddsEvensLedgerClient.ordinaryResponse odd []
+    (((disclosedIncluded bit).observe app odd).ledgerOnly app)
+    (event 1) (PublicationResult.success choice) = commit odd 1 choice := by
+  let nativeView := RecoveryProjection.playerView runtime
+    Vegas.Examples.OddsEvensRecoveryService.leaks
+    (((disclosedIncluded bit).observe app odd).ledgerOnly app)
+  have selected : canonicalFreshSlot odd nativeView.application = some 0 := by
+    change canonicalFreshSlot odd
+      ((disclosedIncluded bit).application.native.playerView odd) = some 0
+    rw [disclosed_application]
+    exact canonicalFreshSlot_canonical odd _ rfl
+  have correct := runtime.canonicalServiceDecision_binding
+    Vegas.Examples.OddsEvensRecoveryService.leaks odd [] nativeView (event 1) .bool
+    rfl rfl rfl 0 selected (PublicationResult.success choice)
+  exact congrArg (fun response => (⟨response.transmission⟩ : app.Action)) correct
+
+example (bit : Bool) : ¬ CountPermits []
+    ⟨(even, 0), ⟨.commitment (event 0) (candidate even), some ⟨candidate even, raw bit⟩,
+      some ⟨event 0⟩⟩⟩ := by
+  intro permitted
+  have missing := permitted.2.1.2.1
+  cases missing
 
 end VegasTests.RecoveryScenarios

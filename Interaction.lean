@@ -39,6 +39,7 @@ import Interaction.ReactiveImplementation
 import Interaction.ReactiveImplementationContinuation
 import Interaction.ReactiveInputOrder
 import Interaction.ReactiveInvariant
+import Interaction.ReactiveLedgerPolicy
 import Interaction.ReactiveLocalContinuation
 import Interaction.ReactiveLumping
 import Interaction.ReactiveMenuInvariant

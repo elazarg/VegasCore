@@ -16,6 +16,7 @@ import Vegas.Examples.OddsEvensFairProfile
 import Vegas.Examples.OddsEvensFairSequential
 import Vegas.Examples.OddsEvensFairValue
 import Vegas.Examples.OddsEvensFullSource
+import Vegas.Examples.OddsEvensLedgerClient
 import Vegas.Examples.OddsEvensRecoveryCapacity
 import Vegas.Examples.OddsEvensRecoveryClock
 import Vegas.Examples.OddsEvensRecoveryCompletion
