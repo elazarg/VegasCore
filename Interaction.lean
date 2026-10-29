@@ -47,6 +47,7 @@ import Interaction.ReactiveLocalContinuation
 import Interaction.ReactiveLumping
 import Interaction.ReactiveMenuInvariant
 import Interaction.ReactiveMenuPolicy
+import Interaction.ReactiveMenuRationality
 import Interaction.ReactiveMenuRestriction
 import Interaction.ReactiveMessageIdentity
 import Interaction.ReactiveMessageReadout

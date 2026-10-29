@@ -38,6 +38,7 @@ import GameTheoryExtensions.Analysis.Protocol.SuccessRanking
 import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceContinuation
 import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
 import GameTheoryExtensions.Analysis.Protocol.UniformPolicyLimit
+import GameTheoryExtensions.Analysis.Protocol.UtilityLinearity
 import GameTheoryExtensions.Analysis.QuasilinearBounds
 import GameTheoryExtensions.Analysis.QuasilinearSettlement
 import GameTheoryExtensions.Math.FiniteIntervalBounds

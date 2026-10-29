@@ -2,6 +2,7 @@
 
 import Vegas.Game.RecoverySequentialCompilation
 import Interaction.ReactiveLedgerAssessment
+import Interaction.ReactiveMenuRationality
 
 /-! # A uniform semantic compiler for intended equilibrium clients
 
@@ -177,6 +178,11 @@ theorem clients_strategy (who : Player) :
   (raw).restrict_decode_embedPolicy Initial horizon scheduler who
     (compiled.assessment.strategy who)
 
+/-- Ordinary clients remain inside the response menu at every legal decision. -/
+theorem clients_admissible (who : Player) :
+    (raw).Admissible Initial horizon scheduler who (compiled.clients who) :=
+  (raw).decodeProfile_admissible Initial horizon scheduler compiled.assessment.strategy who
+
 /-- Every ordinary callback law has finite support in its bounded response menu. -/
 theorem clients_support_finite (who : Player) (past : List (app).PlayerEntry)
     (view : (app).PlayerView) : (compiled.clients who past view).support.Finite := by
@@ -212,6 +218,44 @@ theorem ledgerClients_strategy_at_history
     compiled.assessment.strategy who ((model).infoOf who history.trace) :=
   (raw).restrict_ledgerProfile_history Initial horizon scheduler unobserved
     compiled.assessment.strategy history who
+
+/-- Every menu-admissible physical continuation is unprofitable under the
+compiled assessment's belief, at on-path and off-path information sets. -/
+theorem clients_sequentiallyRational (who : Player) (site : (model).InformationSite who)
+    (alternative : (app).Policy)
+    (covered : (raw).Admissible Initial horizon scheduler who alternative) :
+    expect ((compiled.assessment.belief who site).bind fun history =>
+      (app).finish Initial horizon scheduler (Function.update compiled.clients who alternative)
+        history.1.state) (spec.payoff who) ≤
+      expect ((compiled.assessment.belief who site).bind fun history =>
+        (app).finish Initial horizon scheduler compiled.clients history.1.state)
+        (spec.payoff who) := by
+  let := spec.finiteNature
+  exact (raw).sequentiallyRational_finish Initial horizon scheduler compiled.assessment
+    compiled.clients compiled.clients_admissible
+    (fun history other =>
+      congrFun (compiled.clients_strategy other) ((model).infoOf other history.trace))
+    spec.payoff compiled.equilibrium.1 who site alternative covered
+
+/-- Ledger clients are rational against every menu-admissible physical
+continuation, with no pending access required of the prescribed clients. -/
+theorem ledgerClients_sequentiallyRational (unobserved : leaks.DeliversNothing)
+    (who : Player) (site : (model).InformationSite who) (alternative : (app).Policy)
+    (covered : (raw).Admissible Initial horizon scheduler who alternative) :
+    expect ((compiled.assessment.belief who site).bind fun history =>
+      (app).finish Initial horizon scheduler
+        (Function.update compiled.ledgerClients who alternative) history.1.state)
+        (spec.payoff who) ≤
+      expect ((compiled.assessment.belief who site).bind fun history =>
+        (app).finish Initial horizon scheduler compiled.ledgerClients history.1.state)
+        (spec.payoff who) := by
+  let := spec.finiteNature
+  exact (raw).sequentiallyRational_finish Initial horizon scheduler compiled.assessment
+    compiled.ledgerClients
+    ((raw).ledgerProfile_admissible Initial horizon scheduler unobserved
+      compiled.assessment.strategy)
+    (fun history other => compiled.ledgerClients_strategy_at_history unobserved history other)
+    spec.payoff compiled.equilibrium.1 who site alternative covered
 
 /-- Complete physical-state correctness, before applying any outcome reader. -/
 theorem clients_stateLaw :
