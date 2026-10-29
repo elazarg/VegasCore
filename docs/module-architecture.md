@@ -36,7 +36,7 @@ consumes the forced-exit theorem and the
 [imperfect-evidence adapter](../Vegas/Pending/ThinnedCountCollection.lean).
 The [instance guide](sequential-se-instances.md) describes their exact scope.
 The [semantic client compiler](../Vegas/Game/RecoveryClientCompiler.lean) selects
-the existing certified completion uniformly for each source equilibrium.
+a consistent bounded-menu completion uniformly for each source equilibrium.
 [Ledger assessment realization](../Interaction/ReactiveLedgerAssessment.lean)
 identifies complete physical continuations and source-independent client laws.
 The [compiler guide](semantic-client-compiler.md) distinguishes this semantic

@@ -70,10 +70,7 @@ theorem RecoveryOnePacket.intended_sequentialEquilibrium_preserved
       setup.protocolReadout final.state = some terminal →
         ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
     (intended : setup.intendedModel.BehavioralAssessment)
-    (equilibrium : intended.IsSequentialEquilibrium setup.intended_decision_antichain
-      setup.intended_bounded.wellFoundedHistories
-      (fun who final => (setup.protocolReadout final.state).elim 0
-        (fun state => utility (setup.parameterOutcome parameter state) who)))
+    (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount) :
     ∃ native : (R).BehavioralAssessment,

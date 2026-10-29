@@ -14,9 +14,9 @@ source policy. The manuscript is maintained separately in `overleaf/`.
 
 | Result | Checked scope |
 | --- | --- |
-| `Vegas.Paper.recovery_intended_raw_sequential_equilibrium` | Intended-game SE extends to the forced-exit contract on the sequential graph under a finitely branching asynchronous builder, arbitrary pending observation, conditional independence of initial private data given a public signal, and funded count-audit coverage. The realized joint outcome/payoff law is preserved and no player is excluded or charged on the implementing path. |
+| `Vegas.Paper.recovery_intended_raw_sequential_equilibrium` | Intended-game SE extends to the bounded raw-menu game of the forced-exit contract on the sequential graph under a finitely branching asynchronous builder, arbitrary pending observation, conditional independence of initial private data given a public signal, and funded count-audit coverage. The realized joint outcome/payoff law is preserved and no player is excluded or charged on the implementing path. |
 | `Vegas.Recovery.intended_raw_programPayments_preserved` | Monetary specialization with executable program transfers and valuation, retaining the initialized typed/public/net-payoff joint law. |
-| `Vegas.Paper.one_packet_raw_sequential_equilibrium` | Extension from the one-permitted-packet game to all raw responses on the plain contract, under conditional audit coverage and adequate deposits. |
+| `Vegas.Paper.one_packet_raw_sequential_equilibrium` | Extension from the one-permitted-packet game to the bounded raw response menu on the plain contract, under conditional audit coverage and adequate deposits. |
 
 These theorems need neither complete pending visibility nor independent
 inclusion jobs for different messages. Their substantive hypotheses include
@@ -60,11 +60,14 @@ arbitrary raw responses. The [completion guide](docs/compiler-correctness-plan.m
 records their hypotheses and the optional stronger graph-policy interface.
 
 The [uniform semantic client compiler](docs/semantic-client-compiler.md) takes
-any supplied intended equilibrium and returns a certified runtime assessment
-and physical player clients. It reuses the preservation completion and policy
-decoder. Ledger clients agree at every legal raw history when the interface
-delivers no pending data. The completion backend is nonconstructive;
-executable numerical synthesis and client code generation are separate work.
+an intended equilibrium and a certified specification, and returns an SE
+assessment of the finite bounded raw-menu game plus physical clients realizing
+it. Deviations outside that menu are not covered. Catalogue coverage requires
+finite binding/publication value types, including initial binding inputs;
+finite strategy support over an unbounded bid type is insufficient. Ordinary
+clients support arbitrary specified pending observations; ledger clients have
+the same run when no pending data is delivered. The completion backend is
+nonconstructive; numerical synthesis and client code generation are separate work.
 
 Checked late-leak examples delimit preservation and show sufficient payoff
 conditions in their stated finite games. Their impossibility conclusions do

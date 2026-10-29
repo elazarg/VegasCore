@@ -214,6 +214,18 @@ theorem intended_bounded :
     setup.intendedProtocol.BoundedHorizon (instructionCount setup.program + 1) :=
   restrictAvailable.boundedHorizon (setup.protocol_bounded _)
 
+/-- Sequential equilibrium of the intended commit–reveal model, with utility
+read from the terminal state's initial parameter and public outcome. Terminal
+continuations use the canonical bounded source horizon. -/
+abbrev IntendedSequentialEquilibrium [Fintype Player] {Parameter : Type}
+    (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (intended : setup.intendedModel.BehavioralAssessment) : Prop :=
+  intended.IsSequentialEquilibrium setup.intended_decision_antichain
+    setup.intended_bounded.wellFoundedHistories
+    (fun who final => (setup.protocolReadout final.state).elim 0
+      (fun terminal => utility (setup.parameterOutcome parameter terminal) who))
+
 /-- **Deviations forfeit.** After a source action that the intended game does
 not offer at one of its decision sites, every terminal continuation records a
 failed reveal of the deviating player, whatever anyone plays. -/

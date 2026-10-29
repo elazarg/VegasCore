@@ -5,16 +5,17 @@ import Interaction.ReactiveLedgerAssessment
 
 /-! # A uniform semantic compiler for intended equilibrium clients
 
-The compiler selects the existing checked recovery completion at compile time.
-Its output contains the assessment and its proof, and uniformly decodes its
-strategies to physical clients. Ledger clients realize the same assessment at
-every legal history when pending observations are not delivered. The completion
-backend is nonconstructive; this module does not claim executable synthesis.
+The compiler selects a consistent recovery completion at compile time.
+Its output certifies equilibrium within the bounded raw response menu and
+uniformly decodes its strategies to physical clients. Deviations leaving that
+menu are outside the equilibrium certificate. Ledger clients realize those
+decision laws when pending observations are not delivered. The completion
+backend is nonconstructive.
 -/
 
 noncomputable section
 
-namespace Vegas.RecoveryCompiler
+namespace Vegas
 
 open SourceProgram Interaction EventGraphRuntime GameTheory GameTheory.Protocol
   GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability GameTheory.Enforcement
@@ -39,8 +40,10 @@ local notation "model" => ReactiveApplication.ResponseMenu.information
 /-- The checked source, service and enforcement obligations of compilation.
 The source assessment is supplied separately, so one specification serves
 every intended equilibrium of the game. -/
-structure Specification where
+structure RecoveryClientSpec where
+  /-- Every physical nature kernel has finite support. -/
   finiteNature : (app).FiniteNature Initial scheduler
+  /-- The intended source game has finitely many legal histories. -/
   finiteSource : Finite setup.intendedProtocol.History
   Public : Type
   signal : State L setup.context → Public
@@ -60,7 +63,10 @@ structure Specification where
   exitBelow : ∀ (final : setup.intendedProtocol.History) terminal,
     setup.protocolReadout final.state = some terminal →
       ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who
+  /-- The finite wire catalogue contains every value of each binding and
+  publication payload type, including off-equilibrium values. -/
   outputValues : bounds.CoversOutputValues
+  /-- Every value of each initial binding input type belongs to the catalogue. -/
   inputValues : bounds.CoversInputValues
   capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount
   evidenceService : EvidenceReportService (CountEvidence (graph setup))
@@ -77,56 +83,59 @@ structure Specification where
 
 variable {setup runtime leaks bounds horizon scheduler parameter utility excludedPayoff}
 
-abbrev SourceEquilibrium (parameter : State L setup.context → Parameter)
-    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-    (intended : setup.intendedModel.BehavioralAssessment) : Prop :=
-  intended.IsSequentialEquilibrium setup.intended_decision_antichain
-    setup.intended_bounded.wellFoundedHistories
-    (fun who final => (setup.protocolReadout final.state).elim 0
-      (fun terminal => utility (setup.parameterOutcome parameter terminal) who))
-
-variable (spec : Specification setup runtime leaks bounds horizon scheduler
+variable (spec : RecoveryClientSpec setup runtime leaks bounds horizon scheduler
   parameter utility excludedPayoff)
 
+namespace RecoveryClientSpec
+
+/-- The distribution of base utilities after the terminal count-audit deduction. -/
 def settlement : (app).ProtocolState → PMF (Player → ℝ) :=
   TerminalAudit.settlement
     (recoveryExclusionBase (runtime := runtime) parameter utility excludedPayoff)
     (app).stateTraffic (Recovery.countAudit runtime leaks spec.evidenceService.sample) spec.deposit
 
+/-- The joint typed-source readout and settled-payoff vector of a physical state. -/
 def observation (state : (app).ProtocolState) :
     PMF (Option (State L setup.program.terminalCtx) × (Player → ℝ)) :=
-  (settlement spec state).map fun payoffs =>
+  (spec.settlement state).map fun payoffs =>
     (sourceReadout setup runtime leaks (RecoveryProjection.protocolState runtime leaks state),
       payoffs)
 
+/-- A player's expected audited utility at a physical protocol state. -/
 def payoff (who : Player) (state : (app).ProtocolState) : ℝ :=
   TerminalAudit.utility
     (recoveryExclusionBase (runtime := runtime) parameter utility excludedPayoff)
     (app).stateTraffic (Recovery.countAudit runtime leaks spec.evidenceService.sample)
     spec.deposit state who
 
-/-- A compiled semantic artifact, including the completion's correctness certificate. -/
-structure Compilation (intended : setup.intendedModel.BehavioralAssessment) where
+end RecoveryClientSpec
+
+/-- A semantic artifact certifying equilibrium in the bounded raw response-menu
+game and preserving its source readout and settled payoff law. -/
+structure RecoveryClientCompilation (intended : setup.intendedModel.BehavioralAssessment) where
   assessment : (model).BehavioralAssessment
   equilibrium : assessment.IsSequentialEquilibriumFor
     ((raw).decisionInformationAntichain Initial horizon scheduler)
     (fun who site => assessment.truncatedContinuationContext site
-      (fun final => payoff spec who final.state) (2 * horizon + 1))
+      (fun final => spec.payoff who final.state) (2 * horizon + 1))
   noExclusions : ∀ final ∈ ((model).runBehavioral assessment.strategy (2 * horizon + 1)).support,
     ∀ control, final.state = some control → control.execution.application.excluded = ∅
   noCharges : ∀ final ∈ ((model).runBehavioral assessment.strategy (2 * horizon + 1)).support,
     ∀ who, TerminalAudit.charge (app).stateTraffic
       (Recovery.countAudit runtime leaks spec.evidenceService.sample) final.state who = 0
   outcomeLaw : ((model).runBehavioral assessment.strategy (2 * horizon + 1)).bind
-      (fun final => observation spec final.state) =
+      (fun final => spec.observation final.state) =
     (setup.intendedModel.runBehavioral intended.strategy
       (instructionCount setup.program + 1)).map
       (intendedReadoutExclusion setup parameter utility excludedPayoff)
 
-/-- Uniform semantic compilation. The existing common completion is selected
-once as part of the compiled artifact, rather than by a player's runtime code. -/
+namespace RecoveryClientSpec
+
+/-- Select a common consistent bounded-menu completion as part of the semantic
+artifact. Runtime clients decode this selected strategy. -/
 def compile (intended : setup.intendedModel.BehavioralAssessment)
-    (equilibrium : SourceEquilibrium parameter utility intended) : Compilation spec intended := by
+    (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended) :
+    RecoveryClientCompilation spec intended := by
   classical
   letI := spec.finiteNature
   letI := spec.finiteSource
@@ -138,14 +147,15 @@ def compile (intended : setup.intendedModel.BehavioralAssessment)
     intended equilibrium spec.outputValues spec.inputValues spec.capacity spec.evidenceService
     spec.observationRate spec.deliveryRate spec.delivery_nonnegative spec.coverage spec.deposit
     spec.deposit_nonnegative spec.funded
-  exact ⟨Classical.choose existsTarget, (Classical.choose_spec existsTarget).1,
-    (Classical.choose_spec existsTarget).2.1, (Classical.choose_spec existsTarget).2.2.1,
-    (Classical.choose_spec existsTarget).2.2.2⟩
+  have chosen := Classical.choose_spec existsTarget
+  exact ⟨Classical.choose existsTarget, chosen.1, chosen.2.1, chosen.2.2.1, chosen.2.2.2⟩
 
-namespace Compilation
+end RecoveryClientSpec
+
+namespace RecoveryClientCompilation
 
 variable {spec} {intended : setup.intendedModel.BehavioralAssessment}
-  (compiled : Compilation spec intended)
+  (compiled : RecoveryClientCompilation spec intended)
 
 /-- Physical clients for every source game and supplied intended equilibrium. -/
 def clients : Player → (app).Policy :=
@@ -155,6 +165,7 @@ def clients : Player → (app).Policy :=
 def ledgerClients : Player → (app).Policy :=
   (raw).ledgerProfile Initial horizon scheduler compiled.assessment.strategy
 
+/-- Pending observations in the current view and recall do not affect ledger clients. -/
 theorem ledgerClients_useLedgerOnly (who : Player) :
     ReactiveApplication.Policy.UsesLedgerOnly (app) (compiled.ledgerClients who) :=
   (raw).ledgerProfile_usesLedgerOnly Initial horizon scheduler compiled.assessment.strategy who
@@ -166,6 +177,7 @@ theorem clients_strategy (who : Player) :
   (raw).restrict_decode_embedPolicy Initial horizon scheduler who
     (compiled.assessment.strategy who)
 
+/-- Every ordinary callback law has finite support in its bounded response menu. -/
 theorem clients_support_finite (who : Player) (past : List (app).PlayerEntry)
     (view : (app).PlayerView) : (compiled.clients who past view).support.Finite := by
   apply ((raw).actions who past view).finite_toSet.subset
@@ -173,6 +185,7 @@ theorem clients_support_finite (who : Player) (past : List (app).PlayerEntry)
   exact (raw).decode_embedPolicy_covered Initial horizon scheduler who
     (compiled.assessment.strategy who) past view response supported
 
+/-- Erasing pending observations retains finite callback support. -/
 theorem ledgerClients_support_finite (who : Player) (past : List (app).PlayerEntry)
     (view : (app).PlayerView) : (compiled.ledgerClients who past view).support.Finite :=
   compiled.clients_support_finite who
@@ -180,7 +193,7 @@ theorem ledgerClients_support_finite (who : Player) (past : List (app).PlayerEnt
 
 /-- Without pending delivery, ledger clients agree at every legal raw history. -/
 theorem ledgerClients_agree
-    (unobserved : ∀ who pending, leaks who pending = PMF.pure ∅)
+    (unobserved : leaks.DeliversNothing)
     (control : (app).Control)
     (trace : ((app).protocol Initial horizon scheduler).Trace (some control)) (who : Player) :
     compiled.ledgerClients who (control.execution.recall who)
@@ -192,7 +205,7 @@ theorem ledgerClients_agree
 /-- The actual ledger client's represented strategy is the selected assessment
 at every legal decision input, including zero-probability histories. -/
 theorem ledgerClients_strategy_at_history
-    (unobserved : ∀ who pending, leaks who pending = PMF.pure ∅)
+    (unobserved : leaks.DeliversNothing)
     (history : ((raw).protocol Initial horizon scheduler).History) (who : Player) :
     (raw).restrictPolicy Initial horizon scheduler who (compiled.ledgerClients who)
       ((model).infoOf who history.trace) =
@@ -209,17 +222,37 @@ theorem clients_stateLaw :
 
 /-- Correctness of the physical clients, including joint typed readout and settled payoff. -/
 theorem clients_outcomeLaw :
-    ((app).finish Initial horizon scheduler compiled.clients none).bind (observation spec) =
+    ((app).finish Initial horizon scheduler compiled.clients none).bind (spec.observation) =
     (setup.intendedModel.runBehavioral intended.strategy
       (instructionCount setup.program + 1)).map
       (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
-  have same := congrArg (fun law => law.bind (observation spec)) compiled.clients_stateLaw
+  have same := congrArg (fun law => law.bind (spec.observation)) compiled.clients_stateLaw
   rw [PMF.bind_map] at same
   exact same.symm.trans compiled.outcomeLaw
 
+/-- No player is excluded in a supported ordinary-client execution, with any
+pending-observation rule satisfying the compilation specification. -/
+theorem clients_noExclusions (state : (app).ProtocolState)
+    (supported : state ∈ ((app).finish Initial horizon scheduler compiled.clients none).support)
+    (control : (app).Control) (current : state = some control) :
+    control.execution.application.excluded = ∅ := by
+  rw [← compiled.clients_stateLaw] at supported
+  obtain ⟨history, reached, same⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+  exact compiled.noExclusions history reached control (same.trans current)
+
+/-- Supported ordinary-client executions incur no count-audit charge. -/
+theorem clients_noCharges (state : (app).ProtocolState)
+    (supported : state ∈ ((app).finish Initial horizon scheduler compiled.clients none).support)
+    (who : Player) :
+    TerminalAudit.charge (app).stateTraffic
+      (Recovery.countAudit runtime leaks spec.evidenceService.sample) state who = 0 := by
+  rw [← compiled.clients_stateLaw] at supported
+  obtain ⟨history, reached, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+  exact compiled.noCharges history reached who
+
 /-- Ledger clients have the same complete continuation law at every legal history. -/
 theorem ledgerClients_continuation
-    (unobserved : ∀ who pending, leaks who pending = PMF.pure ∅)
+    (unobserved : leaks.DeliversNothing)
     (fuel : Nat) (history : ((raw).protocol Initial horizon scheduler).History)
     (enough : (app).rank horizon history.state ≤ fuel) :
     ((model).runBehavioralFrom compiled.assessment.strategy fuel history).map History.state =
@@ -227,83 +260,90 @@ theorem ledgerClients_continuation
   (raw).run_ledgerProfile_eq_finish Initial horizon scheduler unobserved
     compiled.assessment.strategy fuel history enough
 
+/-- The initialized physical ledger run has the selected assessment's complete state law. -/
 theorem ledgerClients_stateLaw
-    (unobserved : ∀ who pending, leaks who pending = PMF.pure ∅) :
+    (unobserved : leaks.DeliversNothing) :
     ((model).runBehavioral compiled.assessment.strategy (2 * horizon + 1)).map History.state =
       (app).finish Initial horizon scheduler compiled.ledgerClients none :=
   compiled.ledgerClients_continuation unobserved (2 * horizon + 1)
     ((raw).protocol Initial horizon scheduler).initHistory (by rfl)
 
+/-- Ledger and ordinary clients have identical initialized physical execution laws. -/
+theorem ledgerClients_finish_eq_clients (unobserved : leaks.DeliversNothing) :
+    (app).finish Initial horizon scheduler compiled.ledgerClients none =
+      (app).finish Initial horizon scheduler compiled.clients none :=
+  (compiled.ledgerClients_stateLaw unobserved).symm.trans compiled.clients_stateLaw
+
+/-- The ledger clients preserve the joint typed-source readout and settled payoff law. -/
 theorem ledgerClients_outcomeLaw
-    (unobserved : ∀ who pending, leaks who pending = PMF.pure ∅) :
-    ((app).finish Initial horizon scheduler compiled.ledgerClients none).bind (observation spec) =
+    (unobserved : leaks.DeliversNothing) :
+    ((app).finish Initial horizon scheduler compiled.ledgerClients none).bind (spec.observation) =
     (setup.intendedModel.runBehavioral intended.strategy
       (instructionCount setup.program + 1)).map
       (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
-  have same := congrArg (fun law => law.bind (observation spec))
-    (compiled.ledgerClients_stateLaw unobserved)
-  rw [PMF.bind_map] at same
-  exact same.symm.trans compiled.outcomeLaw
+  rw [compiled.ledgerClients_finish_eq_clients unobserved]
+  exact compiled.clients_outcomeLaw
 
 /-- Every supported physical ledger-client execution leaves every player included. -/
 theorem ledgerClients_noExclusions
-    (unobserved : ∀ who pending, leaks who pending = PMF.pure ∅)
+    (unobserved : leaks.DeliversNothing)
     (state : (app).ProtocolState)
     (supported : state ∈ ((app).finish Initial horizon scheduler
       compiled.ledgerClients none).support)
     (control : (app).Control) (current : state = some control) :
     control.execution.application.excluded = ∅ := by
-  rw [← compiled.ledgerClients_stateLaw unobserved] at supported
-  obtain ⟨history, reached, same⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
-  exact compiled.noExclusions history reached control (same.trans current)
+  rw [compiled.ledgerClients_finish_eq_clients unobserved] at supported
+  exact compiled.clients_noExclusions state supported control current
 
+/-- Supported ledger-client executions incur no count-audit charge. -/
 theorem ledgerClients_noCharges
-    (unobserved : ∀ who pending, leaks who pending = PMF.pure ∅)
+    (unobserved : leaks.DeliversNothing)
     (state : (app).ProtocolState)
     (supported : state ∈ ((app).finish Initial horizon scheduler
       compiled.ledgerClients none).support) (who : Player) :
     TerminalAudit.charge (app).stateTraffic
       (Recovery.countAudit runtime leaks spec.evidenceService.sample) state who = 0 := by
-  rw [← compiled.ledgerClients_stateLaw unobserved] at supported
-  obtain ⟨history, reached, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
-  exact compiled.noCharges history reached who
+  rw [compiled.ledgerClients_finish_eq_clients unobserved] at supported
+  exact compiled.clients_noCharges state supported who
 
-end Compilation
+end RecoveryClientCompilation
 
-/-- Uniform compiler correctness: sequential equilibrium, exact implemented
+namespace RecoveryClientSpec
+
+/-- Compiler correctness within the bounded raw menu: equilibrium, exact implemented
 strategies, and the joint typed-source/settled-payoff law. -/
 theorem compile_correct (intended : setup.intendedModel.BehavioralAssessment)
-    (equilibrium : SourceEquilibrium parameter utility intended) :
-    let compiled := compile spec intended equilibrium
+    (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended) :
+    let compiled := spec.compile intended equilibrium
     compiled.assessment.IsSequentialEquilibriumFor
       ((raw).decisionInformationAntichain Initial horizon scheduler)
       (fun who site => compiled.assessment.truncatedContinuationContext site
-        (fun final => payoff spec who final.state) (2 * horizon + 1)) ∧
+        (fun final => spec.payoff who final.state) (2 * horizon + 1)) ∧
     (∀ who, (raw).restrictPolicy Initial horizon scheduler who (compiled.clients who) =
       compiled.assessment.strategy who) ∧
-    ((app).finish Initial horizon scheduler compiled.clients none).bind (observation spec) =
+    ((app).finish Initial horizon scheduler compiled.clients none).bind (spec.observation) =
       (setup.intendedModel.runBehavioral intended.strategy
         (instructionCount setup.program + 1)).map
         (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
   intro compiled
   exact ⟨compiled.equilibrium, compiled.clients_strategy, compiled.clients_outcomeLaw⟩
 
-/-- Uniform ledger-client correctness, including strategy agreement at every
+/-- Ledger-client correctness within the bounded raw menu, with strategy agreement at every
 legal decision, when the interface does not deliver pending observations. -/
 theorem compile_ledger_correct (intended : setup.intendedModel.BehavioralAssessment)
-    (equilibrium : SourceEquilibrium parameter utility intended)
-    (unobserved : ∀ who pending, leaks who pending = PMF.pure ∅) :
-    let compiled := compile spec intended equilibrium
+    (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended)
+    (unobserved : leaks.DeliversNothing) :
+    let compiled := spec.compile intended equilibrium
     compiled.assessment.IsSequentialEquilibriumFor
       ((raw).decisionInformationAntichain Initial horizon scheduler)
       (fun who site => compiled.assessment.truncatedContinuationContext site
-        (fun final => payoff spec who final.state) (2 * horizon + 1)) ∧
+        (fun final => spec.payoff who final.state) (2 * horizon + 1)) ∧
     (∀ who, ReactiveApplication.Policy.UsesLedgerOnly (app) (compiled.ledgerClients who)) ∧
     (∀ (history : ((raw).protocol Initial horizon scheduler).History) who,
       (raw).restrictPolicy Initial horizon scheduler who (compiled.ledgerClients who)
         ((model).infoOf who history.trace) =
       compiled.assessment.strategy who ((model).infoOf who history.trace)) ∧
-    ((app).finish Initial horizon scheduler compiled.ledgerClients none).bind (observation spec) =
+    ((app).finish Initial horizon scheduler compiled.ledgerClients none).bind (spec.observation) =
       (setup.intendedModel.runBehavioral intended.strategy
         (instructionCount setup.program + 1)).map
         (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
@@ -312,4 +352,5 @@ theorem compile_ledger_correct (intended : setup.intendedModel.BehavioralAssessm
     compiled.ledgerClients_strategy_at_history unobserved,
     compiled.ledgerClients_outcomeLaw unobserved⟩
 
-end Vegas.RecoveryCompiler
+end RecoveryClientSpec
+end Vegas

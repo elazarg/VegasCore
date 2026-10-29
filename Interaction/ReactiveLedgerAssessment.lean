@@ -27,16 +27,18 @@ def ledgerProfile
     Principal → app.Policy := fun who =>
   app.ledgerPolicy (menu.decodeProfile initial horizon scheduler profile who)
 
+/-- The translated policy ignores pending observations throughout its recall. -/
 theorem ledgerProfile_usesLedgerOnly
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (who : Principal) : Policy.UsesLedgerOnly app
       (menu.ledgerProfile initial horizon scheduler profile who) :=
   app.ledgerPolicy_usesLedgerOnly _
 
-variable (unobserved : ∀ who pending, app.observePending who pending = PMF.pure ∅)
+variable (unobserved : app.observePending.DeliversNothing)
 
 include unobserved
 
+/-- Ledger and decoded callbacks agree at every initialized raw history. -/
 theorem ledgerProfile_agrees
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (control : app.Control)
@@ -47,6 +49,7 @@ theorem ledgerProfile_agrees
       (control.execution.recall who) (control.execution.observe app who) :=
   app.ledgerPolicy_eq_at_history unobserved initial horizon scheduler control trace who _
 
+/-- Restricting ledger callbacks recovers the profile at every bounded-menu decision. -/
 theorem restrict_ledgerProfile_history
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (history : (menu.protocol initial horizon scheduler).History) (who : Principal) :
@@ -79,6 +82,7 @@ theorem restrict_ledgerProfile_history
             exact decoded (some (control.execution.recall who, control.execution.observe app who))
           · cases observed
 
+/-- Ledger callbacks stay within the menu at every legal bounded-menu decision. -/
 theorem ledgerProfile_admissible
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (who : Principal) :

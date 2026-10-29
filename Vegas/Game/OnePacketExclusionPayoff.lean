@@ -169,10 +169,7 @@ theorem intended_exclusionSource [Fintype Player] (wellFormed : setup.WellFormed
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ) (intended : setup.intendedModel.BehavioralAssessment)
-    (equilibrium : intended.IsSequentialEquilibrium setup.intended_decision_antichain
-      setup.intended_bounded.wellFoundedHistories
-      (fun who final => (setup.protocolReadout final.state).elim 0
-        (fun state => utility (setup.parameterOutcome parameter state) who))) :
+    (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended) :
     ∃ sequence : ℕ → setup.intendedModel.BehavioralAssessment,
       (∀ n, (sequence n).IsFullyMixed) ∧
       (∀ n, InformationModel.BehavioralAssessment.IsBayesConsistent setup.intendedModel

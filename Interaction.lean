@@ -10,6 +10,7 @@ import Interaction.MessageNetwork
 import Interaction.MessageNetworkCounters
 import Interaction.MessageNetworkIdentity
 import Interaction.MessageNetworkInvariant
+import Interaction.MessageNetworkObservation
 import Interaction.MessagePool
 import Interaction.MessagePublication
 import Interaction.MessageRetention

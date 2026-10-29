@@ -44,11 +44,7 @@ the concrete two-player service and imperfect audit. -/
 theorem intended_equilibrium_preserved
     (intended : fixture.intendedModel.BehavioralAssessment)
     (equilibrium :
-      intended.IsSequentialEquilibrium fixture.intended_decision_antichain
-        fixture.intended_bounded.wellFoundedHistories
-        (fun who final => (fixture.protocolReadout final.state).elim 0
-          (fun terminal => OddsEvens.sourceUtility
-            (fixture.parameterOutcome (fun _ => ()) terminal) who))) :
+      fixture.IntendedSequentialEquilibrium (fun _ => ()) OddsEvens.sourceUtility intended) :
     let raw := Recovery.rawMenu rt leaks OddsEvens.bounds
     let observe := app.stateTraffic
     let audit := Recovery.countAudit rt leaks

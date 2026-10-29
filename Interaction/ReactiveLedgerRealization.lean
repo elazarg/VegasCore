@@ -1,13 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Interaction.ReactiveLedgerPolicy
+import Interaction.MessageNetworkObservation
 import Interaction.ReactiveRecallInvariant
 import Interaction.ReactiveEnvironmentStep
 
 /-! # Ledger policies at every legal decision without pending delivery
 
 The invariant concerns all raw responses, including deviations. Remembered
-views are handled by the existing recorded-response origin theorem. Thus
+views are handled by the recorded-response origin theorem. Thus
 ledger projection preserves every policy at every initialized legal decision,
 independently of game utilities, prescribed play or equilibrium beliefs.
 -/
@@ -19,7 +20,7 @@ namespace Interaction.ReactiveApplication
 open GameTheory.Protocol GameTheory.Math.Probability
 
 variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication Principal)
-  (unobserved : ∀ who pending, app.observePending who pending = PMF.pure ∅)
+  (unobserved : app.observePending.DeliversNothing)
 
 private def noPendingKnowledge (execution : app.Execution) : Prop :=
   ∀ who, execution.network.leaked who = []
@@ -45,6 +46,7 @@ private theorem noPendingKnowledgeInvariant (scheduler : app.Scheduler) :
           MessageNetwork.includePending, found] using valid
     · exact fun _ _ _ => valid
 
+/-- Empty observation kernels leave pending knowledge empty at every raw history. -/
 theorem pendingKnowledge_empty (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (control : app.Control)
     (trace : (app.protocol initial horizon scheduler).Trace (some control))
@@ -53,6 +55,7 @@ theorem pendingKnowledge_empty (initial : PMF app.State) (horizon : Nat)
     (fun _ _ _ => rfl) trace who
 
 omit unobserved [DecidableEq Principal] in
+/-- Ledger projection is the identity on a view with no pending observations. -/
 theorem PlayerView.ledgerOnly_eq_self (view : app.PlayerView)
     (empty : view.messages.leaked = []) : view.ledgerOnly app = view := by
   cases view with
@@ -60,6 +63,7 @@ theorem PlayerView.ledgerOnly_eq_self (view : app.PlayerView)
       cases messages with
       | mk leaked ledger => cases empty; rfl
 
+/-- Erasure preserves every policy's callback law at every initialized raw history. -/
 theorem ledgerPolicy_eq_at_history (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (control : app.Control)
     (trace : (app.protocol initial horizon scheduler).Trace (some control))

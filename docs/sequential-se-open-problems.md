@@ -11,9 +11,10 @@ and imperfect audit coverage on the same forced-exit runtime as monetary preserv
 The [client scenarios](sequential-client-scenarios.md) check concrete failure
 responses and useful information in rejected traffic, separating simple
 fallback rules from an explicit client with full sequential rationality.
-The [uniform semantic compiler](semantic-client-compiler.md) supplies complete
-clients through the existing completion and decoder, with ledger realization
-under no pending delivery. The [diagnostic client analysis](ledger-client-correctness.md)
+The [uniform semantic compiler](semantic-client-compiler.md) supplies bounded
+raw-menu clients through completion and decoding, with ledger realization
+under no pending delivery. Its catalogue premises require finite binding and
+publication value types. The [diagnostic client analysis](ledger-client-correctness.md)
 isolates the belief obligation for a manually prescribed policy; it is not an
 additional premise of the semantic compiler.
 The [correlated-prior analysis](sequential-correlated-prior-analysis.md) gives a
