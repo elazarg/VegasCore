@@ -129,20 +129,6 @@ theorem Obligation.accepts_reveal_failure {Γ : SourceCtx Player L}
   · rw [changed obligation.source (by simpa using subjectBefore) subjectAfter]
     exact GuardCode.accepts_subject_failure _ _
 
-/-- The guard registry obtained after following the remaining source syntax.
-It retains every original typed guard and its subject provenance. -/
-def finalRegistry : {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → Registry Γ →
-      Registry (terminalCtx program)
-  | _, _, .ret _, registry => registry
-  | _, _, .sample _ _ _ next, registry => finalRegistry next registry.weaken
-  | _, _, .commit name owner _ guard next, registry =>
-      let obligation : Obligation _ :=
-        { owner := owner, subject := name, payload := _, source := .here,
-          guard := guard.weaken }
-      finalRegistry next (obligation :: registry.weaken)
-  | _, _, .reveal _ _ _ _ _ _ next, registry => finalRegistry next registry.weaken
-
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
 private theorem consistent_weaken {Γ : SourceCtx Player L} {name : VarId}
     {cell : CellTy Player L} (registry : Registry (Player := Player) (L := L) Γ)
@@ -158,68 +144,66 @@ private theorem consistent_weaken {Γ : SourceCtx Player L} {name : VarId}
   rw [Obligation.accepts_weaken]
   exact consistent original originalMember revealed
 
-/-- Every reachable terminal state keeps every published obligation accepted. -/
+/-- Every supported terminal configuration keeps every published obligation accepted. -/
 theorem runFrom_consistent {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) :
-    ∀ (profile : BehavioralProfile program) (state : State L Γ)
-      (registry : Registry Γ) (revelations : Revelations Γ) (history : History Player L),
-      (Γ.map Prod.fst).Nodup → Accounted revelations O →
-      (∀ obligation ∈ registry, obligation.revealed revelations = true →
-        obligation.accepts revelations state = true) →
-      ∀ outcome ∈ (runFrom program profile ⟨state, registry, revelations, history⟩).support,
-        ∀ obligation ∈ finalRegistry program registry,
-          obligation.revealed (finalRevelations program revelations) = true →
-            obligation.accepts (finalRevelations program revelations) outcome = true := by
+    ∀ (profile : BehavioralProfile program) (config : Config Player L Γ),
+      (Γ.map Prod.fst).Nodup → Accounted config.revelations O →
+      (∀ obligation ∈ config.registry, obligation.revealed config.revelations = true →
+        obligation.accepts config.revelations config.state = true) →
+      ∀ outcome ∈ (runFrom program profile config).support,
+        ∀ obligation ∈ finalRegistry program config.registry,
+          obligation.revealed (finalRevelations program config.revelations) = true →
+            obligation.accepts (finalRevelations program config.revelations)
+              outcome.state = true := by
   induction program with
   | ret payoffs =>
-      intro profile state registry revelations history _ _ consistent outcome supported
+      intro profile config _ _ consistent outcome supported
       have same := (PMF.mem_support_pure_iff _ _).mp supported
       subst outcome
       exact consistent
   | sample name fresh law next ih =>
-      intro profile state registry revelations history unique accounted consistent
-        outcome supported
+      intro profile config unique accounted consistent outcome supported
       simp only [runFrom, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨value, _, supported⟩ := supported
-      exact ih (afterSample profile) (Env.cons value state) registry.weaken revelations.weaken
-        history (by simp [fresh, unique])
+      exact ih (afterSample profile) (sampleSuccessor name config value)
+        (by simp [fresh, unique])
         (Accounted.weaken_noncommitment (by intro _ _ equal; cases equal) accounted)
-        (consistent_weaken (cell := .publicData _) registry revelations value state consistent)
-        outcome supported
+        (consistent_weaken (cell := .publicData _) config.registry config.revelations
+          value config.state consistent) outcome supported
   | commit name owner fresh guard next ih =>
-      intro profile state registry revelations history unique accounted consistent
-        outcome supported
+      intro profile config unique accounted consistent outcome supported
       simp only [runFrom, PMF.support_bind, Set.mem_iUnion] at supported
-      obtain ⟨binding, _, supported⟩ := supported
-      apply ih (afterCommit profile) (Env.cons binding state) _ revelations.weaken _
+      obtain ⟨choice, _, supported⟩ := supported
+      apply ih (afterCommit profile) (commitSuccessor name guard config choice)
         (by simp [fresh, unique]) (Accounted.commit fresh accounted) _ outcome supported
+      dsimp only [commitSuccessor]
       intro obligation member revealed
       rcases List.mem_cons.mp member with rfl | member
       · simp [Obligation.revealed, Revelations.weaken, HasVar.tail?,
           Revelation.isRevealed] at revealed
-      · exact consistent_weaken (cell := .commitment owner _) registry revelations binding
-          state consistent obligation member revealed
+      · exact consistent_weaken (cell := .commitment owner _)
+          config.registry config.revelations _ config.state consistent obligation member revealed
   | reveal published owner name fresh source unresolved next ih =>
-      intro profile state registry revelations history unique accounted consistent
-        outcome supported
+      intro profile config unique accounted consistent outcome supported
       simp only [runFrom, PMF.support_bind, Set.mem_iUnion] at supported
       obtain ⟨disclose, _, supported⟩ := supported
-      apply ih (afterReveal profile) _ registry.weaken
-        (revelations.reveal (published := published) source) _ (by simp [fresh, unique])
-        (Accounted.reveal source unique accounted) _ outcome supported
+      apply ih (afterReveal profile) (revealSuccessor published source config disclose)
+        (by simp [fresh, unique]) (Accounted.reveal source unique accounted) _ outcome supported
+      dsimp only [revealSuccessor]
       intro weakened member revealedAfter
       obtain ⟨obligation, original, rfl⟩ := List.mem_map.mp member
-      by_cases revealedBefore : obligation.revealed revelations = true
-      · rw [obligation.accepts_reveal_of_revealed revelations source accounted unresolved
+      by_cases revealedBefore : obligation.revealed config.revelations = true
+      · rw [obligation.accepts_reveal_of_revealed config.revelations source accounted unresolved
           revealedBefore]
         exact consistent obligation original revealedBefore
-      · have completed : obligation.weaken ∈ registry.completedBy (published := published)
-            revelations source :=
+      · have completed : obligation.weaken ∈ config.registry.completedBy (published := published)
+            config.revelations source :=
           List.mem_map.mpr ⟨obligation, List.mem_filter.mpr ⟨original, by
             simpa [Obligation.completedBy, revealedBefore] using revealedAfter⟩, rfl⟩
-        have failureAccepts := obligation.accepts_reveal_failure revelations source unique
-          (by simpa using revealedBefore) revealedAfter state
-        cases disclose with
+        have failureAccepts := obligation.accepts_reveal_failure config.revelations source unique
+          (by simpa using revealedBefore) revealedAfter config.state
+        cases effective : (if owner ∈ config.defaulted then false else disclose) with
         | false =>
             simp only [Bool.false_eq_true, ↓reduceIte, ite_self]
             exact failureAccepts
@@ -235,29 +219,29 @@ published and the code holds on the published values. -/
 theorem Setup.terminal_guards_hold
     (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program)
-    (outcome : State L setup.program.terminalCtx)
+    (outcome : Config Player L setup.program.terminalCtx)
     (supported : outcome ∈ (setup.run profile).support)
     (obligation : Obligation setup.program.terminalCtx)
     (member : obligation ∈ finalRegistry setup.program []) :
     (((finalRevelations setup.program (Revelations.initial setup.context))
-        obligation.source).result outcome = .failure ∨
+        obligation.source).result outcome.state = .failure ∨
       ∃ (x : VarId) (τ : L.Ty) (h : HasVar obligation.guard.schema x τ),
         x ∈ L.exprDeps obligation.guard.code ∧
           (obligation.guard.reads h).result
             (finalRevelations setup.program (Revelations.initial setup.context))
-            outcome = .failure) ∨
+            outcome.state = .failure) ∨
     ∃ (subjectValue : L.Val obligation.payload)
       (get : (x : VarId) → (σ : L.Ty) →
         HasVar ((obligation.subject, obligation.payload) :: obligation.guard.schema) x σ →
           x ∈ L.exprDeps obligation.guard.code → L.Val σ),
       ((finalRevelations setup.program (Revelations.initial setup.context))
-        obligation.source).result outcome = .success subjectValue ∧
+        obligation.source).result outcome.state = .success subjectValue ∧
       (∀ hx, get obligation.subject obligation.payload .here hx = subjectValue) ∧
       (∀ {x τ} (h : HasVar obligation.guard.schema x τ)
         (hx : x ∈ L.exprDeps obligation.guard.code),
           (obligation.guard.reads h).result
             (finalRevelations setup.program (Revelations.initial setup.context))
-            outcome = .success (get x τ (.there h) hx)) ∧
+            outcome.state = .success (get x τ (.there h) hx)) ∧
       L.toBool (L.evalDeps obligation.guard.code get) = true := by
   have revealed : obligation.revealed
       (finalRevelations setup.program (Revelations.initial setup.context)) = true := by
@@ -269,19 +253,19 @@ theorem Setup.terminal_guards_hold
     | commitment cell => exact setup.revealed cell
   simp only [Setup.run, PMF.support_bind, Set.mem_iUnion] at supported
   obtain ⟨initial, _, reached⟩ := supported
-  have accepts := runFrom_consistent setup.program profile initial []
-    (Revelations.initial setup.context) (fun _ => []) setup.namesNodup
-    (setup.accounts ▸ Accounted.initial setup.context) (by simp) outcome reached
+  have accepts := runFrom_consistent setup.program profile (Config.initial initial)
+    setup.namesNodup (setup.accounts ▸ Accounted.initial setup.context) (by simp [Config.initial])
+    outcome reached
     obligation member revealed
-  simp only [Obligation.accepts, SourceGuard.accepts] at accepts
+  simp only [Config.initial, Obligation.accepts, SourceGuard.accepts] at accepts
   by_cases failedInput : ∃ (x : VarId) (τ : L.Ty) (h : HasVar obligation.guard.schema x τ),
       x ∈ L.exprDeps obligation.guard.code ∧
         (obligation.guard.reads h).result
           (finalRevelations setup.program (Revelations.initial setup.context))
-          outcome = .failure
+          outcome.state = .failure
   · exact Or.inl (Or.inr failedInput)
   cases subjectEq : ((finalRevelations setup.program (Revelations.initial setup.context))
-      obligation.source).result outcome with
+      obligation.source).result outcome.state with
   | failure => exact Or.inl (Or.inl rfl)
   | success subjectValue =>
       obtain ⟨get, getSubject, resultsEq⟩ := obligation.guard.exists_get subjectValue _

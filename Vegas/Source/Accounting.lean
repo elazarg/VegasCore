@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Source.Setup
+import Vegas.Source.Metadata
 
 /-! # Revelation accounting
 
@@ -20,16 +21,6 @@ def Accounted {Γ : SourceCtx Player L} (revelations : Revelations Γ) (O : Fins
   ∀ {owner : Player} {payload : L.Ty} {name : VarId}
     (h : HasVar Γ name (.commitment owner payload)),
     (revelations h).isRevealed = true ↔ name ∉ O
-
-/-- The revelations after following the remaining source syntax. -/
-def finalRevelations : {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → Revelations Γ →
-      Revelations (terminalCtx program)
-  | _, _, .ret _, revelations => revelations
-  | _, _, .sample _ _ _ next, revelations => finalRevelations next revelations.weaken
-  | _, _, .commit _ _ _ _ next, revelations => finalRevelations next revelations.weaken
-  | _, _, .reveal published _ _ _ source _ next, revelations =>
-      finalRevelations next (revelations.reveal (published := published) source)
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
 theorem mem_commitmentNames {Γ : SourceCtx Player L} {owner : Player} {payload : L.Ty}

@@ -32,6 +32,7 @@ import Vegas.Source.IntendedForPlayer
 import Vegas.Source.IntendedGame
 import Vegas.Source.IntendedPlay
 import Vegas.Source.IntendedPrefixSwap
+import Vegas.Source.Metadata
 import Vegas.Source.ObservationRecall
 import Vegas.Source.PrivateInputs
 import Vegas.Source.PrivateInputsIndependent

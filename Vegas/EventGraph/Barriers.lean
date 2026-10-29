@@ -4,8 +4,8 @@ import Vegas.EventGraph.Information
 
 /-! # Public-barrier event dependencies
 
-Public events form barriers. Between them, different players' private bindings
-can complete independently, while one player's own bindings retain their order.
+Public events form barriers. Between them, dependencies can leave different
+players' bindings unordered, while one player's own bindings retain their order.
 The construction depends on typed outputs, not source values or player policies.
 -/
 

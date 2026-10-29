@@ -342,6 +342,29 @@ end Config
 
 variable [DecidableEq Player]
 
+section
+
+variable {graph : Vegas.EventGraph Player L}
+
+/-- Completing an event is one typed update of the combined partial store. -/
+theorem store_complete (config : graph.Config) (event : graph.EventId)
+    (ready : config.cut.Ready event) (action : graph.Action event)
+    (value : (graph.outputLayout event).Value) :
+    (config.complete event ready action value).store =
+      Function.update config.store (.inr event) (some value) := by
+  funext field
+  cases field with
+  | inl input =>
+      simp [Config.store, Function.update]
+      rfl
+  | inr query =>
+      by_cases same : query = event
+      · subst query
+        simp [Config.store, Config.complete, Function.update]
+      · simp [Config.store, Config.complete, Function.update, same]
+
+end
+
 /-- A causal execution plan may randomize and adapt its next ready event and
 action to the entire current semantic configuration. It cannot select an unready event.
 Public/native schedulers later restrict which parts of this configuration are

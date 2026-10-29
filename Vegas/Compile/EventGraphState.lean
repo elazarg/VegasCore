@@ -2,7 +2,7 @@
 
 import Vegas.Compile.EventGraphAssembly
 import Vegas.Compile.EventGraphEvaluation
-import Vegas.EventGraph.Commutation
+import Vegas.EventGraph.Execution
 
 /-! # Source-state agreement across event-graph writes
 
@@ -35,7 +35,6 @@ theorem FieldBefore.ne_output {inputCount eventCount : Nat}
       subst producer
       exact (Nat.lt_irrefl event.val) before
 
-omit [DecidableEq Player] in
 /-- Completing the current event leaves every earlier typed reference
 unchanged. -/
 theorem ContextRefs.Agrees.complete {graph : Vegas.EventGraph Player L}

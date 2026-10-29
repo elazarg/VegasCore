@@ -93,22 +93,6 @@ theorem store_complete_comm {config : graph.Config} {left right : graph.EventId}
           simp [Config.store, Config.complete, Function.update, different.symm]
         · simp [Config.store, Config.complete, Function.update, eventLeft, eventRight]
 
-/-- Completing an event is one typed update of the combined partial store. -/
-theorem store_complete (config : graph.Config) (event : graph.EventId)
-    (ready : config.cut.Ready event) (action : graph.Action event)
-    (value : (graph.outputLayout event).Value) :
-    (config.complete event ready action value).store =
-      Function.update config.store (.inr event) (some value) := by
-  funext field
-  cases field with
-  | inl input =>
-      simp [Config.store, Function.update]
-      rfl
-  | inr query =>
-      by_cases same : query = event
-      · subst query
-        simp [Config.store, Config.complete, Function.update]
-      · simp [Config.store, Config.complete, Function.update, same]
 
 private def outputLaw (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event) :

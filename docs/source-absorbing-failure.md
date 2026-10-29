@@ -81,6 +81,9 @@ views; [SetupProtocolRecall](../Vegas/Source/SetupProtocolRecall.lean) proves
 perfect recall and decision recall under every commitment interface.
 [InitialState](../Vegas/Source/InitialState.lean) retains the initial environment
 and its joint parameter/public-result law through the full configuration readout.
+[Metadata](../Vegas/Source/Metadata.lean) checks that every supported terminal
+configuration has exactly the syntax-determined guard registry and revelations.
+These fields can be reconstructed by compiler readout without another evaluator.
 
 ## Utility and transfers
 
@@ -145,9 +148,14 @@ Source-to-graph strategy and observation correspondence remains open.
 
 Public omissions introduce information dependencies. If Alice's source binding
 precedes Bob's, Bob may condition on Alice's default. Scheduling Bob first can
-change their joint outcome law. The compiler must generate the required order;
-the existing sequential dependency machinery supplies it without a scheduler
-assumption. More concurrency requires a separate information-preservation proof.
+change their joint outcome law. The
+[compiler constructor](../Vegas/Compile/EventGraphAssembly.lean) generates
+every earlier source instruction as a dependency, using the sequential order
+and cut lemmas in [Order](../Vegas/EventGraph/Order.lean). This supplies the
+required order without a scheduler assumption. Typed node lowering, local
+evaluation, state/reference agreement and input encoding are checked with this
+constructor. Whole-run strategy and outcome correspondence remains open.
+More concurrency requires a separate information-preservation proof.
 Unconditional commutation of same-owner events and unconditional independence
 of different owners' binding decisions are false for this semantics.
 

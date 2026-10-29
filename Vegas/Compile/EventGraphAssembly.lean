@@ -8,7 +8,8 @@ import Vegas.Source.Setup
 
 This module fixes the generic node lowerer to the combined initial/output
 layout of one whole source program and carries typed references to terminal
-payoff readout.
+payoff readout. Source-ranked dependencies preserve publicly visible default
+timing under every scheduler.
 -/
 
 noncomputable section
@@ -107,27 +108,16 @@ def payoffs {Γ : SourceCtx Player L} {openNames : Finset VarId}
   program.terminalPayoffs.map fun payoff =>
     (payoff.1, compilePublicExpr (terminalRefs program) payoff.2)
 
-omit [DecidableEq Player] in
-/-- A node with a nonempty read footprint is necessarily public. Binding
-nodes are the only private outputs and read no graph fields. -/
-private theorem code_isPublic_of_mem_readFields {Field : Type} [DecidableEq Field]
-    {layout : Field → Vegas.EventGraph.EventField Player L}
-    {output : Vegas.EventGraph.EventField Player L}
-    (code : Vegas.EventGraph.EventCode layout output) {field : Field}
-    (member : field ∈ code.readFields) : output.IsPublic := by
-  cases code with
-  | bind => simp [Vegas.EventGraph.EventCode.readFields] at member
-  | resolve | sample => trivial
-
 /-- Compile the complete source language to a dependency-driven event graph.
-Node code and `reads_available` come from one ranked recursion. The graph itself
+Every earlier instruction is a dependency because binding omission is public.
+Node code and causal-read certificates come from one ranked recursion. The graph itself
 can be evaluated; the execution laws defined on it use real-valued finite
 distributions and cannot. -/
 def toEventGraph {Γ : SourceCtx Player L} {openNames : Finset VarId}
     (program : SourceProgram Player L Γ openNames)
     : Vegas.EventGraph Player L where
   inputCount := Γ.length
-  order := Vegas.EventGraph.barrierOrder (outputLayout program)
+  order := EventOrder.sequential (eventCount program)
   inputLayout := inputLayout Γ
   outputLayout := outputLayout program
   nodes := nodes program
@@ -138,8 +128,7 @@ def toEventGraph {Γ : SourceCtx Player L} {openNames : Finset VarId}
     cases field with
     | inl => trivial
     | inr producer =>
-        exact Vegas.EventGraph.barrierOrder_public_event (outputLayout program)
-          before (code_isPublic_of_mem_readFields _ member)
+        exact (EventOrder.sequential.mem_predecessors producer event).mpr before
   payoffs := payoffs program
 
 /-- Every compiled action is a binding choice, a disclosure, or trivial, so
@@ -156,7 +145,7 @@ theorem outputLayout_action_finite : {Γ : SourceCtx Player L} → {openNames : 
   | _, _, .commit (payload := payload) _ _ _ _ next, finite, event => by
       refine Fin.cases ?_ (fun later => ?_) event
       · have := finite.1
-        change Finite (PublicationResult (L.Val payload))
+        change Finite (Option (PublicationResult (L.Val payload)))
         infer_instance
       · exact outputLayout_action_finite next finite.2 later
   | _, _, .reveal _ _ _ _ _ _ next, finite, event => by
@@ -169,8 +158,9 @@ theorem outputLayout_action_finite : {Γ : SourceCtx Player L} → {openNames : 
 theorem toEventGraph_barrierOrdered {Γ : SourceCtx Player L}
     {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames) :
     (toEventGraph program).BarrierOrdered := by
-  intro event
-  exact Finset.Subset.rfl
+  intro event prior member
+  apply (EventOrder.sequential.mem_predecessors prior event).mpr
+  exact (Finset.mem_filter.mp member).2.1
 
 /-- Full source lowering immediately inherits the generic local information
 certificate for every ready strategic cut. -/
