@@ -293,7 +293,7 @@ theorem openableCommitment_stop (bounds : MessageBounds (graph setup)) (horizon 
       · rw [state] at otherState
         cases Option.some.inj otherState
         rw [atSent] at prefixed
-        exact Nat.succ_ne_self rank (isPrefix_unique prefixed ordered)
+        exact Nat.succ_ne_self rank (EventOrder.Cut.IsPrefix.unique prefixed ordered)
       · rw [state] at ended
         exact pending (terminalCompleted final finalTrace ended atSent)
 

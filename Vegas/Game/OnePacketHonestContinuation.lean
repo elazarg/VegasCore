@@ -111,7 +111,7 @@ theorem counted_honest_boundary_readout_law
           obtain ⟨found, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) profile
             (menu) horizon scheduler
             start.trace _ state
-          have rankEq := isPrefix_unique residual.checkpoint.ordered boundary.ordered
+          have rankEq := EventOrder.Cut.IsPrefix.unique residual.checkpoint.ordered boundary.ordered
           subst found
           let action := ((graph setup).nodes event).actionOfActorNone owned
           let stopping := fun history : (E).History =>

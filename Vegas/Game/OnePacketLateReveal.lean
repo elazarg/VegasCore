@@ -125,7 +125,7 @@ theorem lateStop_mem_step
     · rw [finalState] at otherState
       cases Option.some.inj otherState
       rw [same] at prefixed
-      exact Nat.succ_ne_self rank (isPrefix_unique prefixed ordered)
+      exact Nat.succ_ne_self rank (EventOrder.Cut.IsPrefix.unique prefixed ordered)
     · rw [finalState] at ended
       exact ready.1 (by
         rw [← same]
@@ -311,7 +311,7 @@ theorem disclosure_sourceKernel
   obtain ⟨found, ⟨residualFound⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
     setup.program)
     menu horizon scheduler traceHere _ rfl
-  have foundEq : found = rank := isPrefix_unique residualFound.checkpoint.ordered ordered
+  have foundEq : found = rank := EventOrder.Cut.IsPrefix.unique residualFound.checkpoint.ordered ordered
   have residual := foundEq ▸ residualFound
   have stops : ∀ stop ∈ untilLaw.support, ∃ final, stop.state = some final ∧
       (completionPoint setup runtime leaks bounds horizon scheduler rank fresh stop = some target ∨

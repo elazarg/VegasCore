@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.AsyncDeviationLaw
-import Vegas.Game.SourceServiceDeviationReadout
+import Vegas.Source.DisclosureBehavioral
 import Vegas.Game.RevealServicePayoffs
 import Vegas.Game.SourcePrefixKernel
 
@@ -431,7 +431,7 @@ theorem asyncDeviation_readout_law [Finite Player]
   simp only [PMF.map_comp, Function.comp_def, PMF.map_bind] at encodedReadout
   have terminal := projected.trans (encodedReadout.symm.trans (by
     simpa only [eventCount_eq_instructionCount, InformationModel.runBehavioral] using sourceLaw))
-  rw [run_update_normalizeDisclosureProfile setup original who policy] at terminal
+  rw [setup.run_update_normalizeDisclosures_eq original who policy] at terminal
   have readoutEq (final : app.Execution) :
       serviceSourceReadout setup mode deadline leaks (app.finished final) =
         decodeState? (terminalRefs setup.program) final.application.config.store :=

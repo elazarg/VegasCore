@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketEventSuccess
-import Vegas.Pending.ExclusionNativeFailure
 import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 
 /-! # Pending committed events retain public clarity -/
@@ -35,31 +34,31 @@ theorem pending_publicClear_of_acceptanceInvariant
     (who : Player) (entry : (application setup runtime leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup)))
     (event : (graph setup).EventId) (sent : (graph setup).Config)
+    (action : (graph setup).Action event) (output : ((graph setup).outputLayout event).Value)
     (start : (protocol).History) (current : (application setup runtime leaks).Control)
     (state : start.state = some current)
-    (clear : ExclusionEvidence 0 ∅
-      (RecoveryState.mk current.execution.application ∅))
+    (clear : current.execution.application.config.defaulted = ∅)
     (invariant : AcceptanceInvariant setup runtime leaks bounds horizon scheduler who entry
       message event
-      sent (some current)) :
+      sent action output (some current)) :
     ∀ final ∈ ((model).runBehavioralUntil certificate profile stopped start).support,
       ∀ control, final.state = some control →
         event ∉ control.execution.application.config.cut.completed →
-          ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) := by
+          control.execution.application.config.defaulted = ∅ := by
   let property := fun state : (application setup runtime leaks).ProtocolState =>
     AcceptanceInvariant setup runtime leaks bounds horizon scheduler who entry message event sent
-      state ∧
+      action output state ∧
       match state with
       | none => False
       | some control => event ∉ control.execution.application.config.cut.completed →
-          ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅)
+          control.execution.application.config.defaulted = ∅
   have preserved : ∀ before joint (legal : (protocol).Legal before joint) after,
       property before → after ∈ ((protocol).step before ⟨joint, legal⟩).support → property after :=
       by
     intro before joint legal after holds reached
     have nextInvariant := acceptanceInvariant_transition (runtime := runtime) bounds horizon
       scheduler who entry
-      message event sent before after joint legal holds.1 reached
+      message event sent action output before after joint legal holds.1 reached
     change after ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
       scheduler
       before joint).support at reached
@@ -70,13 +69,16 @@ theorem pending_publicClear_of_acceptanceInvariant
       | none => exact nextInvariant.elim
       | some next =>
         refine ⟨nextInvariant, fun pending => ?_⟩
-        have step := (reactiveApplication_completionStep runtime leaks).transition
-          (initialLaw setup) horizon scheduler current next joint reached
+        have path := reactive_protocol_graph_steps runtime leaks (initialLaw setup) horizon
+          scheduler current next joint reached
+        have historyKept := EventGraph.Config.Step.path_history_prefix path
         have beforePending : event ∉ current.execution.application.config.cut.completed :=
-          fun completed => pending (step.completed_mono completed)
+          fun completed => pending
+            (EventGraph.completed_subset_of_history_prefix _ _ historyKept completed)
         have beforeAt := holds.1.2.2.2.2.2.1 beforePending
         have nextAt := nextInvariant.2.2.2.2.2.1 pending
-        exact (holds.2 beforePending).completionStep_sameConfig step (nextAt.trans beforeAt.symm)
+        rw [nextAt, ← beforeAt]
+        exact holds.2 beforePending
   have initialProperty : property start.state := by
     rw [state]
     exact ⟨invariant, fun _ => clear⟩

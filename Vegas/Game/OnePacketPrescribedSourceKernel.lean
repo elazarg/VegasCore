@@ -230,7 +230,7 @@ private theorem counted_committed_canonical_sourceLaw
     rintro (⟨control, state, prefixed⟩ | notClear)
     · rw [current] at state
       cases Option.some.inj state
-      exact Nat.succ_ne_self rank (isPrefix_unique prefixed ordered)
+      exact Nat.succ_ne_self rank (EventOrder.Cut.IsPrefix.unique prefixed ordered)
     · apply notClear
       rw [current]
       exact clear
@@ -334,7 +334,7 @@ theorem counted_firstActivation_honest_sourceLaw
     rintro (⟨control, state, prefixed⟩ | notClear)
     · rw [current] at state
       cases Option.some.inj state
-      exact Nat.succ_ne_self rank (isPrefix_unique prefixed ordered)
+      exact Nat.succ_ne_self rank (EventOrder.Cut.IsPrefix.unique prefixed ordered)
     · apply notClear
       rw [current]
       exact clear

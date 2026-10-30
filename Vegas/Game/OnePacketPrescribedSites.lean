@@ -139,7 +139,7 @@ theorem firstActivation_history_facts (wellFormed : setup.WellFormed) {who : Pla
   obtain ⟨decodedRank, ⟨residual⟩, holds⟩ := decodedState_intended_or_owes (runtime := runtime)
     wellFormed
     (failureProfile setup.program) menu horizon scheduler trace _ rfl
-  have sameRank := isPrefix_unique residual.checkpoint.ordered ordered
+  have sameRank := EventOrder.Cut.IsPrefix.unique residual.checkpoint.ordered ordered
   subst sameRank
   have residualDecoded := residual.decode
   generalize residual.lift (ProtocolState.entry residual.program residual.source) = residualPoint

@@ -101,7 +101,7 @@ theorem decodedPoint_eq {profile : BehavioralProfile setup.program} {rank : Nat}
   have ordered : ∃ rank, config.cut.IsPrefix rank := ⟨rank, residual.checkpoint.ordered⟩
   unfold decodedPoint
   rw [dite_eq_left_of_eq_true (eq_true ordered), show ordered.choose = rank from
-    isPrefix_unique ordered.choose_spec residual.checkpoint.ordered]
+    EventOrder.Cut.IsPrefix.unique ordered.choose_spec residual.checkpoint.ordered]
   exact residual.decode
 
 /-- **Completing the ready event moves the decoded point by one source step.**

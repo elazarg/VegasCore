@@ -3,7 +3,7 @@
 import Vegas.Game.RecoveryLocalComparisons
 import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
 import Vegas.Game.RecoveryInitializedClearance
-import Vegas.Game.RecoveryExclusionPayoff
+import Vegas.Game.NativeExitContinuation
 import Vegas.Game.OnePacketCertificateAssembly
 
 /-! # Intended sequential equilibria in the one-packet recovery game

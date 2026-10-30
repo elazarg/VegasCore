@@ -4,7 +4,7 @@ import Vegas.Examples.OddsEvensRecoveryService
 import Vegas.Examples.OddsEvensFairValue
 import Vegas.Examples.OddsEvensLedgerClient
 import Vegas.Pending.ReactiveOpeningConformance
-import Vegas.Game.RecoveryExclusionPayoff
+import Vegas.Game.NativeExitContinuation
 import Vegas.Pending.ReactiveCountVerdict
 
 /-! # Concrete client decisions after runtime irregularities

@@ -1,20 +1,20 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceAsyncStep
+import Vegas.Game.SourceServicePrefix
+import Vegas.Game.SourceStateKernel
+import Vegas.Compile.EventGraphPolicyLaw
+import Vegas.Compile.EventGraphStep
+import Vegas.Source.DisclosureSupport
 import Vegas.Source.Disclosure
 
-/-! # Source residuals of native configurations
+/-! # Source residuals of actual graph configurations
 
-A *source residual* of a native configuration at a completed prefix is the
-remaining source program and source configuration, aligned with the compiled
-policy suffix from that rank, agreeing with the native store and history, and
-through which the whole-program prefix decoder factors
-(`Vegas.SourceResidual`, `Vegas.SourceResidual.decode`). Residuals exist at
-initialization (`Vegas.SourceResidual.initial`) and survive every
-configuration step, whatever action completes the ready event
-(`Vegas.SourceResidual.configStep`). One scheduler round changes the
-configuration by one configuration step, whatever the players
-(`Vegas.round_configStep`).
+A residual records the remaining source suffix at an existing graph prefix,
+with its typed cells, public defaults and original action histories. The
+whole-program prefix decoder factors through that residual without running
+another evaluator. Every supported graph step preserves the residual and its
+exact source-step atom. Finite graph paths preserve a residual at the actual
+endpoint, including paths of automatic completions after public default.
 -/
 
 noncomputable section
@@ -48,14 +48,12 @@ structure SourceResidual (rank : Nat) (config : (graph setup).Config) : Type whe
   admitted : (∀ who, (profile who).Admitted setup.program
       (CommitmentInterface.values setup.program)) →
     ∀ who, (residualProfile who).Admitted program (CommitmentInterface.values program)
-  effective : (∀ who, (profile who).EffectiveDisclosures setup.program []
-      (Revelations.initial setup.context)) →
-    ∀ who, (residualProfile who).EffectiveDisclosures program source.registry
-      source.revelations
-  supports : (∀ who, (profile who).SupportsEffectiveChoices setup.program
-      (CommitmentInterface.values setup.program) [] (Revelations.initial setup.context)) →
-    ∀ who, (residualProfile who).SupportsEffectiveChoices program
-      (CommitmentInterface.values program) source.registry source.revelations
+  authentic : (∀ who, (profile who).AuthenticDisclosures setup.program) →
+    ∀ who, (residualProfile who).AuthenticDisclosures program
+  supports : (∀ who, (profile who).SupportsAuthenticChoices setup.program
+      (CommitmentInterface.values setup.program)) →
+    ∀ who, (residualProfile who).SupportsAuthenticChoices program
+      (CommitmentInterface.values program)
   disclosing : (∀ who, Disclosing setup.program (profile who)) →
     ∀ who, Disclosing program (residualProfile who)
   lift : ProtocolState program → ProtocolState setup.program
@@ -65,12 +63,13 @@ structure SourceResidual (rank : Nat) (config : (graph setup).Config) : Type whe
   steps : ∀ state joint, ProtocolState.step setup.program (lift state) joint =
     (ProtocolState.step program state joint).map lift
   injective : Function.Injective lift
-  transport : ∀ more store history,
+  transport : ∀ more store history defaults,
     decodeSourcePrefix? setup.program
       (ContextRefs.initial setup.context (outputLayout setup.program)) []
-      (Revelations.initial setup.context) (outputRef setup.program) (rank + more) store history =
+      (Revelations.initial setup.context) (outputRef setup.program) (rank + more)
+        store history defaults =
     (decodeSourcePrefix? program refs source.registry source.revelations embedding.ref
-      more store history).map lift
+      more store history defaults).map lift
   checkpoint : SourceCheckpoint setup source refs rank config
 
 variable {setup profile}
@@ -103,14 +102,14 @@ def SourceResidual.initial (initial : State L setup.context) :
   refsBefore := initialRefsBefore setup.program
   aligned := CompiledPolicySuffix.whole setup.program profile
   admitted := fun admitted => admitted
-  effective := fun effective => effective
+  authentic := fun authentic => authentic
   supports := fun supported => supported
   disclosing := fun disclosing => disclosing
   lift := id
   commutes := fun state => by simp only [id_eq, PMF.map_id]
   steps := fun state joint => by simp only [id_eq, PMF.map_id]
   injective := Function.injective_id
-  transport := fun more store history => by
+  transport := fun more store history defaults => by
     simp only [Nat.zero_add, Option.map_id_fun]
     rfl
   checkpoint := SourceCheckpoint.initial setup initial
@@ -119,7 +118,7 @@ variable {setup profile}
 
 /-- A native state carrying a given configuration, used to apply the checkpoint
 successor lemmas, which read only the configuration. -/
-def configState (config : (graph setup).Config) : EventGraphRuntime.State (graph setup) :=
+private def configState (config : (graph setup).Config) : EventGraphRuntime.State (graph setup) :=
   { EventGraphRuntime.State.initial (graph := graph setup) config.inputs with config := config }
 
 /-- A fixed native completion preserves its typed source residual and its
@@ -141,9 +140,13 @@ theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
         (next.lift (ProtocolState.entry next.program next.source)) =
           (before.step event ready action) after := by
   obtain ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore, aligned,
-    admitted, effective, supports, disclosing, lift, commutes, steps, injective, transport,
+    admitted, authentic, supports, disclosing, lift, commutes, steps, injective, transport,
     checkpoint⟩ := residual
-  have atEvent := (ready_iff_rank setup before rank checkpoint.ordered event).mp ready
+  have readyPrefix : before.cut.IsPrefix event.val := by
+    refine ⟨event.isLt.le, ?_⟩
+    intro other
+    exact before.cut.mem_completed_iff_lt_of_ready ready
+  have atEvent : event.val = rank := readyPrefix.unique checkpoint.ordered
   have counted := aligned.graphSuffix.countEq
   change rank + eventCount program = (graph setup).order.eventCount at counted
   cases program with
@@ -198,13 +201,13 @@ theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
         source := sampleSuccessor name source value, refs := tailRefs,
         embedding := tailEmbedding, refsBefore := tailBefore, aligned := tailAligned,
         admitted := fun whole who => admitted whole who,
-        effective := fun whole who => effective whole who,
+        authentic := fun whole who => authentic whole who,
         supports := fun whole who => supports whole who,
         disclosing := fun whole who => disclosing whole who,
         lift := lift ∘ Sum.inr,
         commutes := fun state => ?_, steps := fun state joint => ?_,
         injective := injective.comp Sum.inr_injective,
-        transport := fun more store history => ?_,
+        transport := fun more store history defaults => ?_,
         checkpoint := checkpoint.sample (native := configState before) name (embedding.event index)
           atRank ready outputEq (fun ref => refsBefore ref index) decoded value }, ?_, ?_⟩
       · rw [Function.comp_apply, commutes, ProtocolState.behavioralStateStep_sample_tail,
@@ -262,7 +265,7 @@ theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
         change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
           ((toEventGraph setup.program).nodes (embedding.event index)) = _
         simpa [index, compileRankedNodes] using aligned.graphSuffix.nodeEq index
-      obtain ⟨choice, rfl⟩ : ∃ choice : PublicationResult (L.Val payload),
+      obtain ⟨choice, rfl⟩ : ∃ choice : Option (PublicationResult (L.Val payload)),
           action = cast (congrArg EventGraph.EventField.Action outputEq.symm) choice :=
         ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
       have decoded : decodeEventAction setup.program (embedding.event index)
@@ -271,7 +274,17 @@ theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
         have lookup := aligned.actionEq index
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
         simpa [index, outputEq, decodeEventAction] using lookup
-      rw [commit_step before _ ready outputEq codeEq choice, PMF.mem_support_pure_iff] at member
+      have status : before.defaulted = source.defaulted :=
+        congrArg DefaultHistory.defaulted checkpoint.defaults
+      have stepLaw : before.step (embedding.event index) ready
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice) =
+          PMF.pure (before.complete (embedding.event index) ready
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
+            (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+              ((commitSuccessor name guard source choice).state.get .here))) := by
+        simpa only [status, commitSuccessor, Env.get, Env.cons] using
+          commit_step before _ ready outputEq codeEq choice
+      rw [stepLaw, PMF.mem_support_pure_iff] at member
       subst member
       let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
       let tailRefs : ContextRefs (graphLayout setup.program)
@@ -292,13 +305,13 @@ theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
         source := commitSuccessor name guard source choice, refs := tailRefs,
         embedding := tailEmbedding, refsBefore := tailBefore, aligned := tailAligned,
         admitted := fun whole who => (admitted whole who).2,
-        effective := fun whole who => effective whole who,
+        authentic := fun whole who => authentic whole who,
         supports := fun whole who => (supports whole who).2,
         disclosing := fun whole who => disclosing whole who,
         lift := lift ∘ Sum.inr,
         commutes := fun state => ?_, steps := fun state joint => ?_,
         injective := injective.comp Sum.inr_injective,
-        transport := fun more store history => ?_,
+        transport := fun more store history defaults => ?_,
         checkpoint := checkpoint.commit (native := configState before) name guard
           (embedding.event index) atRank ready outputEq (fun ref => refsBefore ref index)
           choice decoded }, ?_, ?_⟩
@@ -317,7 +330,7 @@ theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
           (OwnAction.binding owner name payload
             (some (OwnAction.commit owner name payload choice))))))).support
         rw [OwnAction.binding_commit, PMF.mem_support_pure_iff]
-      · rw [steps, decoded, commit_step before _ ready outputEq codeEq choice]
+      · rw [steps, decoded, stepLaw]
         simp only [ProtocolState.step, ProtocolState.entry, Function.comp_apply, Sum.elim_inl,
           OwnAction.binding_commit,
           PMF.pure_map, PMF.pure_apply_self]
@@ -350,11 +363,18 @@ theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
         have lookup := aligned.actionEq index
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
         simpa [index, outputEq, decodeEventAction] using lookup
-      rw [before.step_eq_map_of_code _ ready outputEq _ codeEq disclose
-        (PMF.pure (disclosureResult published selected source disclose))
-        (compileResolve_eval? refs source.registry source.revelations source.state
-          before.store checkpoint.agrees selected disclose),
-        PMF.pure_map, PMF.mem_support_pure_iff] at member
+      have status : before.defaulted = source.defaulted :=
+        congrArg DefaultHistory.defaulted checkpoint.defaults
+      have stepLaw : before.step (embedding.event index) ready
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose) =
+          PMF.pure (before.complete (embedding.event index) ready
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
+            (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+              (disclosureResult published selected source disclose))) := by
+        simpa only [status, disclosureResult, revealSuccessor, Env.get, Env.cons] using
+          reveal_step before _ ready outputEq refs source.revelations source.registry selected
+            codeEq source.state checkpoint.agrees disclose
+      rw [stepLaw, PMF.mem_support_pure_iff] at member
       subst member
       let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
       let tailRefs : ContextRefs (graphLayout setup.program)
@@ -375,13 +395,13 @@ theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
         source := revealSuccessor published selected source disclose, refs := tailRefs,
         embedding := tailEmbedding, refsBefore := tailBefore, aligned := tailAligned,
         admitted := fun whole who => admitted whole who,
-        effective := fun whole who => (effective whole who).2,
+        authentic := fun whole who => (authentic whole who).2,
         supports := fun whole who => (supports whole who).2,
         disclosing := fun whole who => (disclosing whole who).2,
         lift := lift ∘ Sum.inr,
         commutes := fun state => ?_, steps := fun state joint => ?_,
         injective := injective.comp Sum.inr_injective,
-        transport := fun more store history => ?_,
+        transport := fun more store history defaults => ?_,
         checkpoint := checkpoint.reveal (native := configState before) published selected
           (embedding.event index) atRank ready outputEq (fun ref => refsBefore ref index)
           disclose decoded }, ?_, ?_⟩
@@ -395,10 +415,7 @@ theorem SourceResidual.step_mass {rank : Nat} {before : (graph setup).Config}
         rfl
       · rw [steps, PMF.support_map, decoded]
         exact ⟨_, (PMF.mem_support_pure_iff _ _).mpr rfl, rfl⟩
-      · rw [steps, decoded, before.step_eq_map_of_code _ ready outputEq _ codeEq disclose
-          (PMF.pure (disclosureResult published selected source disclose))
-          (compileResolve_eval? refs source.registry source.revelations source.state
-            before.store checkpoint.agrees selected disclose)]
+      · rw [steps, decoded, stepLaw]
         simp only [ProtocolState.step, ProtocolState.entry, Function.comp_apply, Sum.elim_inl,
           OwnAction.disclosure,
           PMF.pure_map, PMF.pure_apply_self]
@@ -419,69 +436,17 @@ theorem SourceResidual.step {rank : Nat} {before : (graph setup).Config}
   obtain ⟨next, reached, _mass⟩ := residual.step_mass event ready action after member
   exact ⟨next, reached⟩
 
-/-- A configuration step keeps a residual, at whichever prefix the step
-reaches. -/
-theorem SourceResidual.configStep {rank : Nat} {before after : (graph setup).Config}
+/-- A finite path of actual graph steps retains a source residual at its
+actual endpoint. Automatic completion may advance through several source ranks. -/
+theorem SourceResidual.path {rank : Nat} {before after : (graph setup).Config}
     (residual : SourceResidual setup profile rank before)
-    (step : ConfigStep setup before after) (next : Nat) (ordered : after.cut.IsPrefix next) :
-    Nonempty (SourceResidual setup profile next after) := by
-  rcases step with same | ⟨event, ready, action, member⟩
-  · subst same
-    rw [isPrefix_unique ordered residual.checkpoint.ordered]
-    exact ⟨residual⟩
-  · have advanced : after.cut.IsPrefix (rank + 1) := by
-      rw [before.step_cut event ready action after member]
-      exact residual.checkpoint.ordered.complete_at event ready
-        ((ready_iff_rank setup before rank residual.checkpoint.ordered event).mp ready)
-    rw [isPrefix_unique ordered advanced]
-    obtain ⟨next, _⟩ := residual.step event ready action after member
-    exact ⟨next⟩
-
-variable (setup)
-
-section Generic
-
-variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-
-/-- One scheduler round changes the configuration by one configuration step:
-the scheduler's command steps the graph and a response keeps the
-configuration. -/
-theorem round_configStep
-    {deadline : (serviceGraph setup mode).EventId → Nat}
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy)
-    (execution next : (serviceApplication setup mode deadline leaks).Execution)
-    (reached : next ∈
-        ((serviceApplication setup mode deadline leaks).round scheduler players
-        execution).support) :
-    ConfigStep setup execution.application.config next.application.config := by
-  let app := serviceApplication setup mode deadline leaks
-  obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
-  have step := environmentStep_configStep setup leaks execution middle command moved
-  change next ∈ (app.resume players (command.actor? app) middle).support at resumed
-  have kept : next.application.config = middle.application.config := by
-    cases actor : command.actor? app with
-    | none =>
-        rw [actor] at resumed
-        simp only [ReactiveApplication.resume, PMF.mem_support_pure_iff] at resumed
-        subst resumed
-        rfl
-    | some who =>
-        rw [actor] at resumed
-        change next ∈ (app.invoke players who middle).support at resumed
-        rw [ReactiveApplication.invoke, PMF.support_map] at resumed
-        obtain ⟨response, _, rfl⟩ := resumed
-        exact ((serviceRuntime setup mode deadline).reactive_respond_application leaks middle who
-                response).1
-  rw [kept]
-  exact step
-
-end Generic
-
-variable {setup}
+    (path : Relation.ReflTransGen EventGraph.Config.Step before after) :
+    ∃ next, Nonempty (SourceResidual setup profile next after) := by
+  induction path using Relation.ReflTransGen.head_induction_on generalizing rank with
+  | refl => exact ⟨rank, ⟨residual⟩⟩
+  | @head current middle moved rest ih =>
+      obtain ⟨event, ready, action, member⟩ := moved
+      obtain ⟨next, _⟩ := residual.step event ready action middle member
+      exact ih next
 
 end Vegas

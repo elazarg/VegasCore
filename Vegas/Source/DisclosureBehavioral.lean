@@ -115,6 +115,25 @@ def normalizeDisclosureProfile {Γ : SourceCtx Player L} {O : Finset VarId}
     BehavioralProfile program :=
   fun who => (profile who).normalizeDisclosures program
 
+/-- Suppressing unopenable disclosure choices twice changes nothing further. -/
+theorem BehavioralPolicy.normalizeDisclosures_idempotent {who : Player} :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (policy : BehavioralPolicy who program) →
+    (policy.normalizeDisclosures program).normalizeDisclosures program =
+      policy.normalizeDisclosures program
+  | _, _, .ret _, _ => rfl
+  | _, _, .sample _ _ _ next, policy => normalizeDisclosures_idempotent next policy
+  | _, _, .commit _ _ _ _ next, policy =>
+      Prod.ext rfl (normalizeDisclosures_idempotent next policy.2)
+  | _, _, .reveal _ _ _ _ _ _ next, policy => by
+      refine Prod.ext ?_ (normalizeDisclosures_idempotent next policy.2)
+      funext own view active
+      change ((policy.1 own view active).map _).map _ = (policy.1 own view active).map _
+      rw [PMF.map_comp]
+      congr 1
+      funext disclose
+      simp only [Function.comp_apply, Bool.and_assoc, Bool.and_self]
+
 /-- Every supported reveal choice is fixed by suppressing unopenable bindings. -/
 def BehavioralPolicy.AuthenticDisclosures {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
@@ -237,6 +256,26 @@ theorem Setup.run_normalizeDisclosures_eq (setup : Setup (Player := Player) (L :
   apply bind_congr_on_support _
   intro initial _
   exact SourceProgram.run_normalizeDisclosures_eq setup.program profile initial
+
+/-- Normalizing only the opponents preserves every typed cell and the complete
+public default record against an arbitrary unchanged replacement policy. -/
+theorem Setup.run_update_normalizeDisclosures_eq
+    (setup : Setup (Player := Player) (L := L)) (profile : BehavioralProfile setup.program)
+    (who : Player) (policy : BehavioralPolicy who setup.program) :
+    (setup.run (Function.update (normalizeDisclosureProfile setup.program profile) who policy)).map
+        (fun final => (final.state, final.defaults)) =
+      (setup.run (Function.update profile who policy)).map
+        (fun final => (final.state, final.defaults)) := by
+  have normalized : normalizeDisclosureProfile setup.program
+        (Function.update (normalizeDisclosureProfile setup.program profile) who policy) =
+      normalizeDisclosureProfile setup.program (Function.update profile who policy) := by
+    funext player
+    by_cases same : player = who
+    · subst player
+      simp only [normalizeDisclosureProfile, Function.update_self]
+    · simp only [normalizeDisclosureProfile, Function.update_of_ne same,
+        BehavioralPolicy.normalizeDisclosures_idempotent]
+  rw [← setup.run_normalizeDisclosures_eq, normalized, setup.run_normalizeDisclosures_eq]
 
 /-- Every public terminal observable has the same law after disclosure normalization. -/
 theorem Setup.publicRun_normalizeDisclosures_eq (setup : Setup (Player := Player) (L := L))

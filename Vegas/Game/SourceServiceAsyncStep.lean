@@ -35,12 +35,6 @@ variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.Executio
   {deadline : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
-/-- The source continuation of the configuration's typed prefix of rank `rank`. -/
-def sourceContinuation (profile : BehavioralProfile setup.program) (rank : Nat)
-    (config : (serviceGraph setup mode).Config) : PMF
-    (Option (State L setup.program.terminalCtx)) :=
-  (setup.continuationLaw profile (serviceSourcePrefix? setup mode rank config)).map some
-
 /-- An activation leaves the application unchanged. -/
 theorem activation_application
     (execution middle : (serviceApplication setup mode deadline leaks).Execution) (who : Player)
@@ -159,7 +153,7 @@ theorem CompletionBoundary.stopped {scheduler : (application setup runtime leaks
   let app := application setup runtime leaks
   obtain ⟨rank, ranked, seen⟩ := roundsFrom_ranked setup runtime leaks scheduler players _ execution
     boundary.supported
-  have rankEq := isPrefix_unique ranked boundary.ordered
+  have rankEq := EventOrder.Cut.IsPrefix.unique ranked boundary.ordered
   subst rankEq
   obtain ⟨used, within, _, length⟩ := app.runUntil_runRounds scheduler players _ _ execution
     stopped reached

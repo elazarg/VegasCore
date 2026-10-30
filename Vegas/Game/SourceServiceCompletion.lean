@@ -54,18 +54,6 @@ def ConfigStep (before after : (serviceGraph setup mode).Config) : Prop :=
 variable {setup}
 
 
-/-- A cut is a prefix of at most one length. -/
-theorem isPrefix_unique {cut : (serviceGraph setup mode).order.Cut} {first second : Nat}
-    (left : cut.IsPrefix first) (right : cut.IsPrefix second) : first = second := by
-  by_contra different
-  rcases Nat.lt_or_gt_of_ne different with lower | upper
-  · have inside : first < (serviceGraph setup mode).order.eventCount := by have := right.1; omega
-    have completed := (right.2 ⟨first, inside⟩).mpr lower
-    exact Nat.lt_irrefl _ ((left.2 ⟨first, inside⟩).mp completed)
-  · have inside : second < (serviceGraph setup mode).order.eventCount := by have := left.1; omega
-    have completed := (left.2 ⟨second, inside⟩).mpr upper
-    exact Nat.lt_irrefl _ ((right.2 ⟨second, inside⟩).mp completed)
-
 variable (setup)
 
 /-- One scheduler command changes the configuration by one step. -/

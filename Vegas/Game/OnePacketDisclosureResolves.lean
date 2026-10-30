@@ -300,7 +300,7 @@ theorem disclosureResolves_of_forced (wellFormed : setup.WellFormed)
         (failureProfile setup.program) _ horizon scheduler trace
         control rfl
       obtain ⟨forcedRank, point, ordered, decoded, forcedPoint⟩ := forced
-      have sameRank := isPrefix_unique ordered residual.checkpoint.ordered
+      have sameRank := EventOrder.Cut.IsPrefix.unique ordered residual.checkpoint.ordered
       subst sameRank
       have pointEq : residual.lift (ProtocolState.entry residual.program residual.source) =
           point := Option.some.inj (residual.decode.symm.trans decoded)

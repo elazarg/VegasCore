@@ -5,7 +5,7 @@ import Vegas.Game.RecoveryCountedService
 import Vegas.Game.RecoveryInitializedCounted
 import Vegas.Game.RecoveryInitializedLaw
 import Vegas.Game.RecoveryNativePrior
-import Vegas.Game.RecoveryExclusionPayoff
+import Vegas.Game.NativeExitContinuation
 import Vegas.Pending.ExclusionTerminalClearance
 import Vegas.Game.OnePacketHonestTerminalApproximation
 

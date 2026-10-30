@@ -98,7 +98,7 @@ theorem disclosureResolves_of_debtFree (wellFormed : setup.WellFormed)
         (failureProfile setup.program) _ horizon scheduler trace
         control rfl
       obtain ⟨forcedRank, point, ordered, decoded, forcedPoint⟩ := forced
-      have sameRank := isPrefix_unique ordered residual.checkpoint.ordered
+      have sameRank := EventOrder.Cut.IsPrefix.unique ordered residual.checkpoint.ordered
       subst sameRank
       have pointEq : residual.lift (ProtocolState.entry residual.program residual.source) =
           point := Option.some.inj (residual.decode.symm.trans decoded)
@@ -107,7 +107,7 @@ theorem disclosureResolves_of_debtFree (wellFormed : setup.WellFormed)
           ⟨_, ordered⟩
         unfold decodedPoint
         rw [dite_eq_left_of_eq_true (eq_true exists_ordered), show exists_ordered.choose = _ from
-          isPrefix_unique exists_ordered.choose_spec ordered]
+          EventOrder.Cut.IsPrefix.unique exists_ordered.choose_spec ordered]
         exact decoded
       have intended : ProtocolState.IntendedFor owner setup.program point := by
         rcases holds _ decoded with intended | owed

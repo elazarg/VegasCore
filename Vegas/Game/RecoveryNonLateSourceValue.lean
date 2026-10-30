@@ -160,7 +160,7 @@ theorem nativeComparison_local_phase_value_sub_le_of_boundary_values [Fintype (R
     rintro (⟨control, state, next⟩ | unclear)
     · rw [current] at state
       cases Option.some.inj state
-      have := isPrefix_unique next ordered
+      have := EventOrder.Cut.IsPrefix.unique next ordered
       omega
     · exact unclear (by rw [current]; exact clear)
   have running : ¬ (NP).terminal history.state := by

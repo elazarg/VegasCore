@@ -143,7 +143,7 @@ theorem lateBinding_badMass
       (nextState ▸ next.trace)
     obtain ⟨found, ⟨residualFound⟩⟩ := protocol_sourceResidual (runtime := runtime)
       (failureProfile setup.program) menu horizon scheduler traceHere _ rfl
-    have foundEq : found = rank := isPrefix_unique residualFound.checkpoint.ordered orderedHere
+    have foundEq : found = rank := EventOrder.Cut.IsPrefix.unique residualFound.checkpoint.ordered orderedHere
     have residual := foundEq ▸ residualFound
     cases choice with
     | none => simp at encoded

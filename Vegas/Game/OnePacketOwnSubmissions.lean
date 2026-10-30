@@ -202,7 +202,7 @@ theorem onePacket_submission_atTurn {horizon : Nat}
   by_cases completed : named ∈ execution.application.config.cut.completed
   · obtain ⟨recordRank, ⟨recordResidual⟩, record⟩ :=
       actorRecord_history (runtime := runtime) profile horizon scheduler trace
-    have sameRank := isPrefix_unique recordResidual.checkpoint.ordered residual.checkpoint.ordered
+    have sameRank := EventOrder.Cut.IsPrefix.unique recordResidual.checkpoint.ordered residual.checkpoint.ordered
     subst sameRank
     rcases record named completed who actor with
       ⟨message, onLedger, _, messageNamed, messageSender⟩ | owed
@@ -344,7 +344,7 @@ theorem onePacket_ownSubmissionsAtTurn {horizon : Nat}
     OwnSubmissionsAtTurn setup leaks control.execution who := by
   obtain ⟨recordRank, ⟨residual⟩, record⟩ := ownTurnRecord_history (runtime := runtime) bounds
     (failureProfile setup.program) horizon scheduler trace control rfl
-  have sameRank := isPrefix_unique residual.checkpoint.ordered ordered
+  have sameRank := EventOrder.Cut.IsPrefix.unique residual.checkpoint.ordered ordered
   subst sameRank
   intro entry member event submitted
   rcases record who entry member event submitted with turn | owed

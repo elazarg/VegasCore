@@ -136,14 +136,6 @@ def readoutExclusion
   (sourceReadout setup runtime leaks final.state,
     exclusionBase setup runtime parameter utility excludedPayoff leaks final.state)
 
-/-- The intended typed readout of an intended history, with the exclusion
-payoff it determines. -/
-def intendedReadoutExclusion (final : setup.intendedProtocol.History) :
-    Option (State L setup.program.terminalCtx) × (Player → ℝ) :=
-  (setup.protocolReadout final.state,
-    exclusionReadoutUtility setup parameter utility excludedPayoff
-      (setup.protocolReadout final.state))
-
 /-- **The readout and exclusion law under trembles.** If as-if-honest play has
 the intended law of typed readouts, the joint law of typed readout and native
 exclusion payoff of every profile dominating as-if-honest play with retention

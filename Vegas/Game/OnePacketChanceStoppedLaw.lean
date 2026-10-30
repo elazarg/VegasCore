@@ -221,7 +221,7 @@ theorem counted_chance_stopped_configLaw
       rw [state, Option.some.injEq] at otherState
       subst otherState
       rw [equal] at nextPrefix
-      have := isPrefix_unique ordered nextPrefix
+      have := EventOrder.Cut.IsPrefix.unique ordered nextPrefix
       omega
     · exact failure (by simpa only [state, ReactiveApplication.stateInvariant] using clear)
     · rw [state] at ended
@@ -286,7 +286,7 @@ theorem counted_chance_stopped_configLaw
         have currentOrdered : next.execution.application.config.cut.IsPrefix rank := by
           rw [equal]
           exact ordered
-        have sameRank := isPrefix_unique foundOrdered currentOrdered
+        have sameRank := EventOrder.Cut.IsPrefix.unique foundOrdered currentOrdered
         subst sameRank
         obtain ⟨joint, realized⟩ := onePacket_step_transition (runtime := runtime) bounds players
           ended member

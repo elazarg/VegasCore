@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryExclusionPayoff
+import Vegas.Game.NativeExitContinuation
 import GameTheory.Math.Probability.Bounds
 
 /-! # Only foreign first exclusions contribute continuation error

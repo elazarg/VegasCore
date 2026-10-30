@@ -264,15 +264,22 @@ def intendedMenu (who : Player) : setup.ProtocolView who → Set (Option (OwnAct
   | none => {choice | choice = none}
   | some view => {choice | ProtocolView.intendedMenu who setup.program view choice}
 
-theorem intendedMenu_adequate (who : Player) {state : setup.ProtocolState}
+/-- The intended menu describes the same legal intended choices inside every
+binding admission interface. -/
+theorem intendedMenu_adequate (admission : CommitmentInterface setup.program)
+    (who : Player) {state : setup.ProtocolState}
     (trace : setup.intendedProtocol.Trace state) (choice : Option (OwnAction Player L)) :
     choice ∈ setup.intendedMenu who
-        ((setup.informationModel (CommitmentInterface.values setup.program)).infoOf who
-          (restrictAvailable.trace trace)) ↔
+        ((setup.informationModel admission).infoOf who
+          (restrictAvailable.trace (E := setup.executionProtocol admission)
+            (included := setup.intendedAvailable_subset admission)
+            (progress := setup.intendedProgress admission) trace)) ↔
       LegalOption setup.intendedProtocol state who choice := by
-  rw [show (setup.informationModel (CommitmentInterface.values setup.program)).infoOf who
-      (restrictAvailable.trace trace) = setup.protocolObserve who state from
-    setup.protocol_info _ who _]
+  rw [show (setup.informationModel admission).infoOf who
+      (restrictAvailable.trace (E := setup.executionProtocol admission)
+        (included := setup.intendedAvailable_subset admission)
+        (progress := setup.intendedProgress admission) trace) = setup.protocolObserve who state from
+    setup.protocol_info admission who _]
   cases state with
   | none =>
       cases choice with
@@ -286,7 +293,7 @@ theorem intendedMenu_adequate (who : Player) {state : setup.ProtocolState}
 interface, offering only predicted values at commits and opening at reveals. -/
 def intendedModel : InformationModel setup.intendedProtocol :=
   (setup.informationModel (CommitmentInterface.values setup.program)).restrictMenu
-    setup.intendedMenu setup.intendedMenu_adequate
+    setup.intendedMenu (setup.intendedMenu_adequate (CommitmentInterface.values setup.program))
 
 theorem intendedMenu_subset (admission : CommitmentInterface setup.program) (who : Player)
   (view : setup.ProtocolView who) :
@@ -307,28 +314,7 @@ def intendedRestriction (admission : CommitmentInterface setup.program) :
     (available := setup.intendedAvailable)
     (included := setup.intendedAvailable_subset admission)
     (progress := setup.intendedProgress admission)
-    setup.intendedMenu
-    (by
-      intro who state trace choice
-      rw [show (setup.informationModel admission).infoOf who
-        (restrictAvailable.trace trace) = setup.protocolObserve who state from
-          setup.protocol_info admission who _]
-      have adequate := setup.intendedMenu_adequate who trace choice
-      rw [show (setup.informationModel (CommitmentInterface.values setup.program)).infoOf
-        who (restrictAvailable.trace
-          (E := setup.executionProtocol (CommitmentInterface.values setup.program))
-          (included := setup.intendedAvailable_subset
-            (CommitmentInterface.values setup.program))
-          (progress := setup.intendedProgress (CommitmentInterface.values setup.program)) trace) =
-            setup.protocolObserve who state from
-          setup.protocol_info _ who _] at adequate
-      exact adequate)
-    (by
-      intro who view choice intended
-      cases view with
-      | none => exact intended
-      | some view =>
-          exact ProtocolView.intendedMenu_subset who setup.program admission view choice intended)
+    setup.intendedMenu (setup.intendedMenu_adequate admission) (setup.intendedMenu_subset admission)
 
 
 end Setup

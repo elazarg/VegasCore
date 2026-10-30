@@ -2,6 +2,7 @@
 
 import Vegas.Game.IntendedPreservation
 import Vegas.Game.RevealServicePayoffs
+import Interaction.ReactiveNormalHistory
 
 /-! # The exclusion payoff on the supplied runtime
 
@@ -10,7 +11,8 @@ payoff, and every other player its utility of the parameter and public outcome
 (`Vegas.SourceProgram.exclusionUtility`). The same payoff is read on terminal
 source configurations (`Vegas.exclusionTerminalUtility`), on typed readouts, zero
 without one (`Vegas.exclusionReadoutUtility`), and on native protocol states of
-the supplied runtime through their typed readout (`Vegas.exclusionBase`). The
+the supplied runtime (`Vegas.exclusionBase`). Public default fixes the native
+payoff even when the service horizon ends without a terminal readout. The
 readout version is the utility on the outcome type shared by the intended game
 (`Vegas.SourceProgram.Setup.protocolReadout`) and the runtime
 (`Vegas.sourceReadout`).
@@ -56,6 +58,13 @@ def exclusionReadoutUtility (readout : Option (Config Player L setup.program.ter
   readout.elim 0 fun terminal =>
     exclusionTerminalUtility setup parameter utility excludedPayoff terminal who
 
+/-- An intended history's full source configuration and fixed-exit payoff. -/
+def intendedReadoutExclusion (final : setup.intendedProtocol.History) :
+    Option (Config Player L setup.program.terminalCtx) × (Player → ℝ) :=
+  (setup.protocolReadout final.state,
+    exclusionReadoutUtility setup parameter utility excludedPayoff
+      (setup.protocolReadout final.state))
+
 /-- A publicly defaulted player receives exactly its declared exit payoff. -/
 theorem exclusionTerminalUtility_of_defaulted
     {terminal : Config Player L setup.program.terminalCtx}
@@ -97,33 +106,61 @@ theorem exclusionReadoutUtility_mem_Icc (lower upper : Player → ℝ)
 
 variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-/-- The exclusion payoff of a native protocol state of the supplied runtime: the
-exclusion payoff of its typed terminal readout, zero without one. -/
-abbrev exclusionBase : (application setup runtime leaks).ProtocolState → Player → ℝ :=
-  baseUtility setup runtime leaks (exclusionTerminalUtility setup parameter utility excludedPayoff)
+/-- Public default fixes the native exit payoff immediately. Active players
+receive their terminal readout utility, or zero while no readout is available. -/
+def exclusionBase : (application setup runtime leaks).ProtocolState → Player → ℝ
+  | none, _ => 0
+  | some control, who =>
+      if who ∈ control.execution.application.config.defaulted then excludedPayoff who
+      else exclusionReadoutUtility setup parameter utility excludedPayoff
+        (sourceReadout setup runtime leaks (some control)) who
 
-/-- The native exclusion payoff is the readout payoff of the typed readout. -/
-theorem exclusionBase_eq_readout (state : (application setup runtime leaks).ProtocolState)
-    (who : Player) :
-    exclusionBase setup runtime parameter utility excludedPayoff leaks state who =
-      exclusionReadoutUtility setup parameter utility excludedPayoff
-        (sourceReadout setup runtime leaks state) who := rfl
-
-/-- A complete native readout retains the fixed exit utility of every publicly
-defaulted player, including a binding omission without any failed reveal. -/
+/-- Public default fixes exit utility without a source-completion premise. -/
 theorem exclusionBase_of_defaulted
     (control : (application setup runtime leaks).Control)
-    (terminal : Config Player L setup.program.terminalCtx)
-    (read : sourceReadout setup runtime leaks (some control) = some terminal)
     (who : Player) (defaulted : who ∈ control.execution.application.config.defaulted) :
     exclusionBase setup runtime parameter utility excludedPayoff leaks (some control) who =
       excludedPayoff who := by
-  change (sourceReadout setup runtime leaks (some control)).elim 0 _ = _
-  rw [read]
-  apply exclusionTerminalUtility_of_defaulted
-  change who ∈ terminal.defaults.defaulted
-  rw [serviceSourceReadout_defaults setup .sequential runtime.deadline leaks control terminal read]
-  exact defaulted
+  simp only [exclusionBase, defaulted, ite_true]
+
+/-- Active players use the utility of the actual terminal source readout. -/
+theorem exclusionBase_of_not_defaulted
+    (control : (application setup runtime leaks).Control)
+    (who : Player) (active : who ∉ control.execution.application.config.defaulted) :
+    exclusionBase setup runtime parameter utility excludedPayoff leaks (some control) who =
+      exclusionReadoutUtility setup parameter utility excludedPayoff
+        (sourceReadout setup runtime leaks (some control)) who := by
+  simp only [exclusionBase, active, ite_false]
+
+/-- A successful full readout makes native and source exit utility agree. -/
+theorem exclusionBase_eq_readout_of_readout
+    (state : (application setup runtime leaks).ProtocolState)
+    (terminal : Config Player L setup.program.terminalCtx)
+    (read : sourceReadout setup runtime leaks state = some terminal) (who : Player) :
+    exclusionBase setup runtime parameter utility excludedPayoff leaks state who =
+      exclusionReadoutUtility setup parameter utility excludedPayoff
+        (sourceReadout setup runtime leaks state) who := by
+  cases state with
+  | none => cases read
+  | some control =>
+      by_cases defaulted : who ∈ control.execution.application.config.defaulted
+      · rw [exclusionBase_of_defaulted setup runtime parameter utility excludedPayoff leaks
+          control who defaulted, read]
+        symm
+        apply exclusionTerminalUtility_of_defaulted
+        change who ∈ terminal.defaults.defaulted
+        rw [serviceSourceReadout_defaults setup .sequential runtime.deadline leaks control
+          terminal read]
+        exact defaulted
+      · exact exclusionBase_of_not_defaulted setup runtime parameter utility excludedPayoff
+          leaks control who defaulted
+
+/-- Submission normalization retains the configuration and its native exit utility. -/
+theorem exclusionBase_normalization (state : (application setup runtime leaks).ProtocolState) :
+    exclusionBase setup runtime parameter utility excludedPayoff leaks
+        ((runtime.reactiveNormalization leaks).state state) =
+      exclusionBase setup runtime parameter utility excludedPayoff leaks state := by
+  cases state <;> rfl
 
 /-- **Scheduler-independent bounds.** Bounds on the utility and the exclusion
 payoff bound the native exclusion payoff at every protocol state. -/
@@ -133,9 +170,19 @@ theorem exclusionBase_mem_Icc (lower upper : Player → ℝ)
     (state : (application setup runtime leaks).ProtocolState) (who : Player) :
     exclusionBase setup runtime parameter utility excludedPayoff leaks state who ∈
       Set.Icc (min 0 (min (excludedPayoff who) (lower who)))
-        (max 0 (max (excludedPayoff who) (upper who))) :=
-  exclusionReadoutUtility_mem_Icc setup parameter utility excludedPayoff lower upper lower_le
-    le_upper _ who
+        (max 0 (max (excludedPayoff who) (upper who))) := by
+  cases state with
+  | none => exact ⟨min_le_left _ _, le_max_left _ _⟩
+  | some control =>
+      by_cases defaulted : who ∈ control.execution.application.config.defaulted
+      · rw [exclusionBase_of_defaulted setup runtime parameter utility excludedPayoff leaks
+          control who defaulted]
+        exact ⟨(min_le_right _ _).trans (min_le_left _ _),
+          (le_max_left _ _).trans (le_max_right _ _)⟩
+      · rw [exclusionBase_of_not_defaulted setup runtime parameter utility excludedPayoff leaks
+          control who defaulted]
+        exact exclusionReadoutUtility_mem_Icc setup parameter utility excludedPayoff lower upper
+          lower_le le_upper _ who
 
 end Payoff
 

@@ -335,7 +335,7 @@ theorem onePacket_silent_of_pending (horizon : Nat)
   have facts := settledFacts_history (initialLaw setup) horizon scheduler trace
   obtain ⟨recordRank, ⟨residual⟩, record⟩ :=
     actorRecord_history (runtime := runtime) (failureProfile setup.program) horizon scheduler trace
-  have sameRank := isPrefix_unique ordered residual.checkpoint.ordered
+  have sameRank := EventOrder.Cut.IsPrefix.unique ordered residual.checkpoint.ordered
   subst sameRank
   set envelope := runtime.localEnvelope leaks other (control.execution.recall other)
     (control.execution.observe app other) material with envelopeEq

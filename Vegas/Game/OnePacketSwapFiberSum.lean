@@ -216,7 +216,7 @@ theorem replay_of_regular
   change decodedPoint setup _ = _
   unfold decodedPoint
   rw [dite_eq_left_of_eq_true (eq_true exists_ordered), show exists_ordered.choose = rank from
-    isPrefix_unique exists_ordered.choose_spec ordered]
+    EventOrder.Cut.IsPrefix.unique exists_ordered.choose_spec ordered]
 
 /-- The class of regular histories of the site whose replay projection is a
 given intended history. -/

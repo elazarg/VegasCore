@@ -78,7 +78,7 @@ theorem decodedPoint_eq_of_isPrefix {config : (graph setup).Config} {rank : Nat}
   have exists_ordered : ∃ rank, config.cut.IsPrefix rank := ⟨rank, ordered⟩
   unfold decodedPoint
   rw [dite_eq_left_of_eq_true (eq_true exists_ordered), show exists_ordered.choose = rank from
-    isPrefix_unique exists_ordered.choose_spec ordered]
+    EventOrder.Cut.IsPrefix.unique exists_ordered.choose_spec ordered]
 
 omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
 /-- A binding output read at its own type is not a failure exactly when its

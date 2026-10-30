@@ -147,19 +147,21 @@ The ambient public-record type admits impossible histories. Utility-range ports
 must use their actual execution domain or a bounded extension outside it;
 boundedness on extra impossible records must not become a hidden new premise.
 
-[IntendedPreservation](../Vegas/Game/IntendedPreservation.lean) checks canonical
-fixed-exit sequential equilibrium preservation under every sitewise binding
-admission. It uses the declared exit-floor comparison on actual intended
-terminal readouts, with no payoff-spread premise. The source assessment extends
-the intended strategy, preserves the joint full-readout/payoff law, and has no
-public default or failed reveal on its equilibrium paths. Its deviation proof
-uses actual trace provenance to turn owed failure into terminal public default.
+[IntendedPreservation](../Vegas/Game/IntendedPreservation.lean) and
+[IntendedNash](../Vegas/Game/IntendedNash.lean) check canonical fixed-exit
+sequential and approximate Nash equilibrium preservation under every sitewise
+binding admission. They use the declared exit-floor comparison on actual
+intended terminal readouts, with no payoff-spread premise. The sequential
+assessment extends the intended strategy; every extending source profile
+preserves the intended Nash guarantee with the same approximation error.
+Both results preserve the joint full-readout/payoff law and have no public
+default or failed reveal on equilibrium paths. Their deviation proof uses actual
+trace provenance to turn owed failure into terminal public default.
 It does not assert that every source equilibrium is clean when exit payoffs tie
 with ordinary payoffs.
 
-The optional count-penalty preservation results in that module and
-[IntendedNash](../Vegas/Game/IntendedNash.lean) bound the payoff spread only over
-terminal legal source histories; impossible public records and unsupported
+The optional count-penalty preservation results in those modules bound the
+payoff spread only over terminal legal source histories; impossible public records and unsupported
 parameters need no bound. They do not infer a bound on a freely declared exit
 value. Native strategic preservation and settlement remain separate checks.
 

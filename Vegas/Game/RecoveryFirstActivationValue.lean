@@ -145,7 +145,7 @@ theorem nativeComparison_firstActivation_value_lower_of_counted_service [Fintype
     rintro (⟨other, state, nextPrefix⟩ | failure)
     · rw [current] at state
       cases Option.some.inj state
-      have := isPrefix_unique nextPrefix ordered
+      have := EventOrder.Cut.IsPrefix.unique nextPrefix ordered
       omega
     · exact failure (by
         rw [current]

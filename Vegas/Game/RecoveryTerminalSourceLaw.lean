@@ -67,7 +67,7 @@ theorem terminalPrefix_readout_law [Fintype Player] (bounds : MessageBounds (gra
     scheduler start.trace
     control state
   have rankEq : rank = (graph setup).order.eventCount :=
-    isPrefix_unique residual.checkpoint.ordered ordered
+    EventOrder.Cut.IsPrefix.unique residual.checkpoint.ordered ordered
   subst rank
   have decoded := residual.decode
   have stopped := decodeSourcePrefix?_terminal setup.program _ _ _ _ _ _ _ decoded

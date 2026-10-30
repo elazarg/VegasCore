@@ -133,7 +133,7 @@ theorem counted_stopped_boundary_of_intended
   have initialPending : PendingAt setup runtime leaks rank control.execution := by
     obtain ⟨found, foundOrdered, seen⟩ := pendingAt_history (runtime := runtime)
       ((menu).toRawTrace (initialLaw setup) horizon scheduler (current ▸ start.trace))
-    have same := isPrefix_unique foundOrdered ordered
+    have same := EventOrder.Cut.IsPrefix.unique foundOrdered ordered
     subst same
     exact ⟨ordered, seen⟩
   have preserved : ∀ history, ¬ stopped history → ¬ (E).terminal history.state →
@@ -166,7 +166,7 @@ theorem counted_stopped_boundary_of_intended
       · obtain ⟨other, otherState, nextPrefix⟩ := halted
         rw [lastState, Option.some.injEq] at otherState
         subst otherState
-        have := isPrefix_unique pending.1 nextPrefix
+        have := EventOrder.Cut.IsPrefix.unique pending.1 nextPrefix
         omega
       · exact (failure (by simpa only [lastState, ReactiveApplication.stateInvariant] using
           clear)).elim

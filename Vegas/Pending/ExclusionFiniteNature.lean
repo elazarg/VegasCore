@@ -1,44 +1,42 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionPrefix
+import Vegas.Pending.ReactiveRuntime
 
-/-! # Finite native nature from finite recovery nature
+/-! # Finite nature of the native application
 
-The two applications use the same pending-observation law. Native graph
-sampling already has finite support independently of automatic service. The
-initial prior and scheduler are direct images, so no drain-image inversion is
-needed.
+The graph environment and automatic drain already have finite-support laws.
+Thus finite native nature requires exactly finite-support pending observations,
+initial draws and scheduler decisions. No finiteness of payloads, states or
+observation carriers is required.
 -/
 
 noncomputable section
 
-namespace Vegas.EventGraphRuntime.RecoveryProjection
+namespace Vegas.EventGraphRuntime
 
-open Interaction GameTheory.Protocol GameTheory.Math.Probability
+open Interaction
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L} (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-  (initial : PMF (RecoveryState graph))
-  (scheduler : (runtime.recoveryApplication leaks).Scheduler)
 
-/-- The native comparison scheduler is finitely branching whenever the actual
-recovery nature is. Native chance support is proved before automatic service. -/
-instance nativeSchedulerFiniteNature
-    [(runtime.recoveryApplication leaks).FiniteNature initial scheduler] :
-    (runtime.reactiveApplication leaks).FiniteNature (initial.map RecoveryState.native)
-      (nativeScheduler runtime leaks scheduler) where
-  observePending_finite who pending :=
-    ReactiveApplication.FiniteEnvironment.observePending_finite
-      (app := runtime.recoveryApplication leaks) who pending
-  environment_finite := runtime.environmentStep_support_finite
-  initial_finite := by
-    rw [PMF.support_map]
-    exact (ReactiveApplication.FiniteNature.initial_finite
-      (app := runtime.recoveryApplication leaks) scheduler).image _
-  scheduler_finite past view := by
-    rw [nativeScheduler, PMF.support_map]
-    exact (ReactiveApplication.FiniteNature.scheduler_finite
-      (app := runtime.recoveryApplication leaks) initial _ _).image _
+/-- The native environment contributes no additional finiteness premise beyond
+those on actual pending observations, initialization and scheduling laws. -/
+theorem reactiveApplication_finiteNature_iff
+    (initial : PMF (runtime.reactiveApplication leaks).State)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler) :
+    (runtime.reactiveApplication leaks).FiniteNature initial scheduler ↔
+      leaks.FiniteSupport ∧ initial.support.Finite ∧
+        ∀ past view, (scheduler past view).support.Finite := by
+  constructor
+  · intro nature
+    exact ⟨⟨nature.toFiniteEnvironment.observePending_finite⟩,
+      nature.initial_finite, nature.scheduler_finite⟩
+  · rintro ⟨observations, initialFinite, schedulerFinite⟩
+    let := observations
+    exact
+      { toFiniteEnvironment := inferInstance
+        initial_finite := initialFinite
+        scheduler_finite := schedulerFinite }
 
-end Vegas.EventGraphRuntime.RecoveryProjection
+end Vegas.EventGraphRuntime

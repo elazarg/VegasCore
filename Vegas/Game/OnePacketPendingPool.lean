@@ -432,7 +432,7 @@ theorem onePacket_pending_of_forced (horizon : Nat)
             obtain ⟨recordRank, ⟨residual⟩, record⟩ :=
               publicationRecord_history (runtime := runtime) (failureProfile setup.program)
                 horizon scheduler trace
-            have sameRank := isPrefix_unique ordered residual.checkpoint.ordered
+            have sameRank := EventOrder.Cut.IsPrefix.unique ordered residual.checkpoint.ordered
             subst sameRank
             rcases record with failed | accepted
             · exact forcedPoint.not_someRevealFailed (failed point decoded)

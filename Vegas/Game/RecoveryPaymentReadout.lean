@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryExclusionPayoff
+import Vegas.Game.NativeExitContinuation
 import Vegas.Game.ProgramPayoffs
 import Vegas.Pending.ExclusionPrefix
 import GameTheoryExtensions.Analysis.QuasilinearSettlement

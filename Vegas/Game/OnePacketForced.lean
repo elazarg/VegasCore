@@ -359,7 +359,7 @@ theorem decodedState_of_decode (profile : BehavioralProfile setup.program)
     protocol_sourceResidual (runtime := runtime) profile menu horizon scheduler history.trace
       control current
   rw [current]
-  have same := isPrefix_unique ordered residual.checkpoint.ordered
+  have same := EventOrder.Cut.IsPrefix.unique ordered residual.checkpoint.ordered
   subst same
   refine ⟨rank, ⟨residual⟩, fun other read => ?_⟩
   rw [decoded, Option.some.injEq] at read

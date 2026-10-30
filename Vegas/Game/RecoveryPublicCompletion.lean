@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.RecoveryOnePacketComponents
-import Vegas.Game.RecoveryExclusionPayoff
+import Vegas.Game.NativeExitContinuation
 import GameTheory.Analysis.Protocol.SequentialOneShot
 import Interaction.ReactiveOwnPlay
 

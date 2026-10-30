@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceCheckpoint
 import Vegas.Compile.EventGraphReadout
+import Vegas.Source.SetupProtocolEvaluation
 
 /-! # Reading full source protocol positions from native checkpoints
 
@@ -177,6 +178,13 @@ abbrev sourceServicePrefix? (setup : Setup (Player := Player) (L := L)) :
     Nat → (graph setup).Config → setup.ProtocolState :=
   serviceSourcePrefix? setup .sequential
 
+/-- Continue the sole source evaluator from the actual decoded native prefix. -/
+def sourceContinuation (setup : Setup (Player := Player) (L := L))
+    {mode : EventGraph.ExecutionMode} (profile : BehavioralProfile setup.program) (rank : Nat)
+    (config : (serviceGraph setup mode).Config) :
+    PMF (Option (Config Player L setup.program.terminalCtx)) :=
+  (setup.continuationLaw profile (serviceSourcePrefix? setup mode rank config)).map some
+
 theorem serviceSourcePrefix?_initial (setup : Setup (Player := Player) (L := L))
     {mode : EventGraph.ExecutionMode} (initial : State L setup.context) : serviceSourcePrefix? setup
     mode 0
@@ -296,5 +304,61 @@ theorem SourcePrefixCheckpoint.decode {setup : Setup (Player := Player) (L := L)
           | inr rest =>
               rw [decodeSourcePrefix?_reveal, ih next _ _ _ _ (offset + 1) rest native related]
               rfl
+
+/-- Reading a complete instruction prefix returns the same full configuration
+as terminal cell decoding, with the actual private and public histories retained. -/
+theorem decodeSourcePrefix?_terminal_readout
+    {Field : Type} [DecidableEq Field] {layout : Field → EventGraph.EventField Player L}
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames) (refs : ContextRefs layout Γ)
+    (registry : Registry Γ) (revelations : Revelations Γ)
+    (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
+    (store : EventGraph.Store layout) (history : SourceProgram.History Player L)
+    (defaults : DefaultHistory Player) :
+    (decodeSourcePrefix? program refs registry revelations outputs (eventCount program)
+      store history defaults).bind (ProtocolState.readout program) =
+        (decodeState? (terminalRefsWith program refs outputs) store).map fun state =>
+          ⟨state, finalRegistry program registry, finalRevelations program revelations,
+            history, defaults⟩ := by
+  induction program with
+  | ret payoffs =>
+      simp only [eventCount, decodeSourcePrefix?, terminalRefsWith]
+      cases decodeState? refs store <;> rfl
+  | sample name fresh distribution next ih =>
+      simp only [eventCount, decodeSourcePrefix?, terminalRefsWith, Option.bind_map]
+      exact ih _ _ _ _
+  | commit name owner fresh guard next ih =>
+      simp only [eventCount, decodeSourcePrefix?, terminalRefsWith, Option.bind_map]
+      exact ih _ _ _ _
+  | reveal published owner name fresh binding unresolved next ih =>
+      simp only [eventCount, decodeSourcePrefix?, terminalRefsWith, Option.bind_map]
+      exact ih _ _ _ _
+
+/-- A complete native prefix and terminal compilation use the same full source
+configuration decoder in every dependency mode. -/
+theorem serviceSourcePrefix?_terminal_readout
+    (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
+    (config : (serviceGraph setup mode).Config) :
+    setup.protocolReadout (serviceSourcePrefix? setup mode (eventCount setup.program) config) =
+      decodeConfig? setup.program setup.program
+        (ContextRefs.initial setup.context (outputLayout setup.program))
+        (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
+        (config.history.map (setup.eventGraph.fromModeCompletion mode)) := by
+  rw [serviceSourcePrefix?, Setup.protocolReadout]
+  rw [decodeSourcePrefix?_terminal_readout]
+  simp only [decodeConfig?, EventGraph.Config.defaults, EventGraph.Completion.defaults,
+    List.map_map]
+  rfl
+
+/-- The sequential native prefix reader agrees with the full terminal compiler
+readout, retaining all source configuration fields. -/
+theorem sourceServicePrefix?_terminal_readout
+    (setup : Setup (Player := Player) (L := L)) (config : (graph setup).Config) :
+    setup.protocolReadout (sourceServicePrefix? setup (eventCount setup.program) config) =
+      decodeConfig? setup.program setup.program
+        (ContextRefs.initial setup.context (outputLayout setup.program))
+        (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
+        (config.history.map (setup.eventGraph.fromModeCompletion .sequential)) :=
+  serviceSourcePrefix?_terminal_readout setup .sequential config
 
 end Vegas

@@ -134,7 +134,7 @@ theorem intendedReached_of_forced_debtFree (wellFormed : setup.WellFormed) {who 
   obtain ⟨decodedRank, ⟨residual⟩, holds⟩ := decodedState_intended_or_owes (runtime := runtime)
     wellFormed
     (failureProfile setup.program) menu horizon scheduler trace _ rfl
-  have sameRank := isPrefix_unique residual.checkpoint.ordered ordered
+  have sameRank := EventOrder.Cut.IsPrefix.unique residual.checkpoint.ordered ordered
   subst sameRank
   have decoded := residual.decode
   generalize residual.lift (ProtocolState.entry residual.program residual.source) = point

@@ -120,7 +120,7 @@ theorem forcedState_iff_decodedPoint
     refine ⟨point, ?_, forced⟩
     unfold decodedPoint
     rw [dite_eq_left_of_eq_true (eq_true exists_), show exists_.choose = rank from
-      isPrefix_unique exists_.choose_spec ordered]
+      EventOrder.Cut.IsPrefix.unique exists_.choose_spec ordered]
     exact decoded
   · rintro ⟨point, decoded, forced⟩
     unfold decodedPoint at decoded

@@ -22,6 +22,18 @@ def IsPrefix (cut : order.Cut) (length : Nat) : Prop :=
 theorem empty_isPrefix (order : EventOrder) : (empty order).IsPrefix 0 := by
   simp [IsPrefix, empty]
 
+/-- A completed cut determines its numeric prefix length uniquely. -/
+theorem IsPrefix.unique {cut : order.Cut} {first second : Nat}
+    (left : cut.IsPrefix first) (right : cut.IsPrefix second) : first = second := by
+  by_contra different
+  rcases Nat.lt_or_gt_of_ne different with lower | upper
+  · have inside : first < order.eventCount := by have := right.1; omega
+    have completed := (right.2 ⟨first, inside⟩).mpr lower
+    exact Nat.lt_irrefl _ ((left.2 ⟨first, inside⟩).mp completed)
+  · have inside : second < order.eventCount := by have := left.1; omega
+    have completed := (left.2 ⟨second, inside⟩).mpr upper
+    exact Nat.lt_irrefl _ ((right.2 ⟨second, inside⟩).mp completed)
+
 /-- The next numeric event is ready at a nonterminal prefix, irrespective of
 which subset of earlier events is a direct dependency. -/
 theorem IsPrefix.ready {cut : order.Cut} {length : Nat}

@@ -57,7 +57,7 @@ The artifact exposes physical `clients` and pending-independent `ledgerClients`
 over the Interaction callback API. Each callback law is supported within a
 finite response menu. Physical policy realization does not enlarge the
 assessment's deviation domain: its menu is
-`Vegas.EventGraphRuntime.Recovery.rawMenu`, built from the configured bounded
+`Vegas.EventGraphRuntime.MessageBounds.rawMenu`, built from the configured bounded
 submissions and known packets. Backtranslation of arbitrary out-of-menu
 Interaction deviations is a separate target.
 

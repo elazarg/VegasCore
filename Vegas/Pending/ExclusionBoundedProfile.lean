@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.ExclusionNativeProfile
-import Vegas.Pending.ExclusionMenuProjection
+import Vegas.Pending.ReactiveOnePacketMenu
 import Interaction.ReactiveResponseEmbedding
 
 /-! # Bounded one-packet profiles at clear native information -/

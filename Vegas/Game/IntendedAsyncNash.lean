@@ -6,7 +6,7 @@ import Vegas.Game.AsyncServiceNash
 /-! # Approximate Nash equilibria of the intended game under a contract builder
 
 Composing Nash preservation for the intended game
-(`Vegas.SourceProgram.Setup.intended_isεNash_preserved`) with the forward
+(`Vegas.SourceProgram.Setup.intended_forfeit_isεNash_preserved`) with the forward
 transfer to turn-counted clients
 (`Vegas.AsyncServiceSpec.isεBestResponse_clientProfile_of_firstTurn_bounds`) and their
 honest execution (`Vegas.sourceServiceClients_clientPolicy_settlement_lawError`), at the
@@ -135,9 +135,18 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
             fun who => (service.setup.protocolReadout final.state).elim 0
               (fun state => utility (service.setup.parameterOutcome parameter state) who)))) := by
   intro forfeited base payoff settle clients firstTurn
-  obtain ⟨sourceNash, _, sourceLaw⟩ := service.setup.intended_isεNash_preserved
+  have supportedRange : service.setup.TerminalPayoffSpread
+      (CommitmentInterface.values service.setup.program) parameter utility forfeit := by
+    intro high low highTerminal lowTerminal who
+    obtain ⟨highFinal, highRead⟩ := service.setup.exists_protocolReadout_of_terminal
+      (CommitmentInterface.values service.setup.program) highTerminal
+    obtain ⟨lowFinal, lowRead⟩ := service.setup.exists_protocolReadout_of_terminal
+      (CommitmentInterface.values service.setup.program) lowTerminal
+    rw [highRead, lowRead]
+    exact range _ _ who
+  obtain ⟨sourceNash, _, sourceLaw⟩ := service.setup.intended_forfeit_isεNash_preserved
     (sourceService_finiteBindingTypes service.setup service.bounds service.values)
-    wellFormed parameter utility forfeit range intended source agrees ε equilibrium
+    wellFormed parameter utility forfeit supportedRange intended source agrees ε equilibrium
   refine ⟨(isεNash_iff_εBestResponse _ _).mpr
     (service.isεBestResponse_clientProfile_of_firstTurn_bounds (CommitmentInterface.values
       service.setup.program) parameter forfeited sample authentic deposit menu timing covered low

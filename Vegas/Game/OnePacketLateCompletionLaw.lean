@@ -63,7 +63,7 @@ theorem completionPoint_eq_none_of_isPrefix {rank : Nat}
   rw [state]
   dsimp only
   rw [ite_eq_right_iff.mpr fun prefixed =>
-    (Nat.succ_ne_self rank (isPrefix_unique prefixed ordered)).elim]
+    (Nat.succ_ne_self rank (EventOrder.Cut.IsPrefix.unique prefixed ordered)).elim]
 
 open Classical in
 /-- A history whose control is not fresh has no completion point. -/
@@ -893,7 +893,7 @@ theorem lateBinding_completionPointLaw
       (nextState ▸ next.trace)
     obtain ⟨found, ⟨residualFound⟩⟩ := protocol_sourceResidual (runtime := runtime)
       (failureProfile setup.program) menu horizon scheduler traceHere _ rfl
-    have foundEq : found = rank := isPrefix_unique residualFound.checkpoint.ordered orderedHere
+    have foundEq : found = rank := EventOrder.Cut.IsPrefix.unique residualFound.checkpoint.ordered orderedHere
     have residual := foundEq ▸ residualFound
     cases choice with
     | none => simp at encoded

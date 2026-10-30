@@ -163,7 +163,7 @@ theorem counted_committed_stop_config
       rw [state] at otherState
       cases Option.some.inj otherState
       rw [stable pending] at prefixed
-      exact Nat.succ_ne_self rank (isPrefix_unique prefixed ordered)
+      exact Nat.succ_ne_self rank (EventOrder.Cut.IsPrefix.unique prefixed ordered)
     · rw [state] at failed
       exact failed (clearPending pending)
     · rw [state] at ended

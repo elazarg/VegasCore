@@ -71,7 +71,7 @@ theorem pending_stop_completed
   have pending : PendingAt setup runtime leaks rank control.execution := by
     obtain ⟨found, foundOrdered, seen⟩ := pendingAt_history (runtime := runtime)
       ((menu).toRawTrace (initialLaw setup) horizon scheduler (current ▸ start.trace))
-    have same := isPrefix_unique foundOrdered ordered
+    have same := EventOrder.Cut.IsPrefix.unique foundOrdered ordered
     subst same
     exact ⟨ordered, seen⟩
   have preserved : ∀ history, ¬ stopped history → ¬ (E).terminal history.state →
@@ -92,7 +92,7 @@ theorem pending_stop_completed
               (nextState ▸ realized) with same | ⟨completed, completedReady, action, sampled⟩
           · exact same
           · have nextPrefix := isPrefix_succ_of_mem_step pending.1 completedReady sampled
-            have := isPrefix_unique pendingNext.1 nextPrefix
+            have := EventOrder.Cut.IsPrefix.unique pendingNext.1 nextPrefix
             omega
         have physical := (reactiveApplication_completionStep runtime leaks).transition
           (initialLaw setup) horizon scheduler before next joint (nextState ▸ realized)
@@ -124,7 +124,7 @@ theorem pending_stop_completed
       · obtain ⟨other, otherState, prefixed⟩ := halted
         rw [state, Option.some.injEq] at otherState
         subst otherState
-        have := isPrefix_unique pendingNext.1 prefixed
+        have := EventOrder.Cut.IsPrefix.unique pendingNext.1 prefixed
         omega
       · exact (failed (by
           simpa only [state, ReactiveApplication.stateInvariant] using nextClear)).elim

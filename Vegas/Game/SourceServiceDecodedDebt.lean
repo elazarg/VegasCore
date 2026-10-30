@@ -1,20 +1,16 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.SourceServiceReachedDecoding
+import Vegas.Pending.ReactiveGraphSteps
+import Vegas.Source.FailedBindingDeviation
 
-/-! # Step-closed properties read through the native decoding
+/-! # Step-closed properties at actual native endpoints
 
-Every native configuration reached under any players and any scheduler decodes
-to a point of the source program at its completed prefix
-(`Vegas.SourceResidual`). The decoding advances by one source step whenever the
-native configuration completes an event (`Vegas.SourceResidual.step`), whatever
-action completes it: a sample, any binding including a failed one, or any
-disclosure decision. A property of source points closed under every source
-step therefore persists along every native protocol transition, under arbitrary
-responses and scheduler choices (`Vegas.decodedHolds_transition`).
-
-A source debt is such a property
-(`Vegas.SourceProgram.ProtocolState.indebted_step`).
+Every supported native transition follows a finite path of the sole graph
+executor, including automatic completions after public default. Source residuals
+transport every step-closed source property along that path to the decoding of
+its actual endpoint. Initialization and all subsequent transitions retain the
+full source configuration and public default history without a second reader.
 -/
 
 noncomputable section
@@ -49,29 +45,42 @@ def DecodedHolds (property : ProtocolState setup.program → Prop) (rank : Nat)
     (config : (graph setup).Config) : Prop :=
   ∀ state, sourceServicePrefix? setup rank config = some state → property state
 
-/-- A configuration step keeps a step-closed property of the decoding, at
-whichever prefix the step reaches. -/
-theorem SourceResidual.decodedHolds_configStep
+/-- One actual graph completion keeps a step-closed property at its decoded
+source successor. The successor rank belongs only to this single completion. -/
+theorem SourceResidual.decodedHolds_step
+    {property : ProtocolState setup.program → Prop} (closed : StepClosed setup property)
+    {rank : Nat} {before : (graph setup).Config}
+    (residual : SourceResidual setup profile rank before)
+    (holds : DecodedHolds property rank before)
+    (event : (graph setup).EventId) (ready : before.cut.Ready event)
+    (action : (graph setup).Action event) (after : (graph setup).Config)
+    (member : after ∈ (before.step event ready action).support) :
+    ∃ _next : SourceResidual setup profile (rank + 1) after,
+      DecodedHolds property (rank + 1) after := by
+  obtain ⟨successor, reached⟩ := residual.step event ready action after member
+  refine ⟨successor, ?_⟩
+  intro state decoded
+  rw [successor.decode, Option.some.injEq] at decoded
+  subst decoded
+  exact closed _ _ _ (holds _ residual.decode) reached
+
+/-- A finite actual graph path transports a source property to its actual
+endpoint prefix, without a bound of one completion per native transition. -/
+theorem SourceResidual.decodedHolds_path
     {property : ProtocolState setup.program → Prop} (closed : StepClosed setup property)
     {rank : Nat} {before after : (graph setup).Config}
     (residual : SourceResidual setup profile rank before)
     (holds : DecodedHolds property rank before)
-    (step : ConfigStep setup before after) {next : Nat} (ordered : after.cut.IsPrefix next) :
-    DecodedHolds property next after := by
-  rcases step with same | ⟨event, ready, action, member⟩
-  · subst same
-    rw [isPrefix_unique ordered residual.checkpoint.ordered]
-    exact holds
-  · have advanced : after.cut.IsPrefix (rank + 1) := by
-      rw [before.step_cut event ready action after member]
-      exact residual.checkpoint.ordered.complete_at event ready
-        ((ready_iff_rank setup before rank residual.checkpoint.ordered event).mp ready)
-    rw [isPrefix_unique ordered advanced]
-    obtain ⟨successor, reached⟩ := residual.step event ready action after member
-    intro state decoded
-    rw [successor.decode, Option.some.injEq] at decoded
-    subst decoded
-    exact closed _ _ _ (holds _ residual.decode) reached
+    (path : Relation.ReflTransGen EventGraph.Config.Step before after) :
+    ∃ next, Nonempty (SourceResidual setup profile next after) ∧
+      DecodedHolds property next after := by
+  induction path using Relation.ReflTransGen.head_induction_on generalizing rank with
+  | refl => exact ⟨rank, ⟨residual⟩, holds⟩
+  | @head current middle moved rest ih =>
+      obtain ⟨event, ready, action, member⟩ := moved
+      obtain ⟨next, valid⟩ := residual.decodedHolds_step closed holds event ready action middle
+        member
+      exact ih next valid
 
 variable (setup runtime) in
 /-- An initialized native protocol state whose configuration has a source
@@ -84,33 +93,6 @@ def DecodedState (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket
   | some control => ∃ rank,
       Nonempty (SourceResidual setup profile rank control.execution.application.config) ∧
         DecodedHolds property rank control.execution.application.config
-
-/-- One protocol transition changes the configuration by one configuration
-step, under arbitrary responses and scheduler choices. -/
-theorem transition_configStep
-    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler)
-    (before after : (application setup runtime leaks).Control)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    (reached : some after ∈ ((application setup runtime leaks).transition initial horizon scheduler
-      (some before) joint).support) :
-    ConfigStep setup before.execution.application.config after.execution.application.config := by
-  rcases before with ⟨remaining, current, execution⟩
-  cases current with
-  | some who =>
-      cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp reached)
-      exact Or.inl (runtime.reactive_respond_application leaks execution who _).1
-  | none =>
-      cases remaining with
-      | zero =>
-          cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp reached)
-          exact Or.inl rfl
-      | succ remaining =>
-          obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-          obtain ⟨next, supported, same⟩ := PMF.support_map .. ▸ moved
-          cases Option.some.inj same
-          exact environmentStep_configStep setup leaks execution next command supported
 
 /-- **Decoded properties persist.** A step-closed property of the decoding of an
 initialized native state holds after every protocol transition, under arbitrary
@@ -144,16 +126,9 @@ theorem decodedHolds_transition
                 obtain ⟨next, _, same⟩ := PMF.support_map .. ▸ moved
                 exact ⟨_, same.symm⟩
       obtain ⟨next, rfl⟩ := stays
-      have step := transition_configStep initial horizon scheduler control next joint reached
-      rcases step.prefix rank residual.checkpoint.ordered with same | advanced
-      · refine ⟨rank, residual.configStep step rank ?_, ?_⟩
-        · rw [same]
-          exact residual.checkpoint.ordered
-        · exact residual.decodedHolds_configStep closed decoded step (by
-            rw [same]
-            exact residual.checkpoint.ordered)
-      · exact ⟨rank + 1, residual.configStep step (rank + 1) advanced,
-          residual.decodedHolds_configStep closed decoded step advanced⟩
+      exact residual.decodedHolds_path closed decoded
+        (reactive_protocol_graph_steps runtime leaks initial horizon scheduler control next joint
+          reached)
 
 /-- A step-closed source property initialized on every supported setup draw
 holds at the decoding of every initialized menu history, for any scheduler. -/

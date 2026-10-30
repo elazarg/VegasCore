@@ -931,7 +931,7 @@ theorem committed_sourceKernel
     setup.program)
     menu horizon scheduler traceHere _ rfl
   have foundEq : found = siteRank (runtime := runtime) site.1 :=
-    isPrefix_unique residualFound.checkpoint.ordered ordered
+    EventOrder.Cut.IsPrefix.unique residualFound.checkpoint.ordered ordered
   have residual := foundEq ▸ residualFound
   -- The owner's first step performs the commitment.
   have notStopped : ¬ LateStopped setup runtime leaks bounds horizon scheduler (siteRank (runtime
@@ -940,7 +940,7 @@ theorem committed_sourceKernel
     rintro ⟨control, state, prefixed⟩
     rw [current] at state
     cases Option.some.inj state
-    exact Nat.succ_ne_self _ (isPrefix_unique prefixed ordered)
+    exact Nat.succ_ne_self _ (EventOrder.Cut.IsPrefix.unique prefixed ordered)
   have running : ¬ (menu.protocol (initialLaw setup) horizon scheduler).terminal
       history.1.state := by
     rw [current]

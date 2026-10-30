@@ -179,7 +179,7 @@ theorem unintendedCommitment_stopped_value
     rintro ⟨other, state, nextPrefix⟩
     rw [current] at state
     cases Option.some.inj state
-    have := isPrefix_unique nextPrefix ordered
+    have := EventOrder.Cut.IsPrefix.unique nextPrefix ordered
     omega
   have oneStep : ((N).runBehavioralFrom installed 1 history.1).map History.state =
       PMF.pure (some ⟨remaining, none,

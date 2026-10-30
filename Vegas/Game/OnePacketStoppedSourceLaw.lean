@@ -84,7 +84,7 @@ theorem counted_committed_stop_sourceLaw
     setup.program) menu
     horizon scheduler (current ▸ start.trace) control rfl
   rw [atSent] at residual
-  have sameRank := isPrefix_unique residual.checkpoint.ordered ordered
+  have sameRank := EventOrder.Cut.IsPrefix.unique residual.checkpoint.ordered ordered
   subst sameRank
   have beforeDecoded : decodedPoint setup sent = some point :=
     (decodedPoint_eq_of_isPrefix ordered).trans decoded
@@ -252,7 +252,7 @@ theorem counted_disclosed_stop_sourceLaw
     setup.program) menu
     horizon scheduler (current ▸ start.trace) control rfl
   rw [atSent] at residual
-  have sameRank := isPrefix_unique residual.checkpoint.ordered ordered
+  have sameRank := EventOrder.Cut.IsPrefix.unique residual.checkpoint.ordered ordered
   subst sameRank
   have beforeDecoded : decodedPoint setup sent = some point :=
     (decodedPoint_eq_of_isPrefix ordered).trans decoded
