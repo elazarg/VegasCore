@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.RecoverySequentialCompilation
-import Vegas.Game.RecoveryPaymentReadout
+import Vegas.Game.NativePaymentReadout
 import Vegas.Game.TerminalObservation
 
 /-! # Monetary preservation by the permanent-exclusion runtime
@@ -172,27 +172,9 @@ theorem intended_raw_programPayments_preserved
     intro control supported
     obtain ⟨final, finalSupported, same⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
     exact clear final finalSupported control same
-  have intendedReadouts : ∀ state ∈ targetLaw.support,
-      ∃ history : setup.intendedProtocol.History,
-        read state = setup.protocolReadout history.state := by
-    intro state supported
-    obtain ⟨final, finalSupported, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
-    obtain ⟨payoffs, settled⟩ := (settle final.state).support_nonempty
-    have inJoint : (read final.state, payoffs) ∈
-        ((((raw).information Initial horizon scheduler).runBehavioral
-              target.strategy (2 * horizon + 1)).bind
-          (fun terminal => (settle terminal.state).map
-            (fun receipts => (read terminal.state, receipts)))).support := by
-      rw [PMF.support_bind]
-      refine Set.mem_iUnion₂.mpr ⟨final, finalSupported, ?_⟩
-      exact (PMF.mem_support_map_iff _ _ _).mpr ⟨payoffs, settled, rfl⟩
-    rw [joint] at inJoint
-    obtain ⟨source, _, same⟩ := (PMF.mem_support_map_iff _ _ _).mp inJoint
-    exact ⟨source, (congrArg Prod.fst same).symm⟩
-  have factors := recoveryExclusionBase_valuation_factors (runtime := runtime) (leaks := leaks)
-    parameter
-    wellFormed valuation exitValuation targetLaw cleanSupport intendedReadouts
-  have cash := recovery_jointCashLaw_of_utility_law (runtime := runtime) (leaks := leaks) parameter
+  have factors := exclusionBase_valuation_factors (runtime := runtime) (leaks := leaks)
+    parameter valuation exitValuation targetLaw cleanSupport
+  have cash := jointCashLaw_of_utility_law (runtime := runtime) (leaks := leaks) parameter
     valuation (fun outcome who => setup.program.publicTransfers outcome.2 who)
     exitValuation exitTransfer targetLaw sourceLaw factors observe audit deposit utilityLaw
   have observed := congrArg (PMF.map (fun realized =>

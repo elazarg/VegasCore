@@ -2,6 +2,7 @@
 
 import Vegas.Game.ServiceSettledEvidence
 import Vegas.Game.SourceServiceFreshCall
+import Vegas.Game.SourceServiceFacts
 import Vegas.Pending.ReactiveCanonicalDecision
 import Vegas.Pending.ReactiveServiceConditions
 import Interaction.ReactivePacketEvidence
@@ -101,51 +102,6 @@ theorem PublicStep.completed_mono {before after : EventGraphRuntime.State (servi
   · apply (after.config.history_exact event).mp
     rw [historyEq, List.map_append]
     exact List.mem_append_left _ ((before.config.history_exact event).mpr member)
-
-/-- The facts at a legal history that the settlement invariant uses. -/
-structure LegalFacts (execution : (serviceApplication setup mode deadline leaks).Execution) :
-    Prop where
-  stable : EntryStable (serviceRuntime setup mode deadline) leaks execution
-  eventStable : EntryEventStable (serviceRuntime setup mode deadline) leaks execution
-  storeStable : EntryStoreStable (serviceRuntime setup mode deadline) leaks execution
-  binding : execution.application.BindingInvariant
-  evidence : ((serviceRuntime setup mode deadline).packetEvidence leaks).Sound execution
-  receipts : execution.ReceiptsSound (serviceApplication setup mode deadline leaks) (fun _ => True)
-  serials : execution.network.SerialsBeforeNext
-  unique : execution.network.UniqueIds
-  provenance : execution.Provenance (serviceApplication setup mode deadline leaks)
-  inputs : execution.InputRecall (serviceApplication setup mode deadline leaks)
-
-theorem legalFacts (horizon : Nat)
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (control : (serviceApplication setup mode deadline leaks).Control)
-    (trace :
-        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
-        horizon scheduler).Trace (some control)) :
-    LegalFacts setup leaks control.execution := by
-  obtain ⟨_, provenance, inputs, _, receipts⟩ :=
-    roster_trace_facts setup leaks horizon scheduler trace
-  exact {
-    stable := entryStable_history (serviceRuntime setup mode deadline) leaks
-        (serviceInitialLaw setup mode) horizon scheduler trace
-    eventStable := entryEventStable_history (serviceRuntime setup mode deadline) leaks
-        (serviceInitialLaw setup mode) horizon scheduler trace
-    storeStable := entryStoreStable_history (serviceRuntime setup mode deadline) leaks
-        (serviceInitialLaw setup mode) horizon scheduler trace
-    binding := ((serviceRuntime setup mode deadline).reactiveBindingInvariant leaks).history
-        (serviceInitialLaw setup mode) horizon
-      scheduler (fun state member => by
-        obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
-        exact State.initial_bindingInvariant _) trace
-    evidence := ((serviceRuntime setup mode deadline).packetEvidence leaks).history_sound
-        (serviceInitialLaw setup mode) horizon scheduler trace
-    receipts := receipts
-    serials := (serviceApplication setup mode deadline leaks).serialsBeforeNext_history scheduler
-        (serviceInitialLaw setup mode) horizon trace
-    unique := (serviceApplication setup mode deadline leaks).uniqueIds_history scheduler
-        (serviceInitialLaw setup mode) horizon control trace
-    provenance := provenance
-    inputs := inputs }
 
 private theorem settled_congr {event : (serviceGraph setup mode).EventId} {id : MessageId Player}
     {before after : (serviceApplication setup mode deadline leaks).Execution}

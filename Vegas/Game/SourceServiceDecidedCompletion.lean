@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.SourceServiceTurnSubmissions
+import Vegas.Game.SourceServiceFacts
 import Vegas.Pending.ReactiveBindingResources
 import Interaction.ReactiveRawRoundTrace
 import Vegas.Pending.ReactiveOpeningWindow
@@ -294,14 +295,6 @@ end Completion
 section FirstTurn
 
 variable {setup leaks}
-
-/-- The initial law is the image of initial inputs. -/
-theorem serviceInitialLaw_eq_inputs :
-    serviceInitialLaw setup mode =
-      (setup.initialLaw.map setup.eventInputs).map
-        (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)) := by
-  rw [PMF.map_comp]
-  rfl
 
 /-- The entry a fresh submission appends to its author's recall. -/
 theorem respond_submit_recall (execution : (serviceApplication setup mode deadline leaks).Execution)

@@ -373,7 +373,7 @@ import Vegas.Game.RecoveryOnePacketPreservation
 import Vegas.Game.RecoveryOnePacketRawLaw
 import Vegas.Game.RecoveryOwingOptimality
 import Vegas.Game.RecoveryPaymentPreservation
-import Vegas.Game.RecoveryPaymentReadout
+import Vegas.Game.NativePaymentReadout
 import Vegas.Game.RecoveryPendingCompletion
 import Vegas.Game.RecoveryPendingFailure
 import Vegas.Game.RecoveryPendingValueAffine
@@ -461,6 +461,7 @@ import Vegas.Game.SourceServiceDisclosure
 import Vegas.Game.SourceServiceFactorization
 import Vegas.Game.SourceServiceFailureReadout
 import Vegas.Game.SourceServiceFiniteness
+import Vegas.Game.SourceServiceFacts
 import Vegas.Game.SourceServiceFirstTurnBinding
 import Vegas.Game.SourceServiceFirstTurnMixture
 import Vegas.Game.SourceServiceFirstTurnOpportunity
