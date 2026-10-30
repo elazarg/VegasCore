@@ -2,7 +2,10 @@
 
 import Vegas.Game.SourceServicePolicy
 import Vegas.Pending.ReactiveCanonicalDecision
-import Vegas.Compile.EventGraphDeviation
+import Vegas.Pending.ReactiveSubmissionRecall
+import Vegas.Compile.EventGraphPolicyLaw
+import Vegas.Game.SourceServiceFacts
+import GameTheoryExtensions.Math.Probability.Support
 
 /-! # Source decisions at the audit's canonical slot
 
@@ -43,11 +46,12 @@ def serviceCanonicalPolicy (profile : BehavioralProfile setup.program) (who : Pl
     | none => PMF.pure ⟨none⟩
     | some event =>
         if owned : (serviceGraph setup mode).actor? event = some who then
-          ((compileEventProfile setup.program profile) who event owned
-            (setup.eventGraph.fromModeObservation mode who
-              (identity ▸ view.application.observation))).map
-            ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view
-              event)
+          let observed := setup.eventGraph.fromModeObservation mode who
+            (identity ▸ view.application.observation)
+          if inactive : who ∈ observed.defaulted then PMF.pure ⟨none⟩ else
+            ((compileEventProfile setup.program profile) who event owned observed inactive).map
+              ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view
+                event)
         else PMF.pure ⟨none⟩
   else PMF.pure ⟨none⟩
 
@@ -86,6 +90,8 @@ variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.Executio
   {deadline : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
+/-- At an owned turn, the total client is silent after public default and
+otherwise realizes the active compiled callback. -/
 theorem sourceServiceCanonicalPolicy_at_event (profile : BehavioralProfile setup.program)
     (who : Player) (execution : (serviceApplication setup mode deadline leaks).Execution)
     (event : (serviceGraph setup mode).EventId)
@@ -93,12 +99,14 @@ theorem sourceServiceCanonicalPolicy_at_event (profile : BehavioralProfile setup
     (owned : (serviceGraph setup mode).actor? event = some who) :
     serviceCanonicalPolicy setup mode deadline leaks profile who (execution.recall who)
         (execution.observe (serviceApplication setup mode deadline leaks) who) =
-      ((compileEventProfile setup.program profile) who event owned
-        (setup.eventGraph.fromModeObservation mode who
-          ((serviceGraph setup mode).playerObserve who execution.application.config))).map
-        ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
+      if inactive : who ∈ execution.application.config.defaulted then PMF.pure ⟨none⟩ else
+        ((compileEventProfile setup.program profile) who event owned
+          (setup.eventGraph.fromModeObservation mode who
+            ((serviceGraph setup mode).playerObserve who execution.application.config))
+          inactive).map
+          ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
             (execution.recall who)
-          (execution.observe (serviceApplication setup mode deadline leaks) who) event) := by
+            (execution.observe (serviceApplication setup mode deadline leaks) who) event) := by
   unfold serviceCanonicalPolicy
   rw [dite_eq_left
           (show (execution.observe (serviceApplication setup mode deadline leaks)
@@ -109,6 +117,36 @@ theorem sourceServiceCanonicalPolicy_at_event (profile : BehavioralProfile setup
   rw [turn]
   simp only [dite_eq_left owned]
   rfl
+
+/-- Every initialized actual callback at an owned ready turn is active; no
+activity premise is imposed on the scheduler or source policies. -/
+theorem sourceServiceCanonicalPolicy_at_event_history
+    (profile : BehavioralProfile setup.program) (who : Player) {horizon : Nat}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (control : (serviceApplication setup mode deadline leaks).Control)
+    (trace : ((serviceApplication setup mode deadline leaks).protocol
+      (serviceInitialLaw setup mode) horizon scheduler).Trace (some control))
+    (event : (serviceGraph setup mode).EventId)
+    (selected : control.execution.application.publicView.ownTurn? who = some event)
+    (owned : (serviceGraph setup mode).actor? event = some who) :
+    ∃ active : who ∉ control.execution.application.config.defaulted,
+      serviceCanonicalPolicy setup mode deadline leaks profile who (control.execution.recall who)
+          (control.execution.observe (serviceApplication setup mode deadline leaks) who) =
+        ((compileEventProfile setup.program profile) who event owned
+          (setup.eventGraph.fromModeObservation mode who
+            ((serviceGraph setup mode).playerObserve who control.execution.application.config))
+          active).map
+          ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
+            (control.execution.recall who)
+            (control.execution.observe (serviceApplication setup mode deadline leaks) who)
+            event) := by
+  have facts := legalFacts setup leaks horizon scheduler control trace
+  have ready := (control.execution.application.publicView_eventReady event).mp
+    (PublicView.ownTurn?_spec _ who event selected).1
+  have active := control.execution.application.active_of_ready_owned facts.quiescent ready owned
+  refine ⟨active, ?_⟩
+  rw [sourceServiceCanonicalPolicy_at_event setup leaks profile who control.execution event
+    selected owned, dite_eq_right active]
 
 /-- **The local source commitment distribution, from the owner's observation.**
 At the owner's turn at the commitment, the canonical decision follows the
@@ -137,6 +175,7 @@ theorem serviceCanonicalPolicy_commit_of_observation {Γ : SourceCtx Player L}
     (ownHistory : decodeCompletions setup.program
       (((serviceGraph setup mode).ownCompletions owner execution.application.config.history).map
         (setup.eventGraph.fromModeCompletion mode)) = source.history owner)
+    (defaults : execution.application.config.defaults = source.defaults)
     (turn : execution.application.publicView.ownTurn? owner =
       some (embedding.event ⟨0, by simp [eventCount]⟩)) :
     let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
@@ -147,7 +186,8 @@ theorem serviceCanonicalPolicy_commit_of_observation {Γ : SourceCtx Player L}
       simpa [headIndex, outputLayout, eventCount] using embedding.layout_eq headIndex
     serviceCanonicalPolicy setup mode deadline leaks wholeProfile owner (execution.recall owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner) =
-      (commitKernel profile (source.view owner)).map fun binding =>
+      (if inactive : owner ∈ source.defaulted then PMF.pure none
+        else commitKernel profile (source.view owner) inactive).map fun binding =>
         (serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner
         (execution.recall owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner)
@@ -164,20 +204,36 @@ theorem serviceCanonicalPolicy_commit_of_observation {Γ : SourceCtx Player L}
     turn actor]
   let observation := setup.eventGraph.fromModeObservation mode owner
     ((serviceGraph setup mode).playerObserve owner execution.application.config)
-  have law := aligned.policyEq owner headIndex actor observation
-  have observed : decodeCompletions setup.program observation.ownActions =
-      source.history owner := ownHistory
-  rw [observed] at law
-  change _ = compilePolicyTable (.commit name owner fresh guard next) refs embedding.ref
-    owner (profile owner) ⟨0, by simp [eventCount]⟩
-      ((serviceGraph setup mode).playerStore owner execution.application.config.store)
-      (source.history owner) at law
-  rw [compilePolicyTable_commit_of_decode refs embedding.ref (profile owner) rfl _ _
-    (sourceObserve owner source.state) decoded] at law
-  have actionLaw := eq_map_cast_of_cast_eq
-    (congrArg EventGraph.EventField.Action (embedding.layout_eq headIndex)) _ _ law
-  rw [actionLaw, PMF.map_comp]
-  rfl
+  by_cases inactive : owner ∈ source.defaulted
+  · have nativeInactive : owner ∈ execution.application.config.defaulted := by
+      change owner ∈ execution.application.config.defaults.defaulted
+      rw [defaults]
+      exact inactive
+    rw [dite_eq_left nativeInactive, dite_eq_left inactive, PMF.pure_map]
+    rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_defaulted leaks owner
+      (execution.recall owner)
+      (execution.observe (serviceApplication setup mode deadline leaks) owner) event _
+      nativeInactive]
+  · have nativeActive : owner ∉ execution.application.config.defaulted := by
+      change owner ∉ execution.application.config.defaults.defaulted
+      rw [defaults]
+      exact inactive
+    rw [dite_eq_right nativeActive, dite_eq_right inactive]
+    have law := aligned.policyEq owner headIndex actor observation nativeActive
+    have observed : decodeCompletions setup.program observation.ownActions =
+        source.history owner := ownHistory
+    have viewDefaults : observation.defaults = source.defaults := defaults
+    rw [observed, viewDefaults] at law
+    change _ = compilePolicyTable (.commit name owner fresh guard next) refs embedding.ref
+      owner (profile owner) ⟨0, by simp [eventCount]⟩
+        ((serviceGraph setup mode).playerStore owner execution.application.config.store)
+        source.defaults (source.history owner) at law
+    rw [compilePolicyTable_commit_of_decode refs embedding.ref (profile owner) rfl _ _ inactive _
+      (sourceObserve owner source.state) decoded] at law
+    have actionLaw := eq_map_cast_of_cast_eq
+      (congrArg EventGraph.EventField.Action (embedding.layout_eq headIndex)) _ _ law
+    rw [actionLaw, PMF.map_comp]
+    rfl
 
 /-- The local source commitment distribution is retained exactly. -/
 theorem sourceServiceCanonicalPolicy_commit {Γ : SourceCtx Player L}
@@ -199,6 +255,7 @@ theorem sourceServiceCanonicalPolicy_commit {Γ : SourceCtx Player L}
     (history : decodeHistory setup.program
       (execution.application.config.history.map
         (setup.eventGraph.fromModeCompletion mode)) = source.history)
+    (defaults : execution.application.config.defaults = source.defaults)
     (ready : execution.application.config.cut.Ready
       (embedding.event ⟨0, by simp [eventCount]⟩)) :
     let headIndex : Fin (eventCount (.commit name owner fresh guard next)) :=
@@ -209,7 +266,8 @@ theorem sourceServiceCanonicalPolicy_commit {Γ : SourceCtx Player L}
       simpa [headIndex, outputLayout, eventCount] using embedding.layout_eq headIndex
     serviceCanonicalPolicy setup mode deadline leaks wholeProfile owner (execution.recall owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner) =
-      (commitKernel profile (source.view owner)).map fun binding =>
+      (if inactive : owner ∈ source.defaulted then PMF.pure none
+        else commitKernel profile (source.view owner) inactive).map fun binding =>
         (serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner
         (execution.recall owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner)
@@ -222,7 +280,7 @@ theorem sourceServiceCanonicalPolicy_commit {Γ : SourceCtx Player L}
   refine serviceCanonicalPolicy_commit_of_observation setup leaks fresh guard next wholeProfile
     profile refs source embedding refsBefore offset aligned execution
     (decodeObservation?_playerStore_eq_some (graph := serviceGraph setup mode) refs owner
-      source.state execution.application.config.store agree) ?_
+      source.state execution.application.config.store agree) ?_ defaults
     (serviceOwnTurn?_of_ready setup execution.application ready actor)
   rw [ownCompletions_fromModeCompletion]
   exact congrFun history owner
@@ -248,6 +306,7 @@ theorem sourceServiceCanonicalPolicy_reveal {Γ : SourceCtx Player L}
     (history : decodeHistory setup.program
       (execution.application.config.history.map
         (setup.eventGraph.fromModeCompletion mode)) = source.history)
+    (defaults : execution.application.config.defaults = source.defaults)
     (ready : execution.application.config.cut.Ready
       (embedding.event ⟨0, by simp [eventCount]⟩)) :
     let headIndex : Fin (eventCount
@@ -258,7 +317,8 @@ theorem sourceServiceCanonicalPolicy_reveal {Γ : SourceCtx Player L}
       simpa [headIndex, outputLayout, eventCount] using embedding.layout_eq headIndex
     serviceCanonicalPolicy setup mode deadline leaks wholeProfile owner (execution.recall owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner) =
-      (revealKernel profile (source.view owner)).map fun disclose =>
+      (if inactive : owner ∈ source.defaulted then PMF.pure false
+        else revealKernel profile (source.view owner) inactive).map fun disclose =>
         (serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner
         (execution.recall owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner)
@@ -275,27 +335,43 @@ theorem sourceServiceCanonicalPolicy_reveal {Γ : SourceCtx Player L}
     (serviceOwnTurn?_of_ready setup execution.application ready actor) actor]
   let observation := setup.eventGraph.fromModeObservation mode owner
     ((serviceGraph setup mode).playerObserve owner execution.application.config)
-  have law := aligned.policyEq owner headIndex actor observation
-  have ownHistory : decodeCompletions setup.program observation.ownActions =
-      source.history owner := by
-    change decodeCompletions setup.program
-      (((serviceGraph setup mode).ownCompletions owner execution.application.config.history).map
-        (setup.eventGraph.fromModeCompletion mode)) = _
-    rw [ownCompletions_fromModeCompletion]
-    exact congrFun history owner
-  rw [ownHistory] at law
-  have decoded := decodeObservation?_playerStore_eq_some (graph := serviceGraph setup mode)
-    refs owner source.state execution.application.config.store agree
-  change _ = compilePolicyTable (.reveal published owner name fresh selected unresolved next)
-    refs embedding.ref owner (profile owner) ⟨0, by simp [eventCount]⟩
-      ((serviceGraph setup mode).playerStore owner execution.application.config.store)
-      (source.history owner) at law
-  rw [compilePolicyTable_reveal_of_decode refs embedding.ref (profile owner) rfl _ _
-    (sourceObserve owner source.state) decoded] at law
-  have actionLaw := eq_map_cast_of_cast_eq
-    (congrArg EventGraph.EventField.Action (embedding.layout_eq headIndex)) _ _ law
-  rw [actionLaw, PMF.map_comp]
-  rfl
+  by_cases inactive : owner ∈ source.defaulted
+  · have nativeInactive : owner ∈ execution.application.config.defaulted := by
+      change owner ∈ execution.application.config.defaults.defaulted
+      rw [defaults]
+      exact inactive
+    rw [dite_eq_left nativeInactive, dite_eq_left inactive, PMF.pure_map]
+    rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_defaulted leaks owner
+      (execution.recall owner)
+      (execution.observe (serviceApplication setup mode deadline leaks) owner) event _
+      nativeInactive]
+  · have nativeActive : owner ∉ execution.application.config.defaulted := by
+      change owner ∉ execution.application.config.defaults.defaulted
+      rw [defaults]
+      exact inactive
+    rw [dite_eq_right nativeActive, dite_eq_right inactive]
+    have law := aligned.policyEq owner headIndex actor observation nativeActive
+    have ownHistory : decodeCompletions setup.program observation.ownActions =
+        source.history owner := by
+      change decodeCompletions setup.program
+        (((serviceGraph setup mode).ownCompletions owner execution.application.config.history).map
+          (setup.eventGraph.fromModeCompletion mode)) = _
+      rw [ownCompletions_fromModeCompletion]
+      exact congrFun history owner
+    have viewDefaults : observation.defaults = source.defaults := defaults
+    rw [ownHistory, viewDefaults] at law
+    have decoded := decodeObservation?_playerStore_eq_some (graph := serviceGraph setup mode)
+      refs owner source.state execution.application.config.store agree
+    change _ = compilePolicyTable (.reveal published owner name fresh selected unresolved next)
+      refs embedding.ref owner (profile owner) ⟨0, by simp [eventCount]⟩
+        ((serviceGraph setup mode).playerStore owner execution.application.config.store)
+        source.defaults (source.history owner) at law
+    rw [compilePolicyTable_reveal_of_decode refs embedding.ref (profile owner) rfl _ _ inactive _
+      (sourceObserve owner source.state) decoded] at law
+    have actionLaw := eq_map_cast_of_cast_eq
+      (congrArg EventGraph.EventField.Action (embedding.layout_eq headIndex)) _ _ law
+    rw [actionLaw, PMF.map_comp]
+    rfl
 
 
 end Generic

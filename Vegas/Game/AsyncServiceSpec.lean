@@ -1,7 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceSpec
-import Vegas.Game.ServiceRosterAsync
+import Vegas.Game.RevealService
+import Vegas.Pending.ReactiveBoundedValues
+import Vegas.Pending.ReactiveCompiledMenu
+import Vegas.Pending.ReactiveAsyncContract
+import Vegas.Pending.ExclusionFiniteNature
 
 /-! # Full-source services under an asynchronous scheduler
 
@@ -14,10 +17,9 @@ contract with per-event reaction bounds `delay` and inclusion bounds `bound`
 that leave room before every configured deadline. It has no rosters and no
 activation opportunities: the contract's opportunity clause replaces them.
 
-The fixed roster calendar is one instance (`Vegas.SourceServiceSpec.toAsync`),
-on the sequential graph with rank deadlines (`Vegas.rankDeadline`), with the
-plan length as horizon, reaction bound `event.val` and inclusion bound zero
-(`Vegas.rosterScheduler_asyncContract`).
+Concrete scheduler realizations and their all-history contract proofs belong
+to their instance modules. The generic specification does not supply a
+realization of its opportunity, inclusion or completion fields.
 -/
 
 noncomputable section
@@ -93,38 +95,6 @@ theorem completes : CompletesPlay (serviceRuntime service.setup service.mode ser
 
 end AsyncServiceSpec
 
-namespace SourceServiceSpec
 
-variable (service : SourceServiceSpec Player L)
-
-/-- **The calendar instance.** The fixed roster service is an asynchronous
-service with the plan length as horizon, reaction bound `event.val` and
-inclusion bound zero. -/
-def toAsync : AsyncServiceSpec Player L where
-  setup := service.setup
-  leaks := service.leaks
-  bounds := service.bounds
-  values := service.values
-  initialValues := service.initialValues
-  capacity := service.capacity
-  mode := .sequential
-  deadline := rankDeadline service.setup .sequential
-  horizon := service.planLength
-  scheduler := service.scheduler
-  delay := fun event => event.val
-  bound := fun _ => 0
-  contract := rosterScheduler_asyncContract service.setup service.leaks service.rosters
-    service.network service.opportunities
-  timely := rosterScheduler_asyncTimely service.setup
-  initialFinite := service.initialFinite
-  leaksFinite := service.leaksFinite
-  schedulerFinite := ReactiveApplication.FiniteNature.scheduler_finite
-    (initial := initialLaw service.setup)
-
-@[simp] theorem toAsync_horizon : service.toAsync.horizon = service.planLength := rfl
-
-@[simp] theorem toAsync_scheduler : service.toAsync.scheduler = service.scheduler := rfl
-
-end SourceServiceSpec
 
 end Vegas

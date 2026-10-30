@@ -21,6 +21,7 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
   (bounds : MessageBounds graph)
 
+/-- Every openable candidate belongs to the configured wire alphabet. -/
 def CandidateValues (state : State graph) : Prop :=
   ∀ candidate raw, state.candidates.lookup candidate = .openable raw → raw ∈ bounds.values
 
@@ -87,6 +88,7 @@ theorem candidateValues_submit (state : State graph) (who : Player)
   | opening | malformed =>
       exact registered candidate raw (by simpa only [submitStep, packet] using opened)
 
+/-- Native packet handling cannot introduce a new candidate value. -/
 theorem candidateValues_handle (runtime : EventGraphRuntime graph)
     (state next : State graph) (message : Message Player (Payload graph))
     (valid : bounds.CandidateValues state)
@@ -100,7 +102,7 @@ theorem candidateValues_handle (runtime : EventGraphRuntime graph)
   | opening event candidate raw =>
       have tables := handle_resolution_tables runtime state next _ (by intros; simp) accepted
       simpa only [CandidateValues, tables.2] using valid
-  | malformed raw => simp only [handle] at accepted; contradiction
+  | malformed raw => simp [handle] at accepted
 
 theorem candidateValues_respond (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -118,6 +120,8 @@ theorem candidateValues_respond (runtime : EventGraphRuntime graph)
       exact bounds.candidateValues_submit execution.application who
         material.call valid (allowed material rfl)
 
+/-- Inclusion and environment service retain candidate-value coverage through
+the native automatic drain. -/
 theorem candidateValues_environment (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution next : (runtime.reactiveApplication leaks).Execution)
@@ -148,13 +152,16 @@ theorem candidateValues_environment (runtime : EventGraphRuntime graph)
               message with
           | none => exact valid
           | some state =>
-              exact bounds.candidateValues_handle runtime execution.application state
-                ⟨message.id, message.payload.call⟩ valid (reactiveHandle_call accepted)
+              obtain ⟨native, handled, rfl⟩ := reactiveHandle_call accepted
+              have covered := bounds.candidateValues_handle runtime execution.application native
+                ⟨message.id, message.payload.call⟩ valid handled
+              simpa only [Option.getD_some, CandidateValues, native.drain_tables.2.1] using covered
   | application command =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       simpa only [CandidateValues,
-        (environmentStep_tables runtime execution.application state command changed).2] using valid
+        (reactiveApplication_environment_tables runtime leaks execution.application state command
+          changed).2] using valid
 
 variable [Fintype Player]
 

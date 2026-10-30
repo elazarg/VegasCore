@@ -374,6 +374,32 @@ These laws and the common consistency construction are checked adapters for
 the final compiler and equilibrium-preservation theorems. They do not by
 themselves close those end-to-end obligations.
 
+## Fixed roster timing boundary
+
+The fixed [roster scheduler](../Vegas/Game/ServiceRoster.lean) does not satisfy
+its claimed rank-based opportunity bound after automatic completion. Consider
+four consecutive bindings owned by A, A, A and B, followed by their reveals,
+with only each event's owner on its roster and every physical response silent.
+
+| Point in the fixed plan | Clock | Native progress |
+| --- | --- | --- |
+| First binding expires | 1 | A defaults; A's next two bindings complete automatically. |
+| Second binding's obsolete block ends | 3 | B's binding has remained ready since clock 1. |
+| Third binding's obsolete block ends | 6 | B has still received no activation. |
+
+B's event has rank 3, reaction bound 3 and deadline duration 4. The opportunity
+condition already fails at clock 5; B's first activation at clock 6 is too late.
+Clock advancement does not reset the event's activation timestamp, and expiry
+of an already completed event stutters. This is a direct timing audit of the
+definitions, not yet a checked counterexample theorem.
+
+The generic asynchronous service specification and its supplied contract do
+not change. The fixed roster realization and its `SourceServiceSpec.toAsync`
+builder require a corrected scheduler construction and a checked all-history
+service proof. Adding an opportunity or timing premise to that builder would
+not establish the missing realization. Scheduler changes are paused at this
+boundary; the final compiler and example gates remain open.
+
 ## Remaining acceptance obligations
 
 Only checked theorems close these obligations:

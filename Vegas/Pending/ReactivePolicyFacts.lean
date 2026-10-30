@@ -13,6 +13,21 @@ open GameTheory.Math.Probability Interaction EventGraph
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
+/-- A binding at a fresh owned slot is already in response normal form. -/
+theorem reactiveBinding_normal_of_fresh (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (event : graph.EventId) (payload : L.Ty) (result : PublicationResult (L.Val payload))
+    (serial : Nat) (fresh : view.application.candidates (.prepared serial) = .fresh) :
+    (runtime.reactiveNormalization leaks).action who past view
+      (runtime.reactiveBinding leaks who event payload result serial) =
+      runtime.reactiveBinding leaks who event payload result serial := by
+  simp only [ReactiveApplication.SubmissionNormalization.action, reactiveBinding,
+    reactiveNormalization, WitnessedSubmission.normalizeReactive,
+    Submission.normalizeReactive, openingEffective, fresh, and_self, ↓reduceIte,
+    EvidenceRequest.normalize_none]
+
 /-- A resolution sends an opening of its event or nothing. -/
 theorem reactiveResolutionPacket_shape {owner : Player} (who : Player)
     (event : graph.EventId) (payload : L.Ty)

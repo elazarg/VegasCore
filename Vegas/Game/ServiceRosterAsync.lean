@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.ServiceRoster
+import Vegas.Game.SourceServiceSpec
+import Vegas.Game.AsyncServiceSpec
 import Vegas.Game.RevealServiceCalendarState
 import Vegas.Pending.ReactiveAsyncContract
 import Vegas.Pending.ReactiveStateInvariant
@@ -1444,5 +1446,39 @@ theorem rosterScheduler_asyncTimely (setup : Setup (Player := Player) (L := L)) 
   intro event _
   change event.val + 0 < event.val + 1
   omega
+
+namespace SourceServiceSpec
+
+variable (service : SourceServiceSpec Player L)
+
+/-- **The calendar instance.** The fixed roster service is an asynchronous
+service with the plan length as horizon, reaction bound `event.val` and
+inclusion bound zero. -/
+def toAsync : AsyncServiceSpec Player L where
+  setup := service.setup
+  leaks := service.leaks
+  bounds := service.bounds
+  values := service.values
+  initialValues := service.initialValues
+  capacity := service.capacity
+  mode := .sequential
+  deadline := rankDeadline service.setup .sequential
+  horizon := service.planLength
+  scheduler := service.scheduler
+  delay := fun event => event.val
+  bound := fun _ => 0
+  contract := rosterScheduler_asyncContract service.setup service.leaks service.rosters
+    service.network service.opportunities
+  timely := rosterScheduler_asyncTimely service.setup
+  initialFinite := service.initialFinite
+  leaksFinite := service.leaksFinite
+  schedulerFinite := ReactiveApplication.FiniteNature.scheduler_finite
+    (initial := initialLaw service.setup)
+
+@[simp] theorem toAsync_horizon : service.toAsync.horizon = service.planLength := rfl
+
+@[simp] theorem toAsync_scheduler : service.toAsync.scheduler = service.scheduler := rfl
+
+end SourceServiceSpec
 
 end Vegas

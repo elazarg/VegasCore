@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveCompiledMenu
+import Vegas.Pending.ReactivePolicyFacts
+import Vegas.Pending.EventPublicState
 
 /-! # Prescribed decisions at the audit's canonical slot
 
@@ -94,7 +95,7 @@ def canonicalServiceDecision (runtime : EventGraphRuntime graph)
   (runtime.reactiveNormalization leaks).action who past view
     (runtime.canonicalReactiveDecision leaks who event choice view.application)
 
-/-- Away from bindings the canonical decision is the existing decision. -/
+/-- Away from bindings the canonical decision agrees with the uncounted decision. -/
 theorem canonicalReactiveDecision_eq_of_not_bind (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (event : graph.EventId) (action : graph.Action event)
@@ -193,6 +194,32 @@ theorem canonicalServiceDecision_binding_none (runtime : EventGraphRuntime graph
   simp only [canonicalServiceDecision, canonicalReactiveDecision, node, cast_cast, cast_eq,
     Option.bind_none, ite_self]
   rfl
+
+/-- An authentic opening transmits without predicting its public guard result. -/
+theorem canonicalServiceDecision_openable (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (event : graph.EventId) (owner : Player) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) =
+      .resolve owner payload binding checks)
+    (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
+    (active : who ∉ view.application.publicView.observation.defaulted)
+    (value : L.Val payload)
+    (stored : binding.get? view.application.observation.store = some (.success value))
+    (candidate : Handle graph)
+    (accepted : view.application.publicView.accepted binding.field = some candidate)
+    (owned : candidate.1 = who) :
+    (runtime.canonicalServiceDecision leaks who past view event
+      (cast (congrArg EventField.Action outputEq.symm) true)).transmission ≠ none := by
+  simp only [canonicalServiceDecision, canonicalReactiveDecision, ite_eq_right active, node,
+    reactiveResolutionPacket_openable who event payload binding checks outputEq view.application
+      active value stored candidate accepted owned,
+    Option.map_some, ReactiveApplication.SubmissionNormalization.action, ne_eq,
+    reduceCtorEq, not_false_eq_true]
 
 /-- The public deadline still admits inclusion of a packet for `event`. -/
 def PublicView.WithinDeadline (runtime : EventGraphRuntime graph) (view : PublicView graph)

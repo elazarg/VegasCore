@@ -1,10 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceStep
+import Vegas.Game.RevealService
+import Vegas.Pending.ReactiveCompiledMenu
 
 /-! # Source choice support for the concrete full-source service
 
-The existing message bounds already cover every fresh binding value. They
+The message bounds cover every fresh binding value. They
 therefore supply precisely the finite source alphabets needed to complete
 unreachable information values. Initial parameters, public samples and
 publication payload types are not required to be finite.
@@ -38,7 +39,7 @@ private theorem finiteBindingTypes_of_outputs :
       finiteBindingTypes_of_outputs next (fun event owner payload kind =>
         finite event.succ owner payload kind)
 
-/-- The compiler's existing finite binding-value coverage supplies source
+/-- The compiler's finite binding-value coverage supplies source
 choice finiteness without strengthening the source or native game. -/
 theorem sourceService_finiteBindingTypes (setup : Setup (Player := Player) (L := L))
     {mode : EventGraph.ExecutionMode} (bounds : MessageBounds (serviceGraph setup mode))

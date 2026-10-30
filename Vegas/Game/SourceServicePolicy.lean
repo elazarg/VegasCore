@@ -2,13 +2,11 @@
 
 import Vegas.Game.ServiceInformation
 import Vegas.Pending.ReactivePolicy
-import GameTheory.Math.Probability.ConditionalObservation
-import GameTheory.Math.Probability.ExpectationConditioning
 
-/-! # Source decisions in the existing sequential native service
+/-! # Source decisions in the sequential native service
 
-The physical policy reads the existing compiler's policy table at the player's
-turn, its ready event. Binding choices are atomic submissions; ineffective disclosures and
+The physical policy reads the compiler's policy table at the player's
+turn, its ready event. Binding choices are atomic submissions; unopenable disclosures and
 withholding are settled by silence and expiry. The correspondence below permits
 arbitrary outstanding source guards and does not freeze the candidate catalogue
 or accepted handles at initialization.

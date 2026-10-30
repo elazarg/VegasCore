@@ -108,6 +108,14 @@ theorem AutomaticReady.owned {state : State graph} {event : graph.EventId}
   | none => rw [acting] at eligible; exact eligible.elim
   | some owner => exact ⟨owner, rfl, by simpa only [acting] using eligible⟩
 
+/-- A quiescent state's ready strategic event belongs to an active owner. -/
+theorem active_of_ready_owned (state : State graph)
+    (quiescent : ∀ event, ¬ state.AutomaticReady event)
+    {event : graph.EventId} {owner : Player} (ready : state.config.cut.Ready event)
+    (owned : graph.actor? event = some owner) : owner ∉ state.config.defaulted := by
+  intro inactive
+  exact quiescent event ⟨ready, by simpa only [owned] using inactive⟩
+
 def completeAutomatic (state : State graph) (event : graph.EventId)
     (eligible : state.AutomaticReady event) : State graph :=
   state.completeFailure event eligible.1

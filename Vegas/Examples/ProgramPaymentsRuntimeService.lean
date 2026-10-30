@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Examples.ProgramPayments
-import Vegas.Game.AsyncServiceSpec
+import Vegas.Game.ServiceRosterAsync
 
 /-! # A checked native service for the conditional payment program
 
