@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketTrembles
+import Vegas.Game.OnePacketFirstActivation
 
 /-! # Support facts for prescribed play in the one-packet game
 
@@ -183,11 +184,6 @@ def pendingEvent (who : Player) : (application setup runtime leaks).Info → Opt
   | none => none
   | some (past, view) => (view.application.publicView.ownTurn? who).filter fun event =>
       !runtime.eventRecorded leaks past event
-
-/-- The owner's turn was `event` at the view a recall entry was taken at. -/
-def ActivatedAt (who : Player) (event : (graph setup).EventId)
-    (entry : (application setup runtime leaks).PlayerEntry) : Prop :=
-  entry.beforeView.application.publicView.ownTurn? who = some event
 
 /-- **First activation.** A decision input with a pending event that was the
 owner's turn at none of its recalled views. -/

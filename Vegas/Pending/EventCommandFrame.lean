@@ -10,7 +10,7 @@ namespace Vegas.EventGraphRuntime
 
 open Interaction Vegas.EventGraph
 
-variable {Player : Type} {L : IExpr} [IExpr.ResultTypes L]
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
 
 /-- A chance command addressed to a strategic event stutters. -/

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketForced
+import Vegas.Compile.EventGraphBacktranslation
 import Vegas.Pending.ReactiveOnePacketMenu
 import Interaction.ReactiveFiniteAssessment
 import GameTheory.Math.Probability.Mixture

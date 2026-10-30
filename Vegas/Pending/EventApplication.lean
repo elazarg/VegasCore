@@ -1543,5 +1543,27 @@ theorem environmentStep_support_finite (runtime : EventGraphRuntime graph) (stat
       · simp
   | _ => simp [environmentStep]
 
+/-- An accepted packet is authored by its event's actor. -/
+theorem handle_sender_actor (runtime : EventGraphRuntime graph)
+    (state next : State graph) (message : Message Player (Payload graph))
+    (accepted : handle runtime state message = some next) (event : graph.EventId)
+    (named : message.payload.event? graph = some event) :
+    graph.actor? event = some message.sender := by
+  rcases message with ⟨id, packet⟩
+  cases packet with
+  | malformed _ => simp [handle] at accepted
+  | commitment actual candidate =>
+      have same : actual = event := Option.some.inj named
+      subst actual
+      obtain ⟨_, _, _, owner, payload, outputEq, codeEq, _, sender, _⟩ :=
+        (handle_commitment_iff runtime state next id event candidate).mp accepted
+      exact (nodeView_bind_actor outputEq codeEq).trans (congrArg some sender.symm)
+  | opening actual candidate raw =>
+      have same : actual = event := Option.some.inj named
+      subst actual
+      obtain ⟨_, _, _, owner, payload, binding, checks, outputEq, codeEq, _, _, _, sender, _⟩ :=
+        (handle_opening_iff runtime state next id event candidate raw).mp accepted
+      exact (nodeView_resolve_actor outputEq codeEq).trans (congrArg some sender.symm)
+
 end EventGraphRuntime
 end Vegas

@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.ReactiveOwnerOpportunity
-import Vegas.Pending.ExclusionService
+import Vegas.Pending.ReactiveServiceConditions
 
 /-! # Actual owner callback records before a clear readiness deadline -/
 
@@ -74,33 +74,4 @@ theorem due_owner_recalled_turn_of_opportunity (runtime : EventGraphRuntime grap
   exact recalled_turn_of_ownerActivatedSince runtime leaks initial horizon scheduler ordered
     control trace idle event owner entered actor occurred
 
-namespace Recovery
-
-/-- At an actual public-clear native prefix, a due owned event has a remembered
-ready callback under the actual recovery opportunity contract. -/
-theorem due_owner_recalled_turn_clear_native (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    {initial : PMF (RecoveryState graph)}
-    (initialized : ∀ state ∈ initial.support, ∃ inputs,
-      state = (⟨State.initial inputs, ∅⟩ : RecoveryState graph))
-    {horizon : Nat} {scheduler : (runtime.recoveryApplication leaks).Scheduler}
-    {delay bound : graph.EventId → Nat}
-    (opportunity : Opportunity runtime leaks initial horizon scheduler delay)
-    (timely : runtime.AsyncTimely delay bound) (ordered : graph.RevealRelaxedOrdered)
-    (control : (runtime.reactiveApplication leaks).Control)
-    (trace : ((runtime.reactiveApplication leaks).protocol (initial.map RecoveryState.native)
-      horizon (RecoveryProjection.nativeScheduler runtime leaks scheduler)).Trace (some control))
-    (idle : control.actor = none)
-    (clear : ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState graph))
-    (event : graph.EventId) (owner : Player) (actor : graph.actor? event = some owner)
-    (ready : control.execution.application.config.cut.Ready event)
-    (entered : Nat) (activated : control.execution.application.activatedAt event = some entered)
-    (due : runtime.deadline event ≤ control.execution.application.clock - entered) :
-    ∃ response ∈ control.execution.recall owner,
-      response.beforeView.application.publicView.ownTurn? owner = some event := by
-  have actual := opportunity.clear_native runtime leaks initialized control trace clear
-  exact due_owner_recalled_turn_of_opportunity runtime leaks timely ordered control trace idle
-    actual event owner actor ready entered activated due
-
-end Recovery
 end Vegas.EventGraphRuntime

@@ -662,8 +662,8 @@ theorem one_packet_raw_sequential_equilibrium [Fintype Player] [IExpr.ResultType
   intro payoff settle
   obtain ⟨target, truncated, clean⟩ := bounds.onePacket_raw_sequentialEquilibrium runtime leaks
     initial horizon scheduler service observationRate deliveryRate delivery_nonnegative coverage
-    utility normalized lower upper deposit lower_le le_upper deposit_nonnegative sufficient source
-    equilibrium
+    utility normalized lower upper deposit (fun history who => lower_le history.state who)
+    (fun history who => le_upper history.state who) deposit_nonnegative sufficient source equilibrium
   exact ⟨target, (target.isSequentialEquilibrium_iff_truncated_of_bounded _ _ _
     ((bounds.rawMenu runtime leaks).bounded initial horizon scheduler) _).mpr truncated, clean⟩
 

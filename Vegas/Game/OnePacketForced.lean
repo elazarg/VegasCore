@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.SourceServiceDecodedDebt
+import Vegas.Game.ServiceInformation
 import Vegas.Compile.EventGraphParameterReadout
 import Vegas.Source.FailedBindingDeviation
 import Vegas.Source.Exclusion
@@ -71,26 +72,29 @@ theorem RevealFailed.indebted {who : Player} : {Γ : SourceCtx Player L} → {O 
           · exact Or.inl own
           · exact Or.inr (RevealFailed.indebted next rest later)
 
-/-- A failed reveal excludes its owner. -/
+/-- A failed generated reveal excludes its owner when its publication has
+the provenance retained by actual source histories. -/
 theorem RevealFailed.excluded {who : Player} : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (state : ProtocolState program) →
-    RevealFailed who program state → Excluded who program state
-  | _, _, .ret _, _, failed => failed.elim
-  | _, _, .sample _ _ _ next, state, failed => by
+    PublicationsDefaulted program state → RevealFailed who program state →
+      Excluded who program state
+  | _, _, .ret _, _, _, failed => failed.elim
+  | _, _, .sample _ _ _ next, state, valid, failed => by
       cases state with
       | inl _ => exact failed.elim
-      | inr rest => exact RevealFailed.excluded next rest failed
-  | _, _, .commit _ _ _ _ next, state, failed => by
+      | inr rest => exact RevealFailed.excluded next rest valid failed
+  | _, _, .commit _ _ _ _ next, state, valid, failed => by
       cases state with
       | inl _ => exact failed.elim
-      | inr rest => exact RevealFailed.excluded next rest failed
-  | _, _, .reveal _ _ _ _ _ _ next, state, failed => by
+      | inr rest => exact RevealFailed.excluded next rest valid failed
+  | _, _, .reveal _ _ _ _ _ _ next, state, valid, failed => by
       cases state with
       | inl _ => exact failed.elim
       | inr rest =>
           rcases failed with own | later
-          · exact Or.inl own
-          · exact Or.inr (RevealFailed.excluded next rest later)
+          · rcases own with ⟨rfl, failed⟩
+            exact valid.1 failed
+          · exact RevealFailed.excluded next rest valid.2 later
 
 end ProtocolState
 
@@ -129,27 +133,30 @@ def decodeViewPrefix? {Field : Type} [DecidableEq Field]
     {Γ : SourceCtx Player L} → {openNames : Finset VarId} →
     (program : SourceProgram Player L Γ openNames) → ContextRefs layout Γ →
     (∀ event, EventGraph.FieldRef layout (outputLayout program event)) →
-    Nat → EventGraph.Store layout → List (OwnAction Player L) →
+    Nat → EventGraph.Store layout → List (OwnAction Player L) → DefaultHistory Player →
       Option (ProtocolView who program)
-  | _, _, program, refs, _, 0, store, own =>
+  | _, _, program, refs, _, 0, store, own, defaults =>
       (decodeObservation? who refs store).map fun observation =>
-        ProtocolView.entry who program (observation, own)
-  | _, _, .ret _, _, _, _ + 1, _, _ => none
-  | _, _, .sample (payload := payload) _ _ _ next, refs, outputs, count + 1, store, own =>
+        ProtocolView.entry who program ⟨observation, defaults, own⟩
+  | _, _, .ret _, _, _, _ + 1, _, _, _ => none
+  | _, _, .sample (payload := payload) _ _ _ next, refs, outputs, count + 1, store, own,
+      defaults =>
       let headRef : EventGraph.FieldRef layout (.publicData payload) := by
         simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
       (decodeViewPrefix? who next (refs.cons headRef) (fun tail => outputs tail.succ) count store
-        own).map Sum.inr
-  | _, _, .commit (payload := payload) _ owner _ _ next, refs, outputs, count + 1, store, own =>
+        own defaults).map Sum.inr
+  | _, _, .commit (payload := payload) _ owner _ _ next, refs, outputs, count + 1, store, own,
+      defaults =>
       let headRef : EventGraph.FieldRef layout (.binding owner payload) := by
         simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
       (decodeViewPrefix? who next (refs.cons headRef) (fun tail => outputs tail.succ) count store
-        own).map Sum.inr
-  | _, _, .reveal (payload := payload) _ _ _ _ _ _ next, refs, outputs, count + 1, store, own =>
+        own defaults).map Sum.inr
+  | _, _, .reveal (payload := payload) _ _ _ _ _ _ next, refs, outputs, count + 1, store, own,
+      defaults =>
       let headRef : EventGraph.FieldRef layout (.publication payload) := by
         simpa [outputLayout, eventCount] using outputs ⟨0, by simp [eventCount]⟩
       (decodeViewPrefix? who next (refs.cons headRef) (fun tail => outputs tail.succ) count store
-        own).map Sum.inr
+        own defaults).map Sum.inr
 
 /-- **The view decoder reads the decoded point's view.** Wherever the source
 prefix decoder succeeds, the view decoder, given `who`'s part of the history,
@@ -161,40 +168,42 @@ theorem decodeViewPrefix?_eq_observe {Field : Type} [DecidableEq Field]
       (registry : Registry Γ) (revelations : Revelations Γ)
       (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
       (store : EventGraph.Store layout) (history : History Player L)
+      (defaults : DefaultHistory Player)
       (point : ProtocolState program),
-      decodeSourcePrefix? program refs registry revelations outputs count store history =
+      decodeSourcePrefix? program refs registry revelations outputs count store history defaults =
           some point →
-        decodeViewPrefix? who program refs outputs count store (history who) =
+        decodeViewPrefix? who program refs outputs count store (history who) defaults =
           some (ProtocolState.observe who program point)
-  | 0, _, _, program, refs, registry, revelations, outputs, store, history, point, decoded => by
+  | 0, _, _, program, refs, registry, revelations, outputs, store, history, defaults, point,
+      decoded => by
       simp only [decodeSourcePrefix?] at decoded
       obtain ⟨state, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
       simp only [decodeViewPrefix?, decodeObservation?_eq_some refs who state store
         (decodeState?_agrees refs store state read), Option.map_some,
         ProtocolState.observe_entry]
       rfl
-  | _ + 1, _, _, .ret _, _, _, _, _, _, _, _, decoded => by
+  | _ + 1, _, _, .ret _, _, _, _, _, _, _, _, _, decoded => by
       simp only [decodeSourcePrefix?, reduceCtorEq] at decoded
   | count + 1, _, _, .sample _ _ _ next, refs, registry, revelations, outputs, store, history,
-      point, decoded => by
+      defaults, point, decoded => by
       simp only [decodeSourcePrefix?] at decoded
       obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
       simp only [decodeViewPrefix?, decodeViewPrefix?_eq_observe who count next _ _ _ _ store
-        history rest read, Option.map_some]
+        history defaults rest read, Option.map_some]
       rfl
   | count + 1, _, _, .commit _ _ _ _ next, refs, registry, revelations, outputs, store, history,
-      point, decoded => by
+      defaults, point, decoded => by
       simp only [decodeSourcePrefix?] at decoded
       obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
       simp only [decodeViewPrefix?, decodeViewPrefix?_eq_observe who count next _ _ _ _ store
-        history rest read, Option.map_some]
+        history defaults rest read, Option.map_some]
       rfl
   | count + 1, _, _, .reveal _ _ _ _ _ _ next, refs, registry, revelations, outputs, store,
-      history, point, decoded => by
+      history, defaults, point, decoded => by
       simp only [decodeSourcePrefix?] at decoded
       obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
       simp only [decodeViewPrefix?, decodeViewPrefix?_eq_observe who count next _ _ _ _ store
-        history rest read, Option.map_some]
+        history defaults rest read, Option.map_some]
       rfl
 
 /-- The view decoder reads only fields visible to `who`, so it gives the same
@@ -203,17 +212,18 @@ theorem decodeViewPrefix?_playerStore {graph : EventGraph Player L} (who : Playe
     ∀ (count : Nat) {Γ : SourceCtx Player L} {openNames : Finset VarId}
       (program : SourceProgram Player L Γ openNames) (refs : ContextRefs graph.layout Γ)
       (outputs : ∀ event, EventGraph.FieldRef graph.layout (outputLayout program event))
-      (store : EventGraph.Store graph.layout) (own : List (OwnAction Player L)),
-      decodeViewPrefix? who program refs outputs count (graph.playerStore who store) own =
-        decodeViewPrefix? who program refs outputs count store own
-  | 0, _, _, program, refs, outputs, store, own => by
+      (store : EventGraph.Store graph.layout) (own : List (OwnAction Player L))
+      (defaults : DefaultHistory Player),
+      decodeViewPrefix? who program refs outputs count (graph.playerStore who store) own defaults =
+        decodeViewPrefix? who program refs outputs count store own defaults
+  | 0, _, _, program, refs, outputs, store, own, defaults => by
       simp only [decodeViewPrefix?, decodeObservation?_playerStore]
-  | _ + 1, _, _, .ret _, _, _, _, _ => rfl
-  | count + 1, _, _, .sample _ _ _ next, refs, outputs, store, own => by
+  | _ + 1, _, _, .ret _, _, _, _, _, _ => rfl
+  | count + 1, _, _, .sample _ _ _ next, refs, outputs, store, own, defaults => by
       simp only [decodeViewPrefix?, decodeViewPrefix?_playerStore who count next]
-  | count + 1, _, _, .commit _ _ _ _ next, refs, outputs, store, own => by
+  | count + 1, _, _, .commit _ _ _ _ next, refs, outputs, store, own, defaults => by
       simp only [decodeViewPrefix?, decodeViewPrefix?_playerStore who count next]
-  | count + 1, _, _, .reveal _ _ _ _ _ _ next, refs, outputs, store, own => by
+  | count + 1, _, _, .reveal _ _ _ _ _ _ next, refs, outputs, store, own, defaults => by
       simp only [decodeViewPrefix?, decodeViewPrefix?_playerStore who count next]
 
 omit [DecidableEq Player] in
@@ -259,6 +269,7 @@ def sourceViewOf (who : Player) (view : (application setup runtime leaks).Player
       (outputRef setup.program) observed.completionOrder.length observed.store
       (decodeCompletions setup.program
         (observed.ownActions.map (setup.eventGraph.fromModeCompletion .sequential)))
+      observed.defaults
   else none
 
 /-- **The projected source view.** The source view a native information state
@@ -291,17 +302,19 @@ theorem projectView_observe (who : Player) (execution : (application setup runti
       ((graph setup).playerStore who execution.application.config.store)
       (decodeCompletions setup.program
         (((graph setup).ownCompletions who execution.application.config.history).map
-          (setup.eventGraph.fromModeCompletion .sequential))) = _
+          (setup.eventGraph.fromModeCompletion .sequential)))
+      execution.application.config.defaults = _
   rw [EventGraph.playerObserve_completionOrder, List.length_map,
     history_length_of_isPrefix execution.application.config ordered]
   refine (decodeViewPrefix?_playerStore (graph := graph setup) who rank setup.program _ _ _
-    _).trans ?_
+    _ _).trans ?_
   refine (congrArg (fun own => decodeViewPrefix? who setup.program
     (ContextRefs.initial setup.context (outputLayout setup.program)) (outputRef setup.program) rank
-    execution.application.config.store (decodeCompletions setup.program own))
+    execution.application.config.store (decodeCompletions setup.program own)
+    execution.application.config.defaults)
     (ownCompletions_fromModeCompletion setup (mode := .sequential) who
       execution.application.config.history)).trans ?_
-  exact decodeViewPrefix?_eq_observe who rank setup.program _ [] _ _ _ _ point decoded
+  exact decodeViewPrefix?_eq_observe who rank setup.program _ [] _ _ _ _ _ point decoded
 
 variable {setup runtime leaks}
 
@@ -332,14 +345,30 @@ theorem protocol_sourceResidual (profile : BehavioralProfile setup.program)
           exact ⟨0, ⟨SourceResidual.initial setup profile initial⟩⟩
       | some previous =>
           obtain ⟨rank, ⟨residual⟩⟩ := ih previous rfl
-          have step := transition_configStep (initialLaw setup) horizon
-            scheduler previous control
-            joint realized
-          rcases step.prefix rank residual.checkpoint.ordered with same | advanced
-          · exact ⟨rank, residual.configStep step rank (by
-              rw [same]
-              exact residual.checkpoint.ordered)⟩
-          · exact ⟨rank + 1, residual.configStep step (rank + 1) advanced⟩
+          exact residual.path (reactive_protocol_graph_steps runtime leaks
+            (initialLaw setup) horizon scheduler previous control joint realized)
+
+/-- The source point decoded from an initialized native history retains
+publication-default provenance, including through automatic completion. -/
+theorem publicationsDefaulted_of_decode
+    {menu : (application setup runtime leaks).ResponseMenu} {horizon : Nat}
+    {scheduler : (application setup runtime leaks).Scheduler}
+    (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
+    (control : (application setup runtime leaks).Control) (current : history.state = some control)
+    {rank : Nat} (ordered : control.execution.application.config.cut.IsPrefix rank)
+    {point : ProtocolState setup.program}
+    (decoded : sourceServicePrefix? setup rank control.execution.application.config = some point) :
+    ProtocolState.PublicationsDefaulted setup.program point := by
+  obtain ⟨found, ⟨residual⟩, valid⟩ :=
+    decodedState_history_of_stepClosed (profile := failureProfile setup.program)
+      (property := ProtocolState.PublicationsDefaulted setup.program)
+      (fun before joint after holds reached =>
+        ProtocolState.publicationsDefaulted_step setup.program before after joint holds reached)
+      (fun initial _ => ProtocolState.publicationsDefaulted_entry setup.program
+        (Config.initial initial)) menu horizon scheduler history.trace control current
+  have same := EventOrder.Cut.IsPrefix.unique ordered residual.checkpoint.ordered
+  subst same
+  exact valid point decoded
 
 /-- A step-closed source property holding at the decoded point of a native
 history's configuration, at its completed prefix, is a decoded state property

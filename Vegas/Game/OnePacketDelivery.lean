@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketSlotTrembles
 import Vegas.Game.OnePacketPrescribedSupport
+import Vegas.Game.RevealServicePayoffs
 
 /-! # Late-delivery options
 
@@ -164,7 +165,7 @@ def LateDeliveryAgent (agent : (onePacketN).InformationAgent (onePacketN).played
 
 /-- The typed readout of a native history. -/
 abbrev nativeReadout (history : ((bounds.onePacketMenu runtime leaks).protocol initial
-    horizon scheduler).History) : Option (State L setup.program.terminalCtx) :=
+    horizon scheduler).History) : Option (Config Player L setup.program.terminalCtx) :=
   sourceReadout setup runtime leaks history.state
 
 end Obligations

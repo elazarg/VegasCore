@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.RecoveryOnePacketPreservation
-import Vegas.Game.RecoveryOnePacketRawLaw
+import Vegas.Game.OnePacketRawLaw
 
 /-! # Sequential preservation by the permanent-exclusion recovery runtime
 
@@ -100,7 +100,7 @@ theorem recovery_intended_raw_sequentialEquilibrium_preserved
       wellFormed independent observable opportunity inclusion completes timely lowerUtility
       upperUtility lower_le le_upper below intended equilibrium covers coversInputs capacity
   obtain ⟨target, targetSE, clean, states, joint⟩ :=
-    recovery_intended_raw_sequentialEquilibrium_of_onePacket (runtime := runtime) parameter
+    intended_raw_sequentialEquilibrium_of_onePacket (runtime := runtime) parameter
       utility excludedPayoff
       intended native nativeSE nativeLaw service observationRate deliveryRate delivery_nonnegative
       coverage lowerUtility upperUtility lower_le le_upper deposit deposit_nonnegative sufficient

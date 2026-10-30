@@ -74,9 +74,9 @@ theorem trembleSlots_nonempty : (trembleSlots setup bounds).Nonempty :=
   ⟨0, Finset.mem_range.mpr (lt_of_lt_of_le zero_lt_one (le_max_left _ _))⟩
 
 /-- The response of the slot tier for a drawn slot and source choice: at a
-binding, commit the encoded value at the drawn slot, normalized as a canonical
-decision is; at any other event, the
-canonical decision of the encoded action; silence when nothing encodes. -/
+binding, commit an admitted encoded value at the drawn slot, normalized as a
+canonical decision is; at any other event, use the canonical decision of the
+encoded action. Omission and unencodable actions give silence. -/
 def slotResponse (who : Player) (past : List (application setup runtime leaks).PlayerEntry)
     (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId) (slot :
       Nat)
@@ -86,9 +86,11 @@ def slotResponse (who : Player) (past : List (application setup runtime leaks).P
   | some action =>
       match nodeView (graph setup) event with
       | .bind _ payload outputEq _ =>
-          (runtime.reactiveNormalization leaks).action who past view
-            (runtime.reactiveBinding leaks who event payload
-              (cast (congrArg EventGraph.EventField.Action outputEq) action) slot)
+          match cast (congrArg EventGraph.EventField.Action outputEq) action with
+          | none => ⟨none⟩
+          | some value =>
+              (runtime.reactiveNormalization leaks).action who past view
+                (runtime.reactiveBinding leaks who event payload value slot)
       | .resolve .. | .sample .. =>
           runtime.canonicalServiceDecision leaks who past view event action
 

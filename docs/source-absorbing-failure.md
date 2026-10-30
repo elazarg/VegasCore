@@ -147,6 +147,12 @@ The ambient public-record type admits impossible histories. Utility-range ports
 must use their actual execution domain or a bounded extension outside it;
 boundedness on extra impossible records must not become a hidden new premise.
 
+The native count-audit extension bounds utilities on legal bounded-menu
+histories. Its source-payoff specialization bounds ordinary utility only at
+successful source readouts of those histories. Missing readouts and declared
+exit values have their own explicit branches. Arbitrary fabricated protocol
+states and impossible public records require no ordinary-utility bound.
+
 [IntendedPreservation](../Vegas/Game/IntendedPreservation.lean) and
 [IntendedNash](../Vegas/Game/IntendedNash.lean) check canonical fixed-exit
 sequential and approximate Nash equilibrium preservation under every sitewise

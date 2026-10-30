@@ -1,33 +1,22 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketForcedBeliefs
+import Vegas.Game.OnePacketForced
+import Vegas.Pending.ReactiveOnePacketMenu
 import Vegas.Game.IntendedPreservation
 
-/-! # Projecting native one-packet histories to intended histories
+/-! # Current native endpoints and partial intended replay
 
-**Decoded points.** A native configuration of the supplied runtime is a prefix
-of its completion order of at most one length; the source state it decodes to
-at that length is its *decoded point* (`Vegas.decodedPoint`). At every
-configuration with a source residual it is the residual's point
-(`Vegas.decodedPoint_eq`), and completing the ready event moves it by the
-source step of the decoded action (`Vegas.decodedPoint_step`).
+The decoded point reads the actual current graph prefix and its full source
+configuration. Every supported graph completion advances it by the corresponding
+source step. The native state adapter always reads that actual endpoint.
 
-**The acting joint.** A source step reads only the acting player's choice
-(`Vegas.SourceProgram.ProtocolState.step_actingJoint`), so the decoded action
-of a completion is the joint action that gives it to the acting player and
-nothing to the others (`Vegas.actingJoint`).
-
-**The intended history of a native history.** Replaying a native history,
-the initial draw becomes the intended initial draw, a native step that
-completes no event is skipped, and a native step that completes one event
-becomes the intended step of its decoded action to the decoded point of the
-new configuration, when that step is legal in the intended game
-(`Vegas.intendedHistory?`). The replay fails exactly where a step is not legal
-in the intended game, such as at a bad binding. Whenever it succeeds, the
-intended history ends at the decoded point of the native state
-(`Vegas.intendedHistory?_state`), so at a decision site of the observer it lies
-at the intended site of the projected view
-(`Vegas.intendedHistory?_infoOf`).
+A partial intended replay extends an intended history only when the existing
+intended protocol admits the observed step and reaches the current decoded
+endpoint. Transitions with no completion preserve the replay; a singleton
+completion uses its actual recorded decision; multiple completions return none.
+Every successful replay ends at the actual decoded endpoint and has the
+projected source observation. No completeness claim is made for arbitrary
+multi-completion transitions.
 -/
 
 noncomputable section
@@ -53,15 +42,21 @@ theorem step_actingJoint : {Γ : SourceCtx Player L} → {O : Finset VarId} →
       | inr rest =>
           simp only [step, Sum.elim_inr, observe, ProtocolView.actor]
           rw [step_actingJoint next rest choice]
-  | _, _, .commit _ _ _ _ next, state, choice => by
+  | _, _, .commit _ owner _ _ next, state, choice => by
       cases state with
-      | inl config => simp [step, observe, ProtocolView.actor]
+      | inl config =>
+          by_cases inactive : owner ∈ config.defaulted
+          · simp [step, observe, ProtocolView.actor, inactive, commitSuccessor]
+          · simp [step, observe, ProtocolView.actor, inactive]
       | inr rest =>
           simp only [step, Sum.elim_inr, observe, ProtocolView.actor]
           rw [step_actingJoint next rest choice]
-  | _, _, .reveal _ _ _ _ _ _ next, state, choice => by
+  | _, _, .reveal _ owner _ _ _ _ next, state, choice => by
       cases state with
-      | inl config => simp [step, observe, ProtocolView.actor]
+      | inl config =>
+          by_cases inactive : owner ∈ config.defaulted
+          · simp [step, observe, ProtocolView.actor, inactive, revealSuccessor]
+          · simp [step, observe, ProtocolView.actor, inactive]
       | inr rest =>
           simp only [step, Sum.elim_inr, observe, ProtocolView.actor]
           rw [step_actingJoint next rest choice]
@@ -82,9 +77,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 section Decoding
 
 open Classical in
-/-- **The decoded point** of a native configuration: the source state it decodes
-to at the length of its completed prefix, and the state before setup if it is
-not a prefix. -/
+/-- Read the current source point at the configuration's completed prefix.
+The total reader returns none when the cut or typed cells do not decode. -/
 def decodedPoint (config : (graph setup).Config) : setup.ProtocolState :=
   if ordered : ∃ rank, config.cut.IsPrefix rank then
     sourceServicePrefix? setup ordered.choose config
@@ -165,8 +159,8 @@ def extendIntended? (history : setup.intendedProtocol.History)
     else none
   else none
 
-/-- The intended state of a native protocol state: the decoded point of its
-configuration, and the state before setup before initialization. -/
+/-- Read the source point of the actual current native configuration,
+preserving none before initialization. The point may lie outside intended play. -/
 def nativeDecodedState : (application setup runtime leaks).ProtocolState → setup.ProtocolState
   | none => none
   | some control => decodedPoint setup control.execution.application.config
@@ -184,16 +178,17 @@ def advanceIntended? (history : setup.intendedProtocol.History) :
       match after.execution.application.config.history.drop
           before.execution.application.config.history.length with
       | [] => some history
-      | [⟨event, action⟩] => extendIntended? setup history
-          (decodeEventAction setup.program event action)
+      | [completion] => extendIntended? setup history
+          (completion.decision.bind (decodeEventAction setup.program completion.event))
           (decodedPoint setup after.execution.application.config)
       | _ => none
   | _, none => none
 
-/-- **The intended history of a native history**, when every completion along
-it is a legal intended step. -/
+/-- The partial intended replay, accepting only stuttering or singleton
+completion transitions whose source steps are intended and actually reach the endpoint. -/
 def intendedHistory? : ∀ {state},
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      state →
       Option setup.intendedProtocol.History
   | _, .start => some setup.intendedProtocol.initHistory
   | _, .extend (source := before) (target := after) prior _ _ _ =>
@@ -219,7 +214,8 @@ theorem extendIntended?_state {history : setup.intendedProtocol.History}
 /-- **The replay ends at the decoded point.** Whenever the intended history of
 a native history exists, its state is the decoded point of the native state. -/
 theorem intendedHistory?_state : ∀ {state}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
+    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace state)
     {history : setup.intendedProtocol.History},
     intendedHistory? setup runtime leaks bounds horizon scheduler trace = some history →
       history.state = nativeDecodedState setup runtime leaks state
@@ -242,23 +238,24 @@ theorem intendedHistory?_state : ∀ {state}
               change (match after.execution.application.config.history.drop
                   before.execution.application.config.history.length with
                 | [] => some previous
-                | [⟨event, action⟩] => extendIntended? setup previous
-                    (decodeEventAction setup.program event action)
+                | [completion] => extendIntended? setup previous
+                    (completion.decision.bind (decodeEventAction setup.program completion.event))
                     (decodedPoint setup after.execution.application.config)
                 | _ => none) = some history at advanced
-              have step := transition_configStep (initialLaw setup) horizon
-                scheduler before after
-                joint realized
+              have path := reactive_protocol_graph_steps runtime leaks (initialLaw setup)
+                horizon scheduler before after joint realized
               split at advanced
-              · cases advanced
+              · rename_i dropped
+                cases advanced
                 rw [previousState]
-                rcases step with same | ⟨event, ready, action, member⟩
-                · change decodedPoint setup _ = decodedPoint setup _
-                  rw [same]
-                · rename_i dropped
-                  rw [EventGraph.Config.step_history _ event ready action _ member,
-                    List.drop_left] at dropped
-                  cases dropped
+                have small : after.execution.application.config.history.length ≤
+                    before.execution.application.config.history.length := by
+                  have emptyLength := congrArg List.length dropped
+                  simp only [List.length_drop, List.length_nil] at emptyLength
+                  omega
+                change decodedPoint setup before.execution.application.config =
+                  decodedPoint setup after.execution.application.config
+                rw [EventGraph.Config.Step.path_eq_of_history_length_le path small]
               · exact extendIntended?_state advanced
               · cases advanced
 
@@ -269,9 +266,10 @@ projected view. -/
 theorem intendedHistory?_infoOf {who : Player} {past : List (application setup runtime
   leaks).PlayerEntry}
     {view : (application setup runtime leaks).PlayerView}
-    (native : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
-    (seen : (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf who
-      native.trace =
+    (native : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).History)
+    (seen : ((bounds.onePacketMenu runtime leaks).information (initialLaw setup) horizon
+      scheduler).infoOf who native.trace =
       some (past, view))
     {history : setup.intendedProtocol.History}
     (replayed : intendedHistory? setup runtime leaks bounds horizon scheduler native.trace = some
@@ -279,7 +277,10 @@ theorem intendedHistory?_infoOf {who : Player} {past : List (application setup r
     setup.intendedModel.infoOf who history.trace =
       projectView setup runtime leaks who (some (past, view)) := by
   obtain ⟨state, trace⟩ := native
-  rw [onePacket_infoOf] at seen
+  have observed : ((bounds.onePacketMenu runtime leaks).information (initialLaw setup) horizon
+      scheduler).infoOf who trace = (application setup runtime leaks).observe who state :=
+    (bounds.onePacketMenu runtime leaks).info (initialLaw setup) horizon scheduler who trace
+  rw [observed] at seen
   cases state with
   | none => cases seen
   | some control =>

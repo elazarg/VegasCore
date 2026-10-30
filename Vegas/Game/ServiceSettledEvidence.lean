@@ -49,47 +49,6 @@ section Handle
 
 variable {graph : EventGraph Player L} (runtime : EventGraphRuntime graph)
 
-/-- An accepted packet is authored by its event's actor. -/
-theorem handle_sender_actor (state next : EventGraphRuntime.State graph)
-    (message : Message Player (Payload graph))
-    (accepted : handle runtime state message = some next) (event : graph.EventId)
-    (named : Payload.event? graph message.payload = some event) :
-    graph.actor? event = some message.sender := by
-  rcases message with ⟨id, packet⟩
-  cases packet with
-  | malformed raw => simp [handle] at accepted
-  | commitment actual candidate =>
-      change some actual = some event at named
-      cases Option.some.inj named
-      by_cases ready : state.config.cut.Ready event
-      · by_cases timely : state.WithinDeadline runtime event
-        · cases view : nodeView graph event with
-          | bind owner payload outputEq codeEq =>
-              by_cases sender : id.1 = owner
-              · exact (nodeView_bind_actor outputEq codeEq).trans (congrArg some sender.symm)
-              · simp [handle, ready, timely, view, Message.sender, sender] at accepted
-          | resolve owner payload binding checks outputEq codeEq =>
-              simp [handle, ready, timely, view] at accepted
-          | sample payload law outputEq codeEq =>
-              simp [handle, ready, timely, view] at accepted
-        · simp [handle, ready, timely] at accepted
-      · simp [handle, ready] at accepted
-  | opening actual candidate raw =>
-      change some actual = some event at named
-      cases Option.some.inj named
-      by_cases ready : state.config.cut.Ready event
-      · by_cases timely : state.WithinDeadline runtime event
-        · cases view : nodeView graph event with
-          | resolve owner payload binding checks outputEq codeEq =>
-              by_cases sender : id.1 = owner
-              · exact (nodeView_resolve_actor outputEq codeEq).trans (congrArg some sender.symm)
-              · simp [handle, ready, timely, view, Message.sender, sender] at accepted
-          | bind owner payload outputEq codeEq =>
-              simp [handle, ready, timely, view] at accepted
-          | sample payload law outputEq codeEq =>
-              simp [handle, ready, timely, view] at accepted
-        · simp [handle, ready, timely] at accepted
-      · simp [handle, ready] at accepted
 
 end Handle
 

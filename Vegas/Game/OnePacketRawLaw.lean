@@ -56,8 +56,12 @@ theorem intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Type}
     (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
     (coverage : CountEvidenceCoverage service observationRate deliveryRate)
     (lowerUtility upperUtility : Player → ℝ)
-    (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
-    (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
+    (lower_le : ∀ history : ((raw).protocol initial horizon scheduler).History,
+      ∀ terminal, sourceReadout setup runtime leaks history.state = some terminal →
+        ∀ who, lowerUtility who ≤ utility (setup.parameterOutcome parameter terminal) who)
+    (le_upper : ∀ history : ((raw).protocol initial horizon scheduler).History,
+      ∀ terminal, sourceReadout setup runtime leaks history.state = some terminal →
+        ∀ who, utility (setup.parameterOutcome parameter terminal) who ≤ upperUtility who)
     (deposit : Player → ℝ) (deposit_nonnegative : ∀ who, 0 ≤ deposit who)
     (sufficient : ∀ who,
       max 0 (max (excludedPayoff who) (upperUtility who)) -
@@ -96,12 +100,12 @@ theorem intended_raw_sequentialEquilibrium_of_onePacket {Parameter : Type}
       (exclusionBase_normalization setup runtime parameter utility excludedPayoff leaks)
       (fun who => min 0 (min (excludedPayoff who) (lowerUtility who)))
       (fun who => max 0 (max (excludedPayoff who) (upperUtility who))) deposit
-      (fun state who => (exclusionBase_mem_Icc setup runtime parameter utility
+      (fun history who => (exclusionBase_mem_Icc setup runtime parameter utility
         excludedPayoff leaks
-        lowerUtility upperUtility lower_le le_upper state who).1)
-      (fun state who => (exclusionBase_mem_Icc setup runtime parameter utility
+        lowerUtility upperUtility history.state (lower_le history) (le_upper history) who).1)
+      (fun history who => (exclusionBase_mem_Icc setup runtime parameter utility
         excludedPayoff leaks
-        lowerUtility upperUtility lower_le le_upper state who).2)
+        lowerUtility upperUtility history.state (lower_le history) (le_upper history) who).2)
       deposit_nonnegative sufficient native nativeSE
   refine ⟨target, targetSE, clean, states, ?_⟩
   let read := fun state : (runtime.reactiveApplication leaks).ProtocolState =>

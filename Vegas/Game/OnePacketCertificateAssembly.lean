@@ -122,7 +122,8 @@ theorem exclusionPayoffs_bounded (lowerUtility upperUtility : Player → ℝ)
   · intro who readout
     exact GameTheory.Math.abs_le_sum_interval_width lower upper lowerNonpos upperNonneg who
       (exclusionReadoutUtility_mem_Icc setup parameter utility excludedPayoff lowerUtility
-        upperUtility lower_le le_upper readout who)
+        upperUtility readout (fun _ _ who => lower_le _ who)
+        (fun _ _ who => le_upper _ who) who)
   · intro who
     apply GameTheory.Math.abs_le_sum_interval_width lower upper lowerNonpos upperNonneg who
     exact ⟨(min_le_right _ _).trans (min_le_left _ _),

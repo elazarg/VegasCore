@@ -17,8 +17,8 @@ readout version is the utility on the outcome type shared by the intended game
 (`Vegas.SourceProgram.Setup.protocolReadout`) and the runtime
 (`Vegas.sourceReadout`).
 
-Bounds on the utility bound the native payoff over all protocol states, hence
-under every scheduler (`Vegas.exclusionBase_mem_Icc`). No intended history has
+Bounds on an actual readout bound the native payoff
+(`Vegas.exclusionBase_mem_Icc`). No intended history has
 a public default, so the exclusion payoff of the intended readout is the
 intended payoff, and every sequential equilibrium of the intended game is
 sequentially rational against it
@@ -83,12 +83,15 @@ theorem exclusionTerminalUtility_of_not_defaulted
       utility (setup.parameterOutcome parameter terminal) who :=
   exclusionUtility_of_not_defaulted setup.program excludedPayoff utility active
 
-/-- Bounds on the utility and the exclusion payoff bound the payoff of every
-readout, the missing readout paying zero. -/
+/-- Bounds on the actual readout and exit payoff bound its utility; an absent
+readout pays zero and requires no ordinary-utility bound. -/
 theorem exclusionReadoutUtility_mem_Icc (lower upper : Player → ℝ)
-    (lower_le : ∀ outcome who, lower who ≤ utility outcome who)
-    (le_upper : ∀ outcome who, utility outcome who ≤ upper who)
-    (readout : Option (Config Player L setup.program.terminalCtx)) (who : Player) :
+    (readout : Option (Config Player L setup.program.terminalCtx))
+    (lower_le : ∀ terminal, readout = some terminal →
+      ∀ who, lower who ≤ utility (setup.parameterOutcome parameter terminal) who)
+    (le_upper : ∀ terminal, readout = some terminal →
+      ∀ who, utility (setup.parameterOutcome parameter terminal) who ≤ upper who)
+    (who : Player) :
     exclusionReadoutUtility setup parameter utility excludedPayoff readout who ∈
       Set.Icc (min 0 (min (excludedPayoff who) (lower who)))
         (max 0 (max (excludedPayoff who) (upper who))) := by
@@ -101,8 +104,8 @@ theorem exclusionReadoutUtility_mem_Icc (lower upper : Player → ℝ)
       split
       · exact ⟨(min_le_right _ _).trans (min_le_left _ _),
           (le_max_left _ _).trans (le_max_right _ _)⟩
-      · exact ⟨(min_le_right _ _).trans ((min_le_right _ _).trans (lower_le _ who)),
-          (le_upper _ who).trans ((le_max_right _ _).trans (le_max_right _ _))⟩
+      · exact ⟨(min_le_right _ _).trans ((min_le_right _ _).trans (lower_le _ rfl who)),
+          (le_upper _ rfl who).trans ((le_max_right _ _).trans (le_max_right _ _))⟩
 
 variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
@@ -162,12 +165,14 @@ theorem exclusionBase_normalization (state : (application setup runtime leaks).P
       exclusionBase setup runtime parameter utility excludedPayoff leaks state := by
   cases state <;> rfl
 
-/-- **Scheduler-independent bounds.** Bounds on the utility and the exclusion
-payoff bound the native exclusion payoff at every protocol state. -/
+/-- Bounds on an actual native readout suffice to bound its fixed-exit base utility. -/
 theorem exclusionBase_mem_Icc (lower upper : Player → ℝ)
-    (lower_le : ∀ outcome who, lower who ≤ utility outcome who)
-    (le_upper : ∀ outcome who, utility outcome who ≤ upper who)
-    (state : (application setup runtime leaks).ProtocolState) (who : Player) :
+    (state : (application setup runtime leaks).ProtocolState)
+    (lower_le : ∀ terminal, sourceReadout setup runtime leaks state = some terminal →
+      ∀ who, lower who ≤ utility (setup.parameterOutcome parameter terminal) who)
+    (le_upper : ∀ terminal, sourceReadout setup runtime leaks state = some terminal →
+      ∀ who, utility (setup.parameterOutcome parameter terminal) who ≤ upper who)
+    (who : Player) :
     exclusionBase setup runtime parameter utility excludedPayoff leaks state who ∈
       Set.Icc (min 0 (min (excludedPayoff who) (lower who)))
         (max 0 (max (excludedPayoff who) (upper who))) := by
@@ -182,7 +187,7 @@ theorem exclusionBase_mem_Icc (lower upper : Player → ℝ)
       · rw [exclusionBase_of_not_defaulted setup runtime parameter utility excludedPayoff leaks
           control who defaulted]
         exact exclusionReadoutUtility_mem_Icc setup parameter utility excludedPayoff lower upper
-          lower_le le_upper _ who
+          _ lower_le le_upper who
 
 end Payoff
 

@@ -25,9 +25,9 @@ equilibrium of the one-packet game extends to the bounded effective runtime and
 then to the bounded raw runtime, with the same law of play and no charge on its
 paths.
 
-The utility bounds range over all protocol states, so the spread does not
-depend on the scheduler, and deposits can be fixed before it. Missed bindings
-are not charged; the utility is free to treat them as exclusions.
+Utility bounds cover legal bounded-menu histories, and deposits use the same
+lower and upper values. Missed bindings are not charged; the utility is free
+to treat them as public defaults.
 -/
 
 noncomputable section
@@ -199,8 +199,12 @@ theorem onePacket_sequentialEquilibrium_extends
     (coverage : CountEvidenceCoverage service observationRate deliveryRate)
     (utility : (runtime.reactiveApplication leaks).ProtocolState → Player → ℝ)
     (lower upper deposit : Player → ℝ)
-    (lower_le : ∀ state who, lower who ≤ utility state who)
-    (le_upper : ∀ state who, utility state who ≤ upper who)
+    (lower_le : ∀ history : ((bounds.onePacketMenu runtime leaks).protocol initial horizon
+      scheduler).History,
+      ∀ who, lower who ≤ utility history.state who)
+    (le_upper : ∀ history : ((bounds.menu runtime leaks).protocol initial horizon
+      scheduler).History,
+      ∀ who, utility history.state who ≤ upper who)
     (deposit_nonnegative : ∀ who, 0 ≤ deposit who)
     (sufficient : ∀ who,
       upper who - lower who ≤ observationRate who * deliveryRate who * deposit who) :
@@ -257,8 +261,7 @@ theorem onePacket_sequentialEquilibrium_extends
       (fun final who => bounds.onePacketMenu_countCharge_zero runtime leaks initial horizon
         scheduler service final who)
       lower upper (fun who => observationRate who * deliveryRate who) deposit
-      deposit_nonnegative (fun final who => lower_le final.state who)
-      (fun final who => le_upper final.state who)
+      deposit_nonnegative lower_le le_upper
       (fun who => by linarith [sufficient who])
       (fun profile who site action extra history => by
         rw [TerminalAudit.collection_probability]
@@ -312,8 +315,10 @@ theorem onePacket_raw_sequentialEquilibrium
     (normalized : ∀ state,
       utility ((runtime.reactiveNormalization leaks).state state) = utility state)
     (lower upper deposit : Player → ℝ)
-    (lower_le : ∀ state who, lower who ≤ utility state who)
-    (le_upper : ∀ state who, utility state who ≤ upper who)
+    (lower_le : ∀ history : ((bounds.rawMenu runtime leaks).protocol initial horizon
+      scheduler).History, ∀ who, lower who ≤ utility history.state who)
+    (le_upper : ∀ history : ((bounds.rawMenu runtime leaks).protocol initial horizon
+      scheduler).History, ∀ who, utility history.state who ≤ upper who)
     (deposit_nonnegative : ∀ who, 0 ≤ deposit who)
     (sufficient : ∀ who,
       upper who - lower who ≤ observationRate who * deliveryRate who * deposit who) :
@@ -352,7 +357,11 @@ theorem onePacket_raw_sequentialEquilibrium
   obtain ⟨effectiveTarget, effectiveSE, _, _, laws, _, clean⟩ :=
     bounds.onePacket_sequentialEquilibrium_extends runtime leaks initial horizon scheduler service
       observationRate deliveryRate delivery_nonnegative coverage utility lower upper deposit
-      lower_le le_upper deposit_nonnegative sufficient source equilibrium
+      (fun history who => lower_le
+        ((bounds.onePacketMenu_in_raw runtime leaks).history initial horizon scheduler history) who)
+      (fun history who => le_upper
+        ((bounds.menu_in_raw runtime leaks).history initial horizon scheduler history) who)
+      deposit_nonnegative sufficient source equilibrium
   have truncated := (effectiveTarget.isSequentialEquilibrium_iff_truncated_of_bounded _ _
     (effective.bounded initial horizon scheduler).wellFoundedHistories
     (effective.bounded initial horizon scheduler) _).mp effectiveSE

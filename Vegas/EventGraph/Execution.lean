@@ -676,6 +676,23 @@ theorem path_history_prefix {before after : graph.Config}
   | refl => exact ⟨[], by simp⟩
   | @head before middle moved _ ih => exact moved.history_prefix.trans ih
 
+/-- Every actual completion appends a history entry, including automatic
+completion, so a finite path with no history growth leaves the configuration unchanged. -/
+theorem path_eq_of_history_length_le {before after : graph.Config}
+    (path : Relation.ReflTransGen Step before after)
+    (noGrowth : after.history.length ≤ before.history.length) : after = before := by
+  induction path using Relation.ReflTransGen.head_induction_on with
+  | refl => rfl
+  | @head current middle moved rest _ =>
+      obtain ⟨event, ready, action, supported⟩ := moved
+      obtain ⟨value, _, history⟩ := current.step_completion event ready action middle supported
+      have advanced := congrArg List.length history
+      simp only [List.length_append, List.length_singleton] at advanced
+      obtain ⟨suffix, kept⟩ := path_history_prefix rest
+      have continued := congrArg List.length kept
+      simp only [List.length_append] at continued
+      omega
+
 /-- Any finite supported execution path preserves reachability from fixed inputs. -/
 theorem path_reachable {before after : graph.Config}
     (path : Relation.ReflTransGen Step before after) {inputs : graph.Inputs} :
