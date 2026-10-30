@@ -30,6 +30,9 @@ its scheduling proof uses the unique ready event. The sole ledger application
 derives default control from the graph configuration and performs bounded
 automatic completion. Its raw transitions refine finite supported graph paths;
 initialized histories retain reachability, cells, deadlines and quiescence.
+The roster scheduler has an all-history service proof through automatic
+completion, and completed native configurations freeze readout and fixed-exit
+payoff. Sequential completion geometry uses finite paths and actual prefix ranks.
 The probabilistic client and strategic ports remain acceptance obligations for
 replacing the complete tower.
 

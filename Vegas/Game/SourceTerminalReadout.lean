@@ -6,12 +6,11 @@ import Vegas.Game.SourceServicePrefix
 import GameTheoryExtensions.Analysis.Protocol.StoppedReadout
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 
-/-! # Completed native source cuts freeze the full source readout
+/-! # Completed native source cuts freeze their configuration
 
-The native configuration cannot change once every graph event has completed.
-Callbacks, traffic, recall, clocks and receipts may continue changing. The exact
-law below concerns the full source readout and functions of that readout only;
-it does not identify complete histories or audit charges.
+The native configuration and full source readout stay fixed once every graph
+event has completed. Callbacks, traffic, recall, clocks and receipts may continue
+changing. Configuration stability does not identify complete histories or audit charges.
 -/
 
 noncomputable section
@@ -67,6 +66,33 @@ theorem sourceTerminal_transition {initial : PMF (application setup runtime
 
 variable [Fintype Player]
 
+/-- Every supported continuation retains the full completed native graph configuration. -/
+theorem sourceTerminal_config_stable (menu : (application setup runtime leaks).ResponseMenu)
+    (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
+    (scheduler : (application setup runtime leaks).Scheduler)
+    (certificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)
+    (players : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
+    (start : (menu.protocol initial horizon scheduler).History)
+    (control : (application setup runtime leaks).Control) (current : start.state = some control)
+    (terminal : control.execution.application.config.cut.Terminal) :
+    ∀ final ∈ ((menu.information initial horizon scheduler).runBehavioralTerminalFrom certificate
+        players start).support,
+      ∃ found : (application setup runtime leaks).Control, final.state = some found ∧
+        found.execution.application.config = control.execution.application.config := by
+  let closed := fun state : (application setup runtime leaks).ProtocolState =>
+    ∃ found : (application setup runtime leaks).Control, state = some found ∧
+      found.execution.application.config = control.execution.application.config
+  have preserved := InformationModel.runBehavioralTerminalFrom_support_closed
+    (menu.information initial horizon scheduler) certificate players closed
+    (fun before joint _legal after holds member => by
+      obtain ⟨found, rfl, same⟩ := holds
+      obtain ⟨next, nextState, nextConfig⟩ := sourceTerminal_transition (runtime := runtime) found
+        (initial := initial) (horizon := horizon) (scheduler := scheduler)
+        (same.symm ▸ terminal) joint member
+      exact ⟨next, nextState, nextConfig.trans same⟩)
+    start ⟨control, current, rfl⟩
+  exact preserved
+
 /-- The full source readout stays fixed under every continuation profile once
 the source cut has completed, even while callbacks and network effects continue. -/
 theorem sourceTerminal_readout_stable (menu : (application setup runtime
@@ -86,19 +112,8 @@ theorem sourceTerminal_readout_stable (menu : (application setup runtime
   | none => simp only [NativeSourceTerminal, current] at terminal
   | some control =>
       simp only [NativeSourceTerminal, current] at terminal
-      let closed := fun state : (application setup runtime leaks).ProtocolState =>
-        ∃ found : (application setup runtime leaks).Control, state = some found ∧
-          found.execution.application.config = control.execution.application.config
-      have preserved := InformationModel.runBehavioralTerminalFrom_support_closed
-        (menu.information initial horizon scheduler) certificate players closed
-        (fun before joint _legal after holds member => by
-          obtain ⟨found, rfl, same⟩ := holds
-          obtain ⟨next, nextState, nextConfig⟩ := sourceTerminal_transition (runtime :=
-            runtime) found
-            (initial := initial) (horizon := horizon) (scheduler := scheduler)
-            (same.symm ▸ terminal) joint member
-          exact ⟨next, nextState, nextConfig.trans same⟩)
-        start ⟨control, current, rfl⟩
+      have preserved := sourceTerminal_config_stable menu initial horizon scheduler certificate
+        players start control current terminal
       intro final member
       obtain ⟨found, finalState, same⟩ := preserved final member
       rw [finalState, sourceReadout, serviceSourceReadout_eq_decode,

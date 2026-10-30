@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.EventGraph.Semantics
+import Vegas.EventGraph.Sequential
 import Mathlib.Order.Interval.Finset.Fin
 
 /-! # Canonical step equations
@@ -214,3 +215,30 @@ theorem runPlan_canonical_ownerless (profile : graph.BehavioralProfile)
   · rw [PMF.pure_bind]
 
 end Vegas.EventGraph
+
+namespace Vegas.EventGraph.Config.Step
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+/-- A finite path of the sequential executor extends its numeric completed
+prefix, possibly by more than one event. -/
+theorem path_isPrefix_sequential (graph : Vegas.EventGraph Player L)
+    {before after : graph.sequentialize.Config}
+    (path : Relation.ReflTransGen Config.Step before after)
+    {rank : Nat} (ordered : before.cut.IsPrefix rank) :
+    ∃ nextRank, rank ≤ nextRank ∧ after.cut.IsPrefix nextRank := by
+  induction path using Relation.ReflTransGen.head_induction_on generalizing rank with
+  | refl => exact ⟨rank, le_rfl, ordered⟩
+  | @head before middle moved _ ih =>
+      obtain ⟨event, ready, action, supported⟩ := moved
+      have actual : before.cut.IsPrefix event.val :=
+        ⟨event.isLt.le, fun query =>
+          graph.sequentialize_mem_completed_iff_lt_of_ready before.cut ready⟩
+      have rankEq : event.val = rank := actual.unique ordered
+      have nextPrefix : middle.cut.IsPrefix (rank + 1) := by
+        rw [before.step_cut event ready action middle supported]
+        exact ordered.complete_at event ready rankEq
+      obtain ⟨nextRank, lower, finalPrefix⟩ := ih nextPrefix
+      exact ⟨nextRank, by omega, finalPrefix⟩
+
+end Vegas.EventGraph.Config.Step

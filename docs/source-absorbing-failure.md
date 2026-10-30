@@ -429,7 +429,8 @@ Only checked theorems close these obligations:
    Receipt-failure provenance, activation origins and the native information
    adapters are checked. Port the remaining physical service/client consumers
    to these finite paths and complete default-aware readouts.
-4. Reprove the bounded-client law with complete readout and the service contract.
+4. Reprove the bounded-client law with complete readout using the checked roster
+   service contract.
 5. Source-to-graph Nash deviation translation is checked. Port the ledger
    client deviation correspondence and sequential consistency/rationality;
    equilibrium-path outcome agreement alone is insufficient.
@@ -463,22 +464,24 @@ scheduler or runtime assumption. The remaining ledger and sequential strategic
 consumers and the acceptance obligations above must still check before the
 complete tower is replaced.
 
-
 ## Native completion boundaries
 
 One ledger command can complete its addressed event and automatically complete
 several later events. The native relation is a finite supported graph path,
 as exposed by `reactiveApplication_graphSteps` in
-[ReactiveGraphSteps](../Vegas/Pending/ReactiveGraphSteps.lean). The
-`environmentStep_configStep`, `round_prefix` and `runUntil_completion_prefix`
-interfaces in [SourceServiceCompletion](../Vegas/Game/SourceServiceCompletion.lean)
-require replacement where they conclude that the prefix advances by at most
-one. A round still preserves its starting bound on recorded ready-event views:
-activation and response preserve the graph, while a completing environment
-command adds no player response.
+[ReactiveGraphSteps](../Vegas/Pending/ReactiveGraphSteps.lean). The checked
+`round_prefix` result in
+[SourceServiceCompletion](../Vegas/Game/SourceServiceCompletion.lean) preserves
+the round's starting bound on recorded ready-event views and certifies a
+completed prefix at an actual rank greater than or equal to its starting rank.
+Activation and response preserve the graph, while a completing environment
+command adds no player response. `roundsFrom_ranked` propagates these facts
+from initialization through any supported number of complete rounds.
 
-A stop at completion of event `e` can therefore end at any actual prefix rank
-strictly greater than `e.val`. It need not end at `e.val + 1`.
+`runUntil_completion_prefix` retains the original prefix when its target is
+unfinished, or certifies an actual prefix rank strictly greater than the target
+rank once it completes. These are facts about supported executions. A stop at
+completion of event `e` need not end at `e.val + 1`.
 `CompletionBoundary.stopped` must identify that actual later boundary, with
 its future events untouched, rather than a fixed successor rank. Likewise,
 `LateStopped` defined by an exact successor prefix is not a monotone
@@ -501,16 +504,25 @@ provide the continuation interface for completing the honest-client law;
 they do not identify a multi-event endpoint with one source step.
 
 The stopped comparisons count actual player responses, so automatic graph
-completions add no response charge. Readout-only terminal comparison can use
-`sourceTerminal_readout_law` from
-[SourceTerminalReadout](../Vegas/Game/SourceTerminalReadout.lean). A joint
-comparison with native exclusion utility must also retain the actual payoff:
-public default fixes that payoff even when the terminal reader returns `none`.
-Thus the global factorization through the optional readout used in
-[SourceTerminalComparison](../Vegas/Game/SourceTerminalComparison.lean) and
+completions add no response charge.
+[SourceTerminalReadout](../Vegas/Game/SourceTerminalReadout.lean) proves
+`sourceTerminal_config_stable`: every supported continuation from a completed
+source cut retains the complete native configuration. Its readout freeze law
+uses that same configuration certificate.
+[OnePacketExclusionPayoff](../Vegas/Game/OnePacketExclusionPayoff.lean) derives
+`sourceTerminal_exclusionBase_stable` for the actual native fixed-exit payoff
+vector, under arbitrary continuation profiles. Traffic and audit deductions are
+separate from that observable.
+
+[SourceTerminalComparison](../Vegas/Game/SourceTerminalComparison.lean) uses
+those native freeze laws to compare the joint readout and fixed-exit payoff at
+source completion with exactly the conditional expected-response budget.
+A public default fixes the native payoff even when the terminal reader returns
+`none`, so the proof retains the actual joint observable throughout.
 [OnePacketHonestTerminalApproximation](../Vegas/Game/OnePacketHonestTerminalApproximation.lean)
-is false for incomplete defaulted states. The remaining acceptance obligation
-is a freeze law for the actual joint native observable, or a payoff equality
-restricted to the proved readout support. This does not justify a new bound on
-incomplete source runs or a new service assumption; the final source comparison
-uses the full source horizon.
+preserves the horizon coefficient `min (Fintype.card Player) 1 * horizon` by
+mapping the complete-history comparison and using the checked honest joint law.
+The intended side uses the full source horizon, `instructionCount + 1`;
+complete readouts follow internally. No condition on incomplete source runs or
+new service assumption is used. The remaining fixed-successor consumers above
+and the final compiler and strategic acceptance gates still require checking.

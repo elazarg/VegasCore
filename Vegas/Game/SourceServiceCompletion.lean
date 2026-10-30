@@ -1,19 +1,26 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceLocalComparison
-import Vegas.Game.ServiceRosterAsync
+import Vegas.Game.SourceServicePrefix
+import Vegas.Source.SetupProtocolEvaluation
+import Vegas.Game.RevealServicePayoffs
+import Vegas.Pending.ReactiveGraphSteps
+import Vegas.Pending.ReactiveStateInvariant
+import Vegas.EventGraph.CanonicalStep
+import Interaction.ReactiveRoundReachability
+import Interaction.ReactiveStopping
+import Interaction.ReactiveRecallInvariant
 
 /-! # Completed prefixes and completion boundaries
 
-On the sequentialized graph one event is ready at a time. Every execution
-reached by complete rounds from initialization has a completed prefix, and its
-recorded responses saw nothing beyond it (`Vegas.roundsFrom_ranked`). Rounds
-stopped at the completion of the current event keep the recorded views below
-the next event (`Vegas.runUntil_completion_prefix`). A completion boundary is an
-execution the players reach by complete rounds where the events of lower rank
-have completed and no recorded response has seen the next event ready
-(`Vegas.CompletionBoundary`); `Vegas.BoundaryContinuationLaw` states that the
-run to the horizon from every such boundary has the source continuation law.
+On the sequentialized graph one event is ready at a time. A native command
+can complete several events through automatic completion. Every complete
+round extends the completed prefix while preserving its starting bound on
+recorded ready-event views. Stopping at an event's completion retains the
+actual later prefix rank.
+
+A completion boundary combines a completed prefix, untouched later events
+and actual complete-round reachability. Its continuation law uses the sole
+source decoder and evaluator from that current endpoint.
 -/
 
 noncomputable section
@@ -44,69 +51,6 @@ def Untouched (event : (serviceGraph setup mode).EventId)
 def ReadySeen (bound : Nat) (execution : (serviceApplication setup mode deadline leaks).Execution) :
     Prop := ∀ who, ∀ entry ∈ execution.recall who, ∀ event : (serviceGraph setup mode).EventId,
     entry.beforeView.application.publicView.EventReady event → event.val ≤ bound
-
-/-- A configuration step either stutters or completes one ready event. -/
-def ConfigStep (before after : (serviceGraph setup mode).Config) : Prop :=
-  after = before ∨ ∃ event, ∃ (ready : before.cut.Ready event)
-    (action : (serviceGraph setup mode).Action event), after ∈
-    (before.step event ready action).support
-
-variable {setup}
-
-
-variable (setup)
-
-/-- One scheduler command changes the configuration by one step. -/
-theorem environmentStep_configStep
-    (execution next : (serviceApplication setup mode deadline leaks).Execution)
-    (command : (serviceApplication setup mode deadline leaks).Command)
-    (reached : next ∈
-        (execution.environmentStep (serviceApplication setup mode deadline leaks)
-        command).support) :
-    ConfigStep setup execution.application.config next.application.config := by
-  have ofGraph : ∀ {after : EventGraphRuntime.State (serviceGraph setup mode)},
-      GraphStep execution.application after →
-        ConfigStep setup execution.application.config after.config := by
-    intro after step
-    rcases step with ⟨same, _, _⟩ | ⟨event, ready, action, member, _, _⟩
-    · exact Or.inl same
-    · exact Or.inr ⟨event, ready, action, member⟩
-  cases command with
-  | application command =>
-      have member := (applicationStep_facts execution next command reached).1
-      cases command with
-      | advanceClock =>
-          simp only [EventGraphRuntime.environmentStep, PMF.mem_support_pure_iff] at member
-          rw [member]
-          exact Or.inl rfl
-      | executeSample event =>
-          exact ofGraph
-              (graphStep_executeSample (serviceRuntime setup mode deadline) _ _ event member)
-      | expire event =>
-          exact ofGraph (graphStep_expire (serviceRuntime setup mode deadline) _ _ event member)
-  | activate who =>
-      unfold ReactiveApplication.Execution.environmentStep at reached
-      rw [PMF.support_map] at reached
-      obtain ⟨updated, supported, rfl⟩ := reached
-      rw [PMF.support_map] at supported
-      obtain ⟨_, _, rfl⟩ := supported
-      exact Or.inl rfl
-  | wait =>
-      unfold ReactiveApplication.Execution.environmentStep at reached
-      rw [PMF.support_map] at reached
-      obtain ⟨updated, supported, rfl⟩ := reached
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      exact Or.inl rfl
-  | «include» id =>
-      unfold ReactiveApplication.Execution.environmentStep at reached
-      rw [PMF.support_map] at reached
-      obtain ⟨updated, supported, rfl⟩ := reached
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      exact ofGraph
-          (graphStep_includePending (serviceRuntime setup mode deadline) leaks execution id)
-
-
-
 
 /-- An execution where the events of rank below `rank` have completed, no
 recorded response has seen the event of rank `rank` ready, and which the
@@ -143,22 +87,8 @@ variable (setup : Setup (Player := Player) (L := L))
   (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-variable {setup}
-/-- At a completed prefix a configuration step stutters or extends the prefix
-by exactly one event. -/
-theorem ConfigStep.prefix {before after : (graph setup).Config}
-    (step : ConfigStep setup before after) (rank : Nat) (ordered : before.cut.IsPrefix rank) :
-    after = before ∨ after.cut.IsPrefix (rank + 1) := by
-  rcases step with same | ⟨event, ready, action, member⟩
-  · exact Or.inl same
-  · right
-    have rankEq := (ready_iff_rank setup before rank ordered event).mp ready
-    rw [before.step_cut event ready action after member]
-    exact ordered.complete_at event ready rankEq
-
-variable (setup)
-/-- One scheduler round from a completed prefix: every new response sees only
-the current event ready, and the prefix grows by at most one event. -/
+/-- One scheduler round preserves the starting bound on remembered ready events
+and extends the completed prefix through its actual finite graph path. -/
 theorem round_prefix (scheduler : (application setup runtime leaks).Scheduler)
     (players : Player → (application setup runtime leaks).Policy) (rank : Nat)
     (execution next : (application setup runtime leaks).Execution)
@@ -167,14 +97,15 @@ theorem round_prefix (scheduler : (application setup runtime leaks).Scheduler)
     (reached : next ∈ ((application setup runtime leaks).round scheduler players
       execution).support) :
     ReadySeen setup leaks rank next ∧
-      (next.application.config = execution.application.config ∨
-        next.application.config.cut.IsPrefix (rank + 1)) := by
+      ∃ actualRank, rank ≤ actualRank ∧ next.application.config.cut.IsPrefix actualRank := by
   let app := application setup runtime leaks
   obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
   have recallEq := app.environmentStep_recall execution middle command moved
-  have middleConfig := (environmentStep_configStep setup leaks execution middle command
-    moved).prefix rank ordered
+  have path := (runtime.reactiveApplication_graphSteps leaks).environmentStep
+    execution middle command moved
+  have middlePrefix := EventGraph.Config.Step.path_isPrefix_sequential setup.eventGraph
+    path ordered
   change next ∈ (app.resume players (command.actor? app) middle).support at resumed
   by_cases activation : ∃ who, command = .activate who
   · obtain ⟨who, rfl⟩ := activation
@@ -189,7 +120,10 @@ theorem round_prefix (scheduler : (application setup runtime leaks).Scheduler)
     rw [ReactiveApplication.invoke, PMF.support_map] at resumed
     obtain ⟨response, _, rfl⟩ := resumed
     obtain ⟨configEq, _⟩ := runtime.reactive_respond_application leaks middle who response
-    refine ⟨?_, Or.inl (by rw [configEq, sameApp])⟩
+    refine ⟨?_, rank, le_rfl, ?_⟩
+    swap
+    · rw [configEq, sameApp]
+      exact ordered
     intro observer entry member event readyView
     rcases app.respond_entry_origin middle who observer response entry member with
       prior | ⟨_, fresh⟩
@@ -199,7 +133,10 @@ theorem round_prefix (scheduler : (application setup runtime leaks).Scheduler)
       change middle.application.publicView.EventReady event at readyView
       have readyNow := (State.publicView_eventReady _ event).mp readyView
       rw [sameApp] at readyNow
-      exact ((ready_iff_rank setup _ rank ordered event).mp readyNow).le
+      have actual : execution.application.config.cut.IsPrefix event.val :=
+        ⟨event.isLt.le, fun query =>
+          setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ readyNow⟩
+      exact (actual.unique ordered).le
   · have idle : command.actor? app = none := by
       cases command with
       | activate who => exact (activation ⟨who, rfl⟩).elim
@@ -209,7 +146,7 @@ theorem round_prefix (scheduler : (application setup runtime leaks).Scheduler)
     rw [idle] at resumed
     simp only [ReactiveApplication.resume, PMF.mem_support_pure_iff] at resumed
     subst resumed
-    refine ⟨?_, middleConfig⟩
+    refine ⟨?_, middlePrefix⟩
     intro observer entry member
     rw [recallEq] at member
     exact seen observer entry member
@@ -237,16 +174,14 @@ theorem roundsFrom_ranked (scheduler : (application setup runtime leaks).Schedul
       rw [ReactiveApplication.roundsFrom_succ] at supported
       obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       obtain ⟨rank, ordered, seen⟩ := ih prior priorMem
-      obtain ⟨nextSeen, nextConfig⟩ :=
+      obtain ⟨nextSeen, actualRank, lower, nextPrefix⟩ :=
         round_prefix setup runtime leaks scheduler players rank prior execution ordered seen moved
-      rcases nextConfig with same | advanced
-      · exact ⟨rank, by rw [same]; exact ordered, nextSeen⟩
-      · exact ⟨rank + 1, advanced, fun who entry member event readyView =>
-          (nextSeen who entry member event readyView).trans (Nat.le_succ _)⟩
+      exact ⟨actualRank, nextPrefix, fun who entry member event readyView =>
+        (nextSeen who entry member event readyView).trans lower⟩
 
 
-/-- Rounds stopped at the completion of the current event keep the recorded
-views below the next event, and stop at its completion or earlier. -/
+/-- Stopping at an event's completion preserves its starting view bound. The
+endpoint is its original prefix if unfinished, or an actual strictly later prefix. -/
 theorem runUntil_completion_prefix (scheduler : (application setup runtime leaks).Scheduler)
     (players : Player → (application setup runtime leaks).Policy) (event : (graph setup).EventId)
     (count : Nat) (execution stopped : (application setup runtime leaks).Execution)
@@ -256,31 +191,31 @@ theorem runUntil_completion_prefix (scheduler : (application setup runtime leaks
       (fun final => event ∈ final.application.config.cut.completed) count execution).support) :
     ReadySeen setup leaks event.val stopped ∧
       (stopped.application.config.cut.IsPrefix event.val ∨
-        stopped.application.config.cut.IsPrefix (event.val + 1)) := by
+        ∃ actualRank, event.val < actualRank ∧
+          stopped.application.config.cut.IsPrefix actualRank) := by
   induction count generalizing execution with
   | zero =>
       cases (PMF.mem_support_pure_iff _ _).mp reached
       exact ⟨seen, Or.inl ordered⟩
   | succ count ih =>
-      by_cases halt : event ∈ execution.application.config.cut.completed
-      · rw [ReactiveApplication.runUntil_of_stop _ _ _ _ _ execution halt] at reached
-        cases (PMF.mem_support_pure_iff _ _).mp reached
-        exact ⟨seen, Or.inl ordered⟩
-      · simp only [ReactiveApplication.runUntil, halt, ↓reduceIte] at reached
-        obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-        obtain ⟨middleSeen, middleConfig⟩ :=
-          round_prefix setup runtime leaks scheduler players event.val execution middle ordered
-            seen moved
-        rcases middleConfig with same | advanced
-        · exact ih middle (by rw [same]; exact ordered) middleSeen rest
-        · have finished : event ∈ middle.application.config.cut.completed :=
-            (advanced.2 event).mpr (Nat.lt_succ_self _)
-          rw [ReactiveApplication.runUntil_of_stop _ _ _ _ _ middle finished] at rest
-          cases (PMF.mem_support_pure_iff _ _).mp rest
-          exact ⟨middleSeen, Or.inr advanced⟩
+      have unfinished : event ∉ execution.application.config.cut.completed :=
+        fun done => (Nat.lt_irrefl _ ((ordered.2 event).mp done)).elim
+      simp only [ReactiveApplication.runUntil, unfinished, ↓reduceIte] at reached
+      obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨middleSeen, actualRank, lower, middlePrefix⟩ :=
+        round_prefix setup runtime leaks scheduler players event.val execution middle ordered
+          seen moved
+      by_cases finished : event ∈ middle.application.config.cut.completed
+      · rw [ReactiveApplication.runUntil_of_stop _ _ _ _ _ middle finished] at rest
+        cases (PMF.mem_support_pure_iff _ _).mp rest
+        exact ⟨middleSeen, Or.inr ⟨actualRank, (middlePrefix.2 event).mp finished, middlePrefix⟩⟩
+      · have upper : actualRank ≤ event.val := by
+          by_contra advanced
+          exact finished ((middlePrefix.2 event).mpr (by omega))
+        have same : actualRank = event.val := by omega
+        rw [same] at middlePrefix
+        exact ih middle middlePrefix middleSeen rest
 
 end Sequential
-
-variable [Fintype Player]
 
 end Vegas

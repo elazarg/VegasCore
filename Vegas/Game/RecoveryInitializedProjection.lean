@@ -187,7 +187,7 @@ theorem recovery_initialized_readout_withinTV :
   have nativeClose := onePacket_bounded_readout_exclusion_withinTV setup runtime leaks bounds
     (initialLaw setup)
     horizon (NativeScheduler) parameter utility excludedPayoff (sequence n) (sequence n).strategy
-    (instructionCount setup.program + 1) honestLaw
+    honestLaw
       (slotRetention_nonneg (positive n).le (le_one n))
       (slotRetention_le_one (positive n).le (le_one n))
       (sourceNativeProfile setup runtime leaks bounds horizon scheduler strategy)

@@ -2,6 +2,7 @@
 
 import Vegas.Game.IntendedPreservation
 import Vegas.Game.RevealServicePayoffs
+import Vegas.Game.SourceTerminalReadout
 import Interaction.ReactiveNormalHistory
 
 /-! # The exclusion payoff on the supplied runtime
@@ -157,6 +158,35 @@ theorem exclusionBase_eq_readout_of_readout
         exact defaulted
       · exact exclusionBase_of_not_defaulted setup runtime parameter utility excludedPayoff
           leaks control who defaulted
+
+/-- A completed native graph freezes its base exit utility under arbitrary continuations. -/
+theorem sourceTerminal_exclusionBase_stable [Fintype Player]
+    (menu : (application setup runtime leaks).ResponseMenu)
+    (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
+    (scheduler : (application setup runtime leaks).Scheduler)
+    (certificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)
+    (players : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
+    (start : (menu.protocol initial horizon scheduler).History)
+    (terminal : NativeSourceTerminal (runtime := runtime) (setup := setup) (leaks := leaks)
+      start.state) :
+    ∀ final ∈ ((menu.information initial horizon scheduler).runBehavioralTerminalFrom certificate
+        players start).support,
+      exclusionBase setup runtime parameter utility excludedPayoff leaks final.state =
+        exclusionBase setup runtime parameter utility excludedPayoff leaks start.state := by
+  cases current : start.state with
+  | none => simp only [NativeSourceTerminal, current] at terminal
+  | some control =>
+      simp only [NativeSourceTerminal, current] at terminal
+      have fixed := sourceTerminal_config_stable menu initial horizon scheduler certificate
+        players start control current terminal
+      intro final supported
+      obtain ⟨found, state, same⟩ := fixed final supported
+      have readout : sourceReadout setup runtime leaks (some found) =
+          sourceReadout setup runtime leaks (some control) := by
+        rw [sourceReadout, serviceSourceReadout_eq_decode, serviceSourceReadout_eq_decode, same]
+      rw [state]
+      funext who
+      simp only [exclusionBase, same, readout]
 
 /-- Submission normalization retains the configuration and its native exit utility. -/
 theorem exclusionBase_normalization (state : (application setup runtime leaks).ProtocolState) :
