@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketCanonicalPermits
+import Vegas.Compile.EventGraphBacktranslation
 
 /-! # Committed values and emitted transmissions
 
@@ -30,7 +31,7 @@ section Effective
 
 /-- A source action binds a successful value whenever it is a commitment. -/
 def SourceProgram.OwnAction.CommitsValue : OwnAction Player L → Prop
-  | .commit _ _ _ choice => ∃ value, choice = .success value
+  | .commit _ _ _ choice => ∃ value, choice = some (.success value)
   | .reveal .. => True
 
 /-- A source action binding a successful value encodes, at a binding event, to a
@@ -43,7 +44,7 @@ theorem encodeEventAction?_commitsValue :
     ∀ owner payload (binding : outputLayout program event = .binding owner payload),
       ∃ value : L.Val payload,
         encoded = cast (congrArg EventGraph.EventField.Action binding.symm)
-          (PublicationResult.success value)
+          (some (PublicationResult.success value))
   | _, _, .ret _, event, _, _, _, _ => nomatch event
   | _, _, .sample name fresh law next, event, action, commits, encoded, encodes => by
       cases event using Fin.cases with

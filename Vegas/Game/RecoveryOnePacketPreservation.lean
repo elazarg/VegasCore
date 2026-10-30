@@ -40,7 +40,7 @@ local notation "Initial" => PMF.map
 local notation "NativeScheduler" => RecoveryProjection.nativeScheduler
   runtime leaks scheduler
 local notation "menu" => Recovery.onePacketMenu runtime leaks bounds
-local notation "R" => RecoveryOnePacket.model setup runtime leaks bounds Initial horizon scheduler
+local notation "R" => onePacketModel setup runtime leaks bounds Initial horizon scheduler
 local notation "RP" => ReactiveApplication.ResponseMenu.protocol
   (Recovery.onePacketMenu runtime leaks bounds) Initial horizon scheduler
 
@@ -107,7 +107,7 @@ theorem RecoveryOnePacket.intended_sequentialEquilibrium_preserved
     tendsto_trembleScale floors floorPositive floorLeOne
   obtain ⟨weights, sequence, limit, index, assembled, _mixed, bayes, increasing, converges,
       consistent, pooled, _limits, freeOptimal, _publicOptimal⟩ :=
-    RecoveryOnePacket.exists_consistent_completion setup runtime leaks bounds Initial horizon
+    setup.exists_onePacket_consistent_completion runtime leaks bounds Initial horizon
       scheduler
       parameter utility excludedPayoff sourceSequence bounds.candidateCount scale positive le_one
       vanishes
@@ -166,7 +166,7 @@ theorem RecoveryOnePacket.intended_sequentialEquilibrium_preserved
       ((menu).bounded Initial horizon scheduler)
       ((menu).decisionRecall Initial horizon scheduler) payoff intended sourceSequence
       sourceConverges sourceRational sequence
-      (fun _ site => ¬ RecoveryOnePacket.FreeAgent setup runtime leaks bounds Initial horizon
+      (fun _ site => ¬ FreeAgent setup runtime leaks bounds Initial horizon
         scheduler
           ((R).agentAt site))
       error errorVanishes (fun n who site notFree choice => by

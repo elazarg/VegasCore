@@ -3,6 +3,7 @@
 import Vegas.Game.OnePacketCounterpartGuard
 import Vegas.Game.OnePacketDebtFreeRegular
 import Vegas.Game.OnePacketSwapFiberSum
+import Vegas.Game.SourceDebtObservation
 
 /-! # Regular counterparts by a swap toward a forced witness
 

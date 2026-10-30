@@ -4,6 +4,7 @@ import Vegas.Game.OnePacketHonestContinuation
 import Vegas.Game.HonestContinuationIntended
 import GameTheory.Analysis.Protocol.RestrictionDomination
 import Vegas.Game.OnePacketNextEvent
+import Vegas.Game.SourceDebtObservation
 
 /-! # Honest ready callbacks are recorded under counted native service -/
 

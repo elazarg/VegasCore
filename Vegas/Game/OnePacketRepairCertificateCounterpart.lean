@@ -7,6 +7,7 @@ import Vegas.Game.OnePacketCounterpartBound
 import Vegas.Game.OnePacketDisclosureAlong
 import Vegas.Game.OnePacketOwnIntended
 import Vegas.Game.OnePacketStepPositive
+import Vegas.Game.SourceDebtObservation
 
 /-! # Certificate reach comparisons from actual binding repairs -/
 
@@ -167,8 +168,8 @@ theorem reach_le_counterpart_certificate_of_repairs (wellFormed : setup.WellForm
     intro point decoded owes
     rw [decodedP, Option.some.injEq] at decoded
     subst decoded
-    exact freeW who ((owesFailure_iff_of_infoOf (runtime := runtime) (bounds := bounds) (horizon
-      := horizon)
+    exact freeW who ((owesFailure_iff_of_infoOf (runtime := runtime)
+      (menu := bounds.onePacketMenu runtime leaks) (horizon := horizon)
       (scheduler := scheduler) history witness decodedP decodedW).mp owes)
   have ownIntended := ownCompletionsIntended_of_notOwes (runtime := runtime) (bounds := bounds)
     wellFormed who

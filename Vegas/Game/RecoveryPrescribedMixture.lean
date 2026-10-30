@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryOnePacketComponents
+import Vegas.Game.OnePacketComponents
 import GameTheory.Math.Probability.Support
 
 /-! # Prescribed mixtures at forced nonlate recovery decisions

@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketInitializedLaw
 import Vegas.Game.OnePacketCertificateDischarge
+import Vegas.Game.SourceDebtObservation
 
 /-! # The common comparison strategy retains honest boundary continuations -/
 

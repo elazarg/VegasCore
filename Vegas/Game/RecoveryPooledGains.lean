@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryOnePacketCompletion
-import Vegas.Game.RecoveryOwingOptimality
+import Vegas.Game.OnePacketCommonCompletion
+import Vegas.Game.OnePacketOwingOptimality
 import GameTheoryExtensions.Analysis.Protocol.AffineKeyedPools
 
 /-! # Actual pooled recovery gains from common affine component values -/

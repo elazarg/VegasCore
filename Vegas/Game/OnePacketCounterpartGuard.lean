@@ -4,6 +4,7 @@ import Vegas.Game.OnePacketSwapGuardSite
 import Vegas.Game.OnePacketPublishedBindings
 import Vegas.Game.OnePacketProjectedDecision
 import Vegas.Source.CellSwapDebt
+import Vegas.Game.SourceDebtObservation
 
 /-! # The swap guard toward a forced witness
 

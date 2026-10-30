@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketBindingRepairWitness
 import Vegas.Game.OnePacketRecallPrefix
+import Vegas.Game.SourceDebtObservation
 
 /-! # Forced responder inputs from responder-preserving repairs
 

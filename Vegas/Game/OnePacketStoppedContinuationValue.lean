@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketHonestStoppedLaw
 import Vegas.Game.StoppedHonestComparison
+import Vegas.Game.SourceDebtObservation
 
 /-! # Source values of stopped continuations under counted native service -/
 

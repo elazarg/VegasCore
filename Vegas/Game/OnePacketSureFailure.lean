@@ -29,18 +29,6 @@ variable {Player : Type} [DecidableEq Player]
   {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-omit [DecidableEq Player] in
-private theorem cast_some {A B : Type} (same : A = B) (value : A) :
-    cast (congrArg Option same) (some value) = some (cast same value) := by
-  cases same
-  rfl
-
-omit [DecidableEq Player] in
-private theorem cast_cast_symm {A B : Type} (same : A = B) (value : B) :
-    cast same (cast same.symm value) = value := by
-  cases same
-  rfl
-
 section OnePacketCommitment
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
@@ -105,7 +93,7 @@ theorem onePacket_accepted_new {control next : (application setup runtime leaks)
               obtain ⟨updated, chosen, rfl⟩ := PMF.support_map .. ▸ supported
               obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ chosen
               exact unchanged (congrFun
-                (environmentStep_tables runtime _ _ command changed).1 _)
+                (reactiveApplication_environment_tables runtime leaks _ _ command changed).1 _)
           | «include» id =>
               simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at supported
               cases (PMF.mem_support_pure_iff _ _).mp supported
@@ -126,7 +114,8 @@ theorem onePacket_accepted_new {control next : (application setup runtime leaks)
                       exact absurd (filled.symm.trans vacant) (by simp)
                   | some after =>
                       simp only [acceptedEq, Option.getD_some] at filled
-                      have handled := reactiveHandle_call acceptedEq
+                      obtain ⟨native, handled, nativeEq⟩ := reactiveHandle_call acceptedEq
+                      rw [← nativeEq, native.drain_tables.1] at filled
                       rcases handle_tables_cases runtime _ _ _ handled with
                         ⟨named, chosen, payloadEq, _, acceptedTable, _⟩ | ⟨acceptedTable, _⟩
                       · change envelope.payload.call = .commitment named chosen at payloadEq
@@ -139,8 +128,8 @@ theorem onePacket_accepted_new {control next : (application setup runtime leaks)
                             have acts := handle_sender_actor runtime _ _ _ handled named
                               (by rw [payloadEq]; rfl)
                             exact Option.some.inj (acts.symm.trans owned)
-                          have pending := (includePending_found execution.network id envelope
-                            found).2.1
+                          have pending : envelope ∈ execution.network.pending :=
+                            List.mem_of_find?_eq_some found
                           obtain ⟨other, otherMember, _, _, otherEmitted, _⟩ :=
                             facts.provenance.pending envelope pending
                           rw [envelopeSender] at otherMember

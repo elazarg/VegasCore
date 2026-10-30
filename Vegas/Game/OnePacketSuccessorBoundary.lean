@@ -6,6 +6,7 @@ import Vegas.Pending.ExclusionAcceptedOutput
 import Vegas.Game.AnchoredHonestLaw
 import Vegas.Game.AnchoredOpeningClients
 import Vegas.Game.IntendedOpeningContinuation
+import Vegas.Game.SourceDebtObservation
 
 /-! # Genuine clear successor boundaries after honest source steps -/
 

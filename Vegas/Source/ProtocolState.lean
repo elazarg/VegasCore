@@ -165,4 +165,15 @@ theorem ProtocolState.terminal_actor_none (who : Player) :
       | inl source => exact stopped.elim
       | inr state => exact ih state stopped
 
+/-- A point where some player acts is not terminal. -/
+theorem ProtocolState.not_terminal_of_actor (who owner : Player)
+    {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (state : ProtocolState program)
+    (acts : ProtocolView.actor who program (ProtocolState.observe who program state) = some owner) :
+    ¬ ProtocolState.terminal program state := by
+  intro stopped
+  have absent := ProtocolState.terminal_actor_none who program state stopped
+  rw [acts] at absent
+  cases absent
+
 end Vegas.SourceProgram

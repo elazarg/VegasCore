@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryDebtUniformity
+import Vegas.Game.OnePacketOwingOptimality
 import Vegas.Game.RecoveryNativeWeights
 
 /-! # Own-debt classification at paired clear decision inputs

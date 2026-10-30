@@ -10,9 +10,10 @@ source-to-graph compilation for every source profile and public scheduler.
 The unified ledger application also has checked operational graph refinement.
 Exact graph-deviation backtranslation and source-to-graph approximate Nash
 correspondence are checked, including parameter-dependent expression payments.
-Probabilistic ledger clients, default settlement and sequential equilibrium
-preservation still require ports. The full branch is not a
-verified replacement for the maintained tower. The paper and its pins are unchanged.
+Whole native source-continuation laws and common consistent equilibrium
+completion are checked. Their remaining client and strategic consumers still
+require ports. The full branch is not a verified replacement for the maintained
+tower; the complete build and paper acceptance gates remain open.
 
 ## Authoritative source execution
 
@@ -136,8 +137,10 @@ or prove a reachable-outcome correspondence.
 Exit utility and exit transfer remain distinct. The monetary readout must return
 the declared exit transfer after default; external valuation must be included
 when defining the fixed total exit utility. The ledger's count audit can still
-deduct for forbidden traffic after default. These definitions and their
-settlement projection require an explicit port in the strategic consumers.
+deduct for forbidden traffic after default.
+[NativePaymentReadout](../Vegas/Game/NativePaymentReadout.lean) checks the joint
+cash and utility readout, with valuation factorization required only on actual
+clear support. Its final strategic preservation consumers remain open.
 
 No independence, service, coverage, finiteness or funding premise is added.
 Restricting surviving players' valuations to ignore public default history
@@ -349,8 +352,27 @@ proves visibility and persistence of native public default and obtains whole
 continuation optimality from consistency and local optimality in that region,
 on the supplied native response menu. It introduces no wrapper application.
 
-These are operational support/refinement laws; they do not establish the
-probabilistic client/compiler law or equilibrium preservation.
+[SourceServiceContinuation](../Vegas/Game/SourceServiceContinuation.lean)
+identifies the full remaining graph-run law with the ordinary source
+continuation at its decoded position. It uses the same configuration reader,
+source residual and source executor, including actual own decisions and the
+complete public default history.
+[SourceDebtContinuation](../Vegas/Game/SourceDebtContinuation.lean) uses native
+transition closure and actual publication provenance to prove fixed exit
+utility, integrability and whole-policy indifference for latent source debt
+under complete play. Already public default has the stronger continuation
+guarantee in [NativeExitContinuation](../Vegas/Game/NativeExitContinuation.lean),
+which needs no completion or ordinary utility-range premise.
+[SourceDebtObservation](../Vegas/Game/SourceDebtObservation.lean) proves that
+own source debt agrees throughout a native information fiber for arbitrary
+response menus and initial laws, without a finite-player premise.
+[OnePacketOwingOptimality](../Vegas/Game/OnePacketOwingOptimality.lean) combines
+that fact with completed-continuation utility to give zero whole-policy and
+local-law gain at indebted sites, under any assessment belief.
+
+These laws and the common consistency construction are checked adapters for
+the final compiler and equilibrium-preservation theorems. They do not by
+themselves close those end-to-end obligations.
 
 ## Remaining acceptance obligations
 
@@ -372,9 +394,11 @@ Only checked theorems close these obligations:
 5. Source-to-graph Nash deviation translation is checked. Port the ledger
    client deviation correspondence and sequential consistency/rationality;
    equilibrium-path outcome agreement alone is insufficient.
-6. Recheck intended-SE preservation only after the source and target utilities
-   and transfers agree. This does not assert preservation of every full-source
-   sequential equilibrium.
+6. Canonical fixed-exit intended-to-source SE and approximate Nash preservation
+   are checked with the declared exit floor on actual intended terminal
+   readouts. Finish the intended-to-ledger composition and monetary
+   specialization using the same source and target utilities. This does not
+   assert preservation of every full-source sequential equilibrium.
 
 The ordinary full build, examples and paper guards remain acceptance gates for
 replacing the maintained tower. Targeted source/compiler checks do not close them.

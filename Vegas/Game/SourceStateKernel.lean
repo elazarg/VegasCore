@@ -230,6 +230,35 @@ theorem behavioralStatePrefix_reveal
       rw [Function.iterate_succ_apply', PMF.bind_map, PMF.map_bind]
       exact bind_congr_on_support _ fun state _ => behavioralStateStep_reveal_tail profile state
 
+/-- **The behavioral step at an actor's point** draws the actor's choice and
+steps with it. -/
+theorem behavioralStateStep_eq_bind_of_actor {Γ : SourceCtx Player L}
+    {O : Finset VarId} (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
+    (state : ProtocolState program) (owner : Player)
+    (acts : ∀ player, ProtocolView.actor player program (observe player program state) =
+      some owner) :
+    behavioralStateStep program profile state =
+      ((profile owner).protocolAction program (observe owner program state)).bind
+        fun choice => step program state (fun _ => choice) := by
+  classical
+  unfold behavioralStateStep
+  rw [ite_eq_right_iff.mpr fun stopped =>
+    (not_terminal_of_actor owner owner program state (acts owner) stopped).elim]
+  calc (independentProduct fun player => (profile player).protocolAction program
+          (observe player program state)).bind (step program state)
+      = (independentProduct fun player => (profile player).protocolAction program
+          (observe player program state)).bind
+          (fun joint => step program state (fun _ => joint owner)) := by
+        congr 1
+        funext joint
+        exact step_eq_of_actor owner owner program state joint (acts owner)
+    _ = ((independentProduct fun player => (profile player).protocolAction program
+          (observe player program state)).map (fun joint => joint owner)).bind
+          (fun choice => step program state (fun _ => choice)) := by
+        rw [PMF.bind_map]
+        rfl
+    _ = _ := by rw [independentProduct_map_eval]
+
 /-- One source step followed by the source continuation is the source
 continuation. -/
 theorem behavioralStateStep_continuation

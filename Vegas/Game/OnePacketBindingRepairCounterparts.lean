@@ -3,6 +3,7 @@
 import Vegas.Game.OnePacketBindingRepairIteration
 import Vegas.Game.OnePacketDirectedRepairGuard
 import Vegas.Game.OnePacketOwnerSettled
+import Vegas.Game.SourceDebtObservation
 
 /-! # Counterparts from finite actual hidden-binding repairs
 

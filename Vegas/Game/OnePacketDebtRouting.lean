@@ -1,15 +1,12 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketProjectedDecision
+import Vegas.Game.SourceDebtObservation
 
-/-! # Owing sites and debt-free sites
+/-! # Own source debt at native decision inputs
 
-At a decision input of `who` in the one-packet game, if `who` owes a failure at
-the decoded point of one history, it owes one as a decoded state property of
-every history of the input, for every source profile
-(`Vegas.decodedState_owesFailure_of_infoOf`). Otherwise `who` owes no failure at
-the decoded point of any history, which is the debt-freedom premise of
-`Vegas.projectedDecision_of_forcedAgent`.
+At a native decision input, an owner's decoded source debt at one history
+holds throughout the information fiber, for every source profile. The result
+uses actual current source endpoints and arbitrary native response menus.
 -/
 
 noncomputable section
@@ -21,18 +18,18 @@ open SourceProgram
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Interaction
   EventGraphRuntime
 
-variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExpr.ResultTypes L]
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
   {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {menu : (application setup runtime leaks).ResponseMenu} {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- A property of the decoded point of a native history is a decoded state
 property of that history, for every source profile. -/
 theorem decodedState_of_nativeDecodedState (profile : BehavioralProfile setup.program)
     {property : ProtocolState setup.program → Prop}
-    (history : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
+    (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
     {point : ProtocolState setup.program}
     (decoded : nativeDecodedState setup runtime leaks history.state = some point)
     (holds : property point) : DecodedState setup runtime leaks profile property history.state := by
@@ -46,29 +43,14 @@ theorem decodedState_of_nativeDecodedState (profile : BehavioralProfile setup.pr
 
 /-- Every initialized native history has a decoded point. -/
 theorem nativeDecodedState_isSome
-    (history : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
+    (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
     {control : (application setup runtime leaks).Control} (current : history.state = some control) :
     ∃ point, nativeDecodedState setup runtime leaks history.state = some point := by
   obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
     setup.program)
-    (bounds.onePacketMenu runtime leaks) horizon scheduler history.trace control current
+    menu horizon scheduler history.trace control current
   rw [current]
   exact ⟨_, decodedPoint_eq residual⟩
-
-private theorem state_of_infoOf {who : Player}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView}
-    (history : (onePacketInformation setup runtime leaks bounds horizon
-      scheduler).InformationHistory who
-      (some (past, view))) :
-    ∃ control : (application setup runtime leaks).Control, history.1.state = some control := by
-  obtain ⟨⟨state, trace⟩, seen⟩ := history
-  change (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf who trace = _
-    at seen
-  rw [onePacket_infoOf] at seen
-  cases state with
-  | none => cases seen
-  | some control => exact ⟨control, rfl⟩
 
 /-- **Owing at one history is owing at all.** If `who` owes a failure at the
 decoded point of one history of a decision input of `who`, it owes one as a
@@ -77,18 +59,16 @@ profile. -/
 theorem decodedState_owesFailure_of_infoOf (profile : BehavioralProfile setup.program)
     {who : Player} {past : List (application setup runtime leaks).PlayerEntry}
     {view : (application setup runtime leaks).PlayerView}
-    (owing : (onePacketInformation setup runtime leaks bounds horizon
-      scheduler).InformationHistory who
+    (owing : (menu.information (initialLaw setup) horizon scheduler).InformationHistory who
       (some (past, view)))
     {point : ProtocolState setup.program}
     (decoded : nativeDecodedState setup runtime leaks owing.1.state = some point)
     (owes : ProtocolState.OwesFailure who setup.program point)
-    (history : (onePacketInformation setup runtime leaks bounds horizon
-      scheduler).InformationHistory who
+    (history : (menu.information (initialLaw setup) horizon scheduler).InformationHistory who
       (some (past, view))) :
     DecodedState setup runtime leaks profile (ProtocolState.OwesFailure who setup.program)
       history.1.state := by
-  obtain ⟨control, current⟩ := state_of_infoOf (runtime := runtime) history
+  obtain ⟨control, current, _view⟩ := control_of_infoOf (runtime := runtime) history.1 history.2
   obtain ⟨other, otherDecoded⟩ := nativeDecodedState_isSome (runtime := runtime) history.1 current
   exact decodedState_of_nativeDecodedState (runtime := runtime) profile history.1 otherDecoded
     ((owesFailure_iff_of_infoOf (runtime := runtime) owing history decoded otherDecoded).mp owes)

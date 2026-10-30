@@ -72,6 +72,45 @@ def step : {Γ : SourceCtx Player L} → {O : Finset VarId} →
           (revealSuccessor published source config (OwnAction.disclosure (joint owner))))))
         (fun rest => (step next rest joint).map Sum.inr) state
 
+/-- A step at a point where owner acts reads only owner's choice. -/
+theorem step_eq_of_actor (who owner : Player) : {Γ : SourceCtx Player L} →
+    {O : Finset VarId} → (program : SourceProgram Player L Γ O) →
+    (state : ProtocolState program) → (joint : Player → Option (OwnAction Player L)) →
+    ProtocolView.actor who program (observe who program state) = some owner →
+    step program state joint = step program state (fun _ => joint owner)
+  | _, _, .ret _, _, _, acts => by
+      simp [ProtocolView.actor] at acts
+  | _, _, .sample _ _ _ next, state, joint, acts => by
+      cases state with
+      | inl config =>
+          change none = some owner at acts
+          cases acts
+      | inr rest =>
+          simp only [step, Sum.elim_inr]
+          rw [step_eq_of_actor who owner next rest joint acts]
+  | _, _, .commit _ _ _ _ next, state, joint, acts => by
+      cases state with
+      | inl config =>
+          simp only [ProtocolView.actor, observe, Sum.elim_inl] at acts
+          split at acts
+          · cases acts
+          · cases Option.some.inj acts
+            rfl
+      | inr rest =>
+          simp only [step, Sum.elim_inr]
+          rw [step_eq_of_actor who owner next rest joint acts]
+  | _, _, .reveal _ _ _ _ _ _ next, state, joint, acts => by
+      cases state with
+      | inl config =>
+          simp only [ProtocolView.actor, observe, Sum.elim_inl] at acts
+          split at acts
+          · cases acts
+          · cases Option.some.inj acts
+            rfl
+      | inr rest =>
+          simp only [step, Sum.elim_inr]
+          rw [step_eq_of_actor who owner next rest joint acts]
+
 /-- Every terminal source point is absorbing under every joint choice. -/
 theorem step_of_terminal : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (state : ProtocolState program) →

@@ -3,6 +3,7 @@
 import Vegas.Game.OnePacketSwapInfo
 import Vegas.Game.OnePacketCounterpartSteps
 import Vegas.Game.OnePacketProjectedDecision
+import Vegas.Game.SourceDebtObservation
 
 /-! # Hidden swaps scale the source weight
 

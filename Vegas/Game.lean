@@ -315,8 +315,6 @@ import Vegas.Game.RecoveryCountedValues
 import Vegas.Game.RecoveryDebtStoppedBound
 import Vegas.Game.RecoveryDebtStoppedComparison
 import Vegas.Game.RecoveryDebtStoppedReadout
-import Vegas.Game.RecoveryDebtUniformity
-import Vegas.Game.RecoveryDecodedDebt
 import Vegas.Game.RecoveryDisclosureComparison
 import Vegas.Game.RecoveryEventPhaseLaw
 import Vegas.Game.NativeExitContinuation
@@ -331,7 +329,6 @@ import Vegas.Game.RecoveryForeignFailure
 import Vegas.Game.RecoveryForeignFailureBound
 import Vegas.Game.RecoveryHonestContinuation
 import Vegas.Game.RecoveryHonestRecall
-import Vegas.Game.RecoveryIndifference
 import Vegas.Game.RecoveryInitializedClearance
 import Vegas.Game.RecoveryInitializedCounted
 import Vegas.Game.RecoveryInitializedCoupling
@@ -367,11 +364,10 @@ import Vegas.Game.RecoveryNonLateChoices
 import Vegas.Game.RecoveryNonLateComparisons
 import Vegas.Game.RecoveryNonLateNativeComparisons
 import Vegas.Game.RecoveryNonLateSourceValue
-import Vegas.Game.RecoveryOnePacketCompletion
-import Vegas.Game.RecoveryOnePacketComponents
+import Vegas.Game.OnePacketCommonCompletion
+import Vegas.Game.OnePacketComponents
 import Vegas.Game.RecoveryOnePacketPreservation
 import Vegas.Game.OnePacketRawLaw
-import Vegas.Game.RecoveryOwingOptimality
 import Vegas.Game.RecoveryPaymentPreservation
 import Vegas.Game.NativePaymentReadout
 import Vegas.Game.RecoveryPendingCompletion
@@ -384,11 +380,9 @@ import Vegas.Game.RecoveryPooledMemberGains
 import Vegas.Game.RecoveryPrescribedMixture
 import Vegas.Game.RecoveryPrescribedSourceKernel
 import Vegas.Game.RecoveryProtectedCalls
-import Vegas.Game.RecoveryPublicCompletion
 import Vegas.Game.RecoverySequentialCompilation
 import Vegas.Game.RecoverySilenceComparison
 import Vegas.Game.RecoverySourceBeliefBounds
-import Vegas.Game.RecoverySourceFailure
 import Vegas.Game.RecoverySourcePhaseValue
 import Vegas.Game.RecoveryStoppedAcceptance
 import Vegas.Game.RecoveryStoppedCommitment
@@ -461,6 +455,7 @@ import Vegas.Game.SourceServiceFactorization
 import Vegas.Game.SourceServiceFailureReadout
 import Vegas.Game.SourceServiceContinuation
 import Vegas.Game.SourceDebtContinuation
+import Vegas.Game.SourceDebtObservation
 import Vegas.Game.SourceServiceFiniteness
 import Vegas.Game.SourceServiceFacts
 import Vegas.Game.SourceServiceFirstTurnBinding
@@ -498,3 +493,4 @@ import Vegas.Game.StoppedHonestComparison
 import Vegas.Game.StoppedHonestResponseCount
 import Vegas.Game.TerminalObservation
 import Vegas.Game.TerminalObservationLaws
+import Vegas.Game.OnePacketOwingOptimality

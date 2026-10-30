@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.RecoveryForeignExitBound
-import Vegas.Game.RecoveryDecodedDebt
+import Vegas.Game.SourceDebtContinuation
 import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 import GameTheory.Math.Probability.Bounds
 
@@ -49,7 +49,7 @@ theorem recovery_expect_sub_debt_stopped_le_foreign_exit {Parameter : Type}
     let model := menu.information initial horizon scheduler
     let stop := fun history : (menu.protocol initial horizon scheduler).History =>
       RecoveryPublicExclusion (runtime := runtime) (setup := setup) (leaks := leaks) history.state ∨
-        RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+        DecodedState setup runtime leaks source
           (ProtocolState.OwesFailure who setup.program) history.state
     let stopped := model.runBehavioralUntil certificate players stop start
     |expect (model.runBehavioralTerminalFrom certificate players start)
@@ -61,7 +61,7 @@ theorem recovery_expect_sub_debt_stopped_le_foreign_exit {Parameter : Type}
       (2 * bound) * (stopped.toOuterMeasure {history | stop history ∧
         ¬ RecoveryExcluded (runtime := runtime) (setup := setup) (leaks := leaks) who
           history.state ∧
-        ¬ RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+        ¬ DecodedState setup runtime leaks source
           (ProtocolState.OwesFailure who setup.program) history.state}).toReal := by
   classical
   intro model stop stopped
@@ -73,7 +73,7 @@ theorem recovery_expect_sub_debt_stopped_le_foreign_exit {Parameter : Type}
   let foreign := {history : (menu.protocol initial horizon scheduler).History |
     stop history ∧ ¬ RecoveryExcluded (runtime := runtime) (setup := setup) (leaks := leaks) who
       history.state ∧
-      ¬ RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+      ¬ DecodedState setup runtime leaks source
         (ProtocolState.OwesFailure who setup.program) history.state}
   have continuedBounded (history) : |continued history| ≤ bound :=
     expect_abs_le_of_bounded nonnegative (fun final => payoffBounded final)
@@ -97,13 +97,12 @@ theorem recovery_expect_sub_debt_stopped_le_foreign_exit {Parameter : Type}
       · exact recovery_excluded_expect_exclusionBase (runtime := runtime) parameter utility
           excludedPayoff menu initial
           horizon scheduler certificate players who history own
-      · have owed : RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+      · have owed : DecodedState setup runtime leaks source
             (ProtocolState.OwesFailure who setup.program) history.state := by
           by_contra notOwed
           exact notForeign ⟨exited, own, notOwed⟩
-        exact recovery_owesFailure_expect_exclusionBase (runtime := runtime) parameter utility
-          excludedPayoff menu
-          initial horizon scheduler completes certificate players who history owed
+        exact (exclusionBase_expect_of_owesFailure parameter utility excludedPayoff menu horizon
+          scheduler completes certificate players who history owed).2
     · have terminal := model.mem_support_runBehavioralUntil certificate players stop start history
         supported
       have ended := terminal.resolve_left exited

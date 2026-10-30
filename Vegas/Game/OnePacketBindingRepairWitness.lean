@@ -4,6 +4,7 @@ import Vegas.Game.OnePacketDirectedRepairHistory
 import Vegas.Game.OnePacketDirectedRepairPrefixSuccess
 import Vegas.Game.OnePacketAcceptedPrefix
 import Vegas.Game.OnePacketBindingRepairCounterparts
+import Vegas.Game.SourceDebtObservation
 
 /-! # Actual binding repair from an intended witness -/
 
@@ -92,8 +93,8 @@ theorem repair_binding_history_of_intended_witness
     change decodedPoint setup current.execution.application.config = some point at read
     rw [decoded, Option.some.injEq] at read
     subst read
-    exact free focal ((owesFailure_iff_of_infoOf (runtime := runtime) (bounds := bounds) (horizon
-      := horizon)
+    exact free focal ((owesFailure_iff_of_infoOf (runtime := runtime)
+      (menu := bounds.onePacketMenu runtime leaks) (horizon := horizon)
       (scheduler := scheduler) ⟨⟨some current, trace⟩, seen⟩
       ⟨⟨some witnessControl, witnessTrace⟩, witnessSeen⟩ decoded witnessDecoded).mp owes)
   apply repair_binding_history (runtime := runtime) covered focal owner other forced decision

@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketHonestDecision
+import Vegas.Game.OnePacketPrescribedSupport
+import Vegas.Game.IntendedAuthenticOpening
+import Vegas.Game.SourceStateKernel
 
 /-! # Source turns at decoded views
 
@@ -31,7 +34,8 @@ section Unique
 the context. -/
 theorem encodeEventAction?_commit_fresh : ∀ {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (event : Fin (eventCount program))
-    {owner : Player} {name : VarId} {payload : L.Ty} {choice : PublicationResult (L.Val payload)},
+    {owner : Player} {name : VarId} {payload : L.Ty}
+    {choice : Option (PublicationResult (L.Val payload))},
     (encodeEventAction? program event (.commit owner name payload choice)).isSome →
       name ∉ Γ.map Prod.fst
   | _, _, .ret _, event, _, _, _, _, _ => nomatch event
@@ -202,16 +206,15 @@ section View
 
 variable {Field : Type} [DecidableEq Field] {layout : Field → EventGraph.EventField Player L}
 
-/-- **The decoded view's turn.** At a view decoded at a count, every action the
-intended game offers encodes at the event of that count, and a player whose
-turn the view shows owns that event. -/
+/-- Intended actions encode at the decoded rank. The source actor is the
+syntactic event owner filtered by the same public default status. -/
 theorem decodeViewPrefix?_intended (who : Player) :
     ∀ (count : Nat) {Γ : SourceCtx Player L} {O : Finset VarId}
       (program : SourceProgram Player L Γ O) (refs : ContextRefs layout Γ)
       (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
       (store : EventGraph.Store layout) (own : List (OwnAction Player L))
-      (view : ProtocolView who program),
-      decodeViewPrefix? who program refs outputs count store own = some view →
+      (defaults : DefaultHistory Player) (view : ProtocolView who program),
+      decodeViewPrefix? who program refs outputs count store own defaults = some view →
       (∀ action ∈ ProtocolView.intendedAvailable who program view,
         ∃ event : Fin (eventCount program), event.val = count ∧
           (encodeEventAction? program event action).isSome) ∧
@@ -219,35 +222,46 @@ theorem decodeViewPrefix?_intended (who : Player) :
         ∃ event : Fin (eventCount program), event.val = count ∧
           eventOwner? program event = some who) ∧
       (∀ event : Fin (eventCount program), event.val = count →
-        ProtocolView.actor who program view = eventOwner? program event)
-  | 0, _, _, .ret _, _, _, _, _, _, _ =>
+        ProtocolView.actor who program view =
+          match eventOwner? program event with
+          | none => none
+          | some owner => if owner ∈ defaults.defaulted then none else some owner)
+  | 0, _, _, .ret _, _, _, _, _, _, _, _ =>
       ⟨fun _ member => member.elim, fun turn => (by cases turn), fun event => Fin.elim0 event⟩
-  | 0, _, _, .sample _ _ _ _, _, _, _, _, view, decoded => by
+  | 0, _, _, .sample _ _ _ _, _, _, _, _, _, view, decoded => by
       obtain ⟨_, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
       refine ⟨fun _ member => member.elim, fun turn => (by cases turn), fun event named => ?_⟩
       obtain rfl : event = ⟨0, Nat.succ_pos _⟩ := Fin.ext named
       rfl
-  | 0, _, _, .commit _ _ _ _ _, _, _, _, _, view, decoded => by
+  | 0, _, _, .commit _ owner _ _ _, _, _, _, _, defaults, view, decoded => by
       obtain ⟨_, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
-      refine ⟨fun action member => ?_, fun turn => ⟨⟨0, Nat.succ_pos _⟩, rfl, turn⟩,
+      refine ⟨fun action member => ?_, fun turn => ⟨⟨0, Nat.succ_pos _⟩, rfl, ?_⟩,
         fun event named => ?_⟩
       · obtain ⟨value, _, rfl⟩ := member
         exact ⟨⟨0, Nat.succ_pos _⟩, rfl, by simp [encodeEventAction?]⟩
+      · change (if owner ∈ defaults.defaulted then none else some owner) = some who at turn
+        split at turn
+        · cases turn
+        · exact turn
       · obtain rfl : event = ⟨0, Nat.succ_pos _⟩ := Fin.ext named
         rfl
-  | 0, _, _, .reveal _ _ _ _ _ _ _, _, _, _, _, view, decoded => by
+  | 0, _, _, .reveal _ owner _ _ _ _ _, _, _, _, _, defaults, view, decoded => by
       obtain ⟨_, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
-      refine ⟨fun action member => ?_, fun turn => ⟨⟨0, Nat.succ_pos _⟩, rfl, turn⟩,
+      refine ⟨fun action member => ?_, fun turn => ⟨⟨0, Nat.succ_pos _⟩, rfl, ?_⟩,
         fun event named => ?_⟩
       · obtain rfl := Set.mem_singleton_iff.mp member
         exact ⟨⟨0, Nat.succ_pos _⟩, rfl, by simp [encodeEventAction?]⟩
+      · change (if owner ∈ defaults.defaulted then none else some owner) = some who at turn
+        split at turn
+        · cases turn
+        · exact turn
       · obtain rfl : event = ⟨0, Nat.succ_pos _⟩ := Fin.ext named
         rfl
-  | _ + 1, _, _, .ret _, _, _, _, _, _, decoded => by cases decoded
-  | count + 1, _, _, .sample _ _ _ next, _, _, _, _, view, decoded => by
+  | _ + 1, _, _, .ret _, _, _, _, _, _, _, decoded => by cases decoded
+  | count + 1, _, _, .sample _ _ _ next, _, _, _, _, defaults, view, decoded => by
       obtain ⟨later, laterDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
       obtain ⟨available, owned, actorEq⟩ :=
-        decodeViewPrefix?_intended who count next _ _ _ _ later laterDecoded
+        decodeViewPrefix?_intended who count next _ _ _ _ defaults later laterDecoded
       refine ⟨fun action member => ?_, fun turn => ?_, fun event named => ?_⟩
       · obtain ⟨event, named, encoded⟩ := available action member
         exact ⟨event.succ, by simp [named], by simpa [encodeEventAction?] using encoded⟩
@@ -258,10 +272,10 @@ theorem decodeViewPrefix?_intended (who : Player) :
         | succ tail =>
             simp only [eventOwner?, Fin.cases_succ]
             exact actorEq tail (by simpa using named)
-  | count + 1, _, _, .commit _ _ _ _ next, _, _, _, _, view, decoded => by
+  | count + 1, _, _, .commit _ _ _ _ next, _, _, _, _, defaults, view, decoded => by
       obtain ⟨later, laterDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
       obtain ⟨available, owned, actorEq⟩ :=
-        decodeViewPrefix?_intended who count next _ _ _ _ later laterDecoded
+        decodeViewPrefix?_intended who count next _ _ _ _ defaults later laterDecoded
       refine ⟨fun action member => ?_, fun turn => ?_, fun event named => ?_⟩
       · obtain ⟨event, named, encoded⟩ := available action member
         exact ⟨event.succ, by simp [named], by simpa [encodeEventAction?] using encoded⟩
@@ -272,10 +286,10 @@ theorem decodeViewPrefix?_intended (who : Player) :
         | succ tail =>
             simp only [eventOwner?, Fin.cases_succ]
             exact actorEq tail (by simpa using named)
-  | count + 1, _, _, .reveal _ _ _ _ _ _ next, _, _, _, _, view, decoded => by
+  | count + 1, _, _, .reveal _ _ _ _ _ _ next, _, _, _, _, defaults, view, decoded => by
       obtain ⟨later, laterDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
       obtain ⟨available, owned, actorEq⟩ :=
-        decodeViewPrefix?_intended who count next _ _ _ _ later laterDecoded
+        decodeViewPrefix?_intended who count next _ _ _ _ defaults later laterDecoded
       refine ⟨fun action member => ?_, fun turn => ?_, fun event named => ?_⟩
       · obtain ⟨event, named, encoded⟩ := available action member
         exact ⟨event.succ, by simp [named], by simpa [encodeEventAction?] using encoded⟩
@@ -292,8 +306,7 @@ successful value or discloses. -/
 theorem intendedAvailable_success (who : Player) : ∀ {Γ : SourceCtx Player L}
     {O : Finset VarId} (program : SourceProgram Player L Γ O) (view : ProtocolView who program)
     (action : OwnAction Player L), action ∈ ProtocolView.intendedAvailable who program view →
-      (∀ owner name payload, action ≠ .commit owner name payload .failure) ∧
-        ∀ owner name, action ≠ .reveal owner name false
+      action.CommitsValue ∧ ∀ owner name, action ≠ .reveal owner name false
   | _, _, .ret _, _, _, member => member.elim
   | _, _, .sample _ _ _ next, view, action, member => by
       cases view with
@@ -303,13 +316,13 @@ theorem intendedAvailable_success (who : Player) : ∀ {Γ : SourceCtx Player L}
       cases view with
       | inl _ =>
           obtain ⟨value, _, rfl⟩ := member
-          exact ⟨fun _ _ _ same => (by cases same), fun _ _ same => (by cases same)⟩
+          exact ⟨⟨value, rfl⟩, fun _ _ same => (by cases same)⟩
       | inr later => exact intendedAvailable_success who next later action member
   | _, _, .reveal _ _ _ _ _ _ next, view, action, member => by
       cases view with
       | inl _ =>
           obtain rfl := Set.mem_singleton_iff.mp member
-          exact ⟨fun _ _ _ same => (by cases same), fun _ _ same => (by cases same)⟩
+          exact ⟨trivial, fun _ _ same => (by cases same)⟩
       | inr later => exact intendedAvailable_success who next later action member
 
 end View
@@ -344,16 +357,18 @@ private theorem decodeViewPrefix?_rank (who : Player)
       rank ((graph setup).playerStore who execution.application.config.store)
       (decodeCompletions setup.program
         (((graph setup).ownCompletions who execution.application.config.history).map
-          (setup.eventGraph.fromModeCompletion .sequential))) =
+          (setup.eventGraph.fromModeCompletion .sequential)))
+      execution.application.config.defaults =
       some (ProtocolState.observe who setup.program point) := by
   refine (decodeViewPrefix?_playerStore (graph := graph setup) who rank setup.program _ _ _
-    _).trans ?_
+    _ _).trans ?_
   refine (congrArg (fun own => decodeViewPrefix? who setup.program
     (ContextRefs.initial setup.context (outputLayout setup.program)) (outputRef setup.program)
-    rank execution.application.config.store (decodeCompletions setup.program own))
+    rank execution.application.config.store (decodeCompletions setup.program own)
+      execution.application.config.defaults)
     (ownCompletions_fromModeCompletion setup (mode := .sequential) who
       execution.application.config.history)).trans ?_
-  exact decodeViewPrefix?_eq_observe who rank setup.program _ [] _ _ _ _ point decoded
+  exact decodeViewPrefix?_eq_observe who rank setup.program _ [] _ _ _ _ _ point decoded
 
 /-- A source choice of the intended game at a point's view: an action the
 intended game offers when the view shows the player's turn, no action
@@ -378,9 +393,8 @@ private theorem intendedChoice_cases (who : Player) (point : ProtocolState setup
   · rw [chosen] at legal
     exact Or.inl ⟨action, rfl, legal.1, legal.2⟩
 
-/-- **As-if-honest play encodes at the turn.** At an execution decoding at its
-completed prefix, at the player's turn at an event, every source choice
-as-if-honest play supports encodes at the event. -/
+/-- At an active callback whose configuration decodes at its completed prefix,
+every supported as-if-honest source choice encodes at the current event. -/
 theorem asIfHonestProfile_encodes (assessment : setup.intendedModel.BehavioralAssessment)
     (who : Player) (execution : (application setup runtime leaks).Execution) (rank : Nat)
     (ordered : execution.application.config.cut.IsPrefix rank)
@@ -388,6 +402,7 @@ theorem asIfHonestProfile_encodes (assessment : setup.intendedModel.BehavioralAs
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
     (past : List (application setup runtime leaks).PlayerEntry) (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
+    (active : who ∉ execution.application.config.defaulted)
     (choice : Option (OwnAction Player L))
     (supported : choice ∈ (asIfHonestProfile setup runtime leaks assessment who
       (some (past, execution.observe (application setup runtime leaks) who))).support) :
@@ -399,8 +414,12 @@ theorem asIfHonestProfile_encodes (assessment : setup.intendedModel.BehavioralAs
   have ready : execution.application.config.cut.Ready event :=
     (execution.application.publicView_eventReady event).mp
       (PublicView.ownTurn?_spec _ who event turn).1
-  have atRank := (ready_iff_rank setup _ rank ordered event).mp ready
-  obtain ⟨available, _, actorEq⟩ := decodeViewPrefix?_intended who rank setup.program _ _ _ _ _
+  have atRank : event.val = rank :=
+    (show execution.application.config.cut.IsPrefix event.val from
+      ⟨event.isLt.le, fun other =>
+        execution.application.config.cut.mem_completed_iff_lt_of_ready ready⟩).unique ordered
+  obtain ⟨available, _, actorEq⟩ := decodeViewPrefix?_intended who rank setup.program _ _ _ _
+    execution.application.config.defaults _
     (decodeViewPrefix?_rank (runtime := runtime) who execution rank point decoded)
   rcases intendedChoice_cases who point intended with
     ⟨action, chosen, _, offered⟩ | ⟨_, notTurn⟩
@@ -409,8 +428,15 @@ theorem asIfHonestProfile_encodes (assessment : setup.intendedModel.BehavioralAs
     have same : site = event := Fin.ext (named.trans atRank.symm)
     subst same
     exact encoded
-  · exact (notTurn ((actorEq event atRank).trans
-      ((eventOwner?_eq_actor setup.program event).trans owned))).elim
+  · have sourceOwner : eventOwner? setup.program event = some who :=
+      (eventOwner?_eq_actor setup.program event).trans owned
+    have acting := actorEq event atRank
+    rw [sourceOwner] at acting
+    have turnAt : ProtocolView.actor who setup.program
+        (ProtocolState.observe who setup.program point) = some who := by
+      change who ∉ execution.application.config.defaults.defaulted at active
+      simpa only [active, ↓reduceIte] using acting
+    exact (notTurn turnAt).elim
 
 /-- **No action without a turn.** At an execution decoding at its completed
 prefix, where the player has no turn, as-if-honest play chooses no action. -/
@@ -427,14 +453,18 @@ theorem asIfHonestProfile_eq_pure_none (assessment : setup.intendedModel.Behavio
   obtain ⟨intended, _, rfl⟩ := (mem_support_asIfHonestProfile_observe setup runtime leaks
     assessment who
     execution rank ordered point decoded past _).mp supported
-  obtain ⟨_, owned, _⟩ := decodeViewPrefix?_intended who rank setup.program _ _ _ _ _
+  obtain ⟨_, owned, _⟩ := decodeViewPrefix?_intended who rank setup.program _ _ _ _
+    execution.application.config.defaults _
     (decodeViewPrefix?_rank (runtime := runtime) who execution rank point decoded)
   rcases intendedChoice_cases who point intended with
     ⟨action, _, isTurn, _⟩ | ⟨chosen, _⟩
   · obtain ⟨event, atRank, ownerEq⟩ := owned isTurn
     have ready : execution.application.publicView.EventReady event :=
-      (execution.application.publicView_eventReady event).mpr
-        ((ready_iff_rank setup _ rank ordered event).mpr atRank)
+      (execution.application.publicView_eventReady event).mpr (by
+        have inside : rank < (graph setup).order.eventCount := atRank ▸ event.isLt
+        have same : event = ⟨rank, inside⟩ := Fin.ext atRank
+        rw [same]
+        exact ordered.ready inside)
     have actorEq : (graph setup).actor? event = some who :=
       (eventOwner?_eq_actor setup.program event).symm.trans ownerEq
     unfold PublicView.ownTurn? at noTurn
@@ -453,8 +483,7 @@ theorem asIfHonestProfile_success (assessment : setup.intendedModel.BehavioralAs
     (past : List (application setup runtime leaks).PlayerEntry) (action : OwnAction Player L)
     (supported : some action ∈ (asIfHonestProfile setup runtime leaks assessment who
       (some (past, execution.observe (application setup runtime leaks) who))).support) :
-    (∀ owner name payload, action ≠ .commit owner name payload .failure) ∧
-      ∀ owner name, action ≠ .reveal owner name false := by
+    action.CommitsValue ∧ ∀ owner name, action ≠ .reveal owner name false := by
   obtain ⟨intended, _, same⟩ := (mem_support_asIfHonestProfile_observe setup runtime leaks
     assessment who
     execution rank ordered point decoded past _).mp supported
@@ -466,6 +495,67 @@ theorem asIfHonestProfile_success (assessment : setup.intendedModel.BehavioralAs
     exact intendedAvailable_success who setup.program _ _ offered
   · rw [choiceEq] at same
     cases same
+
+
+/-- At an active callback decoding to an intended point, the as-if-honest
+source-action mixture is the intended authentic-opening behavioral source step. -/
+theorem asIfHonest_bind_step_eq_behavioralStateStep [Fintype Player]
+    (source : setup.intendedModel.BehavioralAssessment) (who : Player)
+    (execution : (application setup runtime leaks).Execution) {rank : Nat}
+    (ordered : execution.application.config.cut.IsPrefix rank)
+    {point : ProtocolState setup.program}
+    (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
+    (intendedPoint : ProtocolState.Intended setup.program point) {event : (graph setup).EventId}
+    (turn : execution.application.publicView.ownTurn? who = some event)
+    (active : who ∉ execution.application.config.defaulted)
+    (past : List (application setup runtime leaks).PlayerEntry) :
+    (asIfHonestProfile setup runtime leaks source who
+        (some (past, execution.observe (application setup runtime leaks) who))).bind
+        (fun choice => ProtocolState.step setup.program point (fun _ => choice)) =
+      ProtocolState.behavioralStateStep setup.program
+        (setup.intendedOpeningProfile source.strategy) point := by
+  have owned := (PublicView.ownTurn?_spec _ who event turn).2
+  have ready := (execution.application.publicView_eventReady event).mp
+    (PublicView.ownTurn?_spec _ who event turn).1
+  have atRank : event.val = rank :=
+    (show execution.application.config.cut.IsPrefix event.val from
+      ⟨event.isLt.le, fun other =>
+        execution.application.config.cut.mem_completed_iff_lt_of_ready ready⟩).unique ordered
+  obtain ⟨_, _, actorEq⟩ := decodeViewPrefix?_intended who rank setup.program _ _ _ _
+    execution.application.config.defaults _
+    (decodeViewPrefix?_rank (runtime := runtime) who execution rank point decoded)
+  have sourceOwner : eventOwner? setup.program event = some who :=
+    (eventOwner?_eq_actor setup.program event).trans owned
+  have acting := actorEq event atRank
+  rw [sourceOwner] at acting
+  have actsHere : ProtocolView.actor who setup.program
+      (ProtocolState.observe who setup.program point) = some who := by
+    change who ∉ execution.application.config.defaults.defaulted at active
+    simpa only [active, ↓reduceIte] using acting
+  have acts : ∀ player, ProtocolView.actor player setup.program
+      (ProtocolState.observe player setup.program point) = some who := fun player =>
+    (ProtocolState.actor_observe setup.program point player who).trans actsHere
+  have disclosing : Disclosing setup.program (setup.decodeBehavioralProfile
+      (CommitmentInterface.values setup.program) (setup.intendedSourceProfile source.strategy)
+      who) :=
+    BehavioralPolicy.disclosing_fromProtocol setup.program _ _
+      (fun view => setup.intendedSourceProfile_notRefusal source.strategy who (some view))
+  have actionLaw : (setup.intendedOpeningProfile source.strategy who).protocolAction
+      setup.program (ProtocolState.observe who setup.program point) =
+      (source.strategy who (setup.protocolObserve who (some point))).map Subtype.val := by
+    change (((setup.decodeBehavioralProfile (CommitmentInterface.values setup.program)
+      (setup.intendedSourceProfile source.strategy) who).authenticOpening
+        setup.program).protocolAction setup.program _) = _
+    rw [BehavioralPolicy.protocolAction_authenticOpening setup.program _ disclosing point
+      intendedPoint]
+    refine (BehavioralPolicy.protocolAction_fromProtocol setup.program _ _ _).trans ?_
+    change ((source.strategy who (some (ProtocolState.observe who setup.program point))).map
+      _).map Subtype.val = _
+    rw [PMF.map_comp]
+    rfl
+  rw [ProtocolState.behavioralStateStep_eq_bind_of_actor setup.program _ point who acts,
+    actionLaw, asIfHonestProfile_observe setup runtime leaks source who execution rank ordered point
+      decoded past]
 
 end Native
 

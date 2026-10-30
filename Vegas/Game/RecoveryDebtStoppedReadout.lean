@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.RecoveryForeignExitComparison
-import Vegas.Game.RecoveryDecodedDebt
+import Vegas.Game.SourceDebtContinuation
 import Vegas.Pending.ExclusionMenuStopped
 import Vegas.Game.AsyncDeviationForeign
 
@@ -87,7 +87,7 @@ theorem recovery_debt_stopped_classified_eq_native
       (((menu.information initial horizon scheduler).runBehavioralUntil menuCertificate profile
         (fun next => RecoveryPublicExclusion (runtime := runtime) (setup := setup) (leaks :=
           leaks) next.state ∨
-          RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+          DecodedState setup runtime leaks source
             (ProtocolState.OwesFailure who setup.program) next.state) history).map
         (fun next => recoveryClassifiedReadout runtime leaks initial horizon scheduler
           (menu.toRawHistory initial horizon scheduler next))) := by
@@ -98,17 +98,17 @@ theorem recovery_debt_stopped_classified_eq_native
     DecodedState setup runtime leaks source (ProtocolState.OwesFailure who setup.program) next.state
   let recoveryDebt := fun next : ((recoveryApplication runtime leaks).protocol
       initial horizon scheduler).History =>
-    RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+    DecodedState setup runtime leaks source
       (ProtocolState.OwesFailure who setup.program) next.state
   have decodedEq (endpoint : (recoveryApplication runtime leaks).ProtocolState) :
       DecodedState setup runtime leaks source (ProtocolState.OwesFailure who setup.program)
         (protocolState runtime leaks endpoint) ↔
-      RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+      DecodedState setup runtime leaks source
         (ProtocolState.OwesFailure who setup.program) endpoint := by
     cases endpoint <;> rfl
   have stopEq : (fun next : (menu.protocol initial horizon scheduler).History =>
       RecoveryPublicExclusion (runtime := runtime) (setup := setup) (leaks := leaks) next.state ∨
-        RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+        DecodedState setup runtime leaks source
           (ProtocolState.OwesFailure who setup.program) next.state) =
       fun next => ¬ RecoveryClear runtime leaks initial horizon scheduler
         (menu.toRawHistory initial horizon scheduler next) ∨
@@ -164,11 +164,11 @@ theorem recovery_debt_stopped_expect_eq_native {Parameter : Type}
     expect ((menu.information initial horizon scheduler).runBehavioralUntil menuCertificate
       profile (fun final => RecoveryPublicExclusion (runtime := runtime) (setup := setup) (leaks
         := leaks) final.state ∨
-          RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+          DecodedState setup runtime leaks source
             (ProtocolState.OwesFailure who setup.program) final.state) history)
       (fun final => if RecoveryPublicExclusion (runtime := runtime) (setup := setup) (leaks :=
         leaks) final.state ∨
-          RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+          DecodedState setup runtime leaks source
             (ProtocolState.OwesFailure who setup.program) final.state then
         excludedPayoff who else recoveryExclusionBase (runtime := runtime) parameter utility
           excludedPayoff
@@ -181,7 +181,7 @@ theorem recovery_debt_stopped_expect_eq_native {Parameter : Type}
   intro raw clear native nativeStopped
   let stop := fun next : (menu.protocol initial horizon scheduler).History =>
     RecoveryPublicExclusion (runtime := runtime) (setup := setup) (leaks := leaks) next.state ∨
-      RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+      DecodedState setup runtime leaks source
         (ProtocolState.OwesFailure who setup.program) next.state
   let stopped := (menu.information initial horizon scheduler).runBehavioralUntil menuCertificate
     profile stop history
@@ -202,7 +202,7 @@ theorem recovery_debt_stopped_expect_eq_native {Parameter : Type}
   have decodedEq (endpoint : (recoveryApplication runtime leaks).ProtocolState) :
       DecodedState setup runtime leaks source (ProtocolState.OwesFailure who setup.program)
         (protocolState runtime leaks endpoint) ↔
-      RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+      DecodedState setup runtime leaks source
         (ProtocolState.OwesFailure who setup.program) endpoint := by
     cases endpoint <;> rfl
   have debtEq (next : (menu.protocol initial horizon scheduler).History)
@@ -210,7 +210,7 @@ theorem recovery_debt_stopped_expect_eq_native {Parameter : Type}
         (menu.toRawHistory initial horizon scheduler next)) :
       nativeDebt (nativeHistory runtime leaks initial horizon scheduler
         (menu.toRawHistory initial horizon scheduler next) clearNext) ↔
-          RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+          DecodedState setup runtime leaks source
             (ProtocolState.OwesFailure who setup.program) next.state := by
     exact decodedEq next.state
   have publicEq (next : (menu.protocol initial horizon scheduler).History) :
@@ -231,7 +231,7 @@ theorem recovery_debt_stopped_expect_eq_native {Parameter : Type}
         (menu.toRawHistory initial horizon scheduler next)
     · unfold classify recoveryClassifiedReadout
       rw [dite_eq_left clearNext]
-      by_cases owed : RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+      by_cases owed : DecodedState setup runtime leaks source
           (ProtocolState.OwesFailure who setup.program) next.state
       · have nativeOwed := (debtEq next clearNext).mpr owed
         change (if nativeDebt _ then _ else _) = _
@@ -272,10 +272,10 @@ theorem recovery_debt_foreign_exit_classified_subset
     (source : BehavioralProfile setup.program) (who : Player) :
     {next : (menu.protocol initial horizon scheduler).History |
       (RecoveryPublicExclusion (runtime := runtime) (setup := setup) (leaks := leaks) next.state ∨
-        RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+        DecodedState setup runtime leaks source
           (ProtocolState.OwesFailure who setup.program) next.state) ∧
       ¬ RecoveryExcluded (runtime := runtime) (setup := setup) (leaks := leaks) who next.state ∧
-      ¬ RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+      ¬ DecodedState setup runtime leaks source
         (ProtocolState.OwesFailure who setup.program) next.state} ⊆
       (fun next => recoveryClassifiedReadout runtime leaks initial horizon scheduler
         (menu.toRawHistory initial horizon scheduler next)) ⁻¹' {label |
@@ -337,14 +337,14 @@ theorem recovery_debt_foreign_exit_mass_le_native
     (((menu.information initial horizon scheduler).runBehavioralUntil menuCertificate profile
       (fun next => RecoveryPublicExclusion (runtime := runtime) (setup := setup) (leaks := leaks)
         next.state ∨
-        RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+        DecodedState setup runtime leaks source
           (ProtocolState.OwesFailure who setup.program) next.state) history).toOuterMeasure
       {next | (RecoveryPublicExclusion (runtime := runtime) (setup := setup) (leaks := leaks)
         next.state ∨
-          RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+          DecodedState setup runtime leaks source
             (ProtocolState.OwesFailure who setup.program) next.state) ∧
         ¬ RecoveryExcluded (runtime := runtime) (setup := setup) (leaks := leaks) who next.state ∧
-        ¬ RecoveryDecodedState (runtime := runtime) (leaks := leaks) source
+        ¬ DecodedState setup runtime leaks source
           (ProtocolState.OwesFailure who setup.program) next.state}).toReal ≤
       (nativeStopped.toOuterMeasure {label | ForeignExclusionLabel who label}).toReal := by
   intro raw clear native nativeStopped
