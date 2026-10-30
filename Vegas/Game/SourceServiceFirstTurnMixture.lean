@@ -136,7 +136,7 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
     simp only [sourceServicePrefix?] at decoded
     rw [decoded]
     change (ProtocolState.continuationLaw setup.program profile (lift _)).map some = _
-    rw [← sourceStep_continuation setup.program profile, commutes, PMF.bind_map, PMF.map_bind]
+    rw [← ProtocolState.behavioralStateStep_continuation setup.program profile, commutes, PMF.bind_map, PMF.map_bind]
     rfl
   have nextDecode (state : ProtocolState program) (next : (graph setup).Config)
       (read : decodeSourcePrefix? program refs source.registry source.revelations embedding.ref

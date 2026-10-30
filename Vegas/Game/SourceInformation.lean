@@ -9,7 +9,7 @@ import Vegas.Source.RevealSequence
 
 /-! # Source decision depths and finite revelation histories
 
-The existing source view identifies its instruction position. Thus every
+The source view identifies its instruction position. Thus every
 decision information set has a common depth and is a history antichain,
 without adding observations or requiring independent initial types.
 
@@ -32,7 +32,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 namespace Setup
 
-/-- The existing public program position, with one step for the setup draw. -/
+/-- The public program position, with one step for the setup draw. -/
 def decisionDepth (setup : Setup (Player := Player) (L := L)) (who : Player) :
     setup.ProtocolView who → Nat
   | none => 0
@@ -89,7 +89,7 @@ def uniformPolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset Var
   | _, _, .sample .., impossible => impossible.elim
   | _, _, .commit .., impossible => impossible.elim
   | _, _, .reveal _ _ _ _ _ _ next, reveals =>
-      (fun _ _ => PMF.uniformOfFintype Bool, uniformPolicy who next reveals)
+      (fun _ _ _ => PMF.uniformOfFintype Bool, uniformPolicy who next reveals)
 
 /-- A reveal-only program binds nothing, so its fresh-binding alphabets are
 vacuously finite. -/

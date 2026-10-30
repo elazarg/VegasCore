@@ -375,13 +375,15 @@ theorem runFrom_option_law
       ((toEventGraph whole).runPlan
         ((toEventGraph whole).policyPlan (compileEventProfile whole wholeProfile)
           (toEventGraph whole).canonicalScheduler) (eventCount program) config).map
-          (decodeConfig? whole program refs source.revelations source.registry embedding) =
+          (fun final => decodeConfig? whole program refs source.revelations source.registry
+            embedding final.store final.history) =
         (runFrom program profile source).map some := by
   intro Γ openNames program
   induction program with
   | ret payoffs =>
       intro profile refs source embedding refsBefore offset aligned config ordered
         refsAgree historyAgree defaultsAgree
+      change EventGraph.Completion.defaults config.history = source.defaults at defaultsAgree
       simp only [eventCount, EventGraph.runPlan, PMF.pure_map, decodeConfig?,
         terminalRefsWith, finalRegistry, finalRevelations, runFrom]
       rw [decodeState?_eq_some refs source.state config.store refsAgree]

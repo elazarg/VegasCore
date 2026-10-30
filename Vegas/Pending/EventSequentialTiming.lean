@@ -19,7 +19,6 @@ namespace Vegas.EventGraphRuntime.State
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-omit [DecidableEq Player] in
 /-- A different sequential event cannot already have an activation time while
 the current event is ready. This prevents inheriting an older deadline. -/
 theorem Invariant.successor_not_activated {inputs : graph.sequentialize.Inputs}

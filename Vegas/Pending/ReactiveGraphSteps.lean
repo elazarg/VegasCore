@@ -14,7 +14,7 @@ noncomputable section
 
 namespace Vegas.EventGraphRuntime
 
-open GameTheory.Math.Probability Interaction
+open GameTheory.Math.Probability Interaction EventGraph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
@@ -90,5 +90,52 @@ theorem reactive_protocol_defaulted_mono (runtime : EventGraphRuntime graph)
   EventGraph.Config.Step.path_defaulted_mono
     (reactive_protocol_graph_steps runtime leaks initial horizon scheduler before after joint
       supported)
+
+/-- An accepted authentic opening records true, even when its publication fails.
+Automatic completion preserves that authoritative record. -/
+theorem reactiveHandle_opening_decision
+    (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (state next : State graph) (id : MessageId Player) (event : graph.EventId)
+    (candidate : Handle graph) (raw : Raw L)
+    (owner : Player) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) =
+      .resolve owner payload binding checks)
+    (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
+    (evidence : Option (OpeningFact graph)) (token : Option (ReadinessToken graph))
+    (accepted : (runtime.reactiveApplication leaks).handle state
+      ⟨id, ⟨.opening event candidate raw, evidence, token⟩⟩ = some next) :
+    ∃ defaultEvent, (⟨event,
+        some (cast (congrArg EventField.Action outputEq.symm) true), defaultEvent⟩ :
+        graph.Completion) ∈ next.config.history := by
+  obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
+  obtain ⟨active, ready, timely, owner', payload', binding', checks', outputEq', codeEq',
+    value, result, actualNode, sender, owned, associated, rawEq, fixed, stored, resolved,
+    nativeEq⟩ := (handle_opening_iff runtime state native id event candidate raw).mp handled
+  rw [node] at actualNode
+  cases actualNode
+  have actor := nodeView_resolve_actor outputEq codeEq
+  change (graph.nodes event).actor = some owner at actor
+  have activeOwner : owner ∉ state.config.defaulted := by simpa only [sender] using active
+  have decision : state.config.actualDecision event
+      (cast (congrArg EventField.Action outputEq.symm) true) =
+        some (cast (congrArg EventField.Action outputEq.symm) true) := by
+    change (graph.nodes event).actualDecision state.config.defaulted _ = _
+    simp only [EventCode.actualDecision, actor, ite_eq_right activeOwner]
+  obtain ⟨tail, historyEq⟩ :=
+    EventGraph.Config.Step.path_history_prefix native.drain_graph_steps
+  rw [nextEq] at historyEq
+  refine ⟨(graph.nodes event).defaultEvent
+    (cast (congrArg EventField.Action outputEq.symm) true)
+    (cast (congrArg EventField.Value outputEq.symm) result), ?_⟩
+  rw [← historyEq]
+  apply List.mem_append_left
+  rw [nativeEq]
+  simp only [State.complete, Config.complete_history, decision]
+  exact List.mem_append_right _ (List.mem_singleton_self _)
+
 
 end Vegas.EventGraphRuntime

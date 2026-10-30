@@ -64,8 +64,8 @@ theorem Indebted.of_sourceObserve_eq {who : Player} {unresolved : Finset VarId}
     (revelations : @left.revelations = @right.revelations)
     (same : sourceObserve who left.state = sourceObserve who right.state)
     (indebted : left.Indebted who unresolved) : right.Indebted who unresolved := by
-  obtain ⟨leftState, leftRegistry, leftRevelations, leftHistory⟩ := left
-  obtain ⟨rightState, rightRegistry, rightRevelations, rightHistory⟩ := right
+  obtain ⟨leftState, leftRegistry, leftRevelations, leftHistory, leftDefaults⟩ := left
+  obtain ⟨rightState, rightRegistry, rightRevelations, rightHistory, rightDefaults⟩ := right
   dsimp only at registry revelations same
   subst registry revelations
   obtain ⟨unique, accounted, publishes, obligation, member, owner, unrevealed, value, bound,
@@ -104,7 +104,7 @@ private theorem config_indebted_iff {who : Player} {Γ : SourceCtx Player L}
     (rightStatic : right.registry = registry ∧ @right.revelations = @revelations)
     (same : left.view who = right.view who) :
     left.Indebted who unresolved ↔ right.Indebted who unresolved :=
-  have observed := congrArg Prod.fst same
+  have observed := congrArg DecisionView.observation same
   ⟨Config.Indebted.of_sourceObserve_eq (leftStatic.1.trans rightStatic.1.symm)
       (leftStatic.2.trans rightStatic.2.symm) observed,
     Config.Indebted.of_sourceObserve_eq (rightStatic.1.trans leftStatic.1.symm)
@@ -115,7 +115,7 @@ private theorem config_failedBinding_iff {who : Player} {Γ : SourceCtx Player L
     {unresolved : Finset VarId} {left right : Config Player L Γ}
     (same : left.view who = right.view who) :
     left.FailedBinding who unresolved ↔ right.FailedBinding who unresolved :=
-  have observed := congrArg Prod.fst same
+  have observed := congrArg DecisionView.observation same
   ⟨Config.FailedBinding.of_sourceObserve_eq observed,
     Config.FailedBinding.of_sourceObserve_eq observed.symm⟩
 

@@ -24,7 +24,7 @@ import Vegas.Game.IntendedAsyncNash
 import Vegas.Game.IntendedAuditedOutcome
 import Vegas.Game.IntendedChoiceReach
 import Vegas.Game.IntendedCommitGain
-import Vegas.Game.IntendedEffectiveOpening
+import Vegas.Game.IntendedAuthenticOpening
 import Vegas.Game.IntendedNash
 import Vegas.Game.IntendedOpeningContinuation
 import Vegas.Game.IntendedOpeningExtension
@@ -468,6 +468,7 @@ import Vegas.Game.SourceServiceFirstTurnBinding
 import Vegas.Game.SourceServiceFirstTurnMixture
 import Vegas.Game.SourceServiceFirstTurnOpportunity
 import Vegas.Game.SourceServiceFirstTurnRisk
+import Vegas.Game.SourceServiceFreshCall
 import Vegas.Game.SourceServiceImmediateRisk
 import Vegas.Game.SourceServiceLaw
 import Vegas.Game.SourceServiceLocalComparison
@@ -485,7 +486,6 @@ import Vegas.Game.SourceServiceSettledSound
 import Vegas.Game.SourceServiceSiteBridge
 import Vegas.Game.SourceServiceSpec
 import Vegas.Game.SourceServiceStep
-import Vegas.Game.SourceServiceTimedContinuation
 import Vegas.Game.SourceServiceTimedPolicy
 import Vegas.Game.SourceServiceTurnPolicy
 import Vegas.Game.SourceServiceTurnSettlement

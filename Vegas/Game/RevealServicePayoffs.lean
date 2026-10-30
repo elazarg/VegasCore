@@ -2,6 +2,7 @@
 
 import Vegas.Game.RevealService
 import Vegas.Compile.EventGraphReadout
+import Vegas.EventGraph.SequentialLaw
 
 /-! # Net utilities for the monitored reveal service
 
@@ -34,19 +35,22 @@ variable (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.Executio
   (deadline : (serviceGraph setup mode).EventId → Nat)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
-/-- Decode the existing typed terminal store, retaining initial private cells
-jointly with the public results. An unfinished execution has no readout. -/
+/-- Read the complete source configuration from the native terminal store and
+actual completion history. An unfinished execution has no readout. -/
 def serviceSourceReadout (state : (serviceApplication setup mode deadline leaks).ProtocolState) :
-    Option (State L setup.program.terminalCtx) :=
+    Option (Config Player L setup.program.terminalCtx) :=
   state.bind fun control =>
     let config := control.execution.application.config
     if config.cut.Terminal then
-      Vegas.decodeState? (Vegas.terminalRefs setup.program) config.store
+      Vegas.decodeConfig? setup.program setup.program
+        (ContextRefs.initial setup.context (outputLayout setup.program))
+        (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
+        (config.history.map (setup.eventGraph.fromModeCompletion mode))
     else none
 
 /-- Analysis utility of the actual terminal source readout, prior to a deposit
 deduction. Initial private types may affect this utility. -/
-def serviceBaseUtility (utility : State L setup.program.terminalCtx → Player → ℝ)
+def serviceBaseUtility (utility : Config Player L setup.program.terminalCtx → Player → ℝ)
     (state : (serviceApplication setup mode deadline leaks).ProtocolState) (who : Player) : ℝ :=
   (serviceSourceReadout setup mode deadline leaks state).elim 0 (fun source => utility source who)
 
@@ -58,11 +62,11 @@ variable (setup : Setup (Player := Player) (L := L))
 
 /-- The terminal readout of the supplied runtime. -/
 abbrev sourceReadout : (application setup runtime leaks).ProtocolState →
-    Option (State L setup.program.terminalCtx) :=
+    Option (Config Player L setup.program.terminalCtx) :=
   serviceSourceReadout setup .sequential runtime.deadline leaks
 
 /-- The base utility of the supplied runtime. -/
-abbrev baseUtility : (State L setup.program.terminalCtx → Player → ℝ) →
+abbrev baseUtility : (Config Player L setup.program.terminalCtx → Player → ℝ) →
     (application setup runtime leaks).ProtocolState → Player → ℝ :=
   serviceBaseUtility setup .sequential runtime.deadline leaks
 

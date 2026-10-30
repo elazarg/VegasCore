@@ -26,7 +26,7 @@ exclude each other, and every input with a pending event is one of them.
 
 **Menu membership.** A canonical decision retained by the canonical menu,
 whose local envelope the count verdict permits, lies in the one-packet menu
-(`Vegas.canonical_mem_onePacket`).
+(`Vegas.EventGraphRuntime.MessageBounds.canonical_mem_onePacket`).
 -/
 
 noncomputable section
@@ -274,28 +274,5 @@ theorem LateDelivery.pending {who : Player} {info : (application setup runtime l
 
 end Classification
 
-section Membership
-
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
-
-/-- A canonical decision retained by the canonical menu, whose local envelope
-the count verdict permits against the owner's earlier packets when it
-transmits, lies in the one-packet menu. -/
-theorem canonical_mem_onePacket (who : Player)
-    (past : List (application setup runtime leaks).PlayerEntry)
-    (view : (application setup runtime leaks).PlayerView)
-    (response : (application setup runtime leaks).Action)
-    (retained : response ∈ bounds.canonicalActions runtime leaks who past view)
-    (permitted : ∀ material, response.transmission = some material →
-      countPermits ((application setup runtime leaks).outputs past)
-        (runtime.localEnvelope leaks who past view material) = true) :
-    response ∈ bounds.onePacketActions runtime leaks who past view := by
-  refine (bounds.mem_onePacketActions runtime leaks who past view response).mpr
-    ⟨bounds.canonicalActions_effective runtime leaks who past view retained, ?_⟩
-  cases sent : response.transmission with
-  | none => exact Or.inl rfl
-  | some material => exact Or.inr ⟨material, sent, permitted material sent⟩
-
-end Membership
 
 end Vegas

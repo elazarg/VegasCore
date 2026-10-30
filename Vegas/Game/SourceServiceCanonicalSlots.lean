@@ -180,25 +180,6 @@ section Decision
 
 variable {setup leaks}
 
-/-- A resolution sends an opening of its event or nothing. -/
-theorem reactiveResolutionPacket_shape {owner : Player} (who : Player)
-    (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
-    (binding : EventGraph.FieldRef (serviceGraph setup mode).layout (.binding owner payload))
-    (checks : List (EventGraph.GuardCheck (serviceGraph setup mode).layout payload))
-    (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-    (action : (serviceGraph setup mode).Action event)
-    (view : PlayerView (serviceGraph setup mode)) :
-    (∃ candidate raw, reactiveResolutionPacket who event payload binding checks outputEq action
-        view = some (.opening event candidate raw)) ∨
-      reactiveResolutionPacket who event payload binding checks outputEq action view =
-        none := by
-  unfold reactiveResolutionPacket
-  dsimp only
-  repeat' split
-  all_goals first
-    | exact Or.inr rfl
-    | exact Or.inl ⟨_, _, rfl⟩
-
 /-- **The slot of a canonical decision.** When the canonical decision of the
 owner of `event` uses a prepared slot, that slot is the one
 `canonicalFreshSlot` selects, the event is a binding of the owner, and the

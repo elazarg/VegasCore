@@ -120,49 +120,6 @@ theorem rosterPhaseEnding_expire (setup : Setup (Player := Player) (L := L))
     List.getElem?_append_right (by simp only [List.length_replicate]; omega)]
   simp only [List.length_replicate, Nat.sub_self, List.getElem?_cons_zero]
 
-/-! ## Event kinds and actors -/
-
-omit [DecidableEq Player] in
-theorem nodeView_bind_actor {graph : EventGraph Player L} {event : graph.EventId}
-    {owner : Player} {payload : L.Ty}
-    (outputEq : graph.outputLayout event = .binding owner payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
-      (graph.nodes event) = .bind owner payload) :
-    graph.actor? event = some owner := by
-  have castActor : (cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
-      (graph.nodes event)).actor = some owner := by
-    rw [codeEq]
-    rfl
-  exact (EventGraph.EventCode.actor_cast outputEq (graph.nodes event)).symm.trans castActor
-
-omit [DecidableEq Player] in
-theorem nodeView_resolve_actor {graph : EventGraph Player L} {event : graph.EventId}
-    {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef graph.layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck graph.layout payload)}
-    (outputEq : graph.outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
-      (graph.nodes event) = .resolve owner payload binding checks) :
-    graph.actor? event = some owner := by
-  have castActor : (cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
-      (graph.nodes event)).actor = some owner := by
-    rw [codeEq]
-    rfl
-  exact (EventGraph.EventCode.actor_cast outputEq (graph.nodes event)).symm.trans castActor
-
-omit [DecidableEq Player] in
-theorem nodeView_sample_actor {graph : EventGraph Player L} {event : graph.EventId}
-    {payload : L.Ty} {law : EventGraph.PublicDist graph.layout payload}
-    (outputEq : graph.outputLayout event = .publicData payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
-      (graph.nodes event) = .sample payload law) :
-    graph.actor? event = none := by
-  have castActor : (cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
-      (graph.nodes event)).actor = none := by
-    rw [codeEq]
-    rfl
-  exact (EventGraph.EventCode.actor_cast outputEq (graph.nodes event)).symm.trans castActor
-
 /-! ## Selecting an owner's protected identifier -/
 
 omit [DecidableEq Player] in

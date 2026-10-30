@@ -33,16 +33,16 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 variable (setup : Setup (Player := Player) (L := L))
 
 /-- The deviator's debt is absorbing in the source model. -/
-theorem indebted_localStep (who : Player)
+theorem owesFailure_localStep (who : Player)
     (history : (setup.executionProtocol (CommitmentInterface.values setup.program)).History)
     (choices : ∀ i, (setup.informationModel (CommitmentInterface.values setup.program)).Choice i
       ((setup.informationModel (CommitmentInterface.values setup.program)).infoOf i
         history.trace))
     (next : (setup.executionProtocol (CommitmentInterface.values setup.program)).History)
-    (indebted : setup.IndebtedState who history.state)
+    (indebted : setup.OwesFailureState who history.state)
     (reached : next ∈ ((setup.informationModel
       (CommitmentInterface.values setup.program)).localStep history choices).support) :
-    setup.IndebtedState who next.state := by
+    setup.OwesFailureState who next.state := by
   by_cases stopped : (setup.executionProtocol
       (CommitmentInterface.values setup.program)).terminal history.state
   · simp only [InformationModel.localStep, dite_eq_left_of_eq_true (eq_true stopped),
@@ -51,11 +51,11 @@ theorem indebted_localStep (who : Player)
   · simp only [InformationModel.localStep, dite_eq_right_of_eq_false (eq_false stopped),
       PMF.mem_support_bindOnSupport_iff, PMF.mem_support_pure_iff] at reached
     obtain ⟨target, realized, rfl⟩ := reached
-    exact setup.indebtedState_step who _ history.state _ _ target indebted realized
+    exact setup.owesFailureState_step who _ history.state _ _ target indebted realized
 
 /-- An additional choice of the deviator from an intended history leaves it
 indebted. -/
-theorem indebted_of_extra (wellFormed : setup.WellFormed) (who : Player)
+theorem owesFailure_of_extra (wellFormed : setup.WellFormed) (who : Player)
     (original : setup.intendedProtocol.History)
     (choices : ∀ i, (setup.informationModel (CommitmentInterface.values setup.program)).Choice i
       ((setup.informationModel (CommitmentInterface.values setup.program)).infoOf i
@@ -69,7 +69,7 @@ theorem indebted_of_extra (wellFormed : setup.WellFormed) (who : Player)
       (CommitmentInterface.values setup.program)).localStep
         ((setup.intendedRestriction (CommitmentInterface.values setup.program)).history
           original) choices).support) :
-    setup.IndebtedState who next.state := by
+    setup.OwesFailureState who next.state := by
   obtain ⟨action, spelled, missing⟩ :=
     (setup.informationModel (CommitmentInterface.values setup.program)).menuRestriction_extraAt
       setup.intendedMenu setup.intendedMenu_adequate (setup.intendedMenu_subset
@@ -87,7 +87,8 @@ theorem indebted_of_extra (wellFormed : setup.WellFormed) (who : Player)
       setup.intendedMenu_adequate who original.trace).symm.trans
       (setup.intended_info who original.trace)
   rw [view] at missing
-  exact setup.indebtedState_of_deviation who (setup.intendedState_trace wellFormed original.trace)
+  exact setup.owesFailureState_of_deviation (CommitmentInterface.values setup.program) who
+    (setup.intendedState_trace wellFormed original.trace)
     _ _ spelled missing target realized
 
 /-- **Approximate Nash preservation for the intended game.** For a well-formed
@@ -102,7 +103,9 @@ theorem intended_isεNash_preserved [Fintype Player]
     (wellFormed : setup.WellFormed) {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-    (forfeit : ℝ) (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
+    (forfeit : ℝ)
+    (range : setup.TerminalPayoffSpread (CommitmentInterface.values setup.program)
+      parameter utility forfeit)
     (intended : Profile setup.intendedModel.behavioralSignature)
     (target : Profile
       (setup.informationModel (CommitmentInterface.values setup.program)).behavioralSignature)
@@ -164,7 +167,7 @@ theorem intended_isεNash_preserved [Fintype Player]
         simp only [forfeitUtility, parameterOutcome] at zero ⊢
         simp [zero]
   have forfeits : ∀ who indebted (history : setup.intendedProtocol.History),
-      setup.IndebtedState who indebted.state →
+      setup.OwesFailureState who indebted.state →
       (setup.executionProtocol (CommitmentInterface.values setup.program)).terminal
         indebted.state →
       setup.intendedProtocol.terminal history.state →
@@ -182,7 +185,7 @@ theorem intended_isεNash_preserved [Fintype Player]
         obtain ⟨terminal, read⟩ :=
           ProtocolState.exists_readout_of_terminal setup.program state stopped
         have positive :=
-          ProtocolState.failedReveals_pos_of_indebted who setup.program state owing read
+          ProtocolState.failedReveals_pos_of_owesFailure who setup.program state owing read
         change (setup.protocolReadout indebted.state).elim 0 _ ≤
           (setup.protocolReadout history.state).elim 0 _
         have read' : setup.protocolReadout indebted.state = some terminal := by
@@ -192,10 +195,20 @@ theorem intended_isεNash_preserved [Fintype Player]
         change forfeitUtility setup.program forfeit utility
           (setup.parameterOutcome parameter terminal) who ≤
             utility (setup.parameterOutcome parameter intendedTerminal) who
-        have spread := range (setup.parameterOutcome parameter terminal)
-          (setup.parameterOutcome parameter intendedTerminal) who
-        have nonnegative := range (setup.parameterOutcome parameter terminal)
-          (setup.parameterOutcome parameter terminal) who
+        have fullyStopped :
+            (setup.executionProtocol (CommitmentInterface.values setup.program)).terminal
+              indebted.state := by
+          rw [finalState]
+          exact stopped
+        have spread := range indebted
+          ((setup.intendedRestriction (CommitmentInterface.values setup.program)).history history)
+          fullyStopped intendedStopped who
+        have nonnegative := range indebted indebted fullyStopped fullyStopped who
+        have lowerRead : setup.protocolReadout
+            ((setup.intendedRestriction (CommitmentInterface.values setup.program)).history
+              history).state = some intendedTerminal := intendedRead
+        simp only [read', lowerRead, Option.elim_some] at spread
+        simp only [read', Option.elim_some, sub_self] at nonnegative
         have count : (1 : ℝ) ≤ (failedReveals setup.program who
             (setup.parameterOutcome parameter terminal).2 : ℝ) :=
           Nat.one_le_cast.mpr positive
@@ -209,10 +222,10 @@ theorem intended_isεNash_preserved [Fintype Player]
     setup.program)).isεNash_extends_of_debt (setup.protocol_bounded _)
       ((setup.informationModel _).menuRestriction_reflecting _ _ (setup.intendedMenu_subset
         (CommitmentInterface.values setup.program)))
-      intended target agrees (fun who => setup.IndebtedState who)
-      (fun who => setup.indebted_localStep who)
+      intended target agrees (fun who => setup.OwesFailureState who)
+      (fun who => setup.owesFailure_localStep who)
       (fun who original choices next running _ extra reached =>
-        setup.indebted_of_extra wellFormed who original choices next running extra reached)
+        setup.owesFailure_of_extra wellFormed who original choices next running extra reached)
       sourcePayoff targetPayoff (fun _ _ => payoffIntegrable_of_finite _ _)
       (fun _ _ => payoffIntegrable_of_finite _ _) matching forfeits ε equilibrium
   · intro final reached terminal read who

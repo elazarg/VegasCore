@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketCanonicalPermits
+import Vegas.Game.SourceServiceFreshCall
+import Vegas.Pending.ReactiveAsyncContract
 
 /-! # Canonical packets sent on time are accepted
 
@@ -9,8 +11,8 @@ scheduler choices, the canonical decision of `who` at its turn, while the event
 is within its deadline, transmits a packet the contract accepts on the view it
 was sent from (`Vegas.canonicalServiceDecision_freshServiceAcceptable`): a
 commitment is includable, with a vacant event and a fresh handle that no field
-has accepted, and an opening is the certified opening of the accepted handle,
-whose guards accept the opened value. Sent early enough for an inclusion within
+has accepted, and an opening is the certified opening of the accepted handle.
+Public guards determine the resulting publication. Sent early enough for an inclusion within
 `bound event` slots to land before the deadline, its recall entry is a fresh
 call (`Vegas.canonical_freshCall`).
 
@@ -60,10 +62,20 @@ theorem canonicalServiceDecision_freshServiceAcceptable {horizon : Nat}
         (serviceApplication setup mode deadline leaks).packet
           ((serviceApplication setup mode deadline leaks).submit control.execution.application
             who material) who (control.execution.network.known who) material⟩ := by
-  have facts := legalFacts setup leaks horizon scheduler control trace
+  have bindingValid := ((serviceRuntime setup mode deadline).reactiveBindingInvariant leaks).history
+    (serviceInitialLaw setup mode) horizon scheduler (fun state member => by
+      obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
+      exact State.initial_bindingInvariant _) trace
+  have inputs := (serviceApplication setup mode deadline leaks).history_inputRecall
+    (serviceInitialLaw setup mode) horizon scheduler trace
   have readyView := (PublicView.ownTurn?_spec _ who event turn).1
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
   have ready := (control.execution.application.publicView_eventReady event).mp readyView
+  have activeView := (serviceRuntime setup mode deadline).canonicalServiceDecision_active leaks
+    who (control.execution.recall who)
+    (control.execution.observe (serviceApplication setup mode deadline leaks) who)
+    event action material submits
+  have active : who ∉ control.execution.application.config.defaulted := activeView
   have inTime : (match control.execution.application.activatedAt event with
       | none => False
       | some entered => control.execution.application.clock - entered <
@@ -77,41 +89,46 @@ theorem canonicalServiceDecision_freshServiceAcceptable {horizon : Nat}
       have actorEq : actor = who :=
         Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans owned)
       subst actorEq
-      obtain ⟨choice, rfl⟩ : ∃ choice : PublicationResult (L.Val payload),
+      obtain ⟨choice, rfl⟩ : ∃ choice : Option (PublicationResult (L.Val payload)),
           action = cast (congrArg EventGraph.EventField.Action outputEq.symm) choice :=
         ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
-      generalize hview : control.execution.observe (serviceApplication setup mode deadline leaks)
-        actor = view at submits
-      cases selected : canonicalFreshSlot actor view.application with
+      cases choice with
       | none =>
-          simp only [EventGraphRuntime.canonicalServiceDecision,
-            EventGraphRuntime.canonicalReactiveDecision, node, selected, Option.map_none,
-            ReactiveApplication.SubmissionNormalization.action] at submits
+          rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_binding_none leaks
+            actor _ _ event actor payload outputEq codeEq node] at submits
           cases submits
-      | some serial =>
-          have fresh := canonicalFreshSlot_spec actor _ serial selected
-          rw [← hview] at fresh selected
-          rw [← hview] at submits
-          rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_binding leaks actor
-            (control.execution.recall actor)
-            (control.execution.observe (serviceApplication setup mode deadline leaks) actor) event
-            payload outputEq codeEq node serial selected choice] at submits
-          cases Option.some.inj submits
-          have vacant : control.execution.application.accepted (.inr event) = none := by
-            cases associated : control.execution.application.accepted (.inr event) with
-            | none => rfl
-            | some candidate =>
-                exact False.elim (ready.1
-                  (facts.binding.toAssociationInvariant.accepted_complete event candidate
-                    associated))
-          have unused : ∀ field, control.execution.application.accepted field ≠
-              some (actor, .prepared serial) :=
-            fun field associated => facts.binding.accepted_fixed field _ associated fresh
-          rw [reactiveApplication_packet_none,
-            control.execution.application.publicView_tokenFor_of_ready _ event rfl ready]
-          refine ⟨?_, rfl⟩
-          simp only [PublicView.BindingIncludable, node]
-          exact ⟨readyView, inTime, by trivial, by trivial, vacant, unused⟩
+      | some choice =>
+        cases selected : canonicalFreshSlot actor
+            (control.execution.observe (serviceApplication setup mode deadline leaks)
+              actor).application with
+        | none =>
+            simp only [EventGraphRuntime.canonicalServiceDecision,
+              EventGraphRuntime.canonicalReactiveDecision, ite_eq_right activeView,
+              node, cast_cast, cast_eq, Option.bind_some, selected, Option.map_none,
+              ReactiveApplication.SubmissionNormalization.action] at submits
+            cases submits
+        | some serial =>
+            have fresh := canonicalFreshSlot_spec actor _ serial selected
+            rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_binding leaks actor
+              (control.execution.recall actor)
+              (control.execution.observe (serviceApplication setup mode deadline leaks) actor) event
+              payload outputEq codeEq node activeView serial selected choice] at submits
+            cases Option.some.inj submits
+            have vacant : control.execution.application.accepted (.inr event) = none := by
+              cases associated : control.execution.application.accepted (.inr event) with
+              | none => rfl
+              | some candidate =>
+                  exact False.elim (ready.1
+                    (bindingValid.toAssociationInvariant.accepted_complete event candidate
+                      associated))
+            have unused : ∀ field, control.execution.application.accepted field ≠
+                some (actor, .prepared serial) :=
+              fun field associated => bindingValid.accepted_fixed field _ associated fresh
+            rw [reactiveApplication_packet_none,
+              control.execution.application.publicView_tokenFor_of_ready _ event rfl ready]
+            refine ⟨?_, rfl⟩
+            simp only [PublicView.BindingIncludable, node]
+            exact ⟨active, readyView, inTime, by trivial, by trivial, vacant, unused⟩
   | resolve actor payload binding checks outputEq codeEq =>
       have actorEq : actor = who :=
         Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
@@ -121,26 +138,23 @@ theorem canonicalServiceDecision_freshServiceAcceptable {horizon : Nat}
         (control.execution.observe (serviceApplication setup mode deadline leaks) actor) event
         action (fun _ _ _ _ bind => by rw [node] at bind; cases bind)] at submits
       unfold EventGraphRuntime.serviceDecision EventGraphRuntime.reactiveDecision at submits
-      simp only [node] at submits
+      simp only [ite_eq_right activeView, node] at submits
       rcases reactiveResolutionPacket_shape actor event payload binding checks outputEq action
           (control.execution.observe (serviceApplication setup mode deadline leaks)
             actor).application with ⟨candidate, raw, packet⟩ | packet
-      · obtain ⟨isTrue, value, localResolved, associated, handleOwner, rawEq⟩ :=
-          reactiveResolutionPacket_opening actor event payload binding checks outputEq action
+      · obtain ⟨_, isTrue, _, value, localStored, associated, handleOwner, rawEq⟩ :=
+          reactiveResolutionPacket_opening_spec actor event payload binding checks outputEq action
             (control.execution.observe (serviceApplication setup mode deadline leaks)
               actor).application event candidate raw packet
         subst rawEq
-        have resolved : EventGraph.EventCode.resolveOutput? binding checks true
-            control.execution.application.config.store = some (.success value) := by
-          have local' := localResolved
-          change EventGraph.EventCode.resolveOutput? binding checks true
-            ((serviceGraph setup mode).playerStore actor
-              control.execution.application.config.store) = _ at local'
-          rwa [EventGraph.EventCode.resolveOutput?_playerStore] at local'
-        have stored := EventGraph.EventCode.binding_success_of_resolve_success binding checks
-          true control.execution.application.config.store value resolved
+        have stored : binding.get? control.execution.application.config.store =
+            some (.success value) := by
+          change binding.get? ((serviceGraph setup mode).playerStore actor
+            control.execution.application.config.store) = _ at localStored
+          rwa [binding.get?_playerStore actor control.execution.application.config.store rfl]
+            at localStored
         obtain ⟨handle, associatedHandle, _, fixed⟩ :=
-          facts.binding.success_provenance binding value stored
+          bindingValid.success_provenance binding value stored
         have handleEq : handle = candidate := by
           have same : control.execution.application.accepted binding.field = some candidate :=
             associated
@@ -151,9 +165,9 @@ theorem canonicalServiceDecision_freshServiceAcceptable {horizon : Nat}
             cast (congrArg EventGraph.EventField.Action outputEq.symm) true := by
           rw [← isTrue, cast_cast, cast_eq]
         subst actionEq
-        have decision := (serviceRuntime setup mode deadline).serviceDecision_successful_opening
-            leaks control.execution facts.inputs actor event payload binding checks outputEq
-            codeEq node handle value associatedHandle handleOwner fixed resolved
+        have decision := (serviceRuntime setup mode deadline).serviceDecision_authentic_opening
+            leaks control.execution inputs actor event payload binding checks outputEq
+            codeEq node handle value associatedHandle handleOwner fixed active stored
         have materialEq : material =
             (disclosureSubmission (.opening event handle ⟨payload, value⟩)).normalizeReactive
               actor ((serviceApplication setup mode deadline leaks).observePlayer
@@ -162,7 +176,7 @@ theorem canonicalServiceDecision_freshServiceAcceptable {horizon : Nat}
           have transmission := congrArg ReactiveApplication.Action.transmission decision
           unfold EventGraphRuntime.serviceDecision EventGraphRuntime.reactiveDecision
             at transmission
-          simp only [node] at transmission
+          simp only [ite_eq_right activeView, node] at transmission
           rw [transmission] at submits
           cases submits
           rfl
@@ -191,22 +205,12 @@ theorem canonicalServiceDecision_freshServiceAcceptable {horizon : Nat}
               (control.execution.network.known actor) handleOwner fixed
           exact emitted.trans opened
         rw [packetEq, control.execution.application.publicView_tokenFor_of_ready _ event rfl ready]
-        apply EventGraphRuntime.freshServiceEnvelope.acceptable
-        apply ((serviceRuntime setup mode deadline).freshServiceEnvelope_opening_iff
+        apply ((serviceRuntime setup mode deadline).freshServiceAcceptable_opening_iff
                 control.execution.application.publicView _ event actor payload binding checks
                 outputEq codeEq node handle ⟨payload, value⟩
                 (some ⟨handle, ⟨payload, value⟩⟩) _).mpr
-        refine ⟨readyView, inTime, by simp only [certifiedOpening, decide_true], ?_, rfl,
+        exact ⟨readyView, inTime, by simp only [certifiedOpening, decide_true], rfl,
           handleOwner, associatedHandle, rfl, rfl⟩
-        apply (control.execution.application.publicView.openingGuardsAccepted_iff actor event
-          payload binding checks outputEq codeEq node handle ⟨payload, value⟩ _).mpr
-        refine ⟨value, rfl, ?_⟩
-        change EventGraph.GuardCheck.allAccepted? checks
-          ((serviceGraph setup mode).publicStore control.execution.application.config.store)
-            (.success value) = some true
-        rw [EventGraph.GuardCheck.allAccepted?_publicStore]
-        exact EventGraph.EventCode.guards_pass_of_resolve_success binding checks true
-          control.execution.application.config.store value resolved
       · rw [packet] at submits
         cases submits
 

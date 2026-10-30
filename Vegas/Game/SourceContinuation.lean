@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Source.SetupProtocolBehavioral
+import Vegas.Source.InitialState
 import GameTheory.Protocol.SingleMover
 import GameTheory.Protocol.StateKernel
 import GameTheory.Protocol.BehavioralAssessment
@@ -26,6 +27,22 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
   (admission : CommitmentInterface setup.program)
+
+omit [Fintype Player] in
+/-- A payoff spread bound on terminal legal histories. Values on impossible
+public default records and unsupported initial parameters are unrestricted. -/
+def TerminalPayoffSpread {Parameter : Type}
+    (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (bound : ℝ) : Prop :=
+  ∀ high low : (setup.executionProtocol admission).History,
+    (setup.executionProtocol admission).terminal high.state →
+    (setup.executionProtocol admission).terminal low.state →
+    ∀ who,
+      (setup.protocolReadout high.state).elim 0
+          (fun terminal => utility (setup.parameterOutcome parameter terminal) who) -
+        (setup.protocolReadout low.state).elim 0
+          (fun terminal => utility (setup.parameterOutcome parameter terminal) who) ≤ bound
 
 /-- Decode arbitrary legal behavioral policies, uniformly over the setup draw. -/
 def decodeBehavioralProfile

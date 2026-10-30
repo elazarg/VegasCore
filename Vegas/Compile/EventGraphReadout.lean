@@ -246,11 +246,12 @@ def decodeConfig?
     (refs : ContextRefs (graphLayout whole) Γ)
     (revelations : Revelations Γ) (registry : Registry Γ)
     (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole) program)
-    (final : (toEventGraph whole).Config) :
+    (store : Vegas.EventGraph.Store (graphLayout whole))
+    (history : List (toEventGraph whole).Completion) :
     Option (SourceProgram.Config Player L program.terminalCtx) :=
-  (decodeState? (terminalRefsWith program refs embedding.ref) final.store).map fun state =>
+  (decodeState? (terminalRefsWith program refs embedding.ref) store).map fun state =>
     ⟨state, finalRegistry program registry, finalRevelations program revelations,
-      decodeHistory whole final.history, final.defaults⟩
+      decodeHistory whole history, Vegas.EventGraph.Completion.defaults history⟩
 
 /-- Read the complete terminal source configuration without inventing missing
 values. Terminality supplies availability of every referenced typed field. -/
@@ -268,7 +269,7 @@ theorem decodeConfig?_terminal {Γ : SourceCtx Player L} {openNames : Finset Var
     (program : SourceProgram Player L Γ openNames)
     (result : {config : (toEventGraph program).Config // config.cut.Terminal}) :
     decodeConfig? program program (ContextRefs.initial Γ (outputLayout program))
-        (Revelations.initial Γ) [] (outputEmbedding program) result.1 =
+        (Revelations.initial Γ) [] (outputEmbedding program) result.1.store result.1.history =
       some (terminalConfig program result) := by
   have decoded : decodeState? (terminalRefs program) result.1.store =
       some (terminalState program result) := by
@@ -289,11 +290,14 @@ theorem terminalOutcomes_map_decodeConfig
     (((toEventGraph program).terminalOutcomes scheduler profile inputs).map
         (terminalConfig program)).map some =
       ((toEventGraph program).runPolicies scheduler profile inputs).map
-        (decodeConfig? program program (ContextRefs.initial Γ (outputLayout program))
-          (Revelations.initial Γ) [] (outputEmbedding program)) := by
+        (fun final => decodeConfig? program program
+          (ContextRefs.initial Γ (outputLayout program))
+          (Revelations.initial Γ) [] (outputEmbedding program) final.store final.history) := by
   have decodeTerminal : (some ∘ terminalConfig program) =
-      (decodeConfig? program program (ContextRefs.initial Γ (outputLayout program))
-        (Revelations.initial Γ) [] (outputEmbedding program)) ∘ Subtype.val := by
+      (fun final => decodeConfig? program program
+        (ContextRefs.initial Γ (outputLayout program))
+        (Revelations.initial Γ) [] (outputEmbedding program) final.store final.history) ∘
+          Subtype.val := by
     funext result
     exact (decodeConfig?_terminal program result).symm
   rw [PMF.map_comp, decodeTerminal, ← PMF.map_comp,

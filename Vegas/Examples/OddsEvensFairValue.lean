@@ -3,7 +3,7 @@
 import Vegas.Examples.OddsEvensSetup
 import Vegas.Examples.OddsEvensFairDecode
 import Vegas.Examples.OddsEvensFairSequential
-import Vegas.Game.IntendedEffectiveOpening
+import Vegas.Game.IntendedAuthenticOpening
 import Mathlib.Probability.Distributions.Uniform
 
 /-! # Exact source execution and the fair payoff in Odds–Evens -/

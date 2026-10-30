@@ -2,6 +2,7 @@
 
 import Vegas.Source.Accounting
 import Vegas.Source.Basic
+import Vegas.Source.BindingNormalization
 import Vegas.Source.CellSwap
 import Vegas.Source.CellSwapDebt
 import Vegas.Source.CommitmentInterface
@@ -55,4 +56,3 @@ import Vegas.Source.SetupProtocolEvaluation
 import Vegas.Source.SetupProtocolRecall
 import Vegas.Source.ValueBinding
 import Vegas.Source.ValueBindingAdmission
-import Vegas.Source.ValueBindingContinuation

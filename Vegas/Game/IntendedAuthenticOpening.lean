@@ -4,15 +4,15 @@ import Vegas.Source.AuthenticOpening
 import Vegas.Game.IntendedOpeningExtension
 import Vegas.Game.IntendedPreservation
 
-/-! # The intended law through effective openings
+/-! # The intended law through authentic openings
 
 An intended profile, read as a law of source choices at every source view
 (`Vegas.SourceProgram.Setup.intendedSourceProfile`), extends itself, decodes to
-source policies that always disclose, and its effective opening
-(`Vegas.SourceProgram.Setup.intendedOpeningProfile`) opens effectively by
+source policies that always disclose, and its authentic opening
+(`Vegas.SourceProgram.Setup.intendedOpeningProfile`) opens authentic bindings by
 construction. Every point of the intended game carries the program's registry
 and publication status (`Vegas.SourceProgram.Setup.staticState_trace`), so at
-every intended decision site the effective opening plays the intended law, and
+every intended decision site the authentic opening plays the intended law, and
 its source run has the intended law of typed readouts
 (`Vegas.SourceProgram.Setup.intendedOpeningProfile_run`).
 -/
@@ -58,19 +58,18 @@ theorem intendedSourceProfile_notRefusal
           rw [chosen] at legal
           exact ProtocolView.intendedAvailable_notRefusal who setup.program view action legal.2
 
-/-- **The intended effective opening.** The intended profile's source policies,
+/-- **The intended authentic opening.** The intended profile's source policies,
 opening exactly their effective disclosures. -/
 def intendedOpeningProfile (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) :
     BehavioralProfile setup.program := fun who =>
   (setup.decodeBehavioralProfile (CommitmentInterface.values setup.program)
-    (setup.intendedSourceProfile intended) who).effectiveOpening setup.program []
-      (Revelations.initial setup.context)
+    (setup.intendedSourceProfile intended) who).authenticOpening setup.program
 
 theorem intendedOpeningProfile_admitted
     (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) (who : Player) :
     (setup.intendedOpeningProfile intended who).Admitted setup.program
       (CommitmentInterface.values setup.program) :=
-  BehavioralPolicy.admitted_effectiveOpening _ _ _ _ _
+  BehavioralPolicy.admitted_authenticOpening _ _ _
     ((setup.behavioralPolicyEquiv (CommitmentInterface.values setup.program) who).symm
       (setup.intendedSourceProfile intended who)).2
 
@@ -98,7 +97,7 @@ theorem staticState_trace :
           obtain ⟨after, reached, rfl⟩ := realized
           exact ProtocolState.staticAt_step setup.program _ _ before joint after earlier reached
 
-/-- **The effective opening plays the intended law at intended sites.** -/
+/-- **The authentic opening plays the intended law at intended sites.** -/
 theorem intendedOpeningProfile_extends (wellFormed : setup.WellFormed)
     (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) :
     (setup.intendedRestriction (CommitmentInterface.values setup.program)).ExtendsProfile
@@ -147,12 +146,12 @@ theorem intendedOpeningProfile_extends (wellFormed : setup.WellFormed)
           who) :=
         BehavioralPolicy.disclosing_fromProtocol setup.program _ _
           (fun view => setup.intendedSourceProfile_notRefusal intended who (some view))
-      rw [BehavioralPolicy.protocolAction_effectiveOpening setup.program _ _ _ disclosing
-        state staticState intendedState]
+      rw [BehavioralPolicy.protocolAction_authenticOpening setup.program _ disclosing
+        state intendedState]
       exact BehavioralPolicy.protocolAction_fromProtocol setup.program _ _ _
 
-/-- **The intended law through effective openings.** For a well-formed setup,
-the source run of the intended effective opening reads out exactly the intended
+/-- **The intended law through authentic openings.** For a well-formed setup,
+the source run of the intended authentic opening reads out exactly the intended
 law of typed readouts. -/
 theorem intendedOpeningProfile_run [Fintype Player] (wellFormed : setup.WellFormed)
     (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) :
@@ -171,10 +170,10 @@ theorem intendedOpeningProfile_run [Fintype Player] (wellFormed : setup.WellForm
   rw [← law, PMF.map_comp]
   rfl
 
-/-- **Intended play from a history is the effective opening's continuation.**
+/-- **Intended play from a history is the authentic opening's continuation.**
 For a well-formed setup, from every history of the intended game, play of an
 intended profile for enough steps reads out the continuation of its intended
-effective opening from the history's state. -/
+authentic opening from the history's state. -/
 theorem intendedOpeningProfile_runFrom [Fintype Player] (wellFormed : setup.WellFormed)
     (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) (fuel : Nat)
     (history : setup.intendedProtocol.History)

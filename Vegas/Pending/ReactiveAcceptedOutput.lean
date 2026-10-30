@@ -4,7 +4,7 @@ import Vegas.Pending.ReactiveSignedCommitments
 import Vegas.Pending.EventBindingInvariant
 import Vegas.Pending.ExclusionInvariant
 
-/-! # Accepted calls write successful outputs
+/-! # Typed results of accepted calls
 
 A field value of a binding or publication kind is a failure when it records a
 failed result (`Vegas.EventGraph.EventField.IsFailure`). Every runtime operation keeps the meaning
@@ -200,5 +200,134 @@ theorem handle_opening_output_success (state next : State graph) (id : MessageId
   change cast _ (next.config.outputs event) = _
   rw [member, Config.complete_output_same,
     cast_some (congrArg EventField.Value outputEq), cast_cast_symm]
+
+/-- A call's fixed meaning certifies its actual action and typed output when accepted at `sent`. -/
+def AcceptanceWitness (event : graph.EventId)
+    (message : Message Player (WitnessedPacket graph)) (sent : graph.Config)
+    (action : graph.Action event) (output : (graph.outputLayout event).Value)
+    (state : State graph) : Prop :=
+  (∃ candidate owner payload, ∃ layoutEq : graph.outputLayout event = .binding owner payload,
+    message.payload.call = .commitment event candidate ∧
+      state.candidates.lookup candidate ≠ .fresh ∧
+      action = cast (congrArg EventField.Action layoutEq.symm)
+        (some (state.bindingResult candidate payload)) ∧
+      output = cast (congrArg EventField.Value layoutEq.symm)
+        (state.bindingResult candidate payload)) ∨
+  (∃ candidate raw owner payload binding checks outputEq codeEq result,
+    message.payload.call = .opening event candidate raw ∧
+      nodeView graph event = .resolve owner payload binding checks outputEq codeEq ∧
+      EventCode.resolveOutput? binding checks true sent.store = some result ∧
+      action = cast (congrArg EventField.Action outputEq.symm) true ∧
+      output = cast (congrArg EventField.Value outputEq.symm) result)
+
+omit [DecidableEq Player] in
+theorem AcceptanceWitness.keep {event : graph.EventId}
+    {message : Message Player (WitnessedPacket graph)} {sent : graph.Config}
+    {action : graph.Action event}
+    {output : (graph.outputLayout event).Value} {before after : State graph}
+    (witness : AcceptanceWitness event message sent action output before)
+    (kept : KeepsFixedCandidates before after) :
+    AcceptanceWitness event message sent action output after := by
+  rcases witness with ⟨candidate, owner, payload, layoutEq, call, fixed, decision, result⟩ | opening
+  · have lookup := kept candidate fixed
+    have meaning : after.bindingResult candidate payload =
+        before.bindingResult candidate payload := by
+      unfold State.bindingResult
+      rw [lookup]
+    refine Or.inl ⟨candidate, owner, payload, layoutEq, call, ?_, ?_, ?_⟩
+    · rw [lookup]
+      exact fixed
+    · rw [meaning]
+      exact decision
+    · rw [meaning]
+      exact result
+  · exact Or.inr opening
+
+/-- A certified accepted call performs its actual graph action with its exact typed result. -/
+theorem AcceptanceWitness.complete
+    {event : graph.EventId} {message : Message Player (WitnessedPacket graph)}
+    {sent : graph.Config} {action : graph.Action event} {output : (graph.outputLayout event).Value}
+    {state next : State graph}
+    (witness : AcceptanceWitness event message sent action output state)
+    (sameConfig : state.config = sent)
+    (accepted : handle runtime state ⟨message.id, message.payload.call⟩ = some next) :
+    ∃ ready : sent.cut.Ready event, sent.actualDecision event action = some action ∧
+      next.config = sent.complete event ready action output := by
+  subst sent
+  rcases witness with ⟨candidate, owner, payload, layoutEq, call, _, decision, outputValue⟩ |
+    ⟨candidate, raw, owner, payload, binding, checks, outputEq, codeEq, result,
+      call, node, resolved, decision, outputValue⟩
+  · rw [call] at accepted
+    obtain ⟨active, ready, _, otherOwner, otherPayload, otherLayout, otherCode, _, sender,
+      _, _, _, nativeEq⟩ :=
+      (handle_commitment_iff runtime state next message.id event candidate).mp accepted
+    have sameKind := layoutEq.symm.trans otherLayout
+    cases sameKind
+    have activeOwner : owner ∉ state.config.defaulted := by simpa only [sender] using active
+    have actor := nodeView_bind_actor layoutEq otherCode
+    refine ⟨ready, state.config.actualDecision_of_active event owner actor activeOwner action, ?_⟩
+    rw [nativeEq]
+    change state.config.complete event ready _ _ = state.config.complete event ready action output
+    rw [decision, outputValue]
+  · rw [call] at accepted
+    obtain ⟨active, ready, _, otherOwner, otherPayload, otherBinding, otherChecks,
+      otherOutput, otherCode, _, otherResult, actualNode, sender, _, _, _, _, _,
+      actualResult, nativeEq⟩ :=
+      (handle_opening_iff runtime state next message.id event candidate raw).mp accepted
+    rw [node] at actualNode
+    cases actualNode
+    rw [resolved] at actualResult
+    cases Option.some.inj actualResult
+    have activeOwner : owner ∉ state.config.defaulted := by simpa only [sender] using active
+    have actor := nodeView_resolve_actor outputEq codeEq
+    refine ⟨ready, state.config.actualDecision_of_active event owner actor activeOwner action, ?_⟩
+    rw [nativeEq]
+    change state.config.complete event ready _ _ = state.config.complete event ready action output
+    rw [decision, outputValue]
+
+/-- Acceptance writes the certified result, including a failed publication. -/
+theorem AcceptanceWitness.output_eq
+    {event : graph.EventId} {message : Message Player (WitnessedPacket graph)}
+    {sent : graph.Config} {action : graph.Action event} {output : (graph.outputLayout event).Value}
+    {state next : State graph}
+    (witness : AcceptanceWitness event message sent action output state)
+    (sameConfig : state.config = sent)
+    (accepted : handle runtime state ⟨message.id, message.payload.call⟩ = some next) :
+    next.config.outputs event = some output := by
+  obtain ⟨ready, _, completed⟩ := witness.complete runtime sameConfig accepted
+  rw [completed, Config.complete_output_same]
+
+/-- Automatic completions retain the actual decision certified by an accepted call. -/
+theorem AcceptanceWitness.reactive_decision
+    {event : graph.EventId} {message : Message Player (WitnessedPacket graph)}
+    {sent : graph.Config} {action : graph.Action event} {output : (graph.outputLayout event).Value}
+    {state next : State graph}
+    (witness : AcceptanceWitness event message sent action output state)
+    (sameConfig : state.config = sent)
+    (accepted : (runtime.reactiveApplication leaks).handle state message = some next) :
+    ∃ defaultEvent, (⟨event, some action, defaultEvent⟩ : graph.Completion) ∈
+      next.config.history := by
+  obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
+  obtain ⟨ready, recorded, completed⟩ := witness.complete runtime sameConfig handled
+  obtain ⟨tail, historyEq⟩ := Config.Step.path_history_prefix native.drain_graph_steps
+  rw [nextEq] at historyEq
+  refine ⟨(graph.nodes event).defaultEvent action output, ?_⟩
+  rw [← historyEq]
+  apply List.mem_append_left
+  rw [completed, Config.complete_history, recorded]
+  exact List.mem_append_right _ (List.mem_singleton_self _)
+
+
+/-- A certified result is successful precisely when its typed value is not a failure. -/
+theorem AcceptanceWitness.output_success
+    {event : graph.EventId} {message : Message Player (WitnessedPacket graph)}
+    {sent : graph.Config} {action : graph.Action event} {output : (graph.outputLayout event).Value}
+    {state next : State graph}
+    (witness : AcceptanceWitness event message sent action output state)
+    (sameConfig : state.config = sent)
+    (succeeded : ¬ (graph.outputLayout event).IsFailure output)
+    (accepted : handle runtime state ⟨message.id, message.payload.call⟩ = some next) :
+    OutputSucceeded next.config.store event :=
+  ⟨output, witness.output_eq runtime sameConfig accepted, succeeded⟩
 
 end Vegas.EventGraphRuntime

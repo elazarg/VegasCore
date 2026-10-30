@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Examples.OddsEvensFairProfile
-import Vegas.Game.IntendedEffectiveOpening
+import Vegas.Game.IntendedAuthenticOpening
 
 /-! # Source decoding of the actual intended Odds–Evens policies -/
 

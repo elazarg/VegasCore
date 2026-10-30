@@ -43,21 +43,30 @@ theorem ProtocolView.exists_notRefusal_menu (who : Player) :
       | inr later => exact exists_notRefusal_menu who next admission later
   | _, _, .commit (payload := payload) name owner _ _ next, admission, view => by
       cases view with
-      | inl _ =>
+      | inl current =>
           by_cases own : owner = who
-          · exact ⟨some (.commit owner name payload (.success (L.someValue payload))),
-              by simp [ProtocolView.menu, ProtocolView.actor, ProtocolView.available, own],
-              fun _ _ => nofun⟩
+          · subst who
+            by_cases inactive : owner ∈ current.defaulted
+            · exact ⟨none, by simp [ProtocolView.menu, ProtocolView.actor, inactive],
+                fun _ _ => nofun⟩
+            · exact ⟨some (.commit owner name payload (some (.success (L.someValue payload)))),
+                by simp [ProtocolView.menu, ProtocolView.actor, ProtocolView.available,
+                  inactive, CommitmentAdmission.Admits], fun _ _ => nofun⟩
           · exact ⟨none, by simp [ProtocolView.menu, ProtocolView.actor, own], fun _ _ => nofun⟩
       | inr later => exact exists_notRefusal_menu who next (fun site => admission (some site)) later
   | _, _, .reveal _ owner name _ _ _ next, admission, view => by
       cases view with
-      | inl _ =>
+      | inl current =>
           by_cases own : owner = who
-          · refine ⟨some (.reveal owner name true),
-              by simp [ProtocolView.menu, ProtocolView.actor, ProtocolView.available, own], ?_⟩
-            intro other otherName same
-            simp at same
+          · subst who
+            by_cases inactive : owner ∈ current.defaulted
+            · exact ⟨none, by simp [ProtocolView.menu, ProtocolView.actor, inactive],
+                fun _ _ => nofun⟩
+            · refine ⟨some (.reveal owner name true),
+                by simp [ProtocolView.menu, ProtocolView.actor, ProtocolView.available,
+                  inactive], ?_⟩
+              intro other otherName same
+              simp at same
           · exact ⟨none, by simp [ProtocolView.menu, ProtocolView.actor, own], fun _ _ => nofun⟩
       | inr later => exact exists_notRefusal_menu who next admission later
 
@@ -103,7 +112,7 @@ theorem BehavioralPolicy.disclosing_fromProtocol {who : Player} :
       disclosing_fromProtocol next (fun site => admission (some site))
         (fun view => policy (Sum.inr view)) (fun view => opens (Sum.inr view))
   | _, _, .reveal _ owner name _ _ _ next, admission, policy, opens => by
-      refine ⟨fun own view refused => ?_,
+      refine ⟨fun own view active refused => ?_,
         disclosing_fromProtocol next admission (fun view => policy (Sum.inr view))
           (fun view => opens (Sum.inr view))⟩
       obtain ⟨choice, supported, decision⟩ := (PMF.mem_support_map_iff _ _ _).mp refused
@@ -112,7 +121,7 @@ theorem BehavioralPolicy.disclosing_fromProtocol {who : Player} :
       cases selected : choice.1 with
       | none =>
           rw [selected] at legal
-          simp [ProtocolView.menu, ProtocolView.actor, own] at legal
+          simp [ProtocolView.menu, ProtocolView.actor, own, active] at legal
       | some action =>
           rw [selected] at legal decision notRefused
           obtain ⟨_, disclose, rfl⟩ := legal

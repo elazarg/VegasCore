@@ -6,6 +6,7 @@ import Vegas.Compile.EventGraphHistory
 import Vegas.Compile.EventGraphObservation
 import Vegas.Game.EventCompilation
 import Vegas.Pending.EventApplication
+import Vegas.Pending.ExclusionPolicyLaw
 import VegasTests.SourceSemantics
 
 /-! # Source-ranked compiler regressions
@@ -195,6 +196,76 @@ example : decodeHistory SourceSemantics.falseGuardProgram
       (some (PublicationResult.success true)),
      SourceProgram.OwnAction.reveal SourceSemantics.Player.alice 20 true] := by
   rfl
+
+private def defaultChain : SourceProgram Bool simpleExpr [] ∅ :=
+  .commit 0 false (by decide) (unrestricted false 0) <|
+  .reveal 1 false 0 (by decide) .here (by decide) <|
+  .commit 2 false (by decide) (unrestricted false 2) <|
+  .reveal 3 false 2 (by decide) .here (by decide) <| .ret []
+
+private abbrev defaultGraph := (toEventGraph defaultChain).sequentialize
+
+private def defaultInitial : EventGraphRuntime.State defaultGraph :=
+  .initial (encodeInputs (Env.empty (CellVal simpleExpr)))
+
+private def omitted : EventGraphRuntime.State defaultGraph :=
+  defaultInitial.completeFailure ⟨0, by decide⟩ (by decide)
+
+private theorem firstAutomatic : omitted.AutomaticReady ⟨1, by decide⟩ := by
+  constructor
+  · decide
+  · change false ∈ omitted.config.defaulted
+    decide
+
+private def afterFirstAutomatic := omitted.completeAutomatic ⟨1, by decide⟩ firstAutomatic
+
+private theorem secondAutomatic : afterFirstAutomatic.AutomaticReady ⟨2, by decide⟩ := by
+  constructor
+  · decide
+  · change false ∈ afterFirstAutomatic.config.defaulted
+    decide
+
+private def afterSecondAutomatic :=
+  afterFirstAutomatic.completeAutomatic ⟨2, by decide⟩ secondAutomatic
+
+private theorem thirdAutomatic : afterSecondAutomatic.AutomaticReady ⟨3, by decide⟩ := by
+  constructor
+  · decide
+  · change false ∈ afterSecondAutomatic.config.defaulted
+    decide
+
+private def afterThirdAutomatic :=
+  afterSecondAutomatic.completeAutomatic ⟨3, by decide⟩ thirdAutomatic
+
+/-- Three automatic instructions retain their own public completion positions. -/
+example : afterThirdAutomatic.config.defaults.events = [none, none, none, some false] := rfl
+
+/-- Mechanical work records no further strategic decision. -/
+example : afterThirdAutomatic.config.history.map (fun completion => completion.decision.isSome) =
+    [true, false, false, false] := rfl
+
+/-- Every continuation profile has the same complete endpoint after these
+automatic instructions, including profiles that request different actions. -/
+example (profile : defaultGraph.BehavioralProfile) :
+    defaultGraph.runPlan (defaultGraph.policyPlan profile defaultGraph.canonicalScheduler)
+      omitted.config.remaining omitted.config = PMF.pure afterThirdAutomatic.config := by
+  calc
+    _ = defaultGraph.runPlan (defaultGraph.policyPlan profile defaultGraph.canonicalScheduler)
+          afterFirstAutomatic.config.remaining afterFirstAutomatic.config :=
+      EventGraphRuntime.State.completeAutomatic_runPlan_canonical _ profile omitted
+        ⟨1, by decide⟩ firstAutomatic
+    _ = defaultGraph.runPlan (defaultGraph.policyPlan profile defaultGraph.canonicalScheduler)
+          afterSecondAutomatic.config.remaining afterSecondAutomatic.config :=
+      EventGraphRuntime.State.completeAutomatic_runPlan_canonical _ profile afterFirstAutomatic
+        ⟨2, by decide⟩ secondAutomatic
+    _ = defaultGraph.runPlan (defaultGraph.policyPlan profile defaultGraph.canonicalScheduler)
+          afterThirdAutomatic.config.remaining afterThirdAutomatic.config :=
+      EventGraphRuntime.State.completeAutomatic_runPlan_canonical _ profile afterSecondAutomatic
+        ⟨3, by decide⟩ thirdAutomatic
+    _ = _ := by
+      have finished : afterThirdAutomatic.config.remaining = 0 := by decide
+      rw [finished]
+      rfl
 
 end
 

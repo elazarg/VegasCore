@@ -305,6 +305,23 @@ theorem onePacketMenu_countCharge_zero (initial : PMF (runtime.reactiveApplicati
         exact List.mem_map_of_mem present
       exact clean.2 record.envelope member
 
+/-- A retained canonical response lies in the one-packet menu when every packet
+it transmits is permitted against the owner's earlier packets. -/
+theorem canonical_mem_onePacket (who : Player)
+    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (response : (runtime.reactiveApplication leaks).Action)
+    (retained : response ∈ bounds.canonicalActions runtime leaks who past view)
+    (permitted : ∀ material, response.transmission = some material →
+      countPermits ((runtime.reactiveApplication leaks).outputs past)
+        (runtime.localEnvelope leaks who past view material) = true) :
+    response ∈ bounds.onePacketActions runtime leaks who past view := by
+  refine (bounds.mem_onePacketActions runtime leaks who past view response).mpr
+    ⟨bounds.canonicalActions_effective runtime leaks who past view retained, ?_⟩
+  cases sent : response.transmission with
+  | none => exact Or.inl rfl
+  | some material => exact Or.inr ⟨material, sent, permitted material sent⟩
+
 end MessageBounds
 
 end Vegas.EventGraphRuntime

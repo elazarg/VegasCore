@@ -256,7 +256,7 @@ theorem counted_honest_boundary_readout_law
                   change (ProtocolState.behavioralStateStep setup.program profile point).bind
                     (fun next => (ProtocolState.continuationLaw setup.program profile next).map
                       some) = sourceContinuation setup profile rank execution.application.config
-                  rw [← PMF.map_bind, sourceStep_continuation]
+                  rw [← PMF.map_bind, ProtocolState.behavioralStateStep_continuation]
                   change continuation (some point) = continuation
                     (sourceServicePrefix? setup rank execution.application.config)
                   exact (congrArg continuation decoded).symm

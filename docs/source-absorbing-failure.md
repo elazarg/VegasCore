@@ -62,6 +62,17 @@ proves successful typed cells and an empty default set.
 this clear-default invariant. The intended-opening adapter uses the same
 [authentic opening](../Vegas/Source/AuthenticOpening.lean) transformation.
 
+[BindingNormalization](../Vegas/Source/BindingNormalization.lean) supplies a
+uniform pure-policy compiler that replaces accepted unusable bindings with
+values and withholds precisely those replacements. It retains public omission
+and preserves the complete public-outcome/default-history law from every
+initial state. Its private reconstruction retains the actual public record;
+inactive owners have no callback to reconstruct.
+[Exclusion](../Vegas/Source/Exclusion.lean) reads public defaults alone. Its
+trace invariant proves that an owed failure on an actual initialized history
+implies terminal public default, without an initial-success or finite-player
+premise. Hidden unusable bindings alone do not establish exclusion.
+
 Policy callbacks accept proof that their owner is active. This removes unused
 inactive responses from the strategy type and permits exact strategy
 equivalence with legal protocol policies. It imposes no restriction on an
@@ -137,6 +148,14 @@ this design.
 The ambient public-record type admits impossible histories. Utility-range ports
 must use their actual execution domain or a bounded extension outside it;
 boundedness on extra impossible records must not become a hidden new premise.
+
+[IntendedPreservation](../Vegas/Game/IntendedPreservation.lean) and
+[IntendedNash](../Vegas/Game/IntendedNash.lean) check the source forfeit-utility
+sequential and approximate Nash results. Their payoff-spread premise ranges
+only over terminal legal histories; impossible public records and unsupported
+parameters need no bound. Canonical fixed-exit preservation must use the public
+default bridge and the stated exit-floor comparison, rather than infer a bound
+on a freely declared exit value from the forfeit result.
 
 ## Graph and ledger port
 
@@ -303,6 +322,18 @@ from the native graph configuration. [Information reconstruction](../Vegas/Game/
 and [active-view reconstruction](../Vegas/Game/ServiceObservation.lean) use
 the same log and the actual callback domain. These are checked information
 adapters, rather than an end-to-end probabilistic client law.
+
+[ExclusionPolicyLaw](../Vegas/Pending/ExclusionPolicyLaw.lean) proves that one
+automatic completion and the entire native drain preserve the full remaining
+graph policy-run law, for every profile and raw sequential native state.
+Its accepted-call corollary retains the actual chosen action and guarded result,
+including failure, before composing this continuation law. Physical draining
+can complete several source instructions; exact one-instruction endpoint laws
+must therefore be replaced by the checked continuation composition.
+[ReactiveDefaultCompletion](../Vegas/Pending/ReactiveDefaultCompletion.lean)
+proves visibility and persistence of native public default and obtains whole
+continuation optimality from consistency and local optimality in that region,
+on the supplied native response menu. It introduces no wrapper application.
 
 These are operational support/refinement laws; they do not establish the
 probabilistic client/compiler law or equilibrium preservation.

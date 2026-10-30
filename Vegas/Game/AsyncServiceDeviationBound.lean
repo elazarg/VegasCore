@@ -3,6 +3,7 @@
 import Vegas.Game.IntendedAsyncNash
 import Vegas.Source.Purification
 import Vegas.Source.ValueBindingAdmission
+import Vegas.Source.BindingNormalization
 
 /-! # The first-turn deviation bound under an arbitrary contract builder
 

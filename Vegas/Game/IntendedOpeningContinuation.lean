@@ -1,12 +1,12 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.IntendedEffectiveOpening
-import Vegas.Game.SourceServiceTimedContinuation
+import Vegas.Game.IntendedAuthenticOpening
+import Vegas.Game.SourceStateKernel
 
-/-! # The intended effective opening stays in the intended game
+/-! # The intended authentic opening stays in the intended game
 
 From a point of the intended game carrying the program's registry and
-publication status, every step of the intended effective opening reaches such a
+publication status, every step of the intended authentic opening reaches such a
 point again (`Vegas.SourceProgram.Setup.intendedOpening_step_closed`): there the
 opening plays the intended law, which offers only intended actions. Hence its
 source continuation from such a point records no failed reveal of anyone
@@ -22,7 +22,7 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] {L : IExpr}
   [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
 
-/-- **The intended effective opening keeps the intended game.** -/
+/-- **The intended authentic opening keeps the intended game.** -/
 theorem intendedOpening_step_closed [Fintype Player]
     (intended : ∀ who, setup.intendedModel.BehavioralPolicy who)
     (state target : SourceProgram.ProtocolState setup.program)
@@ -49,11 +49,11 @@ theorem intendedOpening_step_closed [Fintype Player]
       BehavioralPolicy.disclosing_fromProtocol setup.program _ _
         (fun view => setup.intendedSourceProfile_notRefusal intended who (some view))
     change joint who ∈ (((setup.decodeBehavioralProfile (CommitmentInterface.values setup.program)
-      (setup.intendedSourceProfile intended) who).effectiveOpening setup.program []
-        (Revelations.initial setup.context)).protocolAction setup.program
+      (setup.intendedSourceProfile intended) who).authenticOpening setup.program).protocolAction
+        setup.program
           (ProtocolState.observe who setup.program state)).support at chosen
-    rw [BehavioralPolicy.protocolAction_effectiveOpening setup.program _ _ _ disclosing state
-      static intendedState] at chosen
+    rw [BehavioralPolicy.protocolAction_authenticOpening setup.program _ disclosing state
+      intendedState] at chosen
     change joint who ∈ ((BehavioralPolicy.fromProtocol setup.program
       (CommitmentInterface.values setup.program)
       (fun view => setup.intendedSourceProfile intended who (some view))).protocolAction
@@ -66,7 +66,7 @@ theorem intendedOpening_step_closed [Fintype Player]
 
 /-- **No failed reveal from intended points.** From a point of the intended game
 carrying the program's registry and publication status, the source
-continuation of the intended effective opening records no failed reveal. -/
+continuation of the intended authentic opening records no failed reveal. -/
 theorem intendedOpening_continuation_failedReveals [Finite Player]
     (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) :
     ∀ (bound : Nat) (state : SourceProgram.ProtocolState setup.program),
@@ -102,7 +102,7 @@ theorem intendedOpening_continuation_failedReveals [Finite Player]
           exact (PMF.mem_support_map_iff _ _ _).mpr ⟨terminal, member, rfl⟩
         exact ProtocolState.failedReveals_eq_zero_of_intended who setup.program state
           intendedState ((PMF.mem_support_pure_iff _ _).mp readout).symm
-      · rw [← sourceStep_continuation] at member
+      · rw [← ProtocolState.behavioralStateStep_continuation] at member
         obtain ⟨next, reached, rest⟩ := (PMF.mem_support_bind_iff _ _ _).mp member
         obtain ⟨nextStatic, nextIntended⟩ := setup.intendedOpening_step_closed intended state next
           static intendedState reached

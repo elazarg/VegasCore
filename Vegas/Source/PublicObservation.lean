@@ -81,4 +81,38 @@ theorem Obligation.accepts_congr (obligation : Obligation Γ) (revelations : Rev
   funext x τ h hx
   exact SourceGuardRead.result_congr _ _ left right publicEq publicationEq
 
+section Observation
+
+variable {Γ : SourceCtx Player L}
+
+omit [IExpr.ResultTypes L] in
+theorem sourceObserve_publication_eq {who : Player} {left right : State L Γ}
+    (same : sourceObserve who left = sourceObserve who right) {name : VarId} {payload : L.Ty}
+    (cell : HasVar Γ name (.publication payload)) : left.get cell = right.get cell :=
+  congrArg (fun observation => observation.cells name (.publication payload) cell) same
+
+omit [IExpr.ResultTypes L] in
+theorem sourceObserve_ownCommitment_eq {who : Player} {left right : State L Γ}
+    (same : sourceObserve who left = sourceObserve who right) {name : VarId} {payload : L.Ty}
+    (cell : HasVar Γ name (.commitment who payload)) : left.get cell = right.get cell := by
+  have seen := congrArg (fun observation => observation.cells name (.commitment who payload) cell)
+    same
+  simp only [sourceObserve_commitment, ite_true] at seen
+  exact Option.some.inj seen
+
+omit [IExpr.ResultTypes L] in
+/-- Dropping the newest cell keeps observations equal. -/
+theorem sourceObserve_tail_eq {who : Player} {name : VarId} {cell : CellTy Player L}
+    {left right : State L ((name, cell) :: Γ)}
+    (same : sourceObserve who left = sourceObserve who right) :
+    sourceObserve who (fun _ _ member => left.get (.there member) : State L Γ) =
+      sourceObserve who (fun _ _ member => right.get (.there member) : State L Γ) := by
+  have cells := congrArg SourceObservation.cells same
+  apply congrArg SourceObservation.mk
+  funext x kind member
+  have seen := congrFun (congrFun (congrFun cells x) kind) (.there member)
+  cases kind <;> exact seen
+
+end Observation
+
 end Vegas.SourceProgram

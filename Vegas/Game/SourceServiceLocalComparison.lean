@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.SourceServiceSpec
-import Vegas.Game.SourceServiceTimedContinuation
+import Vegas.Game.SourceStateKernel
 import Interaction.ReactiveStopping
 import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 import GameTheory.Math.Probability.ConditionalObservation

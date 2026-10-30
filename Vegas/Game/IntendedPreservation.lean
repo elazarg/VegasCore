@@ -3,6 +3,7 @@
 import Vegas.Source.FailedBindingDeviation
 import Vegas.Source.SetupProtocolRecall
 import Vegas.Game.SourceInformation
+import Vegas.Game.SourceContinuation
 import GameTheoryExtensions.Analysis.Protocol.PassageRestrictionExtension
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 
@@ -43,11 +44,6 @@ variable (setup : Setup (Player := Player) (L := L))
 def IntendedState : setup.ProtocolState → Prop
   | none => True
   | some state => ProtocolState.Intended setup.program state
-
-/-- A setup protocol state at which `who` owes a failed reveal. -/
-def IndebtedState (who : Player) : setup.ProtocolState → Prop
-  | none => False
-  | some state => ProtocolState.Indebted who setup.program state
 
 /-- A source position whose continuation necessarily fails an own reveal,
 through guard rejection, withholding or irrevocable failed binding. -/
@@ -93,6 +89,7 @@ theorem owesFailureState_of_deviation (admission : CommitmentInterface setup.pro
 theorem initialConfig_intended (wellFormed : setup.WellFormed) {initial : State L setup.context}
     (supported : initial ∈ setup.initialLaw.support) :
     (Config.initial initial).Intended setup.obligations where
+  clear := rfl
   unique := setup.namesNodup
   accounted := by
     rw [setup.accounts]
@@ -116,7 +113,7 @@ theorem intendedState_trace (wellFormed : setup.WellFormed) :
           rw [PMF.support_map] at realized
           obtain ⟨initial, supported, rfl⟩ := realized
           exact ProtocolState.intended_entry setup.program _
-            (Config.initial_intended wellFormed supported)
+            (setup.initialConfig_intended wellFormed supported)
             (wellFormed.guardsSatisfiable initial supported)
       | some before =>
           change _ ∈ ((ProtocolState.step setup.program before joint).map some).support
@@ -132,52 +129,13 @@ theorem intendedState_trace (wellFormed : setup.WellFormed) :
 /-- No reveal of the intended game fails. -/
 theorem failedReveals_eq_zero_of_intendedState {state : setup.ProtocolState}
     (intended : setup.IntendedState state) (who : Player)
-    {terminal : State L setup.program.terminalCtx}
+    {terminal : Config Player L setup.program.terminalCtx}
     (read : setup.protocolReadout state = some terminal) :
     failedReveals setup.program who (publicOutcome setup.program terminal) = 0 := by
   cases state with
   | none => cases read
   | some state =>
       exact ProtocolState.failedReveals_eq_zero_of_intended who setup.program state intended read
-
-theorem indebtedState_step (who : Player) (admission : CommitmentInterface setup.program)
-    (state : setup.ProtocolState) (joint : Player → Option (OwnAction Player L))
-    (legal : (setup.executionProtocol admission).Legal state joint)
-    (target : setup.ProtocolState) (indebted : setup.IndebtedState who state)
-    (reached : target ∈ ((setup.executionProtocol admission).step state ⟨joint, legal⟩).support) :
-    setup.IndebtedState who target := by
-  cases state with
-  | none => exact indebted.elim
-  | some state =>
-      change target ∈ ((ProtocolState.step setup.program state joint).map some).support
-        at reached
-      rw [PMF.support_map] at reached
-      obtain ⟨after, supported, rfl⟩ := reached
-      exact ProtocolState.indebted_step who setup.program state joint after indebted supported
-
-/-- A step on which `who` takes a source action outside the intended menu
-leaves `who` indebted. -/
-theorem indebtedState_of_deviation (who : Player) {state : setup.ProtocolState}
-    (intended : setup.IntendedState state) (joint : Player → Option (OwnAction Player L))
-    (legal : (setup.executionProtocol (CommitmentInterface.values setup.program)).Legal state joint)
-    {action : OwnAction Player L} (chosen : joint who = some action)
-    (new : some action ∉ setup.intendedMenu who (setup.protocolObserve who state))
-    (target : setup.ProtocolState)
-    (reached : target ∈ ((setup.executionProtocol (CommitmentInterface.values setup.program)).step
-      state ⟨joint, legal⟩).support) :
-    setup.IndebtedState who target := by
-  have permitted := legal.2 who
-  rw [chosen] at permitted
-  cases state with
-  | none => exact permitted.1.elim
-  | some state =>
-      change target ∈ ((ProtocolState.step setup.program state joint).map some).support
-        at reached
-      rw [PMF.support_map] at reached
-      obtain ⟨after, supported, rfl⟩ := reached
-      exact ProtocolState.indebted_of_deviation who setup.program _ (fun _ => rfl) state
-        intended joint action chosen permitted.1 permitted.2
-        (fun offered => new ⟨permitted.1, offered⟩) after supported
 
 theorem exists_protocolReadout_of_terminal (admission : CommitmentInterface setup.program)
     {state : setup.ProtocolState} (stopped : (setup.executionProtocol admission).terminal state) :
@@ -331,7 +289,7 @@ theorem intended_sequentialEquilibrium_preserved [Fintype Player]
     (wellFormed : setup.WellFormed) {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-    (forfeit : ℝ) (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
+    (forfeit : ℝ) (range : setup.TerminalPayoffSpread admission parameter utility forfeit)
     (intendedTerminates : setup.intendedProtocol.WellFoundedHistories)
     (sourceTerminates :
       (setup.executionProtocol admission).WellFoundedHistories)
@@ -442,10 +400,17 @@ theorem intended_sequentialEquilibrium_preserved [Fintype Player]
             change forfeitUtility setup.program forfeit utility
               (setup.parameterOutcome parameter terminal) who ≤
                 utility (setup.parameterOutcome parameter intendedTerminal) who
-            have spread := range (setup.parameterOutcome parameter terminal)
-              (setup.parameterOutcome parameter intendedTerminal) who
-            have nonnegative := range (setup.parameterOutcome parameter terminal)
-              (setup.parameterOutcome parameter terminal) who
+            have finalStopped := InformationModel.runBehavioralTerminalFrom_support_terminal
+              (setup.informationModel admission) sourceTerminates _ _ final deviated
+            have reachedStopped := InformationModel.runBehavioralTerminalFrom_support_terminal
+              setup.intendedModel intendedTerminates _ _ reached supported
+            have spread := range final (restriction.history reached)
+              finalStopped reachedStopped who
+            have nonnegative := range final final finalStopped finalStopped who
+            have lowerRead : setup.protocolReadout (restriction.history reached).state =
+                some intendedTerminal := intendedRead
+            simp only [read, lowerRead, Option.elim_some] at spread
+            simp only [read, Option.elim_some, sub_self] at nonnegative
             have count : (1 : ℝ) ≤ (failedReveals setup.program who
                 (setup.parameterOutcome parameter terminal).2 : ℝ) :=
               Nat.one_le_cast.mpr positive

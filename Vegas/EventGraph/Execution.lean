@@ -557,6 +557,13 @@ theorem defaulted_step (config : graph.Config) (event : graph.EventId)
   obtain ⟨value, _, rfl⟩ := supported
   exact config.complete_defaulted_mono event ready action value
 
+/-- An active owner records its requested strategic decision. -/
+theorem actualDecision_of_active (config : graph.Config) (event : graph.EventId)
+    (owner : Player) (owned : (graph.nodes event).actor = some owner)
+    (active : owner ∉ config.defaulted) (action : graph.Action event) :
+    config.actualDecision event action = some action := by
+  simp only [actualDecision, EventCode.actualDecision, owned, ite_eq_right active]
+
 /-- A defaulted owner contributes no further actual decision. -/
 theorem actualDecision_of_defaulted (config : graph.Config) (event : graph.EventId)
     (owner : Player) (owned : (graph.nodes event).actor = some owner)
@@ -653,6 +660,21 @@ theorem defaulted_mono {before after : graph.Config} (moved : Step before after)
     before.defaulted ⊆ after.defaulted := by
   obtain ⟨event, ready, action, supported⟩ := moved
   exact before.defaulted_step event ready action after supported
+
+/-- Every supported transition extends the one authoritative completion history. -/
+theorem history_prefix {before after : graph.Config} (moved : Step before after) :
+    before.history.IsPrefix after.history := by
+  obtain ⟨event, ready, action, supported⟩ := moved
+  obtain ⟨value, _, history⟩ := before.step_completion event ready action after supported
+  exact ⟨[Completion.fromDecision event (before.actualDecision event action) value], history.symm⟩
+
+/-- A finite supported execution path retains every recorded decision and default entry. -/
+theorem path_history_prefix {before after : graph.Config}
+    (path : Relation.ReflTransGen Step before after) :
+    before.history.IsPrefix after.history := by
+  induction path using Relation.ReflTransGen.head_induction_on with
+  | refl => exact ⟨[], by simp⟩
+  | @head before middle moved _ ih => exact moved.history_prefix.trans ih
 
 /-- Any finite supported execution path preserves reachability from fixed inputs. -/
 theorem path_reachable {before after : graph.Config}

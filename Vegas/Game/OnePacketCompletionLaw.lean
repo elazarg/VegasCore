@@ -82,7 +82,7 @@ theorem expect_sourcePointValue_behavioralStateStep (profile : BehavioralProfile
   simp only [expect_map]
   rw [← expect_bind_tower_bounded _ _ ((fun readout => exclusionReadoutUtility setup
     parameter utility excludedPayoff readout who) ∘ some) (fun terminal => readoutBounded
-      (some terminal)), sourceStep_continuation]
+      (some terminal)), ProtocolState.behavioralStateStep_continuation]
 
 /-- **The completion-point law.** From a history, under play of `installed`
 until the event of rank `rank` completes, the law of the completion point,

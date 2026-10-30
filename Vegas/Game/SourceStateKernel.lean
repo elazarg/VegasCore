@@ -4,7 +4,7 @@ import Vegas.Game.SourceContinuation
 
 /-! # One-step reductions for the actual source protocol
 
-The syntactic policy supplies the action marginals in the existing protocol
+The syntactic policy supplies the action marginals in the source protocol
 step. These equations reduce public sampling, binding and disclosure and
 commute with the protocol's residual-state embedding. They introduce no
 alternative runner.
@@ -22,7 +22,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 namespace ProtocolState
 
 open Classical in
-/-- The existing protocol step after drawing the encoded syntactic action
+/-- The source protocol step after drawing the encoded syntactic action
 marginals, retaining the protocol's ordinary terminal absorption. -/
 def behavioralStateStep {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
@@ -98,7 +98,8 @@ theorem behavioralStateStep_commit_entry
     (profile : BehavioralProfile (.commit name owner fresh guard next))
     (config : Config Player L Γ) :
     behavioralStateStep (.commit name owner fresh guard next) profile (.inl config) =
-      (commitKernel profile (config.view owner)).map (fun value =>
+      (if inactive : owner ∈ (config.view owner).defaulted then PMF.pure none
+        else commitKernel profile (config.view owner) inactive).map (fun value =>
         Sum.inr (entry next (commitSuccessor name guard config value))) := by
   classical
   let program := SourceProgram.commit name owner fresh guard next
@@ -110,8 +111,14 @@ theorem behavioralStateStep_commit_entry
   change ((independentProduct laws).bind fun joint => PMF.pure (advance (joint owner))) = _
   change (independentProduct laws).map (advance ∘ fun joint => joint owner) = _
   rw [← PMF.map_comp, independentProduct_map_eval]
-  simp only [laws, program, BehavioralPolicy.protocolAction, observe, Sum.elim_inl,
-    dite_true, PMF.map_comp, Function.comp_def, advance, OwnAction.binding_commit, commitKernel]
+  change (laws owner).map
+    ((fun choice => Sum.inr (entry next (commitSuccessor name guard config choice))) ∘
+      OwnAction.binding owner name payload) = _
+  rw [← PMF.map_comp]
+  exact congrArg
+    (PMF.map fun choice => Sum.inr (α := Config Player L Γ)
+      (entry next (commitSuccessor name guard config choice)))
+    (BehavioralPolicy.protocolAction_commit_binding profile (config.view owner))
 
 theorem behavioralStateStep_commit_tail
     (profile : BehavioralProfile (.commit name owner fresh guard next))
@@ -132,7 +139,8 @@ theorem behavioralStatePrefix_commit
     (fun law => law.bind (behavioralStateStep
       (.commit name owner fresh guard next) profile))^[count + 1]
         (PMF.pure (entry _ config)) =
-      (commitKernel profile (config.view owner)).bind fun value =>
+      (if inactive : owner ∈ (config.view owner).defaulted then PMF.pure none
+        else commitKernel profile (config.view owner) inactive).bind fun value =>
         ((fun law => law.bind (behavioralStateStep next (afterCommit profile)))^[count]
           (PMF.pure (entry next (commitSuccessor name guard config value)))).map Sum.inr := by
   induction count with
@@ -161,7 +169,8 @@ theorem behavioralStateStep_reveal_entry
     (config : Config Player L Γ) :
     behavioralStateStep (.reveal published owner name fresh source unresolved next)
         profile (.inl config) =
-      (revealKernel profile (config.view owner)).map (fun disclose =>
+      (if inactive : owner ∈ (config.view owner).defaulted then PMF.pure false
+        else revealKernel profile (config.view owner) inactive).map (fun disclose =>
         Sum.inr (entry next (revealSuccessor published source config disclose))) := by
   classical
   let program := SourceProgram.reveal published owner name fresh source unresolved next
@@ -173,8 +182,14 @@ theorem behavioralStateStep_reveal_entry
   change ((independentProduct laws).bind fun joint => PMF.pure (advance (joint owner))) = _
   change (independentProduct laws).map (advance ∘ fun joint => joint owner) = _
   rw [← PMF.map_comp, independentProduct_map_eval]
-  simp only [laws, program, BehavioralPolicy.protocolAction, observe, Sum.elim_inl,
-    dite_true, PMF.map_comp, Function.comp_def, advance, OwnAction.disclosure, revealKernel]
+  change (laws owner).map
+    ((fun disclose => Sum.inr (entry next (revealSuccessor published source config disclose))) ∘
+      OwnAction.disclosure) = _
+  rw [← PMF.map_comp]
+  exact congrArg
+    (PMF.map fun disclose => Sum.inr (α := Config Player L Γ)
+      (entry next (revealSuccessor published source config disclose)))
+    (BehavioralPolicy.protocolAction_reveal_disclosure profile (config.view owner))
 
 theorem behavioralStateStep_reveal_tail
     (profile : BehavioralProfile (.reveal published owner name fresh source unresolved next))
@@ -196,7 +211,8 @@ theorem behavioralStatePrefix_reveal
     (fun law => law.bind (behavioralStateStep
       (.reveal published owner name fresh source unresolved next) profile))^[count + 1]
         (PMF.pure (entry _ config)) =
-      (revealKernel profile (config.view owner)).bind fun disclose =>
+      (if inactive : owner ∈ (config.view owner).defaulted then PMF.pure false
+        else revealKernel profile (config.view owner) inactive).bind fun disclose =>
         ((fun law => law.bind (behavioralStateStep next (afterReveal profile)))^[count]
           (PMF.pure (entry next
             (revealSuccessor published source config disclose)))).map Sum.inr := by
@@ -213,6 +229,24 @@ theorem behavioralStatePrefix_reveal
       intro disclose _supported
       rw [Function.iterate_succ_apply', PMF.bind_map, PMF.map_bind]
       exact bind_congr_on_support _ fun state _ => behavioralStateStep_reveal_tail profile state
+
+/-- One source step followed by the source continuation is the source
+continuation. -/
+theorem behavioralStateStep_continuation
+    {Γ : SourceCtx Player L} {names : Finset VarId}
+    (program : SourceProgram Player L Γ names) (profile : BehavioralProfile program)
+    (state : ProtocolState program) :
+    (behavioralStateStep program profile state).bind
+      (continuationLaw program profile) =
+        continuationLaw program profile state := by
+  classical
+  unfold behavioralStateStep
+  split
+  · exact PMF.pure_bind _ _
+  · rename_i running
+    exact continuationLaw_behavioral_step program profile state running
+      (independentProduct fun who => (profile who).protocolAction program
+        (ProtocolState.observe who program state)) (fun who => independentProduct_map_eval _ who)
 
 end ProtocolState
 
