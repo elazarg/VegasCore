@@ -2,7 +2,7 @@
 
 import Vegas.Game.OnePacketExclusionPayoff
 import Vegas.Compile.EventGraphReadoutComplete
-import Vegas.Game.RevealServiceRosterContinuation
+import Vegas.Game.RevealServicePayoffs
 
 /-! # Decoded failures in existing terminal source readouts -/
 

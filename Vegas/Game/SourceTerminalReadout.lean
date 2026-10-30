@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceCompletion
-import Vegas.Game.RevealServiceRosterContinuation
+import Vegas.Pending.ReactiveGraphSteps
+import Vegas.Game.RevealServicePayoffs
 import GameTheoryExtensions.Analysis.Protocol.StoppedReadout
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 
@@ -49,7 +49,8 @@ theorem sourceTerminal_transition {initial : PMF (application setup runtime
   cases actor with
   | some who =>
       cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact ⟨_, rfl, (runtime.reactive_respond_application leaks execution who _).1⟩
+      exact ⟨_, rfl, EventGraph.Config.Step.path_eq_of_terminal
+        ((reactiveApplication_graphSteps runtime leaks).respond execution who _) terminal⟩
   | none =>
       cases remaining with
       | zero =>
@@ -59,10 +60,9 @@ theorem sourceTerminal_transition {initial : PMF (application setup runtime
           obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
           obtain ⟨next, stepped, rfl⟩ := PMF.support_map .. ▸ moved
           refine ⟨_, rfl, ?_⟩
-          rcases environmentStep_configStep setup leaks execution next command stepped with
-            same | ⟨event, ready, action, _member⟩
-          · exact same
-          · exact (ready.1 (by rw [terminal]; exact Finset.mem_univ event)).elim
+          exact EventGraph.Config.Step.path_eq_of_terminal
+            ((reactiveApplication_graphSteps runtime leaks).environmentStep
+              execution next command stepped) terminal
 
 variable [Fintype Player]
 

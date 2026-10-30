@@ -48,6 +48,17 @@ theorem storeEventFailed_of_ref {graph : EventGraph Player L}
   subst layoutEq
   exact ⟨value, read, failed⟩
 
+omit [DecidableEq Player] in
+/-- A successful output is not a failure of the event in the store. -/
+theorem not_storeEventFailed_of_outputSucceeded {graph : EventGraph Player L}
+    {store : EventGraph.Store graph.layout} {event : graph.EventId}
+    (succeeded : OutputSucceeded store event) : ¬ StoreEventFailed store event := by
+  rintro ⟨value, stored, failed⟩
+  obtain ⟨other, otherStored, notFailed⟩ := succeeded
+  rw [stored] at otherStored
+  cases Option.some.inj otherStored
+  exact notFailed failed
+
 variable (setup : Setup (Player := Player) (L := L))
 
 /-- A cell of the terminal context read from the event's output holds a
@@ -67,5 +78,16 @@ def EventFailedReadout (who : Player) (event : (graph setup).EventId) :
     EventCellFailed setup event terminal}
 
 variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+
+variable (runtime : EventGraphRuntime (graph setup)) [Fintype Player]
+  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (scheduler : (application setup runtime leaks).Scheduler)
+
+/-- **The event-level failed histories** of the one-packet game: those whose
+typed readout records a failure of `event` and a failed reveal of `who`. -/
+def EventFailedHistory (who : Player) (event : (graph setup).EventId) :
+    Set ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).History :=
+  {history | sourceReadout setup runtime leaks history.state ∈ EventFailedReadout setup who event}
 
 end Vegas

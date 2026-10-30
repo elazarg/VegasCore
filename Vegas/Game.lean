@@ -405,7 +405,6 @@ import Vegas.Game.RecoveryValueTransport
 import Vegas.Game.RevealService
 import Vegas.Game.RevealServiceCalendarState
 import Vegas.Game.RevealServicePayoffs
-import Vegas.Game.RevealServiceRosterContinuation
 import Vegas.Game.RevealServiceRosterPolicy
 import Vegas.Game.RevealServiceState
 import Vegas.Game.ServiceAssignedPolicy

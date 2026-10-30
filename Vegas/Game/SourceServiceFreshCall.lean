@@ -3,6 +3,7 @@
 import Vegas.Game.RevealService
 import Vegas.Pending.ReactiveFreshCallAcceptance
 import Vegas.Pending.ReactiveCanonicalDecision
+import Vegas.Pending.ReactiveAsyncContract
 
 /-! # Acceptable protected source calls
 
@@ -46,5 +47,25 @@ structure FreshCall (owner : Player) (event : (serviceGraph setup mode).EventId)
   fits : entry.beforeView.application.publicView.InclusionFitsDeadline
       (serviceRuntime setup mode deadline) bound event
   conforming : AcceptableFreshCall setup leaks entry message
+
+/-- An event completes only together with an accepting receipt for `id`, and
+every receipt for `id` is accompanied by an accepting one. -/
+def Settled (event : (serviceGraph setup mode).EventId) (id : MessageId Player)
+    (execution : (serviceApplication setup mode deadline leaks).Execution) : Prop :=
+  (event ∈ execution.application.config.cut.completed → (id, true) ∈ execution.receipts) ∧
+    (∀ accepted, (id, accepted) ∈ execution.receipts → (id, true) ∈ execution.receipts) ∧
+    ((id, true) ∈ execution.receipts → event ∈ execution.application.config.cut.completed)
+
+/-- Every recorded fresh call of `owner` for `event`, with no other identifier
+emitted by `owner` for the event, is settled. -/
+def SettlesFreshCalls (owner : Player) (event : (serviceGraph setup mode).EventId)
+    (bound : (serviceGraph setup mode).EventId → Nat)
+    (execution : (serviceApplication setup mode deadline leaks).Execution) :
+    Prop :=
+  ∀ earlier entry later message, execution.recall owner = earlier ++ entry :: later →
+    FreshCall setup leaks owner event bound entry message →
+    (∀ other ∈ earlier ++ later, ¬ EmitsOtherFor (serviceRuntime setup mode deadline) leaks other
+        event message.id) →
+    Settled setup leaks event message.id execution
 
 end Vegas

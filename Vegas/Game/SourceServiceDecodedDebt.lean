@@ -38,6 +38,12 @@ def StepClosed (setup : Setup (Player := Player) (L := L))
   ∀ state joint target, property state →
     target ∈ (ProtocolState.step setup.program state joint).support → property target
 
+/-- A player owing a failure keeps owing it under every source step. -/
+theorem owesFailure_stepClosed (who : Player) :
+    StepClosed setup (ProtocolState.OwesFailure who setup.program) :=
+  fun state joint target owed reached =>
+    ProtocolState.owesFailure_step who setup.program state joint target owed reached
+
 /-- A property holds at the decoding of a configuration at a prefix. -/
 def DecodedHolds (property : ProtocolState setup.program → Prop) (rank : Nat)
     (config : (graph setup).Config) : Prop :=

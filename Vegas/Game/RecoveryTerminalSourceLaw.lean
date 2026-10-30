@@ -2,7 +2,7 @@
 
 import Vegas.Game.OnePacketLateSuccess
 import Vegas.Game.SourceTerminalReadout
-import Vegas.Game.RevealServiceRosterContinuation
+import Vegas.Game.RevealServicePayoffs
 
 /-! # Terminal source prefixes under arbitrary native continuations -/
 

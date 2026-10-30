@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.FailedBindingDeviation
+import Vegas.Source.Exclusion
 import Vegas.Source.SetupProtocolRecall
 import Vegas.Game.SourceInformation
 import Vegas.Game.SourceContinuation
@@ -9,24 +9,18 @@ import GameTheoryExtensions.Protocol.ContinuationHorizon
 
 /-! # Intended-game preservation
 
-The intended game of a well-formed setup offers only predicted values at
-commits and only opening at reveals (`Vegas.SourceProgram.Setup.intendedModel`).
-The forfeit pass charges the owner of every failed reveal a forfeit above the
-payoff range (`Vegas.SourceProgram.forfeitUtility`). Every sequential equilibrium
-of the intended game then extends to a sequential equilibrium of the source
-game under any sitewise commitment admission and the forfeited utility,
-including immediate failed bindings, with the same joint law of terminal store and
-payoff and no failed reveal on any path it reaches
-(`Vegas.SourceProgram.Setup.intended_sequentialEquilibrium_preserved`).
+The intended game offers predicted bindings and authentic opening. Every
+sequential equilibrium extends to the source game with its authoritative
+public-default control and fixed exit utility, provided each declared exit
+payoff is below every intended terminal payoff. The extension preserves the
+intended strategy at retained sites and the joint law of typed readout and
+payoff, with no public default or failed reveal on its equilibrium paths.
 
-The extension is the action-restriction extension of the library. No reveal of
-the intended game fails (`Vegas.SourceProgram.Setup.failedReveals_eq_zero_of_intendedState`),
-so the two utilities agree on embedded histories. A source action the intended
-game does not offer leaves its author owing a failed reveal
-(`Vegas.SourceProgram.ProtocolState.owesFailure_of_deviation`), and every terminal
-continuation then records a failed reveal of that author, whatever anyone plays
-(`Vegas.SourceProgram.Setup.deviation_failedReveals_pos`); the forfeit above the
-payoff range makes every intended choice at least as good.
+One departure argument proves that every terminal continuation of an extra
+action retains an owed failure. Actual trace provenance turns that debt into
+public default, so the deviator receives its declared exit payoff. The optional
+count-penalty utility also admits preservation when its forfeit dominates the
+payoff spread over terminal legal source histories.
 -/
 
 noncomputable section
@@ -137,6 +131,19 @@ theorem failedReveals_eq_zero_of_intendedState {state : setup.ProtocolState}
   | some state =>
       exact ProtocolState.failedReveals_eq_zero_of_intended who setup.program state intended read
 
+/-- The terminal public result of intended play has no defaulted player. -/
+theorem not_defaulted_of_intendedState {state : setup.ProtocolState}
+    (intended : setup.IntendedState state) (who : Player)
+    {terminal : Config Player L setup.program.terminalCtx}
+    (read : setup.protocolReadout state = some terminal) : who ∉ terminal.defaulted := by
+  cases state with
+  | none => cases read
+  | some state =>
+      have active := ProtocolState.not_excluded_of_intended who setup.program state intended
+      change who ∉ ProtocolState.defaulted setup.program state at active
+      rw [ProtocolState.defaulted_eq_of_readout setup.program state read] at active
+      exact active
+
 theorem exists_protocolReadout_of_terminal (admission : CommitmentInterface setup.program)
     {state : setup.ProtocolState} (stopped : (setup.executionProtocol admission).terminal state) :
     ∃ terminal, setup.protocolReadout state = some terminal := by
@@ -184,10 +191,9 @@ abbrev IntendedSequentialEquilibrium [Fintype Player] {Parameter : Type}
     (fun who final => (setup.protocolReadout final.state).elim 0
       (fun terminal => utility (setup.parameterOutcome parameter terminal) who))
 
-/-- **Deviations forfeit.** After a source action that the intended game does
-not offer at one of its decision sites, every terminal continuation records a
-failed reveal of the deviating player, whatever anyone plays. -/
-theorem deviation_failedReveals_pos [Fintype Player]
+/-- Every terminal continuation of a new action at an intended decision site
+retains the deviating owner's owed failure, independently of later choices. -/
+theorem deviation_owesFailure [Fintype Player]
     (admission : CommitmentInterface setup.program) (wellFormed : setup.WellFormed)
     (certificate :
       (setup.executionProtocol admission).WellFoundedHistories)
@@ -208,8 +214,8 @@ theorem deviation_failedReveals_pos [Fintype Player]
           ((profile who).commit
             ((setup.intendedRestriction admission).site who site).1 action))
         ((setup.intendedRestriction admission).history history.1)).support,
-      ∃ terminal, setup.protocolReadout final.state = some terminal ∧
-        1 ≤ failedReveals setup.program who (publicOutcome setup.program terminal) := by
+      setup.OwesFailureState who final.state ∧
+        (setup.executionProtocol admission).terminal final.state := by
   intro final supported
   let model := setup.informationModel admission
   let deviating := Profile.update (sig := model.behavioralSignature) profile who
@@ -264,17 +270,86 @@ theorem deviation_failedReveals_pos [Fintype Player]
         _ indebted final child
       have stopped := model.runBehavioralTerminalFrom_support_terminal certificate deviating _
         final child
-      cases finalState : final.state with
-      | none =>
-          rw [finalState] at finalIndebted
-          exact finalIndebted.elim
-      | some state =>
-          rw [finalState] at finalIndebted stopped
-          obtain ⟨terminal, read⟩ :=
-            ProtocolState.exists_readout_of_terminal setup.program state stopped
-          exact ⟨terminal, read,
-            ProtocolState.failedReveals_pos_of_owesFailure who setup.program state
-              finalIndebted read⟩
+      exact ⟨finalIndebted, stopped⟩
+
+/-- Every terminal continuation of an extra action records an own failed reveal. -/
+theorem deviation_failedReveals_pos [Fintype Player]
+    (admission : CommitmentInterface setup.program) (wellFormed : setup.WellFormed)
+    (certificate :
+      (setup.executionProtocol admission).WellFoundedHistories)
+    [∀ who, DecidableEq
+      ((setup.informationModel admission).InfoState who)]
+    (profile : ∀ who,
+      (setup.informationModel admission).BehavioralPolicy who)
+    (who : Player) (site : setup.intendedModel.InformationSite who)
+    (action : (setup.informationModel admission).Choice who
+      ((setup.intendedRestriction admission).site who site).1)
+    (extra : action ∉ Set.range ((setup.intendedRestriction admission).choice who site.1))
+    (history : setup.intendedModel.InformationHistory who site.1) :
+    ∀ final ∈ ((setup.informationModel
+        admission).runBehavioralTerminalFrom certificate
+        (Profile.update
+          (sig := (setup.informationModel
+            admission).behavioralSignature) profile who
+          ((profile who).commit
+            ((setup.intendedRestriction admission).site who site).1 action))
+        ((setup.intendedRestriction admission).history history.1)).support,
+      ∃ terminal, setup.protocolReadout final.state = some terminal ∧
+        1 ≤ failedReveals setup.program who (publicOutcome setup.program terminal) := by
+  intro final supported
+  obtain ⟨owed, stopped⟩ := setup.deviation_owesFailure admission wellFormed certificate
+    profile who site action extra history final supported
+  cases finalState : final.state with
+  | none =>
+      rw [finalState] at owed
+      exact owed.elim
+  | some state =>
+      rw [finalState] at owed stopped
+      obtain ⟨terminal, read⟩ :=
+        ProtocolState.exists_readout_of_terminal setup.program state stopped
+      exact ⟨terminal, read,
+        ProtocolState.failedReveals_pos_of_owesFailure who setup.program state owed read⟩
+
+/-- Every terminal continuation of an extra action publicly defaults its owner,
+using actual trace provenance rather than arbitrary failed cells. -/
+theorem deviation_defaulted [Fintype Player]
+    (admission : CommitmentInterface setup.program) (wellFormed : setup.WellFormed)
+    (certificate :
+      (setup.executionProtocol admission).WellFoundedHistories)
+    [∀ who, DecidableEq
+      ((setup.informationModel admission).InfoState who)]
+    (profile : ∀ who,
+      (setup.informationModel admission).BehavioralPolicy who)
+    (who : Player) (site : setup.intendedModel.InformationSite who)
+    (action : (setup.informationModel admission).Choice who
+      ((setup.intendedRestriction admission).site who site).1)
+    (extra : action ∉ Set.range ((setup.intendedRestriction admission).choice who site.1))
+    (history : setup.intendedModel.InformationHistory who site.1) :
+    ∀ final ∈ ((setup.informationModel
+        admission).runBehavioralTerminalFrom certificate
+        (Profile.update
+          (sig := (setup.informationModel
+            admission).behavioralSignature) profile who
+          ((profile who).commit
+            ((setup.intendedRestriction admission).site who site).1 action))
+        ((setup.intendedRestriction admission).history history.1)).support,
+      ∃ terminal, setup.protocolReadout final.state = some terminal ∧
+        who ∈ terminal.defaulted := by
+  intro final supported
+  obtain ⟨owed, stopped⟩ := setup.deviation_owesFailure admission wellFormed certificate
+    profile who site action extra history final supported
+  cases finalState : final.state with
+  | none =>
+      rw [finalState] at owed
+      exact owed.elim
+  | some state =>
+      rw [finalState] at owed stopped
+      obtain ⟨terminal, read⟩ :=
+        ProtocolState.exists_readout_of_terminal setup.program state stopped
+      have trace := final.trace
+      rw [finalState] at trace
+      exact ⟨terminal, read,
+        setup.defaulted_of_owesFailure_trace admission trace who owed read⟩
 
 /-- **Intended-game preservation.** For a well-formed setup with finite
 commitment payload types and a finite initial law, every sequential equilibrium
@@ -283,7 +358,7 @@ sitewise commitment admission and the forfeit pass, with a forfeit no smaller
 than the payoff range. The source
 equilibrium has the intended joint law of terminal store and payoff, and no
 reveal fails on any history it reaches. -/
-theorem intended_sequentialEquilibrium_preserved [Fintype Player]
+theorem intended_forfeit_sequentialEquilibrium_preserved [Fintype Player]
     (admission : CommitmentInterface setup.program)
     (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (wellFormed : setup.WellFormed) {Parameter : Type}
@@ -423,6 +498,135 @@ theorem intended_sequentialEquilibrium_preserved [Fintype Player]
     obtain ⟨intendedFinal, _, rfl⟩ := reached
     exact setup.failedReveals_eq_zero_of_intendedState
       (setup.intendedState_trace wellFormed intendedFinal.trace) who read
+  · have readouts := congrArg (PMF.map fun pair => (setup.protocolReadout pair.1.state, pair.2))
+      jointLaw
+    simp only [PMF.map_comp] at readouts
+    exact readouts.symm
+
+
+/-- Every intended sequential equilibrium extends to the source game with
+fixed exit utility under any sitewise binding admission. The declared exit
+payoff is compared only with actual intended terminal readouts. The target
+retains the intended strategy and joint typed-readout/payoff law, and its
+equilibrium paths have neither a public default nor a failed reveal. -/
+theorem intended_sequentialEquilibrium_preserved [Fintype Player]
+    (admission : CommitmentInterface setup.program)
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (wellFormed : setup.WellFormed) {Parameter : Type}
+    (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ)
+    (below : ∀ (final : setup.intendedProtocol.History) terminal,
+      setup.protocolReadout final.state = some terminal →
+        ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
+    (intended : setup.intendedModel.BehavioralAssessment)
+    (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended) :
+    ∃ target : (setup.informationModel admission).BehavioralAssessment,
+      target.IsSequentialEquilibrium (setup.decision_antichain admission)
+        (setup.protocol_bounded admission).wellFoundedHistories
+        (fun who final => (setup.protocolReadout final.state).elim 0
+          (fun terminal => exclusionUtility setup.program excludedPayoff utility
+            (setup.parameterOutcome parameter terminal) who)) ∧
+      (setup.intendedRestriction admission).ExtendsProfile intended.strategy target.strategy ∧
+      (∀ final ∈ ((setup.informationModel admission).runBehavioralTerminalFrom
+          (setup.protocol_bounded admission).wellFoundedHistories target.strategy
+          (setup.executionProtocol admission).initHistory).support,
+        ∀ terminal, setup.protocolReadout final.state = some terminal →
+          terminal.defaulted = ∅ ∧
+            ∀ who, failedReveals setup.program who (publicOutcome setup.program terminal) = 0) ∧
+      ((setup.informationModel admission).runBehavioralTerminalFrom
+          (setup.protocol_bounded admission).wellFoundedHistories target.strategy
+          (setup.executionProtocol admission).initHistory).map
+          (fun final => (setup.protocolReadout final.state,
+            fun who => (setup.protocolReadout final.state).elim 0
+              (fun terminal => exclusionUtility setup.program excludedPayoff utility
+                (setup.parameterOutcome parameter terminal) who))) =
+        (setup.intendedModel.runBehavioralTerminalFrom
+          setup.intended_bounded.wellFoundedHistories intended.strategy
+          setup.intendedProtocol.initHistory).map
+          (fun final => (setup.protocolReadout final.state,
+            fun who => (setup.protocolReadout final.state).elim 0
+              (fun terminal => utility (setup.parameterOutcome parameter terminal) who))) := by
+  classical
+  let restriction := setup.intendedRestriction admission
+  let intendedTerminates := setup.intended_bounded.wellFoundedHistories
+  let sourceTerminates := (setup.protocol_bounded admission).wellFoundedHistories
+  have : Finite (setup.executionProtocol admission).History := setup.finite_history finite _
+  have : Finite setup.intendedProtocol.History :=
+    Finite.of_injective restriction.history restriction.history.injective
+  let intendedPayoff : Player → setup.intendedProtocol.History → ℝ :=
+    fun who final => (setup.protocolReadout final.state).elim 0
+      (fun terminal => utility (setup.parameterOutcome parameter terminal) who)
+  let sourcePayoff : Player → (setup.executionProtocol admission).History → ℝ :=
+    fun who final => (setup.protocolReadout final.state).elim 0
+      (fun terminal => exclusionUtility setup.program excludedPayoff utility
+        (setup.parameterOutcome parameter terminal) who)
+  have matching : ∀ who (history : setup.intendedProtocol.History),
+      sourcePayoff who (restriction.history history) = intendedPayoff who history := by
+    intro who history
+    change (setup.protocolReadout history.state).elim 0 _ =
+      (setup.protocolReadout history.state).elim 0 _
+    cases read : setup.protocolReadout history.state with
+    | none => rfl
+    | some terminal =>
+        exact exclusionUtility_of_not_defaulted setup.program excludedPayoff utility
+          (setup.not_defaulted_of_intendedState
+            (setup.intendedState_trace wellFormed history.trace) who read)
+  let comparator : ∀ who (site : setup.intendedModel.InformationSite who),
+      (setup.informationModel admission).Choice who (restriction.site who site).1 →
+        PMF (setup.intendedModel.Choice who site.1) :=
+    fun _ _ _ => PMF.pure (Classical.arbitrary _)
+  obtain ⟨target, sequential, agrees, _, historyLaw, jointLaw⟩ :=
+    restriction.sequentialEquilibrium_extends_of_comparator_unclocked
+      setup.intended_decision_antichain intendedTerminates sourceTerminates
+      (setup.uniformReference finite _) (setup.uniformReference_fullyMixed finite _)
+      (setup.protocol_decisionRecall _) intendedPayoff sourcePayoff matching comparator
+      (by
+        intro sourceProfile targetProfile _ who site action extra history
+        let deviationLaw := (setup.informationModel admission).runBehavioralTerminalFrom
+          sourceTerminates
+          (Profile.update (sig := (setup.informationModel admission).behavioralSignature)
+            targetProfile who
+            ((targetProfile who).commit (restriction.site who site).1 action))
+          (restriction.history history.1)
+        let comparatorLaw := setup.intendedModel.runBehavioralTerminalFrom intendedTerminates
+          (Profile.update (sig := setup.intendedModel.behavioralSignature) sourceProfile who
+            ((sourceProfile who).withLaw site.1 (comparator who site action))) history.1
+        have deviation := setup.deviation_defaulted admission wellFormed sourceTerminates
+          targetProfile who site action extra history
+        have exitValue : expect deviationLaw (sourcePayoff who) = excludedPayoff who := by
+          calc _ = expect deviationLaw (fun _ => excludedPayoff who) := by
+                apply expect_congr_on_support
+                intro final supported
+                obtain ⟨terminal, read, defaulted⟩ := deviation final supported
+                change (setup.protocolReadout final.state).elim 0 _ = excludedPayoff who
+                rw [read]
+                exact exclusionUtility_of_defaulted setup.program excludedPayoff utility defaulted
+            _ = excludedPayoff who := expect_constant _ _
+        change expect deviationLaw (sourcePayoff who) ≤
+          expect comparatorLaw (intendedPayoff who)
+        rw [exitValue]
+        calc _ = expect comparatorLaw (fun _ => excludedPayoff who) :=
+              (expect_constant _ _).symm
+          _ ≤ _ := by
+            refine expect_mono (fun final supported => ?_) (payoffIntegrable_constant _ _)
+              (payoffIntegrable_of_finite _ _)
+            obtain ⟨terminal, read⟩ := setup.exists_protocolReadout_of_terminal admission
+              (setup.intendedModel.runBehavioralTerminalFrom_support_terminal intendedTerminates
+                _ _ final supported)
+            change excludedPayoff who ≤ (setup.protocolReadout final.state).elim 0 _
+            rw [read]
+            exact below final terminal read who)
+      intended equilibrium
+  refine ⟨target, sequential, agrees, ?_, ?_⟩
+  · intro final reached terminal read
+    rw [← historyLaw, PMF.support_map] at reached
+    obtain ⟨intendedFinal, _, rfl⟩ := reached
+    have known := setup.intendedState_trace wellFormed intendedFinal.trace
+    refine ⟨Finset.eq_empty_iff_forall_notMem.mpr (fun who =>
+      setup.not_defaulted_of_intendedState known who read), ?_⟩
+    intro who
+    exact setup.failedReveals_eq_zero_of_intendedState known who read
   · have readouts := congrArg (PMF.map fun pair => (setup.protocolReadout pair.1.state, pair.2))
       jointLaw
     simp only [PMF.map_comp] at readouts

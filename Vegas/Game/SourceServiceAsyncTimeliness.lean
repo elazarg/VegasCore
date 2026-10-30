@@ -45,26 +45,6 @@ variable (setup : Setup (Player := Player) (L := L))
   {deadline : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
-/-- An event completes only together with an accepting receipt for `id`, and
-every receipt for `id` is accompanied by an accepting one. -/
-def Settled (event : (serviceGraph setup mode).EventId) (id : MessageId Player)
-    (execution : (serviceApplication setup mode deadline leaks).Execution) : Prop :=
-  (event ∈ execution.application.config.cut.completed → (id, true) ∈ execution.receipts) ∧
-    (∀ accepted, (id, accepted) ∈ execution.receipts → (id, true) ∈ execution.receipts) ∧
-    ((id, true) ∈ execution.receipts → event ∈ execution.application.config.cut.completed)
-
-/-- Every recorded fresh call of `owner` for `event`, with no other identifier
-emitted by `owner` for the event, is settled. -/
-def SettlesFreshCalls (owner : Player) (event : (serviceGraph setup mode).EventId)
-    (bound : (serviceGraph setup mode).EventId → Nat)
-    (execution : (serviceApplication setup mode deadline leaks).Execution) :
-    Prop :=
-  ∀ earlier entry later message, execution.recall owner = earlier ++ entry :: later →
-    FreshCall setup leaks owner event bound entry message →
-    (∀ other ∈ earlier ++ later, ¬ EmitsOtherFor (serviceRuntime setup mode deadline) leaks other
-        event message.id) →
-    Settled setup leaks event message.id execution
-
 omit [DecidableEq Player] in
 private theorem forall₂_mem_right {α β : Type} {R : α → β → Prop} :
     ∀ {left : List α} {right : List β}, List.Forall₂ R left right →

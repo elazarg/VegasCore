@@ -4,7 +4,7 @@ import Vegas.Game.RecoverySourceFailure
 import Vegas.Game.RecoveryExclusionPayoff
 import Vegas.Pending.ExclusionService
 import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Game.RevealServiceRosterContinuation
+import Vegas.Game.RevealServicePayoffs
 
 /-! # Source debts persist through concrete recovery continuations
 

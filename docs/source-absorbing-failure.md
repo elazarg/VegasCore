@@ -140,22 +140,28 @@ deduct for forbidden traffic after default. These definitions and their
 settlement projection require an explicit port in the strategic consumers.
 
 No independence, service, coverage, finiteness or funding premise is added.
-The preservation theorem's premises, including the exit floor, remain proof
-obligations for its port. Restricting surviving players' valuations to ignore
-public default history would be an additional assumption and is not part of
-this design.
+Restricting surviving players' valuations to ignore public default history
+would be an additional assumption and is not part of this design.
 
 The ambient public-record type admits impossible histories. Utility-range ports
 must use their actual execution domain or a bounded extension outside it;
 boundedness on extra impossible records must not become a hidden new premise.
 
-[IntendedPreservation](../Vegas/Game/IntendedPreservation.lean) and
-[IntendedNash](../Vegas/Game/IntendedNash.lean) check the source forfeit-utility
-sequential and approximate Nash results. Their payoff-spread premise ranges
-only over terminal legal histories; impossible public records and unsupported
-parameters need no bound. Canonical fixed-exit preservation must use the public
-default bridge and the stated exit-floor comparison, rather than infer a bound
-on a freely declared exit value from the forfeit result.
+[IntendedPreservation](../Vegas/Game/IntendedPreservation.lean) checks canonical
+fixed-exit sequential equilibrium preservation under every sitewise binding
+admission. It uses the declared exit-floor comparison on actual intended
+terminal readouts, with no payoff-spread premise. The source assessment extends
+the intended strategy, preserves the joint full-readout/payoff law, and has no
+public default or failed reveal on its equilibrium paths. Its deviation proof
+uses actual trace provenance to turn owed failure into terminal public default.
+It does not assert that every source equilibrium is clean when exit payoffs tie
+with ordinary payoffs.
+
+The optional count-penalty preservation results in that module and
+[IntendedNash](../Vegas/Game/IntendedNash.lean) bound the payoff spread only over
+terminal legal source histories; impossible public records and unsupported
+parameters need no bound. They do not infer a bound on a freely declared exit
+value. Native strategic preservation and settlement remain separate checks.
 
 ## Graph and ledger port
 

@@ -1,26 +1,23 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceDecodedDebt
-import Vegas.Game.IntendedAuditedOutcome
+import Vegas.Game.IntendedPreservation
+import Vegas.Game.RevealServicePayoffs
 
 /-! # The exclusion payoff on the supplied runtime
 
-Under exclusion a player with a failed reveal receives a fixed exclusion
+Under exclusion a publicly defaulted player receives a fixed exit
 payoff, and every other player its utility of the parameter and public outcome
 (`Vegas.SourceProgram.exclusionUtility`). The same payoff is read on terminal
-source stores (`Vegas.exclusionTerminalUtility`), on typed readouts, zero
+source configurations (`Vegas.exclusionTerminalUtility`), on typed readouts, zero
 without one (`Vegas.exclusionReadoutUtility`), and on native protocol states of
 the supplied runtime through their typed readout (`Vegas.exclusionBase`). The
 readout version is the utility on the outcome type shared by the intended game
 (`Vegas.SourceProgram.Setup.protocolReadout`) and the runtime
 (`Vegas.sourceReadout`).
 
-A player owing a failure keeps owing it under every source step
-(`Vegas.owesFailure_stepClosed`).
-
 Bounds on the utility bound the native payoff over all protocol states, hence
 under every scheduler (`Vegas.exclusionBase_mem_Icc`). No intended history has
-a failed reveal, so the exclusion payoff of the intended readout is the
+a public default, so the exclusion payoff of the intended readout is the
 intended payoff, and every sequential equilibrium of the intended game is
 sequentially rational against it
 (`Vegas.SourceProgram.Setup.intended_exclusionSource`).
@@ -46,41 +43,43 @@ variable (setup : Setup (Player := Player) (L := L))
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
 
-/-- The payoff under exclusion of a terminal source store: a player with a
-failed reveal receives its exclusion payoff, every other player its utility of
-the store's parameter and public outcome. -/
-def exclusionTerminalUtility (terminal : State L setup.program.terminalCtx) (who : Player) : ℝ :=
+/-- The payoff of a terminal source configuration: public default fixes the
+declared exit payoff; active players retain their ordinary valuation. -/
+def exclusionTerminalUtility (terminal : Config Player L setup.program.terminalCtx)
+    (who : Player) : ℝ :=
   exclusionUtility setup.program excludedPayoff utility (setup.parameterOutcome parameter terminal)
     who
 
 /-- The payoff under exclusion of a typed readout, zero without one. -/
-def exclusionReadoutUtility (readout : Option (State L setup.program.terminalCtx))
+def exclusionReadoutUtility (readout : Option (Config Player L setup.program.terminalCtx))
     (who : Player) : ℝ :=
   readout.elim 0 fun terminal =>
     exclusionTerminalUtility setup parameter utility excludedPayoff terminal who
 
-/-- A player with a failed reveal receives exactly its exclusion payoff. -/
-theorem exclusionTerminalUtility_of_failed {terminal : State L setup.program.terminalCtx}
+/-- A publicly defaulted player receives exactly its declared exit payoff. -/
+theorem exclusionTerminalUtility_of_defaulted
+    {terminal : Config Player L setup.program.terminalCtx}
     {who : Player}
-    (failed : 1 ≤ failedReveals setup.program who (publicOutcome setup.program terminal)) :
+    (defaulted : who ∈ terminal.defaulted) :
     exclusionTerminalUtility setup parameter utility excludedPayoff terminal who =
       excludedPayoff who :=
-  exclusionUtility_of_failedReveals_pos setup.program excludedPayoff utility failed
+  exclusionUtility_of_defaulted setup.program excludedPayoff utility defaulted
 
-/-- A player without a failed reveal receives its utility. -/
-theorem exclusionTerminalUtility_of_not_failed {terminal : State L setup.program.terminalCtx}
+/-- An active player retains the ordinary utility of the complete public result. -/
+theorem exclusionTerminalUtility_of_not_defaulted
+    {terminal : Config Player L setup.program.terminalCtx}
     {who : Player}
-    (noFailure : failedReveals setup.program who (publicOutcome setup.program terminal) = 0) :
+    (active : who ∉ terminal.defaulted) :
     exclusionTerminalUtility setup parameter utility excludedPayoff terminal who =
       utility (setup.parameterOutcome parameter terminal) who :=
-  exclusionUtility_of_failedReveals_eq_zero setup.program excludedPayoff utility noFailure
+  exclusionUtility_of_not_defaulted setup.program excludedPayoff utility active
 
 /-- Bounds on the utility and the exclusion payoff bound the payoff of every
 readout, the missing readout paying zero. -/
 theorem exclusionReadoutUtility_mem_Icc (lower upper : Player → ℝ)
     (lower_le : ∀ outcome who, lower who ≤ utility outcome who)
     (le_upper : ∀ outcome who, utility outcome who ≤ upper who)
-    (readout : Option (State L setup.program.terminalCtx)) (who : Player) :
+    (readout : Option (Config Player L setup.program.terminalCtx)) (who : Player) :
     exclusionReadoutUtility setup parameter utility excludedPayoff readout who ∈
       Set.Icc (min 0 (min (excludedPayoff who) (lower who)))
         (max 0 (max (excludedPayoff who) (upper who))) := by
@@ -91,10 +90,10 @@ theorem exclusionReadoutUtility_mem_Icc (lower upper : Player → ℝ)
         (setup.parameterOutcome parameter terminal) who ∈ _
       unfold exclusionUtility
       split
-      · exact ⟨(min_le_right _ _).trans ((min_le_right _ _).trans (lower_le _ who)),
-          (le_upper _ who).trans ((le_max_right _ _).trans (le_max_right _ _))⟩
       · exact ⟨(min_le_right _ _).trans (min_le_left _ _),
           (le_max_left _ _).trans (le_max_right _ _)⟩
+      · exact ⟨(min_le_right _ _).trans ((min_le_right _ _).trans (lower_le _ who)),
+          (le_upper _ who).trans ((le_max_right _ _).trans (le_max_right _ _))⟩
 
 variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
@@ -110,6 +109,22 @@ theorem exclusionBase_eq_readout (state : (application setup runtime leaks).Prot
       exclusionReadoutUtility setup parameter utility excludedPayoff
         (sourceReadout setup runtime leaks state) who := rfl
 
+/-- A complete native readout retains the fixed exit utility of every publicly
+defaulted player, including a binding omission without any failed reveal. -/
+theorem exclusionBase_of_defaulted
+    (control : (application setup runtime leaks).Control)
+    (terminal : Config Player L setup.program.terminalCtx)
+    (read : sourceReadout setup runtime leaks (some control) = some terminal)
+    (who : Player) (defaulted : who ∈ control.execution.application.config.defaulted) :
+    exclusionBase setup runtime parameter utility excludedPayoff leaks (some control) who =
+      excludedPayoff who := by
+  change (sourceReadout setup runtime leaks (some control)).elim 0 _ = _
+  rw [read]
+  apply exclusionTerminalUtility_of_defaulted
+  change who ∈ terminal.defaults.defaulted
+  rw [serviceSourceReadout_defaults setup .sequential runtime.deadline leaks control terminal read]
+  exact defaulted
+
 /-- **Scheduler-independent bounds.** Bounds on the utility and the exclusion
 payoff bound the native exclusion payoff at every protocol state. -/
 theorem exclusionBase_mem_Icc (lower upper : Player → ℝ)
@@ -124,15 +139,6 @@ theorem exclusionBase_mem_Icc (lower upper : Player → ℝ)
 
 end Payoff
 
-/-- A player owing a failure is closed under every source step. -/
-theorem owesFailure_stepClosed {setup : Setup (Player := Player) (L := L)} (who : Player) :
-    StepClosed setup (ProtocolState.OwesFailure who setup.program) :=
-  fun state joint target owed reached =>
-    ProtocolState.owesFailure_step who setup.program state joint target owed reached
-
-variable {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)} {profile : BehavioralProfile setup.program}
-
 end Vegas
 
 namespace Vegas.SourceProgram.Setup
@@ -143,8 +149,8 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
   (runtime : EventGraphRuntime (graph setup))
 
-/-- On every history of the intended game the exclusion payoff of its readout
-is the intended payoff: no reveal of the intended game fails. -/
+/-- On every intended history the exit utility agrees with the ordinary payoff,
+because no player publicly defaults. -/
 theorem intended_exclusionReadoutUtility (wellFormed : setup.WellFormed) {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
@@ -156,8 +162,8 @@ theorem intended_exclusionReadoutUtility (wellFormed : setup.WellFormed) {Parame
   cases read : setup.protocolReadout history.state with
   | none => rfl
   | some terminal =>
-      exact exclusionTerminalUtility_of_not_failed setup parameter utility excludedPayoff
-        (setup.failedReveals_eq_zero_of_intendedState
+      exact exclusionTerminalUtility_of_not_defaulted setup parameter utility excludedPayoff
+        (setup.not_defaulted_of_intendedState
           (setup.intendedState_trace wellFormed history.trace) who read)
 
 /-- **The intended equilibrium as the source of the exclusion comparison.**

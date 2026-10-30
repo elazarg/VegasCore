@@ -1,12 +1,18 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionClearHistory
+import Vegas.Pending.ReactiveDefaultCompletion
 
-/-! # Complete information fibers before public exclusion -/
+/-! # Native information fibers before public default
+
+A deciding input is clear precisely when its displayed whole default set is
+empty. Equal actual observations retain the complete public default history,
+so every history in a clear information fiber is clear. These are properties
+of the sole native application and its ordinary response-menu restrictions.
+-/
 
 noncomputable section
 
-namespace Vegas.EventGraphRuntime.RecoveryProjection
+namespace Vegas.EventGraphRuntime
 
 open Interaction GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Math.Probability
@@ -15,174 +21,127 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L} (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
-def information : (runtime.recoveryApplication leaks).Info →
-    (runtime.reactiveApplication leaks).Info :=
-  Option.map fun input =>
-    (input.1.map (playerEntry runtime leaks), playerView runtime leaks input.2)
+/-- A deciding native input displays an empty whole public default set. -/
+def ClearInput (input : (runtime.reactiveApplication leaks).Info) : Prop :=
+  ∃ past view, input = some (past, view) ∧
+    view.application.publicView.observation.defaulted = ∅
 
-def liftInformation : (runtime.reactiveApplication leaks).Info →
-    (runtime.recoveryApplication leaks).Info :=
-  Option.map fun input =>
-    (input.1.map (liftPlayerEntry runtime leaks), liftPlayerView runtime leaks input.2)
-
-@[simp] theorem information_liftInformation
-    (input : (runtime.reactiveApplication leaks).Info) :
-    information runtime leaks (liftInformation runtime leaks input) = input := by
-  cases input with
-  | none => rfl
-  | some input =>
-    rcases input with ⟨past, view⟩
-    simp only [information, liftInformation, Option.map_some, List.map_map, Function.comp_def,
-      playerEntry_liftPlayerEntry, playerView_liftPlayerView, List.map_id_fun', id_eq]
-
-theorem observe_projection (who : Player)
-    (state : (runtime.recoveryApplication leaks).ProtocolState) :
-    (runtime.reactiveApplication leaks).observe who (protocolState runtime leaks state) =
-      information runtime leaks ((runtime.recoveryApplication leaks).observe who state) := by
-  cases state with
-  | none => rfl
-  | some current =>
-    by_cases active : current.actor = some who <;>
-      simp only [ReactiveApplication.observe, protocolState, Option.map_some, control,
-        active, ↓reduceIte, information, Option.map_none, execution]
-    rfl
-
-theorem observe_lift (who : Player)
+/-- Only the deciding player receives a clear input, and its clearance is
+exactly that of the actual native configuration. -/
+theorem clearInput_observe_iff (who : Player)
     (state : (runtime.reactiveApplication leaks).ProtocolState) :
-    (runtime.recoveryApplication leaks).observe who (liftProtocolState runtime leaks state) =
-      liftInformation runtime leaks ((runtime.reactiveApplication leaks).observe who state) := by
+    runtime.ClearInput leaks ((runtime.reactiveApplication leaks).observe who state) ↔
+      (runtime.reactiveApplication leaks).actor state = some who ∧
+        ∀ control, state = some control → control.execution.application.config.defaulted = ∅ := by
   cases state with
-  | none => rfl
-  | some current =>
-    by_cases active : current.actor = some who <;>
-      simp only [ReactiveApplication.observe, liftProtocolState, Option.map_some, liftControl,
-        active, ↓reduceIte, liftInformation, Option.map_none, liftExecution]
-    rfl
+  | none => simp [ClearInput, ReactiveApplication.observe, ReactiveApplication.actor]
+  | some control =>
+      by_cases active : control.actor = some who
+      · have defaults : (control.execution.observe (runtime.reactiveApplication leaks)
+            who).application.publicView.observation.defaulted =
+          control.execution.application.config.defaulted := rfl
+        simp [ClearInput, ReactiveApplication.observe, ReactiveApplication.actor, active, defaults]
+      · simp [ClearInput, ReactiveApplication.observe, ReactiveApplication.actor, active]
 
-theorem infoOf_nativeHistory (initial : PMF (RecoveryState graph)) (horizon : Nat)
-    (scheduler : (runtime.recoveryApplication leaks).Scheduler)
-    (history : ((runtime.recoveryApplication leaks).protocol initial horizon scheduler).History)
-    (clear : ∀ current, history.state = some current →
-      current.execution.application.excluded = ∅) (who : Player) :
-    ((runtime.reactiveApplication leaks).information (initial.map RecoveryState.native) horizon
-        (nativeScheduler runtime leaks scheduler)).infoOf who
-        (nativeHistory runtime leaks initial horizon scheduler history clear).trace =
-      information runtime leaks (((runtime.recoveryApplication leaks).information initial horizon
-        scheduler).infoOf who history.trace) := by
-  simp only [ReactiveApplication.information, ReactiveApplication.info]
-  exact observe_projection runtime leaks who history.state
+/-- At deciding inputs, clearance and public default are complementary. Inactive
+inputs belong to neither region. -/
+theorem clearInput_iff_not_publicDefaultInput
+    (input : (runtime.reactiveApplication leaks).Info) (deciding : input.isSome) :
+    runtime.ClearInput leaks input ↔ ¬ runtime.PublicDefaultInput leaks input := by
+  cases input with
+  | none => cases deciding
+  | some input =>
+      rcases input with ⟨past, view⟩
+      simp [ClearInput, PublicDefaultInput]
 
-theorem infoOf_recoveryHistory (initial : PMF (RecoveryState graph))
-    (initialized : ∀ state ∈ initial.support, ∃ inputs,
-      state = (⟨State.initial inputs, ∅⟩ : RecoveryState graph))
-    (horizon : Nat) (scheduler : (runtime.recoveryApplication leaks).Scheduler)
-    (history : ((runtime.reactiveApplication leaks).protocol (initial.map RecoveryState.native)
-      horizon (nativeScheduler runtime leaks scheduler)).History)
-    (clear : ∀ current, history.state = some current →
-      ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph))
-    (who : Player) :
-    ((runtime.recoveryApplication leaks).information initial horizon scheduler).infoOf who
-        (recoveryHistory runtime leaks initial initialized horizon scheduler history clear).trace =
-      liftInformation runtime leaks (((runtime.reactiveApplication leaks).information
-        (initial.map RecoveryState.native) horizon (nativeScheduler runtime leaks scheduler)).infoOf
-          who history.trace) := by
-  simp only [ReactiveApplication.information, ReactiveApplication.info]
-  exact observe_lift runtime leaks who history.state
+/-- Equal actual observations at a decision retain the entire default history,
+including the positions of silent automatic completions. -/
+theorem informationFiber_defaults (who : Player)
+    (reference : (runtime.reactiveApplication leaks).Control)
+    (active : reference.actor = some who)
+    (state : (runtime.reactiveApplication leaks).ProtocolState)
+    (same : (runtime.reactiveApplication leaks).observe who state =
+      (runtime.reactiveApplication leaks).observe who (some reference)) :
+    ∀ current, state = some current →
+      current.execution.application.config.defaults =
+        reference.execution.application.config.defaults := by
+  intro current currentEq
+  rw [currentEq] at same
+  simp only [ReactiveApplication.observe, active, ↓reduceIte] at same
+  split at same
+  · have records := congrArg
+      (fun input => input.2.application.publicView.observation.defaults) (Option.some.inj same)
+    exact records
+  · cases same
 
+/-- Every control with the same deciding observation as a clear reference has
+an empty whole public default set. No receipt or initialization premise is needed. -/
 theorem informationFiber_clear (who : Player)
     (reference : (runtime.reactiveApplication leaks).Control)
     (active : reference.actor = some who)
-    (state : (runtime.recoveryApplication leaks).ProtocolState)
-    (same : (runtime.recoveryApplication leaks).observe who state =
-      liftInformation runtime leaks ((runtime.reactiveApplication leaks).observe who
-        (some reference))) :
-    ∀ current, state = some current → current.execution.application.excluded = ∅ := by
-  intro current currentEq
-  subst state
-  simp only [ReactiveApplication.observe, active, ↓reduceIte, liftInformation, Option.map_some]
-    at same
-  split at same
-  · have viewEq := congrArg (fun input => input.2.application.2) (Option.some.inj same)
-    exact viewEq
-  · cases same
-
-theorem informationFiber_record (initial : PMF (RecoveryState graph))
-    (initialized : ∀ state ∈ initial.support, ∃ inputs,
-      state = (⟨State.initial inputs, ∅⟩ : RecoveryState graph))
-    (horizon : Nat) (scheduler : (runtime.recoveryApplication leaks).Scheduler)
-    (who : Player) (reference : (runtime.reactiveApplication leaks).Control)
-    (active : reference.actor = some who)
-    (valid : ExclusionEvidence 0 ∅ (⟨reference.execution.application, ∅⟩ : RecoveryState graph))
-    (history : ((runtime.reactiveApplication leaks).protocol (initial.map RecoveryState.native)
-      horizon (nativeScheduler runtime leaks scheduler)).History)
-    (same : (runtime.reactiveApplication leaks).observe who history.state =
+    (clear : reference.execution.application.config.defaulted = ∅)
+    (state : (runtime.reactiveApplication leaks).ProtocolState)
+    (same : (runtime.reactiveApplication leaks).observe who state =
       (runtime.reactiveApplication leaks).observe who (some reference)) :
-    ∀ current, history.state = some current →
-      ExclusionEvidence 0 ∅ (⟨current.execution.application, ∅⟩ : RecoveryState graph) := by
+    ∀ current, state = some current → current.execution.application.config.defaulted = ∅ := by
   intro current currentEq
-  have receipts := native_receiptsComplete_history runtime leaks
-    (initial.map RecoveryState.native) (by
-      intro native supported
-      rw [PMF.mem_support_map_iff] at supported
-      obtain ⟨state, sourceSupported, rfl⟩ := supported
-      obtain ⟨inputs, rfl⟩ := initialized state sourceSupported
-      exact ⟨inputs, rfl⟩) horizon (nativeScheduler runtime leaks scheduler) history.trace
-  rw [currentEq] at receipts same
-  simp only [ReactiveApplication.observe, active, ↓reduceIte] at same
-  split at same
-  · have samePublic := congrArg (fun input => input.2.application.publicView)
-      (Option.some.inj same)
-    change current.execution.application.publicView = reference.execution.application.publicView
-      at samePublic
-    refine ⟨receipts, fun event lower => by omega, fun owner => ⟨?_, ?_⟩⟩
-    · intro member
-      exact (Finset.notMem_empty owner member).elim
-    · rintro (inherited | ⟨event, _lower, acting, failed⟩)
-      · exact inherited
-      · exact (valid.excluded_zero owner).mpr ⟨event, acting,
-          (State.PublicFailure.of_publicView_eq samePublic event).mp failed⟩
-  · cases same
+  have records := runtime.informationFiber_defaults leaks who reference active state same
+    current currentEq
+  have defaults := congrArg DefaultHistory.defaulted records
+  exact defaults.trans clear
 
-/-- Every history in either complete information fiber lies before public
-exclusion. Native projection and clear lifting therefore give a bijection of
-the full fibers, including histories with zero strategy probability. -/
-def informationHistoryEquiv (initial : PMF (RecoveryState graph))
-    (initialized : ∀ state ∈ initial.support, ∃ inputs,
-      state = (⟨State.initial inputs, ∅⟩ : RecoveryState graph))
-    (horizon : Nat) (scheduler : (runtime.recoveryApplication leaks).Scheduler)
-    (who : Player) (reference : (runtime.reactiveApplication leaks).Control)
+variable (menu : (runtime.reactiveApplication leaks).ResponseMenu)
+  (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
+  (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+
+local notation "N" => menu.information initial horizon scheduler
+local notation "E" => menu.protocol initial horizon scheduler
+
+/-- Every history in a clear decision-information fiber has an empty whole
+native default set, including histories with zero assessment probability. -/
+theorem informationHistory_clear {who : Player} (site : (N).InformationSite who)
+    (clear : runtime.ClearInput leaks site.1)
+    (history : (N).InformationHistory who site.1) :
+    ∀ current, history.1.state = some current →
+      current.execution.application.config.defaulted = ∅ := by
+  have observed := (menu.info initial horizon scheduler who history.1.trace).symm.trans
+    history.2
+  have actual := observed ▸ clear
+  exact ((runtime.clearInput_observe_iff leaks who history.1.state).mp actual).2
+
+/-- A complete information fiber retains the reference's exact public default
+history, independently of which history an assessment supports. -/
+theorem informationHistory_defaults {who : Player} (site : (N).InformationSite who)
+    (reference : (runtime.reactiveApplication leaks).Control)
     (active : reference.actor = some who)
-    (valid : ExclusionEvidence 0 ∅ (⟨reference.execution.application, ∅⟩ : RecoveryState graph)) :
-    (((runtime.recoveryApplication leaks).information initial horizon scheduler).InformationHistory
-      who (liftInformation runtime leaks
-        ((runtime.reactiveApplication leaks).observe who (some reference)))) ≃
-    (((runtime.reactiveApplication leaks).information (initial.map RecoveryState.native) horizon
-      (nativeScheduler runtime leaks scheduler)).InformationHistory who
-        ((runtime.reactiveApplication leaks).observe who (some reference))) where
-  toFun history := by
-    have same := history.2
-    simp only [ReactiveApplication.information, ReactiveApplication.info] at same
-    have clear := informationFiber_clear runtime leaks who reference active history.1.state same
-    refine ⟨nativeHistory runtime leaks initial horizon scheduler history.1 clear, ?_⟩
-    rw [infoOf_nativeHistory, history.2, information_liftInformation]
-  invFun history := by
-    have same := history.2
-    simp only [ReactiveApplication.information, ReactiveApplication.info] at same
-    have clear := informationFiber_record runtime leaks initial initialized horizon scheduler who
-      reference active valid history.1 same
-    refine ⟨recoveryHistory runtime leaks initial initialized horizon scheduler history.1 clear, ?_⟩
-    rw [infoOf_recoveryHistory, history.2]
-  left_inv history := by
-    apply Subtype.ext
-    exact recoveryHistory_nativeHistory runtime leaks initial initialized horizon scheduler
-      history.1.trace (informationFiber_clear runtime leaks who reference active history.1.state
-        (by simpa only [ReactiveApplication.information, ReactiveApplication.info] using history.2))
-  right_inv history := by
-    apply Subtype.ext
-    exact nativeHistory_recoveryHistory runtime leaks initial initialized horizon scheduler
-      history.1.trace (informationFiber_record runtime leaks initial initialized horizon scheduler
-        who
-        reference active valid history.1
-        (by simpa only [ReactiveApplication.information, ReactiveApplication.info] using history.2))
+    (atSite : site.1 = (runtime.reactiveApplication leaks).observe who (some reference))
+    (history : (N).InformationHistory who site.1) :
+    ∀ current, history.1.state = some current →
+      current.execution.application.config.defaults =
+        reference.execution.application.config.defaults := by
+  have observed := (menu.info initial horizon scheduler who history.1.trace).symm.trans
+    (history.2.trans atSite)
+  exact runtime.informationFiber_defaults leaks who reference active history.1.state observed
 
-end Vegas.EventGraphRuntime.RecoveryProjection
+/-- Clearance at a later legal native history implies clearance at every
+preceding history; public default cannot disappear along the path. -/
+theorem clear_before_reaches {first last : (E).History}
+    (reached : (E).HistoryReaches first last)
+    (clear : ∀ current, last.state = some current →
+      current.execution.application.config.defaulted = ∅) :
+    ∀ current, first.state = some current → current.execution.application.config.defaulted = ∅ :=
+    by
+  intro current currentEq
+  by_contra nonempty
+  have initialDefault : runtime.PublicDefault leaks first.state := by
+    rw [currentEq]
+    exact nonempty
+  have finalDefault := runtime.publicDefault_of_reaches leaks menu initial horizon scheduler
+    reached initialDefault
+  cases currentLast : last.state with
+  | none => rw [currentLast] at finalDefault; exact finalDefault.elim
+  | some control =>
+      rw [currentLast] at finalDefault
+      exact finalDefault (clear control currentLast)
+
+end Vegas.EventGraphRuntime

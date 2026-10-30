@@ -691,6 +691,16 @@ theorem path_defaulted_mono {before after : graph.Config}
   | refl => exact Finset.Subset.refl _
   | @head before middle moved _ ih => exact moved.defaulted_mono.trans ih
 
+/-- No supported execution path can change a terminal configuration. -/
+theorem path_eq_of_terminal {before after : graph.Config}
+    (path : Relation.ReflTransGen Step before after) (terminal : before.cut.Terminal) :
+    after = before := by
+  induction path using Relation.ReflTransGen.head_induction_on with
+  | refl => rfl
+  | @head before middle moved _ _ =>
+      obtain ⟨event, ready, _, _⟩ := moved
+      exact (ready.1 (by rw [terminal]; exact Finset.mem_univ event)).elim
+
 end Step
 
 /-- A typed code identification determines the exact new public default entry. -/

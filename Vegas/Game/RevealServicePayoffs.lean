@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.RevealService
-import Vegas.Compile.EventGraphReadout
+import Vegas.Compile.EventGraphReadoutComplete
 import Vegas.EventGraph.SequentialLaw
 
 /-! # Net utilities for the monitored reveal service
@@ -47,6 +47,43 @@ def serviceSourceReadout (state : (serviceApplication setup mode deadline leaks)
         (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
         (config.history.map (setup.eventGraph.fromModeCompletion mode))
     else none
+
+/-- Successful full decoding already certifies that every source event is
+complete. The explicit terminal guard adds no further readout condition. -/
+theorem serviceSourceReadout_eq_decode
+    (control : (serviceApplication setup mode deadline leaks).Control) :
+    serviceSourceReadout setup mode deadline leaks (some control) =
+      decodeConfig? setup.program setup.program
+        (ContextRefs.initial setup.context (outputLayout setup.program))
+        (Revelations.initial setup.context) [] (outputEmbedding setup.program)
+        control.execution.application.config.store
+        (control.execution.application.config.history.map
+          (setup.eventGraph.fromModeCompletion mode)) := by
+  unfold serviceSourceReadout
+  rw [Option.bind_some]
+  change (if control.execution.application.config.cut.Terminal then
+      (decodeState? (terminalRefs setup.program) control.execution.application.config.store).map _
+      else none) =
+    (decodeState? (terminalRefs setup.program) control.execution.application.config.store).map _
+  cases decoded : decodeState? (terminalRefs setup.program)
+      control.execution.application.config.store with
+  | none => simp only [Option.map_none, ite_self]
+  | some source =>
+      have complete := terminal_decode_complete setup.program mode
+        control.execution.application.config (by rw [decoded]; rfl)
+      rw [ite_eq_left complete]
+
+/-- The complete source readout retains precisely the native public default
+history, in every dependency mode. -/
+theorem serviceSourceReadout_defaults
+    (control : (serviceApplication setup mode deadline leaks).Control)
+    (source : Config Player L setup.program.terminalCtx)
+    (read : serviceSourceReadout setup mode deadline leaks (some control) = some source) :
+    source.defaults = control.execution.application.config.defaults := by
+  rw [serviceSourceReadout_eq_decode, decodeConfig?] at read
+  obtain ⟨_, _, rfl⟩ := Option.map_eq_some_iff.mp read
+  simp only [EventGraph.Config.defaults, EventGraph.Completion.defaults, List.map_map]
+  rfl
 
 /-- Analysis utility of the actual terminal source readout, prior to a deposit
 deduction. Initial private types may affect this utility. -/

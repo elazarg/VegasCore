@@ -67,6 +67,70 @@ theorem transition_receipts_prefix (initial : PMF app.State) (horizon : Nat)
           obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
           exact ⟨_, rfl, app.environmentStep_receipts_prefix execution next command moved⟩
 
+/-- A new accepting receipt comes from the handler of an included pending packet. -/
+theorem transition_new_accepted_receipt (initial : PMF app.State) (horizon : Nat)
+    (scheduler : app.Scheduler) (before after : app.Control)
+    (joint : Principal → Option app.Action)
+    (reached : some after ∈ (app.transition initial horizon scheduler (some before) joint).support)
+    (id : MessageId Principal) (receipt : (id, true) ∈ after.execution.receipts)
+    (fresh : (id, true) ∉ before.execution.receipts) :
+    ∃ message, before.execution.network.lookup id = some message ∧
+      app.handle before.execution.application message = some after.execution.application := by
+  rcases before with ⟨remaining, current, execution⟩
+  cases current with
+  | some who =>
+      cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp reached)
+      exact (fresh receipt).elim
+  | none =>
+      cases remaining with
+      | zero =>
+          cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp reached)
+          exact (fresh receipt).elim
+      | succ remaining =>
+          obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+          obtain ⟨next, supported, same⟩ := PMF.support_map .. ▸ moved
+          cases Option.some.inj same
+          cases command with
+          | wait =>
+              simp only [Execution.environmentStep, PMF.pure_map] at supported
+              cases (PMF.mem_support_pure_iff _ _).mp supported
+              exact (fresh receipt).elim
+          | activate who =>
+              obtain ⟨updated, chosen, rfl⟩ := PMF.support_map .. ▸ supported
+              obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ chosen
+              exact (fresh receipt).elim
+          | application command =>
+              obtain ⟨updated, chosen, rfl⟩ := PMF.support_map .. ▸ supported
+              obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ chosen
+              exact (fresh receipt).elim
+          | «include» named =>
+              simp only [Execution.environmentStep, PMF.pure_map] at supported
+              cases (PMF.mem_support_pure_iff _ _).mp supported
+              change (id, true) ∈ (execution.includePending app named).receipts at receipt
+              change ∃ message, execution.network.lookup id = some message ∧
+                app.handle execution.application message =
+                  some (execution.includePending app named).application
+              unfold Execution.includePending MessageNetwork.includePending at receipt ⊢
+              cases found : execution.network.lookup named with
+              | none =>
+                  simp only [found] at receipt
+                  exact (fresh receipt).elim
+              | some message =>
+                  cases handled : app.handle execution.application message with
+                  | none =>
+                      simp only [found, handled, Option.getD_none] at receipt
+                      rcases List.mem_append.mp receipt with old | impossible
+                      · exact (fresh old).elim
+                      · simp at impossible
+                  | some native =>
+                      simp only [found, handled, Option.getD_some] at receipt ⊢
+                      rcases List.mem_append.mp receipt with old | added
+                      · exact (fresh old).elim
+                      · obtain ⟨sameId, _⟩ := Prod.mk.inj (List.mem_singleton.mp added)
+                        subst id
+                        exact ⟨message, found, handled⟩
+
+
 /-- A later response, timeout or inclusion cannot erase an existing receipt.
 The history may start after arbitrary prior deviations. -/
 theorem reaches_receipts_prefix (initial : PMF app.State) (horizon : Nat)

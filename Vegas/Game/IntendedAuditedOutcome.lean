@@ -31,7 +31,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- The audited outcome: the typed terminal store, if any, and every player's
 collection probability. -/
-abbrev AuditedOutcome := Option (State L setup.program.terminalCtx) × (Player → ℝ)
+abbrev AuditedOutcome := Option (Config Player L setup.program.terminalCtx) × (Player → ℝ)
 
 /-- The utility of an audited outcome: the forfeited utility of the store, or
 zero without one, minus each player's collection probability times its
