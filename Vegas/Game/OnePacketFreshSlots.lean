@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketComponentSteps
+import Vegas.Pending.ReactiveRuntime
 
 /-! # Fresh prepared slots are public
 
@@ -224,8 +225,10 @@ theorem environment_lookup_prepared (execution next : (application setup runtime
       cases (PMF.mem_support_pure_iff _ _).mp supported
       rfl
   | application command =>
-      obtain ⟨changed, _⟩ := applicationStep_facts execution next command reached
-      rw [(environmentStep_tables runtime _ _ command changed).2]
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
+      rw [(reactiveApplication_environment_tables runtime leaks execution.application state
+        command changed).2]
   | «include» id =>
       unfold ReactiveApplication.Execution.environmentStep at reached
       rw [PMF.support_map] at reached

@@ -3,6 +3,7 @@
 import Vegas.Game.OnePacketFactorization
 import Vegas.Game.OnePacketPendingPool
 import Vegas.Game.ServiceSettledEvidence
+import Interaction.ReactiveResponseAccounting
 
 /-! # Scheduler rounds factor through the operational record
 
@@ -352,7 +353,7 @@ theorem environment_stepProb
       obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ realized)
       obtain ⟨reached, member, same⟩ := PMF.support_map .. ▸ moved
       cases same
-      have recallEq := environmentStep_recall_append execution reached command member
+      have recallEq := app.environmentStep_environmentRecall execution reached command member
       rw [PMF.bind_apply, tsum_eq_single command]
       · rw [pmf_map_apply_of_injective _ (fun first second equal => by
             have inner := Option.some.inj equal
@@ -391,7 +392,7 @@ theorem environment_stepProb
         have inner := congrArg ReactiveApplication.Control.execution (Option.some.inj otherSame)
         change otherReached = reached at inner
         subst inner
-        have otherRecall := environmentStep_recall_append execution otherReached other
+        have otherRecall := app.environmentStep_environmentRecall execution otherReached other
           otherMember
         rw [recallEq] at otherRecall
         have entries := List.append_cancel_left otherRecall

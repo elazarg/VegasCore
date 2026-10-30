@@ -1119,6 +1119,20 @@ theorem handle_config_mem_step (runtime : EventGraphRuntime graph)
         handle_opening_config_step runtime state next id event candidate raw accepted
       exact ⟨event, rfl, ready, action, member⟩
 
+/-- Packets addressed to completed events are rejected. -/
+theorem handle_eq_none_of_completed (runtime : EventGraphRuntime graph)
+    (state : State graph) (message : Message Player (Payload graph))
+    (event : graph.EventId) (addressed : message.payload.event? graph = some event)
+    (completed : event ∈ state.config.cut.completed) : handle runtime state message = none := by
+  cases result : handle runtime state message with
+  | none => rfl
+  | some next =>
+      obtain ⟨named, namedEq, ready, _, _⟩ :=
+        handle_config_mem_step runtime state next message result
+      have same := Option.some.inj (namedEq.symm.trans addressed)
+      subst same
+      exact (ready.1 completed).elim
+
 /-- Every accepted packet preserves the clock and refreshes activation metadata
 around its unique graph completion.  This structural fact complements
 `handle_config_mem_step`; it exposes no private candidate or action data. -/

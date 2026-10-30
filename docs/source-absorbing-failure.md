@@ -374,31 +374,44 @@ These laws and the common consistency construction are checked adapters for
 the final compiler and equilibrium-preservation theorems. They do not by
 themselves close those end-to-end obligations.
 
-## Fixed roster timing boundary
+## Roster timing through automatic completion
 
-The fixed [roster scheduler](../Vegas/Game/ServiceRoster.lean) does not satisfy
-its claimed rank-based opportunity bound after automatic completion. Consider
-four consecutive bindings owned by A, A, A and B, followed by their reveals,
-with only each event's owner on its roster and every physical response silent.
+Unconditional ticks in obsolete roster blocks can violate rank-based service
+bounds. Consider bindings owned by A, A, A and B, followed by their reveals,
+with only each event's owner on its roster and every response silent.
 
-| Point in the fixed plan | Clock | Native progress |
+| Point in an unconditionally ticking plan | Clock | Native progress |
 | --- | --- | --- |
 | First binding expires | 1 | A defaults; A's next two bindings complete automatically. |
 | Second binding's obsolete block ends | 3 | B's binding has remained ready since clock 1. |
 | Third binding's obsolete block ends | 6 | B has still received no activation. |
 
-B's event has rank 3, reaction bound 3 and deadline duration 4. The opportunity
-condition already fails at clock 5; B's first activation at clock 6 is too late.
-Clock advancement does not reset the event's activation timestamp, and expiry
-of an already completed event stutters. This is a direct timing audit of the
-definitions, not yet a checked counterexample theorem.
+B's event has rank 3, reaction bound 3 and deadline duration 4. A native
+command fragment in [RosterAutomaticCompletion](../VegasTests/RosterAutomaticCompletion.lean)
+checks readiness at clock 1 and overdue readiness at clock 5. This is a checked
+operational fragment, rather than a full protocol trace of an alternative scheduler.
 
-The generic asynchronous service specification and its supplied contract do
-not change. The fixed roster realization and its `SourceServiceSpec.toAsync`
-builder require a corrected scheduler construction and a checked all-history
-service proof. Adding an opportunity or timing premise to that builder would
-not establish the missing realization. Scheduler changes are paused at this
-boundary; the final compiler and example gates remain open.
+The [roster scheduler](../Vegas/Game/ServiceRoster.lean) tags each instruction
+with its block's event. It suppresses clock ticks exactly when that event was
+already completed at block entry, as recorded in the public environment recall.
+It retains every activation, inclusion check, sample and expiry. A block live
+at entry keeps its entire tick tail, even if inclusion completes its event.
+The fixed command horizon and player response counts therefore stay intact.
+
+[The calendar invariant](../Vegas/Game/ServiceRosterInvariant.lean) bounds the
+age of surviving events and records responses made during obsolete blocks.
+[The initialized-history theorem](../Vegas/Game/ServiceRosterHistory.lean)
+derives that invariant for arbitrary raw player strategies, pending observation
+rules and network policies. Its internal state and recall facts come from the
+actual initialization and transitions; they are not service assumptions.
+
+[The service capstones](../Vegas/Game/ServiceRosterAsync.lean) give reaction
+bound `event.val`, protected inclusion bound zero and terminal completion at
+the fixed plan horizon. Each event's actor must occur in its roster, as in
+`ActorOpportunities`; deadlines remain `event.val + 1`. The concrete
+`SourceServiceSpec.toAsync` builder supplies the generic asynchronous service
+contract from these theorems. The compiler, strategic and paper acceptance
+gates below remain separate obligations.
 
 ## Remaining acceptance obligations
 
@@ -449,3 +462,55 @@ without generic commutation or foreign-observation erasure. This does not add a
 scheduler or runtime assumption. The remaining ledger and sequential strategic
 consumers and the acceptance obligations above must still check before the
 complete tower is replaced.
+
+
+## Native completion boundaries
+
+One ledger command can complete its addressed event and automatically complete
+several later events. The native relation is a finite supported graph path,
+as exposed by `reactiveApplication_graphSteps` in
+[ReactiveGraphSteps](../Vegas/Pending/ReactiveGraphSteps.lean). The
+`environmentStep_configStep`, `round_prefix` and `runUntil_completion_prefix`
+interfaces in [SourceServiceCompletion](../Vegas/Game/SourceServiceCompletion.lean)
+require replacement where they conclude that the prefix advances by at most
+one. A round still preserves its starting bound on recorded ready-event views:
+activation and response preserve the graph, while a completing environment
+command adds no player response.
+
+A stop at completion of event `e` can therefore end at any actual prefix rank
+strictly greater than `e.val`. It need not end at `e.val + 1`.
+`CompletionBoundary.stopped` must identify that actual later boundary, with
+its future events untouched, rather than a fixed successor rank. Likewise,
+`LateStopped` defined by an exact successor prefix is not a monotone
+completion test, and `completionValue` cannot read that fixed rank as the
+current endpoint after an automatic jump. These consumers require the event's
+completion predicate and the actual decoded endpoint. Prefix geometry and
+terminal stability can use finite-path induction and
+`Config.Step.path_eq_of_terminal`; no new scheduler condition follows from
+this change.
+
+Exact probability laws require more than supported-path existence.
+`State.drain_bind_runPlan_canonical` and `AcceptanceWitness.reactive_runPlan` in
+[ExclusionPolicyLaw](../Vegas/Pending/ExclusionPolicyLaw.lean),
+`SourceResidual.runPlan_readout_law` in
+[SourceServiceContinuation](../Vegas/Game/SourceServiceContinuation.lean), and
+`counted_canonical_source_continuation` in
+[OnePacketPrescribedSourceKernel](../Vegas/Game/OnePacketPrescribedSourceKernel.lean)
+preserve the full terminal continuation through automatic completion. They
+provide the continuation interface for completing the honest-client law;
+they do not identify a multi-event endpoint with one source step.
+
+The stopped comparisons count actual player responses, so automatic graph
+completions add no response charge. Readout-only terminal comparison can use
+`sourceTerminal_readout_law` from
+[SourceTerminalReadout](../Vegas/Game/SourceTerminalReadout.lean). A joint
+comparison with native exclusion utility must also retain the actual payoff:
+public default fixes that payoff even when the terminal reader returns `none`.
+Thus the global factorization through the optional readout used in
+[SourceTerminalComparison](../Vegas/Game/SourceTerminalComparison.lean) and
+[OnePacketHonestTerminalApproximation](../Vegas/Game/OnePacketHonestTerminalApproximation.lean)
+is false for incomplete defaulted states. The remaining acceptance obligation
+is a freeze law for the actual joint native observable, or a payoff equality
+restricted to the proved readout support. This does not justify a new bound on
+incomplete source runs or a new service assumption; the final source comparison
+uses the full source horizon.

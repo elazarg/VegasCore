@@ -1,11 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Examples.ProgramPayments
-import Vegas.Game.ServiceRosterAsync
+import Vegas.Game.SourceServiceSpec
 
 /-! # A checked native service for the conditional payment program
 
-The existing roster builder activates Alice once at each of the two source
+The roster builder activates Alice once at each of the two source
 instructions, includes her latest response, advances the clock and expires the
 instruction. The full bounded raw response menu still admits silence, failed
 binding, withholding and malformed packets. The service certificate comes from

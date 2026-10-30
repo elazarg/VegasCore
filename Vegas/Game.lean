@@ -423,6 +423,11 @@ import Vegas.Game.ServiceRevealTail
 import Vegas.Game.ServiceRevealVirtual
 import Vegas.Game.ServiceRoster
 import Vegas.Game.ServiceRosterAsync
+import Vegas.Game.ServiceRosterContract
+import Vegas.Game.ServiceRosterFacts
+import Vegas.Game.ServiceRosterHistory
+import Vegas.Game.ServiceRosterInvariant
+import Vegas.Game.ServiceRosterPosition
 import Vegas.Game.ServiceSettledEvidence
 import Vegas.Game.ServiceTimingCoupling
 import Vegas.Game.ServiceWithheldForfeit

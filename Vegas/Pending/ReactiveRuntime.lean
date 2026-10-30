@@ -111,6 +111,42 @@ theorem reactiveApplication_environment_tables (runtime : EventGraphRuntime grap
   have prior := environmentStep_tables runtime state native command moved
   exact ⟨native.drain_tables.1.trans prior.1, native.drain_tables.2.1.trans prior.2⟩
 
+/-- A clock tick preserves a quiescent graph and its activation timestamps. -/
+theorem reactiveApplication_tick_eq_pure (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (state : State graph) (quiescent : ∀ query, ¬ state.AutomaticReady query) :
+    (runtime.reactiveApplication leaks).environment state .advanceClock =
+      PMF.pure { state with clock := state.clock + 1 } := by
+  change (environmentStep runtime state .advanceClock).map State.drain = _
+  rw [environmentStep, PMF.pure_map]
+  rw [State.drain_eq_of_clear]
+  exact quiescent
+
+/-- Sampling a completed event preserves a quiescent application, including automatic service. -/
+theorem reactiveApplication_sample_eq_pure_of_completed
+    (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (state : State graph) (event : graph.EventId)
+    (completed : event ∈ state.config.cut.completed)
+    (quiescent : ∀ query, ¬ state.AutomaticReady query) :
+    (runtime.reactiveApplication leaks).environment state (.executeSample event) =
+      PMF.pure state := by
+  change (environmentStep runtime state (.executeSample event)).map State.drain = _
+  rw [environmentStep_executeSample_of_not_ready runtime state event
+    (fun ready => ready.1 completed), PMF.pure_map, state.drain_eq_of_clear quiescent]
+
+/-- Expiry of a completed event preserves a quiescent application, including automatic service. -/
+theorem reactiveApplication_expire_eq_pure_of_completed
+    (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (state : State graph) (event : graph.EventId)
+    (completed : event ∈ state.config.cut.completed)
+    (quiescent : ∀ query, ¬ state.AutomaticReady query) :
+    (runtime.reactiveApplication leaks).environment state (.expire event) = PMF.pure state := by
+  change (environmentStep runtime state (.expire event)).map State.drain = _
+  rw [environmentStep_expire_of_not_ready runtime state event
+    (fun ready => ready.1 completed), PMF.pure_map, state.drain_eq_of_clear quiescent]
+
 /-- Submission does not change the public contract state, so the emitted
 token is the one issued in the state the sender saw. -/
 theorem reactiveApplication_submit_publicView (runtime : EventGraphRuntime graph)

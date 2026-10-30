@@ -58,20 +58,22 @@ theorem finiteBindingTypes (bonus : Int) : (program bonus).FiniteBindingTypes :=
   exact ⟨inferInstance, trivial⟩
 
 def policy (bonus : Int) (choice : Bool) : BehavioralPolicy Player.alice (program bonus) :=
-  (fun _ _ => PMF.pure (.success choice), (fun _ _ => PMF.pure true, PUnit.unit))
+  (fun _ _ _ => PMF.pure (some (.success choice)),
+    (fun _ _ _ => PMF.pure true, PUnit.unit))
 
 def profile (bonus : Int) (choice : Bool) : BehavioralProfile (program bonus)
   | .alice => policy bonus choice
 
-def final (bonus : Int) (choice : Bool) : State simpleExpr (program bonus).terminalCtx :=
-  Env.cons (.success choice) (Env.cons (.success choice) (Env.empty (CellVal simpleExpr)))
+def final (bonus : Int) (choice : Bool) : Config Player simpleExpr (program bonus).terminalCtx :=
+  revealSuccessor 1 .here
+    (commitSuccessor 0 acceptGuard (Config.initial initial) (some (.success choice))) true
 
 def result (bonus : Int) (choice : Bool) : PublicOutcome (program bonus) :=
-  Env.cons (.success choice) (Env.empty simpleExpr.Val)
+  ⟨Env.cons (.success choice) (Env.empty simpleExpr.Val), ⟨[none, none]⟩⟩
 
 /-- The player's valuation charges one unit for publishing true. -/
 def valuation (bonus : Int) (outcome : PublicOutcome (program bonus)) (_who : Player) : ℝ :=
-  match (outcome.get .here : PublicationResult Bool) with
+  match (outcome.values.get .here : PublicationResult Bool) with
   | .success true => -1
   | _ => 0
 
@@ -89,16 +91,17 @@ theorem setup_gameForm (bonus : Int) : (setup bonus).gameForm = (game bonus).for
 by the same conditional payment instruction. -/
 theorem utility_eq (bonus : Int) (outcome : PublicOutcome (program bonus)) :
     (game bonus).utility outcome .alice =
-      match (outcome.get .here : PublicationResult Bool) with
+      match (outcome.values.get .here : PublicationResult Bool) with
       | .success true => (bonus : ℝ) - 1
       | _ => 0 := by
   have payments : (program bonus).publicPayoffs outcome =
-      [(.alice, if (outcome.get .here : PublicationResult Bool).getD false then bonus else 0)] :=
+      [(.alice, if (outcome.values.get .here : PublicationResult Bool).getD false
+        then bonus else 0)] :=
     rfl
   change valuation bonus outcome .alice +
     (transferAmount ((program bonus).publicPayoffs outcome) .alice : ℝ) = _
   rw [payments]
-  cases published : (outcome.get .here : PublicationResult Bool) with
+  cases published : (outcome.values.get .here : PublicationResult Bool) with
   | failure => simp [valuation, published, PublicationResult.getD, transferAmount]
   | success choice =>
       cases choice <;> simp [valuation, published, PublicationResult.getD, transferAmount]
@@ -107,7 +110,7 @@ theorem utility_eq (bonus : Int) (outcome : PublicOutcome (program bonus)) :
 theorem utility_abs_le (bonus : Int) (outcome : PublicOutcome (program bonus)) :
     |(game bonus).utility outcome .alice| ≤ |(bonus : ℝ) - 1| := by
   rw [utility_eq]
-  cases (outcome.get .here : PublicationResult Bool) with
+  cases (outcome.values.get .here : PublicationResult Bool) with
   | failure => simp
   | success choice => cases choice <;> simp
 
@@ -118,7 +121,7 @@ theorem expectedUtility_le (bonus : Int) (law : PMF (PublicOutcome (program bonu
   apply expect_le_const law _ (payoffIntegrable_of_bounded law _ (utility_abs_le bonus))
   intro outcome _
   rw [utility_eq]
-  cases (outcome.get .here : PublicationResult Bool) with
+  cases (outcome.values.get .here : PublicationResult Bool) with
   | failure => exact le_max_right _ _
   | success choice =>
       cases choice
@@ -134,7 +137,10 @@ theorem hasIntegrableDeviations (bonus : Int) (choice : Bool) :
 theorem run_profile (bonus : Int) (choice : Bool) :
     (program bonus).run (profile bonus choice) initial = PMF.pure (final bonus choice) := by
   simp only [SourceProgram.run, program, profile, policy, runFrom, commitKernel, revealKernel,
-    afterCommit, PMF.pure_bind]
+    afterCommit, Config.initial_defaulted, Finset.notMem_empty, ↓reduceDIte, PMF.pure_bind]
+  rw [dite_eq_right (by
+    change Player.alice ∉ (∅ : Finset Player)
+    exact Finset.notMem_empty _), PMF.pure_bind]
   rfl
 
 theorem play_profile (bonus : Int) (choice : Bool) :
@@ -144,7 +150,7 @@ theorem play_profile (bonus : Int) (choice : Bool) :
   rfl
 
 theorem evaluatePayoffs_final (bonus : Int) (choice : Bool) :
-    (program bonus).evaluatePayoffs (final bonus choice) =
+    (program bonus).evaluatePayoffs (final bonus choice).state =
       [(.alice, if choice then bonus else 0)] := by
   cases choice <;> rfl
 

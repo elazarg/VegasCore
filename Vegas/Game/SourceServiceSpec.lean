@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.SourceServiceMenu
-import Vegas.Game.ServiceRoster
+import Vegas.Game.ServiceRosterAsync
+import Vegas.Game.AsyncServiceSpec
 import Vegas.Game.RevealServicePayoffs
 import Vegas.Pending.ReactiveBoundedValues
 import Vegas.Source.SetupProtocol
@@ -48,11 +49,13 @@ structure SourceServiceSpec (Player : Type) [DecidableEq Player] (L : IExpr)
 
 attribute [instance] SourceServiceSpec.initialFinite SourceServiceSpec.leaksFinite
 
-variable [Fintype Player]
-
 namespace SourceServiceSpec
 
 variable (service : SourceServiceSpec Player L)
+
+section InformationModels
+
+variable [Fintype Player]
 
 abbrev menu := sourceServiceMenu service.setup service.leaks service.bounds service.rosters
 
@@ -72,11 +75,41 @@ abbrev model := service.menu.information (initialLaw service.setup) service.plan
 /-- The horizon of the standard native continuation comparisons. -/
 abbrev fuel : Nat := 2 * service.planLength + 1
 
-/-- The typed source terminal state read from a native history. -/
+/-- The complete source terminal configuration read from a native history. -/
 abbrev readout (final : (service.menu.protocol (initialLaw service.setup) service.planLength
     service.scheduler).History) :
-    Option (State L service.setup.program.terminalCtx) :=
+    Option (Config Player L service.setup.program.terminalCtx) :=
   sourceReadout service.setup (runtime service.setup) service.leaks final.state
+
+end InformationModels
+
+/-- **The calendar instance.** The fixed roster service is an asynchronous
+service with the plan length as horizon, reaction bound `event.val` and
+inclusion bound zero. -/
+def toAsync : AsyncServiceSpec Player L where
+  setup := service.setup
+  leaks := service.leaks
+  bounds := service.bounds
+  values := service.values
+  initialValues := service.initialValues
+  capacity := service.capacity
+  mode := .sequential
+  deadline := rankDeadline service.setup .sequential
+  horizon := service.planLength
+  scheduler := service.scheduler
+  delay := fun event => event.val
+  bound := fun _ => 0
+  contract := rosterScheduler_asyncContract service.setup service.leaks service.rosters
+    service.network service.opportunities
+  timely := rosterScheduler_asyncTimely service.setup
+  initialFinite := service.initialFinite
+  leaksFinite := service.leaksFinite
+  schedulerFinite := ReactiveApplication.FiniteNature.scheduler_finite
+    (initial := initialLaw service.setup)
+
+@[simp] theorem toAsync_horizon : service.toAsync.horizon = service.planLength := rfl
+
+@[simp] theorem toAsync_scheduler : service.toAsync.scheduler = service.scheduler := rfl
 
 end SourceServiceSpec
 

@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReactiveRuntime
 import Interaction.ReactivePublication
+import Interaction.MessageNetworkIdentity
 import Vegas.Pending.ServicePlan
 
 /-! # Reserved service with one owner activation
@@ -60,6 +61,50 @@ def reactiveLatest (runtime : EventGraphRuntime graph)
         view.Unpublished (runtime.reactiveApplication leaks) message.id) with
   | none => .wait
   | some message => .include message.id
+
+/-- Including the latest packet for a completed target preserves the application.
+Identifier uniqueness ensures the selected identifier names the selected packet. -/
+theorem reactiveLatest_application_of_completed (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (execution next : (runtime.reactiveApplication leaks).Execution)
+    (event : graph.EventId) (owner : Player)
+    (completed : event ∈ execution.application.config.cut.completed)
+    (unique : execution.network.UniqueIds)
+    (reached : next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
+      (runtime.reactiveLatest leaks event owner
+        (execution.observeEnvironment (runtime.reactiveApplication leaks)))).support) :
+    next.application = execution.application := by
+  unfold reactiveLatest at reached
+  split at reached
+  · simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.mem_support_pure_iff] at reached
+    subst next
+    rfl
+  · rename_i selected selectedEq
+    have selectedPending := List.mem_reverse.mp (List.mem_of_find?_eq_some selectedEq)
+    have selectedAddressed := List.find?_some selectedEq
+    simp only [decide_eq_true_eq] at selectedAddressed
+    have selectedNamed : selected.payload.call.event? graph = some event := selectedAddressed.2.1
+    simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+      PMF.mem_support_pure_iff] at reached
+    subst next
+    change (execution.includePending (runtime.reactiveApplication leaks)
+      selected.id).application = _
+    unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
+    cases lookup : execution.network.lookup selected.id with
+    | none => rfl
+    | some message =>
+        have present := List.mem_of_find?_eq_some lookup
+        have identifiedBool := List.find?_some lookup
+        have identified : message.id = selected.id := by
+          simpa only [decide_eq_true_eq] using identifiedBool
+        have same : message = selected :=
+          (unique.pending selected selectedPending).pending message present identified
+        subst message
+        have rejected := reactiveHandle_none (leaks := leaks)
+          (handle_eq_none_of_completed runtime execution.application
+            ⟨selected.id, selected.payload.call⟩ event selectedNamed completed)
+        simp only [rejected, Option.getD_none]
 
 def interactionInstruction (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))

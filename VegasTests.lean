@@ -17,6 +17,7 @@ import VegasTests.PartialEnvironment
 import VegasTests.RecoveryCompiler
 import VegasTests.RecoveryScenarios
 import VegasTests.ResultExpressions
+import VegasTests.RosterAutomaticCompletion
 import VegasTests.RuntimeDefault
 import VegasTests.ServiceTiming
 import VegasTests.SourceSemantics
