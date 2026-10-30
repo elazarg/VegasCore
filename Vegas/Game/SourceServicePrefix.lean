@@ -361,4 +361,37 @@ theorem sourceServicePrefix?_terminal_readout
         (config.history.map (setup.eventGraph.fromModeCompletion .sequential)) :=
   serviceSourcePrefix?_terminal_readout setup .sequential config
 
+/-- Every completed native cut decodes to a terminal source position. Field
+availability suffices; no execution provenance or service premise is needed. -/
+theorem serviceSourcePrefix?_terminal
+    (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
+    (config : (serviceGraph setup mode).Config) (terminal : config.cut.Terminal) :
+    ∃ point, serviceSourcePrefix? setup mode (eventCount setup.program) config = some point ∧
+      ProtocolState.terminal setup.program point := by
+  obtain ⟨source, decoded, _⟩ := exists_decodeState_agrees (terminalRefs setup.program)
+    config.store (config.store_available_of_terminal terminal)
+  have readout := serviceSourcePrefix?_terminal_readout setup mode config
+  change setup.protocolReadout (serviceSourcePrefix? setup mode (eventCount setup.program)
+    config) = (decodeState? (terminalRefs setup.program) config.store).map _ at readout
+  rw [decoded] at readout
+  cases decodedPoint : serviceSourcePrefix? setup mode (eventCount setup.program) config with
+  | none =>
+      simp only [decodedPoint, Setup.protocolReadout, Option.bind_none, Option.map_some] at readout
+      cases readout
+  | some point =>
+      exact ⟨point, rfl,
+        decodeSourcePrefix?_terminal setup.program _ _ _ _ _ _ _ point decodedPoint⟩
+
+/-- At a completed native cut, the source continuation is the pure full source
+readout of that cut, including private decisions and the public default record. -/
+theorem sourceContinuation_terminal
+    (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+    (profile : BehavioralProfile setup.program) (config : (serviceGraph setup mode).Config)
+    (terminal : config.cut.Terminal) :
+    sourceContinuation setup profile (eventCount setup.program) config =
+      PMF.pure (setup.protocolReadout
+        (serviceSourcePrefix? setup mode (eventCount setup.program) config)) := by
+  obtain ⟨point, decoded, stopped⟩ := serviceSourcePrefix?_terminal setup mode config terminal
+  exact setup.continuationLaw_terminal profile _ (by rw [decoded]; exact stopped)
+
 end Vegas

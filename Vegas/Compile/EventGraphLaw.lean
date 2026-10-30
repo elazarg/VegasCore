@@ -598,4 +598,38 @@ theorem runFrom_option_law
         (refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl)
         (offset + 1) tailAligned nextConfig nextPrefix agrees.1 agrees.2.1 agrees.2.2
 
+/-- A compiled suffix runs for exactly the configuration's remaining event count.
+The ordinary graph runner preserves the complete source continuation configuration. -/
+theorem CompiledPolicySuffix.runFrom_remaining_law
+    {wholeΓ : SourceCtx Player L} {wholeOpen : Finset VarId}
+    (whole : SourceProgram Player L wholeΓ wholeOpen)
+    (wholeProfile : BehavioralProfile whole)
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    (program : SourceProgram Player L Γ openNames) (profile : BehavioralProfile program)
+    (refs : ContextRefs (graphLayout whole) Γ) (source : SourceProgram.Config Player L Γ)
+    (embedding : OutputEmbedding (inputLayout wholeΓ) (outputLayout whole) program)
+    (refsBefore : ContextRefsBefore refs embedding) (offset : Nat)
+    (aligned : CompiledPolicySuffix whole wholeProfile program profile refs
+      source.revelations source.registry embedding refsBefore offset)
+    (config : (toEventGraph whole).Config) (ordered : config.cut.IsPrefix offset)
+    (agrees : refs.Agrees source.state config.store)
+    (history : decodeHistory whole config.history = source.history)
+    (defaults : config.defaults = source.defaults) :
+    ((toEventGraph whole).runPlan
+      ((toEventGraph whole).policyPlan (compileEventProfile whole wholeProfile)
+        (toEventGraph whole).canonicalScheduler) config.remaining config).map
+          (fun final => decodeConfig? whole program refs source.revelations source.registry
+            embedding final.store final.history) =
+      (SourceProgram.runFrom program profile source).map some := by
+  have count := aligned.graphSuffix.countEq
+  change offset + eventCount program = eventCount whole at count
+  have fuel : config.remaining = eventCount program := by
+    unfold EventGraph.Config.remaining
+    rw [ordered.card]
+    change eventCount whole - offset = eventCount program
+    omega
+  rw [fuel]
+  exact runFrom_option_law whole wholeProfile program profile refs source embedding refsBefore
+    offset aligned config ordered agrees history defaults
+
 end Vegas

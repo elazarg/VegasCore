@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.EventGraph.Semantics
+import Mathlib.Order.Interval.Finset.Fin
 
 /-! # Canonical step equations
 
@@ -33,6 +34,21 @@ theorem IsPrefix.unique {cut : order.Cut} {first second : Nat}
   · have inside : second < order.eventCount := by have := left.1; omega
     have completed := (left.2 ⟨second, inside⟩).mpr upper
     exact Nat.lt_irrefl _ ((right.2 ⟨second, inside⟩).mp completed)
+
+/-- A numeric prefix contains exactly its stated number of events. -/
+theorem IsPrefix.card {cut : order.Cut} {length : Nat}
+    (ordered : cut.IsPrefix length) : cut.completed.card = length := by
+  by_cases active : length < order.eventCount
+  · have same : cut.completed = Finset.Iio (⟨length, active⟩ : Fin order.eventCount) := by
+      ext event
+      exact (ordered.2 event).trans (by simp only [Finset.mem_Iio]; rfl)
+    rw [same, Fin.card_Iio]
+  · have lengthEq : length = order.eventCount := by have := ordered.1; omega
+    have same : cut.completed = Finset.univ := by
+      ext event
+      simp only [Finset.mem_univ, iff_true]
+      exact (ordered.2 event).mpr (lengthEq ▸ event.isLt)
+    rw [same, Finset.card_univ, Fintype.card_fin, lengthEq]
 
 /-- The next numeric event is ready at a nonterminal prefix, irrespective of
 which subset of earlier events is a direct dependency. -/

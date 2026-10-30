@@ -2,14 +2,15 @@
 
 import Vegas.Pending.ReactiveGraphSteps
 import Vegas.Game.RevealServicePayoffs
+import Vegas.Game.SourceServicePrefix
 import GameTheoryExtensions.Analysis.Protocol.StoppedReadout
 import GameTheoryExtensions.Protocol.ContinuationHorizon
 
-/-! # Completed native source cuts freeze the typed source readout
+/-! # Completed native source cuts freeze the full source readout
 
 The native configuration cannot change once every graph event has completed.
 Callbacks, traffic, recall, clocks and receipts may continue changing. The exact
-law below concerns the typed source readout and functions of that readout only;
+law below concerns the full source readout and functions of that readout only;
 it does not identify complete histories or audit charges.
 -/
 
@@ -66,7 +67,7 @@ theorem sourceTerminal_transition {initial : PMF (application setup runtime
 
 variable [Fintype Player]
 
-/-- The native typed readout stays fixed under every continuation profile once
+/-- The full source readout stays fixed under every continuation profile once
 the source cut has completed, even while callbacks and network effects continue. -/
 theorem sourceTerminal_readout_stable (menu : (application setup runtime
   leaks).ResponseMenu)
@@ -104,7 +105,7 @@ theorem sourceTerminal_readout_stable (menu : (application setup runtime
         serviceSourceReadout_eq_decode, same]
 
 /-- Stopping at actual source completion preserves the exact terminal law of
-the typed readout. Every legal profile is covered; no final-law equality is
+the full source readout. Every legal profile is covered; no final-law equality is
 assumed, and ancillary histories or receipts are not projected into this law. -/
 theorem sourceTerminal_readout_law (menu : (application setup runtime
   leaks).ResponseMenu)
@@ -123,5 +124,33 @@ theorem sourceTerminal_readout_law (menu : (application setup runtime
     (menu.information initial horizon scheduler) certificate players _ _ _ start
   exact sourceTerminal_readout_stable (runtime := runtime) menu initial horizon scheduler
     certificate players
+
+/-- Every finite native continuation from a completed source cut has the pure
+source continuation law. The response menu, initial law and player policies
+are arbitrary, and all source configuration fields are retained. -/
+theorem terminalPrefix_readout_law (menu : (application setup runtime leaks).ResponseMenu)
+    (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
+    (scheduler : (application setup runtime leaks).Scheduler)
+    (certificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)
+    (players : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
+    (start : (menu.protocol initial horizon scheduler).History)
+    (control : (application setup runtime leaks).Control) (state : start.state = some control)
+    (terminal : control.execution.application.config.cut.Terminal)
+    (profile : BehavioralProfile setup.program) :
+    ((menu.information initial horizon scheduler).runBehavioralTerminalFrom certificate players
+        start).map (fun final => sourceReadout setup runtime leaks final.state) =
+      sourceContinuation setup profile (eventCount setup.program)
+        control.execution.application.config := by
+  have stable := sourceTerminal_readout_stable (runtime := runtime) menu initial horizon
+    scheduler certificate players start (by simpa only [state, NativeSourceTerminal] using terminal)
+  rw [sourceContinuation_terminal setup profile _ terminal]
+  calc
+    _ = PMF.pure (sourceReadout setup runtime leaks start.state) := by
+      exact (map_congr_on_support _
+        (g := fun _ => sourceReadout setup runtime leaks start.state)
+        (fun final supported => stable final supported)).trans (PMF.map_const _ _)
+    _ = _ := by
+      rw [state, sourceReadout, serviceSourceReadout_eq_decode,
+        serviceSourcePrefix?_terminal_readout]
 
 end Vegas

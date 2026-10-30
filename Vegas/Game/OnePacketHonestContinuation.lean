@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketBoundaryWaiting
-import Vegas.Game.RecoveryTerminalSourceLaw
+import Vegas.Game.SourceTerminalReadout
 import Vegas.Game.OnePacketChanceStoppedLaw
 
 /-! # Honest source continuation under counted native service -/
@@ -92,9 +92,8 @@ theorem counted_honest_boundary_readout_law
         change rank ≤ (graph setup).order.eventCount at within
         omega
       subst rank
-      exact terminalPrefix_readout_law (runtime := runtime) bounds certificate players start _
-        state boundary.ordered
-        profile
+      exact terminalPrefix_readout_law (runtime := runtime) (menu) (initialLaw setup) horizon
+        scheduler certificate players start _ state boundary.ordered.terminal profile
   | succ gap ih =>
       intro rank start execution gapEq state boundary point decoded intended
       have inside : rank < (graph setup).order.eventCount := by omega

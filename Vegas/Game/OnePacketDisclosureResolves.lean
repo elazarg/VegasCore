@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Source.IntendedForPlayer
+import Vegas.Game.SourcePrefixPublications
 import Vegas.Game.OnePacketOpeningUnique
 
 /-! # Disclosures resolve at states forced for the observer
@@ -58,12 +59,6 @@ theorem decodeEventAction_disclosure_true {Γ : SourceCtx Player L} {openNames :
 
 namespace ProtocolState
 
-/-- No reveal has failed at a program's entry. -/
-theorem not_revealFailed_entry (who : Player) {Γ : SourceCtx Player L} {O : Finset VarId}
-    (program : SourceProgram Player L Γ O) (config : Config Player L Γ) :
-    ¬ RevealFailed who program (entry program config) := by
-  cases program <;> exact fun failed => failed
-
 /-- **A disclosing player's reveals stay successful.** From a point intended for
 a player at which no reveal of the player has failed, a step in which the
 player discloses at its reveals leaves no failed reveal of the player. -/
@@ -118,73 +113,6 @@ theorem not_revealFailed_step (who : Player) : {Γ : SourceCtx Player L} → {O 
           · exact not_revealFailed_step who next rest joint after intended
               (fun earlier => clean (Or.inr earlier)) discloses supported later
 
-/-- **A stored failed publication is a failed reveal.** A point decoded past a
-reveal of `who` whose stored publication is a failure shows `who`'s reveal
-failed. -/
-theorem revealFailed_of_decode_failure {Field : Type} [DecidableEq Field]
-    {layout : Field → EventGraph.EventField Player L} {Γ : SourceCtx Player L}
-    {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames) :
-    ∀ (count : Nat) (refs : ContextRefs layout Γ)
-      (registry : Registry Γ) (revelations : Revelations Γ)
-      (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
-      (store : EventGraph.Store layout) (history : History Player L)
-      (state : ProtocolState program) (bound : count < eventCount program) (who : Player)
-      (payload : L.Ty) (publication : outputLayout program ⟨count, bound⟩ = .publication payload),
-      decodeSourcePrefix? program refs registry revelations outputs (count + 1) store history =
-          some state →
-      eventOwner? program ⟨count, bound⟩ = some who →
-      (outputs ⟨count, bound⟩).get? store = some (cast
-        (congrArg EventGraph.EventField.Value publication.symm)
-        (PublicationResult.failure : PublicationResult (L.Val payload))) →
-      RevealFailed who program state := by
-  induction program with
-  | ret _ =>
-      intro count _ _ _ _ _ _ _ bound
-      simp [eventCount] at bound
-  | sample _ fresh _ next ih =>
-      intro count refs registry revelations outputs store history state bound who payload
-        publication decoded owned read
-      cases count with
-      | zero => cases publication
-      | succ count =>
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          exact ih count _ _ _ _ store history rest (Nat.lt_of_succ_lt_succ bound) who payload
-            publication restDecoded owned read
-  | commit name owner fresh guard next ih =>
-      intro count refs registry revelations outputs store history state bound who payload
-        publication decoded owned read
-      cases count with
-      | zero => cases publication
-      | succ count =>
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          exact ih count _ _ _ _ store history rest (Nat.lt_of_succ_lt_succ bound) who payload
-            publication restDecoded owned read
-  | reveal published owner name fresh source unresolved next ih =>
-      intro count refs registry revelations outputs store history state bound who payload
-        publication decoded owned read
-      cases count with
-      | zero =>
-          cases Option.some.inj owned
-          cases publication
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          obtain ⟨cells, cellsDecoded, rfl⟩ := Option.map_eq_some_iff.mp restDecoded
-          refine Or.inl ⟨rfl, ?_⟩
-          rw [base_entry]
-          unfold decodeState? at cellsDecoded
-          erw [read] at cellsDecoded
-          obtain ⟨head, headEq, rest⟩ := Option.bind_eq_some_iff.mp cellsDecoded
-          obtain ⟨tail, _, cellsEq⟩ := Option.bind_eq_some_iff.mp rest
-          cases Option.some.inj headEq
-          cases Option.some.inj cellsEq
-          rfl
-      | succ count =>
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          exact Or.inr (ih count _ _ _ _ store history rest (Nat.lt_of_succ_lt_succ bound) who
-            payload publication restDecoded owned read)
 
 end ProtocolState
 

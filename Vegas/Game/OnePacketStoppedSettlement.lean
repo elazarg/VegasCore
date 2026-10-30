@@ -22,8 +22,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
   {bound : (graph setup).EventId → Nat}
   (inclusion : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some control) →
+    control.execution.application.config.defaulted = ∅ →
     ProtectedInclusionAt runtime leaks control.execution bound)
 
 local notation "menu" => bounds.onePacketMenu runtime leaks
@@ -32,8 +33,9 @@ local notation "protocol" => ReactiveApplication.ResponseMenu.protocol menu (ini
 local notation "model" => ReactiveApplication.ResponseMenu.information menu (initialLaw setup)
   horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks) (fun state => ExclusionEvidence 0 ∅ (RecoveryState.mk
-    state ∅))
+  (app := application setup runtime leaks)
+    (fun state : EventGraphRuntime.State (graph setup) =>
+      EventGraph.Config.defaulted (EventGraphRuntime.State.config state) = ∅)
 
 include inclusion in
 /-- Counted native inclusion settles recorded fresh one-packet calls at every
@@ -45,8 +47,7 @@ theorem counted_stopped_freshCall_receipt
     (extraStop : (protocol).History → Prop)
     (start : (protocol).History) (current : (application setup runtime leaks).Control)
     (state : start.state = some current)
-    (clear : ExclusionEvidence 0 ∅
-      (⟨current.execution.application, ∅⟩ : RecoveryState (graph setup)))
+    (clear : current.execution.application.config.defaulted = ∅)
     (who : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some who)
     (entry : (application setup runtime leaks).PlayerEntry)
@@ -78,8 +79,7 @@ theorem counted_stopped_freshCall_receipt
     · exact List.mem_append_left _ first
     · exact List.mem_append_right _ (List.mem_cons_of_mem _ last)
   rcases endpoint with clearStop | boundary
-  · have finalClear : ExclusionEvidence 0 ∅
-        (⟨final.execution.application, ∅⟩ : RecoveryState (graph setup)) := by
+  · have finalClear : final.execution.application.config.defaulted = ∅ := by
       simpa only [finalState, ReactiveApplication.stateInvariant] using clearStop
     exact (prescribed_packet_counted_clear_settles setup runtime leaks bounds horizon scheduler
       bound

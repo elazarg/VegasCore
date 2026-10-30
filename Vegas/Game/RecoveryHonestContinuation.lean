@@ -3,7 +3,7 @@
 import Vegas.Game.OnePacketHonestContinuation
 import Vegas.Game.RecoveryCountedService
 import Vegas.Game.RecoveryBoundaryWaiting
-import Vegas.Game.RecoveryTerminalSourceLaw
+import Vegas.Game.SourceTerminalReadout
 import Vegas.Game.RecoveryChanceStoppedLaw
 
 /-! # Honest source continuation on the actual recovery service -/

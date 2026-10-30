@@ -396,7 +396,6 @@ import Vegas.Game.RecoveryStoppedContinuationValue
 import Vegas.Game.RecoveryStoppedSettlement
 import Vegas.Game.RecoveryStoppedSourceLaw
 import Vegas.Game.RecoverySuccessorBoundary
-import Vegas.Game.RecoveryTerminalSourceLaw
 import Vegas.Game.RecoveryUnintendedComparison
 import Vegas.Game.RecoveryUnintendedValue
 import Vegas.Game.RecoveryUnpendingChoices

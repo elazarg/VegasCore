@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketSureFailure
+import Vegas.Game.OnePacketEventFailure
 import Vegas.Game.OnePacketActorRecord
 import Vegas.Game.ServiceBlockView
 
@@ -10,9 +11,8 @@ import Vegas.Game.ServiceBlockView
 under arbitrary responses and every scheduler, the configuration decodes at a
 prefix, and every completed binding event whose output is a failure makes its
 owner owe a failure at the decoded point (`Vegas.FailedBindingRecord`,
-`Vegas.failedBindingRecord_history`): a binding output is the action that
-completed the event, so a failed output is a failing decoded completion, and
-owing a failure is closed under later steps.
+`Vegas.failedBindingRecord_history`). The record reads the stored binding
+result, and owing a failure is closed under later source steps.
 -/
 
 noncomputable section
@@ -30,19 +30,6 @@ variable {Player : Type} [DecidableEq Player]
   {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-omit [DecidableEq Player] in
-/-- A failure stored in an event's output is a failure read through any
-reference to that output. -/
-theorem storeEventFailed_get? {graph : EventGraph Player L}
-    {store : EventGraph.Store graph.layout} {event : graph.EventId}
-    (failed : StoreEventFailed store event) {kind : EventGraph.EventField Player L}
-    (ref : EventGraph.FieldRef graph.layout kind) (field : ref.field = .inr event) :
-    ∃ value, ref.get? store = some value ∧ kind.IsFailure value := by
-  rcases ref with ⟨refField, layoutEq⟩
-  change refField = .inr event at field
-  subst field
-  subst layoutEq
-  exact failed
 
 section Record
 

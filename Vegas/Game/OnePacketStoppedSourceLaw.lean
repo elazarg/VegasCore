@@ -1,379 +1,117 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketStoppedCommitment
 import Vegas.Game.OnePacketStoppedAcceptance
-import Vegas.Game.OnePacketCommitmentFreshCall
+import Vegas.Game.SourceServiceCheckpoint
+import Vegas.Compile.EventGraphLaw
 
-/-! # Source-step laws at counted native event completion -/
+/-! # Source continuation law at counted packet boundaries
+
+A supported packet-completion stop retains the full ordinary graph continuation
+of its typed accepted action. The compiler's suffix law then identifies the complete
+source execution, including failed publication, public defaults and actual own choices.
+The suffix and checkpoint are typed compiler certificates; no successful-guard condition
+is required.
+-/
 
 noncomputable section
 
 namespace Vegas
 
-open SourceProgram GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Interaction
-  EventGraphRuntime GameTheory.Math.Probability
+open SourceProgram EventGraphRuntime GameTheory.Math.Probability
 
-variable {Player : Type} [DecidableEq Player] [Fintype Player]
-  {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)}
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  (setup : Setup (Player := Player) (L := L))
+variable [Fintype Player]
   {runtime : EventGraphRuntime (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {bounds : MessageBounds (graph setup)}
-  {horizon : Nat}
+  {leaks : Interaction.MessageNetwork.ObservationRule Player
+    (WitnessedPacket (graph setup))}
+  {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}
   {bound : (graph setup).EventId → Nat}
-  (inclusion : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
-    ProtectedInclusionAt runtime leaks control.execution bound)
 
-local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks) (fun state => ExclusionEvidence 0 ∅ (RecoveryState.mk
-    state ∅))
+local notation "menu" => bounds.onePacketMenu runtime leaks
+local notation "protocol" => Interaction.ReactiveApplication.ResponseMenu.protocol menu
+  (initialLaw setup) horizon scheduler
+local notation "model" => Interaction.ReactiveApplication.ResponseMenu.information menu
+  (initialLaw setup) horizon scheduler
+local notation "Clear" => Interaction.ReactiveApplication.stateInvariant
+  (app := application setup runtime leaks)
+    (fun state : EventGraphRuntime.State (graph setup) =>
+      EventGraph.Config.defaulted (EventGraphRuntime.State.config state) = ∅)
 
-include inclusion in
-/-- A protected fixed-value binding has exactly the source step law at its
-actual completion boundary, stopped also at first public exclusion. The law
-uses counted native service and arbitrary continuation policies. -/
-theorem counted_committed_stop_sourceLaw
+/-- Completing the ordinary graph from a supported counted acceptance stop and
+reading the certified source suffix gives exactly that suffix's full source run.
+The checkpoint includes actual own choices and public default history. -/
+theorem counted_accepted_stop_runFrom
+    (inclusion : ∀ control : (application setup runtime leaks).Control,
+      (protocol).Trace (some control) → control.execution.application.config.defaulted = ∅ →
+      ProtectedInclusionAt runtime leaks control.execution bound)
     (completes : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
-    (application setup runtime leaks).terminal (some control) →
-    control.execution.application.config.cut.Terminal)
-    (certificate : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
-      horizon scheduler).WellFoundedHistories)
-    (players : ∀ player, ((bounds.onePacketMenu runtime leaks).information
-      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
+      (protocol).Trace (some control) → control.execution.application.config.defaulted = ∅ →
+      (application setup runtime leaks).terminal (some control) →
+      control.execution.application.config.cut.Terminal)
+    (wholeProfile : BehavioralProfile setup.program)
+    (certificate : (protocol).WellFoundedHistories)
+    (players : ∀ player, (model).BehavioralPolicy player)
     {who : Player} {entry : (application setup runtime leaks).PlayerEntry}
-    {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
-    {sent : (graph setup).Config} (ready : sent.cut.Ready event) {rank : Nat}
-    (ordered : sent.cut.IsPrefix rank) {owner : Player} {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding owner payload}
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind owner payload)
-    {candidate : Handle (graph setup)} (call : message.payload.call = .commitment event candidate)
-    {value : L.Val payload} (action : (graph setup).Action event)
-    (successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
-      PublicationResult (L.Val payload)) = .success value)
-    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
-      scheduler).History) {control : (application setup runtime leaks).Control}
+    {message : Interaction.Message Player (WitnessedPacket (graph setup))}
+    {event : (graph setup).EventId} {sent : (graph setup).Config}
+    {action : (graph setup).Action event} {output : ((graph setup).outputLayout event).Value}
+    (ready : sent.cut.Ready event)
+    (start : (protocol).History) {control : (application setup runtime leaks).Control}
     (current : start.state = some control)
-    (clear : ExclusionEvidence 0 ∅
-      (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
+    (clear : control.execution.application.config.defaulted = ∅)
     (invariant : AcceptanceInvariant setup runtime leaks bounds horizon scheduler who entry
-      message event
-      sent (some control))
-    (atSent : control.execution.application.config = sent)
-    (fixed : control.execution.application.candidates.lookup candidate =
-      .openable ⟨payload, value⟩)
-    (owned : (graph setup).actor? event = some who)
-    (fresh : FreshCall setup leaks who event bound entry message)
-    {point : ProtocolState setup.program}
-    (decoded : sourceServicePrefix? setup rank sent = some point) :
-    ((((bounds.onePacketMenu runtime leaks).information (initialLaw setup)
-        horizon scheduler).runBehavioralUntil certificate players
-        (fun history => LateStopped setup runtime leaks bounds horizon scheduler rank history ∨
-          ¬ Clear history.state) start).map
-        (fun history => nativeDecodedState setup runtime leaks history.state)) =
-      (ProtocolState.step setup.program point
-        (fun _ => decodeEventAction setup.program event action)).map some := by
-  classical
-  let menu := bounds.onePacketMenu runtime leaks
-  obtain ⟨found, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
-    setup.program) menu
-    horizon scheduler (current ▸ start.trace) control rfl
-  rw [atSent] at residual
-  have sameRank := EventOrder.Cut.IsPrefix.unique residual.checkpoint.ordered ordered
-  subst sameRank
-  have beforeDecoded : decodedPoint setup sent = some point :=
-    (decodedPoint_eq_of_isPrefix ordered).trans decoded
-  have acts := (decodedPoint_actor who ready beforeDecoded).trans owned
-  obtain ⟨target, stepEq⟩ := ProtocolState.step_eq_pure_of_actor who who setup.program point
-    (fun _ => decodeEventAction setup.program event action) acts
-  rw [stepEq, PMF.pure_map]
-  refine (map_congr_on_support _ (g := fun _ => some target) ?_).trans (PMF.map_const _ _)
-  intro stopped supported
-  obtain ⟨final, state, compiled, _succeeded⟩ := counted_committed_stop_config (runtime := runtime)
-    inclusion completes certificate players ready ordered
-    (outputEq := outputEq) codeEq call action successful start current clear invariant atSent
-    fixed owned fresh stopped supported
-  obtain ⟨before, after, decodedBefore, decodedAfter, reached⟩ :=
-    decodedPoint_step residual event ready action _ compiled
-  rw [beforeDecoded] at decodedBefore
-  cases Option.some.inj decodedBefore
-  rw [stepEq, PMF.mem_support_pure_iff] at reached
-  subst reached
-  rw [state]
-  exact decodedAfter
-
-
-include inclusion in
-/-- A count-permitted fixed-value commitment at its actual clear first callback
-has exactly the source step law from the resulting response history. Freshness,
-the acceptance invariant and pending public clarity are derived from the packet
-and the counted native opportunity and inclusion bounds. -/
-theorem counted_firstActivation_commitment_sourceLaw
-    {delay : (graph setup).EventId → Nat}
-    (opportunity : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
-    OpportunityAt runtime leaks control.execution delay)
-    (timely : runtime.AsyncTimely delay bound)
-    (completes : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
-    (application setup runtime leaks).terminal (some control) →
-    control.execution.application.config.cut.Terminal)
-    (certificate : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
-      horizon scheduler).WellFoundedHistories)
-    (players : ∀ player, ((bounds.onePacketMenu runtime leaks).information
-      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
-    {remaining : Nat} {who : Player} {execution : (application setup runtime leaks).Execution}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    (clear : ExclusionEvidence 0 ∅ (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
-    (event : (graph setup).EventId)
-    (turn : execution.application.publicView.ownTurn? who = some event)
-    (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup runtime leaks who event entry)
-    {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
-    (response : (application setup runtime leaks).Action)
-    (member : response ∈ bounds.onePacketActions runtime leaks who
-      (execution.recall who) (execution.observe (application setup runtime leaks) who))
-    (material : (application setup runtime leaks).Submission)
-    (sends : response.transmission = some material) {serial : Nat}
-    (packet : material.call.packet = .commitment event (who, .prepared serial))
-    {value : L.Val payload}
-    (after : material.call.candidateAfter who
-      (execution.observe (application setup runtime leaks) who).application.candidates
-      (.prepared serial) = .openable ⟨payload, value⟩)
-    {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
-    {point : ProtocolState setup.program}
-    (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
-    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
-      scheduler).History)
-    (current : start.state = some ⟨remaining, none,
-      execution.respond (application setup runtime leaks) who response⟩) :
-    ((((bounds.onePacketMenu runtime leaks).information (initialLaw setup)
-        horizon scheduler).runBehavioralUntil certificate players
-        (fun history => LateStopped setup runtime leaks bounds horizon scheduler rank history ∨
-          ¬ Clear history.state) start).map
-        (fun history => nativeDecodedState setup runtime leaks history.state)) =
-      (ProtocolState.step setup.program point
-        (fun _ => sourceOfValue setup event outputEq value)).map some := by
-  have owned := (PublicView.ownTurn?_spec _ who event turn).2
-  have ready := (execution.application.publicView_eventReady event).mp
-    (PublicView.ownTurn?_spec _ who event turn).1
-  have fresh := counted_commitment_freshCall (runtime := runtime) opportunity timely trace
-    clear event turn never node response member material sends packet
-  obtain ⟨invariant, fixed⟩ := acceptanceInvariant_respond_commitment (runtime := runtime) trace
-    event turn outputEq
-    response member material sends packet after (current ▸ start.trace)
-  have callEq : (sentEnvelope setup runtime leaks execution who material).payload.call =
-      .commitment event (who, .prepared serial) := by
-    have evidenceNone := (onePacket_commitment_fresh (runtime := runtime) trace who response
-      member material sends
-      packet).2
-    rcases material with ⟨call, evidence⟩
-    change evidence = .none at evidenceNone
-    subst evidenceNone
-    unfold sentEnvelope
-    rw [reactiveApplication_packet_none]
-    exact packet
-  have clearAfter : ExclusionEvidence 0 ∅
-      (⟨(execution.respond (application setup runtime leaks) who response).application, ∅⟩ :
-        RecoveryState (graph setup)) := by
-    rcases response with ⟨transmission⟩
-    cases transmission with
-    | none => exact clear
-    | some submission => exact clear.submit who submission
-  let action : (graph setup).Action event :=
-    cast (congrArg EventGraph.EventField.Action outputEq.symm)
-      (PublicationResult.success value : PublicationResult (L.Val payload))
-  have successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
-      PublicationResult (L.Val payload)) = .success value := by
-    simp only [action, cast_cast, cast_eq]
-  exact counted_committed_stop_sourceLaw (runtime := runtime) inclusion completes certificate
-    players ready ordered (outputEq := outputEq) codeEq callEq action successful start current
-    clearAfter invariant (runtime.reactive_respond_application leaks execution who _).1
-    fixed owned fresh decoded
-
-include inclusion in
-/-- A protected recorded opening has exactly its successful disclosure source
-step law at the actual completion boundary. Only counted native inclusion and
-completion are assumed, with arbitrary continuation policies. -/
-theorem counted_disclosed_stop_sourceLaw
-    (completes : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
-    (application setup runtime leaks).terminal (some control) →
-    control.execution.application.config.cut.Terminal)
-    (certificate : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
-      horizon scheduler).WellFoundedHistories)
-    (players : ∀ player, ((bounds.onePacketMenu runtime leaks).information
-      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
-    {who : Player} {entry : (application setup runtime leaks).PlayerEntry}
-    {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
-    {sent : (graph setup).Config} (ready : sent.cut.Ready event) {rank : Nat}
-    (ordered : sent.cut.IsPrefix rank) {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks)
-    (action : (graph setup).Action event)
-    (disclosing : (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) = true)
-    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
-      scheduler).History) {control : (application setup runtime leaks).Control}
-    (current : start.state = some control)
-    (clear : ExclusionEvidence 0 ∅
-      (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
-    (invariant : AcceptanceInvariant setup runtime leaks bounds horizon scheduler who entry
-      message event
-      sent (some control))
+      message event sent action output (some control))
     (atSent : control.execution.application.config = sent)
     (owned : (graph setup).actor? event = some who)
     (fresh : FreshCall setup leaks who event bound entry message)
-    {point : ProtocolState setup.program}
-    (decoded : sourceServicePrefix? setup rank sent = some point) :
-    ((((bounds.onePacketMenu runtime leaks).information (initialLaw setup)
-        horizon scheduler).runBehavioralUntil certificate players
-        (fun history => LateStopped setup runtime leaks bounds horizon scheduler rank history ∨
-          ¬ Clear history.state) start).map
-        (fun history => nativeDecodedState setup runtime leaks history.state)) =
-      (ProtocolState.step setup.program point
-        (fun _ => decodeEventAction setup.program event action)).map some := by
-  classical
-  let menu := bounds.onePacketMenu runtime leaks
-  obtain ⟨found, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
-    setup.program) menu
-    horizon scheduler (current ▸ start.trace) control rfl
-  rw [atSent] at residual
-  have sameRank := EventOrder.Cut.IsPrefix.unique residual.checkpoint.ordered ordered
-  subst sameRank
-  have beforeDecoded : decodedPoint setup sent = some point :=
-    (decodedPoint_eq_of_isPrefix ordered).trans decoded
-  have acts := (decodedPoint_actor who ready beforeDecoded).trans owned
-  obtain ⟨target, stepEq⟩ := ProtocolState.step_eq_pure_of_actor who who setup.program point
-    (fun _ => decodeEventAction setup.program event action) acts
-  rw [stepEq, PMF.pure_map]
-  refine (map_congr_on_support _ (g := fun _ => some target) ?_).trans (PMF.map_const _ _)
-  intro stopped supported
-  obtain ⟨final, completedAction, state, compiled, succeeded⟩ := counted_accepted_stop_config
-    (runtime := runtime)
-    inclusion completes certificate players ready ordered start current
-    clear invariant atSent owned fresh stopped supported
-  have completedDiscloses := disclose_of_outputSucceeded (outputEq := outputEq) codeEq
-    compiled succeeded
-  have sameAction : completedAction = action :=
-    (cast_inj _).mp (completedDiscloses.trans disclosing.symm)
-  rw [sameAction] at compiled
-  obtain ⟨before, after, decodedBefore, decodedAfter, reached⟩ :=
-    decodedPoint_step residual event ready action _ compiled
-  rw [beforeDecoded] at decodedBefore
-  cases Option.some.inj decodedBefore
-  rw [stepEq, PMF.mem_support_pure_iff] at reached
-  subst reached
-  rw [state]
-  exact decodedAfter
-
-
-include inclusion in
-/-- A transmitting canonical disclosure at an actual clear first callback has
-exactly its source step law from the resulting response history. Freshness and
-acceptance follow from counted native opportunity and the canonical packet. -/
-theorem counted_firstActivation_disclosure_sourceLaw
-    {delay : (graph setup).EventId → Nat}
-    (opportunity : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
-    OpportunityAt runtime leaks control.execution delay)
-    (timely : runtime.AsyncTimely delay bound)
-    (completes : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
-    (application setup runtime leaks).terminal (some control) →
-    control.execution.application.config.cut.Terminal)
-    (certificate : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
-      horizon scheduler).WellFoundedHistories)
-    (players : ∀ player, ((bounds.onePacketMenu runtime leaks).information
-      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
-    {remaining : Nat} {who : Player} {execution : (application setup runtime leaks).Execution}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace (some ⟨remaining, some who, execution⟩))
-    (clear : ExclusionEvidence 0 ∅ (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
-    (event : (graph setup).EventId)
-    (turn : execution.application.publicView.ownTurn? who = some event)
-    (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup runtime leaks who event entry)
-    {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve who payload binding checks}
-    (node : nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq)
-    (action : (graph setup).Action event)
-    (disclosing : (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) = true)
-    (material : (application setup runtime leaks).Submission)
-    (submits : (runtime.canonicalServiceDecision leaks who (execution.recall who)
-      (execution.observe (application setup runtime leaks) who) event action).transmission = some
-        material)
-    {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
-    {point : ProtocolState setup.program}
-    (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
-    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
-      scheduler).History)
-    (current : start.state = some ⟨remaining, none,
-      execution.respond (application setup runtime leaks) who
-      (runtime.canonicalServiceDecision leaks who (execution.recall who)
-        (execution.observe (application setup runtime leaks) who) event action)⟩) :
-    ((((bounds.onePacketMenu runtime leaks).information (initialLaw setup)
-        horizon scheduler).runBehavioralUntil certificate players
-        (fun history => LateStopped setup runtime leaks bounds horizon scheduler rank history ∨
-          ¬ Clear history.state) start).map
-        (fun history => nativeDecodedState setup runtime leaks history.state)) =
-      (ProtocolState.step setup.program point
-        (fun _ => decodeEventAction setup.program event action)).map some := by
-  have owned := (PublicView.ownTurn?_spec _ who event turn).2
-  have ready := (execution.application.publicView_eventReady event).mp
-    (PublicView.ownTurn?_spec _ who event turn).1
-  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
-    horizon scheduler trace
-  have fits := firstActivation_inclusionFits_of_counted_opportunity setup runtime leaks bounds
-    horizon scheduler
-    delay bound opportunity timely trace rfl clear event turn never
-  have fresh : FreshCall setup leaks who event bound
-      (respondEntry setup runtime leaks execution who (runtime.canonicalServiceDecision leaks who
-        (execution.recall who) (execution.observe (application setup runtime leaks) who) event
-          action))
-      (sentEnvelope setup runtime leaks execution who material) := by
-    rw [respondEntry_of_transmission (runtime := runtime) execution who _ material submits]
-    exact canonical_freshCall rawTrace bound who event turn fits action material submits
-  have bindSuccess : ∀ owner payload' outputEq' codeEq',
-      nodeView (graph setup) event = .bind owner payload' outputEq' codeEq' →
-        ∃ value', (cast (congrArg EventGraph.EventField.Action outputEq') action :
-          PublicationResult (L.Val payload')) = .success value' := by
-    intro owner payload' outputEq' codeEq' other
-    rw [node] at other
-    cases other
-  have invariant := acceptanceInvariant_respond (runtime := runtime) bounds horizon scheduler
-    trace event turn action
-    material submits bindSuccess (current ▸ start.trace)
-  have responseClear : ∀ response : (application setup runtime leaks).Action,
-      ExclusionEvidence 0 ∅
-        (⟨(execution.respond (application setup runtime leaks) who response).application,
-        ∅⟩ : RecoveryState (graph setup)) := by
-    intro response
-    rcases response with ⟨transmission⟩
-    cases transmission with
-    | none => exact clear
-    | some submission => exact clear.submit who submission
-  exact counted_disclosed_stop_sourceLaw (runtime := runtime) inclusion completes certificate
-    players ready ordered (outputEq := outputEq) codeEq action disclosing start current
-    (responseClear _) invariant
-    (runtime.reactive_respond_application leaks execution who _).1 owned fresh decoded
+    {Γ : SourceCtx Player L} {names : Finset VarId}
+    (program : SourceProgram Player L Γ names) (profile : BehavioralProfile program)
+    (refs : ContextRefs (graph setup).layout Γ) (source : SourceProgram.Config Player L Γ)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) program)
+    (refsBefore : ContextRefsBefore refs embedding) (offset : Nat)
+    (aligned : CompiledPolicySuffix setup.program wholeProfile program profile refs
+      source.revelations source.registry embedding refsBefore offset)
+    (checkpoint : SourceCheckpoint setup source refs offset
+      (sent.complete event ready action output)) :
+    let plan := (graph setup).policyPlan (compileEventProfile setup.program wholeProfile)
+      (graph setup).canonicalScheduler
+    let read := fun final : (graph setup).Config =>
+      decodeConfig? setup.program program refs source.revelations source.registry embedding
+        final.store final.history
+    (((model).runBehavioralUntil certificate players
+      (fun history => (∃ final, history.state = some final ∧
+        event ∈ final.execution.application.config.cut.completed) ∨ ¬ Clear history.state)
+      start).bind fun history =>
+        match history.state with
+        | none => PMF.pure none
+        | some final => ((graph setup).runPlan plan final.execution.application.config.remaining
+            final.execution.application.config).map read) =
+      (SourceProgram.runFrom program profile source).map some := by
+  dsimp only
+  have stopped := counted_accepted_stop_continuation (runtime := runtime) inclusion completes
+    (compileEventProfile setup.program wholeProfile) certificate players start current clear
+    invariant atSent owned fresh
+  have historyEq := checkpoint.history
+  have completionId : setup.eventGraph.fromModeCompletion .sequential = id := rfl
+  rw [completionId, List.map_id] at historyEq
+  have sourceLaw := CompiledPolicySuffix.runFrom_remaining_law setup.program wholeProfile
+    program profile refs source
+    embedding refsBefore offset aligned (sent.complete event ready action output)
+    checkpoint.ordered checkpoint.agrees historyEq checkpoint.defaults
+  calc
+    _ = (((model).runBehavioralUntil certificate players
+      (fun history => (∃ final, history.state = some final ∧
+        event ∈ final.execution.application.config.cut.completed) ∨ ¬ Clear history.state)
+      start).bind fun _ => (SourceProgram.runFrom program profile source).map some) := by
+        apply bind_congr_on_support _
+        intro history supported
+        obtain ⟨final, ready', state, _done, _actual, law⟩ := stopped history supported
+        rw [state]
+        dsimp only
+        rw [law]
+        exact sourceLaw
+    _ = _ := PMF.bind_const _ _
 
 end Vegas

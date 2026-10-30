@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketExclusionPayoff
 import Vegas.Pending.ReactiveAcceptedOutput
+import Vegas.Pending.ReactiveOnePacketMenu
 
 /-! # Event-level failure read through the typed readout
 
@@ -49,6 +50,21 @@ theorem storeEventFailed_of_ref {graph : EventGraph Player L}
   exact ⟨value, read, failed⟩
 
 omit [DecidableEq Player] in
+/-- A failure stored in an event's output is a failure read through any
+reference to that output. -/
+theorem storeEventFailed_get? {graph : EventGraph Player L}
+    {store : EventGraph.Store graph.layout} {event : graph.EventId}
+    (failed : StoreEventFailed store event) {kind : EventGraph.EventField Player L}
+    (ref : EventGraph.FieldRef graph.layout kind) (field : ref.field = .inr event) :
+    ∃ value, ref.get? store = some value ∧ kind.IsFailure value := by
+  rcases ref with ⟨refField, layoutEq⟩
+  change refField = .inr event at field
+  subst field
+  subst layoutEq
+  exact failed
+
+
+omit [DecidableEq Player] in
 /-- A successful output is not a failure of the event in the store. -/
 theorem not_storeEventFailed_of_outputSucceeded {graph : EventGraph Player L}
     {store : EventGraph.Store graph.layout} {event : graph.EventId}
@@ -64,15 +80,15 @@ variable (setup : Setup (Player := Player) (L := L))
 /-- A cell of the terminal context read from the event's output holds a
 failure. -/
 def EventCellFailed (event : (graph setup).EventId)
-    (terminal : State L setup.program.terminalCtx) : Prop :=
+    (terminal : Config Player L setup.program.terminalCtx) : Prop :=
   ∃ (name : VarId) (cell : CellTy Player L) (source : HasVar setup.program.terminalCtx name cell),
     ((terminalRefs setup.program).get source).field = .inr event ∧
-      (cellField cell).IsFailure (cellValue (terminal.get source))
+      (cellField cell).IsFailure (cellValue (terminal.state.get source))
 
 /-- **The event-level failed readouts.** Readouts recording a failure of the
 event and a failed reveal of the player. -/
 def EventFailedReadout (who : Player) (event : (graph setup).EventId) :
-    Set (Option (State L setup.program.terminalCtx)) :=
+    Set (Option (Config Player L setup.program.terminalCtx)) :=
   {readout | ∃ terminal, readout = some terminal ∧
     1 ≤ failedReveals setup.program who (publicOutcome setup.program terminal) ∧
     EventCellFailed setup event terminal}
