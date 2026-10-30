@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketPeriodInvariant
 import Vegas.Game.OnePacketDecodedActor
+import Vegas.Game.SourcePrefixPublications
 
 /-! # Actor completions match along forced histories
 

@@ -72,6 +72,31 @@ def step : {Γ : SourceCtx Player L} → {O : Finset VarId} →
           (revealSuccessor published source config (OwnAction.disclosure (joint owner))))))
         (fun rest => (step next rest joint).map Sum.inr) state
 
+/-- Every terminal source point is absorbing under every joint choice. -/
+theorem step_of_terminal : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (state : ProtocolState program) →
+    terminal program state → (joint : Player → Option (OwnAction Player L)) →
+    step program state joint = PMF.pure state
+  | _, _, .ret _, _, _, _ => rfl
+  | _, _, .sample _ _ _ next, state, stopped, joint => by
+      cases state with
+      | inl config => exact stopped.elim
+      | inr rest =>
+          simp only [step, Sum.elim_inr, step_of_terminal next rest stopped joint,
+            PMF.pure_map]
+  | _, _, .commit _ _ _ _ next, state, stopped, joint => by
+      cases state with
+      | inl config => exact stopped.elim
+      | inr rest =>
+          simp only [step, Sum.elim_inr, step_of_terminal next rest stopped joint,
+            PMF.pure_map]
+  | _, _, .reveal _ _ _ _ _ _ next, state, stopped, joint => by
+      cases state with
+      | inl config => exact stopped.elim
+      | inr rest =>
+          simp only [step, Sum.elim_inr, step_of_terminal next rest stopped joint,
+            PMF.pure_map]
+
 /-- A source step draws only at chance, and chance laws are exact finite
 tables, so every step law is finitely supported. -/
 theorem step_support_finite : {Γ : SourceCtx Player L} → {O : Finset VarId} →

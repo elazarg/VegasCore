@@ -285,6 +285,47 @@ theorem AcceptanceWitness.complete
     change state.config.complete event ready _ _ = state.config.complete event ready action output
     rw [decision, outputValue]
 
+/-- A ready active owner's typed accepted-call result is supported by the graph executor. -/
+theorem AcceptanceWitness.complete_mem_step
+    {event : graph.EventId} {message : Message Player (WitnessedPacket graph)}
+    {sent : graph.Config} {action : graph.Action event} {output : (graph.outputLayout event).Value}
+    {state : State graph}
+    (witness : AcceptanceWitness event message sent action output state)
+    (sameConfig : state.config = sent) (ready : sent.cut.Ready event)
+    (who : Player) (owned : graph.actor? event = some who) (active : who ∉ sent.defaulted) :
+    sent.complete event ready action output ∈ (sent.step event ready action).support := by
+  subst sent
+  rcases witness with ⟨candidate, owner, payload, layoutEq, call, _, decision, outputValue⟩ |
+    ⟨candidate, raw, owner, payload, binding, checks, outputEq, codeEq, result,
+      call, node, resolved, decision, outputValue⟩
+  · have codeEq : cast (congrArg (EventCode graph.layout) layoutEq) (graph.nodes event) =
+        .bind owner payload := by
+      generalize cast (congrArg (EventCode graph.layout) layoutEq) (graph.nodes event) = lowered
+      cases lowered
+      rfl
+    have same : owner = who :=
+      Option.some.inj ((nodeView_bind_actor layoutEq codeEq).symm.trans owned)
+    subst who
+    rw [decision, outputValue]
+    rw [state.config.step_eq_map_of_code event ready layoutEq (.bind owner payload) codeEq
+      (some (state.bindingResult candidate payload))
+      (PMF.pure (state.bindingResult candidate payload))]
+    · simp
+    · simp only [EventCode.effectiveAction, EventCode.actor, active, ↓reduceIte,
+        EventCode.eval?, Option.getD_some]
+  · have same : owner = who :=
+      Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
+    subst who
+    rw [decision, outputValue]
+    rw [state.config.step_eq_map_of_code event ready outputEq
+      (.resolve owner payload binding checks) codeEq true (PMF.pure result)]
+    · simp
+    · change (EventCode.resolveOutput? binding checks
+        (if owner ∈ state.config.defaulted then false else true) state.config.store).map
+          PMF.pure = _
+      rw [ite_eq_right active, resolved]
+      rfl
+
 /-- Acceptance writes the certified result, including a failed publication. -/
 theorem AcceptanceWitness.output_eq
     {event : graph.EventId} {message : Message Player (WitnessedPacket graph)}

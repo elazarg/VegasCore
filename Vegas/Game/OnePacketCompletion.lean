@@ -1,87 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketFreshSlots
+import Vegas.Game.SourcePrefixPublications
 import Vegas.Pending.ReactiveAcceptedOutput
 import Vegas.Pending.ReactiveCompletion
 
 /-! # Source actions and accepted packet certificates for owned completions -/
 
 noncomputable section
-
-namespace Vegas.SourceProgram
-
-variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-
-/-- A source action that commits a failed binding or does not disclose. -/
-def Failing (choice : Option (OwnAction Player L)) : Prop :=
-  (∀ owner name payload result, choice = some (.commit owner name payload result) →
-    result = .failure) ∧ OwnAction.disclosure choice = false
-
-/-- The decoded action of a binding event completed with a failed binding is
-failing. -/
-theorem decodeEventAction_failing_binding {Γ : SourceCtx Player L} {openNames : Finset VarId}
-    (program : SourceProgram Player L Γ openNames) :
-    ∀ (count : Nat) (bound : count < eventCount program) {owner : Player} {payload : L.Ty}
-      (outputEq : outputLayout program ⟨count, bound⟩ = .binding owner payload),
-      Failing (decodeEventAction program ⟨count, bound⟩
-        (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-          (PublicationResult.failure : PublicationResult (L.Val payload)))) := by
-  induction program with
-  | ret _ =>
-      intro count bound
-      simp [eventCount] at bound
-  | sample _ _ _ next ih =>
-      intro count bound owner payload outputEq
-      cases count with
-      | zero => cases outputEq
-      | succ count => exact ih count (Nat.lt_of_succ_lt_succ bound) outputEq
-  | commit name commitOwner fresh guard next ih =>
-      intro count bound owner payload outputEq
-      cases count with
-      | zero =>
-          change EventGraph.EventField.binding commitOwner _ = _ at outputEq
-          obtain ⟨rfl, rfl⟩ := EventGraph.EventField.binding.inj outputEq
-          refine ⟨fun actor actorName actorPayload result chosen => ?_, rfl⟩
-          cases chosen
-          rfl
-      | succ count => exact ih count (Nat.lt_of_succ_lt_succ bound) outputEq
-  | reveal published revealOwner name fresh source unresolved next ih =>
-      intro count bound owner payload outputEq
-      cases count with
-      | zero => cases outputEq
-      | succ count => exact ih count (Nat.lt_of_succ_lt_succ bound) outputEq
-
-/-- The decoded action of a publication event completed with withholding is
-failing. -/
-theorem decodeEventAction_failing_publication {Γ : SourceCtx Player L}
-    {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames) :
-    ∀ (count : Nat) (bound : count < eventCount program) {payload : L.Ty}
-      (outputEq : outputLayout program ⟨count, bound⟩ = .publication payload),
-      Failing (decodeEventAction program ⟨count, bound⟩
-        (cast (congrArg EventGraph.EventField.Action outputEq.symm) false)) := by
-  induction program with
-  | ret _ =>
-      intro count bound
-      simp [eventCount] at bound
-  | sample _ _ _ next ih =>
-      intro count bound payload outputEq
-      cases count with
-      | zero => cases outputEq
-      | succ count => exact ih count (Nat.lt_of_succ_lt_succ bound) outputEq
-  | commit name commitOwner fresh guard next ih =>
-      intro count bound payload outputEq
-      cases count with
-      | zero => cases outputEq
-      | succ count => exact ih count (Nat.lt_of_succ_lt_succ bound) outputEq
-  | reveal published revealOwner name fresh source unresolved next ih =>
-      intro count bound payload outputEq
-      cases count with
-      | zero =>
-          refine ⟨fun actor actorName actorPayload result chosen => ?_, rfl⟩
-          cases Option.some.inj chosen
-      | succ count => exact ih count (Nat.lt_of_succ_lt_succ bound) outputEq
-
-end Vegas.SourceProgram
 
 namespace Vegas
 

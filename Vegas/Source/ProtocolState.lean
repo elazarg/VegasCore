@@ -43,6 +43,15 @@ theorem entry_injective {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) : Function.Injective (entry program) := by
   cases program <;> intro left right same <;> cases same <;> rfl
 
+/-- Retain a full terminal configuration at the return point of the fixed source syntax. -/
+def terminalState : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → Config Player L program.terminalCtx →
+      ProtocolState program
+  | _, _, .ret _, config => config
+  | _, _, .sample _ _ _ next, config => .inr (terminalState next config)
+  | _, _, .commit _ _ _ _ next, config => .inr (terminalState next config)
+  | _, _, .reveal _ _ _ _ _ _ next, config => .inr (terminalState next config)
+
 def observe (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → ProtocolState program → ProtocolView who program
   | _, _, .ret _ => fun config => config.view who
@@ -63,6 +72,14 @@ def terminal : {Γ : SourceCtx Player L} → {O : Finset VarId} →
   | _, _, .commit _ _ _ _ next => Sum.elim (fun _ => False) (terminal next)
   | _, _, .reveal _ _ _ _ _ _ next => Sum.elim (fun _ => False) (terminal next)
 
+/-- The retained terminal configuration sits at a terminal source point. -/
+@[simp] theorem terminal_terminalState : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (config : Config Player L program.terminalCtx) →
+    terminal program (terminalState program config)
+  | _, _, .ret _, _ => trivial
+  | _, _, .sample _ _ _ next, config => terminal_terminalState next config
+  | _, _, .commit _ _ _ _ next, config => terminal_terminalState next config
+  | _, _, .reveal _ _ _ _ _ _ next, config => terminal_terminalState next config
 end ProtocolState
 
 namespace ProtocolView

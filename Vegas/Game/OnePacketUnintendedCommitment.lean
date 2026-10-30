@@ -4,6 +4,7 @@ import Vegas.Game.OnePacketProjectedDecision
 import Vegas.Game.OnePacketSureFailure
 import Vegas.Game.OnePacketDisclosureResolves
 import Vegas.Game.ServiceBlockView
+import Vegas.Game.SourcePrefixPublications
 
 /-! # Unintended commitments leave their owner owing
 

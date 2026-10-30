@@ -394,4 +394,35 @@ theorem sourceContinuation_terminal
   obtain ⟨point, decoded, stopped⟩ := serviceSourcePrefix?_terminal setup mode config terminal
   exact setup.continuationLaw_terminal profile _ (by rw [decoded]; exact stopped)
 
+/-- The full terminal prefix is the return point of its retained configuration. -/
+theorem decodeSourcePrefix?_terminal_state
+    {Field : Type} [DecidableEq Field] {layout : Field → EventGraph.EventField Player L}
+    {Γ : SourceCtx Player L} {names : Finset VarId}
+    (program : SourceProgram Player L Γ names) (refs : ContextRefs layout Γ)
+    (registry : Registry Γ) (revelations : Revelations Γ)
+    (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
+    (store : EventGraph.Store layout) (history : SourceProgram.History Player L)
+    (defaults : DefaultHistory Player) :
+    decodeSourcePrefix? program refs registry revelations outputs (eventCount program)
+      store history defaults =
+      ((decodeState? (terminalRefsWith program refs outputs) store).map fun state =>
+        (⟨state, finalRegistry program registry, finalRevelations program revelations,
+          history, defaults⟩ : SourceProgram.Config Player L program.terminalCtx)).map
+          (ProtocolState.terminalState program) := by
+  let decoded := decodeSourcePrefix? program refs registry revelations outputs (eventCount program)
+    store history defaults
+  calc
+    _ = decoded.bind (fun point => (ProtocolState.readout program point).map
+        (ProtocolState.terminalState program)) := by
+      change decoded = _
+      cases result : decoded with
+      | none => rfl
+      | some point =>
+          exact (ProtocolState.terminalState_readout program point
+            (decodeSourcePrefix?_terminal program refs registry revelations outputs store
+              history defaults point result)).symm
+    _ = (decoded.bind (ProtocolState.readout program)).map
+        (ProtocolState.terminalState program) := by cases decoded <;> rfl
+    _ = _ := by
+      rw [decodeSourcePrefix?_terminal_readout]
 end Vegas

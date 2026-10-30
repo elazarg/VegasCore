@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketCompletionCases
 import Vegas.Game.OnePacketOwnSubmissions
+import Vegas.Game.SourcePrefixPublications
 
 /-! # Regular histories of a forced site are forced
 

@@ -57,6 +57,42 @@ def readout : {Γ : SourceCtx Player L} → {O : Finset VarId} →
   | _, _, .commit _ _ _ _ next => Sum.elim (fun _ => none) (readout next)
   | _, _, .reveal _ _ _ _ _ _ next => Sum.elim (fun _ => none) (readout next)
 
+/-- Reading a retained terminal configuration returns every field unchanged. -/
+@[simp] theorem readout_terminalState : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (config : Config Player L program.terminalCtx) →
+    readout program (terminalState program config) = some config
+  | _, _, .ret _, _ => rfl
+  | _, _, .sample _ _ _ next, config => readout_terminalState next config
+  | _, _, .commit _ _ _ _ next, config => readout_terminalState next config
+  | _, _, .reveal _ _ _ _ _ _ next, config => readout_terminalState next config
+
+/-- Terminal protocol points retain exactly their readout configuration. -/
+theorem terminalState_readout : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (state : ProtocolState program) →
+    terminal program state → (readout program state).map (terminalState program) = some state
+  | _, _, .ret _, _, _ => rfl
+  | _, _, .sample _ _ _ next, state, stopped => by
+      cases state with
+      | inl _ => exact stopped.elim
+      | inr state =>
+          simpa only [readout, Sum.elim_inr, terminalState, Option.map_map,
+            Option.map_some, Function.comp_def] using
+            congrArg (Option.map Sum.inr) (terminalState_readout next state stopped)
+  | _, _, .commit _ _ _ _ next, state, stopped => by
+      cases state with
+      | inl _ => exact stopped.elim
+      | inr state =>
+          simpa only [readout, Sum.elim_inr, terminalState, Option.map_map,
+            Option.map_some, Function.comp_def] using
+            congrArg (Option.map Sum.inr) (terminalState_readout next state stopped)
+  | _, _, .reveal _ _ _ _ _ _ next, state, stopped => by
+      cases state with
+      | inl _ => exact stopped.elim
+      | inr state =>
+          simpa only [readout, Sum.elim_inr, terminalState, Option.map_map,
+            Option.map_some, Function.comp_def] using
+            congrArg (Option.map Sum.inr) (terminalState_readout next state stopped)
+
 theorem continuationLaw_terminal : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (profile : BehavioralProfile program) →
     (state : ProtocolState program) → terminal program state →

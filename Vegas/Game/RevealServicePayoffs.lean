@@ -85,6 +85,21 @@ theorem serviceSourceReadout_defaults
   simp only [EventGraph.Config.defaults, EventGraph.Completion.defaults, List.map_map]
   rfl
 
+/-- Every complete native cut has a full source readout, without an execution
+provenance or service premise. -/
+theorem serviceSourceReadout_exists_of_terminal
+    (control : (serviceApplication setup mode deadline leaks).Control)
+    (terminal : control.execution.application.config.cut.Terminal) :
+    ∃ source, serviceSourceReadout setup mode deadline leaks (some control) = some source := by
+  obtain ⟨source, decoded, _⟩ := exists_decodeState_agrees (terminalRefs setup.program)
+    control.execution.application.config.store
+    (control.execution.application.config.store_available_of_terminal terminal)
+  rw [serviceSourceReadout_eq_decode]
+  change ∃ final, (decodeState? (terminalRefs setup.program)
+    control.execution.application.config.store).map _ = some final
+  rw [decoded]
+  exact ⟨_, rfl⟩
+
 /-- Analysis utility of the actual terminal source readout, prior to a deposit
 deduction. Initial private types may affect this utility. -/
 def serviceBaseUtility (utility : Config Player L setup.program.terminalCtx → Player → ℝ)

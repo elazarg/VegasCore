@@ -3,6 +3,7 @@
 import Vegas.Game.OnePacketSlotChoiceMasses
 import Vegas.Game.OnePacketContentSupport
 import Vegas.Game.OnePacketActorRecord
+import Vegas.Game.SourcePrefixPublications
 
 /-! # Realized commitments with positive content
 

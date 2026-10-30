@@ -459,6 +459,8 @@ import Vegas.Game.SourceServiceDeviationChoice
 import Vegas.Game.SourceServiceDisclosure
 import Vegas.Game.SourceServiceFactorization
 import Vegas.Game.SourceServiceFailureReadout
+import Vegas.Game.SourceServiceContinuation
+import Vegas.Game.SourceDebtContinuation
 import Vegas.Game.SourceServiceFiniteness
 import Vegas.Game.SourceServiceFacts
 import Vegas.Game.SourceServiceFirstTurnBinding

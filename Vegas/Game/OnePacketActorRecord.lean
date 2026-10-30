@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketCompletion
+import Vegas.Game.SourcePrefixPublications
 
 /-! # Completed events with an actor and the silence of other players
 
@@ -29,103 +30,6 @@ player's own completed events is a second packet for it.
 -/
 
 noncomputable section
-
-namespace Vegas.SourceProgram
-
-variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-
-namespace ProtocolState
-
-/-- **A failing completion makes its actor owe a failure.** At a point decoded
-after `count` events, stepping with a failing action at the event of index
-`count`, owned by `who`, makes `who` owe a failure. -/
-theorem owesFailure_of_decode_failing {Field : Type} [DecidableEq Field]
-    {layout : Field → EventGraph.EventField Player L} {Γ : SourceCtx Player L}
-    {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames) :
-    (Γ.map Prod.fst).Nodup → ∀ (count : Nat) (refs : ContextRefs layout Γ)
-      (registry : Registry Γ) (revelations : Revelations Γ)
-      (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
-      (store : EventGraph.Store layout) (history : History Player L)
-      (state : ProtocolState program) (bound : count < eventCount program) (who : Player)
-      (choice : Option (OwnAction Player L)) (target : ProtocolState program),
-      decodeSourcePrefix? program refs registry revelations outputs count store history =
-          some state →
-      eventOwner? program ⟨count, bound⟩ = some who → Failing choice →
-      target ∈ (step program state (fun _ => choice)).support →
-      OwesFailure who program target := by
-  induction program with
-  | ret _ =>
-      intro _ count _ _ _ _ _ _ _ bound
-      simp [eventCount] at bound
-  | sample _ fresh _ next ih =>
-      intro unique count refs registry revelations outputs store history state bound who choice
-        target decoded owned failing reached
-      cases count with
-      | zero => cases owned
-      | succ count =>
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
-          obtain ⟨after, supported, rfl⟩ := reached
-          exact ih (List.nodup_cons.mpr ⟨fresh, unique⟩) count _ _ _ _ store history rest
-            (Nat.lt_of_succ_lt_succ bound) who choice after read owned failing supported
-  | @commit commitCtx commitNames name owner payload fresh guard next ih =>
-      intro unique count refs registry revelations outputs store history state bound who choice
-        target decoded owned failing reached
-      cases count with
-      | zero =>
-          cases Option.some.inj owned
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨cells, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          have same := (PMF.mem_support_pure_iff _ _).mp reached
-          subst same
-          have failed : OwnAction.binding owner name payload choice = .failure := by
-            unfold OwnAction.binding
-            split
-            · rename_i found
-              exact failing.1 _ _ _ _ found.choose_spec
-            · rfl
-          refine Or.inr ?_
-          change FailedBinding owner next (entry next _)
-          rw [failed]
-          exact failedBinding_entry next _
-            (Config.failedBinding_commit _ unique fresh guard commitNames)
-      | succ count =>
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
-          obtain ⟨after, supported, rfl⟩ := reached
-          exact ih (List.nodup_cons.mpr ⟨fresh, unique⟩) count _ _ _ _ store history rest
-            (Nat.lt_of_succ_lt_succ bound) who choice after read owned failing supported
-  | reveal published owner name fresh source unresolved next ih =>
-      intro unique count refs registry revelations outputs store history state bound who choice
-        target decoded owned failing reached
-      cases count with
-      | zero =>
-          cases Option.some.inj owned
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨cells, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          have same : target = Sum.inr (entry next (revealSuccessor published source
-              ⟨cells, registry, revelations, history⟩ (OwnAction.disclosure choice))) :=
-            (PMF.mem_support_pure_iff _ _).mp reached
-          subst same
-          refine Or.inl (Or.inl ⟨rfl, ?_⟩)
-          rw [base_entry, failing.2]
-          exact disclosureResult_false published source _
-      | succ count =>
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
-          obtain ⟨after, supported, rfl⟩ := reached
-          rcases ih (List.nodup_cons.mpr ⟨fresh, unique⟩) count _ _ _ _ store history rest
-            (Nat.lt_of_succ_lt_succ bound) who choice after read owned failing supported with
-            indebted | failed
-          · exact Or.inl (Or.inr indebted)
-          · exact Or.inr (Or.inr failed)
-
-end ProtocolState
-
-end Vegas.SourceProgram
 
 namespace Vegas
 

@@ -449,4 +449,19 @@ theorem SourceResidual.path {rank : Nat} {before after : (graph setup).Config}
       obtain ⟨next, _⟩ := residual.step event ready action middle member
       exact ih next
 
+/-- A source suffix embedding sends terminal points to terminal whole-program points. -/
+theorem SourceResidual.lift_terminal {rank : Nat} {config : (graph setup).Config}
+    (residual : SourceResidual setup profile rank config) (state : ProtocolState residual.program)
+    (stopped : ProtocolState.terminal residual.program state) :
+    ProtocolState.terminal setup.program (residual.lift state) := by
+  by_contra running
+  have fixed : ProtocolState.step setup.program (residual.lift state) (fun _ => none) =
+      PMF.pure (residual.lift state) := by
+    rw [residual.steps, ProtocolState.step_of_terminal _ _ stopped, PMF.pure_map]
+  have supported : residual.lift state ∈
+      (ProtocolState.step setup.program (residual.lift state) (fun _ => none)).support := by
+    rw [fixed, PMF.mem_support_pure_iff]
+  have decreases := ProtocolState.remaining_step setup.program _ _ (fun _ => none) running
+    supported
+  omega
 end Vegas

@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketActorRecord
 import Vegas.Pending.ReactiveAcceptedOutput
+import Vegas.Game.SourcePrefixPublications
 
 /-! # The content of a completing packet
 

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketStepGlue
+import Vegas.Game.SourcePrefixPublications
 
 /-! # The as-if-honest and slot laws at a reveal
 

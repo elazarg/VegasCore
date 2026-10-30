@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketAcceptedTable
+import Vegas.Game.SourcePrefixPublications
 
 /-! # The two ways an event with an actor completes
 

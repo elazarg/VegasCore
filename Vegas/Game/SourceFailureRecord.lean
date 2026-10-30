@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourcePrefixPublications
 import Vegas.Game.OnePacketEventFailure
+import Vegas.Pending.ReactiveGraphSteps
 
 /-! # Source debt recorded by failed compiled event outputs -/
 
@@ -144,6 +145,29 @@ theorem path {before after : (graph setup).Config}
   induction moved using Relation.ReflTransGen.head_induction_on with
   | refl => exact valid
   | @head _ _ step _ ih => exact ih (valid.step step)
+
+/-- Every initialized native history retains the debt recorded by failed
+outputs, under arbitrary responses and scheduler choices. -/
+theorem history {runtime : EventGraphRuntime (graph setup)}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+    (profile : BehavioralProfile setup.program) (horizon : Nat)
+    (scheduler : (application setup runtime leaks).Scheduler)
+    {control : (application setup runtime leaks).Control}
+    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some control)) : SourceFailureRecord profile control.execution.application.config := by
+  let invariant : (application setup runtime leaks).Invariant
+      (fun state => SourceFailureRecord profile state.config) :=
+    { submit := fun state who material valid =>
+        valid.path ((reactiveApplication_graphSteps runtime leaks).submit state who material)
+      handle := fun state message next valid accepted =>
+        valid.path ((reactiveApplication_graphSteps runtime leaks).handle state message next
+          accepted)
+      environment := fun state command next valid reached =>
+        valid.path ((reactiveApplication_graphSteps runtime leaks).environment state command next
+          reached) }
+  exact invariant.history (initialLaw setup) horizon scheduler (fun state supported => by
+    obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
+    exact SourceFailureRecord.initial setup profile initial) trace
 
 end SourceFailureRecord
 end Vegas

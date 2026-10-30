@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketRealizedCommitment
 import Vegas.Game.OnePacketRetention
+import Vegas.Game.SourcePrefixPublications
 
 /-! # Covered pending bindings along one-packet histories
 
