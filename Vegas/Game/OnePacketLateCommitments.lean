@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.IntendedCommitGain
+import Vegas.Game.OnePacketDecodedActor
 
 /-! # Late commitments of intended values
 
@@ -185,7 +186,7 @@ theorem decodedCommitValue_sub_eq_historyGain (wellFormed : setup.WellFormed)
     (State.publicView_eventReady _ event).mp publicReady
   have acting : ProtocolView.actor who setup.program
       (ProtocolState.observe who setup.program point) = some who :=
-    (decodedPoint_actor who ready decoded).trans owned
+    (decodedPoint_actor_of_history who rawTrace ready decoded).trans owned
   have gain := intendedCommit_historyGain setup parameter utility excludedPayoff wellFormed
     assessment (projectedSite setup runtime leaks decision) choice
     (replayProjection setup runtime leaks bounds horizon scheduler (projectedSite setup runtime

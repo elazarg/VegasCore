@@ -542,8 +542,11 @@ default history while swapping private values and recorded decisions. Binding
 actions map present payloads and retain omission. Step equivariance uses the
 explicit local `ValueSwap.ExpiryFixed` condition: an omission or automatic
 binding stores failure, so a swap must fix that stored failure. This is an
-internal proof adapter; the compiler's concrete pair swaps must discharge it.
-No runtime condition or alternative failure semantics is introduced.
+internal proof adapter: the checked `ValueSwap.ofPairs_expiryFixed` theorem in
+[ValueSwapPairs](../Vegas/Pending/ValueSwapPairs.lean) discharges it for the
+compiler's concrete pair swaps. [ReactiveValueSwap](../Vegas/Pending/ReactiveValueSwap.lean)
+then transports the actual bounded drain, including its full native state and
+default history. No runtime condition or alternative failure semantics is introduced.
 
 [SourceServiceFirstTurnMixture](../Vegas/Game/SourceServiceFirstTurnMixture.lean)
 uses authentic disclosures: an attempted opening needs a successful immutable
@@ -551,3 +554,28 @@ binding, and its guard may reject. Silence includes binding omission and the
 forced actions of inactive owners. Its unconditional source-continuation law
 retains full configurations and default history. The higher physical completion
 and observation consumers remain acceptance obligations.
+
+## Default-aware source transport
+
+[OnePacketDecodedActor](../Vegas/Game/OnePacketDecodedActor.lean) reads the
+source actor from the full decoded default history: a static event owner is
+filtered out when defaulted. Its initialized-history specialization recovers
+the ready event's static actor from native quiescence, derived internally from
+the actual trace. Generic action and opponent-probability identities handle
+the inactive branch explicitly; they do not assume every owner is active.
+
+[SourceSwapDecode](../Vegas/Game/SourceSwapDecode.lean) and
+[SourceSwapPairs](../Vegas/Game/SourceSwapPairs.lean) retain the same complete
+default history when transporting the source decoder. Likewise,
+[SourceServicePrefixFactorization](../Vegas/Game/SourceServicePrefixFactorization.lean)
+reconstructs full source configurations with the actual native default history.
+
+[OnePacketCompletion](../Vegas/Game/OnePacketCompletion.lean) relates a primary
+accepted record to its actual source content, authenticated sender, accepted
+handle and raw handler result before draining. Expiry and inherited-default
+automatic records remain explicit alternatives.
+[OnePacketFactorization](../Vegas/Game/OnePacketFactorization.lean) reads its
+chance weight from the first new chance record's retained output and the sole
+node evaluator, so a deterministic automatic tail does not discard that draw.
+The complete operational/replay factorization and its higher compiler and
+assessment consumers remain acceptance obligations.

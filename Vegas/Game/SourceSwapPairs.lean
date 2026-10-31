@@ -350,7 +350,7 @@ theorem decodeEventAction_binding_cell {Γ : SourceCtx Player L} {O : Finset Var
     (program : SourceProgram Player L Γ O) :
     ∀ (count : Nat) (bound : count < eventCount program) {owner : Player} {payload : L.Ty}
       (outputEq : outputLayout program ⟨count, bound⟩ = .binding owner payload)
-      (choice : PublicationResult (L.Val payload)),
+      (choice : Option (PublicationResult (L.Val payload))),
       decodeEventAction program ⟨count, bound⟩
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice) =
         some (.commit owner (eventCell program ⟨count, bound⟩).1 payload choice) := by
@@ -441,7 +441,7 @@ theorem decodeEventAction_betweenPairs (event : (graph setup).EventId)
   by_cases binding : ∃ owner payload, (graph setup).outputLayout ⟨count, bound⟩ =
       .binding owner payload
   · obtain ⟨owner, payload, outputEq⟩ := binding
-    obtain ⟨choice, rfl⟩ : ∃ choice : PublicationResult (L.Val payload),
+    obtain ⟨choice, rfl⟩ : ∃ choice : Option (PublicationResult (L.Val payload)),
         action = cast (congrArg EventGraph.EventField.Action outputEq.symm) choice :=
       ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
     have cellKind : (eventCell setup.program ⟨count, bound⟩).2 = .commitment owner payload := by
@@ -455,13 +455,15 @@ theorem decodeEventAction_betweenPairs (event : (graph setup).EventId)
         ((eventCell setup.program ⟨count, bound⟩).1, .commitment owner payload) := by
       change eventCell setup.program ⟨count, bound⟩ = _
       rw [← cellKind]
-    have key : cast (congrArg EventGraph.EventField.Value outputEq)
+    have key : ∀ result : PublicationResult (L.Val payload),
+        cast (congrArg EventGraph.EventField.Value outputEq)
         (EventGraph.pairSwap (betweenPair setup first second (.inr ⟨count, bound⟩))
-          (cast (congrArg EventGraph.EventField.Value outputEq.symm) choice)) =
+          (cast (congrArg EventGraph.EventField.Value outputEq.symm) result)) =
         (CellSwap.between setup.program first second).cell
-          (eventCell setup.program ⟨count, bound⟩).1 (.commitment owner payload) choice := by
+          (eventCell setup.program ⟨count, bound⟩).1 (.commitment owner payload) result := by
+      intro result
       have swapped := pairSwap_betweenPair (first := first) (second := second) cell outputEq
-        (cast (congrArg EventGraph.EventField.Value outputEq.symm) choice)
+        (cast (congrArg EventGraph.EventField.Value outputEq.symm) result)
       rw [cast_cast, cast_eq] at swapped
       exact swapped
     change decodeEventAction setup.program ⟨count, bound⟩
@@ -470,12 +472,16 @@ theorem decodeEventAction_betweenPairs (event : (graph setup).EventId)
     rw [EventGraph.SwapPairs.action_binding _ _ owner payload outputEq choice]
     change decodeEventAction setup.program ⟨count, bound⟩
         (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-          (cast (congrArg EventGraph.EventField.Value outputEq)
+          (choice.map fun result => cast (congrArg EventGraph.EventField.Value outputEq)
             (EventGraph.pairSwap (betweenPair setup first second (.inr ⟨count, bound⟩))
-              (cast (congrArg EventGraph.EventField.Value outputEq.symm) choice)))) = _
-    rw [key, decodeEventAction_binding_cell setup.program count bound outputEq,
+              (cast (congrArg EventGraph.EventField.Value outputEq.symm) result)))) = _
+    rw [decodeEventAction_binding_cell setup.program count bound outputEq,
       decodeEventAction_binding_cell setup.program count bound outputEq]
-    rfl
+    simp only [Option.map_some, CellSwap.action]
+    congr 2
+    cases choice with
+    | none => rfl
+    | some result => exact congrArg some (key result)
   · have notBinding : ∀ owner payload,
         (graph setup).outputLayout ⟨count, bound⟩ ≠ .binding owner payload :=
       fun owner payload same => binding ⟨owner, payload, same⟩
@@ -509,7 +515,20 @@ theorem decodeHistory_betweenPairs (completions : List (graph setup).Completion)
     List.map_map, List.filter_map, List.filterMap_map, List.map_filterMap]
   congr 1
   · funext completion
-    exact decodeEventAction_betweenPairs completion.event completion.action
+    cases completion with
+    | mk event decision defaultEvent =>
+        cases decision with
+        | none => rfl
+        | some action => exact decodeEventAction_betweenPairs event action
+  · apply List.filter_congr
+    intro completion _
+    change decide ((toEventGraph setup.program).actor? completion.event = some who ∧
+        (completion.decision.map
+          ((EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).action
+            completion.event)).isSome) =
+      decide ((toEventGraph setup.program).actor? completion.event = some who ∧
+        completion.decision.isSome)
+    simp only [Option.isSome_map]
 
 /-- **Reading a swapped configuration reads the swapped point.** -/
 theorem sourceServicePrefix?_betweenPairs (rank : Nat) (config : (graph setup).Config) :
@@ -518,8 +537,9 @@ theorem sourceServicePrefix?_betweenPairs (rank : Nat) (config : (graph setup).C
       (sourceServicePrefix? setup rank config).map
         ((CellSwap.between setup.program first second).protocolState setup.program) := by
   unfold sourceServicePrefix? serviceSourcePrefix?
-  rw [EventGraph.Config.swap_store, EventGraph.Config.swap_history, decodeHistory_betweenPairs]
+  rw [EventGraph.Config.swap_store, EventGraph.Config.swap_history,
+    EventGraph.Config.swap_defaults, decodeHistory_betweenPairs]
   exact decodeSourcePrefix?_swap _ _ rank setup.program _ [] _ _ refsCorr_initial_between
-    outputsCorr_between config.store _
+    outputsCorr_between config.store _ config.defaults
 
 end Vegas

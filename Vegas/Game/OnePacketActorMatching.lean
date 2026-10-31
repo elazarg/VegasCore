@@ -3,6 +3,7 @@
 import Vegas.Game.OnePacketPeriodInvariant
 import Vegas.Game.OnePacketDecodedActor
 import Vegas.Game.SourcePrefixPublications
+import Vegas.Game.SourceServiceFacts
 
 /-! # Actor completions match along forced histories
 
@@ -36,93 +37,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}
-
-omit [Fintype Player] in
-/-- **The replayed step moves the actor.** At a replayed intended history whose
-state is the decoded point of a configuration with a ready event of `actor`,
-the acting joint of a choice gives it to `actor` and nothing to the others. -/
-theorem actingJoint_of_decoded {config : (graph setup).Config} {event : (graph setup).EventId}
-    (ready : config.cut.Ready event) {actor : Player}
-    (acts : (graph setup).actor? event = some actor) {point : ProtocolState setup.program}
-    (decoded : decodedPoint setup config = some point) (choice : Option (OwnAction Player L))
-    (player : Player) :
-    actingJoint setup (some point) choice player = if actor = player then choice else none := by
-  change (if ProtocolView.actor player setup.program
-      (ProtocolState.observe player setup.program point) = some player then choice else none) = _
-  rw [decodedPoint_actor player ready decoded, acts]
-  by_cases same : actor = player <;> simp [same]
-
-/-- **The other players' factor of a replayed actor step.** It is one when the
-actor is `who`, and otherwise the actor's mass of the choice at its view of
-the decoded point. -/
-theorem opponentsStepProb_actingJoint (assessment : setup.intendedModel.BehavioralAssessment)
-    (who : Player) (history : setup.intendedProtocol.History) {config : (graph setup).Config}
-    {event : (graph setup).EventId} (ready : config.cut.Ready event) {actor : Player}
-    (acts : (graph setup).actor? event = some actor) {point : ProtocolState setup.program}
-    (decoded : decodedPoint setup config = some point) (current : history.state = some point)
-    (choice : Option (OwnAction Player L))
-    (legal : setup.intendedProtocol.Legal history.state (actingJoint setup history.state choice)) :
-    setup.intendedModel.opponentsStepProb assessment.strategy who history.trace ⟨_, legal⟩ =
-      if actor = who then 1 else
-        (((assessment.strategy actor (setup.protocolObserve actor (some point))).map
-          Subtype.val) choice).toReal := by
-  have joint : ∀ player, actingJoint setup history.state choice player =
-      if actor = player then choice else none := by
-    intro player
-    rw [current]
-    exact actingJoint_of_decoded ready acts decoded choice player
-  rw [setup.intendedModel.opponentsStepProb_eq_of_single assessment.strategy who history.trace
-    ⟨_, legal⟩ actor fun player different => by
-      change actingJoint setup history.state choice player = none
-      rw [joint]
-      simp [Ne.symm different]]
-  split_ifs with same
-  · rfl
-  · have value : (setup.intendedModel.choicesOfLegal history.trace ⟨_, legal⟩ actor).1 =
-        choice := by
-      change actingJoint setup history.state choice actor = choice
-      rw [joint]
-      simp
-    have mass := pmf_map_apply_of_injective
-      (f := fun picked : setup.intendedModel.Choice actor
-        (setup.intendedModel.infoOf actor history.trace) => picked.1)
-      (assessment.strategy actor (setup.intendedModel.infoOf actor history.trace))
-      Subtype.val_injective (setup.intendedModel.choicesOfLegal history.trace ⟨_, legal⟩ actor)
-    rw [value] at mass
-    rw [← mass]
-    have info : setup.intendedModel.infoOf actor history.trace =
-        setup.protocolObserve actor (some point) := by
-      rw [setup.intended_info, current]
-    rw [info]
-
-omit [Fintype Player] in
-/-- A legal intended acting joint at a replayed actor step gives the actor a
-choice that is not failing. -/
-theorem not_failing_of_legal {history : setup.intendedProtocol.History}
-    {config : (graph setup).Config} {event : (graph setup).EventId}
-    (ready : config.cut.Ready event) {actor : Player}
-    (acts : (graph setup).actor? event = some actor) {point : ProtocolState setup.program}
-    (decoded : decodedPoint setup config = some point) (current : history.state = some point)
-    {choice : Option (OwnAction Player L)}
-    (legal : setup.intendedProtocol.Legal history.state (actingJoint setup history.state choice)) :
-    ¬ Failing choice := by
-  have localLegal := setup.intendedProtocol.legalOption_of_legal legal actor
-  have own : actingJoint setup history.state choice actor = choice := by
-    rw [current, actingJoint_of_decoded ready acts decoded]
-    simp
-  rw [own] at localLegal
-  cases choice with
-  | none =>
-      exfalso
-      apply localLegal
-      rw [current]
-      change ProtocolView.actor actor setup.program
-        (ProtocolState.observe actor setup.program point) = some actor
-      rw [decodedPoint_actor actor ready decoded, acts]
-  | some action =>
-      obtain ⟨_, available⟩ := localLegal
-      rw [current] at available
-      exact ProtocolView.not_failing_of_intendedAvailable actor setup.program _ action available
 
 /-- **Actor completions match along forced histories.** Along every native
 history of the one-packet game ending in a forced state of `who`, every
@@ -165,8 +79,13 @@ theorem actorCompletionsMatch_of_forced (assessment : setup.intendedModel.Behavi
         have currentState : history.state =
             some (residual.lift (ProtocolState.entry residual.program residual.source)) :=
           (intendedHistory?_state (runtime := runtime) prior replayed).trans decoded
+        have rawPrior := (bounds.onePacketMenu runtime leaks).toRawTrace
+          (initialLaw setup) horizon scheduler prior
+        have facts := legalFacts setup leaks horizon scheduler current rawPrior
+        have actorActive := current.execution.application.active_of_ready_owned
+          facts.quiescent ready acts
         rw [opponentsStepProb_actingJoint assessment who history ready acts decoded currentState _
-          intendedLegal]
+          intendedLegal, ite_eq_right actorActive]
         split_ifs with same
         · symm
           refine invariant.quiet fun other otherReady sender otherActs => ?_
@@ -175,7 +94,9 @@ theorem actorCompletionsMatch_of_forced (assessment : setup.intendedModel.Behavi
           rw [acts] at otherActs
           cases otherActs
           exact same
-        · have notFailing := not_failing_of_legal ready acts decoded currentState intendedLegal
+        · have notFailing :=
+            (defaulted_or_not_failing_of_legal ready acts decoded currentState
+              intendedLegal).resolve_left actorActive
           rcases transition_idle_cases (runtime := runtime) (initialLaw setup) horizon scheduler
             current idle joint
               realized with sameExecution | ⟨command, moved⟩

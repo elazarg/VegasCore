@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketBoundaryWaiting
 import Vegas.Game.SourceTerminalReadout
+import Vegas.Game.OnePacketDecodedActor
 import Vegas.Game.OnePacketChanceStoppedLaw
 
 /-! # Honest source continuation under counted native service -/
@@ -151,7 +152,9 @@ theorem counted_honest_boundary_readout_law
                   cases Option.some.inj beforeDecoded
                   have actors : ∀ player, ProtocolView.actor player setup.program
                       (ProtocolState.observe player setup.program point) = none :=
-                    fun player => (decodedPoint_actor player ready decodedHere).trans owned
+                    fun player => by
+                      rw [decodedPoint_actor player ready decodedHere, owned]
+                      rfl
                   have targetIntended : ProtocolState.Intended setup.program target := by
                     refine ProtocolState.intended_step_of_actors setup.program point _ target
                       intended (fun player active => ?_) stepped

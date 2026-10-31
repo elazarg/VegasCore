@@ -44,7 +44,7 @@ theorem reconstruct_service_marginal
       (decodeState? refs execution.application.config.store).map fun state =>
         encoded ⟨state, registry seed, revelations seed,
           decodeHistory setup.program (execution.application.config.history.map
-            (setup.eventGraph.fromModeCompletion mode))⟩)
+            (setup.eventGraph.fromModeCompletion mode)), execution.application.config.defaults⟩)
     (ordered : ∀ point ∈ joint.support, point.2.application.config.cut.IsPrefix rank)
     (marginal : PMF (Config Player L Γ))
     (law : joint.map (fun point => decode point.1 point.2) =
@@ -72,7 +72,8 @@ theorem reconstruct_service_marginal
   let source := fun point : Point =>
     (⟨(available point).choose, registry point.val.1, revelations point.val.1,
       decodeHistory setup.program (point.val.2.application.config.history.map
-        (setup.eventGraph.fromModeCompletion mode))⟩ : Config Player L Γ)
+        (setup.eventGraph.fromModeCompletion mode)), point.val.2.application.config.defaults⟩ :
+        Config Player L Γ)
   have decoded (point : Point) : decode point.val.1 point.val.2 =
       some (encoded (source point)) := by
     rw [decodeEq, (available point).choose_spec]
@@ -91,7 +92,7 @@ theorem reconstruct_service_marginal
   refine ⟨source, ?_, fun _ => rfl, fun _ => rfl, decoded, marginalEq⟩
   intro point
   exact ⟨decodeState?_agrees refs point.val.2.application.config.store _
-    (available point).choose_spec, rfl, ordered point.val point.property⟩
+    (available point).choose_spec, rfl, rfl, ordered point.val point.property⟩
 
 /-- The actual typed decoder determines the next source configuration. Its
 joint law supplies both the source marginal and the preceding observation
@@ -110,7 +111,7 @@ theorem reconstruct_service_phase
       (decodeState? refs execution.application.config.store).map fun state =>
         encoded ⟨state, registry seed, revelations seed,
           decodeHistory setup.program (execution.application.config.history.map
-            (setup.eventGraph.fromModeCompletion mode))⟩)
+            (setup.eventGraph.fromModeCompletion mode)), execution.application.config.defaults⟩)
     (ordered : ∀ point ∈ joint.support, point.2.application.config.cut.IsPrefix rank)
     (marginal : PMF (Config Player L Γ))
     (noise : DecisionView focal Γ → PMF _)

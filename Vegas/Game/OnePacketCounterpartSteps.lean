@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketSwapRecord
+import Vegas.Pending.ReactiveEventStability
 
 /-! # Chance mass under a hidden swap
 
@@ -58,7 +59,12 @@ theorem completionMass_swap (swap : HiddenSwap (graph setup))
                 rw [nodeView_resolve_actor outputEq codeEq] at acts
                 cases acts
             | sample => trivial
-          rw [EventGraph.Config.step_swap swap.values before.config event ready action fixed,
+          have expiry : swap.values.ExpiryFixed event := by
+            intro owner payload outputEq
+            have owned := (graph setup).actor?_of_outputLayout_binding outputEq
+            rw [acts] at owned
+            cases owned
+          rw [EventGraph.Config.step_swap swap.values before.config event ready action fixed expiry,
             pmf_map_apply_of_injective _ (EventGraph.Config.swap_involutive swap.values).injective]
         · rfl
   · rfl

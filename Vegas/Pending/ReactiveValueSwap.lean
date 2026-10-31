@@ -16,8 +16,10 @@ A response commutes with the swap when its evidence request is fixed by the
 swap (`Vegas.EventGraphRuntime.HiddenSwap.respond_execution`); an inclusion
 commutes with it when the included call satisfies the conditions of
 `Vegas.EventGraphRuntime.handle_swap`
-(`Vegas.EventGraphRuntime.HiddenSwap.includePending_execution`), and every
-other environment step commutes with it unconditionally.
+(`Vegas.EventGraphRuntime.HiddenSwap.includePending_execution`). Automatic
+service commutes with swaps that fix failed binding output; this condition is
+discharged by concrete pair swaps. The environment law combines native command
+conditions with this automatic-service condition.
 -/
 
 noncomputable section
@@ -30,6 +32,61 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
   {runtime : EventGraphRuntime graph}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
+
+namespace State
+
+/-- Swapping hidden values preserves the exact automatic-service predicate. -/
+theorem automaticReady_swap (swap : HiddenSwap graph) (state : State graph)
+    (event : graph.EventId) :
+    (state.swap swap).AutomaticReady event ↔ state.AutomaticReady event := by
+  simp only [AutomaticReady, swap_config, Config.swap_cut, Config.swap_defaulted]
+
+/-- Automatic failure commutes with a swap that fixes failed binding output. -/
+theorem completeFailure_swap (swap : HiddenSwap graph) (state : State graph)
+    (event : graph.EventId) (ready : state.config.cut.Ready event)
+    (fixed : swap.values.ExpiryFixed event) :
+    (state.swap swap).completeFailure event ready =
+      (state.completeFailure event ready).swap swap := by
+  cases view : nodeView graph event with
+  | bind owner payload outputEq codeEq =>
+      simp only [completeFailure, view]
+      rw [swap_complete, swap.values.action_binding event owner payload outputEq,
+        fixed owner payload outputEq]
+      rfl
+  | resolve owner payload binding checks outputEq codeEq =>
+      simp only [completeFailure, view]
+      rw [swap_complete, swap.values.action_publication event payload outputEq,
+        swap.values.value_public (.inr event)
+          (show (graph.outputLayout event).IsPublic by rw [outputEq]; trivial)]
+      rfl
+  | sample payload law outputEq codeEq => simp only [completeFailure, view]
+
+/-- Bounded automatic service commutes with a failure-fixing hidden swap. -/
+theorem drainFuel_swap (swap : HiddenSwap graph)
+    (fixed : ∀ event, swap.values.ExpiryFixed event) (fuel : Nat) (state : State graph) :
+    drainFuel fuel (state.swap swap) = (drainFuel fuel state).swap swap := by
+  classical
+  induction fuel generalizing state with
+  | zero => rfl
+  | succ fuel ih =>
+      have readyEq : (state.swap swap).AutomaticReady = state.AutomaticReady :=
+        funext fun event => propext (automaticReady_swap swap state event)
+      simp only [drainFuel, completeAutomatic]
+      simp only [readyEq]
+      split
+      · rename_i pending
+        rw [completeFailure_swap swap state _ _ (fixed _)]
+        exact ih _
+      · rfl
+
+/-- Native automatic service commutes with a failure-fixing hidden swap. -/
+theorem drain_swap (swap : HiddenSwap graph)
+    (fixed : ∀ event, swap.values.ExpiryFixed event) (state : State graph) :
+    (state.swap swap).drain = state.drain.swap swap := by
+  simp only [drain, swap_config, Config.remaining, Config.swap_cut]
+  exact drainFuel_swap swap fixed _ state
+
+end State
 
 /-- The conditions under which including a call commutes with the swap: an
 accepted commitment's handle is compatible with the swap at its event, and an
@@ -212,10 +269,11 @@ theorem respond_execution (current : (runtime.reactiveApplication leaks).Executi
         rfl
       · simp only [same, ↓reduceIte]
 
-/-- **Inclusion commutes with the swap** when the included call satisfies the
-inclusion conditions. -/
+/-- Inclusion commutes with a failure-fixing swap when the included call satisfies
+its compatibility and resolution conditions. -/
 theorem includePending_execution (current : (runtime.reactiveApplication leaks).Execution)
     (id : MessageId Player)
+    (failures : ∀ event, swap.values.ExpiryFixed event)
     (fixed : ∀ envelope, current.network.lookup id = some envelope →
       envelope.payload.tokenValid = true →
       InclusionFixed runtime swap current.application ⟨envelope.id, envelope.payload.call⟩) :
@@ -234,24 +292,21 @@ theorem includePending_execution (current : (runtime.reactiveApplication leaks).
         split
         · rename_i valid
           obtain ⟨compatible, openingFixed⟩ := fixed envelope found valid
-          exact handle_swap runtime swap current.application _ compatible openingFixed
+          rw [handle_swap runtime swap current.application _ compatible openingFixed]
+          simp only [Option.map_map, Function.comp_def, State.drain_swap swap failures]
         · rfl
       simp only [execution_application]
       rw [handled]
       cases (runtime.reactiveApplication leaks).handle current.application envelope <;> rfl
 
-/-- **Environment steps commute with the swap** when every included call
-satisfies the inclusion conditions. -/
+/-- Environment steps commute with a failure-fixing swap when included calls
+satisfy their compatibility and resolution conditions. -/
 theorem environmentStep_execution (current : (runtime.reactiveApplication leaks).Execution)
     (command : (runtime.reactiveApplication leaks).Command)
     (fixed : ∀ id envelope, command = .include id → current.network.lookup id = some envelope →
       envelope.payload.tokenValid = true →
       InclusionFixed runtime swap current.application ⟨envelope.id, envelope.payload.call⟩)
-    (expiry : ∀ event entered, command = .application (.expire event) →
-      current.application.config.cut.Ready event →
-      current.application.activatedAt event = some entered →
-      runtime.deadline event ≤ current.application.clock - entered →
-        swap.values.ExpiryFixed event) :
+    (failures : ∀ event, swap.values.ExpiryFixed event) :
     (swap.execution current).environmentStep (runtime.reactiveApplication leaks) command =
       (current.environmentStep (runtime.reactiveApplication leaks) command).map
         swap.execution := by
@@ -266,16 +321,18 @@ theorem environmentStep_execution (current : (runtime.reactiveApplication leaks)
       rfl
   | «include» id =>
       simp only [PMF.pure_map]
-      rw [swap.includePending_execution current id (fun envelope found =>
+      rw [swap.includePending_execution current id failures (fun envelope found =>
         fixed id envelope rfl found)]
       rfl
   | application command =>
       simp only [execution_application]
-      change PMF.map _ (PMF.map _ (environmentStep runtime (current.application.swap swap)
-        command)) = _
+      change PMF.map _ (PMF.map _ (PMF.map State.drain
+        (environmentStep runtime (current.application.swap swap) command))) =
+        PMF.map _ (PMF.map _ (PMF.map State.drain
+          (environmentStep runtime current.application command)))
       rw [environmentStep_swap runtime swap current.application command
-        (fun event entered same => expiry event entered (by rw [same])),
-        PMF.map_comp, PMF.map_comp, PMF.map_comp]
+        (fun event _ _ _ _ _ => failures event)]
+      simp only [PMF.map_comp, Function.comp_def, State.drain_swap swap failures]
       rfl
 
 end HiddenSwap

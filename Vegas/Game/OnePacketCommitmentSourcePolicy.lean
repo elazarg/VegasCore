@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.IntendedCommitGain
+import Vegas.Game.OnePacketDecodedActor
 
 /-! # One source policy for an intended native commitment -/
 
@@ -112,8 +113,11 @@ theorem intendedCommitment_sourcePolicy_gain
     (PublicView.ownTurn?_spec _ who event turn).1
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
   have pointDecoded : decodedPoint setup execution.application.config = some point := decoded
+  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+    scheduler start.trace
+  rw [state] at rawTrace
   have acts : ProtocolView.actor who setup.program (ProtocolState.observe who setup.program point) =
-      some who := (decodedPoint_actor who ready pointDecoded).trans owned
+      some who := (decodedPoint_actor_of_history who rawTrace ready pointDecoded).trans owned
   obtain ⟨replay, replayed⟩ := intendedHistory?_isSome_of_debtFree (runtime := runtime) wellFormed
     start.trace _ state
     regular

@@ -133,12 +133,13 @@ theorem decodeSourcePrefix?_swap (swap : CellSwap Player L) {Field : Type} [Deci
       (registry : Registry Γ) (revelations : Revelations Γ)
       (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event)),
       swap.RefsCorr storeMap refs → swap.OutputsCorr storeMap program outputs →
-      ∀ store history,
+      ∀ store history defaults,
       decodeSourcePrefix? program refs registry revelations outputs count (storeMap store)
-          (swap.history history) =
+          (swap.history history) defaults =
         (decodeSourcePrefix? program refs registry revelations outputs count store
-          history).map (swap.protocolState program)
-  | 0, _, _, program, refs, registry, revelations, outputs, refsCorr, _, store, history => by
+          history defaults).map (swap.protocolState program)
+  | 0, _, _, program, refs, registry, revelations, outputs, refsCorr, _, store, history,
+      defaults => by
       simp only [decodeSourcePrefix?]
       rw [swap.decodeState?_swap storeMap refs refsCorr store]
       cases decodeState? refs store with
@@ -146,23 +147,23 @@ theorem decodeSourcePrefix?_swap (swap : CellSwap Player L) {Field : Type} [Deci
       | some state =>
           simp only [Option.map_some, CellSwap.protocolState_entry]
           rfl
-  | count + 1, _, _, .ret _, _, _, _, _, _, _, _, _ => rfl
+  | count + 1, _, _, .ret _, _, _, _, _, _, _, _, _, _ => rfl
   | count + 1, _, _, .sample name fresh law next, refs, registry, revelations, outputs,
-      refsCorr, outputsCorr, store, history => by
+      refsCorr, outputsCorr, store, history, defaults => by
       rw [decodeSourcePrefix?_sample, decodeSourcePrefix?_sample,
         decodeSourcePrefix?_swap swap storeMap count next _ _ _ _
           (swap.refsCorr_cons storeMap outputsCorr.1 refsCorr) outputsCorr.2, Option.map_map,
         Option.map_map]
       rfl
   | count + 1, _, _, .commit name owner fresh guard next, refs, registry, revelations, outputs,
-      refsCorr, outputsCorr, store, history => by
+      refsCorr, outputsCorr, store, history, defaults => by
       rw [decodeSourcePrefix?_commit, decodeSourcePrefix?_commit,
         decodeSourcePrefix?_swap swap storeMap count next _ _ _ _
           (swap.refsCorr_cons storeMap outputsCorr.1 refsCorr) outputsCorr.2, Option.map_map,
         Option.map_map]
       rfl
   | count + 1, _, _, .reveal published owner name fresh selected unresolved next, refs,
-      registry, revelations, outputs, refsCorr, outputsCorr, store, history => by
+      registry, revelations, outputs, refsCorr, outputsCorr, store, history, defaults => by
       rw [decodeSourcePrefix?_reveal, decodeSourcePrefix?_reveal,
         decodeSourcePrefix?_swap swap storeMap count next _ _ _ _
           (swap.refsCorr_cons storeMap outputsCorr.1 refsCorr) outputsCorr.2, Option.map_map,

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketForced
+import Vegas.Source.IntendedGame
 
 /-! # Failures in typed source prefix readouts
 
@@ -21,6 +22,36 @@ and an accepted unopenable binding remain distinct choices. -/
 def Failing (choice : Option (OwnAction Player L)) : Prop :=
   (∀ owner name payload result, choice = some (.commit owner name payload result) →
     result.getD .failure = .failure) ∧ OwnAction.disclosure choice = false
+
+namespace ProtocolView
+
+/-- **Intended actions are not failing.** An intended commitment commits a
+value, and an intended reveal discloses. -/
+theorem not_failing_of_intendedAvailable (who : Player) : {Γ : SourceCtx Player L} →
+    {O : Finset VarId} → (program : SourceProgram Player L Γ O) →
+    (view : ProtocolView who program) → (action : OwnAction Player L) →
+    action ∈ intendedAvailable who program view → ¬ Failing (some action)
+  | _, _, .ret _, _, _, impossible => impossible.elim
+  | _, _, .sample _ _ _ next, view, action, member => by
+      cases view with
+      | inl _ => exact member.elim
+      | inr later => exact not_failing_of_intendedAvailable who next later action member
+  | _, _, .commit _ _ _ _ next, view, action, member => by
+      cases view with
+      | inl _ =>
+          obtain ⟨value, _, rfl⟩ := member
+          intro failing
+          cases failing.1 _ _ _ _ rfl
+      | inr later => exact not_failing_of_intendedAvailable who next later action member
+  | _, _, .reveal _ _ _ _ _ _ next, view, action, member => by
+      cases view with
+      | inl _ =>
+          rw [Set.mem_singleton_iff.mp member]
+          intro failing
+          cases failing.2
+      | inr later => exact not_failing_of_intendedAvailable who next later action member
+
+end ProtocolView
 
 /-- Omission and accepted unopenable binding actions both incur failure debt. -/
 theorem decodeEventAction_failing_binding {Γ : SourceCtx Player L} {openNames : Finset VarId}

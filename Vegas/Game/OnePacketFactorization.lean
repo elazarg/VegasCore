@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketTrembles
+import Vegas.Game.OnePacketCompletion
 import GameTheory.Analysis.Protocol.CounterfactualReach
 import GameTheoryExtensions.Analysis.Protocol.ReachBounds
 
@@ -114,44 +115,22 @@ def ownerRecall (who : Player) :
   | none => []
   | some control => control.execution.recall who
 
-/-- The chance mass of the event a configuration step completes: at an event
-without an actor, a sample, the mass the graph step gives the reached
-configuration, which is the draw's probability; one at a decision, and one when
-no event completes. -/
+/-- The chance factor of a native completion: the evaluator mass of the first
+new record's retained output when it is a sample. Deterministic decisions and
+automatic completions contribute one. -/
 def completionMass (before after : EventGraphRuntime.State (graph setup)) : ℝ :=
   match after.config.history.drop before.config.history.length with
-  | [⟨event, action⟩] =>
-      match (graph setup).actor? event with
+  | [] => 1
+  | completion :: _ =>
+      match (graph setup).actor? completion.event with
       | none =>
-          if ready : before.config.cut.Ready event then
-            (before.config.step event ready action after.config).toReal
-          else 0
+          match completion.decision, after.config.outputs completion.event with
+          | some action, some value =>
+              match ((graph setup).nodes completion.event).eval? action before.config.store with
+              | none => 0
+              | some law => (law value).toReal
+          | _, _ => 0
       | some _ => 1
-  | _ => 1
-
-/-- The source action a transmission decodes to: at a binding event, the
-commitment of the value the submitted handle binds after submission, at any
-slot; at a resolve event, the disclosure. -/
-def sentSourceAction (after : (application setup runtime leaks).Execution)
-    (action : (application setup runtime leaks).Action) : Option (OwnAction Player L) :=
-  match action.transmission with
-  | none => none
-  | some material =>
-      match material.call.packet with
-      | .commitment event handle =>
-          match nodeView (graph setup) event with
-          | .bind _ payload outputEq _ =>
-              decodeEventAction setup.program event
-                (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-                  (after.application.bindingResult handle payload))
-          | _ => none
-      | .opening event _ _ =>
-          match nodeView (graph setup) event with
-          | .resolve _ _ _ _ outputEq _ =>
-              decodeEventAction setup.program event
-                (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
-          | _ => none
-      | .malformed _ => none
 
 /-- **The content factor of a response.** One for silence; for a transmission,
 the mass the as-if-honest law at the responder's projected source view gives
@@ -426,13 +405,7 @@ omit [Fintype Player] in
 theorem completionMass_nonneg (before after : EventGraphRuntime.State (graph setup)) :
     0 ≤ completionMass setup before after := by
   unfold completionMass
-  split
-  · split
-    · split
-      · exact ENNReal.toReal_nonneg
-      · exact le_rfl
-    · exact zero_le_one
-  · exact zero_le_one
+  repeat' first | split | exact zero_le_one | exact le_rfl | exact ENNReal.toReal_nonneg
 
 omit [Fintype Player] in
 theorem contentFactor_nonneg (assessment : setup.intendedModel.BehavioralAssessment)

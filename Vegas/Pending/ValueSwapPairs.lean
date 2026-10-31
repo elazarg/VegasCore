@@ -6,9 +6,9 @@ import Vegas.Pending.EventValueSwap
 
 A family of pairs of values, one optional pair per hidden field, defines a
 value swap: the transposition of the pair at each field that has one, and the
-transposition of the corresponding results at a binding event's action
+transposition of the admitted results at a binding event's action, fixing omission
 (`Vegas.EventGraph.ValueSwap.ofPairs`). Public fields carry no pair, and a pair
-at a binding never involves a failure. With one optional pair of prepared values
+at a binding output never involves a failure. With one optional pair of prepared values
 per handle it defines a hidden swap (`Vegas.EventGraphRuntime.HiddenSwap.ofPairs`).
 
 A handle whose pair is the two typed values of an event's pair is compatible
@@ -75,22 +75,23 @@ namespace SwapPairs
 
 variable (pairs : graph.SwapPairs)
 
-/-- The swap of an event's action: at a binding event, the swap of its result. -/
+/-- A binding action maps admitted results through the swap and fixes omission. -/
 def action (event : graph.EventId) : graph.Action event → graph.Action event :=
   match nodeView graph event with
   | .bind _ _ outputEq _ => fun original =>
       cast (congrArg EventField.Action outputEq.symm)
-        (cast (congrArg EventField.Value outputEq)
-          (pairSwap (pairs.pair (.inr event)) (cast (congrArg EventField.Value outputEq.symm)
-            (cast (congrArg EventField.Action outputEq) original))))
+        ((cast (congrArg EventField.Action outputEq) original).map fun result =>
+          cast (congrArg EventField.Value outputEq)
+            (pairSwap (pairs.pair (.inr event))
+              (cast (congrArg EventField.Value outputEq.symm) result)))
   | .resolve .. | .sample .. => id
 
 theorem action_binding (event : graph.EventId) (owner : Player) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
-    (result : PublicationResult (L.Val payload)) :
-    pairs.action event (cast (congrArg EventField.Action outputEq.symm) result) =
+    (choice : Option (PublicationResult (L.Val payload))) :
+    pairs.action event (cast (congrArg EventField.Action outputEq.symm) choice) =
       cast (congrArg EventField.Action outputEq.symm)
-        (cast (congrArg EventField.Value outputEq)
+        (choice.map fun result => cast (congrArg EventField.Value outputEq)
           (pairSwap (pairs.pair (.inr event))
             (cast (congrArg EventField.Value outputEq.symm) result))) := by
   unfold action
@@ -107,9 +108,15 @@ theorem action_involutive (event : graph.EventId) :
   unfold action
   cases nodeView graph event with
   | bind owner payload outputEq codeEq =>
-      simp only [cast_cast, cast_eq]
-      rw [pairSwap_involutive]
-      simp
+      obtain ⟨choice, rfl⟩ : ∃ choice : Option (PublicationResult (L.Val payload)),
+          original = cast (congrArg EventField.Action outputEq.symm) choice :=
+        ⟨cast (congrArg EventField.Action outputEq) original, by simp⟩
+      cases choice with
+      | none => simp
+      | some result =>
+          simp only [cast_cast, cast_eq, Option.map_some]
+          rw [pairSwap_involutive]
+          simp
   | resolve | sample => rfl
 
 theorem action_publication (event : graph.EventId) (payload : L.Ty)
