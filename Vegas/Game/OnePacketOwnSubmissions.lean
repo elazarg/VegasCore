@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketActorRecord
-import Vegas.Game.SourceServiceTurnSubmissions
+import Vegas.Game.SourceServiceFacts
 import Vegas.Pending.ReactiveSignedCommitments
 import Vegas.Source.FailedBindingDeviation
 
@@ -27,8 +27,6 @@ made at the owner's turn (`Vegas.onePacket_ownSubmissionsAtTurn`).
 -/
 
 noncomputable section
-
-
 
 namespace Vegas
 
@@ -87,7 +85,7 @@ theorem onePacket_submission_atTurn {horizon : Nat}
     rw [transmits] at submitted
     exact submitted
   obtain ⟨inputRecall, serialRecall, _⟩ := runtime.countRecall_history leaks trace
-  have facts := settledFacts_history (initialLaw setup) horizon scheduler trace
+  have facts := legalFacts setup leaks horizon scheduler ⟨remaining, some who, execution⟩ trace
   set envelope := runtime.localEnvelope leaks who (execution.recall who)
     (execution.observe app who) material with envelopeEq
   obtain ⟨tokenValid, correct, first⟩ := (countPermits_eq_true_iff _ _).mp permitted
@@ -113,15 +111,18 @@ theorem onePacket_submission_atTurn {horizon : Nat}
   by_cases completed : named ∈ execution.application.config.cut.completed
   · obtain ⟨recordRank, ⟨recordResidual⟩, record⟩ :=
       actorRecord_history (runtime := runtime) profile horizon scheduler trace
-    have sameRank := EventOrder.Cut.IsPrefix.unique recordResidual.checkpoint.ordered residual.checkpoint.ordered
+    have sameRank := recordResidual.checkpoint.ordered.unique residual.checkpoint.ordered
     subst sameRank
     rcases record named completed who actor with
       ⟨message, onLedger, _, messageNamed, messageSender⟩ | owed
     · exfalso
-      have emitted : message ∈ execution.network.inputs := facts.carried.ledger message onLedger
+      obtain ⟨entry, recorded, material, _transmission, emitted, _packet⟩ :=
+        facts.provenance.ledger message onLedger
       have recalled : message ∈ app.outputs (execution.recall who) := by
-        rw [← inputRecall who]
-        exact List.mem_filter.mpr ⟨emitted, by simp [messageSender]⟩
+        exact List.mem_filterMap.mpr ⟨entry, messageSender ▸ recorded, emitted⟩
+      have emitted : message ∈ execution.network.inputs := by
+        rw [← inputRecall who] at recalled
+        exact (List.mem_filter.mp recalled).1
       have lower : message.id.2 < envelope.id.2 := by
         have bound := facts.serials.inputs message emitted
         change message.id.2 < execution.network.nextSerial message.sender at bound
@@ -135,7 +136,7 @@ theorem onePacket_submission_atTurn {horizon : Nat}
     refine PublicView.ownTurn?_of_ownTurn _ who named
       ⟨(execution.application.publicView_eventReady named).mpr ready, actor,
         fun other otherReady _ => ?_⟩
-    exact ready_unique (setup := setup) _
+    exact setup.eventGraph.sequentialize_ready_unique _
       ((execution.application.publicView_eventReady other).mp otherReady) ready
 
 /-- **The own-turn record holds along one-packet histories.** At every history
@@ -219,25 +220,20 @@ theorem ownTurnRecord_history (profile : BehavioralProfile setup.program) (horiz
                   obtain ⟨next, reached, nextEq⟩ := PMF.support_map .. ▸ moved
                   cases nextEq
                   have recallEq := app.environmentStep_recall execution next command reached
-                  have configStep := environmentStep_configStep setup leaks execution next
-                    command reached
-                  obtain ⟨nextRank, ⟨nextResidual⟩⟩ : ∃ nextRank, Nonempty
-                      (SourceResidual setup profile nextRank next.application.config) := by
-                    rcases configStep with same | ⟨event, ready, action, member⟩
-                    · exact ⟨rank, ⟨same ▸ residual⟩⟩
-                    · obtain ⟨successor, _⟩ := residual.step event ready action _ member
-                      exact ⟨rank + 1, ⟨successor⟩⟩
+                  have path := (runtime.reactiveApplication_graphSteps leaks).environmentStep
+                    execution next command reached
+                  obtain ⟨nextRank, ⟨nextResidual⟩⟩ := residual.path path
                   refine ⟨nextRank, ⟨nextResidual⟩, fun who entry entryMember event submitted =>
                     ?_⟩
                   change entry ∈ next.recall who at entryMember
                   rw [recallEq] at entryMember
                   rcases record who entry entryMember event submitted with turn | owed
                   · exact Or.inl turn
-                  · exact Or.inr (residual.decodedHolds_configStep
-                      (fun state joint target owing reached =>
-                        ProtocolState.owesFailure_step who setup.program state joint target owing
-                          reached)
-                      owed configStep nextResidual.checkpoint.ordered)
+                  · obtain ⟨owedRank, ⟨owedResidual⟩, holds⟩ :=
+                      residual.decodedHolds_path (owesFailure_stepClosed who) owed path
+                    have same := owedResidual.checkpoint.ordered.unique
+                      nextResidual.checkpoint.ordered
+                    exact Or.inr (by simpa only [same] using holds)
 
 /-- **Own submissions at intended points are at the owner's turns.** At a
 history of the one-packet game whose configuration decodes at its completed

@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceCanonicalSerial
 import GameTheory.Analysis.Protocol.CounterfactualDecomposition
+import Interaction.ReactiveReceipts
 
 /-! # Good packets and retained play
 
@@ -468,7 +469,8 @@ theorem SettledGood.environment {horizon : Nat}
   · rcases step with ⟨configEq, _, _, _⟩ | ⟨other, otherReady, action, member⟩
     · by_cases acceptedNow : (message.id, true) ∈ next.receipts
       · obtain ⟨after, handled, applicationEq⟩ :=
-          newly_accepted facts reached emitted unaccepted acceptedNow
+          (serviceApplication setup mode deadline leaks).environmentStep_newly_accepted
+            execution next command facts.unique reached emitted unaccepted acceptedNow
         obtain ⟨_, acceptedEvent, acceptedNamed, _, acceptedCompleted, _⟩ :=
           accepted_inclusion execution.application after message handled
         rw [named] at acceptedNamed
@@ -488,7 +490,8 @@ theorem SettledGood.environment {horizon : Nat}
         · rw [execution.application.config.step_cut other otherReady action _ member]
           exact ready.after_complete otherReady (Ne.symm same)
         · obtain ⟨after, handled, applicationEq⟩ :=
-            newly_accepted facts reached emitted unaccepted acceptedNow
+            (serviceApplication setup mode deadline leaks).environmentStep_newly_accepted
+            execution next command facts.unique reached emitted unaccepted acceptedNow
           obtain ⟨_, acceptedEvent, acceptedNamed, _, acceptedCompleted, _⟩ :=
             accepted_inclusion execution.application after message handled
           rw [named] at acceptedNamed
@@ -509,7 +512,8 @@ theorem SettledGood.environment {horizon : Nat}
       have acceptedNow := retained_accepted inclusion trace conform once message nextEmitted event
         named completedNext
       obtain ⟨after, handled, applicationEq⟩ :=
-        newly_accepted facts reached emitted unaccepted acceptedNow
+        (serviceApplication setup mode deadline leaks).environmentStep_newly_accepted
+            execution next command facts.unique reached emitted unaccepted acceptedNow
       obtain ⟨stepEvent, stepNamed, stepReady, stepAction, stepMember⟩ := handle_config_mem_step
         (serviceRuntime setup mode deadline) execution.application after _
         (reactiveHandle_call handled)

@@ -312,7 +312,7 @@ theorem application_image_congr_bind (remaining : Nat)
       rw [ticked]
   | executeSample sampled =>
       by_cases sampledReady : first.application.config.cut.Ready sampled
-      · have sameEvent : sampled = event := ready_unique (setup := setup) _ sampledReady ready
+      · have sameEvent : sampled = event := setup.eventGraph.sequentialize_ready_unique _ sampledReady ready
         subst sameEvent
         exact stutterBoth _
           (environmentStep_executeSample_of_nonsample runtime _ sampled ready
@@ -325,7 +325,7 @@ theorem application_image_congr_bind (remaining : Nat)
             (fun other => sampledReady ((readyIff sampled).mpr other)))
   | expire expired =>
       by_cases expiredReady : first.application.config.cut.Ready expired
-      · have sameEvent : expired = event := ready_unique (setup := setup) _ expiredReady ready
+      · have sameEvent : expired = event := setup.eventGraph.sequentialize_ready_unique _ expiredReady ready
         subst sameEvent
         have activations : first.application.activatedAt = second.application.activatedAt :=
           congrArg PublicView.activatedAt views
@@ -371,7 +371,7 @@ theorem handle_of_binding_ready (state : EventGraphRuntime.State (graph setup))
   | malformed raw => simp [EventGraphRuntime.handle] at accepted
   | commitment named candidate =>
       by_cases namedReady : state.config.cut.Ready named
-      · have same : named = event := ready_unique (setup := setup) _ namedReady ready
+      · have same : named = event := setup.eventGraph.sequentialize_ready_unique _ namedReady ready
         subst same
         refine ⟨candidate, rfl, ?_⟩
         by_contra foreign
@@ -382,7 +382,7 @@ theorem handle_of_binding_ready (state : EventGraphRuntime.State (graph setup))
       · simp [EventGraphRuntime.handle, namedReady] at accepted
   | opening named candidate raw =>
       by_cases namedReady : state.config.cut.Ready named
-      · have same : named = event := ready_unique (setup := setup) _ namedReady ready
+      · have same : named = event := setup.eventGraph.sequentialize_ready_unique _ namedReady ready
         subst same
         by_cases timely : state.WithinDeadline runtime named
         · simp [EventGraphRuntime.handle, namedReady, timely, view] at accepted

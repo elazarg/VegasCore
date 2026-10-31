@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceTurnPolicy
 import Vegas.Game.SourceServiceCompletion
 import Vegas.Pending.ReactiveGraphSteps
+import Interaction.ReactiveRawRoundTrace
 import GameTheoryExtensions.Math.Probability.TotalVariation
 
 /-! # Boundary continuations of the service
@@ -169,5 +170,102 @@ theorem CompletionBoundary.stopped {scheduler : (application setup runtime leaks
     intro next rankNext observer entry member readyView
     have := stoppedSeen observer entry member next readyView
     omega
+
+variable (setup leaks)
+
+/-- Local completion laws determine the complete native configuration law.
+Automatic completion may cross several source instructions before the next boundary. -/
+theorem CompletionBoundary.runToHorizon_config_law
+    (profile : (graph setup).BehavioralProfile)
+    {scheduler : (application setup runtime leaks).Scheduler}
+    {players : Player → (application setup runtime leaks).Policy} {horizon : Nat}
+    (completes : runtime.CompletesPlay leaks (initialLaw setup) horizon scheduler)
+    (completionLaw : ∀ (event : (graph setup).EventId)
+      (execution : (application setup runtime leaks).Execution),
+      CompletionBoundary setup leaks scheduler players event.val execution →
+      execution.environmentRecall.length ≤ horizon →
+      ((application setup runtime leaks).runUntilHorizon scheduler players
+        (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
+          (fun final => (graph setup).runPlan
+            ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
+            final.application.config.remaining final.application.config) =
+        (graph setup).runPlan
+          ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
+          execution.application.config.remaining execution.application.config)
+    {rank : Nat} (execution : (application setup runtime leaks).Execution)
+    (boundary : CompletionBoundary setup leaks scheduler players rank execution)
+    (bounded : execution.environmentRecall.length ≤ horizon) :
+    ((application setup runtime leaks).runToHorizon scheduler players horizon execution).map
+        (fun final => final.application.config) =
+      (graph setup).runPlan
+        ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
+        execution.application.config.remaining execution.application.config := by
+  classical
+  let app := application setup runtime leaks
+  let plan := (graph setup).policyPlan profile (graph setup).canonicalScheduler
+  generalize remainingEq : execution.application.config.remaining = remaining
+  induction remaining using Nat.strong_induction_on generalizing rank execution with
+  | h remaining ih =>
+      rw [← remainingEq]
+      by_cases finished : rank = (graph setup).order.eventCount
+      · have terminal : execution.application.config.cut.IsPrefix
+            (graph setup).order.eventCount := finished ▸ boundary.ordered
+        have zero : execution.application.config.remaining = 0 :=
+          execution.application.config.terminal_iff_remaining_zero.mp terminal.terminal
+        rw [zero, EventGraph.runPlan]
+        change (app.runRounds scheduler players _ execution).map _ = _
+        rw [map_congr_on_support _
+          (g := fun _ => execution.application.config)
+          (fun next reached => runRounds_config_terminal (setup := setup) (leaks := leaks)
+            scheduler players _ execution next terminal reached), pmf_map_fun_const]
+      · have active : rank < (graph setup).order.eventCount := by
+          have rankBound : rank ≤ (graph setup).order.eventCount := boundary.ordered.1
+          omega
+        let event : (graph setup).EventId := ⟨rank, active⟩
+        rw [app.runToHorizon_eq_runUntilHorizon_bind scheduler players
+          (fun final => event ∈ final.application.config.cut.completed), PMF.map_bind]
+        calc
+          _ = (app.runUntilHorizon scheduler players
+              (fun final => event ∈ final.application.config.cut.completed) horizon
+              execution).bind (fun final =>
+                (graph setup).runPlan plan final.application.config.remaining
+                  final.application.config) := by
+            apply bind_congr_on_support _
+            intro stopped reached
+            have stoppedDone : event ∈ stopped.application.config.cut.completed := by
+              rcases app.runUntilHorizon_stopped scheduler players
+                  (fun final => event ∈ final.application.config.cut.completed) horizon
+                  (horizon - execution.environmentRecall.length) execution stopped
+                  (by omega) reached with completed | spent
+              · exact completed
+              · have supported := app.roundsFrom_runUntil scheduler players (initialLaw setup)
+                  (fun final => event ∈ final.application.config.cut.completed) _ execution
+                  stopped boundary.supported reached
+                have supportedAtHorizon : stopped ∈
+                    (app.roundsFrom (initialLaw setup) scheduler players horizon).support := by
+                  simpa only [spent] using supported
+                obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler
+                  players horizon le_rfl stopped supportedAtHorizon
+                have terminal := completes ⟨horizon - horizon, none, stopped⟩ trace
+                  ⟨Nat.sub_self _, rfl⟩
+                rw [EventOrder.Cut.Terminal] at terminal
+                rw [terminal]
+                exact Finset.mem_univ _
+            obtain ⟨stoppedBounded, actualRank, later, nextBoundary⟩ :=
+              boundary.stopped runtime event execution bounded stopped reached stoppedDone
+            have decrease : stopped.application.config.remaining < remaining := by
+              have oldCard : execution.application.config.cut.completed.card = rank :=
+                boundary.ordered.card
+              have nextCard : stopped.application.config.cut.completed.card = actualRank :=
+                nextBoundary.ordered.card
+              have nextBound : actualRank ≤ (graph setup).order.eventCount :=
+                nextBoundary.ordered.1
+              have laterRank : rank < actualRank := later
+              unfold EventGraph.Config.remaining at remainingEq ⊢
+              omega
+            exact ih stopped.application.config.remaining decrease stopped nextBoundary
+              stoppedBounded rfl
+          _ = _ := completionLaw event execution boundary bounded
+
 
 end Vegas

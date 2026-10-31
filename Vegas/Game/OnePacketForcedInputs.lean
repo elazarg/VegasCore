@@ -46,7 +46,7 @@ theorem unsettledContent_eq_one_of_ownTurn
     (State.publicView_eventReady _ event).mp publicReady
   refine (periodInvariant (runtime := runtime) assessment who trace control rfl forced).quiet
     fun other otherReady sender acts => ?_
-  have sameEvent := ready_unique (setup := setup) _ otherReady ready
+  have sameEvent := setup.eventGraph.sequentialize_ready_unique _ otherReady ready
   subst sameEvent
   exact Option.some.inj (acts.symm.trans owned)
 

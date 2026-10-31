@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Interaction.ReactiveInvariant
+import Interaction.MessageNetworkIdentity
 import Interaction.ReactiveEnvironmentStep
 import Interaction.ReactiveServiceInvariant
 
@@ -67,6 +68,69 @@ theorem transition_receipts_prefix (initial : PMF app.State) (horizon : Nat)
           obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
           exact ⟨_, rfl, app.environmentStep_receipts_prefix execution next command moved⟩
 
+/-- A fresh accepting receipt of an environment command identifies its actual
+pending envelope and successful handler result. -/
+theorem environmentStep_new_accepted_receipt (execution next : app.Execution)
+    (command : app.Command)
+    (reached : next ∈ (execution.environmentStep app command).support)
+    (id : MessageId Principal) (receipt : (id, true) ∈ next.receipts)
+    (fresh : (id, true) ∉ execution.receipts) :
+    ∃ message, execution.network.lookup id = some message ∧
+      app.handle execution.application message = some next.application := by
+  revert receipt
+  apply app.environmentStep_cases execution next command reached
+    (predicate := fun _ next => (id, true) ∈ next.receipts →
+      ∃ message, execution.network.lookup id = some message ∧
+        app.handle execution.application message = some next.application)
+  · intro receipt
+    exact (fresh receipt).elim
+  · intro _ _ _ receipt
+    exact (fresh receipt).elim
+  · intro named receipt
+    change (id, true) ∈ (execution.includePending app named).receipts at receipt
+    change ∃ message, execution.network.lookup id = some message ∧
+      app.handle execution.application message =
+        some (execution.includePending app named).application
+    unfold Execution.includePending MessageNetwork.includePending at receipt ⊢
+    cases found : execution.network.lookup named with
+    | none =>
+        simp only [found] at receipt
+        exact (fresh receipt).elim
+    | some message =>
+        cases handled : app.handle execution.application message with
+        | none =>
+            simp only [found, handled, Option.getD_none] at receipt
+            rcases List.mem_append.mp receipt with old | impossible
+            · exact (fresh old).elim
+            · simp at impossible
+        | some native =>
+            simp only [found, handled, Option.getD_some] at receipt ⊢
+            rcases List.mem_append.mp receipt with old | added
+            · exact (fresh old).elim
+            · obtain ⟨sameId, _⟩ := Prod.mk.inj (List.mem_singleton.mp added)
+              subst id
+              exact ⟨message, found, handled⟩
+  · intro _ _ _ receipt
+    exact (fresh receipt).elim
+
+/-- With unique envelope identifiers, a newly accepted emitted message is the
+very message applied by this environment command. -/
+theorem environmentStep_newly_accepted (execution next : app.Execution) (command : app.Command)
+    (unique : execution.network.UniqueIds)
+    (reached : next ∈ (execution.environmentStep app command).support)
+    {message : Message Principal app.Payload} (emitted : message ∈ execution.network.inputs)
+    (fresh : (message.id, true) ∉ execution.receipts)
+    (receipt : (message.id, true) ∈ next.receipts) :
+    ∃ state, app.handle execution.application message = some state ∧ next.application = state := by
+  obtain ⟨included, found, handled⟩ := app.environmentStep_new_accepted_receipt execution next
+    command reached message.id receipt fresh
+  have addressed : included.id = message.id := by
+    simpa using (List.find?_eq_some_iff_append.mp found).1
+  have same : included = message := (unique.inputs message emitted).pending included
+    (List.mem_of_find?_eq_some found) addressed
+  subst included
+  exact ⟨next.application, handled, rfl⟩
+
 /-- A new accepting receipt comes from the handler of an included pending packet. -/
 theorem transition_new_accepted_receipt (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (before after : app.Control)
@@ -90,45 +154,8 @@ theorem transition_new_accepted_receipt (initial : PMF app.State) (horizon : Nat
           obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
           obtain ⟨next, supported, same⟩ := PMF.support_map .. ▸ moved
           cases Option.some.inj same
-          cases command with
-          | wait =>
-              simp only [Execution.environmentStep, PMF.pure_map] at supported
-              cases (PMF.mem_support_pure_iff _ _).mp supported
-              exact (fresh receipt).elim
-          | activate who =>
-              obtain ⟨updated, chosen, rfl⟩ := PMF.support_map .. ▸ supported
-              obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ chosen
-              exact (fresh receipt).elim
-          | application command =>
-              obtain ⟨updated, chosen, rfl⟩ := PMF.support_map .. ▸ supported
-              obtain ⟨state, _, rfl⟩ := PMF.support_map .. ▸ chosen
-              exact (fresh receipt).elim
-          | «include» named =>
-              simp only [Execution.environmentStep, PMF.pure_map] at supported
-              cases (PMF.mem_support_pure_iff _ _).mp supported
-              change (id, true) ∈ (execution.includePending app named).receipts at receipt
-              change ∃ message, execution.network.lookup id = some message ∧
-                app.handle execution.application message =
-                  some (execution.includePending app named).application
-              unfold Execution.includePending MessageNetwork.includePending at receipt ⊢
-              cases found : execution.network.lookup named with
-              | none =>
-                  simp only [found] at receipt
-                  exact (fresh receipt).elim
-              | some message =>
-                  cases handled : app.handle execution.application message with
-                  | none =>
-                      simp only [found, handled, Option.getD_none] at receipt
-                      rcases List.mem_append.mp receipt with old | impossible
-                      · exact (fresh old).elim
-                      · simp at impossible
-                  | some native =>
-                      simp only [found, handled, Option.getD_some] at receipt ⊢
-                      rcases List.mem_append.mp receipt with old | added
-                      · exact (fresh old).elim
-                      · obtain ⟨sameId, _⟩ := Prod.mk.inj (List.mem_singleton.mp added)
-                        subst id
-                        exact ⟨message, found, handled⟩
+          exact app.environmentStep_new_accepted_receipt execution next command supported id
+            receipt fresh
 
 
 /-- A later response, timeout or inclusion cannot erase an existing receipt.

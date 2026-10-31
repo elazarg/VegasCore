@@ -829,21 +829,6 @@ theorem firstTurn_initialized_law [Fintype Player]
   rw [serviceInitialLaw, PMF.bind_map, PMF.map_bind]
   exact law
 
-/-- The first-turn clients of a source profile have the typed outcome law of
-the profile's source run. -/
-def FirstTurnSourceLaw (setup : Setup (Player := Player) (L := L))
-    (mode : EventGraph.ExecutionMode) (deadline : (serviceGraph setup mode).EventId → Nat)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (profile : BehavioralProfile setup.program) : Prop :=
-  ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
-    scheduler (serviceTurnPolicy setup mode deadline leaks bound turns
-      (firstTurnTiming setup turns mode) profile) horizon).map
-      (fun execution => serviceSourceReadout setup mode deadline leaks
-        ((serviceApplication setup mode deadline leaks).finished execution)) =
-    (setup.run profile).map some
-
 /-- **The first-turn clients have the source outcome law, from an honest law.**
 When every player follows the first-turn client of a source profile that admits
 the initial registry and revelations, the whole program has the honest law over

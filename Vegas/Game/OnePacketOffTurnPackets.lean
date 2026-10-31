@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketForcedRegular
+import Vegas.Game.SourceServiceFacts
 
 /-! # No other player's off-turn packet at a forced site
 
@@ -239,7 +240,7 @@ private theorem submission_atTurn_or_unsent {remaining : Nat} {who : Player}
     rw [transmits] at submitted
     exact submitted
   obtain ⟨inputRecall, serialRecall, _⟩ := runtime.countRecall_history leaks trace
-  have facts := settledFacts_history (initialLaw setup) horizon scheduler trace
+  have facts := legalFacts setup leaks horizon scheduler ⟨remaining, some who, execution⟩ trace
   set envelope := runtime.localEnvelope leaks who (execution.recall who)
     (execution.observe app who) material with envelopeEq
   obtain ⟨tokenValid, correct, first⟩ := (countPermits_eq_true_iff _ _).mp permitted
@@ -264,10 +265,13 @@ private theorem submission_atTurn_or_unsent {remaining : Nat} {who : Player}
       (complete predecessor predecessorMember)
   by_cases completed : named ∈ execution.application.config.cut.completed
   · refine Or.inr ⟨completed, actor, fun message onLedger messageSender messageNamed => ?_⟩
-    have emitted : message ∈ execution.network.inputs := facts.carried.ledger message onLedger
+    obtain ⟨entry, recorded, material, _transmission, emitted, _packet⟩ :=
+      facts.provenance.ledger message onLedger
     have recalled : message ∈ app.outputs (execution.recall who) := by
-      rw [← inputRecall who]
-      exact List.mem_filter.mpr ⟨emitted, by simp [messageSender]⟩
+      exact List.mem_filterMap.mpr ⟨entry, messageSender ▸ recorded, emitted⟩
+    have emitted : message ∈ execution.network.inputs := by
+      rw [← inputRecall who] at recalled
+      exact (List.mem_filter.mp recalled).1
     have lower : message.id.2 < envelope.id.2 := by
       have bound := facts.serials.inputs message emitted
       change message.id.2 < execution.network.nextSerial message.sender at bound
@@ -280,7 +284,7 @@ private theorem submission_atTurn_or_unsent {remaining : Nat} {who : Player}
     refine PublicView.ownTurn?_of_ownTurn _ who named
       ⟨(execution.application.publicView_eventReady named).mpr ready, actor,
         fun other otherReady _ => ?_⟩
-    exact ready_unique (setup := setup) _
+    exact setup.eventGraph.sequentialize_ready_unique _
       ((execution.application.publicView_eventReady other).mp otherReady) ready
 
 variable (setup runtime) in

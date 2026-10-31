@@ -138,7 +138,7 @@ theorem openableCommitmentInvariant_transition {who : Player}
             exact (pending done).elim
           · have eventEq : completed = event := by
               rw [atSent] at completedReady
-              exact ready_unique (setup := setup) _ completedReady ready
+              exact setup.eventGraph.sequentialize_ready_unique _ completedReady ready
             subst eventEq
             have done : completed ∈ next.execution.application.config.cut.completed := by
               rw [control.execution.application.config.step_cut completed completedReady found _

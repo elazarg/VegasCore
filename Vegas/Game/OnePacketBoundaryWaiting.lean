@@ -59,7 +59,7 @@ theorem counted_waiting_environment
     rcases environmentStep_configStep setup leaks execution next command reached with
       same | ⟨other, otherReady, action, member⟩
     · exact same
-    · have which := ready_unique (setup := setup) execution.application.config.cut otherReady ready
+    · have which := setup.eventGraph.sequentialize_ready_unique execution.application.config.cut otherReady ready
       subst other
       rcases completion_pending_or_due (runtime := runtime) execution next command reached ready
         action member owned with

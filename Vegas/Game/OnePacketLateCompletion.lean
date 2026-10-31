@@ -351,7 +351,7 @@ theorem lateUnsent_transition_other {who : Player} {event : (graph setup).EventI
   · left
     exact ⟨same, recallEq ▸ extends_, by rw [recallEq]; exact unrecorded⟩
   · right
-    have eventEq : completed = event := ready_unique (setup := setup) _ completedReady ready
+    have eventEq : completed = event := setup.eventGraph.sequentialize_ready_unique _ completedReady ready
     subst eventEq
     have done : completed ∈ next.execution.application.config.cut.completed := by
       rw [before.execution.application.config.step_cut completed completedReady action _ member]

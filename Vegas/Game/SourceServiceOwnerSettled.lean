@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.SourceServiceSettledSound
+import Interaction.ReactiveReceipts
 
 /-! # Settled packet soundness for one prescribed owner
 
@@ -143,7 +144,8 @@ theorem SettledGood.owner_environment {horizon : Nat}
   · rcases step with ⟨configEq, _, _, _⟩ | ⟨other, otherReady, action, member⟩
     · by_cases acceptedNow : (message.id, true) ∈ next.receipts
       · obtain ⟨after, handled, applicationEq⟩ :=
-          newly_accepted facts reached emitted unaccepted acceptedNow
+          (serviceApplication setup mode deadline leaks).environmentStep_newly_accepted
+            execution next command facts.unique reached emitted unaccepted acceptedNow
         obtain ⟨_, acceptedEvent, acceptedNamed, _, acceptedCompleted, _⟩ :=
           accepted_inclusion execution.application after message handled
         rw [named] at acceptedNamed
@@ -175,7 +177,8 @@ theorem SettledGood.owner_environment {horizon : Nat}
         · rw [execution.application.config.step_cut other otherReady action _ member]
           exact ready.after_complete otherReady (Ne.symm same)
         · obtain ⟨after, handled, applicationEq⟩ :=
-            newly_accepted facts reached emitted unaccepted acceptedNow
+            (serviceApplication setup mode deadline leaks).environmentStep_newly_accepted
+            execution next command facts.unique reached emitted unaccepted acceptedNow
           obtain ⟨_, acceptedEvent, acceptedNamed, _, acceptedCompleted, _⟩ :=
             accepted_inclusion execution.application after message handled
           rw [named] at acceptedNamed
@@ -195,7 +198,8 @@ theorem SettledGood.owner_environment {horizon : Nat}
       have acceptedNow := owner_packet_accepted inclusion trace who calls conform once message
         authored nextEmitted event named completedNext
       obtain ⟨after, handled, applicationEq⟩ :=
-        newly_accepted facts reached emitted unaccepted acceptedNow
+        (serviceApplication setup mode deadline leaks).environmentStep_newly_accepted
+            execution next command facts.unique reached emitted unaccepted acceptedNow
       obtain ⟨stepEvent, stepNamed, stepReady, stepAction, stepMember⟩ := handle_config_mem_step
         (serviceRuntime setup mode deadline) execution.application after _
         (reactiveHandle_call handled)

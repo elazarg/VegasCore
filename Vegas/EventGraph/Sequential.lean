@@ -198,6 +198,32 @@ theorem withMode_revealRelaxedOrdered (graph : Vegas.EventGraph Player L)
       exact BarrierOrdered.revealRelaxedOrdered
         (graph.withMode_barrierOrdered ordered _ (by simp))
 
+/-- A dependency mode on the total source order retains that order whenever
+it satisfies the public-barrier certificate. Removing an independent reveal
+dependency would contradict that certificate. -/
+theorem sequentialize_withMode_eq_of_barrierOrdered (graph : Vegas.EventGraph Player L)
+    (mode : ExecutionMode) (ordered : (graph.sequentialize.withMode mode).BarrierOrdered) :
+    graph.sequentialize.withMode mode = graph.sequentialize := by
+  classical
+  cases mode with
+  | concurrent => rfl
+  | sequential => rfl
+  | concurrentReveals =>
+      have same : graph.sequentialize.revealRelaxedPredecessors =
+          graph.sequentialize.order.predecessors := by
+        funext event
+        apply Finset.filter_eq_self.mpr
+        intro prior before independent
+        have earlier := graph.sequentialize.order.predecessor_lt before
+        have barrier := (mem_barrierOrder graph.sequentialize.outputLayout prior event).mpr
+          ⟨earlier, Or.inl independent.1.isPublic⟩
+        have kept := ordered event barrier
+        exact ((graph.sequentialize.mem_revealRelaxedPredecessors prior event).mp kept).2
+          independent
+      dsimp only [sequentialize, withMode] at same ⊢
+      congr 2
+      exact proof_irrel_heq _ _
+
 omit [DecidableEq Player] in
 /-- The sequential specialization admits at most one ready event. -/
 theorem sequentialize_ready_unique (graph : Vegas.EventGraph Player L)

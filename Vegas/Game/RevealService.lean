@@ -58,6 +58,13 @@ abbrev serviceGraph (setup : Setup (Player := Player) (L := L))
 graph, which is its sequential mode. -/
 abbrev graph (setup : Setup (Player := Player) (L := L)) := setup.eventGraph.sequentialize
 
+/-- Under the public-barrier certificate, every compiler dependency mode has
+the same total source order and the same complete event graph. -/
+theorem serviceGraph_eq_sequential (setup : Setup (Player := Player) (L := L))
+    (mode : EventGraph.ExecutionMode) (ordered : (serviceGraph setup mode).BarrierOrdered) :
+    serviceGraph setup mode = graph setup :=
+  setup.eventGraph.sequentialize_withMode_eq_of_barrierOrdered mode ordered
+
 /-- The service graph of every mode keeps the public-barrier dependencies except
 possibly those between independent reveals. -/
 theorem serviceGraph_revealRelaxedOrdered (setup : Setup (Player := Player) (L := L))

@@ -79,7 +79,7 @@ theorem foreign_ready_prefix_after_ownTurn
     rcases preserved with readyNow | completed
     · have focalFacts := PublicView.ownTurn?_spec _ focal current turn
       have focalReady := (start.execution.application.publicView_eventReady current).mp focalFacts.1
-      have sameEvent := ready_unique (setup := setup) _ focalReady readyNow
+      have sameEvent := setup.eventGraph.sequentialize_ready_unique _ focalReady readyNow
       rw [← sameEvent] at owned
       exact (different (Option.some.inj (owned.symm.trans focalFacts.2))).elim
     · exact (unfinished completed).elim

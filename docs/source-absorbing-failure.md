@@ -646,6 +646,45 @@ concerns unavailable opening material. The native
 [binding-receipt](../Vegas/Pending/ReactiveBindingReceipts.lean) invariants
 preserve accepted handles through the primary operation and its automatic tail.
 
+## Composition through complete native commands
+
+The continuation kernel is the ordinary graph runner: from a configuration,
+run the compiled profile for its remaining instructions. It retains the full
+terminal graph configuration. Automatic completion preserves that kernel.
+
+`CompletionBoundary.runToHorizon_config_law` in
+[SourceServiceAsyncStep](../Vegas/Game/SourceServiceAsyncStep.lean) lifts a local
+completion identity to the full native terminal configuration law. It stops
+when the current event completes, then recurses at the actual reached rank.
+Its hypotheses are complete play and the local identity saying that the stopped
+law followed by the graph continuation equals the starting continuation. The
+compiler's concrete client proof must still discharge that local identity.
+The induction uses neither phase ends nor an exact successor boundary.
+The initialized adapter in
+[SourceServiceSiteBridge](../Vegas/Game/SourceServiceSiteBridge.lean) then
+derives the full first-turn source configuration law from that same local
+identity, applying source readout once.
+
+[RevealService](../Vegas/Game/RevealService.lean) proves
+`serviceGraph_eq_sequential`: under the supplied public-barrier certificate,
+every compiler dependency mode equals the sequential graph. The compiler's
+source order is total; removing an independent reveal dependency would violate
+that certificate. This reduces the admitted modes to one proof without adding
+a mode restriction to the compiler theorem.
+
+The first-turn source-law specification is owned by
+[SourceServiceTurnPolicy](../Vegas/Game/SourceServiceTurnPolicy.lean), alongside
+the client definition. The source commitment factorization in
+[SourceCommitBlock](../Vegas/Game/SourceCommitBlock.lean) retains its original
+scope while treating inactive callbacks mechanically and retaining the
+distinction between omission and admitted unopenable bindings.
+
+Native receipt origins are handled by
+[ReactiveReceipts](../Interaction/ReactiveReceipts.lean). Completed packet
+content has one equivalence along finite graph paths in
+[ReactiveSettledStability](../Vegas/Pending/ReactiveSettledStability.lean),
+independently of receipt changes.
+
 ## Remaining compiler interfaces
 
 The ordinary and sequential compiler capstones remain acceptance obligations.

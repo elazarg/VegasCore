@@ -8,16 +8,17 @@ import Vegas.Source.ObservationRecall
 A program whose first `count` operations are commitments (`Vegas.CommitPrefix`)
 continues, after them, in a residual program (`Vegas.commitTail`). The source
 protocol runs the commitments one after another: each owner draws from its
-behavioral kernel at its view (`Vegas.kernelChain`).
+behavioral kernel at its view while active, and public default completes later
+owned instructions automatically (`Vegas.kernelChain`).
 
 When one player's choices are supplied instead, as a list in order
 (`Vegas.listChain`), and those choices come with further data whose law
 depends on the state only through that player's information, the run is again
 the source run in which that player follows behavioral kernels, and the further
 data factors through the player's new view
-(`Vegas.listChain_factorization`). Every other owner's choice is independent
-of that player's information beyond its own view, because commitments are
-hidden from everyone but their owner.
+(`Vegas.listChain_factorization`). The full view retains public default entries
+and the owner's actual decisions; extending it determines the previous view,
+including when omission makes default public.
 -/
 
 noncomputable section
@@ -32,7 +33,7 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 /-- The first `count` operations of the program are commitments. -/
-def CommitPrefix : {Γ : SourceCtx Player L} → {names : Finset VarId} →
+abbrev CommitPrefix : {Γ : SourceCtx Player L} → {names : Finset VarId} →
     SourceProgram Player L Γ names → Nat → Prop
   | _, _, _, 0 => True
   | _, _, .commit _ _ _ _ next, count + 1 => CommitPrefix next count
@@ -50,7 +51,7 @@ structure ResidualProgram {Γ : SourceCtx Player L} {names : Finset VarId}
   lift : ProtocolState tail → ProtocolState program
 
 /-- The residual program after `count` leading commitments. -/
-def commitTail : (count : Nat) → {Γ : SourceCtx Player L} → {names : Finset VarId} →
+abbrev commitTail : (count : Nat) → {Γ : SourceCtx Player L} → {names : Finset VarId} →
     (program : SourceProgram Player L Γ names) → CommitPrefix program count →
       ResidualProgram program
   | 0, _, _, program, _ => ⟨_, _, program, id⟩
@@ -93,8 +94,10 @@ def kernelChain (who : Player) : (count : Nat) → {Γ : SourceCtx Player L} →
     (prefixed : CommitPrefix program count) → Config Player L Γ →
       PMF (Config Player L (commitTail count program prefixed).context)
   | 0, _, _, _, _, _, _, config => PMF.pure config
-  | count + 1, _, _, .commit name _ _ guard next, profile, policy, prefixed, config =>
-      (commitKernel (Function.update profile who policy) (config.view _)).bind fun choice =>
+  | count + 1, _, _, .commit name owner _ guard next, profile, policy, prefixed, config =>
+      (if inactive : owner ∈ (config.view owner).defaulted then PMF.pure none else
+        commitKernel (Function.update profile who policy) (config.view owner) inactive).bind
+          fun choice =>
         kernelChain who count next (afterCommit profile) policy.2 prefixed
           (commitSuccessor name guard config choice)
   | _ + 1, _, _, .ret _, _, _, prefixed, _ => prefixed.elim
@@ -115,7 +118,8 @@ def listChain (drawn : Player → Prop) [DecidablePred drawn] : (count : Nat) �
   | count + 1, _, _, .commit (payload := payload) name owner _ guard next, profile, prefixed,
       config, choices =>
       if drawn owner then
-        (commitKernel profile (config.view owner)).bind fun choice =>
+        (if inactive : owner ∈ (config.view owner).defaulted then PMF.pure none else
+          commitKernel profile (config.view owner) inactive).bind fun choice =>
           listChain drawn count next (afterCommit profile) prefixed
             (commitSuccessor name guard config choice) choices
       else
@@ -127,24 +131,38 @@ def listChain (drawn : Player → Prop) [DecidablePred drawn] : (count : Nat) �
   | _ + 1, _, _, .reveal _ _ _ _ _ _ _, _, prefixed, _, _ => prefixed.elim
 
 omit [IExpr.ResultTypes L] in
-/-- The owner's view after its commitment determines its view before and its
-choice. -/
+/-- The owner's view after its commitment determines its previous view, and
+also its choice when it was active before the instruction. -/
 private theorem commit_view_reflects {Γ : SourceCtx Player L} {who : Player}
     {payload : L.Ty} (name : VarId) (guard : SourceGuard L Γ who name payload)
-    (left right : Config Player L Γ) (first second : PublicationResult (L.Val payload))
+    (left right : Config Player L Γ) (first second : Option (PublicationResult (L.Val payload)))
     (same : (commitSuccessor name guard left first).view who =
       (commitSuccessor name guard right second).view who) :
-    left.view who = right.view who ∧ first = second := by
+    left.view who = right.view who ∧ (who ∉ left.defaulted → first = second) := by
   constructor
   · calc left.view who = ((commitSuccessor name guard left first).view who).back
             (decide (who = who)) := (back_commit_view who name guard left first).symm
       _ = ((commitSuccessor name guard right second).view who).back (decide (who = who)) :=
           congrArg _ same
       _ = right.view who := back_commit_view who name guard right second
-  · have cell := congrArg (fun view : DecisionView who ((name, .commitment who payload) :: Γ) =>
-      view.1.cells.get .here) same
-    simp only [Config.view, commitSuccessor, sourceObserve, Env.get, Env.cons, ite_true] at cell
-    exact Option.some.inj cell
+  · intro active
+    have previous : left.view who = right.view who :=
+      (back_commit_view who name guard left first).symm.trans
+        ((congrArg (fun view => view.back (decide (who = who))) same).trans
+          (back_commit_view who name guard right second))
+    have defaultEq := congrArg DecisionView.defaulted previous
+    have rightActive : who ∉ right.defaulted := by
+      rw [← show left.defaulted = right.defaulted from defaultEq]
+      exact active
+    have histories := congrArg DecisionView.history same
+    have oldHistories := congrArg DecisionView.history previous
+    simp only [Config.view] at histories oldHistories
+    simp only [commitSuccessor, active, rightActive, ite_false, Function.update_self] at histories
+    rw [oldHistories] at histories
+    have choices := List.append_cancel_left histories
+    simpa only [List.cons.injEq, and_true, true_and, OwnAction.commit.injEq,
+      heq_eq_eq] using choices
+
 
 /-- A law of further data that depends on the seed only through a readout
 factors through that readout. -/
@@ -193,6 +211,7 @@ theorem listChain_factorization (who : Player) :
   | zero =>
       intro Γ names program profile prefixed Seed Read Final prior source read noise factor
         outcome coupled
+      dsimp only [commitTail]
       obtain ⟨through, throughEq⟩ := exists_outcome_of_read prior read outcome coupled
       refine ⟨profile who, fun view => (noise view).bind fun extra =>
         (through extra).map Prod.snd, ?_⟩
@@ -205,10 +224,10 @@ theorem listChain_factorization (who : Player) :
         apply bind_congr_on_support _
         intro seed supported
         simp only [Function.comp_apply, throughEq seed supported, listChain, PMF.pure_map]
-        rfl
+        exact PMF.bind_pure_comp _ _
       rw [native, factor, PMF.bind_bind]
-      simp only [kernelChain, PMF.bind_pure, PMF.bind_map, PMF.map_bind, Function.comp_def,
-        PMF.map_comp]
+      simp only [kernelChain, PMF.pure_bind, PMF.bind_bind, PMF.bind_map, PMF.map_bind,
+        Function.comp_def, PMF.map_comp]
   | succ count ih =>
       intro Γ names program profile prefixed Seed Read Final prior source read noise factor
         outcome coupled
@@ -217,18 +236,22 @@ theorem listChain_factorization (who : Player) :
       | sample _ _ _ _ => exact prefixed.elim
       | reveal _ _ _ _ _ _ _ => exact prefixed.elim
       | @commit Γ names name owner payload fresh guard next =>
+          dsimp only [CommitPrefix] at prefixed
+          simp only [commitTail]
           by_cases own : owner = who
           · subst owner
             obtain ⟨through, throughEq⟩ := exists_outcome_of_read prior read outcome coupled
-            let split := fun pair : List (OwnAction Player L) × Final =>
-              (OwnAction.binding who name payload pair.1.head?, (pair.1.tail, pair.2))
+            let split := fun (view : DecisionView who Γ)
+                (pair : List (OwnAction Player L) × Final) =>
+              (if who ∈ view.defaulted then none
+                else OwnAction.binding who name payload pair.1.head?, (pair.1.tail, pair.2))
             let mixed := fun view : DecisionView who Γ =>
-              ((noise view).bind through).map split
+              ((noise view).bind through).map (split view)
             let kernel := fun view : DecisionView who Γ => (mixed view).map Prod.fst
             let rest := fun (view : DecisionView who Γ)
-                (choice : PublicationResult (L.Val payload)) =>
+                (choice : Option (PublicationResult (L.Val payload))) =>
               (fiberPosterior (mixed view) Prod.fst choice).map Prod.snd
-            let NextSeed := Config Player L Γ × PublicationResult (L.Val payload)
+            let NextSeed := Config Player L Γ × Option (PublicationResult (L.Val payload))
             let nextPrior : PMF NextSeed := (prior.map source).bind fun config =>
               (kernel (config.view who)).map fun choice => (config, choice)
             let nextSource := fun point : NextSeed => commitSuccessor name guard point.1 point.2
@@ -241,16 +264,33 @@ theorem listChain_factorization (who : Player) :
               simp only [Function.comp_def, PMF.pure_map]
               rw [← PMF.bind_pure_comp]
               rfl
+            have inactiveKernel (view : DecisionView who Γ) (inactive : who ∈ view.defaulted) :
+                kernel view = PMF.pure none := by
+              simp only [kernel, mixed, PMF.map_comp, Function.comp_def, split, inactive, ite_true]
+              exact PMF.map_const _ none
+            have actualChoice (point : NextSeed) (supported : point ∈ nextPrior.support)
+                (inactive : who ∈ point.1.defaulted) : point.2 = none := by
+              obtain ⟨config, _, mapped⟩ := (PMF.mem_support_bind_iff _ _ _).mp supported
+              obtain ⟨choice, chosen, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp mapped
+              rw [inactiveKernel (config.view who) (by simpa using inactive)] at chosen
+              exact (PMF.mem_support_pure_iff _ _).mp chosen
             have nextCoupled : ∀ left ∈ nextPrior.support, ∀ right ∈ nextPrior.support,
                 nextRead left = nextRead right → nextOutcome left = nextOutcome right := by
-              intro left _ right _ same
+              intro left leftSupport right rightSupport same
               obtain ⟨views, choices⟩ := commit_view_reflects name guard left.1 right.1 left.2
                 right.2 same
-              simp only [nextOutcome, views, choices]
+              by_cases inactive : who ∈ left.1.defaulted
+              · have rightInactive : who ∈ right.1.defaulted := by
+                  rw [← show left.1.defaulted = right.1.defaulted from
+                    congrArg DecisionView.defaulted views]
+                  exact inactive
+                simp only [nextOutcome, views, actualChoice left leftSupport inactive,
+                  actualChoice right rightSupport rightInactive]
+              · simp only [nextOutcome, views, choices inactive]
             obtain ⟨tailPolicy, nextNoise, tailLaw⟩ := ih next (afterCommit profile) prefixed
               nextPrior nextSource nextRead (fun view => PMF.pure view) nextFactor nextOutcome
               nextCoupled
-            refine ⟨(fun _ view => kernel view, tailPolicy), nextNoise, ?_⟩
+            refine ⟨(fun _ view _ => kernel view, tailPolicy), nextNoise, ?_⟩
             have native : (prior.bind fun seed => (outcome seed).bind fun pair =>
                 (listChain (· ≠ who) (count + 1) (.commit name who fresh guard next) profile
                   prefixed (source seed) pair.1).map fun config => (config, pair.2)) =
@@ -261,7 +301,7 @@ theorem listChain_factorization (who : Player) :
                   ((outcome seed).bind fun pair =>
                     (listChain (· ≠ who) (count + 1) (.commit name who fresh guard next) profile
                       prefixed (source seed) pair.1).map fun config => (config, pair.2)) =
-                  ((through (read seed)).map split).bind fun parts =>
+                  ((through (read seed)).map (split ((source seed).view who))).bind fun parts =>
                     (listChain (· ≠ who) count next (afterCommit profile) prefixed
                       (commitSuccessor name guard (source seed) parts.1) parts.2.1).map
                         fun config => (config, parts.2.2) := by
@@ -269,12 +309,12 @@ theorem listChain_factorization (who : Player) :
                 rw [throughEq seed supported, PMF.bind_map]
                 apply bind_congr_on_support _
                 intro pair _
-                simp only [listChain, ne_eq, not_true_eq_false, ↓reduceIte, Function.comp_apply,
-                  split]
-                rfl
+                by_cases inactive : who ∈ (source seed).defaulted
+                · simp [listChain, split, commitSuccessor, Config.view_defaulted, inactive]
+                · simp [listChain, split, Config.view_defaulted, inactive]
               calc
                 _ = (prior.map fun seed => (source seed, read seed)).bind fun point =>
-                    ((through point.2).map split).bind fun parts =>
+                    ((through point.2).map (split (point.1.view who))).bind fun parts =>
                       (listChain (· ≠ who) count next (afterCommit profile) prefixed
                         (commitSuccessor name guard point.1 parts.1) parts.2.1).map
                           fun config => (config, parts.2.2) := by
@@ -306,12 +346,16 @@ theorem listChain_factorization (who : Player) :
             simp only [nextPrior, PMF.bind_bind, PMF.bind_map, PMF.map_bind, Function.comp_def,
               kernelChain, nextSource]
             apply bind_congr_on_support _
-            intro config _
-            simp only [commitKernel, Function.update_self]
-            rfl
-          · let NextSeed := Seed × PublicationResult (L.Val payload)
+            intro seed _
+            by_cases inactive : who ∈ ((source seed).view who).defaulted
+            · simp only [inactive, dite_true]
+              simp only [inactiveKernel _ inactive, PMF.pure_bind]
+            · simp only [inactive, dite_false, commitKernel, Function.update_self]
+          · let NextSeed := Seed × Option (PublicationResult (L.Val payload))
             let nextPrior : PMF NextSeed := prior.bind fun seed =>
-              (commitKernel profile ((source seed).view owner)).map fun choice => (seed, choice)
+              (if inactive : owner ∈ ((source seed).view owner).defaulted then PMF.pure none else
+                commitKernel profile ((source seed).view owner) inactive).map
+                  fun choice => (seed, choice)
             let nextSource := fun point : NextSeed =>
               commitSuccessor name guard (source point.1) point.2
             let nextRead := fun point : NextSeed => read point.1
@@ -323,7 +367,8 @@ theorem listChain_factorization (who : Player) :
                   (nextNoiseIn (config.view who)).map fun extra => (config, extra) := by
               have joint : nextPrior.map (fun point => (nextSource point, nextRead point)) =
                   (prior.map fun seed => (source seed, read seed)).bind fun point =>
-                    (commitKernel profile (point.1.view owner)).map fun choice =>
+                    (if inactive : owner ∈ (point.1.view owner).defaulted then PMF.pure none else
+                      commitKernel profile (point.1.view owner) inactive).map fun choice =>
                       (commitSuccessor name guard point.1 choice, point.2) := by
                 simp only [nextPrior, PMF.map_bind, PMF.bind_map, PMF.map_comp,
                   Function.comp_def]
@@ -334,7 +379,13 @@ theorem listChain_factorization (who : Player) :
               apply bind_congr_on_support _
               intro config _
               simp only [← PMF.bind_pure_comp, Function.comp_def]
-              exact PMF.bind_comm _ _ _
+              by_cases inactive : owner ∈ ((source config).view owner).defaulted
+              · simp only [inactive, dite_true, PMF.pure_bind]
+              · simp only [inactive, dite_false]
+                exact PMF.bind_comm (noise ((source config).view who))
+                  (commitKernel profile ((source config).view owner) inactive)
+                  (fun extra choice => PMF.pure
+                    (commitSuccessor name guard (source config) choice, extra))
             have nextCoupled : ∀ left ∈ nextPrior.support, ∀ right ∈ nextPrior.support,
                 nextRead left = nextRead right → outcome left.1 = outcome right.1 := by
               intro left leftSupport right rightSupport same
@@ -352,7 +403,7 @@ theorem listChain_factorization (who : Player) :
             obtain ⟨tailPolicy, nextNoise, tailLaw⟩ := ih next (afterCommit profile) prefixed
               nextPrior nextSource nextRead nextNoiseIn nextFactor (fun point => outcome point.1)
               nextCoupled
-            refine ⟨(fun same _ => absurd same own, tailPolicy), nextNoise, ?_⟩
+            refine ⟨(fun same _ _ => absurd same own, tailPolicy), nextNoise, ?_⟩
             have native : (prior.bind fun seed => (outcome seed).bind fun pair =>
                 (listChain (· ≠ who) (count + 1) (.commit name owner fresh guard next) profile
                   prefixed (source seed) pair.1).map fun config => (config, pair.2)) =
@@ -364,14 +415,12 @@ theorem listChain_factorization (who : Player) :
               intro seed _
               simp only [listChain, ne_eq, own, not_false_eq_true, ↓reduceIte, PMF.map_bind]
               rw [PMF.bind_comm]
-              rfl
             rw [native, tailLaw]
             simp only [nextPrior, PMF.bind_bind, PMF.bind_map, PMF.map_bind, Function.comp_def,
               kernelChain, nextSource]
             apply bind_congr_on_support _
             intro seed _
             simp only [commitKernel, Function.update_of_ne own]
-            rfl
 
 /-- The commitment kernels depend only on the deciding player's kernel at the
 first commitment. -/
@@ -412,6 +461,7 @@ theorem iterate_graftPolicy [Fintype Player] (who : Player) :
   induction count with
   | zero =>
       intro Γ names program profile prefixed head rest more config
+      dsimp only [commitTail]
       simp only [Nat.zero_add, kernelChain, PMF.pure_bind, commitTail, PMF.map_id]
       rfl
   | succ count ih =>
@@ -421,6 +471,8 @@ theorem iterate_graftPolicy [Fintype Player] (who : Player) :
       | sample _ _ _ _ => exact prefixed.elim
       | reveal _ _ _ _ _ _ _ => exact prefixed.elim
       | @commit Γ names name owner payload fresh guard next =>
+          dsimp only [CommitPrefix] at prefixed
+          simp only [commitTail, commitTailProfile]
           rw [show count + 1 + more = (count + more) + 1 by omega,
             ProtocolState.behavioralStatePrefix_commit, afterCommit_update,
             commitKernel_update_head profile who
@@ -436,7 +488,6 @@ theorem iterate_graftPolicy [Fintype Player] (who : Player) :
           apply bind_congr_on_support _
           intro reached _
           rw [PMF.map_comp]
-          rfl
 
 
 /-- **The source run through leading commitments.** The source run of a
@@ -459,6 +510,7 @@ theorem iterate_listChain_all [Fintype Player] :
   induction count with
   | zero =>
       intro Γ names program profile prefixed more config
+      dsimp only [commitTail]
       simp only [Nat.zero_add, listChain, PMF.pure_bind, commitTail, PMF.map_id]
       rfl
   | succ count ih =>
@@ -468,6 +520,8 @@ theorem iterate_listChain_all [Fintype Player] :
       | sample _ _ _ _ => exact prefixed.elim
       | reveal _ _ _ _ _ _ _ => exact prefixed.elim
       | @commit Γ names name owner payload fresh guard next =>
+          dsimp only [CommitPrefix] at prefixed
+          simp only [commitTail, commitTailProfile]
           rw [show count + 1 + more = (count + more) + 1 by omega,
             ProtocolState.behavioralStatePrefix_commit]
           simp only [listChain, ↓reduceIte]
@@ -478,6 +532,5 @@ theorem iterate_listChain_all [Fintype Player] :
           apply bind_congr_on_support _
           intro reached _
           rw [PMF.map_comp]
-          rfl
 
 end Vegas

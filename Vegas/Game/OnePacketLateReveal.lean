@@ -112,7 +112,7 @@ theorem lateStop_mem_step
           revert completedReady inStep
           rw [same]
           intro completedReady inStep
-          have eventEq : completed = event := ready_unique (setup := setup) _ completedReady ready
+          have eventEq : completed = event := setup.eventGraph.sequentialize_ready_unique _ completedReady ready
           subst eventEq
           exact ⟨action, inStep⟩
       · exact (going ⟨before, beforeState, isPrefix_succ_of_mem_step ordered ready inStep⟩).elim)

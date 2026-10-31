@@ -1,8 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.SourceServiceCanonicalPolicy
+import Vegas.Game.RevealServicePayoffs
 import Interaction.ReactivePolicyMixture
 import Interaction.ReactiveRecovery
+import Interaction.ReactiveRoundReachability
 
 /-! # Turn-counted prescribed policy for every scheduler
 
@@ -111,6 +113,21 @@ def serviceClientPolicy (bound : (serviceGraph setup mode).EventId → Nat) (tur
     (serviceApplication setup mode deadline leaks).silentPolicy
 
 end Configured
+
+/-- The first-turn clients of a source profile have the complete terminal
+configuration law of the profile's source run. -/
+def FirstTurnSourceLaw (setup : Setup (Player := Player) (L := L))
+    (mode : EventGraph.ExecutionMode) (deadline : (serviceGraph setup mode).EventId → Nat)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (profile : BehavioralProfile setup.program) : Prop :=
+  ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+    scheduler (serviceTurnPolicy setup mode deadline leaks bound turns
+      (firstTurnTiming setup turns mode) profile) horizon).map
+      (fun execution => serviceSourceReadout setup mode deadline leaks
+        ((serviceApplication setup mode deadline leaks).finished execution)) =
+    (setup.run profile).map some
 
 variable (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))

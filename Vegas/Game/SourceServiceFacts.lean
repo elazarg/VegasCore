@@ -6,6 +6,7 @@ import Vegas.Pending.ReactiveEventStability
 import Vegas.Pending.ReactiveAssociationEvidence
 import Vegas.Pending.ReactivePacketEvidence
 import Vegas.Pending.ReactiveStateInvariant
+import Vegas.Pending.ReactiveSubmissionRecall
 import Interaction.ReactiveProvenance
 import Interaction.ReactiveMessageIdentity
 import Interaction.ReactiveAllocation
@@ -36,6 +37,12 @@ theorem serviceInitialLaw_eq_inputs :
         (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)) := by
   rw [PMF.map_comp]
   rfl
+
+/-- Every fresh submission of `who` was made at its own turn at its event. -/
+def OwnSubmissionsAtTurn (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (who : Player) : Prop := ∀ entry ∈ execution.recall who, ∀ event,
+    (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action = some event →
+    entry.beforeView.application.publicView.ownTurn? who = some event
 
 /-- The native facts used to transport acceptable recorded calls. -/
 structure LegalFacts (execution : (serviceApplication setup mode deadline leaks).Execution) :

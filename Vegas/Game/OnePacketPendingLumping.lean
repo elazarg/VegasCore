@@ -493,7 +493,7 @@ theorem application_image_congr (remaining : Nat)
       rw [ticked]
   | executeSample sampled =>
       by_cases sampledReady : first.application.config.cut.Ready sampled
-      · have sameEvent : sampled = event := ready_unique (setup := setup) _ sampledReady ready
+      · have sameEvent : sampled = event := setup.eventGraph.sequentialize_ready_unique _ sampledReady ready
         subst sameEvent
         exact stutterBoth _
           (environmentStep_executeSample_of_nonsample runtime _ sampled ready
@@ -506,7 +506,7 @@ theorem application_image_congr (remaining : Nat)
             (fun other => sampledReady ((readyIff sampled).mpr other)))
   | expire expired =>
       by_cases expiredReady : first.application.config.cut.Ready expired
-      · have sameEvent : expired = event := ready_unique (setup := setup) _ expiredReady ready
+      · have sameEvent : expired = event := setup.eventGraph.sequentialize_ready_unique _ expiredReady ready
         subst sameEvent
         have activations : first.application.activatedAt = second.application.activatedAt :=
           congrArg PublicView.activatedAt views
@@ -644,7 +644,7 @@ theorem handle_commitment_of_publication_ready (state : EventGraphRuntime.State 
   apply reactiveHandle_none
   rw [call]
   by_cases committedReady : state.config.cut.Ready committed
-  · have same : committed = event := ready_unique (setup := setup) _ committedReady ready
+  · have same : committed = event := setup.eventGraph.sequentialize_ready_unique _ committedReady ready
     subst same
     simp only [handle, dite_eq_left committedReady, view]
     split <;> rfl
@@ -1219,7 +1219,7 @@ theorem round_image_congr_of_forced (who : Player) (remaining : Nat)
       ⟨opened, candidate, raw, call, _, openedReady, _⟩
   · exact Or.inl ⟨committed, candidate, call⟩
   · right
-    rw [ready_unique (setup := setup) _ openedReady ready] at call
+    rw [setup.eventGraph.sequentialize_ready_unique _ openedReady ready] at call
     exact include_opening_image_congr (runtime := runtime) remaining first second same pending
       ready view firstValid
       secondValid bindings id found call
@@ -1327,7 +1327,7 @@ theorem forced_or_completed_of_configStep {who : Player}
     rw [same]
     exact ready
   · left
-    have sameEvent : other = event := ready_unique (setup := setup) _ otherReady ready
+    have sameEvent : other = event := setup.eventGraph.sequentialize_ready_unique _ otherReady ready
     subst sameEvent
     rw [control.execution.application.config.step_cut other otherReady action _ member]
     exact (EventOrder.Cut.mem_complete _ _ _ _).mpr (Or.inl rfl)

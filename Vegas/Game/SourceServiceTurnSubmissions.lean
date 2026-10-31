@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.SourceServiceFirstTurnMixture
+import Vegas.Game.SourceServiceFacts
 import Vegas.Game.SourceServiceAsyncTimeliness
 
 /-! # Fresh submissions only at the author's own turn
@@ -77,12 +78,6 @@ def SubmitsAtTurn (policy : (serviceApplication setup mode deadline leaks).Polic
 /-- Every recorded fresh submission was for its author's own turn. -/
 def SubmissionsAtTurn (execution : (serviceApplication setup mode deadline leaks).Execution) :
     Prop := ∀ who, ∀ entry ∈ execution.recall who, ∀ event,
-    (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action = some event →
-    entry.beforeView.application.publicView.ownTurn? who = some event
-
-/-- Every fresh submission of `who` was made at its own turn at its event. -/
-def OwnSubmissionsAtTurn (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (who : Player) : Prop := ∀ entry ∈ execution.recall who, ∀ event,
     (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action = some event →
     entry.beforeView.application.publicView.ownTurn? who = some event
 
