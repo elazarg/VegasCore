@@ -5,7 +5,6 @@ import Vegas.Game.RecoveryCountedService
 import Vegas.Game.RecoveryHonestContinuation
 import Vegas.Game.HonestContinuationIntended
 import GameTheory.Analysis.Protocol.RestrictionDomination
-import Vegas.Game.OnePacketNextEvent
 
 /-! # Honest ready callbacks are recorded under actual recovery service -/
 

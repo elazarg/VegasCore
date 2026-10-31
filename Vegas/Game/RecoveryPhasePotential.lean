@@ -65,7 +65,7 @@ theorem completionValue_expect_affine_of_completed [Finite (E).History]
     intro final supported
     obtain ⟨anchor, state, prefixed, eventCompleted⟩ := completed final supported
     rw [completionValue_eq_elim setup runtime leaks bounds horizon scheduler parameter utility
-      excludedPayoff profile rank fresh who (fun _ => excludedPayoff who) ⟨_, state, prefixed⟩]
+      excludedPayoff profile rank fresh who (fun _ => excludedPayoff who) final]
     obtain ⟨other, otherState, cases⟩ := stops final supported
     have same : other = anchor := Option.some.inj (otherState.symm.trans state)
     subst other

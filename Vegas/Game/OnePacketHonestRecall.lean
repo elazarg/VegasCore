@@ -3,7 +3,9 @@
 import Vegas.Game.OnePacketHonestContinuation
 import Vegas.Game.HonestContinuationIntended
 import GameTheory.Analysis.Protocol.RestrictionDomination
-import Vegas.Game.OnePacketNextEvent
+import Interaction.ReactiveHistory
+import Vegas.Pending.ReactiveGraphSteps
+import Vegas.EventGraph.ObservationStep
 import Vegas.Game.SourceDebtObservation
 
 /-! # Honest ready callbacks are recorded under counted native service -/
@@ -81,9 +83,12 @@ private theorem readyTurnsRecorded_transition
       (some control) joint).support
     rw [state] at realized
     exact realized
-  obtain ⟨next, afterEq, configStep⟩ := transition_some_configStep (runtime := runtime)
-    (initialLaw setup) horizon
-    scheduler control after (fun player => (choices player).1) moved
+  obtain ⟨next, afterEq, _⟩ :=
+    (application setup runtime leaks).transition_recall_prefix (initialLaw setup) horizon
+      scheduler control after (fun player => (choices player).1) moved
+  have path := runtime.reactive_protocol_graph_steps leaks (initialLaw setup) horizon scheduler
+    control next (fun player => (choices player).1) (by simpa only [afterEq] using moved)
+  have completed := EventGraph.completed_subset_of_history_prefix _ _ path.path_history_prefix
   refine ⟨next, afterEq, ?_⟩
   have trace : (E).Trace (some control) := state ▸ history.trace
   have raw := (menu).toRawTrace (initialLaw setup) horizon scheduler trace
@@ -112,7 +117,7 @@ private theorem readyTurnsRecorded_transition
           have recallEq := (application setup runtime leaks).environmentStep_recall execution ending
             command step
           rw [recallEq] at member ⊢
-          exact recorded event (fun done => unfinished (configStep.completed_mono done))
+          exact recorded event (fun done => unfinished (completed done))
             player entry member activated
   | some actor =>
       have observed : (N).infoOf actor history.trace = some (execution.recall actor,

@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.SourceServiceTurnPolicy
+import Vegas.Game.SourceServiceCompletion
+import Vegas.Pending.ReactiveGraphSteps
 import GameTheoryExtensions.Math.Probability.TotalVariation
 
 /-! # Boundary continuations of the service
@@ -12,7 +14,7 @@ completion runs and terminal rounds they use: an activation leaves the
 application unchanged (`Vegas.activation_application`), rounds from a terminal
 configuration keep it (`Vegas.runRounds_config_terminal`), and a stopped point
 of a completion run from a completion boundary at which the event has completed
-is the next boundary (`Vegas.CompletionBoundary.stopped`).
+is a boundary at its actual completed rank (`Vegas.CompletionBoundary.stopped`).
 -/
 
 noncomputable section
@@ -81,11 +83,10 @@ theorem runRounds_config_terminal
       obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ moved)
       obtain ⟨stepped, stepMember, resumed⟩ :=
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
-      have stepConfig : stepped.application.config = execution.application.config := by
-        rcases environmentStep_configStep setup leaks execution stepped command stepMember with
-          same | ⟨event, ready, _, _⟩
-        · exact same
-        · exact (ready.1 ((terminal.2 event).mpr event.isLt)).elim
+      have stepConfig : stepped.application.config = execution.application.config :=
+        EventGraph.Config.Step.path_eq_of_terminal
+          (((serviceRuntime setup mode deadline).reactiveApplication_graphSteps
+            leaks).environmentStep execution stepped command stepMember) terminal.terminal
       have middleConfig : middle.application.config = execution.application.config := by
         change middle ∈ (app.resume players (command.actor? app) stepped).support at resumed
         cases actor : command.actor? app with
@@ -138,7 +139,7 @@ theorem BoundaryContinuationWithin.law {scheduler : (application setup runtime l
   exact close.eq_of_zero
 variable {setup leaks}
 /-- A stopped point of a completion run from a completion boundary at which
-the event has completed is the next boundary, within the horizon. -/
+the event has completed is a later actual boundary, within the horizon. -/
 theorem CompletionBoundary.stopped {scheduler : (application setup runtime leaks).Scheduler}
     {players : Player → (application setup runtime leaks).Policy} {horizon : Nat}
     (event : (graph setup).EventId) (execution : (application setup runtime leaks).Execution)
@@ -149,7 +150,8 @@ theorem CompletionBoundary.stopped {scheduler : (application setup runtime leaks
       (fun final => event ∈ final.application.config.cut.completed) horizon execution).support)
     (finished : event ∈ stopped.application.config.cut.completed) :
     stopped.environmentRecall.length ≤ horizon ∧
-      CompletionBoundary setup leaks scheduler players (event.val + 1) stopped := by
+      ∃ actualRank, event.val < actualRank ∧
+        CompletionBoundary setup leaks scheduler players actualRank stopped := by
   let app := application setup runtime leaks
   obtain ⟨rank, ranked, seen⟩ := roundsFrom_ranked setup runtime leaks scheduler players _ execution
     boundary.supported
@@ -159,12 +161,12 @@ theorem CompletionBoundary.stopped {scheduler : (application setup runtime leaks
     stopped reached
   obtain ⟨stoppedSeen, stoppedConfig⟩ := runUntil_completion_prefix setup runtime leaks scheduler
     players event _ execution stopped boundary.ordered seen reached
-  refine ⟨by omega, app.roundsFrom_runUntil scheduler players (initialLaw setup) _ _ execution
-    stopped boundary.supported reached, ?_, ?_⟩
-  · rcases stoppedConfig with current | advanced
-    · exact (Nat.lt_irrefl _ ((current.2 event).mp finished)).elim
-    · exact advanced
-  · intro next rankNext observer entry member readyView
+  rcases stoppedConfig with current | ⟨actualRank, later, ordered⟩
+  · exact (Nat.lt_irrefl _ ((current.2 event).mp finished)).elim
+  · refine ⟨by omega, actualRank, later,
+      app.roundsFrom_runUntil scheduler players (initialLaw setup) _ _ execution
+        stopped boundary.supported reached, ordered, ?_⟩
+    intro next rankNext observer entry member readyView
     have := stoppedSeen observer entry member next readyView
     omega
 

@@ -398,7 +398,7 @@ theorem counted_chance_stopped_sourceContinuation
               rw [decodedPoint_eq_of_isPrefix nextPrefix]
               rfl
       _ = _ := by rw [configLaw, PMF.bind_map]; rfl
-  obtain ⟨law, sourceLaw, _policy, _effective, _disclosing⟩ :=
+  obtain ⟨law, sourceLaw, _policy, _effective⟩ :=
     SourceResidual.head_law runtime leaks residual event atRank ready
   have fixed : law.bind (fun choice =>
       (config.step event ready choice).bind (sourceContinuation setup profile (rank + 1))) =

@@ -75,7 +75,7 @@ theorem pending_completionValue_eq_potential
       event ready
     final member
   exact completionValue_eq_elim setup runtime leaks bounds horizon scheduler parameter utility
-    excludedPayoff profile rank fresh who fallback ⟨_, state, nextPrefix⟩
+    excludedPayoff profile rank fresh who fallback final
 
 include initialized nativeLaw completes in
 /-- The physical completion value is exactly the optional source-point

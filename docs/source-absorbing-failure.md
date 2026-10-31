@@ -482,15 +482,14 @@ from initialization through any supported number of complete rounds.
 unfinished, or certifies an actual prefix rank strictly greater than the target
 rank once it completes. These are facts about supported executions. A stop at
 completion of event `e` need not end at `e.val + 1`.
-`CompletionBoundary.stopped` must identify that actual later boundary, with
-its future events untouched, rather than a fixed successor rank. Likewise,
-`LateStopped` defined by an exact successor prefix is not a monotone
-completion test, and `completionValue` cannot read that fixed rank as the
-current endpoint after an automatic jump. These consumers require the event's
-completion predicate and the actual decoded endpoint. Prefix geometry and
-terminal stability can use finite-path induction and
-`Config.Step.path_eq_of_terminal`; no new scheduler condition follows from
-this change.
+`CompletionBoundary.stopped` identifies the actual later boundary and proves
+that its future events remain untouched. `pendingTransition` retains the
+starting prefix or reaches a strictly later prefix at scheduler control.
+`LateStopped` tests actual completion of the target event, so it remains valid
+through automatic jumps; `completionPoint` decodes the current endpoint.
+`completionValue` uses that point with its declared fallback, and its
+elimination identity now holds at every history. The higher probability-law
+consumers still need to use these actual endpoints throughout.
 
 Exact probability laws require more than supported-path existence.
 `State.drain_bind_runPlan_canonical` and `AcceptanceWitness.reactive_runPlan` in
@@ -526,3 +525,29 @@ The intended side uses the full source horizon, `instructionCount + 1`;
 complete readouts follow internally. No condition on incomplete source runs or
 new service assumption is used. The remaining fixed-successor consumers above
 and the final compiler and strategic acceptance gates still require checking.
+
+## Completion origins and observation symmetries
+
+[ReactiveCompletion](../Vegas/Pending/ReactiveCompletion.lean) classifies new
+records of the actual native execution. A primary accepted message retains its
+pending origin, ledger entry, receipt and raw handler result before draining.
+Expiry retains its exact effective decision and default metadata. Automatic
+completions have silent records and an inherited defaulted actor, with their
+physical triggering operation retained. Common graph-step endpoints identify
+the same event; arbitrary requested actions need not be equal because defaulted
+owners' requests are clamped by the sole graph executor.
+
+[EventValueSwap](../Vegas/Pending/EventValueSwap.lean) preserves the exact public
+default history while swapping private values and recorded decisions. Binding
+actions map present payloads and retain omission. Step equivariance uses the
+explicit local `ValueSwap.ExpiryFixed` condition: an omission or automatic
+binding stores failure, so a swap must fix that stored failure. This is an
+internal proof adapter; the compiler's concrete pair swaps must discharge it.
+No runtime condition or alternative failure semantics is introduced.
+
+[SourceServiceFirstTurnMixture](../Vegas/Game/SourceServiceFirstTurnMixture.lean)
+uses authentic disclosures: an attempted opening needs a successful immutable
+binding, and its guard may reject. Silence includes binding omission and the
+forced actions of inactive owners. Its unconditional source-continuation law
+retains full configurations and default history. The higher physical completion
+and observation consumers remain acceptance obligations.

@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.SourceServiceReachedDecoding
+import Vegas.Game.SourceServiceTurnPolicy
+import Vegas.Source.DisclosureBehavioral
 
 /-! # First-turn decisions of a fixed source action
 
@@ -8,8 +10,9 @@ The owner's policy deciding one fixed source action at its first turn at an
 event, and silent at every other input (`Vegas.decidedTurnPolicy`), makes the
 canonical compiled decision of that action while a fresh call still fits the
 deadline (`Vegas.decidedOpportunity`). An action is effective when the compiled
-decision realizes it (`Vegas.EffectiveAction`), and silent when it is a
-disclosure of `false` (`Vegas.SilentAction`). On the source side, the
+decision realizes it (`Vegas.EffectiveAction`), including authentic openings
+whose deferred guards reject publication. Silence represents binding omission
+or a disclosure of `false` (`Vegas.SilentAction`). On the source side, the
 continuation from a decoded configuration draws the head event's source action
 and continues from the configuration completed with it
 (`Vegas.SourceResidual.head_law`).
@@ -59,22 +62,23 @@ def decidedTurnPolicy (bound : (serviceGraph setup mode).EventId → Nat) (owner
 
 variable {setup}
 
-/-- An action that the compiled decision realizes: a disclosure of `true` only
-when the publication succeeds on the configuration. -/
+/-- A requested opening is realizable precisely when the immutable binding
+contains a value. Deferred guard rejection does not prevent the attempt. -/
 def EffectiveAction (config : (serviceGraph setup mode).Config)
     (event : (serviceGraph setup mode).EventId)
     (action : (serviceGraph setup mode).Action event) : Prop :=
   match nodeView (serviceGraph setup mode) event with
-  | .resolve _ _ binding checks outputEq _ =>
+  | .resolve _ _ binding _ outputEq _ =>
       (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) = true →
-        ∃ value, EventGraph.EventCode.resolveOutput? binding checks true config.store =
-          some (.success value)
+        ∃ value, binding.get? config.store = some (.success value)
   | _ => True
 
-/-- An action realized by silence: a disclosure of `false`. -/
+/-- Silence realizes public binding omission or a disclosure of `false`. -/
 def SilentAction (event : (serviceGraph setup mode).EventId)
     (action : (serviceGraph setup mode).Action event) : Prop :=
   match nodeView (serviceGraph setup mode) event with
+  | .bind _ _ outputEq _ =>
+      (cast (congrArg EventGraph.EventField.Action outputEq) action) = none
   | .resolve _ _ _ _ outputEq _ =>
       (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) = false
   | _ => False
@@ -95,9 +99,8 @@ variable [Finite Player] (leaks) {profile : BehavioralProfile setup.program}
 a decoded configuration draws the head event's source action and continues
 from the configuration completed with it. At an owned event that action law
 is the source decision, compiled to native responses by the source policy,
-and under effective disclosures every supported action is realized by the
-compiled decision, and under disclosing profiles no supported action is a
-disclosure of `false`. -/
+and under authentic disclosures every supported action is realized by the
+compiled decision, including openings whose deferred guards reject. -/
 theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
     (residual : SourceResidual setup profile rank config) (event : (graph setup).EventId)
     (atRank : event.val = rank) (ready : config.cut.Ready event) :
@@ -113,15 +116,14 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
             law.map fun action => runtime.canonicalServiceDecision leaks owner
               (current.recall owner) (current.observe (application setup runtime leaks) owner) event
               action) ∧
-      ((∀ who, (profile who).EffectiveDisclosures setup.program []
-          (Revelations.initial setup.context)) →
-        ∀ action ∈ law.support, EffectiveAction config event action) ∧
-      ((∀ who, Disclosing setup.program (profile who)) →
-        ∀ action ∈ law.support, ¬ SilentAction event action) := by
+      ((∀ who, (profile who).AuthenticDisclosures setup.program) →
+        ∀ action ∈ law.support, EffectiveAction config event action) := by
   let := Fintype.ofFinite Player
+  let native : EventGraphRuntime.State (graph setup) :=
+    { EventGraphRuntime.State.initial (graph := graph setup) config.inputs with config := config }
   have decoded := residual.decode
   rcases residual with ⟨Γ, names, program, residualProfile, source, refs, embedding, refsBefore,
-    aligned, admitted, effective, supports, disclosing, lift, commutes, steps, injective,
+    aligned, admitted, authentic, supports, disclosing, lift, commutes, steps, injective,
     transport,
     checkpoint⟩
   dsimp only at decoded
@@ -136,12 +138,13 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
     simp only [sourceServicePrefix?] at decoded
     rw [decoded]
     change (ProtocolState.continuationLaw setup.program profile (lift _)).map some = _
-    rw [← ProtocolState.behavioralStateStep_continuation setup.program profile, commutes, PMF.bind_map, PMF.map_bind]
+    rw [← ProtocolState.behavioralStateStep_continuation setup.program profile, commutes,
+      PMF.bind_map, PMF.map_bind]
     rfl
   have nextDecode (state : ProtocolState program) (next : (graph setup).Config)
       (read : decodeSourcePrefix? program refs source.registry source.revelations embedding.ref
         1 next.store (decodeHistory setup.program
-          (next.history.map (setup.eventGraph.fromModeCompletion .sequential))) =
+          (next.history.map (setup.eventGraph.fromModeCompletion .sequential))) next.defaults =
         some state) :
       sourceContinuation setup profile (rank + 1) next =
         (ProtocolState.continuationLaw setup.program profile (lift state)).map some := by
@@ -179,7 +182,7 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit)
         simpa [index, outputEq, decodeEventAction] using lookup
       refine ⟨PMF.pure (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit),
-        ?_, ?_, ?_, ?_⟩
+        ?_, ?_, ?_⟩
       · have entryStep : ProtocolState.behavioralStateStep (.sample name fresh distribution next)
             residualProfile (ProtocolState.entry _ source) =
               (L.evalDist distribution (sourcePublicEnv source.state)).map (fun value =>
@@ -192,8 +195,8 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
         symm
         apply nextDecode
         exact (decodeSourcePrefix?_sample fresh distribution next refs source.registry
-          source.revelations embedding.ref 0 _ _).trans (congrArg (Option.map Sum.inr)
-            ((checkpoint.sample (native := configState config) name (embedding.event index)
+          source.revelations embedding.ref 0 _ _ _).trans (congrArg (Option.map Sum.inr)
+            ((checkpoint.sample (native := native) name (embedding.event index)
               headRank ready outputEq (fun ref => refsBefore ref index) decodedAction
               value).decode next (fun tail => embedding.ref tail.succ)))
       · intro owner owned
@@ -203,10 +206,6 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
         unfold EffectiveAction
         rw [EventGraphRuntime.nodeView_eq_sample outputEq codeEq]
         trivial
-      · intro _ action _
-        unfold SilentAction
-        rw [EventGraphRuntime.nodeView_eq_sample outputEq codeEq]
-        exact id
   | @commit Γ openNames name owner payload fresh guard next =>
       let index : Fin (eventCount (.commit name owner fresh guard next)) :=
         ⟨0, by simp [eventCount]⟩
@@ -226,31 +225,45 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
       have actor : (graph setup).actor? (embedding.event index) = some owner := by
         change (toEventGraph setup.program).actor? (embedding.event index) = some owner
         simpa [index, eventOwner?, eventCount] using aligned.actorEq index
-      have decodedAction (choice : PublicationResult (L.Val payload)) :
+      have decodedAction (choice : Option (PublicationResult (L.Val payload))) :
           decodeEventAction setup.program (embedding.event index)
             (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice) =
               some (.commit owner name payload choice) := by
         have lookup := aligned.actionEq index
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
         simpa [index, outputEq, decodeEventAction] using lookup
-      refine ⟨(commitKernel residualProfile (source.view owner)).map
+      let choiceLaw : PMF (Option (PublicationResult (L.Val payload))) :=
+        if inactive : owner ∈ source.defaulted then PMF.pure none
+        else commitKernel residualProfile (source.view owner) inactive
+      have status : config.defaulted = source.defaulted :=
+        congrArg DefaultHistory.defaulted checkpoint.defaults
+      have stepLaw (choice : Option (PublicationResult (L.Val payload))) :
+          config.step (embedding.event index) ready
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice) =
+          PMF.pure (config.complete (embedding.event index) ready
+            (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
+            (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+              ((commitSuccessor name guard source choice).state.get .here))) := by
+        simpa only [status, commitSuccessor, Env.get, Env.cons] using
+          commit_step config _ ready outputEq codeEq choice
+      refine ⟨choiceLaw.map
         (fun choice => cast (congrArg EventGraph.EventField.Action outputEq.symm) choice),
-        ?_, ?_, ?_, ?_⟩
+        ?_, ?_, ?_⟩
       · have entryStep : ProtocolState.behavioralStateStep (.commit name owner fresh guard next)
             residualProfile (ProtocolState.entry _ source) =
-              (commitKernel residualProfile (source.view owner)).map (fun choice =>
+              choiceLaw.map (fun choice =>
                 Sum.inr (ProtocolState.entry next (commitSuccessor name guard source choice))) :=
           ProtocolState.behavioralStateStep_commit_entry residualProfile source
         rw [sourceEq, entryStep, PMF.bind_map, PMF.bind_map]
         apply bind_congr_on_support _
         intro choice _
         simp only [Function.comp_apply]
-        rw [commit_step config _ ready outputEq codeEq choice, PMF.pure_bind]
+        rw [stepLaw choice, PMF.pure_bind]
         symm
         apply nextDecode
         exact (decodeSourcePrefix?_commit fresh guard next refs source.registry
-          source.revelations embedding.ref 0 _ _).trans (congrArg (Option.map Sum.inr)
-            ((checkpoint.commit (native := configState config) name guard
+          source.revelations embedding.ref 0 _ _ _).trans (congrArg (Option.map Sum.inr)
+            ((checkpoint.commit (native := native) name guard
               (embedding.event index) headRank ready outputEq (fun ref => refsBefore ref index)
               choice (decodedAction choice)).decode next (fun tail => embedding.ref tail.succ)))
       · intro who owned current sameConfig
@@ -259,16 +272,13 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
         have law := sourceServiceCanonicalPolicy_commit setup leaks fresh guard next profile
           residualProfile refs source embedding refsBefore rank aligned current
           (by rw [sameConfig]; exact checkpoint.agrees)
-          (by rw [sameConfig]; exact checkpoint.history) (by rw [sameConfig]; exact ready)
-        simpa only [PMF.map_comp, Function.comp_def] using law
+          (by rw [sameConfig]; exact checkpoint.history)
+          (by rw [sameConfig]; exact checkpoint.defaults) (by rw [sameConfig]; exact ready)
+        simpa only [choiceLaw, PMF.map_comp, Function.comp_def] using law
       · intro _ action _
         unfold EffectiveAction
         rw [EventGraphRuntime.nodeView_eq_bind outputEq codeEq]
         trivial
-      · intro _ action _
-        unfold SilentAction
-        rw [EventGraphRuntime.nodeView_eq_bind outputEq codeEq]
-        exact id
   | @reveal Γ openNames published owner name payload fresh selected unresolved next =>
       let index : Fin (eventCount
           (.reveal published owner name fresh selected unresolved next)) :=
@@ -299,23 +309,26 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
         have lookup := aligned.actionEq index
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
         simpa [index, outputEq, decodeEventAction] using lookup
+      have status : config.defaulted = source.defaulted :=
+        congrArg DefaultHistory.defaulted checkpoint.defaults
       have stepEq (disclose : Bool) : config.step (embedding.event index) ready
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose) =
             PMF.pure (config.complete (embedding.event index) ready
               (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose)
               (cast (congrArg EventGraph.EventField.Value outputEq.symm)
                 (disclosureResult published selected source disclose))) := by
-        rw [config.step_eq_map_of_code _ ready outputEq _ codeEq disclose
-          (PMF.pure (disclosureResult published selected source disclose))
-          (compileResolve_eval? refs source.registry source.revelations source.state
-            config.store checkpoint.agrees selected disclose), PMF.pure_map]
-      refine ⟨(revealKernel residualProfile (source.view owner)).map
+        simpa only [status, disclosureResult, revealSuccessor, Env.get, Env.cons] using
+          reveal_step config _ ready outputEq refs source.revelations source.registry selected
+            codeEq source.state checkpoint.agrees disclose
+      let choiceLaw : PMF Bool := if inactive : owner ∈ source.defaulted then PMF.pure false
+        else revealKernel residualProfile (source.view owner) inactive
+      refine ⟨choiceLaw.map
         (fun disclose => cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose),
-        ?_, ?_, ?_, ?_⟩
+        ?_, ?_, ?_⟩
       · have entryStep : ProtocolState.behavioralStateStep
             (.reveal published owner name fresh selected unresolved next)
             residualProfile (ProtocolState.entry _ source) =
-              (revealKernel residualProfile (source.view owner)).map (fun disclose =>
+              choiceLaw.map (fun disclose =>
                 Sum.inr (ProtocolState.entry next
                   (revealSuccessor published selected source disclose))) :=
           ProtocolState.behavioralStateStep_reveal_entry residualProfile source
@@ -327,8 +340,8 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
         symm
         apply nextDecode
         exact (decodeSourcePrefix?_reveal fresh selected unresolved next refs source.registry
-          source.revelations embedding.ref 0 _ _).trans (congrArg (Option.map Sum.inr)
-            ((checkpoint.reveal (native := configState config) published selected
+          source.revelations embedding.ref 0 _ _ _).trans (congrArg (Option.map Sum.inr)
+            ((checkpoint.reveal (native := native) published selected
               (embedding.event index) headRank ready outputEq (fun ref => refsBefore ref index)
               disclose (decodedAction disclose)).decode next
                 (fun tail => embedding.ref tail.succ)))
@@ -338,33 +351,30 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
         have law := sourceServiceCanonicalPolicy_reveal setup leaks fresh selected unresolved next
           profile residualProfile refs source embedding refsBefore rank aligned current
           (by rw [sameConfig]; exact checkpoint.agrees)
-          (by rw [sameConfig]; exact checkpoint.history) (by rw [sameConfig]; exact ready)
-        simpa only [PMF.map_comp, Function.comp_def] using law
-      · intro effectiveWhole action member
+          (by rw [sameConfig]; exact checkpoint.history)
+          (by rw [sameConfig]; exact checkpoint.defaults) (by rw [sameConfig]; exact ready)
+        simpa only [choiceLaw, PMF.map_comp, Function.comp_def] using law
+      · intro authenticWhole action member
         unfold EffectiveAction
         rw [EventGraphRuntime.nodeView_eq_resolve outputEq codeEq]
         obtain ⟨disclose, chosen, rfl⟩ := PMF.support_map .. ▸ member
         intro requested
         simp only [cast_cast, cast_eq] at requested
         subst requested
-        have kept := (effective effectiveWhole owner).1 rfl (source.view owner) true chosen
-        change effectiveDisclosureView published selected source.registry source.revelations
-          (sourceObserve owner source.state) true = true at kept
-        rw [effectiveDisclosureView_observe] at kept
-        have resolved := compiled_disclosure_result published selected source refs config.store
-          checkpoint.agrees true
-        rw [EventGraph.EventCode.resolveOutput?_playerStore] at resolved
-        cases result : disclosureResult published selected source true with
-        | failure => simp only [effectiveDisclosure, result] at kept; cases kept
-        | success value => exact ⟨value, by rw [resolved, result]⟩
-      · intro disclosingWhole action member
-        unfold SilentAction
-        rw [EventGraphRuntime.nodeView_eq_resolve outputEq codeEq]
-        obtain ⟨disclose, chosen, rfl⟩ := PMF.support_map .. ▸ member
-        intro withheld
-        simp only [cast_cast, cast_eq] at withheld
-        subst withheld
-        exact (disclosing disclosingWhole owner).1 rfl (source.view owner) chosen
+        by_cases inactive : owner ∈ source.defaulted
+        · simp only [choiceLaw, dite_eq_left inactive, PMF.mem_support_pure_iff] at chosen
+          cases chosen
+        · have selectedChoice : true ∈
+              (revealKernel residualProfile (source.view owner) inactive).support := by
+            simpa only [choiceLaw, dite_eq_right inactive] using chosen
+          have kept := (authentic authenticWhole owner).1 rfl (source.view owner) inactive true
+            selectedChoice
+          have opens : (source.state.get selected).isSuccess = true := by
+            simpa [Config.view, sourceObserve, Env.get] using kept
+          cases result : source.state.get selected with
+          | failure => simp only [result, PublicationResult.isSuccess] at opens; cases opens
+          | success value =>
+              exact ⟨value, by simpa only [result, cellValue] using checkpoint.agrees selected⟩
 
 end Head
 

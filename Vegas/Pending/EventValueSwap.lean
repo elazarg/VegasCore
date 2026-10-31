@@ -6,17 +6,17 @@ import Vegas.Pending.OpeningEvidence
 
 A *value swap* (`Vegas.EventGraph.ValueSwap`) is an involution on the stored
 value of every field and on the original action of every event, which fixes
-every public field and every action at a resolution, and sends a failed binding
-to a failed binding. Applied pointwise to the inputs, the outputs and the
+every public field, every action at a resolution, and binding omission. Applied
+pointwise to the inputs, the outputs and the
 chronological history of a configuration (`Vegas.EventGraph.Config.swap`), it
 keeps the cut, the completion order and the public observation
 (`Vegas.EventGraph.publicObserve_swap`), and each player's observation becomes
 the swap of that observation on the fields visible to the player
 (`Vegas.EventGraph.playerObserve_swap`).
 
-Completing an event commutes with the swap. A graph step whose evaluator reads
-only fields the swap fixes, such as a sample or a resolution of a binding the
-swap fixes, commutes with it as well (`Vegas.EventGraph.Config.step_swap`).
+Completing an event commutes with the swap and retains the exact public default
+record. A graph step whose evaluator reads only fields the swap fixes commutes
+with it when the swap also fixes failed binding output (`Vegas.EventGraph.Config.step_swap`).
 -/
 
 noncomputable section
@@ -29,7 +29,7 @@ variable {Player : Type} {L : IExpr} [R : IExpr.ResultTypes L]
 variable (graph) in
 /-- **A value swap.** An involution on the value of every field and on the
 action of every event. Public fields and resolution actions are fixed. At a
-binding event, the action and the stored result are swapped alike. -/
+binding event, admitted choices and stored results are swapped alike; omission stays fixed. -/
 structure ValueSwap where
   /-- The swap of a field's stored value. -/
   value : (field : graph.Field) → (graph.layout field).Value → (graph.layout field).Value
@@ -41,15 +41,15 @@ structure ValueSwap where
   action_publication : ∀ event payload, graph.outputLayout event = .publication payload →
     action event = id
   action_binding : ∀ event owner payload (outputEq : graph.outputLayout event =
-      .binding owner payload) (result : PublicationResult (L.Val payload)),
-    action event (cast (congrArg EventField.Action outputEq.symm) result) =
+      .binding owner payload) (choice : Option (PublicationResult (L.Val payload))),
+    action event (cast (congrArg EventField.Action outputEq.symm) choice) =
       cast (congrArg EventField.Action outputEq.symm)
-        (cast (congrArg EventField.Value outputEq)
+        (choice.map fun result => cast (congrArg EventField.Value outputEq)
           (value (.inr event) (cast (congrArg EventField.Value outputEq.symm) result)))
 
 namespace ValueSwap
 
-/-- The swap keeps a failure at a binding event: what an expiry stores there. -/
+/-- The swap keeps a failed binding result, including omission and automatic failure. -/
 def ExpiryFixed (swap : graph.ValueSwap) (event : graph.EventId) : Prop :=
   ∀ owner payload (outputEq : graph.outputLayout event = .binding owner payload),
     swap.value (.inr event) (cast (congrArg EventField.Value outputEq.symm) .failure) =
@@ -71,14 +71,64 @@ theorem store_involutive : Function.Involutive swap.store := by
 
 /-- The swap of one completion record. -/
 def completion (completion : graph.Completion) : graph.Completion :=
-  ⟨completion.event, swap.action completion.event completion.action⟩
+  ⟨completion.event, completion.decision.map (swap.action completion.event),
+    completion.defaultEvent⟩
 
 @[simp] theorem completion_event (completion : graph.Completion) :
     (swap.completion completion).event = completion.event := rfl
 
 theorem completion_involutive : Function.Involutive swap.completion := by
-  rintro ⟨event, action⟩
-  simp only [ValueSwap.completion, swap.action_involutive event action]
+  rintro ⟨event, decision, defaultEvent⟩
+  cases decision with
+  | none => rfl
+  | some action =>
+      simp only [ValueSwap.completion, Option.map_some, swap.action_involutive event action]
+
+private theorem defaultEvent_of_code {event : graph.EventId}
+    {output : EventField Player L} (outputEq : graph.outputLayout event = output)
+    (code : EventCode graph.layout output)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) = code)
+    (action : graph.Action event) (value : (graph.outputLayout event).Value) :
+    (graph.nodes event).defaultEvent action value = code.defaultEvent
+      (cast (congrArg EventField.Action outputEq) action)
+      (cast (congrArg EventField.Value outputEq) value) := by
+  cases outputEq
+  subst code
+  rfl
+
+/-- Value swaps preserve whether a supplied completion publicly defaults its owner. -/
+theorem defaultEvent_eq (event : graph.EventId) (action : graph.Action event)
+    (value : (graph.outputLayout event).Value) :
+    (graph.nodes event).defaultEvent (swap.action event action)
+        (swap.value (.inr event) value) = (graph.nodes event).defaultEvent action value := by
+  cases view : EventGraphRuntime.nodeView graph event with
+  | bind owner payload outputEq codeEq =>
+      obtain ⟨choice, rfl⟩ : ∃ choice : Option (PublicationResult (L.Val payload)),
+          action = cast (congrArg EventField.Action outputEq.symm) choice :=
+        ⟨cast (congrArg EventField.Action outputEq) action, by simp⟩
+      rw [swap.action_binding event owner payload outputEq choice]
+      simp only [defaultEvent_of_code outputEq _ codeEq, cast_cast, cast_eq]
+      cases choice <;> rfl
+  | resolve owner payload binding checks outputEq codeEq =>
+      rw [swap.action_publication event payload outputEq,
+        swap.value_public (.inr event)
+          (show (graph.outputLayout event).IsPublic by rw [outputEq]; trivial)]
+      rfl
+  | sample payload law outputEq codeEq =>
+      rw [defaultEvent_of_code outputEq _ codeEq, defaultEvent_of_code outputEq _ codeEq]
+      rfl
+
+/-- Completion swapping keeps the generated public default entry unchanged. -/
+theorem completion_fromDecision (event : graph.EventId)
+    (decision : Option (graph.Action event)) (value : (graph.outputLayout event).Value) :
+    swap.completion (Completion.fromDecision event decision value) =
+      Completion.fromDecision event (decision.map (swap.action event))
+        (swap.value (.inr event) value) := by
+  cases decision with
+  | none => rfl
+  | some action =>
+      simp only [completion, Completion.fromDecision, Option.map_some, Option.bind_some,
+        swap.defaultEvent_eq]
 
 /-- A swapped store agrees with the original on every public field. -/
 theorem store_public (values : Store graph.layout) (field : graph.Field)
@@ -135,6 +185,16 @@ theorem swap_history_events (config : graph.Config) :
   funext field
   cases field <;> rfl
 
+@[simp] theorem swap_defaults (config : graph.Config) :
+    (config.swap swap).defaults = config.defaults := by
+  unfold defaults Completion.defaults
+  rw [swap_history, List.map_map]
+  rfl
+
+@[simp] theorem swap_defaulted [DecidableEq Player] (config : graph.Config) :
+    (config.swap swap).defaulted = config.defaulted := by
+  simp only [defaulted, swap_defaults]
+
 theorem swap_involutive : Function.Involutive (Config.swap swap) := by
   intro config
   have inputs : (config.swap swap |>.swap swap).inputs = config.inputs := by
@@ -155,8 +215,19 @@ theorem swap_involutive : Function.Involutive (Config.swap swap) := by
     exact List.map_congr_left fun completion _ => swap.completion_involutive completion
   exact ext_fields inputs rfl outputs history
 
+/-- Swapping preserves which requests are recorded as active strategic decisions. -/
+theorem swap_actualDecision [DecidableEq Player] (config : graph.Config)
+    (event : graph.EventId) (action : graph.Action event) :
+    (config.swap swap).actualDecision event (swap.action event action) =
+      (config.actualDecision event action).map (swap.action event) := by
+  simp only [actualDecision, swap_defaulted, EventCode.actualDecision]
+  cases owned : (graph.nodes event).actor with
+  | none => rfl
+  | some owner =>
+      by_cases inactive : owner ∈ config.defaulted <;> simp [inactive]
+
 /-- **Completing an event commutes with the swap.** -/
-theorem swap_complete (config : graph.Config) (event : graph.EventId)
+theorem swap_complete [DecidableEq Player] (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event)
     (value : (graph.outputLayout event).Value) :
     (config.complete event ready action value).swap swap =
@@ -177,7 +248,8 @@ theorem swap_complete (config : graph.Config) (event : graph.EventId)
   have history : ((config.complete event ready action value).swap swap).history =
       ((config.swap swap).complete event ready (swap.action event action)
         (swap.value (.inr event) value)).history := by
-    simp [ValueSwap.completion]
+    simp only [Config.swap_history, Config.complete_history, List.map_append, List.map_singleton,
+      swap_actualDecision, swap.completion_fromDecision]
   exact ext_fields rfl rfl outputs history
 
 end Config
@@ -192,6 +264,7 @@ theorem publicObserve_swap (swap : graph.ValueSwap) (config : graph.Config) :
     split
     · exact swap.store_public config.store field (by assumption)
     · rfl
+  · exact Config.swap_defaults swap config
 
 
 /-! ### Public reads -/
@@ -293,42 +366,69 @@ private theorem code_eval?_exists (config : graph.Config) {event : graph.EventId
   rw [← EventCode.readFields_cast outputEq (graph.nodes event), codeEq]
   exact member
 
-/-- **A graph step commutes with the swap** at an event whose resolution reads
-a binding the swap fixes. -/
-theorem Config.step_swap (swap : graph.ValueSwap) (config : graph.Config)
+/-- **A graph step commutes with the swap** when resolution reads and any failed
+binding output are fixed. -/
+theorem Config.step_swap [DecidableEq Player] (swap : graph.ValueSwap) (config : graph.Config)
     (event : graph.EventId) (ready : config.cut.Ready event) (action : graph.Action event)
-    (fixed : ResolutionFixed swap event) :
+    (fixed : ResolutionFixed swap event) (expiry : swap.ExpiryFixed event) :
     (config.swap swap).step event ready (swap.action event action) =
       (config.step event ready action).map (Config.swap swap) := by
   unfold ResolutionFixed at fixed
   cases view : EventGraphRuntime.nodeView graph event with
   | bind owner payload outputEq codeEq =>
-      obtain ⟨result, rfl⟩ : ∃ result : PublicationResult (L.Val payload),
-          action = cast (congrArg EventField.Action outputEq.symm) result :=
+      obtain ⟨choice, rfl⟩ : ∃ choice : Option (PublicationResult (L.Val payload)),
+          action = cast (congrArg EventField.Action outputEq.symm) choice :=
         ⟨cast (congrArg EventField.Action outputEq) action, by simp⟩
-      set swapped : PublicationResult (L.Val payload) :=
-        cast (congrArg EventField.Value outputEq)
+      let transform : PublicationResult (L.Val payload) → PublicationResult (L.Val payload) :=
+        fun result => cast (congrArg EventField.Value outputEq)
           (swap.value (.inr event) (cast (congrArg EventField.Value outputEq.symm) result))
-      have valueEq : swap.value (.inr event) (cast (congrArg EventField.Value outputEq.symm)
-          result) = cast (congrArg EventField.Value outputEq.symm) swapped := by
-        simp [swapped]
-      rw [swap.action_binding event owner payload outputEq result,
+      have failure : transform .failure = .failure := by
+        simp only [transform, expiry owner payload outputEq, cast_cast, cast_eq]
+      have valueEq (result : PublicationResult (L.Val payload)) :
+          swap.value (.inr event) (cast (congrArg EventField.Value outputEq.symm) result) =
+            cast (congrArg EventField.Value outputEq.symm) (transform result) := by
+        simp only [transform, cast_cast, cast_eq]
+      let effective := if owner ∈ config.defaulted then none else choice
+      have effectiveOriginal :
+          (EventCode.bind (layout := graph.layout) owner payload).effectiveAction
+            config.defaulted choice = effective := rfl
+      have effectiveSwapped :
+          (EventCode.bind (layout := graph.layout) owner payload).effectiveAction
+            (config.swap swap).defaulted (choice.map transform) = effective.map transform := by
+        rw [Config.swap_defaulted]
+        by_cases inactive : owner ∈ config.defaulted <;>
+          simp only [EventCode.effectiveAction, EventCode.actor, inactive, ↓reduceIte, effective,
+            EventCode.failureAction, Option.map_none]
+      have outputMap : (effective.map transform).getD .failure =
+          transform (effective.getD .failure) := by
+        cases effective <;> simp only [Option.map_none, Option.getD_none, failure,
+          Option.map_some, Option.getD_some]
+      rw [swap.action_binding event owner payload outputEq choice,
         (config.swap swap).step_eq_map_of_code event ready outputEq (.bind owner payload) codeEq
-          swapped (PMF.pure swapped) rfl,
+          (choice.map transform) (PMF.pure (transform (effective.getD .failure))) (by
+            rw [effectiveSwapped, EventCode.bind_eval?, outputMap]),
         config.step_eq_map_of_code event ready outputEq (.bind owner payload) codeEq
-          result (PMF.pure result) rfl, PMF.pure_map, PMF.pure_map, PMF.pure_map,
-        Config.swap_complete, swap.action_binding event owner payload outputEq result, valueEq]
-      simp only [cast_cast]
+          choice (PMF.pure (effective.getD .failure)) (by
+            rw [effectiveOriginal, EventCode.bind_eval?]),
+        PMF.pure_map, PMF.pure_map, PMF.pure_map, Config.swap_complete,
+        swap.action_binding event owner payload outputEq choice, valueEq]
   | resolve owner payload binding checks outputEq codeEq =>
       rw [view] at fixed
       obtain ⟨disclose, rfl⟩ : ∃ disclose : Bool,
           action = cast (congrArg EventField.Action outputEq.symm) disclose :=
         ⟨cast (congrArg EventField.Action outputEq) action, by simp⟩
-      obtain ⟨law, evaluates⟩ := code_eval?_exists config ready outputEq codeEq disclose
+      let effective := if owner ∈ config.defaulted then false else disclose
+      have effectiveOriginal : (EventCode.resolve owner payload binding checks).effectiveAction
+          config.defaulted disclose = effective := rfl
+      have effectiveSwapped : (EventCode.resolve owner payload binding checks).effectiveAction
+          (config.swap swap).defaulted disclose = effective := by
+        rw [Config.swap_defaulted]
+        rfl
+      obtain ⟨law, evaluates⟩ := code_eval?_exists config ready outputEq codeEq effective
       obtain ⟨result, resolved, rfl⟩ := Option.map_eq_some_iff.mp evaluates
-      have swappedResolved : EventCode.resolveOutput? binding checks disclose
+      have swappedResolved : EventCode.resolveOutput? binding checks effective
           (config.swap swap).store = some result := by
-        rw [Config.swap_store, EventCode.resolveOutput?_publicAgree binding checks disclose
+        rw [Config.swap_store, EventCode.resolveOutput?_publicAgree binding checks effective
           (swap.store_publicAgree config.store) (by simp [ValueSwap.store, fixed])]
         exact resolved
       have actionFixed := swap.action_publication event payload outputEq
@@ -336,9 +436,11 @@ theorem Config.step_swap (swap : graph.ValueSwap) (config : graph.Config)
         (show (graph.outputLayout event).IsPublic by rw [outputEq]; trivial)
       rw [actionFixed, id_eq,
         (config.swap swap).step_eq_map_of_code event ready outputEq _ codeEq disclose
-          (PMF.pure result) (by rw [EventCode.resolve_eval?, swappedResolved]; rfl),
+          (PMF.pure result) (by
+            rw [effectiveSwapped, EventCode.resolve_eval?, swappedResolved]; rfl),
         config.step_eq_map_of_code event ready outputEq _ codeEq disclose (PMF.pure result)
-          evaluates, PMF.pure_map, PMF.pure_map, PMF.pure_map, Config.swap_complete,
+          (by rw [effectiveOriginal]; exact evaluates), PMF.pure_map, PMF.pure_map,
+        PMF.pure_map, Config.swap_complete,
         actionFixed, valueFixed, id_eq, id_eq]
   | sample payload law outputEq codeEq =>
       obtain ⟨marker, rfl⟩ : ∃ marker : PUnit,
@@ -380,6 +482,7 @@ def PlayerObservation.swap {who : Player} (swap : graph.ValueSwap)
   completionOrder := observation.completionOrder
   store := swap.store observation.store
   ownActions := observation.ownActions.map swap.completion
+  defaults := observation.defaults
 
 /-- **A player observes the swap of its observation.** -/
 theorem playerObserve_swap (swap : graph.ValueSwap) (who : Player) (config : graph.Config) :
@@ -392,8 +495,8 @@ theorem playerObserve_swap (swap : graph.ValueSwap) (who : Player) (config : gra
       ValueSwap.store]
     split <;> rfl
   · simp only [playerObserve, PlayerObservation.swap, Config.swap_history, ownCompletions,
-      List.filter_map]
-    rfl
+      List.filter_map, Function.comp_def, ValueSwap.completion, Option.isSome_map]
+  · exact Config.swap_defaults swap config
 
 /-- A swap fixing every field visible to a player and its actions fixes its
 observations. -/
@@ -414,7 +517,10 @@ theorem PlayerObservation.swap_eq_self {who : Player} (swap : graph.ValueSwap)
     conv_rhs => rw [← List.map_id (List.filter _ config.history)]
     refine List.map_congr_left fun completion member => ?_
     have owned := of_decide_eq_true (List.mem_filter.mp member).2
-    simp only [ValueSwap.completion, fixedActions completion.event owned, id_eq]
+    simp only [ValueSwap.completion, fixedActions completion.event owned.1, Option.map_id]
+    cases completion
+    rfl
+  · rfl
 
 end Vegas.EventGraph
 
@@ -596,7 +702,7 @@ theorem State.swap_bindingResult (state : State graph) (handle : Handle graph)
   rfl
 
 /-- Completing an event commutes with the swap. -/
-theorem State.swap_complete (state : State graph) (event : graph.EventId)
+theorem State.swap_complete [DecidableEq Player] (state : State graph) (event : graph.EventId)
     (ready : state.config.cut.Ready event) (action : graph.Action event)
     (value : (graph.outputLayout event).Value) :
     (state.complete event ready action value).swap swap =
@@ -636,6 +742,7 @@ theorem PlayerView.swap_involutive [DecidableEq Player] (swap : HiddenSwap graph
       rw [List.map_map]
       conv_rhs => rw [← List.map_id observation.ownActions]
       exact List.map_congr_left fun completion _ => swap.values.completion_involutive completion
+    · rfl
   · funext slot
     exact swapCandidate_involutive (swap.raw_involutive (who, slot)) _
 
@@ -692,19 +799,24 @@ theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph
       (State.swap swap) := by
   rcases message with ⟨id, packet⟩
   cases packet with
-  | malformed raw => rfl
+  | malformed raw => simp [handle]
   | commitment event candidate =>
       cases original : handle runtime state ⟨id, .commitment event candidate⟩ with
       | some next =>
           have compatibleHere := compatible next event candidate original rfl
-          obtain ⟨ready, timely, owner, payload, outputEq, codeEq, view, sender, handleOwner,
+          obtain ⟨active, ready, timely, owner, payload, outputEq, codeEq, view,
+            sender, handleOwner,
             vacant, unused, _⟩ :=
             (handle_commitment_iff runtime state next id event candidate).mp original
           rw [handle_commitment_eq runtime state id event candidate owner payload outputEq codeEq
-            view ready timely sender handleOwner vacant unused, Option.some.injEq] at original
+            view ready timely
+            (by simpa only [State.swap_config, Config.swap_defaulted] using active)
+            sender handleOwner vacant unused, Option.some.injEq] at original
           subst original
           rw [handle_commitment_eq runtime (state.swap swap) id event candidate owner payload
-            outputEq codeEq view ready timely sender handleOwner vacant unused, Option.map_some]
+            outputEq codeEq view ready timely
+            (by simpa only [State.swap_config, Config.swap_defaulted] using active)
+            sender handleOwner vacant unused, Option.map_some]
           congr 1
           have resultEq := compatibleHere owner payload outputEq (state.candidates.lookup candidate)
           rw [← State.bindingResult_eq] at resultEq
@@ -715,22 +827,26 @@ theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph
               ((state.complete event ready _ _).swap swap).config
             rw [State.swap_complete, swap.values.action_binding event owner payload outputEq,
               resultEq, State.swap_bindingResult]
-            simp only [cast_cast, cast_eq]
+            simp only [Option.map_some, resultEq, cast_cast, cast_eq]
           · exact (swap.candidates_freeze state.candidates candidate).symm
       | none =>
           cases swapped : handle runtime (state.swap swap) ⟨id, .commitment event candidate⟩ with
           | none => rfl
           | some next =>
-              obtain ⟨ready, timely, owner, payload, outputEq, codeEq, view, sender, handleOwner,
+              obtain ⟨active, ready, timely, owner, payload, outputEq, codeEq, view,
+            sender, handleOwner,
                 vacant, unused, _⟩ :=
                 (handle_commitment_iff runtime (state.swap swap) next id event candidate).mp swapped
               rw [handle_commitment_eq runtime state id event candidate owner payload outputEq
-                codeEq view ready timely sender handleOwner vacant unused] at original
+                codeEq view ready timely
+            (by simpa only [State.swap_config, Config.swap_defaulted] using active)
+                sender handleOwner vacant unused] at original
               cases original
   | opening event candidate raw =>
       cases original : handle runtime state ⟨id, .opening event candidate raw⟩ with
       | some next =>
-          obtain ⟨ready, timely, owner, payload, binding, checks, outputEq, codeEq, value, result,
+          obtain ⟨active, ready, timely, owner, payload, binding, checks, outputEq, codeEq,
+            value, result,
             view, sender, handleOwner, associated, rawEq, lookupEq, stored, resolved, nextEq⟩ :=
             (handle_opening_iff runtime state next id event candidate raw).mp original
           subst rawEq nextEq
@@ -757,7 +873,9 @@ theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph
                 (swap.values.store_publicAgree state.config.store) storeAt]
             exact resolved
           rw [handle_opening_eq runtime (state.swap swap) id event candidate owner payload binding
-            checks outputEq codeEq view ready timely sender handleOwner associated value
+            checks outputEq codeEq view ready timely
+            (by simpa only [State.swap_config, Config.swap_defaulted] using active)
+            sender handleOwner associated value
             swappedLookup swappedStored result swappedResolved, Option.map_some,
             State.swap_complete, swap.values.action_publication event payload outputEq,
             swap.values.value_public (.inr event)
@@ -767,7 +885,8 @@ theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph
           cases swapped : handle runtime (state.swap swap) ⟨id, .opening event candidate raw⟩ with
           | none => rfl
           | some next =>
-              obtain ⟨ready, timely, owner, payload, binding, checks, outputEq, codeEq, value,
+              obtain ⟨active, ready, timely, owner, payload, binding, checks, outputEq, codeEq,
+                value,
                 result, view, sender, handleOwner, associated, rawEq, lookupEq, stored, resolved,
                 _⟩ :=
                 (handle_opening_iff runtime (state.swap swap) next id event candidate raw).mp
@@ -796,7 +915,9 @@ theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph
                     (swap.values.store_publicAgree state.config.store) storeAt] at resolved
                 exact resolved
               rw [handle_opening_eq runtime state id event candidate owner payload binding checks
-                outputEq codeEq view ready timely sender handleOwner associated value
+                outputEq codeEq view ready timely
+            (by simpa only [State.swap_config, Config.swap_defaulted] using active)
+            sender handleOwner associated value
                 originalLookup originalStored result originalResolved] at original
               cases original
 
@@ -811,7 +932,6 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-! ### Environment operations -/
 
-omit [DecidableEq Player] in
 /-- **Environment operations commute with the swap.** Clocks, samples and
 expiries read no hidden value, and an expired binding fails on both sides. -/
 theorem environmentStep_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph)
@@ -841,6 +961,9 @@ theorem environmentStep_swap (runtime : EventGraphRuntime graph) (swap : HiddenS
             have stepEq := Config.step_swap swap.values state.config event ready
               (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)
               (by unfold ResolutionFixed; rw [view]; trivial)
+              (by
+                intro owner payload bindingEq
+                cases outputEq.symm.trans bindingEq)
             rw [actionFixed] at stepEq
             rw [environmentStep_executeSample_eq runtime (state.swap swap) event ready payload law
                 outputEq codeEq view,
@@ -886,7 +1009,7 @@ theorem environmentStep_swap (runtime : EventGraphRuntime graph) (swap : HiddenS
                     owner payload outputEq codeEq view, PMF.pure_map, State.swap_complete,
                     swap.values.action_binding event owner payload outputEq,
                     expiry event entered rfl ready activated due owner payload outputEq]
-                  simp only [cast_cast, cast_eq]
+                  rfl
               | resolve owner payload binding checks outputEq codeEq =>
                   rw [environmentStep_expire_resolve_eq runtime (state.swap swap) event ready
                     entered activated due owner payload binding checks outputEq codeEq view,

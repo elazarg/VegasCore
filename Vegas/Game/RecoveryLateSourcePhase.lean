@@ -187,7 +187,7 @@ theorem completionValue_expect_affine_bound_of_completed [Finite (E).History]
           intro stop supported
           obtain ⟨control, state, prefixed, _done⟩ := completed stop supported
           rw [completionValue_eq_elim setup runtime leaks bounds horizon scheduler parameter utility
-            excludedPayoff profile rank fresh who (fun _ => center) ⟨_, state, prefixed⟩]
+            excludedPayoff profile rank fresh who (fun _ => center) stop]
           cases completionPoint setup runtime leaks bounds horizon scheduler rank fresh stop <;>
             simp only [Option.elim_none, Option.elim_some, centered] <;> ring
       _ = _ := by
@@ -1199,8 +1199,7 @@ theorem committed_sourceValue
     rw [completionValue_eq_elim setup runtime leaks bounds horizon scheduler parameter utility
       excludedPayoff
       profile (siteRank (runtime := runtime) site.1) (siteFresh (runtime := runtime) who site.1)
-        who (fun _ => excludedPayoff who)
-      ⟨_, state, prefixed⟩]
+        who (fun _ => excludedPayoff who) final]
     obtain ⟨other, otherState, cases⟩ := stops final supported
     have same : other = ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ :=
       Option.some.inj (otherState.symm.trans state)

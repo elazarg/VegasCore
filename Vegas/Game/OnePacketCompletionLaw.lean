@@ -1,12 +1,12 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateDecomposition
+import Vegas.Game.OnePacketLateSuccess
 
 /-! # The completion-point law
 
 **The point at a completion.** At a history where the event of a site's rank
-has completed, the configuration decodes, after one more event, to a source
-point; when that point is a point of the intended game and the site's pending
+has completed, the configuration decodes at its actual completed endpoint to
+a source point; when that point is a point of the intended game and the site's pending
 event did not fail, it is the history's completion point
 (`Vegas.completionPoint`). The completion value there is the source
 continuation value at that point, and the fallback without one
@@ -39,33 +39,12 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (scheduler : (application setup runtime leaks).Scheduler)
-  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-    scheduler).InfoState who)]
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
 
 local notation "onePacketN" =>
   onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
-
-open Classical in
-/-- **The completion point of a history.** The source point the configuration
-decodes to after `rank + 1` events, when it has completed them, the point is a
-point of the intended game, and the control satisfies `fresh`. -/
-def completionPoint (rank : Nat) (fresh : (application setup runtime leaks).Control → Prop)
-    (history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
-      horizon scheduler).History) : Option (ProtocolState setup.program) :=
-  match history.state with
-  | none => none
-  | some control =>
-      if control.execution.application.config.cut.IsPrefix (rank + 1) then
-        match sourceServicePrefix? setup (rank + 1) control.execution.application.config with
-        | some point =>
-            if ProtocolState.Intended setup.program point ∧ fresh control then some point
-            else none
-        | none => none
-      else none
 
 /-- **The source step keeps the continuation value.** The expected source
 continuation value of a profile after one step of its own behavioral step law
@@ -106,37 +85,18 @@ def CompletionPointLaw
           0 value) -
       success * expect stepLaw value| ≤ error * bound
 
-omit [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-    scheduler).InfoState who)] in
-/-- At a history where the event completed, the completion value is the source
-continuation value at the completion point, and the fallback without one. -/
+/-- The completion value uses the actual completion point, with its fallback
+at every history where that point is unavailable. -/
 theorem completionValue_eq_elim (profile : BehavioralProfile setup.program)
     (rank : Nat) (fresh : (application setup runtime leaks).Control → Prop) (who : Player)
     (fallback : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).History → ℝ)
-    {history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
-      horizon scheduler).History}
-    (halted : LateStopped setup runtime leaks bounds horizon scheduler rank history) :
+    (history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+      horizon scheduler).History) :
     completionValue setup runtime leaks bounds horizon scheduler parameter utility excludedPayoff
         profile rank fresh who fallback history =
       (completionPoint setup runtime leaks bounds horizon scheduler rank fresh history).elim
         (fallback history)
-        (sourcePointValue setup parameter utility excludedPayoff profile who) := by
-  classical
-  obtain ⟨control, state, completed⟩ := halted
-  unfold completionValue completionPoint
-  rw [state]
-  dsimp only
-  rw [ite_eq_left completed ..]
-  cases decoded : sourceServicePrefix? setup (rank + 1) control.execution.application.config with
-  | none => rfl
-  | some point =>
-      dsimp only
-      by_cases good : ProtocolState.Intended setup.program point ∧ fresh control
-      · rw [ite_eq_left good .., ite_eq_left good ..]
-        rfl
-      · rw [ite_eq_right good .., ite_eq_right good ..]
-        rfl
+        (sourcePointValue setup parameter utility excludedPayoff profile who) := rfl
 
 end Vegas

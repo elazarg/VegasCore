@@ -175,7 +175,6 @@ import Vegas.Game.OnePacketMainActivation
 import Vegas.Game.OnePacketMainActivationRegularity
 import Vegas.Game.OnePacketMainContent
 import Vegas.Game.OnePacketMainResponseSafety
-import Vegas.Game.OnePacketNextEvent
 import Vegas.Game.OnePacketOffTurnPackets
 import Vegas.Game.OnePacketOpenableCommitment
 import Vegas.Game.OnePacketOpeningLaw

@@ -125,7 +125,7 @@ theorem include_completion_actor (execution : (application setup runtime leaks).
           have sameNamed : other = namedEvent := Option.some.inj (otherNamed.symm.trans named)
           subst sameNamed
           rw [applicationEq] at member
-          cases step_completion_unique otherMember member
+          cases step_event_unique otherMember member
           exact ⟨_, actor⟩
 
 /-- An expiry that completes an event completes one with an actor. -/
@@ -142,7 +142,7 @@ theorem expire_completion_actor (state next : EventGraphRuntime.State (graph set
     expired changed
   rcases effect with ⟨configEq, _⟩ | ⟨expiredReady, expiredAction, expiredMember, _⟩
   · exact (config_ne_of_step member configEq).elim
-  · cases step_completion_unique expiredMember member
+  · cases step_event_unique expiredMember member
     cases view : nodeView (graph setup) expired with
     | bind owner _ outputEq codeEq => exact ⟨owner, nodeView_bind_actor outputEq codeEq⟩
     | resolve owner _ _ _ outputEq codeEq => exact ⟨owner, nodeView_resolve_actor outputEq codeEq⟩

@@ -1,7 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
-import Vegas.Game.OnePacketEventSuccess
+import Vegas.Game.SourceServiceAsyncStep
+import Vegas.Game.RevealServiceCalendarState
+import Vegas.Game.OnePacketLawApproximation
+import Vegas.Game.OnePacketIntendedProjection
 
 /-! # The successful part of a late delivery
 
@@ -44,8 +47,9 @@ theorem pendingTransition {initial : PMF (application setup runtime leaks).State
       (some ⟨remaining, actor, execution⟩) joint).support) :
     ∃ control : (application setup runtime leaks).Control, after = some control ∧
       (PendingAt setup runtime leaks rank control.execution ∨
-        (control.actor = none ∧ control.execution.application.config.cut.IsPrefix (rank + 1) ∧
-          ReadySeen setup leaks rank control.execution)) := by
+        (control.actor = none ∧ ReadySeen setup leaks rank control.execution ∧
+          ∃ actualRank, rank < actualRank ∧
+            control.execution.application.config.cut.IsPrefix actualRank)) := by
   let app := application setup runtime leaks
   obtain ⟨ordered, seen⟩ := pending
   cases actor with
@@ -82,21 +86,22 @@ theorem pendingTransition {initial : PMF (application setup runtime leaks).State
             rw [recallEq] at member
             exact seen observer entry member
           refine ⟨_, rfl, ?_⟩
-          rcases (environmentStep_configStep setup leaks execution next command stepped).prefix
-              rank ordered with same | advanced
-          · exact Or.inl ⟨by rw [same]; exact ordered, nextSeen⟩
+          have path := (runtime.reactiveApplication_graphSteps leaks).environmentStep
+            execution next command stepped
+          obtain ⟨actualRank, lower, advanced⟩ :=
+            EventGraph.Config.Step.path_isPrefix_sequential setup.eventGraph path ordered
+          by_cases same : actualRank = rank
+          · exact Or.inl ⟨same ▸ advanced, nextSeen⟩
           · right
-            refine ⟨?_, advanced, nextSeen⟩
+            refine ⟨?_, nextSeen, actualRank, by omega, advanced⟩
             cases command with
             | activate who =>
                 exfalso
                 have sameApp := activation_application setup leaks execution next who stepped
-                have inside : rank < (graph setup).order.eventCount := by
-                  have := advanced.1
-                  omega
-                have rankLt := (advanced.2 ⟨rank, inside⟩).mpr (Nat.lt_succ_self _)
-                rw [sameApp] at rankLt
-                exact Nat.lt_irrefl _ ((ordered.2 _).mp rankLt)
+                have orderedNext : next.application.config.cut.IsPrefix rank := by
+                  rw [sameApp]
+                  exact ordered
+                exact same (advanced.unique orderedNext)
             | wait | «include» _ | application _ => rfl
 
 /-- Every execution of a legal history of the supplied runtime is pending at
@@ -123,14 +128,13 @@ theorem pendingAt_serviceInvariant (scheduler : (application setup runtime leaks
     obtain ⟨rank, ordered, seen⟩ := valid
     have recallEq := (application setup runtime leaks).environmentStep_recall execution next command
       stepped
-    rcases (environmentStep_configStep setup leaks execution next command stepped).prefix rank
-        ordered with same | advanced
-    · refine ⟨rank, by rw [same]; exact ordered, fun observer entry member => ?_⟩
-      rw [recallEq] at member
-      exact seen observer entry member
-    · refine ⟨rank + 1, advanced, fun observer entry member event readyView => ?_⟩
-      rw [recallEq] at member
-      exact (seen observer entry member event readyView).trans (Nat.le_succ _)
+    have path := (runtime.reactiveApplication_graphSteps leaks).environmentStep
+      execution next command stepped
+    obtain ⟨actualRank, lower, orderedNext⟩ :=
+      EventGraph.Config.Step.path_isPrefix_sequential setup.eventGraph path ordered
+    refine ⟨actualRank, orderedNext, fun observer entry member event readyView => ?_⟩
+    rw [recallEq] at member
+    exact (seen observer entry member event readyView).trans lower
 
 /-- Every execution reached along a legal history of the supplied runtime is
 pending at some rank. -/
@@ -154,12 +158,30 @@ variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (excludedPayoff : Player → ℝ)
 
 variable (setup runtime leaks) in
-/-- The event of rank `rank` has completed: the configuration is a prefix of
-`rank + 1`. -/
+/-- The event of the requested source rank has completed, possibly together
+with later events through automatic completion. -/
 def LateStopped (rank : Nat) (history : ((bounds.onePacketMenu runtime leaks).protocol
     (initialLaw setup) horizon scheduler).History) : Prop :=
   ∃ control : (application setup runtime leaks).Control, history.state = some control ∧
-    control.execution.application.config.cut.IsPrefix (rank + 1)
+    ∃ event ∈ control.execution.application.config.cut.completed, event.val = rank
+
+open Classical in
+variable (setup runtime leaks) in
+/-- The intended, fresh source point at the actual endpoint after the target
+source event completes. -/
+def completionPoint (rank : Nat) (fresh : (application setup runtime leaks).Control → Prop)
+    (history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+      horizon scheduler).History) : Option (ProtocolState setup.program) :=
+  match history.state with
+  | none => none
+  | some control =>
+      if LateStopped setup runtime leaks bounds horizon scheduler rank history then
+        match decodedPoint setup control.execution.application.config with
+        | some point =>
+            if ProtocolState.Intended setup.program point ∧ fresh control then some point
+            else none
+        | none => none
+      else none
 
 variable (setup runtime) in
 /-- The source continuation value of a profile at a point: the expected
@@ -171,25 +193,16 @@ def sourcePointValue (profile : BehavioralProfile setup.program) (who : Player)
 
 open Classical in
 variable (setup runtime leaks) in
-/-- **The value after a completion.** At a history whose configuration decodes,
-after `rank + 1` events, to a point of the intended game, and whose control
-satisfies `fresh`, the source continuation value of `profile` there; elsewhere
-the fallback. -/
+/-- The source continuation value at the actual completed endpoint, when the
+target event has completed and that endpoint is intended and fresh. -/
 def completionValue (profile : BehavioralProfile setup.program) (rank : Nat)
     (fresh : (application setup runtime leaks).Control → Prop) (who : Player)
     (fallback : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).History → ℝ)
     (history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).History) : ℝ :=
-  match history.state with
-  | none => fallback history
-  | some control =>
-      match sourceServicePrefix? setup (rank + 1) control.execution.application.config with
-      | none => fallback history
-      | some point =>
-          if ProtocolState.Intended setup.program point ∧ fresh control then
-            sourcePointValue setup parameter utility excludedPayoff profile who point
-          else fallback history
+  (completionPoint setup runtime leaks bounds horizon scheduler rank fresh history).elim
+    (fallback history) (sourcePointValue setup parameter utility excludedPayoff profile who)
 
 end Success
 
