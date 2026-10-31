@@ -51,81 +51,6 @@ private theorem bestResponse_self_iff (form : GameForm Player)
 variable (service : AsyncServiceSpec Player L)
   (admission : CommitmentInterface service.setup.program)
 
-/-- The source information model of the service's program, with every binding
-value admitted. -/
-abbrev sourceModel := service.setup.informationModel admission
-
-/-- **The turn-counted clients** of a source profile in a response menu: each
-player follows the turn-counted policy of its disclosure-normalized source
-policy, completed by silence after its own off-policy responses
-(`Vegas.serviceClientPolicy`). -/
-def clientProfile (menu : (serviceApplication service.setup service.mode service.deadline
-    service.leaks).ResponseMenu)
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
-    (source : Profile (service.sourceModel admission).behavioralSignature) :
-    Profile (menu.information (serviceInitialLaw service.setup service.mode) service.horizon
-      service.scheduler).behavioralSignature := fun who =>
-  menu.restrictPolicy (serviceInitialLaw service.setup service.mode) service.horizon
-    service.scheduler who
-    (serviceClientPolicy service.setup service.mode service.deadline service.leaks service.bound
-      turns timing
-      (sourceServiceClientProfile service.setup
-        (service.setup.decodeBehavioralProfile admission
-          source)) who)
-
-omit [Fintype Player] in
-private theorem clientPolicy_congr {turns : Nat} (timing : TurnTiming service.setup turns
-    service.mode)
-    (profile other : BehavioralProfile service.setup.program) (who : Player)
-    (same : profile who = other who) :
-    serviceClientPolicy service.setup service.mode service.deadline service.leaks service.bound
-      turns timing profile who =
-      serviceClientPolicy service.setup service.mode service.deadline service.leaks service.bound
-        turns timing other
-        who := by
-  unfold serviceClientPolicy serviceTurnPolicy serviceTurnFamily serviceCanonicalOpportunity
-    serviceCanonicalPolicy compileEventProfile
-  rw [same]
-
-omit [Fintype Player] in
-/-- Each player's client depends only on its own source policy. -/
-theorem clientProfile_congr (menu : (serviceApplication service.setup service.mode service.deadline
-    service.leaks).ResponseMenu)
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
-    (source other : Profile (service.sourceModel admission).behavioralSignature) (who : Player)
-    (same : source who = other who) :
-    service.clientProfile admission menu timing source who = service.clientProfile admission menu
-      timing other who := by
-  have decoded : sourceServiceClientProfile service.setup
-      (service.setup.decodeBehavioralProfile admission
-        source) who =
-    sourceServiceClientProfile service.setup
-      (service.setup.decodeBehavioralProfile admission
-        other) who := by
-    simp only [sourceServiceClientProfile, normalizeDisclosureProfile,
-      Setup.decodeBehavioralProfile, same]
-  exact congrArg (menu.restrictPolicy (serviceInitialLaw service.setup service.mode) service.horizon
-    service.scheduler who) (clientPolicy_congr service timing _ _ who decoded)
-
-omit [Fintype Player] in
-/-- The clients of a unilateral source deviation are a unilateral deviation of
-the clients. -/
-theorem clientProfile_update (menu : (serviceApplication service.setup service.mode
-    service.deadline service.leaks).ResponseMenu)
-    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
-    (source : Profile (service.sourceModel admission).behavioralSignature) (who : Player)
-    (alternative : (service.sourceModel admission).BehavioralPolicy who) :
-    Profile.update (service.clientProfile admission menu timing source) who
-        (service.clientProfile admission menu timing (Profile.update source who alternative) who) =
-      service.clientProfile admission menu timing (Profile.update source who alternative) := by
-  funext other
-  by_cases same : other = who
-  · subst other
-    simp only [Profile.update, Function.update_self]
-  · simp only [Profile.update, Function.update_of_ne same]
-    exact service.clientProfile_congr admission menu timing _ _ other (by
-      simp only [Function.update_of_ne same])
-
 /-- For every source profile, the clients' audited expected payoff is within
 the product deferral error times the payoff range of the source expected
 payoff, in both directions, and both expectations are of integrable payoffs. -/
@@ -143,7 +68,7 @@ private theorem clientProfile_value_close {Parameter : Type}
         service.scheduler who
         (serviceClientPolicy service.setup service.mode service.deadline service.leaks
           service.bound turns timing
-          (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
+          (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
             admission source)) who))
     (low : Player → ℝ) (range : Player → ℝ)
     (within : ∀ who (output : Option (State L service.setup.program.terminalCtx))
@@ -155,7 +80,7 @@ private theorem clientProfile_value_close {Parameter : Type}
     (source : Profile (service.sourceModel admission).behavioralSignature)
     (terminal : FirstTurnSourceLaw service.setup service.mode service.deadline service.leaks
       service.horizon service.scheduler service.bound turns
-      (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
+      (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
         admission source))) (who : Player) :
     let base := serviceBaseUtility service.setup service.mode service.deadline service.leaks
       (fun state => utility (service.setup.parameterOutcome parameter state))
@@ -325,7 +250,7 @@ theorem isεBestResponse_of_clientProfile {Parameter : Type}
         service.scheduler who
         (serviceClientPolicy service.setup service.mode service.deadline service.leaks
           service.bound turns timing
-          (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
+          (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
             admission source)) who))
     (low : Player → ℝ) (range : Player → ℝ)
     (within : ∀ who (output : Option (State L service.setup.program.terminalCtx))
@@ -363,13 +288,13 @@ theorem isεBestResponse_of_clientProfile {Parameter : Type}
     service.clientProfile_value_close admission
     parameter utility sample authentic deposit menu timing covered low range within source
     (firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely
-      turns _ (sourceServiceClientProfile_effective _)) who
+      turns _ (fun who => BehavioralPolicy.normalizeDisclosures_authentic _ _)) who
   obtain ⟨deviationNative, deviationSource, deviationAbove, deviationBelow⟩ :=
     service.clientProfile_value_close admission parameter utility sample authentic deposit menu
       timing
       covered low range within (Profile.update source who alternative)
       (firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely
-        turns _ (sourceServiceClientProfile_effective _)) who
+        turns _ (fun who => BehavioralPolicy.normalizeDisclosures_authentic _ _)) who
   let nativeUtility := fun (history : (menu.protocol (serviceInitialLaw service.setup service.mode)
     service.horizon
       service.scheduler).History) (who : Player) => payoff history.state who
@@ -474,7 +399,7 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds {Parameter : Type}
         service.scheduler who
         (serviceClientPolicy service.setup service.mode service.deadline service.leaks
           service.bound turns timing
-          (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
+          (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
             admission source)) who))
     (low : Player → ℝ) (range : Player → ℝ)
     (within : ∀ who (output : Option (State L service.setup.program.terminalCtx))
@@ -486,7 +411,7 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds {Parameter : Type}
     (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature)
     (terminal : FirstTurnSourceLaw service.setup service.mode service.deadline service.leaks
       service.horizon service.scheduler service.bound turns
-      (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
+      (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
         admission source))) :
     let base := serviceBaseUtility service.setup service.mode service.deadline service.leaks
       (fun state => utility (service.setup.parameterOutcome parameter state))
@@ -494,7 +419,7 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds {Parameter : Type}
       ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
         service.leaks)
       (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
-    let clients := sourceServiceClientProfile service.setup
+    let clients := normalizeDisclosureProfile service.setup.program
       (service.setup.decodeBehavioralProfile admission
         source)
     (∀ who (alternative : (serviceApplication service.setup service.mode service.deadline

@@ -5,6 +5,8 @@ import Vegas.Game.OnePacketSwapFiberSum
 import Vegas.Game.OnePacketSwapBaseWeight
 import Vegas.Game.OnePacketCellObservation
 import Vegas.Game.SourceDebtObservation
+import Vegas.Source.FailedBindingDeviation
+import Vegas.Source.IntendedPrefixSwap
 
 /-! # Responders along a history at a forced site are forced
 
@@ -104,16 +106,20 @@ theorem not_revealFailed_splice (shape : ProtocolState.SameShape setup.program p
     ¬ ProtocolState.RevealFailed r setup.program
       ((CellSwap.between setup.program p
         (ProtocolState.splicePoint setup.program r p w)).protocolState setup.program p) :=
-  fun failed => (forcedPoint_of_intended r intendedW).1
-    ((ProtocolState.revealFailed_iff_of_observedAlike r who setup.program _ _
-      (observedAlike_between_splice shape different)).mp failed)
+  fun failed => ProtocolState.Intended.not_owesFailure r setup.program w intendedW
+    (Or.inl (ProtocolState.RevealFailed.indebted setup.program w
+      ((ProtocolState.revealFailed_iff_of_observedAlike r who setup.program _ _
+        (observedAlike_between_splice shape different)).mp failed)))
 
 /-- **The splice image is forced for `r`.** At the swap of a point `p`, carrying
 the registry and publication status of its program point, toward its splice with
 an intended point `w` for `r`, both carrying the registry and publication status
-of their program point, `r` has no failed reveal and nobody else is excluded or
-owes a failure, provided some player other than `r` exists. -/
+of their program point and agreeing on public default status, `r` has no failed
+reveal and nobody else is excluded or owes a failure, provided some player other
+than `r` exists. -/
 theorem forcedPoint_splice (shape : ProtocolState.SameShape setup.program p w)
+    (sameDefaulted : ProtocolState.defaulted setup.program p =
+      ProtocolState.defaulted setup.program w)
     (staticP : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context) p)
     (staticW : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context) w)
     (intendedW : ProtocolState.Intended setup.program w) {who : Player} (different : who ≠ r) :
@@ -121,10 +127,11 @@ theorem forcedPoint_splice (shape : ProtocolState.SameShape setup.program p w)
       ((CellSwap.between setup.program p
         (ProtocolState.splicePoint setup.program r p w)).protocolState setup.program p) := by
   refine ⟨not_revealFailed_splice shape intendedW different, fun other otherDifferent =>
-    ⟨fun excluded => ((forcedPoint_of_intended r intendedW).2 other otherDifferent).1
-      ((ProtocolState.excluded_iff_of_observedAlike other setup.program _ _
-        (observedAlike_between_splice shape otherDifferent)).mp excluded),
-    fun owes => ((forcedPoint_of_intended r intendedW).2 other otherDifferent).2
+    ⟨fun excluded => ProtocolState.not_excluded_of_intended other setup.program w intendedW
+      (by
+        unfold ProtocolState.Excluded at excluded ⊢
+        rwa [ProtocolState.defaulted_swap, sameDefaulted] at excluded),
+    fun owes => ProtocolState.Intended.not_owesFailure other setup.program w intendedW
       ((ProtocolState.owesFailure_iff_of_observedAlike other setup.program _ _ _ _
         (ProtocolState.staticAt_swap _ setup.program _ _ p staticP) staticW
         (observedAlike_between_splice shape otherDifferent)).mp owes)⟩⟩
@@ -273,7 +280,9 @@ theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
   have forcedEnd : ForcedState setup runtime leaks r (some (swap.control
     current)) := by
     refine (forcedState_iff_decodedPoint (runtime := runtime) _).mpr ⟨_, ?_,
-      forcedPoint_splice shape staticP staticW
+      forcedPoint_splice shape (by
+        have status := congrArg (ProtocolView.defaulted who setup.program) sameView
+        simpa only [ProtocolState.defaulted_observe] using status) staticP staticW
         (intended_of_history wellFormed second.trace w secondState) (Ne.symm different)⟩
     change decodedPoint setup (current.execution.application.config.swap
       (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgreeQ succeedQ))) = _

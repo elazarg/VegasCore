@@ -1,13 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveCompiledMenu
+import Vegas.Pending.ReactivePolicyFacts
 
-/-! # All retained responses within a resolution phase
+/-! # Authentic prescribed resolution responses
 
-The classification ranges over the entire full-source menu. Deferred guards
-may fail, and certificate requests remain semantically normalized. Every
-retained response preserves the application until the protected inclusion or
-expiry, including at histories assigned probability zero by the source profile.
+A prescribed disclosure sends the stored successful binding and its accepted
+owned handle, with normalized evidence. The handler evaluates the public guards;
+authentic transmission does not assert that the publication succeeds. Withholding,
+defaulted owners and unavailable opening material produce silence.
 -/
 
 noncomputable section
@@ -21,8 +21,8 @@ variable {Player : Type} [DecidableEq Player]
   (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
-/-- A resolution sends only silence or the successful typed value selected by
-its deferred guards. Its evidence representation is left explicit. -/
+/-- A resolution sends silence or an opening of a stored successful binding at
+its accepted owned handle. Its evidence representation is left explicit. -/
 theorem serviceDecision_resolution_cases
     (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
@@ -37,53 +37,36 @@ theorem serviceDecision_resolution_cases
     let response := runtime.serviceDecision leaks who past view event
       (cast (congrArg EventField.Action outputEq.symm) choice)
     response = ⟨none⟩ ∨ ∃ candidate value evidence,
-      EventCode.resolveOutput? binding checks true view.application.observation.store =
-          some (.success value) ∧
+      binding.get? view.application.observation.store = some (.success value) ∧
       view.application.publicView.accepted binding.field = some candidate ∧
       candidate.1 = who ∧
       response =
         ⟨some ⟨⟨.opening event candidate ⟨payload, value⟩, none⟩, evidence⟩⟩ := by
   let action := cast (congrArg EventField.Action outputEq.symm) choice
+  by_cases inactive : who ∈ view.application.publicView.observation.defaulted
+  · left
+    simp only [serviceDecision, reactiveDecision, ite_eq_left inactive]
+    rfl
   have shape : reactiveResolutionPacket who event payload binding checks outputEq action
       view.application = none ∨
-      ∃ candidate value, EventCode.resolveOutput? binding checks true
-          view.application.observation.store = some (.success value) ∧
+      ∃ candidate value, binding.get? view.application.observation.store = some (.success value) ∧
         view.application.publicView.accepted binding.field = some candidate ∧
         candidate.1 = who ∧
         reactiveResolutionPacket who event payload binding checks outputEq action
           view.application = some (.opening event candidate ⟨payload, value⟩) := by
-    cases choice with
-    | false =>
-        exact Or.inl (by simp only [reactiveResolutionPacket, action, cast_cast, cast_eq,
-          Bool.false_eq_true, ↓reduceIte])
-    | true =>
-        cases result : EventCode.resolveOutput? binding checks true
-          view.application.observation.store
-        with
-        | none =>
-            exact Or.inl (by simp only [reactiveResolutionPacket, action, cast_cast, cast_eq,
-              ↓reduceIte, result])
-        | some resultValue =>
-            cases resultValue with
-            | failure =>
-                exact Or.inl (by simp only [reactiveResolutionPacket, action, cast_cast, cast_eq,
-                  ↓reduceIte, result])
-            | success value =>
-                cases associated : view.application.publicView.accepted binding.field with
-                | none =>
-                    exact Or.inl (by simp only [reactiveResolutionPacket, action, cast_cast,
-                      cast_eq, ↓reduceIte, result, associated])
-                | some candidate =>
-                    by_cases owned : candidate.1 = who
-                    · exact Or.inr ⟨candidate, value, rfl, rfl, owned, by
-                        simp only [reactiveResolutionPacket, action, cast_cast, cast_eq,
-                          ↓reduceIte, result, associated, owned]⟩
-                    · exact Or.inl (by simp only [reactiveResolutionPacket, action, cast_cast,
-                        cast_eq, ↓reduceIte, result, associated, owned])
+    rcases reactiveResolutionPacket_shape who event payload binding checks outputEq action
+      view.application with ⟨candidate, raw, packet⟩ | silent
+    · obtain ⟨_active, _discloses, _named, value, stored, associated, owned, rawEq⟩ :=
+        reactiveResolutionPacket_opening_spec who event payload binding checks outputEq action
+          view.application event candidate raw packet
+      subst raw
+      exact Or.inr ⟨candidate, value, stored, associated, owned, packet⟩
+    · exact Or.inl silent
   change runtime.serviceDecision leaks who past view event action = _ ∨ _
   rcases shape with withheld | ⟨candidate, value, result, associated, owned, packet⟩
   · left
-    simp only [serviceDecision, reactiveDecision, node, withheld, Option.map_none]
+    simp only [serviceDecision, reactiveDecision, ite_eq_right inactive, node, withheld,
+      Option.map_none]
     rfl
   · let first := WitnessedSubmission.normalizeReactive who view.application []
       (disclosureSubmission (.opening event candidate ⟨payload, value⟩))
@@ -91,13 +74,13 @@ theorem serviceDecision_resolution_cases
         (ReactiveApplication.ResponseMenu.knownPackets past view)).evidence
     refine Or.inr ⟨candidate, value, evidence, result, associated, owned, ?_⟩
     change runtime.serviceDecision leaks who past view event action = _
-    simp only [serviceDecision, reactiveDecision, node, packet, Option.map_some,
+    simp only [serviceDecision, reactiveDecision, ite_eq_right inactive, node, packet,
+      Option.map_some,
       disclosureSubmission, WitnessedSubmission.normalizeReactive,
       Submission.normalizeReactive_none]
     simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
       evidence, first, disclosureSubmission, WitnessedSubmission.normalizeReactive,
       Submission.normalizeReactive_none]
 
-variable [Fintype Player]
 
 end Vegas.EventGraphRuntime

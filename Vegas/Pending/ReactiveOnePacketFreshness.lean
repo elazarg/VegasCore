@@ -86,19 +86,20 @@ private theorem responseCandidateSlot_spec
 
 variable [Fintype Player] (bounds : MessageBounds graph)
 
-/-- At every actual one-packet input, an admitted commitment to an owned
-prepared handle names a currently fresh candidate, even before inclusion. -/
-theorem MessageBounds.onePacket_binding_fresh
+/-- At an actual one-packet history, the count verdict permits a commitment
+only at a currently fresh prepared candidate, independently of response bounds. -/
+theorem MessageBounds.onePacket_permitted_binding_fresh
     (inputs : PMF graph.Inputs) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
     {control : (runtime.reactiveApplication leaks).Control}
     (trace : ((bounds.onePacketMenu runtime leaks).protocol (inputs.map State.initial) horizon
       scheduler).Trace (some control))
     (who : Player) (event : graph.EventId) (serial : Nat) (opening : Option (Raw L))
-    (member : (⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩ :
-      (runtime.reactiveApplication leaks).Action) ∈ bounds.onePacketActions runtime leaks who
-        (control.execution.recall who)
-        (control.execution.observe (runtime.reactiveApplication leaks) who)) :
+    (permitted : countPermits
+      ((runtime.reactiveApplication leaks).outputs (control.execution.recall who))
+      (runtime.localEnvelope leaks who (control.execution.recall who)
+        (control.execution.observe (runtime.reactiveApplication leaks) who)
+        ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩) = true) :
     control.execution.application.candidates.lookup (who, .prepared serial) = .fresh := by
   let app := runtime.reactiveApplication leaks
   have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (inputs.map State.initial)
@@ -109,17 +110,7 @@ theorem MessageBounds.onePacket_binding_fresh
     (bounds.onePacketMenu_countClean runtime leaks scheduler).history (inputs.map State.initial)
       horizon (fun state _ => runtime.countClean_initial leaks state) trace
   have count := clean.1
-  obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions runtime leaks who
-    (control.execution.recall who) (control.execution.observe app who) _).mp member
-  have current : countPermits (app.outputs (control.execution.recall who))
-      (runtime.localEnvelope leaks who (control.execution.recall who)
-        (control.execution.observe app who)
-        ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩) = true := by
-    rcases permitted with impossible | ⟨material, sent, permits⟩
-    · cases impossible
-    · cases Option.some.inj sent
-      exact permits
-  have correct := ((countPermits_eq_true_iff _ _).mp current).2.1
+  have correct := ((countPermits_eq_true_iff _ _).mp permitted).2.1
   apply candidates who serial
   intro used
   obtain ⟨action, actionMember, selected⟩ := List.mem_filterMap.mp used
@@ -148,5 +139,29 @@ theorem MessageBounds.onePacket_binding_fresh
     rw [← count.2.1 who, ← sender]
     exact count.2.2.serial_lt input
   exact correct.2.2.2.2 message earlier earlierEvent (call.trans packet)
+
+/-- At every actual one-packet input, an admitted commitment to an owned
+prepared handle names a currently fresh candidate, even before inclusion. -/
+theorem MessageBounds.onePacket_binding_fresh
+    (inputs : PMF graph.Inputs) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    {control : (runtime.reactiveApplication leaks).Control}
+    (trace : ((bounds.onePacketMenu runtime leaks).protocol (inputs.map State.initial) horizon
+      scheduler).Trace (some control))
+    (who : Player) (event : graph.EventId) (serial : Nat) (opening : Option (Raw L))
+    (member : (⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩ :
+      (runtime.reactiveApplication leaks).Action) ∈ bounds.onePacketActions runtime leaks who
+        (control.execution.recall who)
+        (control.execution.observe (runtime.reactiveApplication leaks) who)) :
+    control.execution.application.candidates.lookup (who, .prepared serial) = .fresh := by
+  obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions runtime leaks who
+    (control.execution.recall who)
+    (control.execution.observe (runtime.reactiveApplication leaks) who) _).mp member
+  apply bounds.onePacket_permitted_binding_fresh runtime leaks inputs horizon scheduler trace
+    who event serial opening
+  rcases permitted with impossible | ⟨material, sent, permits⟩
+  · cases impossible
+  · cases Option.some.inj sent
+    exact permits
 
 end Vegas.EventGraphRuntime

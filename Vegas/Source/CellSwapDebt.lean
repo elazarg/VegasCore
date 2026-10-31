@@ -242,6 +242,25 @@ theorem staticAt_swap (swap : CellSwap Player L) : {Γ : SourceCtx Player L} →
       | inl _ => exact static
       | inr rest => exact staticAt_swap swap next _ _ rest static
 
+/-- A cell swap preserves the authoritative public default status. -/
+theorem defaulted_swap (swap : CellSwap Player L) :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (point : ProtocolState program) →
+    defaulted program (swap.protocolState program point) = defaulted program point
+  | _, _, .ret _, _ => rfl
+  | _, _, .sample _ _ _ next, point => by
+      cases point with
+      | inl _ => rfl
+      | inr rest => exact defaulted_swap swap next rest
+  | _, _, .commit _ _ _ _ next, point => by
+      cases point with
+      | inl _ => rfl
+      | inr rest => exact defaulted_swap swap next rest
+  | _, _, .reveal _ _ _ _ _ _ next, point => by
+      cases point with
+      | inl _ => rfl
+      | inr rest => exact defaulted_swap swap next rest
+
 /-- **Points at the same position** of a program. -/
 def SameShape : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → ProtocolState program → ProtocolState program →

@@ -1,8 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketRealizedCommitment
-import Vegas.Game.OnePacketRetention
-import Vegas.Game.SourcePrefixPublications
+import Vegas.Game.OnePacketSlotChoiceMasses
+import Vegas.Game.OnePacketSourceTurn
+import Vegas.Game.SourceServiceFacts
+import Vegas.Pending.ReactiveOnePacketFreshness
 
 /-! # Covered pending bindings along one-packet histories
 
@@ -45,30 +46,11 @@ theorem onePacket_permitted_fresh {control : (application setup runtime leaks).C
         (control.execution.observe (application setup runtime leaks) who) event slot) = true) :
     (control.execution.observe (application setup runtime leaks) who).application.candidates
       (.prepared slot) = .fresh := by
-  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
-    scheduler).Trace
-      (some control) :=
-    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
-      trace
-  have recalled := runtime.countRecall_history leaks rawTrace
-  have correct := ((countPermits_eq_true_iff _ _).mp permitted).2.1
-  unfold CountCallCorrect at correct
-  obtain ⟨_, _, _, _, unused⟩ := correct
-  refine ((preparedFresh_history (runtime := runtime) horizon scheduler rawTrace) who slot).mpr ?_
-  rintro ⟨message, input, sender, committed, call⟩
-  have output : message ∈ (application setup runtime leaks).outputs (control.execution.recall who)
-    := by
-    rw [← recalled.1 who]
-    exact List.mem_filter.mpr ⟨input, by simp [sender]⟩
-  obtain ⟨member, owner, lower⟩ := earlierOwnPacket_of_output rawTrace who
-    (slotEnvelope setup runtime leaks who (control.execution.recall who)
-      (control.execution.observe (application setup runtime leaks) who) event slot).payload
-        message output
-  refine unused message ⟨member, owner, ?_⟩ committed call
-  change message.id.2 < (application setup runtime leaks).submissionCount
-    (control.execution.recall who)
-  rw [← recalled.2.1 who]
-  exact lower
+  have inputTrace := trace
+  rw [initialLaw, serviceInitialLaw_eq_inputs setup] at inputTrace
+  exact bounds.onePacket_permitted_binding_fresh runtime leaks
+    (setup.initialLaw.map setup.eventInputs) horizon scheduler inputTrace who event slot none
+    permitted
 
 /-- **The canonical slot exists.** Along every history of the one-packet game,
 every player has a canonical slot. -/
@@ -79,31 +61,14 @@ theorem onePacket_canonicalFreshSlot_exists {control : (application setup runtim
     ∃ serial, canonicalFreshSlot who
       (control.execution.observe (application setup runtime leaks) who).application = some serial
         := by
-  classical
-  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
-    scheduler).Trace
-      (some control) :=
-    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
-      trace
-  have clean := (bounds.onePacketMenu_countClean runtime leaks scheduler).history
-    (initialLaw setup) horizon (fun state _ => runtime.countClean_initial leaks state) trace
-  have facts := legalFacts setup leaks horizon scheduler control rawTrace
-  have uncommitted : ∃ serial, ¬ SlotCommitted control.execution.network.inputs who serial := by
-    by_contra all
-    push Not at all
-    have bound := committedSlots_le_bindingEventCount clean.2
-      (fun message member other otherMember => (facts.unique.inputs message member).inputs other
-        otherMember)
-      who (bindingEventCount (graph setup) who + 1) fun serial _ => all serial
-    omega
-  change ∃ serial, canonicalFreshSlot who (control.execution.application.playerView who) =
-    some serial
-  rw [canonicalFreshSlot_eq_publicFreshSlot (preparedFresh_history (runtime := runtime) horizon
-    scheduler rawTrace)]
-  unfold publicFreshSlot
-  split
-  · exact ⟨_, rfl⟩
-  · exact ⟨_, rfl⟩
+  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+    scheduler trace
+  rw [initialLaw, serviceInitialLaw_eq_inputs setup] at rawTrace
+  have recalled := runtime.candidateRecall_history leaks (setup.initialLaw.map setup.eventInputs)
+    horizon scheduler rawTrace
+  obtain ⟨serial, _bound, fresh⟩ := runtime.reactiveFreshSlot_le_recall leaks
+    control.execution who recalled
+  exact canonicalFreshSlot_isSome who _ serial fresh
 
 /-- **As-if-honest bindings are covered.** Along every history of the one-packet
 game, at a binding of the player's turn, when every binding value is a bounded
@@ -120,48 +85,32 @@ theorem onePacket_honest_covered (assessment : setup.intendedModel.BehavioralAss
       (some (control.execution.recall who,
         control.execution.observe (application setup runtime leaks) who))).support) :
     CoveredBinding setup bounds event choice := by
-  obtain ⟨rank, point, ordered, decoded⟩ :=
-    onePacket_decodes (runtime := runtime) (setup.intendedOpeningProfile assessment.strategy) trace
+  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+    scheduler trace
+  have facts := legalFacts setup leaks horizon scheduler control rawTrace
+  have turnFacts := PublicView.ownTurn?_spec _ who event turn
+  have active := control.execution.application.active_of_ready_owned facts.quiescent
+    ((control.execution.application.publicView_eventReady event).mp turnFacts.1) turnFacts.2
+  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime)
+    (setup.intendedOpeningProfile assessment.strategy) _ horizon scheduler trace control rfl
+  have ordered := residual.checkpoint.ordered
+  have decoded := residual.decode
   have encodes := asIfHonestProfile_encodes (runtime := runtime) assessment who control.execution
-    rank ordered point
-    decoded _ event turn choice supported
+    rank ordered _
+    decoded _ event turn active choice supported
   obtain ⟨action, encoded⟩ := Option.isSome_iff_exists.mp encodes
   refine ⟨action, encoded, fun owner payload outputEq codeEq node => ?_⟩
   cases choice with
   | none => cases encoded
   | some source =>
-      have back := decodeEventAction_encodeEventAction?_eq_some setup.program event source action
-        encoded
-      obtain ⟨noFailure, noWithholding⟩ := asIfHonestProfile_success (runtime := runtime)
+      have successful := asIfHonestProfile_success (runtime := runtime)
         assessment who
-        control.execution rank ordered point decoded _ source supported
+        control.execution rank ordered _ decoded _ source supported
       have values := covers event
       rw [outputEq] at values
-      generalize hresult : (cast (congrArg EventGraph.EventField.Action outputEq) action :
-        PublicationResult (L.Val payload)) = result
-      cases result with
-      | success value => exact ⟨value, rfl, values value⟩
-      | failure =>
-          exfalso
-          have actionEq : action = cast (congrArg EventGraph.EventField.Action outputEq.symm)
-              (PublicationResult.failure : PublicationResult (L.Val payload)) := by
-            rw [← hresult]
-            simp
-          have failing : Failing (decodeEventAction setup.program event
-              (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-                (PublicationResult.failure : PublicationResult (L.Val payload)))) :=
-            decodeEventAction_failing_binding setup.program event.val (by exact event.isLt)
-              (by exact outputEq)
-          rw [← actionEq, back] at failing
-          cases source with
-          | commit sourceOwner name sourcePayload result =>
-              have failed := failing.1 sourceOwner name sourcePayload result rfl
-              subst failed
-              exact noFailure sourceOwner name sourcePayload rfl
-          | reveal sourceOwner name disclose =>
-              have withheld : disclose = false := failing.2
-              subst withheld
-              exact noWithholding sourceOwner name rfl
+      obtain ⟨value, actionEq⟩ := encodeEventAction?_commitsValue setup.program event source
+        successful.1 action encoded owner payload outputEq
+      exact ⟨value, by rw [actionEq]; simp, values value⟩
 
 /-- **A covered pending binding.** Along every history of the one-packet game,
 at a binding of the player's turn, when every binding value is a bounded value
@@ -181,6 +130,13 @@ theorem onePacket_coveredPendingBinding (assessment : setup.intendedModel.Behavi
       (control.execution.observe (application setup runtime leaks) who) event payload outputEq
       codeEq where
   turn := turn
+  active := by
+    have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+      scheduler trace
+    have facts := legalFacts setup leaks horizon scheduler control rawTrace
+    have turnFacts := PublicView.ownTurn?_spec _ who event turn
+    exact control.execution.application.active_of_ready_owned facts.quiescent
+      ((control.execution.application.publicView_eventReady event).mp turnFacts.1) turnFacts.2
   node := node
   covered choice supported :=
     onePacket_honest_covered (runtime := runtime) assessment covers trace who event turn choice

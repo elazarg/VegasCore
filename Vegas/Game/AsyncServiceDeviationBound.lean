@@ -133,7 +133,7 @@ theorem firstTurn_deviation_bound {Parameter : Type}
       ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
         service.leaks)
       (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
-    let clients := sourceServiceClientProfile service.setup
+    let clients := normalizeDisclosureProfile service.setup.program
       (service.setup.decodeBehavioralProfile admission
         source)
     ∃ deviation : (service.sourceModel admission).BehavioralPolicy who,
@@ -292,7 +292,7 @@ theorem isεNash_clientProfile {Parameter : Type}
         service.scheduler who
         (serviceClientPolicy service.setup service.mode service.deadline service.leaks
           service.bound turns timing
-          (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
+          (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
             admission source)) who))
     (low : Player → ℝ) (range : ℝ)
     (within : ∀ who (output : Option (State L service.setup.program.terminalCtx))
@@ -323,7 +323,7 @@ theorem isεNash_clientProfile {Parameter : Type}
   exact service.isεBestResponse_clientProfile_of_firstTurn_bounds admission parameter utility sample
     authentic deposit menu timing covered low (fun _ => range) within ε source
     (firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely
-      turns _ (sourceServiceClientProfile_effective _))
+      turns _ (fun who => BehavioralPolicy.normalizeDisclosures_authentic _ _))
     (fun who alternative => service.firstTurn_deviation_bound admission ordered
       parameter utility sample deposit
       nonnegative (service.bounded_of_within parameter utility deposit low range within) source
@@ -351,7 +351,7 @@ theorem isεNash_clientProfile_approximate {Parameter : Type}
         service.scheduler who
         (serviceClientPolicy service.setup service.mode service.deadline service.leaks
           service.bound turns timing
-          (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
+          (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
             admission source)) who))
     (low : Player → ℝ) (range : ℝ)
     (within : ∀ who (output : Option (State L service.setup.program.terminalCtx))
@@ -420,7 +420,7 @@ theorem intended_clientProfile_isεNash {Parameter : Type}
         service.scheduler who
         (serviceClientPolicy service.setup service.mode service.deadline service.leaks
           service.bound turns timing
-          (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
+          (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
             (CommitmentInterface.values service.setup.program) source)) who))
     (low : Player → ℝ) (spread : ℝ)
     (within : ∀ who (output : Option (State L service.setup.program.terminalCtx))
@@ -475,7 +475,7 @@ theorem intended_clientProfile_isεNash {Parameter : Type}
     utility forfeit
     range sample authentic deposit menu timing covered low spread within intended source agrees
     (firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely
-      turns _ (sourceServiceClientProfile_effective _)) ε
+      turns _ (fun who => BehavioralPolicy.normalizeDisclosures_authentic _ _)) ε
     equilibrium (fun who alternative => service.firstTurn_deviation_bound
       (CommitmentInterface.values service.setup.program)
       ordered parameter (forfeitUtility service.setup.program forfeit utility)

@@ -72,14 +72,14 @@ private theorem bindingReceipts_includePending
         refine ⟨message, List.mem_append_right _ (List.mem_singleton.mpr rfl),
           identified.trans same.symm, ?_⟩
         intro event candidate call
-        have raw : handle runtime execution.application
-            ⟨message.id, .commitment event candidate⟩ = some next := by
-          simpa only [call] using reactiveHandle_call handled
-        have tables := handle_commitment_tables runtime execution.application next message.id
+        obtain ⟨native, raw, nextEq⟩ := reactiveHandle_call handled
+        rw [call] at raw
+        have tables := handle_commitment_tables runtime execution.application native message.id
           event candidate raw
         change ((app.handle execution.application message).getD execution.application).accepted
           (.inr event) = some candidate
-        rw [handled, Option.getD_some, tables.2.1, Function.update_self]
+        rw [handled, Option.getD_some, ← nextEq, native.drain_tables.1, tables.2.1,
+          Function.update_self]
 
 theorem bindingReceipts_environment
     (execution next : (runtime.reactiveApplication leaks).Execution)
@@ -108,7 +108,8 @@ theorem bindingReceipts_environment
       obtain ⟨message, published, identified, recorded⟩ := valid id receipt
       refine ⟨message, published, identified, ?_⟩
       intro event candidate call
-      exact (congrFun (environmentStep_tables runtime execution.application state command
+      exact (congrFun (reactiveApplication_environment_tables runtime leaks
+        execution.application state command
         changed).1 (.inr event)).trans (recorded event candidate call)
 
 theorem bindingReceipts_serviceInvariant

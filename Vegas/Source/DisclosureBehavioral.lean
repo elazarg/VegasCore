@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Source.Setup
+import Vegas.Source.ProtocolBehavioralPolicy
 import GameTheory.Math.Probability.Support
 
 /-! # Normalizing unopenable disclosure intentions
@@ -114,6 +115,23 @@ def normalizeDisclosureProfile {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program) :
     BehavioralProfile program :=
   fun who => (profile who).normalizeDisclosures program
+
+/-- Disclosure normalization leaves the support of every commitment callback
+unchanged, so it preserves every commitment admission interface exactly. -/
+theorem BehavioralPolicy.normalizeDisclosures_admitted_iff {who : Player} :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (admission : CommitmentInterface program) →
+    (policy : BehavioralPolicy who program) →
+    (policy.normalizeDisclosures program).Admitted program admission ↔
+      policy.Admitted program admission
+  | _, _, .ret _, _, _ => Iff.rfl
+  | _, _, .sample _ _ _ next, admission, policy =>
+      normalizeDisclosures_admitted_iff next admission policy
+  | _, _, .commit _ _ _ _ next, admission, policy =>
+      and_congr Iff.rfl
+        (normalizeDisclosures_admitted_iff next (fun site => admission (some site)) policy.2)
+  | _, _, .reveal _ _ _ _ _ _ next, admission, policy =>
+      normalizeDisclosures_admitted_iff next admission policy.2
 
 /-- Suppressing unopenable disclosure choices twice changes nothing further. -/
 theorem BehavioralPolicy.normalizeDisclosures_idempotent {who : Player} :

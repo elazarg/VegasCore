@@ -611,3 +611,53 @@ all-history and pending-silence guarantees.
 actual atomic drain and uses the concrete pair failure-fixing law; it requires
 no initial accepted-table condition. Higher common-fiber, belief and compiler
 consumers remain acceptance obligations.
+
+## Compiled clients and public defaults
+
+[AsyncServiceSpec](../Vegas/Game/AsyncServiceSpec.lean) compiles the decoded
+source profile through `normalizeDisclosureProfile` directly. The source
+normalizer preserves every commitment admission interface, including omission
+and admitted unopenable bindings. Its joint typed-cell/default-history law is
+the observation boundary for arbitrary source profiles and unilateral
+deviations. The higher physical readout and payoff compositions remain
+acceptance obligations; equality of the original private intention histories
+is not their target.
+
+[OnePacketCellObservation](../Vegas/Game/OnePacketCellObservation.lean) retains
+cell-based failure-debt and revelation facts. Public default status must be
+read from the authoritative default history. The splice-forcing adapter obtains
+that status from its supplied full player view, rather than inferring it from
+hidden failed cells.
+
+[OnePacketSlotVisibility](../Vegas/Game/OnePacketSlotVisibility.lean),
+[OnePacketSlotMasses](../Vegas/Game/OnePacketSlotMasses.lean) and
+[OnePacketSlotChoiceMasses](../Vegas/Game/OnePacketSlotChoiceMasses.lean) retain
+the slot-envelope, availability, encoding, injectivity and choice-mass laws.
+Omission is silent; a present binding has its slot envelope independently of
+its payload. Successful covered choices supply presence internally. Comparing
+canonical and slot responses also uses activity in the public default record.
+
+[ReactiveCompiledResolution](../Vegas/Pending/ReactiveCompiledResolution.lean)
+classifies a transmitted opening by its stored successful binding and accepted
+owned handle. Guard rejection occurs at the handler. The corresponding
+[canonical silence criterion](../Vegas/Pending/ReactiveCanonicalResolution.lean)
+concerns unavailable opening material. The native
+[association](../Vegas/Pending/ReactiveAssociationPersistence.lean) and
+[binding-receipt](../Vegas/Pending/ReactiveBindingReceipts.lean) invariants
+preserve accepted handles through the primary operation and its automatic tail.
+
+## Remaining compiler interfaces
+
+The ordinary and sequential compiler capstones remain acceptance obligations.
+Their service consumers must compose the native command's complete source
+continuation. A command can finish a block and automatically complete later
+instructions; a sealed unfinished block alone does not bound the command's
+final cut by the block's end. Requiring that exact intermediate cut would
+change the implemented semantics. Stopping and payoff readers must instead
+use the actual reached configuration and its checked continuation laws.
+
+The recovery projection interfaces require replacement at their consumers by
+the sole native application. Generic bounded-menu-to-raw history and policy
+realization remain substantive interfaces; cross-model identity projections
+are unnecessary. Final acceptance requires these consumer ports and the complete
+build and paper gates.

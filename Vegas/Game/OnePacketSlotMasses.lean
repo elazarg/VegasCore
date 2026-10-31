@@ -75,7 +75,8 @@ def sourceOfValue (event : (graph setup).EventId) {owner : Player} {payload : L.
     (outputEq : (graph setup).outputLayout event = .binding owner payload)
     (value : L.Val payload) : Option (OwnAction Player L) :=
   decodeEventAction setup.program event
-    (cast (congrArg EventGraph.EventField.Action outputEq.symm) (PublicationResult.success value))
+    (cast (congrArg EventGraph.EventField.Action outputEq.symm)
+      (some (PublicationResult.success value)))
 
 /-- The source choice decoded from a value encodes back to it. -/
 theorem sourceOfValue_encoded (event : (graph setup).EventId) {owner : Player} {payload : L.Ty}
@@ -85,14 +86,14 @@ theorem sourceOfValue_encoded (event : (graph setup).EventId) {owner : Player} {
     (value : L.Val payload) :
     (sourceOfValue setup event outputEq value).bind (encodeEventAction? setup.program event) =
       some (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-        (PublicationResult.success value)) := by
+        (some (PublicationResult.success value))) := by
   have owned := nodeView_bind_actor outputEq codeEq
   cases decoded : sourceOfValue setup event outputEq value with
   | none =>
       exfalso
       have ownerEq := decodeEventAction_owner setup.program event
         (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-          (PublicationResult.success value))
+          (some (PublicationResult.success value)))
       unfold sourceOfValue at decoded
       rw [decoded, Option.map_none, eventOwner?_eq_actor] at ownerEq
       have actorNone : (graph setup).actor? event = none := ownerEq.symm
@@ -158,7 +159,9 @@ theorem onePacket_commitment_eq_slotResponse (who : Player)
     exact evidence.symm
   rw [slotResponse_of_bind setup runtime leaks who past view event node serial _ _
       (sourceOfValue_encoded setup event outputEq codeEq value),
-    runtime.reactiveBinding_normal_of_fresh leaks who past view event payload _ serial
+    cast_cast, cast_eq]
+  simp only
+  rw [runtime.reactiveBinding_normal_of_fresh leaks who past view event payload _ serial
       fresh]
   rcases material with ⟨⟨materialPacket, materialOpening⟩, materialEvidence⟩
   change materialPacket = _ at packet

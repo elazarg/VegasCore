@@ -327,7 +327,8 @@ theorem siteImage_info
     (sameView_of_site xState yState))
     (succeed := commitmentCellsSucceed_of_intended wellFormed xState yState)
     (sameView_of_site xState yState) owned
-  exact (infoOf_mapTrace_of_fixes (runtime := runtime) _ _ _ fixes ⟨some control, trace⟩ guarded
+  exact (infoOf_mapTrace_of_fixes (runtime := runtime) _ _ _
+    (EventGraph.ValueSwap.ofPairs_expiryFixed _) fixes ⟨some control, trace⟩ guarded
     (info.trans decision)).trans decision.symm
 
 include mixed in
@@ -444,7 +445,8 @@ theorem fiber_sum_eq_of_points
       right_inv := siteMap_siteMap (runtime := runtime) wellFormed forced decision projected
         ownIntended mixed yState
         xState covered turn }
-    (fun history => operationalRecord_mapTrace (runtime := runtime) _ _ _ history.1.1.trace _)
+    (fun history => operationalRecord_mapTrace (runtime := runtime) _ _ _
+      (EventGraph.ValueSwap.ofPairs_expiryFixed _) history.1.1.trace _)
 
 end Points
 

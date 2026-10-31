@@ -1,6 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.RevealService
+import Vegas.Game.SourceServiceTurnPolicy
+import Vegas.Game.SourceContinuation
+import Vegas.Source.DisclosureBehavioral
+import Interaction.ReactiveMenuPolicy
 import Vegas.Pending.ReactiveBoundedValues
 import Vegas.Pending.ReactiveCompiledMenu
 import Vegas.Pending.ReactiveAsyncContract
@@ -92,6 +96,82 @@ theorem completes : CompletesPlay (serviceRuntime service.setup service.mode ser
     service.leaks (serviceInitialLaw service.setup service.mode) service.horizon
       service.scheduler :=
   service.contract.completes
+
+
+variable (admission : CommitmentInterface service.setup.program)
+
+/-- The source information model of the service's program, at its supplied commitment
+admission interface. -/
+abbrev sourceModel := service.setup.informationModel admission
+
+/-- **The turn-counted clients** of a source profile in a response menu: each
+player follows the turn-counted policy of its disclosure-normalized source
+policy, completed by silence after its own off-policy responses
+(`Vegas.serviceClientPolicy`). -/
+def clientProfile (menu : (serviceApplication service.setup service.mode service.deadline
+    service.leaks).ResponseMenu)
+    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    (source : Profile (service.sourceModel admission).behavioralSignature) :
+    Profile (menu.information (serviceInitialLaw service.setup service.mode) service.horizon
+      service.scheduler).behavioralSignature := fun who =>
+  menu.restrictPolicy (serviceInitialLaw service.setup service.mode) service.horizon
+    service.scheduler who
+    (serviceClientPolicy service.setup service.mode service.deadline service.leaks service.bound
+      turns timing
+      (normalizeDisclosureProfile service.setup.program
+        (service.setup.decodeBehavioralProfile admission
+          source)) who)
+
+private theorem clientPolicy_congr {turns : Nat} (timing : TurnTiming service.setup turns
+    service.mode)
+    (profile other : BehavioralProfile service.setup.program) (who : Player)
+    (same : profile who = other who) :
+    serviceClientPolicy service.setup service.mode service.deadline service.leaks service.bound
+      turns timing profile who =
+      serviceClientPolicy service.setup service.mode service.deadline service.leaks service.bound
+        turns timing other
+        who := by
+  unfold serviceClientPolicy serviceTurnPolicy serviceTurnFamily serviceCanonicalOpportunity
+    serviceCanonicalPolicy compileEventProfile
+  rw [same]
+
+/-- Each player's client depends only on its own source policy. -/
+theorem clientProfile_congr (menu : (serviceApplication service.setup service.mode service.deadline
+    service.leaks).ResponseMenu)
+    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    (source other : Profile (service.sourceModel admission).behavioralSignature) (who : Player)
+    (same : source who = other who) :
+    service.clientProfile admission menu timing source who = service.clientProfile admission menu
+      timing other who := by
+  have decoded : normalizeDisclosureProfile service.setup.program
+      (service.setup.decodeBehavioralProfile admission
+        source) who =
+    normalizeDisclosureProfile service.setup.program
+      (service.setup.decodeBehavioralProfile admission
+        other) who := by
+    simp only [normalizeDisclosureProfile,
+      Setup.decodeBehavioralProfile, same]
+  exact congrArg (menu.restrictPolicy (serviceInitialLaw service.setup service.mode) service.horizon
+    service.scheduler who) (clientPolicy_congr service timing _ _ who decoded)
+
+/-- The clients of a unilateral source deviation are a unilateral deviation of
+the clients. -/
+theorem clientProfile_update (menu : (serviceApplication service.setup service.mode
+    service.deadline service.leaks).ResponseMenu)
+    {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
+    (source : Profile (service.sourceModel admission).behavioralSignature) (who : Player)
+    (alternative : (service.sourceModel admission).BehavioralPolicy who) :
+    Profile.update (service.clientProfile admission menu timing source) who
+        (service.clientProfile admission menu timing (Profile.update source who alternative) who) =
+      service.clientProfile admission menu timing (Profile.update source who alternative) := by
+  funext other
+  by_cases same : other = who
+  · subst other
+    simp only [Profile.update, Function.update_self]
+  · simp only [Profile.update, Function.update_of_ne same]
+    exact service.clientProfile_congr admission menu timing _ _ other (by
+      simp only [Function.update_of_ne same])
+
 
 end AsyncServiceSpec
 

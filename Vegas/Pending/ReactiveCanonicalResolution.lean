@@ -5,13 +5,10 @@ import Vegas.Pending.ReactiveCompiledResolution
 
 /-! # Canonical resolution responses
 
-At a resolution the canonical decision is silent unless the owner discloses
-and owner-local validation succeeds: the owner's view of the store makes the
-resolution publish a value, and the binding's accepted handle is the owner's.
-In that case it sends the opening of that handle with the value, and the
-emitted packet carries the authentic opening certificate of the handle. Source
-FALSE is therefore implemented by silence until expiry, and TRUE whose
-validation fails is silent as well.
+Withholding is silent. A requested disclosure transmits an authentic opening
+when the stored binding succeeds and its accepted handle belongs to the sender.
+Missing, failed or nonowned opening material produces silence. Public guard
+rejection is evaluated after transmission by the handler.
 -/
 
 noncomputable section
@@ -52,17 +49,18 @@ theorem canonicalServiceDecision_resolution_false
     (node : nodeView graph event = .resolve actor payload binding checks outputEq codeEq) :
     runtime.canonicalServiceDecision leaks who past view event
       (cast (congrArg EventField.Action outputEq.symm) false) = ⟨none⟩ := by
-  rw [runtime.canonicalServiceDecision_eq_of_not_bind leaks who past view event _
-    (resolve_not_bind node)]
-  simp only [serviceDecision, reactiveDecision, node, reactiveResolutionPacket, cast_cast,
-    cast_eq, Bool.false_eq_true, ↓reduceIte, Option.map_none]
-  rfl
+  by_cases inactive : who ∈ view.application.publicView.observation.defaulted
+  · exact runtime.canonicalServiceDecision_defaulted leaks who past view event _ inactive
+  · rw [runtime.canonicalServiceDecision_eq_of_not_bind leaks who past view event _
+      (resolve_not_bind node)]
+    simp only [serviceDecision, reactiveDecision, ite_eq_right inactive, node,
+      reactiveResolutionPacket, cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
+      Option.map_none]
+    rfl
 
-/-- **Canonical TRUE without successful owner-local validation is silence.**
-Validation fails when the owner's view of the store does not make the
-resolution publish a value, or the binding's accepted handle is missing or
-not the owner's. -/
-theorem canonicalServiceDecision_resolution_unvalidated
+/-- A requested canonical disclosure is silent when no stored successful binding
+has an accepted handle owned by the sender. -/
+theorem canonicalServiceDecision_resolution_unavailable
     (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView)
     (event : graph.EventId) (actor : Player) (payload : L.Ty)
@@ -73,8 +71,7 @@ theorem canonicalServiceDecision_resolution_unvalidated
       (graph.nodes event) = .resolve actor payload binding checks)
     (node : nodeView graph event = .resolve actor payload binding checks outputEq codeEq)
     (failed : ∀ value candidate,
-      EventCode.resolveOutput? binding checks true view.application.observation.store =
-          some (.success value) →
+      binding.get? view.application.observation.store = some (.success value) →
         view.application.publicView.accepted binding.field = some candidate →
           candidate.1 ≠ who) :
     runtime.canonicalServiceDecision leaks who past view event

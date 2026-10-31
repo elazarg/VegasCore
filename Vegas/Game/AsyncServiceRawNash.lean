@@ -58,7 +58,7 @@ theorem rawMenu_admits {turns : Nat}
       service.scheduler who
       (serviceClientPolicy service.setup service.mode service.deadline service.leaks service.bound
         turns timing
-        (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
+        (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
           admission source)) who) :=
   sourceServiceClientPolicy_raw_admissible service.bounds service.values service.initialValues
     service.capacity service.bound turns timing _ service.horizon service.scheduler who
@@ -354,7 +354,7 @@ theorem firstTurnClientProfile_settlement_law {Parameter : Type}
     (service.setup.decodeBehavioralProfile admission
       source)
     (firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely
-      turns _ (sourceServiceClientProfile_effective _))
+      turns _ (fun who => BehavioralPolicy.normalizeDisclosures_authentic _ _))
     service.rawMenu
     (service.rawMenu_admits admission (firstTurnTiming service.setup turns service.mode) source)
     sample authentic (fun state => utility (service.setup.parameterOutcome parameter state)) deposit

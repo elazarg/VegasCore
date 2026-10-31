@@ -40,8 +40,8 @@ def slotEnvelope (who : Player) (past : List (application setup runtime leaks).P
     ⟨.commitment event (who, .prepared slot), none,
       view.application.publicView.tokenFor (.commitment event (who, .prepared slot))⟩⟩
 
-/-- At a binding, the slot tier's response to an encoded choice is the
-normalized commitment of its value at the slot. -/
+/-- At a binding, the slot tier is silent on omission and otherwise sends the
+normalized commitment at the slot. -/
 theorem slotResponse_of_bind (who : Player) (past : List (application setup runtime
   leaks).PlayerEntry)
     (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId)
@@ -53,12 +53,14 @@ theorem slotResponse_of_bind (who : Player) (past : List (application setup runt
     (choice : Option (OwnAction Player L)) (action : (graph setup).Action event)
     (encoded : choice.bind (encodeEventAction? setup.program event) = some action) :
     slotResponse setup runtime leaks who past view event slot choice =
-      (runtime.reactiveNormalization leaks).action who past view
-        (runtime.reactiveBinding leaks who event payload
-          (cast (congrArg EventGraph.EventField.Action outputEq) action) slot) := by
+      match cast (congrArg EventGraph.EventField.Action outputEq) action with
+      | none => ⟨none⟩
+      | some result => (runtime.reactiveNormalization leaks).action who past view
+          (runtime.reactiveBinding leaks who event payload result slot) := by
   unfold slotResponse
   rw [encoded]
   simp only [node]
+  rfl
 
 /-- **The envelope does not depend on the value.** A choice encoded at a
 binding, committed at a slot, transmits a packet whose local envelope is the
@@ -72,13 +74,16 @@ theorem slotResponse_transmission (who : Player)
       ((graph setup).nodes event) = .bind owner payload}
     (node : nodeView (graph setup) event = .bind owner payload outputEq codeEq) (slot : Nat)
     (choice : Option (OwnAction Player L)) (action : (graph setup).Action event)
-    (encoded : choice.bind (encodeEventAction? setup.program event) = some action) :
+    (encoded : choice.bind (encodeEventAction? setup.program event) = some action)
+    (present : (cast (congrArg EventGraph.EventField.Action outputEq) action).isSome = true) :
     ∃ material, (slotResponse setup runtime leaks who past view event slot choice).transmission =
         some material ∧
       runtime.localEnvelope leaks who past view material =
         slotEnvelope setup runtime leaks who past view event slot := by
   rw [slotResponse_of_bind setup runtime leaks who past view event node slot choice action encoded]
-  exact ⟨_, rfl, rfl⟩
+  cases result : cast (congrArg EventGraph.EventField.Action outputEq) action with
+  | none => simp [result] at present
+  | some value => exact ⟨_, rfl, rfl⟩
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup))
 
@@ -90,7 +95,7 @@ def CoveredBinding (event : (graph setup).EventId) (choice : Option (OwnAction P
     ∀ owner payload outputEq codeEq,
       nodeView (graph setup) event = .bind owner payload outputEq codeEq →
         ∃ value, (cast (congrArg EventGraph.EventField.Action outputEq) action :
-            PublicationResult (L.Val payload)) = .success value ∧
+            Option (PublicationResult (L.Val payload))) = some (.success value) ∧
           (⟨payload, value⟩ : Raw L) ∈ bounds.values
 
 /-- **Acceptance depends on the slot alone.** At a binding, a covered choice
@@ -115,7 +120,7 @@ theorem slotResponse_mem_onePacket_iff (who : Player)
   obtain ⟨value, successful, included⟩ := values owner payload outputEq codeEq node
   obtain ⟨material, transmits, envelope⟩ :=
     slotResponse_transmission setup runtime leaks who past view event node slot choice action
-      encoded
+      encoded (by rw [successful]; rfl)
   rw [bounds.mem_onePacketActions]
   constructor
   · rintro ⟨_, silent | ⟨other, otherTransmits, permitted⟩⟩
@@ -127,11 +132,10 @@ theorem slotResponse_mem_onePacket_iff (who : Player)
   · intro permitted
     refine ⟨?_, Or.inr ⟨material, transmits, by rwa [envelope]⟩⟩
     rw [slotResponse_of_bind setup runtime leaks who past view event node slot choice action
-      encoded]
+      encoded, successful]
     apply bounds.binding_normalized_available runtime leaks who past view event payload
       _ slot capacity
     intro chosen same
-    rw [successful] at same
     cases same
     exact included
 
@@ -164,11 +168,12 @@ theorem slotResponse_injective (who : Player)
   rw [slotResponse_of_bind setup runtime leaks who past view event node slot first firstAction
       firstEncoded,
     slotResponse_of_bind setup runtime leaks who past view event node other second secondAction
-      secondEncoded,
-    runtime.reactiveBinding_normal_of_fresh leaks who past view event payload _ slot
+      secondEncoded, firstSuccess, secondSuccess] at same
+  simp only at same
+  rw [runtime.reactiveBinding_normal_of_fresh leaks who past view event payload _ slot
       slotFresh,
     runtime.reactiveBinding_normal_of_fresh leaks who past view event payload _ other
-      otherFresh, firstSuccess, secondSuccess] at same
+      otherFresh] at same
   have transmission := congrArg ReactiveApplication.Action.transmission same
   simp only [EventGraphRuntime.reactiveBinding, Option.some.injEq] at transmission
   have packetEq := congrArg (fun material : WitnessedSubmission (graph setup) =>
@@ -182,7 +187,8 @@ theorem slotResponse_injective (who : Player)
   rw [firstEncoded, secondEncoded]
   congr 1
   have castEq : (cast (congrArg EventGraph.EventField.Action outputEq) firstAction :
-      PublicationResult (L.Val payload)) = cast (congrArg EventGraph.EventField.Action outputEq)
+      Option (PublicationResult (L.Val payload))) =
+        cast (congrArg EventGraph.EventField.Action outputEq)
         secondAction := by
     rw [firstSuccess, secondSuccess, openingEq]
   exact (cast_inj _).mp castEq

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.ReactiveRuntime
+import Vegas.EventGraph.CanonicalStep
 import Vegas.Expr.Simple
 
 /-! # Public omission and opaque unusability in the ledger runtime -/
@@ -97,6 +98,25 @@ example (leaks : MessageNetwork.ObservationRule Unit (WitnessedPacket defaultGra
     (.expire firstEvent)).map State.drain).map _) = _
   rw [runtimeExpiry, PMF.pure_map, PMF.pure_map]
   simp only [runtimeDrain_terminal, decide_true]
+
+/-- Stopping after one native command need not expose the first source boundary. -/
+example (leaks : MessageNetwork.ObservationRule Unit (WitnessedPacket defaultGraph)) :
+    ({ runtimeInitial with clock := 1 } : State defaultGraph).config.cut.IsPrefix 0 ∧
+      ∃ next ∈ ((defaultRuntime.reactiveApplication leaks).environment
+        { runtimeInitial with clock := 1 } (.expire firstEvent)).support,
+        ¬ next.config.cut.IsPrefix 1 := by
+  refine ⟨EventOrder.Cut.empty_isPrefix _, runtimeOmission.drain, ?_, ?_⟩
+  · change runtimeOmission.drain ∈ ((environmentStep defaultRuntime
+      { runtimeInitial with clock := 1 } (.expire firstEvent)).map State.drain).support
+    rw [runtimeExpiry, PMF.pure_map]
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
+  · intro ordered
+    have completed : (⟨1, by decide⟩ : defaultGraph.EventId) ∈
+        runtimeOmission.drain.config.cut.completed := by
+      rw [show runtimeOmission.drain.config.cut.completed = Finset.univ from runtimeDrain_terminal]
+      exact Finset.mem_univ _
+    have below := (ordered.2 ⟨1, by decide⟩).mp completed
+    exact Nat.lt_irrefl 1 below
 
 /-- Public default rejects admission at an otherwise ready, timely binding. -/
 example : runtimeOmission.config.cut.Ready ⟨1, by decide⟩ ∧

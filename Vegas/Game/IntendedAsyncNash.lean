@@ -60,7 +60,7 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
         service.scheduler who
         (serviceClientPolicy service.setup service.mode service.deadline service.leaks
           service.bound turns timing
-          (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
+          (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
             (CommitmentInterface.values service.setup.program) source)) who))
     (low : Player → ℝ) (spread : ℝ)
     (within : ∀ who (output : Option (State L service.setup.program.terminalCtx))
@@ -78,7 +78,7 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
       service.setup.program)).ExtendsProfile intended source)
     (terminal : FirstTurnSourceLaw service.setup service.mode service.deadline service.leaks
       service.horizon service.scheduler service.bound turns
-      (sourceServiceClientProfile service.setup (service.setup.decodeBehavioralProfile
+      (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
         (CommitmentInterface.values service.setup.program) source))) (ε : ℝ)
     (equilibrium : IsεNash (service.setup.intendedModel.toBehavioralGameForm
         (instructionCount service.setup.program + 1))
@@ -96,7 +96,7 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
       ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
         service.leaks)
       (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
-    let clients := sourceServiceClientProfile service.setup
+    let clients := normalizeDisclosureProfile service.setup.program
       (service.setup.decodeBehavioralProfile (CommitmentInterface.values service.setup.program)
         source)
     (∀ who (alternative : (serviceApplication service.setup service.mode service.deadline

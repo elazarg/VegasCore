@@ -16,6 +16,8 @@ open GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
+/-- Native submissions, inclusion and environment commands preserve every accepted
+binding association, including automatic completion after the primary operation. -/
 theorem reactiveAssociationInvariant (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (field : graph.Field) (candidate : Handle graph) :
@@ -29,14 +31,15 @@ theorem reactiveAssociationInvariant (runtime : EventGraphRuntime graph)
   handle state message next valid accepted := by
     refine ⟨(runtime.reactiveBindingInvariant leaks).handle
       state message next valid.1 accepted, ?_⟩
-    exact (handle_accepted_of_present runtime state next field
+    obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
+    rw [← nextEq, native.drain_tables.1]
+    exact (handle_accepted_of_present runtime state native field
       (valid.1.accepted_present field candidate valid.2)
-      ⟨message.id, message.payload.call⟩
-        (reactiveHandle_call accepted)).trans valid.2
+      ⟨message.id, message.payload.call⟩ handled).trans valid.2
   environment state command next valid reached := by
     refine ⟨(runtime.reactiveBindingInvariant leaks).environment
       state command next valid.1 reached, ?_⟩
-    rw [(environmentStep_tables runtime state next command reached).1]
+    rw [(reactiveApplication_environment_tables runtime leaks state next command reached).1]
     exact valid.2
 
 end Vegas.EventGraphRuntime

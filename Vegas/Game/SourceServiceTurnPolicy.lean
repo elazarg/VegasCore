@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceCanonicalPolicy
 import Interaction.ReactivePolicyMixture
+import Interaction.ReactiveRecovery
 
 /-! # Turn-counted prescribed policy for every scheduler
 
@@ -98,6 +99,16 @@ def serviceTurnPolicy (bound : (serviceGraph setup mode).EventId → Nat) (turns
           (serviceTurnFamily setup mode deadline leaks bound profile who event turns)).policy
             past view
       else (serviceApplication setup mode deadline leaks).silentPolicy past view
+
+
+/-- **The client policy.** The turn-counted policy, completed by silence at
+every history where the player's own recorded responses do not all follow
+it. -/
+def serviceClientPolicy (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
+    (who : Player) : (serviceApplication setup mode deadline leaks).Policy :=
+  (serviceTurnPolicy setup mode deadline leaks bound turns timing profile who).recover
+    (serviceApplication setup mode deadline leaks).silentPolicy
 
 end Configured
 

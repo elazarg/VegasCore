@@ -114,3 +114,95 @@ theorem owesFailure_of_deviation (who : Player) :
           · exact Or.inr (Or.inr failed)
 
 end Vegas.SourceProgram.ProtocolState
+
+namespace Vegas.SourceProgram
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+namespace Config
+
+variable {Γ : SourceCtx Player L} {unresolved : Finset VarId} {config : Config Player L Γ}
+
+omit [IExpr.ResultTypes L] in
+/-- An intended configuration owes no failed reveal. -/
+theorem Intended.not_indebted (intended : config.Intended unresolved) (who : Player) :
+    ¬ config.Indebted who unresolved := by
+  intro indebted
+  obtain ⟨obligation, member, _, _, value, bound, rejects⟩ := indebted.pending
+  rw [intended.predicted obligation member value bound] at rejects
+  cases rejects
+
+omit [IExpr.ResultTypes L] in
+/-- An intended configuration has no failed binding. -/
+theorem Intended.not_failedBinding (intended : config.Intended unresolved) (who : Player) :
+    ¬ config.FailedBinding who unresolved := by
+  intro failed
+  obtain ⟨_, _, source, _, failure⟩ := failed.pending
+  obtain ⟨value, success⟩ := intended.bound source
+  rw [success] at failure
+  cases failure
+
+end Config
+
+namespace ProtocolState
+
+/-- A point of the intended game has no failed reveal or debt. -/
+theorem Intended.not_indebted (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (state : ProtocolState program) →
+    Intended program state → ¬ Indebted who program state
+  | _, _, .ret _, _, intended =>
+      Config.Intended.not_indebted (unresolved := ∅) intended who
+  | _, _, .sample _ _ _ next, state, intended => by
+      cases state with
+      | inl _ => exact Config.Intended.not_indebted intended.1 who
+      | inr rest => exact Intended.not_indebted who next rest intended
+  | _, _, .commit _ _ _ _ next, state, intended => by
+      cases state with
+      | inl _ => exact Config.Intended.not_indebted intended.1 who
+      | inr rest => exact Intended.not_indebted who next rest intended
+  | _, _, .reveal _ _ _ _ _ _ next, state, intended => by
+      cases state with
+      | inl _ => exact Config.Intended.not_indebted intended.1 who
+      | inr rest =>
+          rintro (⟨_, failure⟩ | indebted)
+          · obtain ⟨value, success⟩ := intended.1
+            rw [success] at failure
+            cases failure
+          · exact Intended.not_indebted who next rest intended.2 indebted
+
+/-- A point of the intended game has no failed binding. -/
+theorem Intended.not_failedBinding (who : Player) : {Γ : SourceCtx Player L} →
+    {O : Finset VarId} → (program : SourceProgram Player L Γ O) →
+    (state : ProtocolState program) → Intended program state → ¬ FailedBinding who program state
+  | _, _, .ret _, _, intended =>
+      Config.Intended.not_failedBinding (unresolved := ∅) intended who
+  | _, _, .sample _ _ _ next, state, intended => by
+      cases state with
+      | inl _ => exact Config.Intended.not_failedBinding intended.1 who
+      | inr rest => exact Intended.not_failedBinding who next rest intended
+  | _, _, .commit _ _ _ _ next, state, intended => by
+      cases state with
+      | inl _ => exact Config.Intended.not_failedBinding intended.1 who
+      | inr rest => exact Intended.not_failedBinding who next rest intended
+  | _, _, .reveal _ _ _ _ _ _ next, state, intended => by
+      cases state with
+      | inl _ => exact Config.Intended.not_failedBinding intended.1 who
+      | inr rest =>
+          rintro (⟨_, failure⟩ | failed)
+          · obtain ⟨value, success⟩ := intended.1
+            rw [success] at failure
+            cases failure
+          · exact Intended.not_failedBinding who next rest intended.2 failed
+
+/-- **Intended points owe nothing.** No player owes a failure at a point of the
+intended game. -/
+theorem Intended.not_owesFailure (who : Player) {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (state : ProtocolState program)
+    (intended : Intended program state) : ¬ OwesFailure who program state := by
+  rintro (indebted | failed)
+  · exact Intended.not_indebted who program state intended indebted
+  · exact Intended.not_failedBinding who program state intended failed
+
+end ProtocolState
+
+end Vegas.SourceProgram

@@ -32,7 +32,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   [Fintype Player] (bounds : MessageBounds (graph setup))
 
 omit [Fintype Player] in
-/-- At a binding of the player's turn whose canonical slot is fresh, the
+/-- At an active player's binding turn whose canonical slot is fresh, the
 as-if-honest response is the slot tier's response at the canonical slot. -/
 theorem honestResponse_eq_slotResponse (assessment : setup.intendedModel.BehavioralAssessment)
     (who : Player) (past : List (application setup runtime leaks).PlayerEntry)
@@ -42,6 +42,7 @@ theorem honestResponse_eq_slotResponse (assessment : setup.intendedModel.Behavio
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq) (serial : Nat)
+    (active : who ∉ view.application.publicView.observation.defaulted)
     (selected : canonicalFreshSlot who view.application = some serial) :
     honestResponse setup runtime leaks assessment who past view =
       (asIfHonestProfile setup runtime leaks assessment who (some (past, view))).map
@@ -57,15 +58,21 @@ theorem honestResponse_eq_slotResponse (assessment : setup.intendedModel.Behavio
       unfold slotResponse
       rw [encoded]
   | some action =>
-      obtain ⟨result, rfl⟩ : ∃ result : PublicationResult (L.Val payload),
+      obtain ⟨result, rfl⟩ : ∃ result : Option (PublicationResult (L.Val payload)),
           action = cast (congrArg EventGraph.EventField.Action outputEq.symm) result :=
         ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
       rw [slotResponse_of_bind setup runtime leaks who past view event node serial choice _ encoded]
       simp only [cast_cast, cast_eq]
-      rw [runtime.reactiveBinding_normal_of_fresh leaks who past view event payload _
-        serial fresh]
-      exact runtime.canonicalServiceDecision_binding leaks who past view event payload
-        outputEq codeEq node serial selected result
+      cases result with
+      | none =>
+          exact runtime.canonicalServiceDecision_binding_none leaks who past view event
+            who payload outputEq codeEq node
+      | some value =>
+          dsimp only
+          rw [runtime.reactiveBinding_normal_of_fresh leaks who past view event payload _
+            serial fresh]
+          exact runtime.canonicalServiceDecision_binding leaks who past view event payload
+            outputEq codeEq node active serial selected value
 
 variable (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
   (scheduler : (application setup runtime leaks).Scheduler)
@@ -109,10 +116,11 @@ theorem slotChoiceOf_injective (who : Player) (past : List (application setup ru
         first) :
     other = slot ∧ second = first := by
   classical
-  obtain ⟨firstAction, firstEncoded, _⟩ := firstCovered
+  obtain ⟨firstAction, firstEncoded, firstValues⟩ := firstCovered
+  obtain ⟨_, firstSuccess, _⟩ := firstValues owner payload outputEq codeEq node
   obtain ⟨material, transmits, _⟩ := slotResponse_transmission setup runtime leaks who past view
     event
-    node slot first firstAction firstEncoded
+    node slot first firstAction firstEncoded (by rw [firstSuccess]; rfl)
   have values := congrArg Subtype.val same
   have firstValue : (slotChoiceOf setup runtime leaks bounds initial horizon scheduler who past
     view event
@@ -130,14 +138,15 @@ theorem slotChoiceOf_injective (who : Player) (past : List (application setup ru
     have responses := Option.some.inj values
     have slotFresh := freshOfPermitted slot ((slotResponse_mem_onePacket_iff setup runtime leaks
       bounds who
-      past view event node slot slotCapacity first ⟨firstAction, firstEncoded, ‹_›⟩).mp offered)
+      past view event node slot slotCapacity first ⟨firstAction, firstEncoded, firstValues⟩).mp
+        offered)
     have otherFresh := freshOfPermitted other ((slotResponse_mem_onePacket_iff setup runtime leaks
       bounds
       who past view event node other otherCapacity second secondCovered).mp otherOffered)
     obtain ⟨slotEq, encodedEq⟩ := slotResponse_injective setup runtime leaks bounds who past view
       event
       node other slot otherFresh slotFresh second first secondCovered
-      ⟨firstAction, firstEncoded, ‹_›⟩ responses
+      ⟨firstAction, firstEncoded, firstValues⟩ responses
     obtain ⟨secondAction, secondEncoded, _⟩ := secondCovered
     rw [secondEncoded, firstEncoded] at encodedEq
     cases Option.some.inj encodedEq
@@ -151,7 +160,7 @@ theorem slotChoiceOf_injective (who : Player) (past : List (application setup ru
     rw [transmits] at silent
     cases silent
 
-/-- **A pending binding with covered as-if-honest play.** The player's turn is a
+/-- **A pending binding with covered as-if-honest play.** The active player's turn is a
 binding of the player; every source choice as-if-honest play supports encodes
 to a covered value; the candidate capacity is at least one; and every prepared
 slot the count verdict permits is fresh. -/
@@ -162,6 +171,7 @@ structure CoveredPendingBinding (assessment : setup.intendedModel.BehavioralAsse
     (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload) : Prop where
   turn : view.application.publicView.ownTurn? who = some event
+  active : who ∉ view.application.publicView.observation.defaulted
   node : nodeView (graph setup) event = .bind who payload outputEq codeEq
   covered : ∀ choice ∈ (asIfHonestProfile setup runtime leaks assessment who (some (past,
     view))).support,
@@ -236,7 +246,7 @@ theorem honestChoice_slotChoiceOf_apply {assessment : setup.intendedModel.Behavi
       else 0 := by
   change (honestResponse setup runtime leaks assessment who past view).map _ _ = _
   rw [honestResponse_eq_slotResponse setup runtime leaks assessment who past view event site.turn
-    site.node serial selected, PMF.map_comp]
+    site.node serial site.active selected, PMF.map_comp]
   split
   · rename_i same
     subst same
@@ -264,9 +274,10 @@ theorem honestChoice_slotChoiceOf_apply {assessment : setup.intendedModel.Behavi
         (site.covered choice supported) (site.covered
           other otherSupported) offered equal).1.symm
     · exfalso
-      obtain ⟨action, encoded, _⟩ := site.covered choice supported
+      obtain ⟨action, encoded, values⟩ := site.covered choice supported
+      obtain ⟨_, successful, _⟩ := values who payload outputEq codeEq site.node
       obtain ⟨material, transmits, _⟩ := slotResponse_transmission setup runtime leaks who past view
-        event site.node slot choice action encoded
+        event site.node slot choice action encoded (by rw [successful]; rfl)
       have values := congrArg Subtype.val equal
       have offeredValue : (slotChoiceOf setup runtime leaks bounds initial horizon scheduler who
         past view
@@ -276,12 +287,13 @@ theorem honestChoice_slotChoiceOf_apply {assessment : setup.intendedModel.Behavi
       rw [offeredValue] at values
       by_cases otherOffered : slotResponse setup runtime leaks who past view event serial other ∈
           bounds.onePacketActions runtime leaks who past view
-      · obtain ⟨otherAction, otherEncoded, _⟩ := site.covered other
+      · obtain ⟨otherAction, otherEncoded, otherValues⟩ := site.covered other
           otherSupported
+        obtain ⟨_, otherSuccess, _⟩ := otherValues who payload outputEq codeEq site.node
         obtain ⟨otherMaterial, otherTransmits, otherEnvelope⟩ := slotResponse_transmission setup
           runtime
           leaks who past view event site.node serial other otherAction
-            otherEncoded
+            otherEncoded (by rw [otherSuccess]; rfl)
         have effective := ((bounds.mem_onePacketActions runtime leaks who past view
           _).mp otherOffered).1
         have packetEq : otherMaterial.call.packet = .commitment event (who, .prepared serial) :=
@@ -383,10 +395,11 @@ theorem silence_slotChoiceOf_apply {assessment : setup.intendedModel.BehavioralA
           choice) = 0 := by
   classical
   refine PMF.pure_apply_of_ne _ _ fun same => ?_
-  obtain ⟨action, encoded, _⟩ := site.covered choice supported
+  obtain ⟨action, encoded, values⟩ := site.covered choice supported
+  obtain ⟨_, successful, _⟩ := values who payload outputEq codeEq site.node
   obtain ⟨material, transmits, _⟩ := slotResponse_transmission setup runtime leaks who past view
     event
-    site.node slot choice action encoded
+    site.node slot choice action encoded (by rw [successful]; rfl)
   have values := congrArg Subtype.val same
   have offeredValue : (slotChoiceOf setup runtime leaks bounds initial horizon scheduler who past
     view

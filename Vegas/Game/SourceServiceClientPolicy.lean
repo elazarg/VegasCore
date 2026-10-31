@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.SourceServiceTurnSettlement
+import Vegas.Game.SourceServiceTurnPolicy
+import Vegas.Source.DisclosureBehavioral
 import Vegas.Game.SourceServiceRetainedPolicy
 import Interaction.ReactiveRecovery
 import Interaction.ReactiveRestrictedContinuation
@@ -39,23 +41,6 @@ open Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
-
-section Configured
-
-variable (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
-  (deadline : (serviceGraph setup mode).EventId → Nat)
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-
-/-- **The client policy.** The turn-counted policy, completed by silence at
-every history where the player's own recorded responses do not all follow
-it. -/
-def serviceClientPolicy (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
-    (who : Player) : (serviceApplication setup mode deadline leaks).Policy :=
-  (serviceTurnPolicy setup mode deadline leaks bound turns timing profile who).recover
-    (serviceApplication setup mode deadline leaks).silentPolicy
-
-end Configured
 
 variable (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
@@ -152,29 +137,35 @@ theorem sourceServiceClients_clientPolicy_settlement_lawError
     (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
     (timing : TurnTiming setup turns mode) (original : BehavioralProfile setup.program)
     (terminal : FirstTurnSourceLaw setup mode deadline leaks horizon scheduler bound turns
-      (sourceServiceClientProfile setup original))
+      (normalizeDisclosureProfile setup.program original))
     (menu : (serviceApplication setup mode deadline leaks).ResponseMenu)
     (covered : ∀ who, menu.Admissible (serviceInitialLaw setup mode) horizon scheduler who
       (serviceClientPolicy setup mode deadline leaks bound turns timing
-        (sourceServiceClientProfile setup original) who))
+        (normalizeDisclosureProfile setup.program original) who))
     (sample : List (SettledEvidence setup mode) → PMF (List (SettledEvidence setup mode)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
-    (utility : State L setup.program.terminalCtx → Player → ℝ) (deposit : Player → ℝ) :
-    let settle := TerminalAudit.settlement (serviceBaseUtility setup mode deadline leaks utility)
+    (utility : State L setup.program.terminalCtx × DefaultHistory Player → Player → ℝ)
+    (deposit : Player → ℝ) :
+    let settle := TerminalAudit.settlement
+      (serviceBaseUtility setup mode deadline leaks
+        (fun final => utility (final.state, final.defaults)))
       ((serviceRuntime setup mode deadline).serviceAuditObservation leaks)
       (serviceSourceAudit setup mode deadline leaks sample) deposit
     PMF.WithinTV timing.deferralError
       (((menu.information (serviceInitialLaw setup mode) horizon scheduler).runBehavioral
         (fun who => menu.restrictPolicy (serviceInitialLaw setup mode) horizon scheduler who
           (serviceClientPolicy setup mode deadline leaks bound turns timing
-            (sourceServiceClientProfile setup original) who))
+            (normalizeDisclosureProfile setup.program original) who))
         (2 * horizon + 1)).bind (fun final =>
-          (settle final.state).map fun payoffs => (serviceSourceReadout setup mode deadline leaks
-            final.state, payoffs)))
-      ((setup.run original).map (fun state => (some state, utility state))) := by
+          (settle final.state).map fun payoffs =>
+            ((serviceSourceReadout setup mode deadline leaks final.state).map
+              (fun terminal => (terminal.state, terminal.defaults)), payoffs)))
+      ((setup.run original).map
+        (fun final =>
+          (some (final.state, final.defaults), utility (final.state, final.defaults)))) := by
   intro settle
   let app := serviceApplication setup mode deadline leaks
-  let clients := sourceServiceClientProfile setup original
+  let clients := normalizeDisclosureProfile setup.program original
   have physical := menu.run_restrict_eq_finish (serviceInitialLaw setup mode) horizon scheduler
     (serviceClientPolicy setup mode deadline leaks bound turns timing clients) covered
     (2 * horizon + 1) (menu.protocol (serviceInitialLaw setup mode) horizon scheduler).initHistory
@@ -209,9 +200,22 @@ theorem sourceServiceClients_clientPolicy_settlement_lawError
     unfold ReactiveApplication.roundsFrom
     simp only [PMF.bind_bind, Function.comp_def]
     rfl
-  rw [native, sourceServiceClientPolicy_roundsFrom, ← sourceServiceClientProfile_run original]
-  exact sourceServiceTurnPolicy_execution_settlement_lawError contract timely timing
-    clients terminal sample authentic utility deposit
+  have compared :=
+    (sourceServiceTurnPolicy_execution_settlement_lawError contract timely timing
+      clients terminal sample authentic
+      (fun final => utility (final.state, final.defaults)) deposit).map
+        (fun outcome => (outcome.1.map (fun final => (final.state, final.defaults)), outcome.2))
+  rw [← sourceServiceClientPolicy_roundsFrom] at compared
+  have observedNative := congrArg
+    (PMF.map (fun outcome =>
+      (outcome.1.map (fun final => (final.state, final.defaults)), outcome.2))) native
+  have normalizedLaw := congrArg
+    (PMF.map (fun outcome => (some outcome, utility outcome)))
+    (setup.run_normalizeDisclosures_eq original)
+  simp only [PMF.map_bind, PMF.map_comp, Function.comp_def, Option.map_some]
+    at compared observedNative normalizedLaw
+  rw [← observedNative, normalizedLaw] at compared
+  exact compared
 
 variable {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
   {deadline : (serviceGraph setup mode).EventId → Nat}

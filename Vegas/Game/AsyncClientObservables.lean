@@ -71,7 +71,7 @@ theorem clientSettlementLaw_withinTV
     service.timely timing
     (service.setup.decodeBehavioralProfile admission source)
     (firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely
-      turns _ (sourceServiceClientProfile_effective _)) service.rawMenu
+      turns _ (fun who => BehavioralPolicy.normalizeDisclosures_authentic _ _)) service.rawMenu
     (service.rawMenu_admits admission timing source) sample authentic utility deposit
   convert close.map (Function.uncurry (TerminalObservation.read service.setup)) using 1 <;>
     simp only [clientSettlementLaw, sourceSettlementLaw, PMF.map_bind, PMF.map_comp,

@@ -58,34 +58,6 @@ theorem BehavioralPolicy.admitted_forfeiture {who : Player} {Γ : SourceCtx Play
 
 end SourceProgram
 
-section Clients
-
-variable {setup : Setup (Player := Player) (L := L)}
-
-/-- The turn-counted clients of a source profile follow the profile with
-ineffective disclosure intentions replaced by withholding. -/
-abbrev sourceServiceClientProfile (setup : Setup (Player := Player) (L := L))
-    (original : BehavioralProfile setup.program) : BehavioralProfile setup.program :=
-  normalizeDisclosureProfile setup.program [] (Revelations.initial setup.context) original
-
-/-- The clients' profile has only effective disclosures. -/
-theorem sourceServiceClientProfile_effective (original : BehavioralProfile setup.program)
-    (who : Player) :
-    (sourceServiceClientProfile setup original who).EffectiveDisclosures setup.program []
-      (Revelations.initial setup.context) :=
-  (original who).normalizeDisclosureFrom_effective setup.program []
-    (Revelations.initial setup.context) (fun view => PMF.pure view.2)
-
-/-- The clients' profile has the original profile's source law. -/
-theorem sourceServiceClientProfile_run [Finite Player]
-    (original : BehavioralProfile setup.program) :
-    setup.run (sourceServiceClientProfile setup original) = setup.run original := by
-  unfold Setup.run
-  apply bind_congr_on_support _
-  intro initial _
-  exact normalizeDisclosureProfile_runFrom setup.program original (Config.initial initial)
-
-end Clients
 
 section Phases
 
@@ -237,8 +209,7 @@ theorem asyncDeviation_initialized_factorization
     (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound) (turns : Nat)
     (profile : BehavioralProfile setup.program)
     (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)
-    (effective : ∀ player, (profile player).EffectiveDisclosures setup.program []
-      (Revelations.initial setup.context))
+    (effective : ∀ player, (profile player).AuthenticDisclosures setup.program)
     {ends : List Nat} (phases : PhaseEnds setup.program 0 ends) :
     let players := deviatedTurnProfile bound turns (firstTurnTiming setup turns mode) profile who
       deviation
@@ -335,7 +306,9 @@ barrier-ordered graph, against the first-turn clients of a source profile,
 under a scheduler satisfying the asynchronous contract with timely delays,
 every native policy of one player has exactly the typed terminal-state law of
 the source run in which that player follows one source behavioral policy,
-possibly binding failure, and every other player keeps its source policy. -/
+possibly binding failure, and every other player keeps its source policy. The
+reader retains all typed cells and the complete public default record; private
+intentions after an unopenable disclosure are outside this observation. -/
 theorem asyncDeviation_readout_law [Finite Player]
     (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
     {deadline : (serviceGraph setup mode).EventId → Nat}
@@ -351,20 +324,23 @@ theorem asyncDeviation_readout_law [Finite Player]
     ∃ policy : BehavioralPolicy who setup.program,
       ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
         scheduler (deviatedTurnProfile bound turns (firstTurnTiming setup turns mode)
-          (sourceServiceClientProfile setup original) who deviation) horizon).map
-          (fun execution => serviceSourceReadout setup mode deadline leaks
-            ((serviceApplication setup mode deadline leaks).finished execution)) =
-        (setup.run (Function.update original who policy)).map some := by
+          (normalizeDisclosureProfile setup.program original) who deviation) horizon).map
+          (fun execution => (serviceSourceReadout setup mode deadline leaks
+            ((serviceApplication setup mode deadline leaks).finished execution)).map
+              (fun final => (final.state, final.defaults))) =
+        (setup.run (Function.update original who policy)).map
+          (fun final => some (final.state, final.defaults)) := by
   classical
   have := Fintype.ofFinite Player
   let app := serviceApplication setup mode deadline leaks
-  let normalized := sourceServiceClientProfile setup original
+  let normalized := normalizeDisclosureProfile setup.program original
   let players := deviatedTurnProfile bound turns (firstTurnTiming setup turns mode) normalized
     who deviation
   obtain ⟨ends, phases⟩ := PhaseEnds.exists (eventCount setup.program) setup.program rfl 0
   obtain ⟨policy, noise, joint⟩ := asyncDeviation_initialized_factorization setup leaks ordered
     contract timely turns normalized who deviation
-    (fun player => sourceServiceClientProfile_effective original player) phases
+    (fun player => BehavioralPolicy.normalizeDisclosures_authentic setup.program (original player))
+    phases
   refine ⟨policy, ?_⟩
   -- The run to the horizon passes through every phase and then keeps the readout.
   have physical : (app.roundsFrom (serviceInitialLaw setup mode) scheduler players horizon).map
@@ -413,7 +389,6 @@ theorem asyncDeviation_readout_law [Finite Player]
           serviceSourceReadout setup mode deadline leaks (some ⟨0, none, final⟩)
         simp only [serviceSourceReadout, Option.bind_some, same]), pmf_map_fun_const]
     rfl
-  rw [physical]
   have projected := congrArg (PMF.map (fun pair => setup.protocolReadout pair.1)) joint
   simp only [PMF.map_comp, Function.comp_def, PMF.map_bind, pmf_map_fun_const,
     pmf_bind_pure_eq_map] at projected
@@ -429,14 +404,13 @@ theorem asyncDeviation_readout_law [Finite Player]
   rw [InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom] at sourceLaw
   have encodedReadout := congrArg (PMF.map setup.protocolReadout) encodedState
   simp only [PMF.map_comp, Function.comp_def, PMF.map_bind] at encodedReadout
-  have terminal := projected.trans (encodedReadout.symm.trans (by
-    simpa only [eventCount_eq_instructionCount, InformationModel.runBehavioral] using sourceLaw))
-  rw [setup.run_update_normalizeDisclosures_eq original who policy] at terminal
-  have readoutEq (final : app.Execution) :
-      serviceSourceReadout setup mode deadline leaks (app.finished final) =
-        decodeState? (terminalRefs setup.program) final.application.config.store :=
-    serviceSourceReadout_eq_decode setup leaks ⟨0, none, final⟩
-  simp only [readoutEq, PMF.map_bind]
-  exact terminal
+  have terminal := physical.trans (projected.trans (encodedReadout.symm.trans (by
+    simpa only [eventCount_eq_instructionCount, InformationModel.runBehavioral] using sourceLaw)))
+  have observed := congrArg
+    (PMF.map (Option.map (fun final => (final.state, final.defaults)))) terminal
+  have normalizedLaw := congrArg (PMF.map some)
+    (setup.run_update_normalizeDisclosures_eq original who policy)
+  simp only [PMF.map_comp, Function.comp_def, Option.map_some] at observed normalizedLaw
+  exact observed.trans normalizedLaw
 
 end Vegas

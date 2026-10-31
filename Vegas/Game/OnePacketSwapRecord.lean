@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketSwapSymmetry
+import Vegas.Game.OnePacketFactorization
 import Interaction.ReactiveRecallEntries
+import Interaction.ReactiveRecallInvariant
 
 /-! # Hidden swaps keep operational records and the observer's information
 
@@ -115,19 +117,20 @@ variable [Fintype Player] {bounds : MessageBounds (graph setup)}
 theorem operationalRecord_mapTrace (swap : HiddenSwap (graph setup))
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
-    (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values) :
+    (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
+    (failures : ∀ event, swap.values.ExpiryFixed event) :
     ∀ {state} (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
       (guarded : SwapGuardState setup runtime swap allowed state),
     operationalRecord setup runtime leaks bounds horizon scheduler
         ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
           swap initialClosed
-          bounded).mapTrace trace guarded) =
+          bounded failures).mapTrace trace guarded) =
       operationalRecord setup runtime leaks bounds horizon scheduler trace
   | _, .start, _ => rfl
   | _, .extend (target := target) prior joint isLegal reached, guarded => by
       rw [StateSymmetry.mapTrace_extend]
       simp only [operationalRecord]
-      rw [operationalRecord_mapTrace swap initialClosed bounded prior]
+      rw [operationalRecord_mapTrace swap initialClosed bounded failures prior]
       congr 1
       exact operationalState_swap (runtime := runtime) swap target guarded
 
@@ -245,10 +248,10 @@ theorem recall_swap_of_fixes (swap : HiddenSwap (graph setup)) {who : Player}
 /-- **The image of a history leaves a fixed player in the same information
 state** at each of its decisions. -/
 theorem infoOf_mapTrace_of_fixes (swap : HiddenSwap (graph setup))
-    [InitialAcceptedCompleted (runtime := runtime) (leaks := leaks) initial]
     (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
       state.swap swap ∈ initial.support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
+    (failures : ∀ event, swap.values.ExpiryFixed event)
     {who : Player} (fixes : swap.Fixes who)
     (history : ((bounds.onePacketMenu runtime leaks).protocol initial horizon
       scheduler).History) (guarded : SwapGuardState setup runtime swap allowed history.state)
@@ -260,7 +263,7 @@ theorem infoOf_mapTrace_of_fixes (swap : HiddenSwap (graph setup))
       scheduler).infoOf who
       ((onePacketSwapSymmetry (runtime := runtime) bounds initial horizon scheduler swap
         initialClosed
-        bounded).mapTrace history.trace guarded) = some (past, observed) := by
+        bounded failures).mapTrace history.trace guarded) = some (past, observed) := by
   have fixedRecall := recall_swap_of_fixes (runtime := runtime) swap fixes history decision
   have info : ((bounds.onePacketMenu runtime leaks).information initial horizon
       scheduler).infoOf who history.trace = (application setup runtime leaks).observe who
@@ -269,7 +272,7 @@ theorem infoOf_mapTrace_of_fixes (swap : HiddenSwap (graph setup))
   have mappedInfo : ((bounds.onePacketMenu runtime leaks).information initial horizon
       scheduler).infoOf who ((onePacketSwapSymmetry (runtime := runtime) bounds initial horizon
         scheduler swap
-        initialClosed bounded).mapTrace history.trace guarded) =
+        initialClosed bounded failures).mapTrace history.trace guarded) =
       (application setup runtime leaks).observe who (swap.protocolState
         history.state) :=
     (bounds.onePacketMenu runtime leaks).info initial horizon scheduler who _

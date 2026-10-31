@@ -9,11 +9,11 @@ A player's view of a program point holds its observation of the cells and its
 own action history. Debts read only the former: two points at the same
 position whose current cells a player observes alike
 (`Vegas.SourceProgram.ProtocolState.ObservedAlike`) agree on whether that player
-owes a failure (`Vegas.SourceProgram.ProtocolState.owesFailure_iff_of_observedAlike`)
-or is excluded (`Vegas.SourceProgram.ProtocolState.excluded_iff_of_observedAlike`),
+owes a failure (`Vegas.SourceProgram.ProtocolState.owesFailure_iff_of_observedAlike`),
 once both carry the registry and publication status of their program point, and
 on every player's failed reveals, which are publications
-(`Vegas.SourceProgram.ProtocolState.revealFailed_iff_of_observedAlike`).
+(`Vegas.SourceProgram.ProtocolState.revealFailed_iff_of_observedAlike`). Public
+exclusion is determined by the default record in the full source view.
 
 In a program with distinct names, points at the same position finding the same
 values in every cell a player sees are observed alike
@@ -248,48 +248,6 @@ theorem owesFailure_iff_of_observedAlike (who : Player) {Γ : SourceCtx Player L
     OwesFailure who program left ↔ OwesFailure who program right :=
   or_congr (indebted_iff_of_observedAlike who program registry revelations left right leftStatic
     rightStatic same) (failedBinding_iff_of_observedAlike who program left right same)
-
-/-- **Exclusion reads only observed cells.** -/
-theorem excluded_iff_of_observedAlike (who : Player) :
-    {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → (left right : ProtocolState program) →
-    ObservedAlike who program left right →
-      (Excluded who program left ↔ Excluded who program right)
-  | _, _, .ret _, _, _, same => failedCommitment_iff_of_sourceObserve_eq same
-  | _, _, .sample _ _ _ next, left, right, same => by
-      cases left with
-      | inl first =>
-          cases right with
-          | inl second => exact failedCommitment_iff_of_sourceObserve_eq same
-          | inr _ => exact same.elim
-      | inr first =>
-          cases right with
-          | inl _ => exact same.elim
-          | inr second => exact excluded_iff_of_observedAlike who next first second same
-  | _, _, .commit _ _ _ _ next, left, right, same => by
-      cases left with
-      | inl first =>
-          cases right with
-          | inl second => exact failedCommitment_iff_of_sourceObserve_eq same
-          | inr _ => exact same.elim
-      | inr first =>
-          cases right with
-          | inl _ => exact same.elim
-          | inr second => exact excluded_iff_of_observedAlike who next first second same
-  | _, _, .reveal _ _ _ _ _ _ next, left, right, same => by
-      cases left with
-      | inl first =>
-          cases right with
-          | inl second => exact failedCommitment_iff_of_sourceObserve_eq same
-          | inr _ => exact same.elim
-      | inr first =>
-          cases right with
-          | inl _ => exact same.elim
-          | inr second =>
-              have published := sourceObserve_publication_eq
-                (sourceObserve_base_eq_of_observedAlike who next first second same) .here
-              change (_ ∧ _ = _) ∨ _ ↔ (_ ∧ _ = _) ∨ _
-              rw [published, excluded_iff_of_observedAlike who next first second same]
 
 /-- **Failed reveals read only observed cells**: they are publications, so any
 player `observer` observing two points alike in their cells sees them alike. -/
