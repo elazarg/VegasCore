@@ -1080,6 +1080,22 @@ theorem handle_commitment_tables (runtime : EventGraphRuntime graph)
   rw [nextEq]
   exact ⟨rfl, rfl, handleOwner.trans sender.symm⟩
 
+/-- An accepted commitment completes its ready event and installs its handle there. -/
+theorem handle_commitment_accepted (runtime : EventGraphRuntime graph)
+    (state next : State graph) (id : MessageId Player) (event : graph.EventId)
+    (candidate : Handle graph)
+    (accepted : handle runtime state ⟨id, .commitment event candidate⟩ = some next) :
+    state.config.cut.Ready event ∧ state.accepted (.inr event) = none ∧
+      next.accepted = Function.update state.accepted (.inr event) (some candidate) ∧
+      event ∈ next.config.cut.completed := by
+  obtain ⟨_, ready, _, owner, payload, outputEq, codeEq, _, _, _, vacant, _, nextEq⟩ :=
+    (handle_commitment_iff runtime state next id event candidate).mp accepted
+  refine ⟨ready, vacant, (handle_commitment_tables runtime state next id event candidate
+    accepted).2.1, ?_⟩
+  rw [nextEq]
+  change event ∈ (state.config.cut.complete event ready).completed
+  exact (EventOrder.Cut.mem_complete _ _ ready _).mpr (Or.inl rfl)
+
 /-- Resolution traffic never changes accepted binding handles or candidate meanings. -/
 theorem handle_resolution_tables (runtime : EventGraphRuntime graph)
     (state next : State graph) (message : Message Player (Payload graph))

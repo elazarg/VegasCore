@@ -26,35 +26,6 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
   {runtime : EventGraphRuntime (graph setup)}
 
-/-- An accepted commitment completes its ready event, which had no accepted
-handle, and installs its handle there. -/
-theorem handle_commitment_accepted (state next : EventGraphRuntime.State (graph setup))
-    (id : MessageId Player) (event : (graph setup).EventId) (candidate : Handle (graph setup))
-    (accepted : handle runtime state ⟨id, .commitment event candidate⟩ = some next) :
-    state.config.cut.Ready event ∧ state.accepted (.inr event) = none ∧
-      next.accepted = Function.update state.accepted (.inr event) (some candidate) ∧
-      event ∈ next.config.cut.completed := by
-  obtain ⟨_, ready, owner, payload, outputEq, codeEq, _, configEq⟩ :=
-    handle_commitment_action (runtime := runtime) state next id event candidate accepted
-  have tables := handle_commitment_tables runtime state next id event candidate accepted
-  refine ⟨ready, ?_, tables.2.1, ?_⟩
-  · by_cases timely : state.WithinDeadline runtime event
-    · cases view : nodeView (graph setup) event with
-      | resolve | sample => simp [handle, ready, timely, view] at accepted
-      | bind owner' payload' outputEq' codeEq' =>
-          simp only [handle, dite_eq_left ready, dite_eq_left timely, view] at accepted
-          split at accepted
-          · split at accepted
-            · split at accepted
-              · rename_i vacant
-                exact vacant
-              · cases accepted
-            · cases accepted
-          · cases accepted
-    · simp [handle, ready, timely] at accepted
-  · rw [configEq]
-    exact (EventOrder.Cut.mem_complete _ _ ready _).mpr (Or.inl rfl)
-
 variable (setup runtime) in
 /-- The accepted handle of every event output is kept, except at an event that
 was ready with none and has completed. -/
@@ -87,7 +58,7 @@ theorem acceptedKept_step :
     | commitment named candidate =>
         rw [packet] at call
         obtain ⟨ready, vacant, table, completed⟩ :=
-          handle_commitment_accepted (runtime := runtime) state next message.id named candidate call
+          handle_commitment_accepted runtime state next message.id named candidate call
         by_cases same : event = named
         · subst same
           exact Or.inr ⟨ready, vacant, completed⟩

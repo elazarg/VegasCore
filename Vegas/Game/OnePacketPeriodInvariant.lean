@@ -1,8 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCompletionContent
+import Vegas.Game.OnePacketCompletion
 import Vegas.Game.OnePacketSilence
-import Vegas.Game.OnePacketReplayInputs
+import Vegas.Game.OnePacketReplayWeight
 import Vegas.Game.OnePacketForcedPrefix
 
 /-! # Unsettled content along forced histories
@@ -391,7 +391,7 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                       · change (current.execution.respond (application setup runtime leaks) actor
                           ⟨some material⟩).application.config.cut.Ready event' at ready'
                         rw [configEq] at ready'
-                        have sameEvent := ready_unique (setup := setup) _ ready' ready
+                        have sameEvent := setup.eventGraph.sequentialize_ready_unique _ ready' ready
                         subst sameEvent
                         have sameSender : sender' = actor :=
                           Option.some.inj (acts'.symm.trans acts)
@@ -448,56 +448,71 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
               have inputsEq := transition_idle_inputs (runtime := runtime) (initialLaw setup)
                 horizon scheduler current
                 acting joint realized
-              rcases transition_configStep (initialLaw setup) horizon
-                scheduler current control
-                  joint realized with same | ⟨event, ready, action, member⟩
-              · have dropped : control.execution.application.config.history.drop
+              have path := reactive_protocol_graph_steps runtime leaks (initialLaw setup)
+                horizon scheduler current control joint realized
+              rcases path.cases_head with same | ⟨middle, moved, rest⟩
+              · have same := same.symm
+                have dropped : control.execution.application.config.history.drop
                     current.execution.application.config.history.length = [] := by
                   rw [same, List.drop_length]
                 have stepEq : unsettledStep setup runtime leaks assessment who
-                    (unsettledContent setup runtime leaks bounds horizon scheduler assessment who
-                      prior)
+                    (unsettledContent setup runtime leaks bounds horizon scheduler assessment
+                      who prior)
                     (some current) joint (some control) =
                     unsettledContent setup runtime leaks bounds horizon scheduler assessment who
                       prior := by
-                  simp only [unsettledStep, acting, dropped]
+                  simp only [unsettledStep, acting, dropped, List.any_nil, Bool.false_eq_true,
+                    ↓reduceIte]
                 change PeriodInvariant setup runtime assessment who _ (unsettledStep setup runtime
-                  leaks
-                  assessment who _ (some current) joint _)
+                  leaks assessment who _ (some current) joint _)
                 rw [stepEq]
                 exact earlier.transport inputsEq same keep
-              · have dropped : control.execution.application.config.history.drop
-                    current.execution.application.config.history.length = [⟨event, action⟩] := by
-                  rw [EventGraph.Config.step_history _ event ready action _ member,
-                    List.drop_left]
+              · obtain ⟨event, ready, action, member⟩ := moved
+                obtain ⟨value, _, historyEq⟩ :=
+                  current.execution.application.config.step_completion event ready action
+                    middle member
+                obtain ⟨suffix, kept⟩ := EventGraph.Config.Step.path_history_prefix rest
+                have dropped : control.execution.application.config.history.drop
+                    current.execution.application.config.history.length =
+                    EventGraph.Completion.fromDecision event
+                      (current.execution.application.config.actualDecision event action) value ::
+                        suffix := by
+                  rw [← kept, historyEq, List.append_assoc, List.drop_left]
+                  rfl
                 have one : unsettledStep setup runtime leaks assessment who
                     (unsettledContent setup runtime leaks bounds horizon scheduler assessment who
                       prior)
                     (some current) joint (some control) = 1 := by
-                  simp only [unsettledStep, acting, dropped]
+                  simp only [unsettledStep, acting, dropped, List.any_cons]
                   cases owner : (graph setup).actor? event with
-                  | some _ => rfl
+                  | some sender => simp [EventGraph.Completion.fromDecision, owner]
                   | none =>
-                      simp only [Option.isSome_none, Bool.false_eq_true, ↓reduceIte]
-                      refine earlier.quiet fun other otherReady sender acts
-                        => ?_
-                      have sameEvent := ready_unique (setup := setup) _ otherReady ready
-                      subst sameEvent
-                      rw [owner] at acts
-                      cases acts
+                      have quiet := earlier.quiet fun other otherReady sender acts => by
+                        have sameEvent := setup.eventGraph.sequentialize_ready_unique _
+                          otherReady ready
+                        subst sameEvent
+                        rw [owner] at acts
+                        cases acts
+                      simp [EventGraph.Completion.fromDecision, owner, quiet]
                 change PeriodInvariant setup runtime assessment who _ (unsettledStep setup runtime
-                  leaks
-                  assessment who _ (some current) joint _)
+                  leaks assessment who _ (some current) joint _)
                 rw [one]
+                have completedMono : middle.cut.completed ⊆
+                    control.execution.application.config.cut.completed := by
+                  intro event completed
+                  apply (control.execution.application.config.history_exact event).mp
+                  rw [← kept, List.map_append]
+                  exact List.mem_append_left _ ((middle.history_exact event).mpr completed)
                 have completedNow : ∀ x, x ∈ current.execution.application.config.cut.completed ∨
                     current.execution.application.config.cut.Ready x →
                     x ∈ control.execution.application.config.cut.completed := by
                   intro x status
+                  apply completedMono
                   rw [current.execution.application.config.step_cut event ready action _ member,
                     EventOrder.Cut.mem_complete]
                   rcases status with done | otherReady
                   · exact Or.inr done
-                  · exact Or.inl (ready_unique (setup := setup) _ otherReady ready)
+                  · exact Or.inl (setup.eventGraph.sequentialize_ready_unique _ otherReady ready)
                 have allCompleted : ∀ message ∈ control.execution.network.inputs,
                     message.sender ≠ who → ∀ x, message.payload.call.event? (graph setup) =
                       some x → x ∈ control.execution.application.config.cut.completed :=
@@ -511,5 +526,6 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                   fun event' ready' sender' acts' other' => Or.inl ⟨rfl,
                     fun message member sent named => ready'.1 (allCompleted message member
                       (sent ▸ other') event' named)⟩, fun _ => rfl⟩
+
 
 end Vegas

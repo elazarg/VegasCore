@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketIntendedProjection
+import Vegas.Game.OnePacketFactorization
+import Vegas.Pending.ReactiveStateInvariant
 import GameTheoryExtensions.Analysis.Protocol.SingleMoverReach
 
 /-! # Source weights against the counterfactual reach of the intended replay
@@ -61,10 +63,10 @@ def unsettledStep (assessment : setup.intendedModel.BehavioralAssessment) (who :
             pending * contentFactor setup runtime leaks assessment actor before.execution
               after.execution ((joint actor).getD ⟨none⟩)
       | none =>
-          match after.execution.application.config.history.drop
-              before.execution.application.config.history.length with
-          | [⟨event, _⟩] => if ((graph setup).actor? event).isSome then 1 else pending
-          | _ => pending
+          if (after.execution.application.config.history.drop
+              before.execution.application.config.history.length).any
+                (fun completion => ((graph setup).actor? completion.event).isSome) then
+            1 else pending
   | _, _, _ => pending
 
 /-- **The unsettled content** of a native history for an observer: the content
@@ -108,6 +110,32 @@ def ReplayMatches (assessment : setup.intendedModel.BehavioralAssessment) (who :
             joint after
 
 variable {setup runtime leaks bounds horizon scheduler}
+
+/-- A history of the one-packet game never returns to the state before
+initialization. -/
+theorem trace_eq_start_of_none :
+    ∀ (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace none),
+      trace = .start
+  | .start => rfl
+  | .extend (source := before) _ joint _ realized => by
+      exfalso
+      change none ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+        scheduler
+        before joint).support at realized
+      cases before with
+      | none =>
+          obtain ⟨_, _, impossible⟩ := PMF.support_map .. ▸ realized
+          cases impossible
+      | some control =>
+          cases acting : control.actor with
+          | none =>
+              obtain ⟨_, impossible, _⟩ := transition_environment (runtime := runtime) control
+                acting joint realized
+              cases impossible
+          | some actor =>
+              rw [transition_respond (runtime := runtime) control acting joint,
+                PMF.mem_support_pure_iff] at realized
+              cases realized
 
 /-- **Source weights are counterfactual intended reach up to unsettled content.**
 Along a native history whose intended replay exists and every step of which
@@ -157,16 +185,7 @@ theorem replayStepMatches_respond (assessment : setup.intendedModel.BehavioralAs
   intro next advanced
   have kept := (runtime.reactive_respond_application leaks control.execution actor
     ((joint actor).getD ⟨none⟩)).1
-  change (match (control.execution.respond (application setup runtime leaks) actor
-      ((joint actor).getD ⟨none⟩)).application.config.history.drop
-        control.execution.application.config.history.length with
-    | [] => some history
-    | [⟨event, action⟩] => extendIntended? setup history
-        (decodeEventAction setup.program event action)
-        (decodedPoint setup (control.execution.respond (application setup runtime leaks) actor
-          ((joint actor).getD ⟨none⟩)).application.config)
-    | _ => none) = some next at advanced
-  rw [kept, List.drop_length] at advanced
+  simp only [advanceIntended?, kept, List.drop_length] at advanced
   cases advanced
   simp only [unsettledStep, transitionSourceFactor, acting]
   split_ifs <;> ring
@@ -184,17 +203,10 @@ theorem replayStepMatches_unchanged (assessment : setup.intendedModel.Behavioral
       before.execution.application.config.history.length = [] := by
     rw [kept, List.drop_length]
   intro next advanced
-  change (match after.execution.application.config.history.drop
-      before.execution.application.config.history.length with
-    | [] => some history
-    | [⟨event, action⟩] => extendIntended? setup history
-        (decodeEventAction setup.program event action)
-        (decodedPoint setup after.execution.application.config)
-    | _ => none) = some next at advanced
-  rw [dropped] at advanced
+  simp only [advanceIntended?, dropped] at advanced
   cases advanced
-  simp only [unsettledStep, transitionSourceFactor, idle, completionMass, dropped]
-  ring
+  simp only [unsettledStep, transitionSourceFactor, idle, completionMass, dropped,
+    List.any_nil, Bool.false_eq_true, ↓reduceIte, mul_one]
 
 omit [Fintype Player] in
 /-- The intended history an extension by the acting joint reaches. -/
@@ -251,35 +263,25 @@ theorem replayStepMatches_completion (assessment : setup.intendedModel.Behaviora
     (who : Player) (history : setup.intendedProtocol.History) (pending : ℝ)
     (before after : (application setup runtime leaks).Control) (idle : before.actor = none)
     (joint : Player → Option (application setup runtime leaks).Action)
-    {event : (graph setup).EventId} (ready : before.execution.application.config.cut.Ready event)
-    {action : (graph setup).Action event}
-    (member : after.execution.application.config ∈
-      (before.execution.application.config.step event ready action).support)
+    (completion : (graph setup).Completion)
+    (dropped : after.execution.application.config.history.drop
+      before.execution.application.config.history.length = [completion])
     (close : ∀ legal : setup.intendedProtocol.Legal history.state
-        (actingJoint setup history.state (decodeEventAction setup.program event action)),
+        (actingJoint setup history.state
+          (completion.decision.bind (decodeEventAction setup.program completion.event))),
       setup.intendedModel.counterfactualStepProb assessment.strategy who history.trace
           ⟨_, legal⟩ (decodedPoint setup after.execution.application.config) *
-        (if ((graph setup).actor? event).isSome then 1 else pending) =
+        (if ((graph setup).actor? completion.event).isSome then 1 else pending) =
       completionMass setup before.execution.application after.execution.application *
         pending) :
     ReplayStepMatches setup runtime leaks assessment who history pending (some before) joint
       (some after) := by
-  have dropped : after.execution.application.config.history.drop
-      before.execution.application.config.history.length = [⟨event, action⟩] := by
-    rw [EventGraph.Config.step_history _ event ready action _ member, List.drop_left]
   intro next advanced
-  change (match after.execution.application.config.history.drop
-      before.execution.application.config.history.length with
-    | [] => some history
-    | [⟨event, action⟩] => extendIntended? setup history
-        (decodeEventAction setup.program event action)
-        (decodedPoint setup after.execution.application.config)
-    | _ => none) = some next at advanced
-  rw [dropped] at advanced
+  simp only [advanceIntended?, dropped] at advanced
   obtain ⟨legal, reached, rfl⟩ := extendIntended?_eq_some advanced
   have stepEq := close legal
-  simp only [unsettledStep, transitionSourceFactor, idle, dropped,
-    counterfactualReachProbability]
+  simp only [unsettledStep, transitionSourceFactor, idle, dropped, List.any_cons,
+    List.any_nil, Bool.or_false, counterfactualReachProbability]
   rw [mul_assoc, stepEq]
   ring
 

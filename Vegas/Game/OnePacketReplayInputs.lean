@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketActorCompletion
+import Vegas.Game.SourceServiceFacts
+import Vegas.Game.OnePacketForcedBeliefs
 
 /-! # Source weights of forced beliefs from the intended replay
 
@@ -72,45 +74,19 @@ def ActorCompletionsMatch (assessment : setup.intendedModel.BehavioralAssessment
           history →
           ∀ (current next : (application setup runtime leaks).Control), before = some current →
             after = some next → current.actor = none →
-            ∀ (event : (graph setup).EventId)
-              (ready : current.execution.application.config.cut.Ready event)
-              (action : (graph setup).Action event),
-              next.execution.application.config ∈
-                (current.execution.application.config.step event ready action).support →
-              ∀ actor, (graph setup).actor? event = some actor →
+            ∀ (completion : (graph setup).Completion)
+              (_ready : current.execution.application.config.cut.Ready completion.event),
+              next.execution.application.config.history.drop
+                current.execution.application.config.history.length = [completion] →
+              ∀ actor, (graph setup).actor? completion.event = some actor →
               ∀ legal : setup.intendedProtocol.Legal history.state
-                  (actingJoint setup history.state (decodeEventAction setup.program event action)),
+                  (actingJoint setup history.state
+                    (completion.decision.bind (decodeEventAction setup.program completion.event))),
                 setup.intendedModel.opponentsStepProb assessment.strategy who history.trace
                   ⟨_, legal⟩ =
                 unsettledContent setup runtime leaks bounds horizon scheduler assessment who prior
 
 variable {setup runtime leaks bounds horizon scheduler}
-
-/-- A history of the one-packet game never returns to the state before
-initialization. -/
-theorem trace_eq_start_of_none :
-    ∀ (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace none),
-      trace = .start
-  | .start => rfl
-  | .extend (source := before) _ joint _ realized => by
-      exfalso
-      change none ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
-        scheduler
-        before joint).support at realized
-      cases before with
-      | none =>
-          obtain ⟨_, _, impossible⟩ := PMF.support_map .. ▸ realized
-          cases impossible
-      | some control =>
-          cases acting : control.actor with
-          | none =>
-              obtain ⟨_, impossible, _⟩ := transition_environment (runtime := runtime) control
-                acting joint realized
-              cases impossible
-          | some actor =>
-              rw [transition_respond (runtime := runtime) control acting joint,
-                PMF.mem_support_pure_iff] at realized
-              cases realized
 
 /-- **Matching along a history.** If every actor completion along a native
 history matches, so does every step. -/
@@ -149,24 +125,43 @@ theorem replayMatches_of_actorCompletions
                   some (residual.lift (ProtocolState.entry residual.program residual.source)) := by
                 rw [intendedHistory?_state (runtime := runtime) prior replayed]
                 exact decodedPoint_eq residual
-              rcases transition_configStep (initialLaw setup) horizon
-                scheduler control next joint
-                  realized with same | ⟨event, ready, action, member⟩
-              · exact replayStepMatches_unchanged (runtime := runtime) assessment who history _
-                  control next acting joint same
-              · cases owner : (graph setup).actor? event with
-                | none =>
-                    exact replayStepMatches_chance (runtime := runtime) assessment who history _
-                      control next acting
-                      joint residual current ready member owner
-                | some mover =>
-                    exact replayStepMatches_actor (runtime := runtime) assessment who history _
-                      control next acting
-                      joint residual current ready member owner
-                      (actorMatches history replayed control next rfl rfl acting event ready
-                        action member mover owner)
+              have path := runtime.reactive_protocol_graph_steps leaks (initialLaw setup)
+                horizon scheduler control next joint realized
+              cases dropped : next.execution.application.config.history.drop
+                  control.execution.application.config.history.length with
+              | nil =>
+                  have length := congrArg List.length dropped
+                  simp only [List.length_drop, List.length_nil] at length
+                  have same := EventGraph.Config.Step.path_eq_of_history_length_le path (by omega)
+                  exact replayStepMatches_unchanged (runtime := runtime) assessment who history _
+                    control next acting joint same
+              | cons completion rest =>
+                  cases rest with
+                  | nil =>
+                      obtain ⟨ready, action, member⟩ :=
+                        EventGraph.Config.Step.path_singleton path completion dropped
+                      cases owner : (graph setup).actor? completion.event with
+                      | none =>
+                          exact replayStepMatches_chance (runtime := runtime) assessment who
+                            history _ control next acting joint residual current ready member owner
+                      | some mover =>
+                          have raw := (bounds.onePacketMenu runtime leaks).toRawTrace
+                            (initialLaw setup) horizon scheduler prior
+                          have facts := legalFacts setup leaks horizon scheduler control raw
+                          have active := control.execution.application.active_of_ready_owned
+                            facts.quiescent ready owner
+                          exact replayStepMatches_actor (runtime := runtime) assessment who
+                            history _ control next acting joint residual current completion ready
+                            member dropped owner active
+                            (actorMatches history replayed control next rfl rfl acting completion
+                              ready dropped mover owner)
+                  | cons other tail =>
+                      intro final advanced
+                      simp only [advanceIntended?, dropped] at advanced
+                      cases advanced
 
 section Projection
+
 
 variable {who : Player}
   {site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who}

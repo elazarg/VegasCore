@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketActorRecord
-import Vegas.Pending.ReactiveAcceptedOutput
-import Vegas.Game.SourcePrefixPublications
+import Vegas.Game.OnePacketCompletionCases
 
 /-! # The content of a completing packet
 
@@ -15,18 +13,14 @@ submission (`Vegas.sentSourceAction_eq_callContent`). The content of a call
 stays the same while the meaning of its handle is fixed
 (`Vegas.callContent_keep`).
 
-**Completion content.** A scheduler round completing an event with an actor by
-a decoded action that is not failing includes an accepted packet of that actor
-naming the event; the decoded action is the content of the packet's call at the
-state it is included at, and a commitment's handle belongs to the actor
+**Completion content.** A newly appended owned record with non-failing decoded
+actual decision comes from an accepted packet of its actor. Its source content
+is the content of that packet at inclusion, and its commitment handle is owned
 (`Vegas.completion_content`). Intended actions are never failing
 (`Vegas.SourceProgram.ProtocolView.not_failing_of_intendedAvailable`).
 -/
 
 noncomputable section
-
-
-
 namespace Vegas
 
 open SourceProgram
@@ -37,35 +31,30 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
   {runtime : EventGraphRuntime (graph setup)}
 
-/-- **Completion content.** A scheduler round completing an event with an
-actor by a decoded action that is not failing includes an accepted packet of
-the actor naming the event. The decoded action is the content of the packet's
-call at the state it is included at, and a commitment's handle belongs to the
-actor. -/
+/-- Every non-failing newly recorded owned decision has an accepted packet
+with matching source content and candidate ownership, even when its physical
+command also performs further automatic completions. -/
 theorem completion_content
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
     (execution next : (application setup runtime leaks).Execution)
     (command : (application setup runtime leaks).Command)
     (reached : next ∈ (execution.environmentStep (application setup runtime leaks) command).support)
-    {event : (graph setup).EventId} (ready : execution.application.config.cut.Ready event)
-    (action : (graph setup).Action event)
-    (member : next.application.config ∈
-      (execution.application.config.step event ready action).support)
-    {actor : Player} (acts : (graph setup).actor? event = some actor)
-    (notFailing : ¬ Failing (decodeEventAction setup.program event action)) :
+    (record : (graph setup).Completion) (fresh : record ∉ execution.application.config.history)
+    (present : record ∈ next.application.config.history)
+    {actor : Player} (acts : (graph setup).actor? record.event = some actor)
+    (notFailing : ¬ Failing
+      (record.decision.bind (decodeEventAction setup.program record.event))) :
     ∃ message ∈ next.network.ledger, message.sender = actor ∧
-      message.payload.call.event? (graph setup) = some event ∧
-      decodeEventAction setup.program event action =
+      message.payload.call.event? (graph setup) = some record.event ∧
+      record.decision.bind (decodeEventAction setup.program record.event) =
         callContent setup execution.application message.payload.call ∧
       ∀ named candidate, message.payload.call = .commitment named candidate →
         candidate.1 = actor := by
-  rcases owned_completion_cases (runtime := runtime) execution next command reached ready action
-    member acts with
-    accepted | ⟨_, _, _, _, _, expired⟩
-  · rcases accepted with ⟨accepted⟩
-    exact ⟨accepted.message, accepted.ledger,
-      accepted.sender, accepted.named,
-      accepted.content, accepted.candidateOwner⟩
-  · exact (notFailing (expiredAction_failing expired)).elim
+  rcases completion_cases execution next command reached record fresh present acts with
+    ⟨message, ledger, sender, named, content, owner, _binding⟩ |
+    ⟨_table, failed⟩ | ⟨failed, _origin⟩
+  · exact ⟨message, ledger, sender, named, content, owner⟩
+  · exact (notFailing failed).elim
+  · exact (notFailing failed).elim
 
 end Vegas

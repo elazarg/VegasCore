@@ -250,7 +250,7 @@ private theorem submission_atTurn_or_unsent {remaining : Nat} {who : Player}
     exact (Option.some.inj namedEvent).symm
   subst sameEvent
   have sender : envelope.sender = who := rfl
-  have actor := countCallCorrect_actor _ envelope correct namedEvent
+  have actor := correct.actor namedEvent
   rw [sender] at actor
   have issued : ∀ predecessor ∈ (graph setup).order.predecessors named,
       predecessor ∈ execution.application.config.cut.completed := by

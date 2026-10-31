@@ -63,11 +63,33 @@ theorem completionMass_of_chance (before after : EventGraphRuntime.State (graph 
     (chance : (graph setup).actor? event = none) :
     completionMass setup before after =
       ((before.config.step event ready action) after.config).toReal := by
-  have dropped : after.config.history.drop before.config.history.length = [⟨event, action⟩] := by
-    rw [EventGraph.Config.step_history _ event ready action _ member, List.drop_left]
+  let available := EventGraph.EventCode.eval?_isSome_of_reads ((graph setup).nodes event)
+    (before.config.effectiveAction event action) before.config.store
+    (fun _ read => before.config.read_available ready read)
+  let law := (((graph setup).nodes event).eval?
+    (before.config.effectiveAction event action) before.config.store).get available
+  have evaluate : ((graph setup).nodes event).eval?
+      (EventGraph.EventCode.actionOfActorNone _ chance) before.config.store = some law := by
+    rw [← EventGraph.EventCode.action_eq_of_actor_none ((graph setup).nodes event) chance
+      (before.config.effectiveAction event action)
+      (EventGraph.EventCode.actionOfActorNone _ chance)]
+    exact (Option.some_get available).symm
+  change after.config ∈ (law.map (before.config.complete event ready action)).support at member
+  obtain ⟨value, _supported, reached⟩ := PMF.support_map .. ▸ member
+  have injective : Function.Injective (before.config.complete event ready action) := by
+    intro first second equal
+    have outputs := congrArg (fun config : (graph setup).Config => config.outputs event) equal
+    simp only [EventGraph.Config.complete_output_same] at outputs
+    exact Option.some.inj outputs
   unfold completionMass
-  rw [dropped]
-  simp only [chance, ready, ↓reduceDIte]
+  rw [← reached]
+  simp only [EventGraph.Config.complete_history, List.drop_left,
+    EventGraph.Completion.fromDecision, chance, ↓reduceDIte,
+    EventGraph.Config.complete_output_same, evaluate]
+  change (law value).toReal =
+    ((law.map (before.config.complete event ready action))
+      (before.config.complete event ready action value)).toReal
+  rw [pmf_map_apply_of_injective _ injective]
 
 variable [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
@@ -89,28 +111,36 @@ theorem replayStepMatches_chance (assessment : setup.intendedModel.BehavioralAss
     ReplayStepMatches setup runtime leaks assessment who history pending (some before) joint
       (some after) := by
   obtain ⟨decoded, mass⟩ := residual.chanceMass event ready action _ member chance
+  obtain ⟨value, _output, changed⟩ :=
+    before.execution.application.config.step_completion event ready action _ member
+  let completion : (graph setup).Completion := ⟨event, none, none⟩
+  have dropped : after.execution.application.config.history.drop
+      before.execution.application.config.history.length = [completion] := by
+    rw [changed, List.drop_left]
+    have ownerless : ((graph setup).nodes event).actor = none := chance
+    simp only [EventGraph.Completion.fromDecision, EventGraph.Config.actualDecision,
+      EventGraph.EventCode.actualDecision, ownerless]
+    rfl
   refine replayStepMatches_completion (runtime := runtime) assessment who history pending before
-    after idle joint
-    ready member fun legal => ?_
-  have nobody : ∀ player, (⟨actingJoint setup history.state
-      (decodeEventAction setup.program event action), legal⟩ :
+    after idle joint completion dropped fun legal => ?_
+  dsimp only [completion, Option.bind_none] at legal ⊢
+  have nobody : ∀ player, (⟨actingJoint setup history.state none, legal⟩ :
       { action : ∀ i, Option (setup.intendedProtocol.Action i) //
         setup.intendedProtocol.Legal history.state action }).1 player = none := by
     intro player
-    change actingJoint setup history.state (decodeEventAction setup.program event action) player =
-      none
-    rw [current, decoded]
+    change actingJoint setup history.state none player = none
+    rw [current]
     simp [actingJoint]
   have opponents := setup.intendedModel.opponentsStepProb_eq_one_of_none assessment.strategy
     who history.trace _ nobody
+  change _ * (if ((graph setup).actor? event).isSome then 1 else pending) = _
   simp only [chance, Option.isSome_none, Bool.false_eq_true, ↓reduceIte]
   rw [completionMass_of_chance _ _ ready member chance]
   unfold counterfactualStepProb
   rw [opponents, one_mul]
   congr 1
-  change (setup.protocolStep history.state (actingJoint setup history.state
-    (decodeEventAction setup.program event action)) _).toReal = _
-  rw [current, decoded, protocolStep_actingJoint]
+  change (setup.protocolStep history.state (actingJoint setup history.state none) _).toReal = _
+  rw [current, protocolStep_actingJoint]
   exact mass
 
 end Vegas

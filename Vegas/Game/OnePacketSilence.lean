@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketActorRecord
+import Vegas.Game.OnePacketFactorization
 
 /-! # Silence of other players in forced states of an observer
 
@@ -59,7 +60,16 @@ theorem onePacket_silent_of_forcedObserver (horizon : Nat)
       scheduler trace
   obtain ⟨rank, point, ordered, decoded, forcedPoint⟩ := forced
   obtain ⟨inputRecall, serialRecall, _⟩ := runtime.countRecall_history leaks rawTrace
-  have facts := settledFacts_history (initialLaw setup) horizon scheduler rawTrace
+  have facts := legalFacts setup leaks horizon scheduler control rawTrace
+  have ledgerInputs : ∀ message ∈ control.execution.network.ledger,
+      message ∈ control.execution.network.inputs := by
+    intro message onLedger
+    obtain ⟨entry, entryPresent, material, _transmission, emitted, _packet⟩ :=
+      facts.provenance.ledger message onLedger
+    have recalled : message ∈ app.outputs (control.execution.recall message.sender) :=
+      List.mem_filterMap.mpr ⟨entry, entryPresent, emitted⟩
+    rw [← inputRecall message.sender] at recalled
+    exact (List.mem_filter.mp recalled).1
   obtain ⟨recordRank, ⟨residual⟩, record⟩ :=
     actorRecord_history (runtime := runtime) (failureProfile setup.program) horizon scheduler
       rawTrace
@@ -70,7 +80,7 @@ theorem onePacket_silent_of_forcedObserver (horizon : Nat)
   obtain ⟨tokenValid, correct, first⟩ := (countPermits_eq_true_iff _ _).mp permitted
   obtain ⟨named, namedEvent, tokenEq⟩ := (WitnessedPacket.tokenValid_iff _).mp tokenValid
   have sender : envelope.sender = other := rfl
-  have actor := countCallCorrect_actor _ envelope correct namedEvent
+  have actor := correct.actor namedEvent
   rw [sender] at actor
   have earlierFirst : ∀ message ∈ control.execution.network.inputs, message.sender = other →
       message.payload.call.event? (graph setup) = some named → False := by
@@ -98,10 +108,10 @@ theorem onePacket_silent_of_forcedObserver (horizon : Nat)
   by_cases completed : named ∈ control.execution.application.config.cut.completed
   · rcases record named completed other actor with
       ⟨message, onLedger, _, messageNamed, messageSender⟩ | owed
-    · exact earlierFirst message (facts.carried.ledger message onLedger) messageSender
+    · exact earlierFirst message (ledgerInputs message onLedger) messageSender
         messageNamed
     · exact ((forcedPoint.2 other notWho).2) (owed point decoded)
-  · have same := ready_unique (setup := setup) _ ⟨completed, fun predecessor member =>
+  · have same := setup.eventGraph.sequentialize_ready_unique _ ⟨completed, fun predecessor member =>
       issued predecessor member⟩ ready
     subst same
     obtain ⟨message, recalled, messageNamed⟩ := emitted actor
@@ -136,7 +146,16 @@ theorem onePacket_named_of_forcedObserver (horizon : Nat)
       scheduler trace
   obtain ⟨rank, point, ordered, decoded, forcedPoint⟩ := forced
   obtain ⟨inputRecall, serialRecall, _⟩ := runtime.countRecall_history leaks rawTrace
-  have facts := settledFacts_history (initialLaw setup) horizon scheduler rawTrace
+  have facts := legalFacts setup leaks horizon scheduler control rawTrace
+  have ledgerInputs : ∀ message ∈ control.execution.network.ledger,
+      message ∈ control.execution.network.inputs := by
+    intro message onLedger
+    obtain ⟨entry, entryPresent, material, _transmission, emitted, _packet⟩ :=
+      facts.provenance.ledger message onLedger
+    have recalled : message ∈ app.outputs (control.execution.recall message.sender) :=
+      List.mem_filterMap.mpr ⟨entry, entryPresent, emitted⟩
+    rw [← inputRecall message.sender] at recalled
+    exact (List.mem_filter.mp recalled).1
   obtain ⟨recordRank, ⟨residual⟩, record⟩ :=
     actorRecord_history (runtime := runtime) (failureProfile setup.program) horizon scheduler
       rawTrace
@@ -147,7 +166,7 @@ theorem onePacket_named_of_forcedObserver (horizon : Nat)
   obtain ⟨tokenValid, correct, first⟩ := (countPermits_eq_true_iff _ _).mp permitted
   obtain ⟨named, namedEvent, tokenEq⟩ := (WitnessedPacket.tokenValid_iff _).mp tokenValid
   have sender : envelope.sender = other := rfl
-  have actor := countCallCorrect_actor _ envelope correct namedEvent
+  have actor := correct.actor namedEvent
   rw [sender] at actor
   have issued : ∀ predecessor ∈ (graph setup).order.predecessors named,
       predecessor ∈ control.execution.application.config.cut.completed := by
@@ -164,7 +183,7 @@ theorem onePacket_named_of_forcedObserver (horizon : Nat)
     rcases record named completed other actor with
       ⟨message, onLedger, _, messageNamed, messageSender⟩ | owed
     · have present : message ∈ control.execution.network.inputs :=
-        facts.carried.ledger message onLedger
+        ledgerInputs message onLedger
       have recalled : message ∈ app.outputs (control.execution.recall other) := by
         rw [← inputRecall other]
         exact List.mem_filter.mpr ⟨present, by simp [messageSender]⟩

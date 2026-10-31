@@ -579,3 +579,35 @@ chance weight from the first new chance record's retained output and the sole
 node evaluator, so a deterministic automatic tail does not discard that draw.
 The complete operational/replay factorization and its higher compiler and
 assessment consumers remain acceptance obligations.
+
+## Record-based replay and actor matching
+
+A finite graph path with a singleton history delta determines one supported
+primitive completion at that recorded event. The graph's standard path
+relation also preserves inputs. These checked adapters in
+[Execution](../Vegas/EventGraph/Execution.lean) do not identify requested actions
+that the executor suppresses for defaulted owners.
+
+[OnePacketChanceMass](../Vegas/Game/OnePacketChanceMass.lean) identifies the
+chance coefficient with the actual graph-step probability. An ownerless event
+has no strategic decision recorded; its unique canonical chance action and
+retained output determine the evaluator mass.
+[OnePacketActorCompletion](../Vegas/Game/OnePacketActorCompletion.lean) uses
+actual record content for owned completions, with activity derived at its
+initialized-history caller from quiescence.
+
+[OnePacketReplayInputs](../Vegas/Game/OnePacketReplayInputs.lean) follows the
+actual native graph path. It recovers a primitive step only at a singleton
+record delta; a larger delta is rejected by the partial intended replay.
+[OnePacketActorMatching](../Vegas/Game/OnePacketActorMatching.lean) matches
+actual records using authenticated packet provenance and the default-aware
+source actor. Its period invariant processes every newly completed event and
+the deterministic automatic remainder.
+
+[OnePacketActorRecord](../Vegas/Game/OnePacketActorRecord.lean) transports
+accepted-record or source-failure debt along native finite paths, retaining its
+all-history and pending-silence guarantees.
+[OnePacketSwapSymmetry](../Vegas/Game/OnePacketSwapSymmetry.lean) transports the
+actual atomic drain and uses the concrete pair failure-fixing law; it requires
+no initial accepted-table condition. Higher common-fiber, belief and compiler
+consumers remain acceptance obligations.

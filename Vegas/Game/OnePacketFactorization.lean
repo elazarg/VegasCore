@@ -122,15 +122,15 @@ def completionMass (before after : EventGraphRuntime.State (graph setup)) : ℝ 
   match after.config.history.drop before.config.history.length with
   | [] => 1
   | completion :: _ =>
-      match (graph setup).actor? completion.event with
-      | none =>
-          match completion.decision, after.config.outputs completion.event with
-          | some action, some value =>
-              match ((graph setup).nodes completion.event).eval? action before.config.store with
+      if chance : (graph setup).actor? completion.event = none then
+          match after.config.outputs completion.event with
+          | some value =>
+              match ((graph setup).nodes completion.event).eval?
+                  (EventGraph.EventCode.actionOfActorNone _ chance) before.config.store with
               | none => 0
               | some law => (law value).toReal
-          | _, _ => 0
-      | some _ => 1
+          | none => 0
+      else 1
 
 /-- **The content factor of a response.** One for silence; for a transmission,
 the mass the as-if-honest law at the responder's projected source view gives

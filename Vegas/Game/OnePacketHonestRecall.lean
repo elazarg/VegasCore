@@ -88,7 +88,8 @@ private theorem readyTurnsRecorded_transition
       scheduler control after (fun player => (choices player).1) moved
   have path := runtime.reactive_protocol_graph_steps leaks (initialLaw setup) horizon scheduler
     control next (fun player => (choices player).1) (by simpa only [afterEq] using moved)
-  have completed := EventGraph.completed_subset_of_history_prefix _ _ path.path_history_prefix
+  have completed := EventGraph.completed_subset_of_history_prefix _ _
+    (EventGraph.Config.Step.path_history_prefix path)
   refine ⟨next, afterEq, ?_⟩
   have trace : (E).Trace (some control) := state ▸ history.trace
   have raw := (menu).toRawTrace (initialLaw setup) horizon scheduler trace

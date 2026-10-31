@@ -271,6 +271,7 @@ abbrev siteSymmetry :=
     (siteSwap view wellFormed xState yState)
     (initialClosed_swapAllowed (siteSwap view wellFormed xState yState))
     (bounded_betweenHandlePairs _ _ covered)
+    (EventGraph.ValueSwap.ofPairs_expiryFixed _)
 
 variable {event : (graph setup).EventId}
   (turn : view.application.publicView.ownTurn? who = some event)

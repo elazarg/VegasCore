@@ -655,6 +655,21 @@ theorem reachable {before after : graph.Config} (moved : Step before after)
   obtain ⟨event, ready, action, supported⟩ := moved
   exact .step reachable event ready action after supported
 
+/-- A supported graph transition preserves the initialized input values. -/
+theorem inputs_eq {before after : graph.Config} (moved : Step before after) :
+    after.inputs = before.inputs := by
+  obtain ⟨event, ready, action, supported⟩ := moved
+  rw [Config.step, PMF.support_map] at supported
+  obtain ⟨value, _, rfl⟩ := supported
+  rfl
+
+/-- A finite graph execution path preserves the initialized input values. -/
+theorem path_inputs_eq {before after : graph.Config}
+    (path : Relation.ReflTransGen Step before after) : after.inputs = before.inputs := by
+  induction path using Relation.ReflTransGen.head_induction_on with
+  | refl => rfl
+  | @head before middle moved _ ih => exact ih.trans moved.inputs_eq
+
 /-- A supported transition preserves all public defaults. -/
 theorem defaulted_mono {before after : graph.Config} (moved : Step before after) :
     before.defaulted ⊆ after.defaulted := by
@@ -692,6 +707,35 @@ theorem path_eq_of_history_length_le {before after : graph.Config}
       have continued := congrArg List.length kept
       simp only [List.length_append] at continued
       omega
+
+/-- A finite graph path with one new completion is a single supported step at
+that completion's event. The actual decision remains in the completion record. -/
+theorem path_singleton {before after : graph.Config}
+    (path : Relation.ReflTransGen Step before after) (completion : graph.Completion)
+    (delta : after.history.drop before.history.length = [completion]) :
+    ∃ ready : before.cut.Ready completion.event, ∃ action : graph.Action completion.event,
+      after ∈ (before.step completion.event ready action).support := by
+  induction path using Relation.ReflTransGen.head_induction_on with
+  | refl => simp at delta
+  | @head before middle moved rest _ =>
+      obtain ⟨event, ready, action, supported⟩ := moved
+      obtain ⟨value, _, history⟩ := before.step_completion event ready action middle supported
+      have afterLength : after.history.length = before.history.length + 1 := by
+        have length := congrArg List.length delta
+        have extension := (history_prefix ⟨event, ready, action, supported⟩).trans
+          (path_history_prefix rest)
+        have lower := extension.length_le
+        simp only [List.length_drop, List.length_singleton] at length
+        omega
+      have middleLength := congrArg List.length history
+      simp only [List.length_append, List.length_singleton] at middleLength
+      have same := path_eq_of_history_length_le rest (by omega)
+      subst after
+      rw [history, List.drop_left] at delta
+      have eventEq := congrArg Completion.event (List.singleton_injective delta)
+      change event = completion.event at eventEq
+      subst event
+      exact ⟨ready, action, supported⟩
 
 /-- Any finite supported execution path preserves reachability from fixed inputs. -/
 theorem path_reachable {before after : graph.Config}

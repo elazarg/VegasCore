@@ -57,19 +57,17 @@ theorem completionMass_of_actor (before after : EventGraphRuntime.State (graph s
     (member : after.config ∈ (before.config.step event ready action).support) {actor : Player}
     (acts : (graph setup).actor? event = some actor) :
     completionMass setup before after = 1 := by
-  have dropped : after.config.history.drop before.config.history.length = [⟨event, action⟩] := by
-    rw [EventGraph.Config.step_history _ event ready action _ member, List.drop_left]
+  obtain ⟨value, _output, changed⟩ := before.config.step_completion event ready action _ member
   unfold completionMass
-  rw [dropped]
-  simp only [acts]
+  rw [changed, List.drop_left]
+  simp [EventGraph.Completion.fromDecision, acts]
 
 variable [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-/-- **A completion with an actor matches** in the intended replay, from a
-replayed history at the decoded point of a configuration with a source
-residual, when the other players' factor of the replayed step is the unsettled
-content before the completion. -/
+/-- An active owner's actual completion matches in the intended replay, from a
+replayed history at a configuration's source residual, when the other players'
+factor of the recorded decision is the unsettled content before completion. -/
 theorem replayStepMatches_actor (assessment : setup.intendedModel.BehavioralAssessment)
     (who : Player) (history : setup.intendedProtocol.History) (pending : ℝ)
     (before after : (application setup runtime leaks).Control) (idle : before.actor = none)
@@ -77,27 +75,49 @@ theorem replayStepMatches_actor (assessment : setup.intendedModel.BehavioralAsse
     (residual : SourceResidual setup profile rank before.execution.application.config)
     (current : history.state =
       some (residual.lift (ProtocolState.entry residual.program residual.source)))
-    {event : (graph setup).EventId} (ready : before.execution.application.config.cut.Ready event)
-    {action : (graph setup).Action event}
+    (completion : (graph setup).Completion)
+    (ready : before.execution.application.config.cut.Ready completion.event)
+    {action : (graph setup).Action completion.event}
     (member : after.execution.application.config ∈
-      (before.execution.application.config.step event ready action).support)
-    {actor : Player} (acts : (graph setup).actor? event = some actor)
+      (before.execution.application.config.step completion.event ready action).support)
+    (dropped : after.execution.application.config.history.drop
+      before.execution.application.config.history.length = [completion])
+    {actor : Player} (acts : (graph setup).actor? completion.event = some actor)
+    (active : actor ∉ before.execution.application.config.defaulted)
     (others : ∀ legal : setup.intendedProtocol.Legal history.state
-        (actingJoint setup history.state (decodeEventAction setup.program event action)),
+        (actingJoint setup history.state
+          (completion.decision.bind (decodeEventAction setup.program completion.event))),
       setup.intendedModel.opponentsStepProb assessment.strategy who history.trace
         ⟨_, legal⟩ = pending) :
     ReplayStepMatches setup runtime leaks assessment who history pending (some before) joint
       (some after) := by
-  have mass := residual.actorStepMass event ready action _ member acts
+  have mass := residual.actorStepMass completion.event ready action _ member acts
+  obtain ⟨value, _output, changed⟩ :=
+    before.execution.application.config.step_completion completion.event ready action _ member
+  have recordEq : EventGraph.Completion.fromDecision completion.event
+      (before.execution.application.config.actualDecision completion.event action) value =
+        completion := by
+    apply List.singleton_injective
+    simpa only [changed, List.drop_left] using dropped
+  have chosen : completion.decision = some action := by
+    have packed := congrArg (fun record : (graph setup).Completion =>
+      (⟨record.event, record.decision⟩ : Σ event, Option ((graph setup).Action event))) recordEq
+    have decisionEq := eq_of_heq (Sigma.mk.inj packed).2
+    change before.execution.application.config.actualDecision completion.event action =
+      completion.decision at decisionEq
+    exact decisionEq.symm.trans
+      (before.execution.application.config.actualDecision_of_active completion.event actor
+        acts active action)
   refine replayStepMatches_completion (runtime := runtime) assessment who history pending before
-    after idle joint
-    ready member fun legal => ?_
+    after idle joint completion dropped fun legal => ?_
   simp only [acts, Option.isSome_some, ↓reduceIte]
   rw [completionMass_of_actor _ _ ready member acts]
   unfold counterfactualStepProb
   rw [others legal]
   change pending * (setup.protocolStep history.state (actingJoint setup history.state
-    (decodeEventAction setup.program event action)) _).toReal * 1 = 1 * pending
+    (completion.decision.bind (decodeEventAction setup.program completion.event))) _).toReal * 1 =
+      1 * pending
+  simp only [chosen, Option.bind_some]
   rw [current, protocolStep_actingJoint, mass, ENNReal.toReal_one]
   ring
 

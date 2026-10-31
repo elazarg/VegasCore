@@ -1,86 +1,20 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketIntendedProjection
+import Vegas.Game.OnePacketFactorization
 import Vegas.Game.OnePacketPrescribedSupport
 
 /-! # Forced states along native histories
 
-Exclusion persists under every source step: a failed commitment stays in the
-store, and a failed reveal stays published
-(`Vegas.SourceProgram.ProtocolState.excluded_step`). Failed reveals and owed
-failures persist as well, so a source point reached by a step from a point that
-is not forced for `who` is not forced either
-(`Vegas.forcedPoint_of_step`). Hence every state along a native history of the
-one-packet game that ends in a forced state of `who` is forced for `who`
+Public default membership, failed reveals and owed failures persist under every
+source step. Thus a source point reaching a point forced for `who` is itself
+forced (`Vegas.forcedPoint_of_step`). The native finite-path transport of
+step-closed source properties then shows that every initialized state along a
+history ending in a forced state of `who` is forced for `who`
 (`Vegas.forcedState_of_transition`).
 -/
 
 noncomputable section
-
-namespace Vegas.SourceProgram.ProtocolState
-
-variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-
-omit [DecidableEq Player] [IExpr.ResultTypes L] in
-/-- A failed commitment stays failed when a cell is bound on top of it. -/
-theorem failedCommitment_cons {Γ : SourceCtx Player L} {who : Player} {name : VarId}
-    {kind : CellTy Player L} (value : CellVal L kind) (state : State L Γ)
-    (failed : FailedCommitment who state) :
-    FailedCommitment who (Env.cons (x := name) value state) := by
-  obtain ⟨cell, payload, found, stored⟩ := failed
-  exact ⟨cell, payload, .there found, stored⟩
-
-/-- A failed commitment of the entry configuration excludes its player at the
-entry point. -/
-theorem excluded_entry (who : Player) {Γ : SourceCtx Player L} {O : Finset VarId}
-    (program : SourceProgram Player L Γ O) (config : Config Player L Γ)
-    (failed : FailedCommitment who config.state) : Excluded who program (entry program config) := by
-  cases program <;> exact failed
-
-/-- **Exclusion persists** under every source step, whatever anyone plays. -/
-theorem excluded_step (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → (state : ProtocolState program) →
-    (joint : Player → Option (OwnAction Player L)) → (target : ProtocolState program) →
-    Excluded who program state → target ∈ (step program state joint).support →
-      Excluded who program target
-  | _, _, .ret _, _, _, target, excluded, reached => by
-      rw [step, PMF.mem_support_pure_iff] at reached
-      rw [reached]
-      exact excluded
-  | _, _, .sample _ _ _ next, state, joint, target, excluded, reached => by
-      cases state with
-      | inl config =>
-          simp only [step, Sum.elim_inl, PMF.support_map, Set.mem_image] at reached
-          obtain ⟨value, _, rfl⟩ := reached
-          exact excluded_entry who next _ (failedCommitment_cons _ _ excluded)
-      | inr rest =>
-          simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
-          obtain ⟨after, supported, rfl⟩ := reached
-          exact excluded_step who next rest joint after excluded supported
-  | _, _, .commit _ _ _ _ next, state, joint, target, excluded, reached => by
-      cases state with
-      | inl config =>
-          simp only [step, Sum.elim_inl, PMF.mem_support_pure_iff] at reached
-          subst reached
-          exact excluded_entry who next _ (failedCommitment_cons _ _ excluded)
-      | inr rest =>
-          simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
-          obtain ⟨after, supported, rfl⟩ := reached
-          exact excluded_step who next rest joint after excluded supported
-  | _, _, .reveal _ _ _ _ _ _ next, state, joint, target, excluded, reached => by
-      cases state with
-      | inl config =>
-          simp only [step, Sum.elim_inl, PMF.mem_support_pure_iff] at reached
-          subst reached
-          exact Or.inr (excluded_entry who next _ (failedCommitment_cons _ _ excluded))
-      | inr rest =>
-          simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
-          obtain ⟨after, supported, rfl⟩ := reached
-          rcases excluded with ⟨own, publication⟩ | later
-          · exact Or.inl ⟨own, (base_step next rest joint after supported).symm ▸ publication⟩
-          · exact Or.inr (excluded_step who next rest joint after later supported)
-
-end Vegas.SourceProgram.ProtocolState
 
 namespace Vegas
 
@@ -101,7 +35,7 @@ theorem forcedPoint_of_step {who : Player} {point target : ProtocolState setup.p
     (forced : ForcedPoint setup who target) : ForcedPoint setup who point := by
   refine ⟨fun failed => forced.1 (ProtocolState.revealFailed_step who setup.program point joint
     target failed reached), fun other different => ⟨fun excluded => (forced.2 other different).1
-      (ProtocolState.excluded_step other setup.program point joint target excluded reached),
+      (ProtocolState.defaulted_step setup.program point target joint reached excluded),
     fun owed => (forced.2 other different).2
       (ProtocolState.owesFailure_step other setup.program point joint target owed reached)⟩⟩
 
@@ -156,15 +90,20 @@ theorem forcedState_of_transition {who : Player} {before : (application setup ru
       obtain ⟨target, decoded, forcedTarget⟩ := (forcedState_iff_decodedPoint (runtime := runtime)
         next).mp forced
       refine (forcedState_iff_decodedPoint (runtime := runtime) before).mpr ?_
-      rcases transition_configStep (initialLaw setup) horizon scheduler
-        before next joint
-          realized with same | ⟨event, ready, action, member⟩
-      · rw [same] at decoded
-        exact ⟨target, decoded, forcedTarget⟩
-      · obtain ⟨point, reachedPoint, beforeEq, afterEq, supported⟩ :=
-          decodedPoint_step residual event ready action _ member
-        rw [afterEq, Option.some.injEq] at decoded
-        subst decoded
-        exact ⟨point, beforeEq, forcedPoint_of_step supported forcedTarget⟩
+      by_contra denied
+      have closed : StepClosed setup (fun point => ¬ ForcedPoint setup who point) := by
+        intro point joint target notForced reached forced
+        exact notForced (forcedPoint_of_step reached forced)
+      have beforeHolds : DecodedState setup runtime leaks (failureProfile setup.program)
+          (fun point => ¬ ForcedPoint setup who point) (some before) := by
+        refine ⟨rank, ⟨residual⟩, fun point read forced => ?_⟩
+        rw [residual.decode, Option.some.injEq] at read
+        subst read
+        exact denied ⟨_, decodedPoint_eq residual, forced⟩
+      obtain ⟨nextRank, ⟨nextResidual⟩, afterHolds⟩ := decodedHolds_transition closed
+        (initialLaw setup) horizon scheduler (some before) (some next) joint beforeHolds realized
+      rw [decodedPoint_eq nextResidual, Option.some.injEq] at decoded
+      subst decoded
+      exact afterHolds _ nextResidual.decode forcedTarget
 
 end Vegas

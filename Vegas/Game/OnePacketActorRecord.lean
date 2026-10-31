@@ -1,7 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketCompletion
-import Vegas.Game.SourcePrefixPublications
+import Vegas.Game.OnePacketForced
+import Vegas.Game.SourceServiceFacts
+import Vegas.Pending.ReactiveOnePacketMenu
+import Interaction.ReactivePublication
 
 /-! # Completed events with an actor and the silence of other players
 
@@ -49,22 +52,25 @@ expired binding or reveal. -/
 theorem actor_completion_cause (execution next : (application setup runtime leaks).Execution)
     (command : (application setup runtime leaks).Command)
     (reached : next ∈ (execution.environmentStep (application setup runtime leaks) command).support)
-    {event : (graph setup).EventId} (ready : execution.application.config.cut.Ready event)
-    (action : (graph setup).Action event)
-    (member : next.application.config ∈
-      (execution.application.config.step event ready action).support)
-    {actor : Player} (acts : (graph setup).actor? event = some actor) :
+    (record : (graph setup).Completion) (fresh : record ∉ execution.application.config.history)
+    (present : record ∈ next.application.config.history)
+    {actor : Player} (acts : (graph setup).actor? record.event = some actor) :
     (∃ message ∈ next.network.ledger, (message.id, true) ∈ next.receipts ∧
-        message.payload.call.event? (graph setup) = some event ∧ message.sender = actor) ∨
-      Failing (decodeEventAction setup.program event action) := by
-  rcases owned_completion_cases (runtime := runtime) execution next command reached ready action
-    member acts with
-    accepted | ⟨_, _, _, _, _, expired⟩
-  · rcases accepted with ⟨accepted⟩
-    exact Or.inl ⟨accepted.message, accepted.ledger,
-      accepted.receipt, accepted.named,
+        message.payload.call.event? (graph setup) = some record.event ∧ message.sender = actor) ∨
+      Failing (record.decision.bind (decodeEventAction setup.program record.event)) := by
+  rcases owned_completion_cases (runtime := runtime) execution next command reached record fresh
+    present acts with accepted | expired | automatic
+  · obtain ⟨accepted⟩ := accepted
+    exact Or.inl ⟨accepted.message, accepted.ledger, accepted.receipt, accepted.named,
       accepted.sender⟩
-  · exact Or.inr (expiredAction_failing expired)
+  · obtain ⟨_, _, _, _, action, value, expires, recorded⟩ := expired
+    have decision := eq_of_heq (EventGraph.Completion.mk.inj recorded).2.1
+    rw [decision]
+    exact Or.inr (expired_record_failing execution.application.config expires)
+  · obtain ⟨_, _, _, _, silent, _, _⟩ := automatic
+    right
+    simp only [silent, Option.bind_none]
+    simp [Failing, OwnAction.disclosure]
 
 /-- **The actor record.** The configuration decodes at a prefix, and every
 completed event with an actor was completed by an accepted packet of that actor
@@ -78,6 +84,80 @@ def ActorRecord (profile : BehavioralProfile setup.program)
           message.payload.call.event? (graph setup) = some event ∧ message.sender = actor) ∨
         DecodedHolds (ProtocolState.OwesFailure actor setup.program) rank
           execution.application.config
+
+private theorem SourceResidual.debt_of_failing_record_path
+    {profile : BehavioralProfile setup.program}
+    {before after : (graph setup).Config}
+    (path : Relation.ReflTransGen EventGraph.Config.Step before after) :
+    ∀ {rank}, SourceResidual setup profile rank before → ∀ record : (graph setup).Completion,
+      record ∉ before.history → record ∈ after.history → ∀ {actor},
+      (graph setup).actor? record.event = some actor →
+      Failing (record.decision.bind (decodeEventAction setup.program record.event)) →
+      ∃ nextRank, Nonempty (SourceResidual setup profile nextRank after) ∧
+        DecodedHolds (ProtocolState.OwesFailure actor setup.program) nextRank after := by
+  induction path using Relation.ReflTransGen.head_induction_on with
+  | refl =>
+      intro rank residual record fresh present actor owned failed
+      exact (fresh present).elim
+  | @head current middle moved rest ih =>
+      intro rank residual record fresh present actor owned failed
+      obtain ⟨event, ready, action, supported⟩ := moved
+      by_cases primary : record ∈ middle.history
+      · obtain ⟨value, _output, history⟩ :=
+          current.step_completion event ready action middle supported
+        rw [history] at primary
+        have recorded := List.mem_singleton.mp ((List.mem_append.mp primary).resolve_left fresh)
+        have eventEq : record.event = event := congrArg EventGraph.Completion.event recorded
+        subst event
+        have failingStep : ∃ choice : (graph setup).Action record.event,
+            middle ∈ (current.step record.event ready choice).support ∧
+              Failing (decodeEventAction setup.program record.event choice) := by
+          by_cases inactive : actor ∈ current.defaulted
+          · have expires : ∃ choice : (graph setup).Action record.event,
+                ExpiredAction record.event choice := by
+              cases view : nodeView (graph setup) record.event with
+              | bind owner payload outputEq codeEq =>
+                  exact ⟨_, .binding owner payload outputEq⟩
+              | resolve owner payload binding checks outputEq codeEq =>
+                  exact ⟨_, .publication payload outputEq⟩
+              | sample payload law outputEq codeEq =>
+                  rw [nodeView_sample_actor outputEq codeEq] at owned
+                  cases owned
+            obtain ⟨choice, expired⟩ := expires
+            refine ⟨choice, ?_, expiredAction_failing expired⟩
+            rw [← current.step_eq_of_defaulted record.event ready actor owned inactive
+              action choice]
+            exact supported
+          · rw [current.actualDecision_of_active record.event actor owned inactive] at recorded
+            have decision := eq_of_heq (EventGraph.Completion.mk.inj recorded).2.1
+            exact ⟨action, supported, by
+              simpa only [decision, Option.bind_some] using failed⟩
+        obtain ⟨choice, supportedChoice, failing⟩ := failingStep
+        obtain ⟨next, reachedPoint⟩ :=
+          residual.step record.event ready choice middle supportedChoice
+        have rankEq : record.event.val = rank := by
+          have actual : current.cut.IsPrefix record.event.val :=
+            ⟨record.event.isLt.le, fun query =>
+              setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+          exact actual.unique residual.checkpoint.ordered
+        have debt : DecodedHolds (ProtocolState.OwesFailure actor setup.program)
+            (rank + 1) middle := by
+          intro source decoded
+          rw [next.decode] at decoded
+          obtain rfl := Option.some.inj decoded
+          have decodedBefore := residual.decode
+          generalize residual.lift (ProtocolState.entry residual.program residual.source) =
+            point at decodedBefore reachedPoint
+          rw [← rankEq] at decodedBefore
+          unfold sourceServicePrefix? serviceSourcePrefix? at decodedBefore
+          have sourceActor : eventOwner? setup.program record.event = some actor :=
+            (eventOwner?_eq_actor setup.program record.event).trans owned
+          exact ProtocolState.owesFailure_of_decode_failing setup.program setup.namesNodup
+            record.event.val _ _ _ _ _ _ _ point record.event.isLt actor _ _ decodedBefore
+            sourceActor failing reachedPoint
+        exact next.decodedHolds_path (owesFailure_stepClosed actor) debt rest
+      · obtain ⟨next, _reachedPoint⟩ := residual.step event ready action middle supported
+        exact ih next record primary present owned failed
 
 /-- The actor record holds at every legal history of the supplied runtime, under
 arbitrary responses and every scheduler. -/
@@ -93,54 +173,54 @@ theorem actorRecord_serviceInvariant (profile : BehavioralProfile setup.program)
     rw [configEq, ledgerEq, receiptsEq]
     exact valid
   environment execution next command valid _ reached := by
+    let app := application setup runtime leaks
     obtain ⟨rank, ⟨residual⟩, record⟩ := valid
-    have grows := environment_ledger_receipts_grow (runtime := runtime) execution next command
-      reached
-    rcases environmentStep_configStep setup leaks execution next command reached with
-      same | ⟨event, ready, action, member⟩
-    · refine ⟨rank, ?_, fun other completed actor acts => ?_⟩
-      · rw [same]
-        exact ⟨residual⟩
-      · rw [same] at completed ⊢
-        rcases record other completed actor acts with
-          ⟨message, present, receipt, named, sender⟩ | owed
-        · exact Or.inl ⟨message, grows.1 message present, grows.2 _ receipt, named, sender⟩
-        · exact Or.inr owed
-    · have rankEq : event.val = rank :=
-        (ready_iff_rank setup _ rank residual.checkpoint.ordered event).mp ready
-      obtain ⟨successor, reachedPoint⟩ := residual.step event ready action _ member
-      have advanced : next.application.config.cut.IsPrefix (rank + 1) := by
-        rw [execution.application.config.step_cut event ready action _ member]
-        exact residual.checkpoint.ordered.complete_at event ready rankEq
-      refine ⟨rank + 1, ⟨successor⟩, fun other completed actor acts => ?_⟩
-      rw [execution.application.config.step_cut event ready action _ member,
-        EventOrder.Cut.mem_complete] at completed
-      rcases completed with rfl | earlier
-      · rcases actor_completion_cause (runtime := runtime) execution next command reached ready
-          action member acts with
-          accepted | failing
-        · exact Or.inl accepted
-        · right
-          intro state decoded
-          rw [successor.decode] at decoded
-          obtain rfl := Option.some.inj decoded
-          have decodedBefore := residual.decode
-          generalize residual.lift (ProtocolState.entry residual.program residual.source) =
-            point at decodedBefore reachedPoint
-          rw [← rankEq] at decodedBefore
-          have owned : eventOwner? setup.program ⟨other.val, other.isLt⟩ = some actor := by
-            rw [eventOwner?_eq_actor]
-            exact acts
-          exact ProtocolState.owesFailure_of_decode_failing setup.program setup.namesNodup
-            other.val _ _ _ _ _ _ point other.isLt actor _ _ decodedBefore owned failing
-            reachedPoint
-      · rcases record other earlier actor acts with
-          ⟨message, present, receipt, named, sender⟩ | owed
-        · exact Or.inl ⟨message, grows.1 message present, grows.2 _ receipt, named, sender⟩
-        · exact Or.inr (residual.decodedHolds_configStep (fun state joint target owing reached =>
-            ProtocolState.owesFailure_step actor setup.program state joint target owing reached)
-            owed
-            (Or.inr ⟨event, ready, action, member⟩) advanced)
+    have path := (runtime.reactiveApplication_graphSteps leaks).environmentStep
+      execution next command reached
+    obtain ⟨nextRank, ⟨successor⟩⟩ := residual.path path
+    have ledger : execution.network.ledger ⊆ next.network.ledger := by
+      apply app.environmentStep_cases execution next command reached
+        (predicate := fun _ next => execution.network.ledger ⊆ next.network.ledger)
+      · exact List.Subset.refl _
+      · intros; exact List.Subset.refl _
+      · intro id
+        change execution.network.ledger ⊆ (execution.includePending app id).network.ledger
+        rw [app.includePending_network]
+        cases found : execution.network.lookup id with
+        | none =>
+            simp only [MessageNetwork.includePending, found]
+            exact List.Subset.refl _
+        | some message =>
+            simp only [MessageNetwork.includePending, found]
+            exact List.subset_append_left _ _
+      · intros; exact List.Subset.refl _
+    have receipts := app.environmentStep_receipts_prefix execution next command reached
+    refine ⟨nextRank, ⟨successor⟩, fun event completed actor acts => ?_⟩
+    by_cases prior : event ∈ execution.application.config.cut.completed
+    · rcases record event prior actor acts with accepted | owed
+      · obtain ⟨message, present, receipt, named, sender⟩ := accepted
+        exact Or.inl ⟨message, ledger present, receipts.subset receipt, named, sender⟩
+      · obtain ⟨owedRank, ⟨owedResidual⟩, holds⟩ :=
+          residual.decodedHolds_path (owesFailure_stepClosed actor) owed path
+        have same := owedResidual.checkpoint.ordered.unique successor.checkpoint.ordered
+        exact Or.inr (by simpa only [same] using holds)
+    · obtain ⟨completion, present, eventEq⟩ :=
+        List.mem_map.mp ((next.application.config.history_exact event).mpr completed)
+      have fresh : completion ∉ execution.application.config.history := by
+        intro old
+        apply prior
+        rw [← eventEq]
+        exact (execution.application.config.history_exact completion.event).mp
+          (List.mem_map_of_mem old)
+      have owned : (graph setup).actor? completion.event = some actor := eventEq ▸ acts
+      rcases actor_completion_cause execution next command reached completion fresh present owned
+        with accepted | failed
+      · exact Or.inl (by simpa only [eventEq] using accepted)
+      · obtain ⟨owedRank, ⟨owedResidual⟩, holds⟩ :=
+          SourceResidual.debt_of_failing_record_path path residual completion fresh present
+            owned failed
+        have same := owedResidual.checkpoint.ordered.unique successor.checkpoint.ordered
+        exact Or.inr (by simpa only [same] using holds)
 
 /-- The actor record holds at every legal history of the supplied runtime from
 its initial law. -/
@@ -159,49 +239,6 @@ theorem actorRecord_history (profile : BehavioralProfile setup.program) (horizon
       have below := (residual.checkpoint.ordered.2 event).mp completed
       exact absurd below (Nat.not_lt_zero _)) trace
 
-/-- The event a permitted call names has its sender as actor. -/
-theorem countCallCorrect_actor (earlier : Message Player (WitnessedPacket (graph setup)) → Prop)
-    (message : Message Player (WitnessedPacket (graph setup)))
-    (correct : CountCallCorrect earlier message) {event : (graph setup).EventId}
-    (named : message.payload.call.event? (graph setup) = some event) :
-    (graph setup).actor? event = some message.sender := by
-  unfold CountCallCorrect at correct
-  cases call : message.payload.call with
-  | malformed raw =>
-      rw [call] at named
-      cases named
-  | commitment named' handle =>
-      rw [call] at named correct
-      cases named
-      have owned := correct.1
-      unfold bindingOwnedBy at owned
-      cases view : nodeView (graph setup) event with
-      | bind owner payload outputEq codeEq =>
-          rw [outputEq] at owned
-          have same : owner = message.sender := of_decide_eq_true owned
-          rw [← same]
-          exact nodeView_bind_actor outputEq codeEq
-      | resolve owner payload binding checks outputEq codeEq =>
-          rw [outputEq] at owned
-          cases owned
-      | sample payload law outputEq codeEq =>
-          rw [outputEq] at owned
-          cases owned
-  | opening named' handle raw =>
-      rw [call] at named correct
-      cases named
-      obtain ⟨_, owned⟩ := correct
-      cases view : nodeView (graph setup) event with
-      | resolve owner payload binding checks outputEq codeEq =>
-          rw [view] at owned
-          rw [owned.1]
-          exact nodeView_resolve_actor outputEq codeEq
-      | bind _ _ _ _ =>
-          rw [view] at owned
-          exact owned.elim
-      | sample _ _ _ _ =>
-          rw [view] at owned
-          exact owned.elim
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup))
 
@@ -236,7 +273,7 @@ theorem onePacket_silent_of_pending (horizon : Nat)
   rw [current] at forced
   obtain ⟨rank, point, ordered, decoded, forcedPoint⟩ := forced
   obtain ⟨inputRecall, serialRecall, _⟩ := runtime.countRecall_history leaks trace
-  have facts := settledFacts_history (initialLaw setup) horizon scheduler trace
+  have facts := legalFacts setup leaks horizon scheduler control trace
   obtain ⟨recordRank, ⟨residual⟩, record⟩ :=
     actorRecord_history (runtime := runtime) (failureProfile setup.program) horizon scheduler trace
   have sameRank := EventOrder.Cut.IsPrefix.unique ordered residual.checkpoint.ordered
@@ -246,7 +283,7 @@ theorem onePacket_silent_of_pending (horizon : Nat)
   obtain ⟨tokenValid, correct, first⟩ := (countPermits_eq_true_iff _ _).mp permitted
   obtain ⟨named, namedEvent, tokenEq⟩ := (WitnessedPacket.tokenValid_iff _).mp tokenValid
   have sender : envelope.sender = other := rfl
-  have actor := countCallCorrect_actor _ envelope correct namedEvent
+  have actor := correct.actor namedEvent
   rw [sender] at actor
   have issued : ∀ predecessor ∈ (graph setup).order.predecessors named,
       predecessor ∈ control.execution.application.config.cut.completed := by
@@ -260,17 +297,20 @@ theorem onePacket_silent_of_pending (horizon : Nat)
       (complete predecessor member)
   have completed : named ∈ control.execution.application.config.cut.completed := by
     by_contra open_
-    have same := ready_unique (setup := setup) _ ⟨open_, fun predecessor member =>
-      issued predecessor member⟩ ready
+    have same := setup.eventGraph.sequentialize_ready_unique _
+      ⟨open_, fun predecessor member => issued predecessor member⟩ ready
     subst same
     exact different (Option.some.inj (actor.symm.trans owned))
   rcases record named completed other actor with
     ⟨message, onLedger, _, messageNamed, messageSender⟩ | owed
-  · have emitted : message ∈ control.execution.network.inputs :=
-      facts.carried.ledger message onLedger
+  · obtain ⟨entry, entryPresent, material, _transmission, emitted, _packet⟩ :=
+      facts.provenance.ledger message onLedger
     have recalled : message ∈ app.outputs (control.execution.recall other) := by
-      rw [← inputRecall other]
-      exact List.mem_filter.mpr ⟨emitted, by simp [messageSender]⟩
+      apply List.mem_filterMap.mpr
+      exact ⟨entry, messageSender ▸ entryPresent, emitted⟩
+    have emitted : message ∈ control.execution.network.inputs := by
+      rw [← inputRecall other] at recalled
+      exact (List.mem_filter.mp recalled).1
     have lower : message.id.2 < envelope.id.2 := by
       have bound := facts.serials.inputs message emitted
       change message.id.2 < control.execution.network.nextSerial message.sender at bound

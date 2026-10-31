@@ -66,6 +66,50 @@ def CountCallCorrect (earlier : Message Player (WitnessedPacket graph) → Prop)
         | .bind .. | .sample .. => False
   | .malformed _ => False
 
+/-- The event a permitted call names has its sender as actor. -/
+theorem CountCallCorrect.actor {earlier : Message Player (WitnessedPacket graph) → Prop}
+    {message : Message Player (WitnessedPacket graph)}
+    (correct : CountCallCorrect earlier message) {event : graph.EventId}
+    (named : message.payload.call.event? graph = some event) :
+    graph.actor? event = some message.sender := by
+  unfold CountCallCorrect at correct
+  cases call : message.payload.call with
+  | malformed raw =>
+      rw [call] at named
+      cases named
+  | commitment named' handle =>
+      rw [call] at named correct
+      cases named
+      have owned := correct.1
+      unfold bindingOwnedBy at owned
+      cases view : nodeView graph event with
+      | bind owner payload outputEq codeEq =>
+          rw [outputEq] at owned
+          have same : owner = message.sender := of_decide_eq_true owned
+          rw [← same]
+          exact nodeView_bind_actor outputEq codeEq
+      | resolve owner payload binding checks outputEq codeEq =>
+          rw [outputEq] at owned
+          cases owned
+      | sample payload law outputEq codeEq =>
+          rw [outputEq] at owned
+          cases owned
+  | opening named' handle raw =>
+      rw [call] at named correct
+      cases named
+      obtain ⟨_, owned⟩ := correct
+      cases view : nodeView graph event with
+      | resolve owner payload binding checks outputEq codeEq =>
+          rw [view] at owned
+          rw [owned.1]
+          exact nodeView_resolve_actor outputEq codeEq
+      | bind _ _ _ _ =>
+          rw [view] at owned
+          exact owned.elim
+      | sample _ _ _ _ =>
+          rw [view] at owned
+          exact owned.elim
+
 /-- No earlier packet names the event this packet names. -/
 def FirstForEvent (earlier : Message Player (WitnessedPacket graph) → Prop)
     (message : Message Player (WitnessedPacket graph)) : Prop :=

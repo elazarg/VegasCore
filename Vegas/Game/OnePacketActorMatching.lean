@@ -1,19 +1,21 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketPeriodInvariant
+import Vegas.Game.OnePacketCompletionContent
+import Vegas.Game.OnePacketReplayInputs
 import Vegas.Game.OnePacketDecodedActor
 import Vegas.Game.SourcePrefixPublications
 import Vegas.Game.SourceServiceFacts
 
 /-! # Actor completions match along forced histories
 
-At a completion of an event with an actor along a native history ending in a
-forced state of `who`, from a replayed intended history at the decoded point,
+For a native round recording one completion with an actor along a history
+ending in a forced state of `who`, from a replayed intended history at the decoded point,
 the replayed step moves exactly the actor, so the other players' factor is one
 when the actor is `who` and the actor's mass of the decoded action otherwise
-(`Vegas.opponentsStepProb_actingJoint`). A legal intended action is not failing,
-so the event was completed by an accepted packet of the actor whose content is
-the decoded action (`Vegas.completion_content`). By the period invariant that
+(`Vegas.opponentsStepProb_actingJoint`). A legal intended choice at the active owner is not failing,
+so the actual completion records an accepted packet of the actor whose content is
+the decoded choice (`Vegas.completion_content`). By the period invariant that
 packet is the one whose content the unsettled content records, and its content
 has not changed since it was sent. Hence every actor completion matches
 (`Vegas.actorCompletionsMatch_of_forced`), and the source weight of such a
@@ -64,7 +66,7 @@ theorem actorCompletionsMatch_of_forced (assessment : setup.intendedModel.Behavi
         | some current =>
             exact recursive current rfl (forcedState_of_transition (runtime := runtime) prior
               joint realized forced)
-      · intro history replayed current next beforeEq afterEq idle event ready action member actor
+      · intro history replayed current next beforeEq afterEq idle completion ready completed actor
           acts intendedLegal
         subst beforeEq
         cases afterEq
@@ -89,7 +91,7 @@ theorem actorCompletionsMatch_of_forced (assessment : setup.intendedModel.Behavi
         split_ifs with same
         · symm
           refine invariant.quiet fun other otherReady sender otherActs => ?_
-          have sameEvent := ready_unique (setup := setup) _ otherReady ready
+          have sameEvent := setup.eventGraph.sequentialize_ready_unique _ otherReady ready
           subst sameEvent
           rw [acts] at otherActs
           cases otherActs
@@ -100,27 +102,44 @@ theorem actorCompletionsMatch_of_forced (assessment : setup.intendedModel.Behavi
           rcases transition_idle_cases (runtime := runtime) (initialLaw setup) horizon scheduler
             current idle joint
               realized with sameExecution | ⟨command, moved⟩
-          · exact (config_ne_of_step member (by rw [sameExecution])).elim
-          · obtain ⟨message, onLedger, sender, named, content, owned⟩ := completion_content
-              (runtime := runtime)
-              current.execution _ command moved ready action member acts notFailing
+          · have empty : control.execution.application.config.history.drop
+                current.execution.application.config.history.length = [] := by
+                rw [sameExecution, List.drop_length]
+            rw [empty] at completed
+            cases completed
+          · have fresh : completion ∉ current.execution.application.config.history := by
+              intro old
+              apply ready.1
+              exact (current.execution.application.config.history_exact completion.event).mp
+                (List.mem_map.mpr ⟨completion, old, rfl⟩)
+            have appended : completion ∈ control.execution.application.config.history :=
+              List.mem_of_mem_drop (by rw [completed]; exact List.mem_singleton_self completion)
+            obtain ⟨message, onLedger, sender, named, content, owned⟩ := completion_content
+              (runtime := runtime) current.execution control.execution command moved completion
+              fresh appended acts notFailing
             have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace
               (initialLaw setup) horizon scheduler (prior.extend joint legal realized)
-            have facts := settledFacts_history (initialLaw setup) horizon scheduler rawTrace
+            have facts := legalFacts setup leaks horizon scheduler control rawTrace
             have inputsEq := transition_idle_inputs (runtime := runtime) (initialLaw setup)
               horizon scheduler current
               idle joint realized
             have present : message ∈ current.execution.network.inputs := by
               rw [← inputsEq]
-              exact facts.carried.ledger message onLedger
-            rcases invariant.settled event ready actor acts same with ⟨_,
+              obtain ⟨entry, entryPresent, material, _transmission, emitted, _packet⟩ :=
+                facts.provenance.ledger message onLedger
+              have recalled : message ∈ (application setup runtime leaks).outputs
+                  (control.execution.recall message.sender) :=
+                List.mem_filterMap.mpr ⟨entry, entryPresent, emitted⟩
+              rw [← facts.inputs message.sender] at recalled
+              exact (List.mem_filter.mp recalled).1
+            rcases invariant.settled completion.event ready actor acts same with ⟨_,
               nothing⟩ |
                 ⟨recorded, recordedPresent, recordedSender, recordedNamed, sent, keep, fixed, eq⟩
             · exact (nothing message present sender named).elim
             · have sameMessage := invariant.unique recorded recordedPresent
                 message present
-                (recordedSender ▸ same) (recordedSender.trans sender.symm) event recordedNamed
-                named
+                (recordedSender ▸ same) (recordedSender.trans sender.symm) completion.event
+                recordedNamed named
               subst sameMessage
               rw [eq, content, callContent_keep keep _ fun named' handle call =>
                 fixed named' handle call (owned named' handle call), decoded]
