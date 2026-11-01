@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryPhasePotential
+import Vegas.Game.OnePacketPhasePotential
 import Vegas.Game.OnePacketLateCommitBlind
 import Vegas.Game.RecoveryEventPhaseLaw
 

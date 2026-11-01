@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketFirstActivationValue
-import Vegas.Game.RecoveryPhasePotential
+import Vegas.Game.OnePacketPhasePotential
 import Vegas.Game.RecoveryLocalCompletionValue
 
 /-! # Source incentive comparison for a fresh disclosure -/

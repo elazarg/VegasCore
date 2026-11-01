@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.RecoveryPhaseValueBlind
-import Vegas.Game.RecoverySourcePhaseValue
+import Vegas.Game.OnePacketCompletionPoint
 
 
 /-! # Exclusion value of an unintended current commitment -/

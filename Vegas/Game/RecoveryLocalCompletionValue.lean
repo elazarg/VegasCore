@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryNonLateSourceValue
+import Vegas.Game.OnePacketLocalPhaseValue
 import Vegas.Game.RecoveryCompletionPotential
 
 /-! # Continuation transport through a local source-event response -/
@@ -130,9 +130,8 @@ theorem nativeComparison_local_completion_value_sub_le_of_boundary_values [Finty
     certificate installed history
     current ordered clear event
     ready key decided fresh
-  have comparison := nativeComparison_local_phase_value_sub_le_of_boundary_values setup runtime
-    leaks
-    bounds horizon scheduler sequence scale positive le_one weights n terminalCompletes certificate
+  have comparison := OnePacketComparison.local_phase_value_sub_le_of_boundary_values setup runtime
+    leaks bounds horizon (NativeScheduler) (sequence n) common terminalCompletes certificate
     who info law history current observed event ready owned key decided ordered point decoded
     intended parameter utility excludedPayoff boundNonneg readoutBounded excludedBounded
     boundaryError boundaryErrorNonneg

@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketSlotLawDischarge
 import Vegas.Game.OnePacketDisclosureResolves
+import Vegas.Game.OnePacketOpeningUnique
 
 /-! # Operational steps of the certificate's profile
 
@@ -52,7 +53,8 @@ theorem certificate_slotLaw_forced (wellFormed : setup.WellFormed)
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup) horizon
+      scheduler slots p))
     (who : Player) (n : ℕ) {before after : (application setup runtime leaks).ProtocolState}
     (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace before)
     (joint : Player → Option (application setup runtime leaks).Action)
@@ -124,7 +126,8 @@ def certificateOperationalSteps (wellFormed : setup.WellFormed)
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup) horizon
+      scheduler slots p))
     (who : Player)
     (error_tendsto : Tendsto (fun n => slotError (scale n) (floor n)
       (trembleSlots setup bounds).card) atTop (nhds 0)) :

@@ -3,6 +3,7 @@
 import Vegas.Game.OnePacketFactorBounds
 import Vegas.Game.OnePacketSequentialPreservation
 import Vegas.Game.OnePacketContentFloor
+import Vegas.Game.OnePacketIntendedProjection
 
 /-! # The slot law of the certificate's profile
 
@@ -175,10 +176,12 @@ open Classical in
 /-- **The weights of a late-delivery key**: the weights of its pool, and waiting
 for a key of no forced late delivery. -/
 def keyWeights {slots : Nat}
-    (weights : ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
+    (weights : ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup) horizon
+      scheduler slots p))
     (key : Option (LateKey setup runtime leaks)) : PMF (LateOption slots) :=
   if present : key ∈ Set.range fun agent : {agent : (onePacketN).InformationAgent
-      (onePacketN).playedInformation // ownedKeyed (FreeAgent setup runtime leaks bounds horizon
+      (onePacketN).playedInformation // ownedKeyed (FreeAgent setup runtime leaks bounds
+        (initialLaw setup) horizon
         scheduler) (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon
           scheduler)
           agent} =>
@@ -195,11 +198,13 @@ late components over its pool's weights. -/
 def certificateProfile (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup) horizon
+      scheduler slots p))
     (n : ℕ) : ∀ player, (onePacketN).BehavioralPolicy player :=
   (onePacketN).agentBehavior (onePacketN).playedInformation
     (onePacketFallback setup runtime leaks bounds horizon scheduler)
-    fun agent => (weights n (onePacketPool setup runtime leaks bounds horizon scheduler agent)).bind
+    fun agent => (weights n (onePacketPool setup runtime leaks bounds (initialLaw setup) horizon
+      scheduler agent)).bind
       (freeKeyedComponent
         (onePacketUnforced setup runtime leaks bounds horizon scheduler scale scale_pos
           scale_le_one n)
@@ -210,6 +215,53 @@ def certificateProfile (sequence : ℕ → setup.intendedModel.BehavioralAssessm
 
 variable {setup runtime leaks bounds horizon scheduler}
 
+omit [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketN).InfoState who)] in
+/-- At a response forced for distinct observer and responder, the common public
+record has no default. -/
+theorem clearInput_of_forced_response
+    {control : (application setup runtime leaks).Control} {who actor : Player}
+    (acting : control.actor = some actor) (other : actor ≠ who)
+    (observerForced : ForcedState setup runtime leaks who (some control))
+    (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks)
+      (initialLaw setup) horizon scheduler actor
+      ((application setup runtime leaks).observe actor (some control))) :
+    runtime.ClearInput leaks ((application setup runtime leaks).observe actor (some control)) := by
+  obtain ⟨rank, point, ordered, read, pointForced⟩ := observerForced
+  have decoded : decodedPoint setup control.execution.application.config = some point :=
+    (decodedPoint_eq_of_isPrefix ordered).trans read
+  have active : actor ∉ control.execution.application.config.defaulted := by
+    intro inactive
+    apply (pointForced.2 actor other).1
+    unfold ProtocolState.Excluded
+    rw [ProtocolState.defaulted_eq_defaults, decodedPoint_defaults decoded]
+    exact inactive
+  obtain ⟨⟨state, trace⟩, seen, witnessForced⟩ := forced
+  rw [onePacket_infoOf] at seen
+  have observed : (application setup runtime leaks).observe actor (some control) =
+      some (control.execution.recall actor,
+        control.execution.observe (application setup runtime leaks) actor) := by
+    simp [ReactiveApplication.observe, acting]
+  rw [observed] at seen
+  cases state with
+  | none => cases seen
+  | some witness =>
+      by_cases acts : witness.actor = some actor
+      · simp only [ReactiveApplication.observe, acts, ite_true] at seen
+        have views := (Prod.mk.inj (Option.some.inj seen)).2
+        have defaults := congrArg (fun view : (application setup runtime leaks).PlayerView =>
+          view.application.publicView.observation.defaulted) views
+        change witness.execution.application.config.defaulted =
+          control.execution.application.config.defaulted at defaults
+        obtain ⟨sourceRank, source, sourceOrdered, sourceRead, sourceForced⟩ := witnessForced
+        have sourceDecoded : decodedPoint setup witness.execution.application.config =
+            some source := (decodedPoint_eq_of_isPrefix sourceOrdered).trans sourceRead
+        have clear := defaulted_eq_empty_of_decodedForced sourceDecoded sourceForced
+          (by rw [defaults]; exact active)
+        rw [observed]
+        exact ⟨_, _, rfl, defaults.symm.trans clear⟩
+      · simp [ReactiveApplication.observe, acts] at seen
+
 /-- The real mass of a law mixed over late options. -/
 private theorem bind_lateOption_toReal {slots : Nat} {α : Type}
     (weights : PMF (LateOption slots)) (laws : LateOption slots → PMF α) (a : α) :
@@ -219,7 +271,7 @@ private theorem bind_lateOption_toReal {slots : Nat} {α : Type}
     ENNReal.mul_ne_top (PMF.apply_ne_top _ _) (PMF.apply_ne_top _ _)]
   simp only [ENNReal.toReal_mul]
 
-/-- **The certificate's profile at a forced agent.** At a played information
+/-- **The certificate's profile at a clear forced agent.** At a clear played information
 state of a forced agent, owing a failure or not, the certificate's profile is
 the slot-trembled choice whose main law is the honest choice, or a mixture of
 late choices when the agent is a late delivery. -/
@@ -227,12 +279,14 @@ theorem certificateProfile_eq_slotTrembled
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup) horizon
+      scheduler slots p))
     (n : ℕ) {actor : Player} (info : (application setup runtime leaks).Info)
     (played : info ∈ (onePacketN).playedInformation actor)
     (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
       setup) horizon
-      scheduler actor info) :
+      scheduler actor info)
+    (clear : runtime.ClearInput leaks info) :
     ∃ main : PMF ((onePacketN).Choice actor info),
       (main = honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
         (sequence n)
@@ -250,11 +304,13 @@ theorem certificateProfile_eq_slotTrembled
             actor info) := by
   let agent : (onePacketN).InformationAgent (onePacketN).playedInformation :=
     ⟨actor, ⟨info, played⟩⟩
-  have notFree : ¬ FreeAgent setup runtime leaks bounds horizon scheduler agent :=
-    fun unforced => unforced forced
+  have notFree : ¬ FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler agent
+    :=
+    fun unforced => unforced ⟨clear, forced⟩
   have atAgent := (onePacketN).agentBehavior_at (onePacketN).playedInformation
     (onePacketFallback setup runtime leaks bounds horizon scheduler)
-    (fun agent => (weights n (onePacketPool setup runtime leaks bounds horizon scheduler
+    (fun agent => (weights n (onePacketPool setup runtime leaks bounds (initialLaw setup) horizon
+      scheduler
       agent)).bind
       (freeKeyedComponent
         (onePacketUnforced setup runtime leaks bounds horizon scheduler scale scale_pos
@@ -263,7 +319,8 @@ theorem certificateProfile_eq_slotTrembled
           scale_le_one n)
         (onePacketLate setup runtime leaks bounds horizon scheduler sequence scale scale_pos
           scale_le_one (slots := slots) n) agent)) agent
-  by_cases keyed : ownedKeyed (FreeAgent setup runtime leaks bounds horizon scheduler)
+  by_cases keyed : ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup) horizon
+    scheduler)
       (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler) agent
   · have mixture := freeKeyedMixture_of_keyed (key := agentLateKey setup runtime leaks bounds
       (initialLaw setup) horizon scheduler) (weights n)
@@ -296,7 +353,7 @@ theorem certificateProfile_eq_slotTrembled
     rfl
 
 /-- **The slot law at a response.** At a history of the one-packet game where a
-forced player whose disclosure is canonical responds with positive content,
+forced player at a clear input whose disclosure is canonical responds with positive content,
 the certificate's profile at its information is a slot-trembled component
 whose main, silence and slot-tier laws give the realized choice its content
 factor times the factors read from its keys; their slot combination is the
@@ -307,7 +364,8 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup) horizon
+      scheduler slots p))
     (n : ℕ) {control next : (application setup runtime leaks).Control}
     (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
@@ -316,6 +374,8 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
       setup) horizon
       scheduler actor (some (control.execution.recall actor,
         control.execution.observe (application setup runtime leaks) actor)))
+    (clear : runtime.ClearInput leaks (some (control.execution.recall actor,
+      control.execution.observe (application setup runtime leaks) actor)))
     (canonical : DisclosureCanonical setup runtime leaks bounds actor (control.execution.recall
       actor)
       (control.execution.observe (application setup runtime leaks) actor))
@@ -411,11 +471,13 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
   have keyLate := LateKey.ofView_isLate (runtime := runtime) rawTrace actor
   let agent : (onePacketN).InformationAgent (onePacketN).playedInformation :=
     ⟨actor, ⟨_, played⟩⟩
-  have notFree : ¬ FreeAgent setup runtime leaks bounds horizon scheduler agent :=
-    fun unforced => unforced forced
+  have notFree : ¬ FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler agent
+    :=
+    fun unforced => unforced ⟨clear, forced⟩
   have atAgent := (onePacketN).agentBehavior_at (onePacketN).playedInformation
     (onePacketFallback setup runtime leaks bounds horizon scheduler)
-    (fun agent => (weights n (onePacketPool setup runtime leaks bounds horizon scheduler
+    (fun agent => (weights n (onePacketPool setup runtime leaks bounds (initialLaw setup) horizon
+      scheduler
       agent)).bind
       (freeKeyedComponent
         (onePacketUnforced setup runtime leaks bounds horizon scheduler scale scale_pos
@@ -537,7 +599,8 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
           (silenceFactor_mem (runtime := runtime) _).1 uniform
   by_cases isLate : LateDelivery setup runtime leaks actor (some (control.execution.recall actor,
       control.execution.observe (application setup runtime leaks) actor))
-  · have keyed : ownedKeyed (FreeAgent setup runtime leaks bounds horizon scheduler)
+  · have keyed : ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup) horizon
+    scheduler)
         (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler) agent :=
       ⟨isLate, notFree⟩
     have weightsEq : keyWeights setup runtime leaks bounds horizon scheduler (weights n)
@@ -548,7 +611,7 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
       have present : some (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
           (control.execution.observe (application setup runtime leaks) actor)) ∈ Set.range
             fun agent : {agent : (onePacketN).InformationAgent (onePacketN).playedInformation //
-              ownedKeyed (FreeAgent setup runtime leaks bounds horizon scheduler)
+              ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
                 (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
                   agent} =>
             agentLateKey setup runtime leaks bounds (initialLaw setup) horizon scheduler agent.1 :=
@@ -623,7 +686,8 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
       ring
     · rw [responseEq]
       exact cube _ (mainFactor_mem (runtime := runtime) bounds _ _ _).1
-  · have unkeyed : ¬ ownedKeyed (FreeAgent setup runtime leaks bounds horizon scheduler)
+  · have unkeyed : ¬ ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup) horizon
+    scheduler)
         (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler) agent :=
       fun keyed => isLate keyed.1
     have mixture := freeKeyedMixture_of_not_keyed (key := agentLateKey setup runtime leaks bounds
@@ -702,7 +766,8 @@ theorem certificate_slotLaw (sequence : ℕ → setup.intendedModel.BehavioralAs
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup) horizon
+      scheduler slots p))
     (who : Player)
     (canonical : ∀ {control : (application setup runtime leaks).Control},
       ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
@@ -772,11 +837,13 @@ theorem certificate_slotLaw (sequence : ℕ → setup.intendedModel.BehavioralAs
       some (control.execution.recall actor,
         control.execution.observe (application setup runtime leaks) actor) := by
     simp [ReactiveApplication.observe, acting]
-  rw [observed] at forced
+  have clear := clearInput_of_forced_response acting other observerForced forced
+  rw [observed] at forced clear
   rw [chosenJoint, Option.getD_some] at positive floorStep ⊢
   exact certificate_slotLaw_at (runtime := runtime) sequence scale scale_pos scale_le_one small
     floor floor_pos covers
-    capacity weights n prior acting forced (canonical prior actor observerForced other) response
+    capacity weights n prior acting forced clear (canonical prior actor observerForced other)
+    response
     member nextEq positive (fun _ => (floored n).trans floorStep) _ infoEq played _ chosenJoint
 
 end Profile

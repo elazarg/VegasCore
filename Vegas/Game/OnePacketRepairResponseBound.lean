@@ -40,7 +40,8 @@ variable (wellFormed : setup.WellFormed)
   (covers : bounds.CoversOutputValues)
   (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
   {slots : Nat}
-  (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
+  (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup) horizon
+    scheduler slots p))
 
 include wellFormed small floor_pos floored covers capacity
 
@@ -146,10 +147,27 @@ theorem certificate_responseMass_le_of_operationally_equal (who : Player) (n : �
     horizon scheduler
     (weights n)) (scale n) (operationalState setup runtime leaks (some control))
     (operationalState setup runtime leaks (some next))
+  have imageClear := clearInput_of_forced_response imageActing other
+    (imageRegular actor imageActing other).1.2 (imageRegular actor imageActing other).1.1
+  have defaultsEq := congrArg (fun state : Option (OperationalState setup runtime leaks) =>
+    state.map fun current => current.environment.application.observation.defaulted) beforeEq
+  change some imageControl.execution.application.config.defaulted =
+    some control.execution.application.config.defaulted at defaultsEq
+  have defaults := Option.some.inj defaultsEq
+  have imageDefaults :=
+    ((runtime.clearInput_observe_iff leaks actor (some imageControl)).mp imageClear).2
+      imageControl rfl
+  have clear : runtime.ClearInput leaks
+      ((application setup runtime leaks).observe actor (some control)) := by
+    apply (runtime.clearInput_observe_iff leaks actor (some control)).mpr
+    refine ⟨acting, ?_⟩
+    intro current same
+    cases Option.some.inj same
+    exact defaults.symm.trans imageDefaults
   have historyBound := certificate_responseMass_le_response (runtime := runtime) sequence scale
     scale_pos scale_le_one
     small floor floor_pos floored covers capacity weights n prior joint legal realized control next
-    actor rfl rfl acting forcedActor canonical atTurn
+    actor rfl rfl acting forcedActor clear canonical atTurn
   have imagePositive := (imageRegular actor imageActing other).2
   have imageFloor : floor n ≤ content := (floored n).trans (contentFloor_le_of_step (runtime :=
     runtime) (sequence n)

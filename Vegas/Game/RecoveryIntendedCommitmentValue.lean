@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryNonLateSourceValue
+import Vegas.Game.OnePacketLocalPhaseValue
 import Vegas.Game.OnePacketFirstActivationValue
 import Vegas.Game.RecoveryCompletionPotential
 import Vegas.Game.IntendedChoiceReach

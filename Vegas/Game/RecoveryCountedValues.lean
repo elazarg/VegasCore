@@ -2,6 +2,7 @@
 
 import Vegas.Game.RecoveryPendingValueAffine
 import Vegas.Game.RecoveryComparisonContinuationValue
+import Vegas.Game.OnePacketLocalPhaseValue
 
 /-! # Native comparison values under counted service -/
 
@@ -198,10 +199,10 @@ theorem nativeComparison_local_phase_value_sub_le_of_counted_service [Fintype (R
         {final | completionPoint setup runtime leaks bounds horizon (NativeScheduler) rank fresh
           final =
           none ∧ ¬ DecisionFailed (runtime := runtime) key final.state}).toReal := by
-  apply nativeComparison_local_phase_value_sub_le_of_boundary_values setup runtime leaks bounds
-    horizon
-    scheduler sequence scale positive le_one weights n
-    completes
+  apply OnePacketComparison.local_phase_value_sub_le_of_boundary_values setup runtime leaks bounds
+    horizon (NativeScheduler) (sequence n)
+    (nativeComparisonStrategy setup runtime leaks bounds horizon scheduler sequence scale
+      positive le_one weights n) completes
     certificate who info law history current observed event ready owned key decided ordered point
     decoded intended parameter utility excludedPayoff boundNonneg readoutBounded excludedBounded
     (2 * payoffBound * (1 - slotRetention (scale n))) (by

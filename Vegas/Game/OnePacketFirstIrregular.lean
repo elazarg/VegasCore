@@ -42,7 +42,8 @@ theorem certificate_responseMass_le_cube
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup) horizon
+      scheduler slots p))
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     (who : Player) (n : ℕ) {before after : (application setup runtime leaks).ProtocolState}
@@ -68,6 +69,7 @@ theorem certificate_responseMass_le_cube
     onePacket_response_step (runtime := runtime) prior joint legal realized control next
       initialized reached acting
   subst initialized reached
+  have clear := clearInput_of_forced_response acting other forcedWho forcedActor
   -- The response has content factor zero.
   have zero : contentFactor setup runtime leaks (sequence n) actor control.execution
       (control.execution.respond (application setup runtime leaks) actor response) response = 0 :=
@@ -127,10 +129,10 @@ theorem certificate_responseMass_le_cube
       (some ⟨remaining, some actor, execution⟩) =
       some (execution.recall actor, execution.observe (application setup runtime leaks) actor) := by
     simp [ReactiveApplication.observe]
-  rw [observed] at forcedActor
+  rw [observed] at forcedActor clear
   obtain ⟨main, mainForm, profileEq⟩ := certificateProfile_eq_slotTrembled (runtime := runtime)
     sequence scale
-    scale_pos scale_le_one weights n _ played forcedActor
+    scale_pos scale_le_one weights n _ played forcedActor clear
   refine responseMass_le_of_slotTrembled (runtime := runtime) _ ⟨remaining, some actor, execution⟩
     rfl joint
     (scale_pos n).le (scale_le_one n) main _ _ profileEq fun choice chosen => ?_

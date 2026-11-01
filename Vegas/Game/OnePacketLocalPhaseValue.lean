@@ -1,54 +1,45 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoverySourcePhaseValue
-import Vegas.Game.RecoveryPendingFailure
+import Vegas.Game.OnePacketCompletionPoint
+import Vegas.Game.OnePacketComparisonContinuationValue
+import Vegas.Game.OnePacketLateLumping
+import Vegas.Game.OnePacketSuccessorBoundary
 
 /-! # Continuation transport through a local source-event response -/
 
 noncomputable section
 
-namespace Vegas.RecoveryOnePacket
+namespace Vegas.OnePacketComparison
 
 open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Protocol.InformationModel GameTheory.Math.Probability Interaction EventGraphRuntime
-  RecoveryProjection
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
   (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (recoveryApplication runtime leaks).Scheduler)
+  (scheduler : (application setup runtime leaks).Scheduler)
 
-local notation "Initial" => PMF.map
-  (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
-local notation "NativeScheduler" => nativeScheduler runtime leaks scheduler
-local notation "R" => model setup runtime leaks bounds Initial horizon scheduler
-local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-  (NativeScheduler)
-local notation "RP" => ReactiveApplication.ResponseMenu.protocol
-  (Recovery.onePacketMenu runtime leaks bounds) Initial horizon scheduler
+local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon (NativeScheduler)
+  (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
-    native ∅))
+  (app := application setup runtime leaks)
+    (fun native : EventGraphRuntime.State (graph setup) =>
+      EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 open Classical in
 /-- Current-event completion potentials approximate the common stopped future
 value. The remaining bad mass is the actual missing-completion-point mass on success. -/
-theorem nativeComparison_local_phase_value_sub_le_of_boundary_values [Fintype (RP).History]
-    [(application setup runtime leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
-    [∀ who, DecidableEq ((R).InfoState who)] [∀ who, DecidableEq ((N).InfoState who)]
-    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
-    (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
-    {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (Part setup runtime leaks bounds Initial horizon scheduler slots p))
-      (n : ℕ)
+theorem local_phase_value_sub_le_of_boundary_values
+    [∀ player, DecidableEq ((N).InfoState player)]
+    (source : setup.intendedModel.BehavioralAssessment)
+    (common : ∀ player, (N).BehavioralPolicy player)
     (terminalCompletes : ∀ (final : (application setup runtime leaks).Control),
       ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
-        (NativeScheduler)).Trace (some final) →
-      ExclusionEvidence 0 ∅ (⟨final.execution.application, ∅⟩ : RecoveryState (graph setup)) →
+        scheduler).Trace (some final) →
+      final.execution.application.config.defaulted = ∅ →
       (application setup runtime leaks).terminal (some final) →
       final.execution.application.config.cut.Terminal)
     (certificate : (NP).WellFoundedHistories) (who : Player) (info : (N).InfoState who)
@@ -73,30 +64,24 @@ theorem nativeComparison_local_phase_value_sub_le_of_boundary_values [Fintype (R
     (boundaryValues : ∀ (nextRank : Nat) (start : (NP).History)
       (anchor : (application setup runtime leaks).Execution),
       start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ →
-      ReachedBoundary setup runtime leaks horizon (NativeScheduler) nextRank anchor →
+      ReachedBoundary setup runtime leaks horizon scheduler nextRank anchor →
       ∀ point : ProtocolState setup.program,
       sourceServicePrefix? setup nextRank anchor.application.config = some point →
       ProtocolState.Intended setup.program point →
       let stopped := fun final : (NP).History => ¬ Clear final.state ∨
         DecodedState setup runtime leaks (failureProfile setup.program)
           (ProtocolState.OwesFailure who setup.program) final.state
-      |expect ((N).runBehavioralUntil certificate
-          (nativeComparisonStrategy setup runtime leaks bounds horizon scheduler sequence scale
-            positive
-            le_one weights n) stopped start)
+      |expect ((N).runBehavioralUntil certificate common stopped start)
           (fun final => if stopped final then excludedPayoff who else
             exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who) -
         sourcePointValue setup parameter utility excludedPayoff
-          (setup.intendedOpeningProfile (sequence n).strategy) who point| ≤
+          (setup.intendedOpeningProfile source.strategy) who point| ≤
         boundaryError *
           (application setup runtime leaks).rank horizon start.state) :
-    let common := nativeComparisonStrategy setup runtime leaks bounds horizon scheduler sequence
-      scale
-      positive le_one weights n
     let installed := Profile.update (sig := (N).behavioralSignature) common who
       ((common who).withLaw info law)
     let phase := fun final : (NP).History =>
-      LateStopped setup runtime leaks bounds horizon (NativeScheduler) rank final ∨ ¬ Clear
+      LateStopped setup runtime leaks bounds horizon scheduler rank final ∨ ¬ Clear
         final.state
     let stopped := fun final : (NP).History => ¬ Clear final.state ∨
       DecodedState setup runtime leaks (failureProfile setup.program)
@@ -105,9 +90,9 @@ theorem nativeComparison_local_phase_value_sub_le_of_boundary_values [Fintype (R
       ¬ StoreEventFailed control.execution.application.config.store event
     let phaseLaw := (N).runBehavioralUntil certificate installed phase history
     let potential := fun final =>
-      (completionPoint setup runtime leaks bounds horizon (NativeScheduler) rank fresh final).elim
+      (completionPoint setup runtime leaks bounds horizon scheduler rank fresh final).elim
         (excludedPayoff who) (sourcePointValue setup parameter utility excludedPayoff
-          (setup.intendedOpeningProfile (sequence n).strategy) who)
+          (setup.intendedOpeningProfile source.strategy) who)
     |expect ((N).runBehavioralUntil certificate installed stopped history)
         (fun final => if stopped final then excludedPayoff who else
           exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who) -
@@ -115,10 +100,10 @@ theorem nativeComparison_local_phase_value_sub_le_of_boundary_values [Fintype (R
       boundaryError *
         (2 * horizon + 1) +
       2 * payoffBound * (phaseLaw.toOuterMeasure
-        {final | completionPoint setup runtime leaks bounds horizon (NativeScheduler) rank fresh
+        {final | completionPoint setup runtime leaks bounds horizon scheduler rank fresh
           final =
           none ∧ ¬ DecisionFailed (runtime := runtime) key final.state}).toReal := by
-  intro common installed phase stopped fresh phaseLaw potential
+  intro installed phase stopped fresh phaseLaw potential
   let payoff := fun final : (NP).History => if stopped final then excludedPayoff who else
     exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who
   let later := fun final : (NP).History =>
@@ -126,41 +111,51 @@ theorem nativeComparison_local_phase_value_sub_le_of_boundary_values [Fintype (R
   let error := boundaryError *
     (2 * horizon + 1)
   let bad := {final : (NP).History |
-    completionPoint setup runtime leaks bounds horizon (NativeScheduler) rank fresh final = none ∧
+    completionPoint setup runtime leaks bounds horizon scheduler rank fresh final = none ∧
       ¬ DecisionFailed (runtime := runtime) key final.state}
   have coefficientNonneg : 0 ≤ boundaryError := boundaryErrorNonneg
   have errorNonneg : 0 ≤ error := mul_nonneg coefficientNonneg (by positivity)
+  have baseBounded : ∀ final : (NP).History,
+      |exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who| ≤
+        payoffBound := by
+    intro final
+    cases final.state with
+    | none => simpa only [exclusionBase, abs_zero] using boundNonneg
+    | some control =>
+        change |if who ∈ control.execution.application.config.defaulted then excludedPayoff who
+          else exclusionReadoutUtility setup parameter utility excludedPayoff
+            (sourceReadout setup runtime leaks (some control)) who| ≤ payoffBound
+        split
+        · exact excludedBounded
+        · exact readoutBounded _
   have payoffBounded : ∀ final, |payoff final| ≤ payoffBound := by
     intro final
     dsimp only [payoff]
     split
     · exact excludedBounded
-    · rw [exclusionBase_eq_readout]
-      exact readoutBounded _
+    · exact baseBounded final
   have laterBounded : ∀ final, |later final| ≤ payoffBound :=
     fun _ => expect_abs_le_of_bounded boundNonneg payoffBounded
   have sourceBounded : ∀ point,
       |sourcePointValue setup parameter utility excludedPayoff
-        (setup.intendedOpeningProfile (sequence n).strategy) who point| ≤ payoffBound := by
+        (setup.intendedOpeningProfile source.strategy) who point| ≤ payoffBound := by
     intro point
     unfold sourcePointValue
     exact expect_abs_le_of_bounded boundNonneg readoutBounded
   have potentialBounded : ∀ final, |potential final| ≤ payoffBound := by
     intro final
     dsimp only [potential]
-    cases completionPoint setup runtime leaks bounds horizon (NativeScheduler) rank fresh final with
+    cases completionPoint setup runtime leaks bounds horizon scheduler rank fresh final with
     | none => exact excludedBounded
     | some point => exact sourceBounded point
-  have clear : ExclusionEvidence 0 ∅ (RecoveryState.mk execution.application ∅) :=
-    exclusionEvidence_of_decodedIntended (runtime := runtime)
-      ((bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
-        (NativeScheduler) (current ▸ history.trace))
+  have clear : execution.application.config.defaulted = ∅ :=
+    defaulted_eq_empty_of_decodedIntended
       ((decodedPoint_eq_of_isPrefix ordered).trans decoded) intended
   have going : ¬ phase history := by
-    rintro (⟨control, state, next⟩ | unclear)
+    rintro (⟨control, state, completed, done, atRank⟩ | unclear)
     · rw [current] at state
       cases Option.some.inj state
-      have := EventOrder.Cut.IsPrefix.unique next ordered
+      have before := (ordered.2 completed).mp done
       omega
     · exact unclear (by rw [current]; exact clear)
   have running : ¬ (NP).terminal history.state := by
@@ -168,7 +163,7 @@ theorem nativeComparison_local_phase_value_sub_le_of_boundary_values [Fintype (R
     rintro ⟨_, impossible⟩
     cases impossible
   have active : (NP).active history.state who := by rw [current]; rfl
-  have splitLaw := OnePacketComparison.debtStopped_eq_bind_eventPhase (runtime := runtime) certificate installed who
+  have splitLaw := debtStopped_eq_bind_eventPhase (runtime := runtime) certificate installed who
     history _ current
     ordered point decoded intended
   have pointwise : ∀ final ∈ phaseLaw.support,
@@ -180,21 +175,23 @@ theorem nativeComparison_local_phase_value_sub_le_of_boundary_values [Fintype (R
       have := (abs_sub _ _).trans (add_le_add (laterBounded final) (potentialBounded final))
       linarith
     · rw [ite_eq_right badFinal, add_zero]
-      cases found : completionPoint setup runtime leaks bounds horizon (NativeScheduler) rank
+      cases found : completionPoint setup runtime leaks bounds horizon scheduler rank
         fresh final
           with
       | none =>
         have failed : DecisionFailed (runtime := runtime) key final.state := by
           by_contra notFailed
           exact badFinal ⟨found, notFailed⟩
-        obtain ⟨anchor, state, completed, nextPrefix, _seen⟩ :=
-          pending_stop_completed (runtime := runtime) terminalCompletes true certificate
-            installed
-          history current ordered clear event ready final member
-        have stored : StoreEventFailed anchor.application.config.store event := by
-          simpa only [state, DecisionFailed, decided, completed, true_and] using failed
-        have debt := decodedDebt_of_failed_event (runtime := runtime) final _ state event
-          completed who owned stored
+        have debt : DecodedState setup runtime leaks (failureProfile setup.program)
+            (ProtocolState.OwesFailure who setup.program) final.state := by
+          cases state : final.state with
+          | none => simp only [state, DecisionFailed] at failed
+          | some control =>
+              have failure : event ∈ control.execution.application.config.cut.completed ∧
+                  StoreEventFailed control.execution.application.config.store event := by
+                simpa only [state, DecisionFailed, decided] using failed
+              simpa only [state] using decodedDebt_of_failed_event (runtime := runtime) final
+                control state event failure.1 who owned failure.2
         have halt : stopped final := Or.inr debt
         dsimp only [later, potential]
         rw [(N).runBehavioralUntil_of_stopped certificate installed halt, expect_pure,
@@ -202,28 +199,28 @@ theorem nativeComparison_local_phase_value_sub_le_of_boundary_values [Fintype (R
         change |excludedPayoff who - excludedPayoff who| ≤ error
         simpa only [sub_self, abs_zero] using errorNonneg
       | some target =>
-        obtain ⟨control, state, nextPrefix, targetDecoded, targetIntended, _fresh⟩ :=
+        obtain ⟨control, state, _completed, targetDecoded, targetIntended, _fresh⟩ :=
           completionPoint_spec (runtime := runtime) rank fresh final target found
         have decodedState : nativeDecodedState setup runtime leaks final.state = some target := by
           rw [state]
-          exact (decodedPoint_eq_of_isPrefix nextPrefix).trans targetDecoded
+          exact targetDecoded
         obtain ⟨anchor, anchorState, _clear, _completed, atRank, boundary⟩ :=
           counted_stopped_boundary_of_intended (runtime := runtime) (completes :=
             terminalCompletes) certificate
             installed history current ordered event
             ready final member decodedState targetIntended
-        have after := OnePacketComparison.runUntil_after_localLaw_eq certificate
+        have after := runUntil_after_localLaw_eq certificate
           ((bounds.onePacketMenu runtime leaks).decisionRecall (initialLaw setup) horizon
-            (NativeScheduler)).actsOnceWhereItMatters common who info law phase stopped history
+            scheduler).actsOnceWhereItMatters common who info law phase stopped history
           observed active running going final member
         have near := boundaryValues (rank + 1) final anchor anchorState boundary target atRank
           targetIntended
         have depth : (application setup runtime leaks).rank horizon final.state ≤ 2 * horizon + 1
           := by
           have := (application setup runtime leaks).trace_bound (initialLaw setup) horizon
-            (NativeScheduler)
+            scheduler
             ((bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
-              (NativeScheduler) final.trace)
+              scheduler final.trace)
           omega
         dsimp only [later, potential]
         rw [after, found]
@@ -261,23 +258,33 @@ theorem nativeComparison_local_phase_value_sub_le_of_boundary_values [Fintype (R
 
 
 open Classical in
-/-- Current-event completion potentials approximate the common stopped future
-value. The remaining bad mass is the actual missing-completion-point mass on success. -/
-theorem nativeComparison_local_phase_value_sub_le [Fintype (RP).History]
-    [(application setup runtime leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
-    [∀ who, DecidableEq ((R).InfoState who)] [∀ who, DecidableEq ((N).InfoState who)]
+/-- The same assembled native assessment transports local stopped values to
+source completion potentials, with only the actual exceptional stop mass. -/
+theorem assembled_local_phase_value_sub_le
+    [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+    [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (Part setup runtime leaks bounds Initial horizon scheduler slots p))
-      (n : ℕ)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler slots p))
+    (targetSequence : ℕ → (N).BehavioralAssessment)
+    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+      positive le_one weights targetSequence) (n : ℕ)
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : Recovery.Opportunity runtime leaks Initial horizon scheduler delay)
-    (inclusion : Recovery.ProtectedInclusion runtime leaks Initial horizon scheduler bound)
+    (opportunity : ∀ control : (application setup runtime leaks).Control,
+      (NP).Trace (some control) → control.execution.application.config.defaulted = ∅ →
+        OpportunityAt runtime leaks control.execution delay)
+    (inclusion : ∀ control : (application setup runtime leaks).Control,
+      (NP).Trace (some control) → control.execution.application.config.defaulted = ∅ →
+        ProtectedInclusionAt runtime leaks control.execution bound)
     (timely : runtime.AsyncTimely delay bound)
-    (completes : Recovery.CompletesPlay runtime leaks Initial horizon scheduler)
+    (completes : ∀ control : (application setup runtime leaks).Control,
+      (NP).Trace (some control) → control.execution.application.config.defaulted = ∅ →
+        (application setup runtime leaks).terminal (some control) →
+          control.execution.application.config.cut.Terminal)
     (certificate : (NP).WellFoundedHistories) (who : Player) (info : (N).InfoState who)
     (law : PMF ((N).Choice who info)) (history : (NP).History)
     {remaining : Nat} {execution : (application setup runtime leaks).Execution}
@@ -296,14 +303,11 @@ theorem nativeComparison_local_phase_value_sub_le [Fintype (RP).History]
     (readoutBounded : ∀ readout,
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
     (excludedBounded : |excludedPayoff who| ≤ payoffBound) :
-    let common := nativeComparisonStrategy setup runtime leaks bounds horizon scheduler sequence
-      scale
-      positive le_one weights n
+    let common := (targetSequence n).strategy
     let installed := Profile.update (sig := (N).behavioralSignature) common who
       ((common who).withLaw info law)
     let phase := fun final : (NP).History =>
-      LateStopped setup runtime leaks bounds horizon (NativeScheduler) rank final ∨ ¬ Clear
-        final.state
+      LateStopped setup runtime leaks bounds horizon scheduler rank final ∨ ¬ Clear final.state
     let stopped := fun final : (NP).History => ¬ Clear final.state ∨
       DecodedState setup runtime leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure who setup.program) final.state
@@ -311,34 +315,38 @@ theorem nativeComparison_local_phase_value_sub_le [Fintype (RP).History]
       ¬ StoreEventFailed control.execution.application.config.store event
     let phaseLaw := (N).runBehavioralUntil certificate installed phase history
     let potential := fun final =>
-      (completionPoint setup runtime leaks bounds horizon (NativeScheduler) rank fresh final).elim
+      (completionPoint setup runtime leaks bounds horizon scheduler rank fresh final).elim
         (excludedPayoff who) (sourcePointValue setup parameter utility excludedPayoff
           (setup.intendedOpeningProfile (sequence n).strategy) who)
     |expect ((N).runBehavioralUntil certificate installed stopped history)
         (fun final => if stopped final then excludedPayoff who else
           exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who) -
       expect phaseLaw potential| ≤
-      (2 * payoffBound * (1 - slotRetention (scale n))) *
-        (2 * horizon + 1) +
+      (2 * payoffBound * (1 - slotRetention (scale n))) * (2 * horizon + 1) +
       2 * payoffBound * (phaseLaw.toOuterMeasure
-        {final | completionPoint setup runtime leaks bounds horizon (NativeScheduler) rank fresh
-          final =
+        {final | completionPoint setup runtime leaks bounds horizon scheduler rank fresh final =
           none ∧ ¬ DecisionFailed (runtime := runtime) key final.state}).toReal := by
-  apply nativeComparison_local_phase_value_sub_le_of_boundary_values setup runtime leaks bounds
-    horizon
-    scheduler sequence scale positive le_one weights n
-    (Recovery.CompletesPlay.clear_counted_native (runtime := runtime) bounds
-      (initialLaw_initialized setup)
-      (initialLaw_native setup) completes)
-    certificate who info law history current observed event ready owned key decided ordered point
-    decoded intended parameter utility excludedPayoff boundNonneg readoutBounded excludedBounded
+  apply local_phase_value_sub_le_of_boundary_values setup runtime leaks bounds horizon scheduler
+    (sequence n) (targetSequence n).strategy completes certificate who info law history current
+    observed event ready owned key decided ordered point decoded intended parameter utility
+    excludedPayoff boundNonneg readoutBounded excludedBounded
     (2 * payoffBound * (1 - slotRetention (scale n))) (by
       have retention := slotRetention_le_one (positive n).le (le_one n)
       positivity)
   intro nextRank start anchor state boundary target atRank targetIntended
-  exact nativeComparison_stopped_boundary_value_sub_le setup runtime leaks bounds horizon scheduler
-    wellFormed covers capacity sequence scale positive le_one weights n opportunity inclusion timely
-    completes certificate nextRank start anchor state boundary target atRank targetIntended
-    parameter utility excludedPayoff who boundNonneg readoutBounded excludedBounded
+  exact assembled_stopped_boundary_value_sub_le setup runtime leaks bounds horizon scheduler
+    wellFormed covers capacity sequence scale positive le_one weights targetSequence assembled n
+    opportunity inclusion timely completes certificate nextRank start anchor state boundary target
+    atRank targetIntended parameter utility excludedPayoff who boundNonneg
+    (fun final => by
+      cases final.state with
+      | none => simpa only [exclusionBase, abs_zero] using boundNonneg
+      | some control =>
+          change |if who ∈ control.execution.application.config.defaulted then excludedPayoff who
+            else exclusionReadoutUtility setup parameter utility excludedPayoff
+              (sourceReadout setup runtime leaks (some control)) who| ≤ payoffBound
+          split
+          · exact excludedBounded
+          · exact readoutBounded _) excludedBounded
 
-end Vegas.RecoveryOnePacket
+end Vegas.OnePacketComparison

@@ -4,7 +4,7 @@ import Vegas.Game.OnePacketFirstIrregular
 
 /-! # The certificate's response mass
 
-At a response of a forced player `r` other than the observer, with a canonical
+At a response from a clear input of a forced player `r`, with a canonical
 disclosure, the certificate's response mass is at most the step response plus
 the cube of the scale, owing or not
 (`Vegas.certificate_responseMass_le_response`):
@@ -37,7 +37,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
     scheduler).InfoState who)]
 
 /-- **The certificate's response mass is at most the step response plus the
-cube of the scale** at a response of a forced player with a canonical disclosure
+cube of the scale** at a clear response of a forced player with a canonical disclosure
 whose transmissions name the event of its turn. -/
 theorem certificate_responseMass_le_response
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
@@ -49,7 +49,8 @@ theorem certificate_responseMass_le_response
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup) horizon
+      scheduler slots p))
     (n : ℕ) {before after : (application setup runtime leaks).ProtocolState}
     (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace before)
     (joint : Player → Option (application setup runtime leaks).Action)
@@ -62,6 +63,8 @@ theorem certificate_responseMass_le_response
     (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
       setup) horizon
       scheduler actor ((application setup runtime leaks).observe actor (some control)))
+    (clear : runtime.ClearInput leaks
+      ((application setup runtime leaks).observe actor (some control)))
     (canonical : DisclosureCanonical setup runtime leaks bounds actor (control.execution.recall
       actor)
       (control.execution.observe (application setup runtime leaks) actor))
@@ -90,7 +93,7 @@ theorem certificate_responseMass_le_response
       some (control.execution.recall actor,
         control.execution.observe (application setup runtime leaks) actor) := by
     simp [ReactiveApplication.observe, acting]
-  rw [observed] at forced
+  rw [observed] at forced clear
   have responseNonneg := stepResponse_nonneg (runtime := runtime) bounds (keyWeights setup runtime
     leaks bounds horizon
     scheduler (weights n)) (scale_pos n).le (scale_le_one n)
@@ -113,7 +116,7 @@ theorem certificate_responseMass_le_response
       mainMass, alternativeMass, slotMass, combination, _⟩ :=
       certificate_slotLaw_at (runtime := runtime) sequence scale scale_pos scale_le_one small
         floor floor_pos covers
-        capacity weights n prior acting forced canonical response member nextEq positive
+        capacity weights n prior acting forced clear canonical response member nextEq positive
         (fun _ => (floored n).trans floorStep) _ infoEq played
         (InformationModel.choicesOfLegal _ prior ⟨joint, legal⟩ actor) chosenJoint
     have mass := stepProb_eq_responseMass (runtime := runtime) (certificateProfile setup runtime
@@ -172,7 +175,7 @@ theorem certificate_responseMass_le_response
     rw [infoEq] at played
     obtain ⟨main, mainForm, profileEq⟩ := certificateProfile_eq_slotTrembled (runtime := runtime)
       sequence scale
-      scale_pos scale_le_one weights n _ played forced
+      scale_pos scale_le_one weights n _ played forced clear
     refine (responseMass_le_of_slotTrembled (runtime := runtime) _ ⟨remaining, some actor,
       execution⟩ rfl joint
       (scale_pos n).le (scale_le_one n) main _ _ profileEq fun choice chosen => ?_).trans

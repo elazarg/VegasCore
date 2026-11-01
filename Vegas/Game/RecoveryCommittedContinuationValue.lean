@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.RecoveryCountedValues
-import Vegas.Game.RecoveryNonLateSourceValue
+import Vegas.Game.OnePacketLocalPhaseValue
 import Vegas.Game.RecoveryPhaseValueBlind
 import Vegas.Game.RecoveryCompletionPotential
 

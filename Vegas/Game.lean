@@ -351,7 +351,7 @@ import Vegas.Game.RecoveryNativeWeights
 import Vegas.Game.RecoveryNonLateChoices
 import Vegas.Game.RecoveryNonLateComparisons
 import Vegas.Game.RecoveryNonLateNativeComparisons
-import Vegas.Game.RecoveryNonLateSourceValue
+import Vegas.Game.OnePacketLocalPhaseValue
 import Vegas.Game.OnePacketCommonCompletion
 import Vegas.Game.OnePacketComponents
 import Vegas.Game.RecoveryOnePacketPreservation
@@ -361,7 +361,7 @@ import Vegas.Game.NativePaymentReadout
 import Vegas.Game.RecoveryPendingCompletion
 import Vegas.Game.RecoveryPendingFailure
 import Vegas.Game.RecoveryPendingValueAffine
-import Vegas.Game.RecoveryPhasePotential
+import Vegas.Game.OnePacketPhasePotential
 import Vegas.Game.RecoveryPhaseValueBlind
 import Vegas.Game.RecoveryPooledGains
 import Vegas.Game.RecoveryPooledMemberGains
@@ -371,7 +371,7 @@ import Vegas.Game.RecoveryProtectedCalls
 import Vegas.Game.RecoverySequentialCompilation
 import Vegas.Game.RecoverySilenceComparison
 import Vegas.Game.RecoverySourceBeliefBounds
-import Vegas.Game.RecoverySourcePhaseValue
+import Vegas.Game.OnePacketCompletionPoint
 import Vegas.Game.RecoveryStoppedAcceptance
 import Vegas.Game.RecoveryStoppedContinuationValue
 import Vegas.Game.RecoveryStoppedSettlement
