@@ -67,14 +67,14 @@ theorem sentSourceAction_swap (swap : HiddenSwap (graph setup))
       sentSourceAction setup runtime leaks after action := by
   rcases action with ⟨_ | material⟩
   · rfl
-  · unfold sentSourceAction
-    simp only
+  · change callContent setup (after.application.swap swap) material.call.packet =
+      callContent setup after.application material.call.packet
     cases packetEq : material.call.packet with
     | commitment event handle =>
-        simp only
+        simp only [callContent]
         split
-        · rw [HiddenSwap.execution_application,
-            bindingResult_swap_of_raw swap _ handle (fixed material event handle rfl packetEq)]
+        · rw [bindingResult_swap_of_raw swap _ handle
+            (fixed material event handle rfl packetEq)]
         · rfl
     | opening | malformed => rfl
 
@@ -211,6 +211,7 @@ private theorem othersSourceWeight_mapTrace_aux (swap : HiddenSwap (graph setup)
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
+    (failures : ∀ event, swap.values.ExpiryFixed event)
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
     (fixesOthers : ∀ other, other ≠ who → swap.Fixes other) (c : ℝ)
     (priorScaled : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
@@ -220,7 +221,7 @@ private theorem othersSourceWeight_mapTrace_aux (swap : HiddenSwap (graph setup)
     othersSourceWeight setup runtime leaks bounds horizon scheduler assessment who
         ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
           swap initialClosed
-          bounded).mapTrace trace guarded) =
+          bounded failures).mapTrace trace guarded) =
       state.elim 1 (fun _ => c) *
         othersSourceWeight setup runtime leaks bounds horizon scheduler assessment who trace
   | _, .start, _ => by
@@ -229,7 +230,7 @@ private theorem othersSourceWeight_mapTrace_aux (swap : HiddenSwap (graph setup)
   | _, .extend (source := source) (target := target) prior joint legal reached, guarded => by
       rw [StateSymmetry.mapTrace_extend]
       simp only [othersSourceWeight]
-      rw [othersSourceWeight_mapTrace_aux swap initialClosed bounded
+      rw [othersSourceWeight_mapTrace_aux swap initialClosed bounded failures
         assessment who fixesOthers c
         priorScaled prior]
       cases source with
@@ -260,6 +261,7 @@ theorem othersSourceWeight_mapTrace_scaled (swap : HiddenSwap (graph setup))
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
+    (failures : ∀ event, swap.values.ExpiryFixed event)
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
     (fixesOthers : ∀ other, other ≠ who → swap.Fixes other) (c : ℝ)
     (priorScaled : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
@@ -270,9 +272,10 @@ theorem othersSourceWeight_mapTrace_scaled (swap : HiddenSwap (graph setup))
     othersSourceWeight setup runtime leaks bounds horizon scheduler assessment who
         ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
           swap initialClosed
-          bounded).mapTrace trace guarded) =
+          bounded failures).mapTrace trace guarded) =
       c * othersSourceWeight setup runtime leaks bounds horizon scheduler assessment who trace :=
-  othersSourceWeight_mapTrace_aux (runtime := runtime) swap initialClosed bounded assessment who
+  othersSourceWeight_mapTrace_aux (runtime := runtime) swap initialClosed bounded failures
+    assessment who
     fixesOthers c
     priorScaled trace guarded
 
@@ -282,6 +285,7 @@ theorem observe_swap_of_fixes (swap : HiddenSwap (graph setup))
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
+    (failures : ∀ event, swap.values.ExpiryFixed event)
     {player : Player} (fixes : swap.Fixes player) {state : (application setup runtime
       leaks).ProtocolState}
     (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
@@ -289,7 +293,8 @@ theorem observe_swap_of_fixes (swap : HiddenSwap (graph setup))
     (application setup runtime leaks).observe player (swap.protocolState
       state) =
       (application setup runtime leaks).observe player state := by
-  have mapped := infoOf_mapTrace (runtime := runtime) swap initialClosed bounded player trace
+  have mapped := infoOf_mapTrace (runtime := runtime) swap initialClosed bounded failures player
+    trace
     guarded
   rw [onePacket_infoOf, onePacket_infoOf] at mapped
   change (application setup runtime leaks).observe player (swap.protocolState
@@ -304,9 +309,11 @@ theorem observe_swap_of_fixes (swap : HiddenSwap (graph setup))
           trace = some (past, view) := by
         rw [onePacket_infoOf, observed]
       have fixedInfo := infoOf_mapTrace_of_fixes (runtime := runtime) swap initialClosed bounded
+        failures
         fixes ⟨state, trace⟩
         guarded decision
-      have direct := infoOf_mapTrace (runtime := runtime) swap initialClosed bounded player trace
+      have direct := infoOf_mapTrace (runtime := runtime) swap initialClosed bounded failures
+        player trace
         guarded
       rw [fixedInfo, onePacket_infoOf, observed] at direct
       exact direct.symm
@@ -317,6 +324,7 @@ theorem regularStep_swap_iff (swap : HiddenSwap (graph setup))
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
+    (failures : ∀ event, swap.values.ExpiryFixed event)
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
     (fixesOthers : ∀ other, other ≠ who → swap.Fixes other)
     (forcedEq : ∀ state, (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
@@ -357,7 +365,8 @@ theorem regularStep_swap_iff (swap : HiddenSwap (graph setup))
       intro acting
       apply forall_congr'
       intro owner
-      rw [observe_swap_of_fixes (runtime := runtime) swap initialClosed bounded (fixesOthers actor
+      rw [observe_swap_of_fixes (runtime := runtime) swap initialClosed bounded failures
+        (fixesOthers actor
         owner) prior
           sourceGuarded, forcedEq _ prior sourceGuarded,
         contentFactor_joint_swap (runtime := runtime) swap assessment next.execution legal acting
@@ -370,6 +379,7 @@ theorem regularTrace_mapTrace_iff (swap : HiddenSwap (graph setup))
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
+    (failures : ∀ event, swap.values.ExpiryFixed event)
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
     (fixesOthers : ∀ other, other ≠ who → swap.Fixes other)
     (forcedEq : ∀ state, (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
@@ -382,22 +392,23 @@ theorem regularTrace_mapTrace_iff (swap : HiddenSwap (graph setup))
     RegularTrace setup runtime leaks bounds horizon scheduler assessment who
         ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
           swap initialClosed
-          bounded).mapTrace trace guarded) ↔
+          bounded failures).mapTrace trace guarded) ↔
       RegularTrace setup runtime leaks bounds horizon scheduler assessment who trace
   | _, .start, _ => Iff.rfl
   | _, .extend (source := source) (target := target) prior joint legal reached, guarded => by
       rw [StateSymmetry.mapTrace_extend]
       simp only [RegularTrace]
       exact and_congr
-        (regularTrace_mapTrace_iff swap initialClosed bounded assessment who
+        (regularTrace_mapTrace_iff swap initialClosed bounded failures assessment who
           fixesOthers forcedEq
           prior _)
-        (regularStep_swap_iff (runtime := runtime) swap initialClosed bounded assessment who
+        (regularStep_swap_iff (runtime := runtime) swap initialClosed bounded failures assessment
+          who
           fixesOthers forcedEq prior
           legal reached
           ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
             swap initialClosed
-            bounded).guard_source prior legal reached guarded))
+            bounded failures).guard_source prior legal reached guarded))
 
 omit [Fintype Player] in
 /-- A player the swap fixes sees the decoded points of a configuration and of
@@ -427,6 +438,7 @@ theorem forcedState_swap_iff (swap : HiddenSwap (graph setup))
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
+    (failures : ∀ event, swap.values.ExpiryFixed event)
     (who : Player) (fixesOthers : ∀ other, other ≠ who → swap.Fixes other)
     (observer : Player) (distinct : observer ≠ who)
     {state : (application setup runtime leaks).ProtocolState}
@@ -444,7 +456,7 @@ theorem forcedState_swap_iff (swap : HiddenSwap (graph setup))
         (failureProfile setup.program) (bounds.onePacketMenu runtime leaks) horizon
         scheduler ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon
           scheduler swap
-          initialClosed bounded).mapTrace trace guarded) (swap.control
+          initialClosed bounded failures).mapTrace trace guarded) (swap.control
             control) rfl
       have decoded := decodedPoint_eq residual
       have swappedDecoded := decodedPoint_eq swappedResidual
@@ -466,7 +478,7 @@ theorem forcedState_swap_iff (swap : HiddenSwap (graph setup))
       refine and_congr (not_congr (ProtocolState.revealFailed_iff_of_observe_eq who observer
         setup.program swapped point (sameView observer distinct))) (forall_congr' fun other =>
           forall_congr' fun different => and_congr (not_congr
-            (ProtocolState.excluded_iff_of_observe_eq other setup.program swapped point
+            (ProtocolState.excluded_iff_of_observe_eq other other setup.program swapped point
               (sameView other different))) (not_congr ?_))
       have projected : projectView setup runtime leaks other
           (some ([], (swap.execution control.execution).observe (application setup runtime leaks)
@@ -484,6 +496,7 @@ theorem regularTrace_mapTrace_iff_of_fixes (swap : HiddenSwap (graph setup))
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
+    (failures : ∀ event, swap.values.ExpiryFixed event)
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
     (fixesOthers : ∀ other, other ≠ who → swap.Fixes other)
     (observer : Player) (distinct : observer ≠ who)
@@ -493,12 +506,12 @@ theorem regularTrace_mapTrace_iff_of_fixes (swap : HiddenSwap (graph setup))
     RegularTrace setup runtime leaks bounds horizon scheduler assessment who
         ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
           swap initialClosed
-          bounded).mapTrace trace guarded) ↔
+          bounded failures).mapTrace trace guarded) ↔
       RegularTrace setup runtime leaks bounds horizon scheduler assessment who trace :=
-  regularTrace_mapTrace_iff (runtime := runtime) swap initialClosed bounded assessment who
+  regularTrace_mapTrace_iff (runtime := runtime) swap initialClosed bounded failures assessment who
     fixesOthers
     (fun _ trace guarded => forcedState_swap_iff (runtime := runtime) swap initialClosed bounded
-      who fixesOthers
+      failures who fixesOthers
       observer distinct trace guarded) trace guarded
 
 end Vegas

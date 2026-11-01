@@ -1,10 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketPrescribedSourceKernel
-import Vegas.Game.SourceFailureRecord
+import Vegas.Game.SourceServiceAsyncStep
+import Vegas.Pending.ReactiveCompletion
 import Vegas.Pending.ExclusionAcceptedOutput
-import Vegas.Game.AnchoredHonestLaw
-import Vegas.Game.AnchoredOpeningClients
+import Vegas.Game.OnePacketOwnSubmissions
+import Vegas.Game.SourceServiceCompletion
 import Vegas.Game.IntendedOpeningContinuation
 import Vegas.Game.SourceDebtObservation
 
@@ -23,61 +24,72 @@ variable {Player : Type} [DecidableEq Player]
   {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-private theorem native_sourceFailureRecord
-    (profile : BehavioralProfile setup.program) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler)
-    {control : (application setup runtime leaks).Control}
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some control)) : SourceFailureRecord profile control.execution.application.config := by
-  let valid : (application setup runtime leaks).ServiceInvariant scheduler
-      (fun execution => SourceFailureRecord profile execution.application.config) :=
-    { respond := fun execution who response holds => by
-        rw [(runtime.reactive_respond_application leaks execution who response).1]
-        exact holds
-      environment := fun execution next command holds _chosen reached =>
-        holds.step (environmentStep_configStep setup leaks execution next command reached) }
-  exact valid.history (initialLaw setup) horizon (fun state supported => by
-    obtain ⟨initial, _supported, rfl⟩ := PMF.support_map .. ▸ supported
-    exact SourceFailureRecord.initial setup profile initial) trace
-
-/-- At a genuine native prefix, an intended source decoding rules out public
-failure evidence. Hidden binding debt is handled through its actual stored
-failure record, rather than through receipt flags alone. -/
-theorem exclusionEvidence_of_decodedIntended {horizon : Nat}
+/-- In the internally clear region a raw transition keeps the current prefix or
+completes its one ready event, while retaining the prior bound on response views. -/
+private theorem clear_transition_prefix {horizon rank : Nat}
     {scheduler : (application setup runtime leaks).Scheduler}
-    {control : (application setup runtime leaks).Control}
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some control))
-    {point : ProtocolState setup.program}
-    (decoded : decodedPoint setup control.execution.application.config = some point)
-    (intended : ProtocolState.Intended setup.program point) :
-    ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)) := by
-  have binding := (runtime.reactiveBindingInvariant leaks).history (initialLaw setup)
-    horizon scheduler (fun state supported => by
-      obtain ⟨inputs, _supported, rfl⟩ := PMF.support_map .. ▸ supported
-      exact State.initial_bindingInvariant _) trace
-  obtain ⟨rank, ⟨residual⟩, record⟩ :=
-    native_sourceFailureRecord (runtime := runtime) (failureProfile setup.program) horizon
-      scheduler trace
-  have decodedAt : sourceServicePrefix? setup rank control.execution.application.config =
-      some point := (decodedPoint_eq_of_isPrefix residual.checkpoint.ordered).symm.trans decoded
-  refine ⟨native_receiptsComplete_history runtime leaks (initialLaw setup)
-    (serviceInitialLaw_initialized setup) horizon scheduler trace,
-    fun event lower => by omega, fun owner => ⟨?_, ?_⟩⟩
-  · intro member
-    exact (Finset.notMem_empty owner member).elim
-  · rintro (inherited | ⟨event, _lower, acting, failed⟩)
-    · exact inherited
-    · have present := (control.execution.application.config.output_available event).mpr
-        failed.completed
-      obtain ⟨value, read⟩ := Option.isSome_iff_exists.mp present
-      have stored : control.execution.application.config.store (.inr event) = some value := read
-      have failing : StoreEventFailed control.execution.application.config.store event := by
-        refine ⟨value, stored, ?_⟩
-        by_contra good
-        exact (OutputSucceeded.not_publicFailure ⟨value, stored, good⟩ binding) failed
-      exact (ProtocolState.Intended.not_owesFailure owner setup.program point intended
-        (record event failed.completed owner acting failing point decodedAt)).elim
+    (before after : (application setup runtime leaks).Control)
+    (joint : Player → Option (application setup runtime leaks).Action)
+    (ordered : before.execution.application.config.cut.IsPrefix rank)
+    (seen : ReadySeen setup leaks rank before.execution)
+    (reached : some after ∈ ((application setup runtime leaks).transition (initialLaw setup)
+      horizon scheduler (some before) joint).support)
+    (clear : after.execution.application.config.defaulted = ∅) :
+    (after.execution.application.config = before.execution.application.config ∧
+      ReadySeen setup leaks rank after.execution) ∨
+    (after.actor = none ∧ after.execution.application.config.cut.IsPrefix (rank + 1) ∧
+      ReadySeen setup leaks rank after.execution) := by
+  let app := application setup runtime leaks
+  rcases before with ⟨remaining, actor, execution⟩
+  cases actor with
+  | some owner =>
+      cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp reached)
+      refine Or.inl ⟨(runtime.reactive_respond_application leaks execution owner _).1, ?_⟩
+      intro observer entry member event readyView
+      rcases app.respond_entry_origin execution owner observer ((joint owner).getD ⟨none⟩)
+        entry member with old | ⟨same, fresh⟩
+      · exact seen observer entry old event readyView
+      · rw [fresh] at readyView
+        change execution.application.publicView.EventReady event at readyView
+        have ready := (execution.application.publicView_eventReady event).mp readyView
+        have actual : execution.application.config.cut.IsPrefix event.val :=
+          ⟨event.isLt.le, fun query =>
+            setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+        exact (actual.unique ordered).le
+  | none =>
+      cases remaining with
+      | zero =>
+          cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp reached)
+          exact Or.inl ⟨rfl, seen⟩
+      | succ remaining =>
+          obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+          obtain ⟨next, supported, same⟩ := PMF.support_map .. ▸ moved
+          cases Option.some.inj same
+          have unchangedRecall := app.environmentStep_recall execution next command supported
+          have nextSeen : ReadySeen setup leaks rank next := by
+            intro observer entry member event readyView
+            rw [unchangedRecall] at member
+            exact seen observer entry member event readyView
+          rcases runtime.reactive_environmentStep_config_eq_or_step leaks execution next command
+            supported clear with unchanged | ⟨event, ready, action, stepped⟩
+          · exact Or.inl ⟨unchanged, nextSeen⟩
+          · have idle : command.actor? app = none := by
+              cases command with
+              | activate owner =>
+                  have sameConfig : next.application.config = execution.application.config := by
+                    exact congrArg EventGraphRuntime.State.config
+                      (activation_application setup leaks execution next owner supported)
+                  exact (config_ne_of_step stepped sameConfig).elim
+              | «include» _ => rfl
+              | application _ => rfl
+              | wait => rfl
+            refine Or.inr ⟨idle, ?_, nextSeen⟩
+            have actual : execution.application.config.cut.IsPrefix event.val :=
+              ⟨event.isLt.le, fun query =>
+                setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+            rw [execution.application.config.step_cut event ready action next.application.config
+              stepped]
+            exact ordered.complete_at event ready (actual.unique ordered)
 
 section Successor
 
@@ -85,8 +97,9 @@ variable [Fintype Player] {bounds : MessageBounds (graph setup)}
   {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}
   (completes : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+    control.execution.application.config.defaulted = ∅ →
     (application setup runtime leaks).terminal (some control) →
     control.execution.application.config.cut.Terminal)
 
@@ -95,8 +108,9 @@ local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setu
 local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
-    native ∅))
+  (app := application setup runtime leaks)
+    (fun native : EventGraphRuntime.State (graph setup) =>
+      EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 include completes in
 /-- A supported stopped endpoint with an intended source decoding is the next
@@ -119,7 +133,7 @@ theorem counted_stopped_boundary_of_intended
     (intended : ProtocolState.Intended setup.program point) :
     ∃ anchor : (application setup runtime leaks).Execution,
       final.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ ∧
-      ExclusionEvidence 0 ∅ (RecoveryState.mk anchor.application ∅) ∧
+      anchor.application.config.defaulted = ∅ ∧
       event ∈ anchor.application.config.cut.completed ∧
       sourceServicePrefix? setup (rank + 1) anchor.application.config = some point ∧
       ReachedBoundary setup runtime leaks horizon scheduler (rank + 1) anchor := by
@@ -128,46 +142,63 @@ theorem counted_stopped_boundary_of_intended
     LateStopped setup runtime leaks bounds horizon scheduler rank stop ∨ ¬ Clear stop.state
   let property : (E).History → Prop := fun history =>
     ∃ next : (application setup runtime leaks).Control, history.state = some next ∧
-      (PendingAt setup runtime leaks rank next.execution ∨
-        next.actor = none ∧ next.execution.application.config.cut.IsPrefix (rank + 1) ∧
-          ReadySeen setup leaks rank next.execution)
-  have initialPending : PendingAt setup runtime leaks rank control.execution := by
-    obtain ⟨found, foundOrdered, seen⟩ := pendingAt_history (runtime := runtime)
-      ((menu).toRawTrace (initialLaw setup) horizon scheduler (current ▸ start.trace))
-    have same := EventOrder.Cut.IsPrefix.unique foundOrdered ordered
-    subst same
-    exact ⟨ordered, seen⟩
+      (next.execution.application.config.defaulted = ∅ →
+        ((next.execution.application.config.cut.IsPrefix rank ∧
+          ReadySeen setup leaks rank next.execution) ∨
+        (next.actor = none ∧ next.execution.application.config.cut.IsPrefix (rank + 1) ∧
+          ReadySeen setup leaks rank next.execution)))
+  have atRank := (ready_iff_rank setup _ rank ordered event).mp ready
+  have initialSeen : ReadySeen setup leaks rank control.execution :=
+    readySeen_of_rawTrace runtime leaks
+      ((menu).toRawTrace (initialLaw setup) horizon scheduler (current ▸ start.trace)) ordered
   have preserved : ∀ history, ¬ stopped history → ¬ (E).terminal history.state →
       property history → ∀ next ∈ ((N).runBehavioralFrom players 1 history).support,
         property next := by
     intro history going running ⟨before, state, cases⟩ next member
-    rcases cases with pending | finished
-    · obtain ⟨joint, realized⟩ := onePacket_step_transition (runtime := runtime) bounds players
-        running member
-      rw [state] at realized
-      rcases before with ⟨remaining, actor, execution⟩
-      exact pendingTransition (runtime := runtime) pending joint realized
-    · exact (going (Or.inl ⟨before, state, finished.2.1⟩)).elim
+    obtain ⟨⟨joint, _legal, realized⟩, _⟩ :=
+      (N).mem_support_runBehavioralFrom_one players running member
+    change next.state ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+      scheduler history.state joint).support at realized
+    rw [state] at realized
+    obtain ⟨after, afterState, _recallPrefix⟩ :=
+      (application setup runtime leaks).transition_recall_prefix (initialLaw setup) horizon
+        scheduler before next.state joint realized
+    refine ⟨after, afterState, fun nextClear => ?_⟩
+    have beforeClear := native_clear_before_transition runtime leaks (initialLaw setup) horizon
+      scheduler joint realized (by
+        intro found foundState
+        cases Option.some.inj (afterState.symm.trans foundState)
+        exact nextClear) before rfl
+    rcases cases beforeClear with ⟨beforeOrdered, beforeSeen⟩ | finished
+    · rcases clear_transition_prefix (runtime := runtime) (leaks := leaks) before after joint
+          beforeOrdered beforeSeen
+          (by simpa only [afterState] using realized) nextClear with
+        ⟨same, nextSeen⟩ | advanced
+      · exact Or.inl ⟨by rw [same]; exact beforeOrdered, nextSeen⟩
+      · exact Or.inr advanced
+    · have completed : event ∈ before.execution.application.config.cut.completed :=
+        (finished.2.1.2 event).mpr (by omega)
+      exact (going (Or.inl ⟨before, state, event, completed, atRank⟩)).elim
   obtain ⟨last, lastState, cases⟩ := (N).runBehavioralUntil_support_history_closed certificate
-    players stopped property preserved start ⟨control, current, Or.inl initialPending⟩
-    final supported
+    players stopped property preserved start
+      ⟨control, current, fun _ => Or.inl ⟨ordered, initialSeen⟩⟩ final supported
   have rawTrace := (menu).toRawTrace (initialLaw setup) horizon scheduler
     (lastState ▸ final.trace)
   have lastDecoded : decodedPoint setup last.execution.application.config = some point := by
     simpa only [lastState, nativeDecodedState] using decoded
-  have clear := exclusionEvidence_of_decodedIntended (runtime := runtime) rawTrace lastDecoded
+  have clear := defaulted_eq_empty_of_decodedIntended lastDecoded
     intended
   have finished : last.actor = none ∧
       last.execution.application.config.cut.IsPrefix (rank + 1) ∧
       ReadySeen setup leaks rank last.execution := by
-    rcases cases with pending | finished
+    rcases cases clear with pending | finished
     · have ends := (N).mem_support_runBehavioralUntil certificate players stopped start final
         supported
       rcases ends with (halted | failure) | terminal
-      · obtain ⟨other, otherState, nextPrefix⟩ := halted
+      · obtain ⟨other, otherState, query, completed, queryRank⟩ := halted
         rw [lastState, Option.some.injEq] at otherState
         subst otherState
-        have := EventOrder.Cut.IsPrefix.unique pending.1 nextPrefix
+        have := (pending.1.2 query).mp completed
         omega
       · exact (failure (by simpa only [lastState, ReactiveApplication.stateInvariant] using
           clear)).elim
@@ -206,12 +237,14 @@ theorem counted_stopped_boundary_of_intended
 
 variable {delay bound : (graph setup).EventId → Nat}
   (opportunity : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+    control.execution.application.config.defaulted = ∅ →
     OpportunityAt runtime leaks control.execution delay)
   (inclusion : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+    control.execution.application.config.defaulted = ∅ →
     ProtectedInclusionAt runtime leaks control.execution bound)
   (timely : runtime.AsyncTimely delay bound)
 
@@ -220,7 +253,7 @@ include opportunity inclusion timely completes in
 successor boundary, with the source behavioral successor and untouched later events. -/
 theorem counted_firstActivation_honest_successorBoundary
     [∀ player, DecidableEq ((N).InfoState player)]
-    (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
+    (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
     (certificate : (E).WellFoundedHistories)
@@ -228,7 +261,7 @@ theorem counted_firstActivation_honest_successorBoundary
     (history : (E).History)
     {remaining : Nat} {who : Player} {execution : (application setup runtime leaks).Execution}
     (current : history.state = some ⟨remaining, some who, execution⟩)
-    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk execution.application ∅))
+    (clear : execution.application.config.defaulted = ∅)
     (event : (graph setup).EventId)
     (pending : pendingEvent setup runtime leaks who (some (execution.recall who,
       execution.observe (application setup runtime leaks) who)) = some event)
@@ -251,13 +284,13 @@ theorem counted_firstActivation_honest_successorBoundary
         (setup.intendedOpeningProfile source.strategy) point).support ∧
       ProtocolState.Intended setup.program target ∧
       final.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ ∧
-      ExclusionEvidence 0 ∅ (RecoveryState.mk anchor.application ∅) ∧
+      anchor.application.config.defaulted = ∅ ∧
       event ∈ anchor.application.config.cut.completed ∧
       sourceServicePrefix? setup (rank + 1) anchor.application.config = some target ∧
       ReachedBoundary setup runtime leaks horizon scheduler (rank + 1) anchor := by
   classical
   have law := counted_firstActivation_honest_sourceLaw (runtime := runtime) opportunity
-    inclusion timely completes wellFormed covers capacity source certificate players history
+    inclusion timely completes covers capacity source certificate players history
     current clear event pending never ordered decoded intendedPoint info observed
   have decodedSupported : nativeDecodedState setup runtime leaks final.state ∈
       ((ProtocolState.behavioralStateStep setup.program

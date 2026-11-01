@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketSuccessorBoundary
-import Vegas.Game.ServiceChancePhase
+import Vegas.Pending.EventCommandFrame
+import Vegas.Pending.ReactiveGraphSteps
 
 /-! # Finite stopped chance phases of the native counted model -/
 
@@ -18,50 +19,163 @@ variable {Player : Type} [DecidableEq Player]
   {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
+private theorem prefix_after_completion {before after : (graph setup).Config} {rank : Nat}
+    (ordered : before.cut.IsPrefix rank) {event : (graph setup).EventId}
+    (ready : before.cut.Ready event) {action : (graph setup).Action event}
+    (stepped : after ∈ (before.step event ready action).support) :
+    after.cut.IsPrefix (rank + 1) := by
+  have actual : before.cut.IsPrefix event.val :=
+    ⟨event.isLt.le, fun query =>
+      setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+  rw [before.step_cut event ready action after stepped]
+  exact ordered.complete_at event ready (actual.unique ordered)
+
 private theorem chance_environment_configLaw
-    (players : Player → (application setup runtime leaks).Policy)
     (execution : (application setup runtime leaks).Execution)
     (command : (application setup runtime leaks).Command)
     (event : (graph setup).EventId) (ready : execution.application.config.cut.Ready event)
     (actorless : (graph setup).actor? event = none)
-    (alone : ∀ cut : (graph setup).order.Cut, ∀ other,
-      cut.Ready event → cut.Ready other → other = event)
-    (action : (graph setup).Action event) :
+    (action : (graph setup).Action event)
+    (clear : execution.application.config.defaulted = ∅) :
     (execution.environmentStep (application setup runtime leaks) command).map
         (fun next => next.application.config) = PMF.pure execution.application.config ∨
       (execution.environmentStep (application setup runtime leaks) command).map
         (fun next => next.application.config) =
-          execution.application.config.step event ready action :=
-    by
-  have resumeConfig : ∀ (actor : Option Player) (middle : (application setup runtime
-    leaks).Execution),
-      ((application setup runtime leaks).resume players actor middle).map
-        (fun next => next.application.config) = PMF.pure middle.application.config := by
-    intro actor middle
-    cases actor with
-    | none => simp only [ReactiveApplication.resume, PMF.pure_map]
-    | some who =>
-        unfold ReactiveApplication.resume ReactiveApplication.invoke
+          execution.application.config.step event ready action := by
+  let app := application setup runtime leaks
+  have sole (other : (graph setup).EventId)
+      (otherReady : execution.application.config.cut.Ready other) : other = event :=
+    setup.eventGraph.sequentialize_ready_unique _ otherReady ready
+  have stays : (∀ next ∈ (execution.environmentStep app command).support,
+      next.application.config = execution.application.config) →
+      (execution.environmentStep app command).map (fun next => next.application.config) =
+        PMF.pure execution.application.config := by
+    intro all
+    rw [map_congr_on_support _ (g := fun _ => execution.application.config) all]
+    exact PMF.map_const _ _
+  cases command with
+  | activate who =>
+      left
+      apply stays
+      intro next member
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ member
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
+      rfl
+  | wait =>
+      left
+      apply stays
+      intro next member
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+        PMF.mem_support_pure_iff] at member
+      subst next
+      rfl
+  | «include» id =>
+      left
+      apply stays
+      intro next member
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+        PMF.mem_support_pure_iff] at member
+      subst next
+      cases found : execution.network.lookup id with
+      | none =>
+          simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+            found]
+      | some message =>
+          have rejected : app.handle execution.application message = none := by
+            apply reactiveHandle_none
+            cases handled : handle runtime execution.application ⟨message.id, message.payload.call⟩
+              with
+            | none => rfl
+            | some next =>
+                obtain ⟨query, named, queryReady, _, _⟩ :=
+                  handle_config_mem_step runtime execution.application next _ handled
+                have equal := sole query queryReady
+                subst query
+                have sender := handle_sender_actor runtime execution.application next _ handled
+                  event named
+                rw [actorless] at sender
+                cases sender
+          simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+            found, rejected, Option.getD_none]
+  | application operation =>
+      have nativeLaw : (environmentStep runtime execution.application operation).map
+          EventGraphRuntime.State.config = PMF.pure execution.application.config ∨
+        (environmentStep runtime execution.application operation).map
+          EventGraphRuntime.State.config =
+            execution.application.config.step event ready action := by
+        cases node : nodeView (graph setup) event with
+        | bind owner payload outputEq codeEq =>
+            have actor := nodeView_bind_actor outputEq codeEq
+            rw [actorless] at actor
+            cases actor
+        | resolve owner payload binding checks outputEq codeEq =>
+            have actor := nodeView_resolve_actor outputEq codeEq
+            rw [actorless] at actor
+            cases actor
+        | sample payload law outputEq codeEq =>
+            cases operation with
+            | advanceClock => exact Or.inl (by simp only [environmentStep, PMF.pure_map])
+            | executeSample other =>
+                by_cases otherReady : execution.application.config.cut.Ready other
+                · have equal := sole other otherReady
+                  subst other
+                  right
+                  rw [environmentStep_executeSample_eq runtime execution.application event ready
+                    payload law outputEq codeEq node, PMF.map_comp]
+                  change (execution.application.config.step event ready _).map id = _
+                  rw [PMF.map_id, ((graph setup).nodes event).action_eq_of_actor_none actorless
+                    (cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit) action]
+                · left
+                  rw [environmentStep_executeSample_of_not_ready runtime execution.application
+                    other otherReady, PMF.pure_map]
+            | expire other =>
+                left
+                have pure : environmentStep runtime execution.application (.expire other) =
+                    PMF.pure execution.application := by
+                  by_cases otherReady : execution.application.config.cut.Ready other
+                  · have equal := sole other otherReady
+                    subst other
+                    cases activated : execution.application.activatedAt event with
+                    | none =>
+                        exact environmentStep_expire_of_not_activated runtime
+                          execution.application event ready activated
+                    | some entered =>
+                        by_cases due : runtime.deadline event ≤
+                            execution.application.clock - entered
+                        · exact environmentStep_expire_sample_eq runtime execution.application
+                            event ready entered activated due payload law outputEq codeEq node
+                        · exact environmentStep_expire_of_not_due runtime execution.application
+                            event ready entered activated due
+                  · exact environmentStep_expire_of_not_ready runtime execution.application other
+                      otherReady
+                rw [pure, PMF.pure_map]
+      have drains (native : EventGraphRuntime.State (graph setup))
+          (member : native ∈ (environmentStep runtime execution.application operation).support) :
+          native.drain.config = native.config := by
+        have mapped : native.config ∈ ((environmentStep runtime execution.application
+            operation).map EventGraphRuntime.State.config).support :=
+          (PMF.mem_support_map_iff _ _ _).mpr ⟨native, member, rfl⟩
+        have empty : native.config.defaulted = ∅ := by
+          rcases nativeLaw with stayed | sampled
+          · rw [stayed, PMF.mem_support_pure_iff] at mapped
+            rw [mapped]
+            exact clear
+          · rw [sampled] at mapped
+            exact (execution.application.config.step_defaulted_of_actor_none native.config event
+              ready action mapped actorless).trans clear
+        exact congrArg EventGraphRuntime.State.config (native.drain_eq_of_empty empty)
+      have equal : (execution.environmentStep app (.application operation)).map
+          (fun next => next.application.config) =
+          (environmentStep runtime execution.application operation).map
+            EventGraphRuntime.State.config := by
+        unfold ReactiveApplication.Execution.environmentStep
+        rw [PMF.map_comp, PMF.map_comp]
+        change ((environmentStep runtime execution.application operation).map
+          EventGraphRuntime.State.drain).map EventGraphRuntime.State.config = _
         rw [PMF.map_comp]
-        simp only [Function.comp_def]
-        have unchanged : (fun response =>
-            (middle.respond (application setup runtime leaks) who response).application.config) =
-            fun _ => middle.application.config := funext fun response =>
-          (runtime.reactive_respond_application leaks middle who response).1
-        rw [unchanged]
-        exact PMF.map_const _ _
-  have dispatchConfig : ((application setup runtime leaks).dispatch players command execution).map
-      (fun next => next.application.config) =
-      (execution.environmentStep (application setup runtime leaks) command).map
-        (fun next => next.application.config) := by
-    unfold ReactiveApplication.dispatch
-    rw [PMF.map_bind]
-    calc _ = (execution.environmentStep (application setup runtime leaks) command).bind
-          (fun middle => PMF.pure middle.application.config) :=
-          bind_congr_on_support _ fun middle _ => resumeConfig _ middle
-      _ = _ := PMF.bind_pure_comp _ _
-  have law := sample_command_law players execution command event ready actorless alone action
-  rwa [dispatchConfig] at law
+        exact map_congr_on_support _ drains
+      rw [equal]
+      exact nativeLaw
 
 private theorem chance_control_harmonic [Fintype Player]
     (bounds : MessageBounds (graph setup)) (horizon : Nat)
@@ -74,8 +188,7 @@ private theorem chance_control_harmonic [Fintype Player]
     {control : (application setup runtime leaks).Control} (current : history.state = some control)
     (event : (graph setup).EventId) (ready : control.execution.application.config.cut.Ready event)
     (actorless : (graph setup).actor? event = none)
-    (alone : ∀ cut : (graph setup).order.Cut, ∀ other,
-      cut.Ready event → cut.Ready other → other = event)
+    (clear : control.execution.application.config.defaulted = ∅)
     (action : (graph setup).Action event)
     (continuation : Option (graph setup).Config → PMF (Option (graph setup).Config))
     (unchanged : continuation (some control.execution.application.config) =
@@ -99,9 +212,8 @@ private theorem chance_control_harmonic [Fintype Player]
           (fun next => next.application.config)).bind (fun config => continuation (some config)) :=
           (PMF.bind_map ..).symm
       _ = _ := by
-        rcases chance_environment_configLaw (runtime := runtime) policies control.execution
-          command event ready
-          actorless alone action with stays | samples
+        rcases chance_environment_configLaw (runtime := runtime) control.execution
+          command event ready actorless action clear with stays | samples
         · rw [stays, PMF.pure_bind, unchanged]
         · rw [samples]
           exact (bind_congr_on_support _ completed).trans (PMF.bind_pure_comp _ _)
@@ -143,8 +255,9 @@ variable [Fintype Player] {bounds : MessageBounds (graph setup)}
   {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}
   (completes : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+    control.execution.application.config.defaulted = ∅ →
     (application setup runtime leaks).terminal (some control) →
     control.execution.application.config.cut.Terminal)
 
@@ -153,8 +266,9 @@ local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setu
 local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
-    native ∅))
+  (app := application setup runtime leaks)
+    (fun native : EventGraphRuntime.State (graph setup) =>
+      EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 include completes in
 /-- The finite one-packet stopped chance phase has the graph sampling law on
@@ -178,6 +292,7 @@ theorem counted_chance_stopped_configLaw
         (fun final => final.state.map (fun next => next.execution.application.config)) =
       (control.execution.application.config.step event ready action).map some := by
   classical
+  have atRank := (ready_iff_rank setup _ rank ordered event).mp ready
   let base := control.execution.application.config
   let law := base.step event ready action
   let project : (application setup runtime leaks).ProtocolState → Option (graph setup).Config :=
@@ -214,14 +329,14 @@ theorem counted_chance_stopped_configLaw
     have nextDecoded : decodedPoint setup next.execution.application.config = some point := by
       rw [equal]
       exact initialDecoded
-    have clear := exclusionEvidence_of_decodedIntended (runtime := runtime) nextTrace nextDecoded
+    have clear := defaulted_eq_empty_of_decodedIntended nextDecoded
       intended
     rcases halted with (prefixed | failure) | ended
-    · obtain ⟨other, otherState, nextPrefix⟩ := prefixed
+    · obtain ⟨other, otherState, query, completed, queryRank⟩ := prefixed
       rw [state, Option.some.injEq] at otherState
       subst otherState
-      rw [equal] at nextPrefix
-      have := EventOrder.Cut.IsPrefix.unique ordered nextPrefix
+      rw [equal] at completed
+      have := (ordered.2 query).mp completed
       omega
     · exact failure (by simpa only [state, ReactiveApplication.stateInvariant] using clear)
     · rw [state] at ended
@@ -239,15 +354,14 @@ theorem counted_chance_stopped_configLaw
     have nextReady : next.execution.application.config.cut.Ready event := by
       rw [equal]
       exact ready
-    have alone : ∀ cut : (graph setup).order.Cut, ∀ other,
-        cut.Ready event → cut.Ready other → other = event :=
-      fun cut other first second => setup.eventGraph.sequentialize_ready_unique cut second first
     have stepEq : next.execution.application.config.step event nextReady action = law := by
       simp only [equal]
       rfl
     have row := chance_control_harmonic (runtime := runtime) bounds horizon scheduler players
       history state event
-      nextReady actorless alone action potential
+      nextReady actorless (by
+        rw [equal]
+        exact defaulted_eq_empty_of_decodedIntended initialDecoded intended) action potential
       (by rw [stepEq, equal]; exact ite_eq_left rfl)
       (by rw [stepEq]; exact law_potential)
     exact row.trans (congrArg (PMF.map some) stepEq)
@@ -275,25 +389,20 @@ theorem counted_chance_stopped_configLaw
       have equal : next.execution.application.config = base := by
         rcases reachable with equal | sampled
         · exact equal
-        · exact (halt (Or.inl ⟨next, state,
-            isPrefix_succ_of_mem_step ordered ready sampled⟩)).elim
+        · exact (halt (Or.inl ⟨next, state, event,
+            law_completed _ sampled, atRank⟩)).elim
       have row := rows history next state equal
       have preserved : ∀ later ∈ ((N).runBehavioralFrom players 1 history).support,
           reach later := by
         intro later member
-        obtain ⟨found, foundOrdered, seen⟩ := pendingAt_history (runtime := runtime)
-          ((menu).toRawTrace (initialLaw setup) horizon scheduler (state ▸ history.trace))
-        have currentOrdered : next.execution.application.config.cut.IsPrefix rank := by
-          rw [equal]
-          exact ordered
-        have sameRank := EventOrder.Cut.IsPrefix.unique foundOrdered currentOrdered
-        subst sameRank
-        obtain ⟨joint, realized⟩ := onePacket_step_transition (runtime := runtime) bounds players
-          ended member
+        obtain ⟨⟨joint, _legal, realized⟩, _⟩ :=
+          (N).mem_support_runBehavioralFrom_one players ended member
+        change later.state ∈ ((application setup runtime leaks).transition (initialLaw setup)
+          horizon scheduler history.state joint).support at realized
         rw [state] at realized
-        rcases next with ⟨remaining, actor, execution⟩
-        obtain ⟨after, afterState, _⟩ := pendingTransition (runtime := runtime) ⟨currentOrdered,
-          seen⟩ joint realized
+        obtain ⟨after, afterState, _recallPrefix⟩ :=
+          (application setup runtime leaks).transition_recall_prefix (initialLaw setup) horizon
+            scheduler next later.state joint realized
         refine ⟨after, afterState, ?_⟩
         by_cases equalAfter : after.execution.application.config = base
         · exact Or.inl equalAfter
@@ -363,7 +472,7 @@ theorem counted_chance_stopped_sourceContinuation
       stop.state)
     start
   let continuation : Option (graph setup).Config →
-      PMF (Option (State L setup.program.terminalCtx)) := fun next =>
+      PMF (Option (Config Player L setup.program.terminalCtx)) := fun next =>
     match next with
     | none => (setup.continuationLaw profile none).map some
     | some next => sourceContinuation setup profile (rank + 1) next
@@ -388,7 +497,7 @@ theorem counted_chance_stopped_sourceContinuation
           | some ending =>
               have nextEq : next = ending.execution.application.config := by
                 simpa only [state, Option.map_some, Option.some.injEq] using same
-              have nextPrefix := isPrefix_succ_of_mem_step residual.checkpoint.ordered ready
+              have nextPrefix := prefix_after_completion residual.checkpoint.ordered ready
                 (nextEq ▸ sampled)
               simp only [Function.comp_def, state, Option.map_some, continuation,
                 nativeDecodedState ]

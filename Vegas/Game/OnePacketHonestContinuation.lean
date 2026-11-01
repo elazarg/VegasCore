@@ -4,6 +4,7 @@ import Vegas.Game.OnePacketBoundaryWaiting
 import Vegas.Game.SourceTerminalReadout
 import Vegas.Game.OnePacketDecodedActor
 import Vegas.Game.OnePacketChanceStoppedLaw
+import Vegas.Game.OnePacketLawApproximation
 
 /-! # Honest source continuation under counted native service -/
 
@@ -24,17 +25,20 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {scheduler : (application setup runtime leaks).Scheduler}
   {delay bound : (graph setup).EventId → Nat}
   (opportunity : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+    control.execution.application.config.defaulted = ∅ →
     OpportunityAt runtime leaks control.execution delay)
   (inclusion : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+    control.execution.application.config.defaulted = ∅ →
     ProtectedInclusionAt runtime leaks control.execution bound)
   (timely : runtime.AsyncTimely delay bound)
   (completes : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+    control.execution.application.config.defaulted = ∅ →
     (application setup runtime leaks).terminal (some control) →
     control.execution.application.config.cut.Terminal)
 
@@ -43,14 +47,14 @@ local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setu
 local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
   scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
-    native ∅))
+  (app := application setup runtime leaks)
+    (fun native : EventGraphRuntime.State (graph setup) =>
+      EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 include opportunity inclusion timely completes in
 /-- Honest finite-menu play from an intended source boundary has the source
 continuation law under counted native service and completion. -/
 theorem counted_honest_boundary_readout_law
-    (wellFormed : setup.WellFormed)
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment)
@@ -103,8 +107,7 @@ theorem counted_honest_boundary_readout_law
       have trace : (E).Trace
           (some ⟨horizon - execution.environmentRecall.length, none, execution⟩) :=
         state ▸ start.trace
-      have clear := exclusionEvidence_of_decodedIntended (runtime := runtime)
-        ((menu).toRawTrace (initialLaw setup) horizon scheduler trace)
+      have clear := defaulted_eq_empty_of_decodedIntended
         ((decodedPoint_eq_of_isPrefix boundary.ordered).trans decoded) intended
       cases owned : (graph setup).actor? event with
       | none =>
@@ -209,7 +212,7 @@ theorem counted_honest_boundary_readout_law
                 rw [BehavioralPolicy.withLaw_eq_self, Profile.update_eq_self]
               have sourceLaw := counted_firstActivation_honest_sourceLaw (runtime := runtime)
                 opportunity
-                inclusion timely completes wellFormed covers capacity source
+                inclusion timely completes covers capacity source
                 certificate
                 players callback current callbackClear event pending never (same ▸ boundary.ordered)
                 (same ▸ decoded) intended _ rfl
@@ -233,7 +236,7 @@ theorem counted_honest_boundary_readout_law
                   obtain ⟨target, successor, _step, targetIntended, finalState, _clear, _completed,
                       nextDecoded, nextBoundary⟩ :=
                     counted_firstActivation_honest_successorBoundary (runtime := runtime) completes
-                      opportunity inclusion timely wellFormed covers capacity source certificate
+                      opportunity inclusion timely covers capacity source certificate
                       players callback current callbackClear event pending never
                       (same ▸ boundary.ordered) (same ▸ decoded) intended _ rfl final
                       supportedInstalled

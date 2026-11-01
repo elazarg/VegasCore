@@ -195,22 +195,15 @@ theorem replay_initialCellsAt {state}
       | some current =>
           obtain ⟨initial, member, inputsEq, point, pointEq, found⟩ :=
             ih previousReplay current rfl
-          have step := transition_configStep (initialLaw setup) horizon
-            scheduler current
-            control joint realized
-          have sameInputs : control.execution.application.config.inputs =
-              current.execution.application.config.inputs := by
-            rcases step with same | ⟨other, ready, action, completed⟩
-            · rw [same]
-            · rw [EventGraph.Config.step, PMF.support_map] at completed
-              obtain ⟨_, _, completedEq⟩ := completed
-              exact (congrArg EventGraph.Config.inputs completedEq).symm
+          have sameInputs := EventGraph.Config.Step.path_inputs_eq
+            (reactive_protocol_graph_steps runtime leaks (initialLaw setup) horizon scheduler
+              current control joint realized)
           refine ⟨initial, member, sameInputs.trans inputsEq, ?_⟩
           change (match control.execution.application.config.history.drop
               current.execution.application.config.history.length with
             | [] => some previous
-            | [⟨event, action⟩] => extendIntended? setup previous
-                (decodeEventAction setup.program event action)
+            | [record] => extendIntended? setup previous
+                (record.decision.bind (decodeEventAction setup.program record.event))
                 (decodedPoint setup control.execution.application.config)
             | _ => none) = some history at advanced
           split at advanced

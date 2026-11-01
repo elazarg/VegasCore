@@ -3,6 +3,10 @@
 import Vegas.Game.OnePacketSwapRecord
 import Vegas.Game.SourceSwapPairs
 import Vegas.Game.OnePacketActingJoint
+import Vegas.Game.OnePacketDecodedActor
+import Vegas.Game.OnePacketReplaySteps
+import Vegas.Game.IntendedPreservation
+import Vegas.Source.ConditionedInitialHistory
 
 /-! # Swapped histories replay the swapped intended history
 
@@ -39,8 +43,9 @@ theorem decodeSourcePrefix?_available (who : Player) {Field : Type} [DecidableEq
     {Γ : SourceCtx Player L} {O : Finset VarId} (program : SourceProgram Player L Γ O)
     (refs : ContextRefs layout Γ) (registry : Registry Γ) (revelations : Revelations Γ)
     (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
-    (store : EventGraph.Store layout) (history : History Player L) (state : ProtocolState program),
-    decodeSourcePrefix? program refs registry revelations outputs count store history =
+    (store : EventGraph.Store layout) (history : History Player L)
+    (defaults : DefaultHistory Player) (state : ProtocolState program),
+    decodeSourcePrefix? program refs registry revelations outputs count store history defaults =
       some state →
     (inside : count < eventCount program) →
     ∀ (graphAction : EventGraph.EventField.Action (outputLayout program ⟨count, inside⟩))
@@ -48,8 +53,8 @@ theorem decodeSourcePrefix?_available (who : Player) {Field : Type} [DecidableEq
       decodeEventAction program ⟨count, inside⟩ graphAction = some action →
       action ∈ ProtocolView.available who program (CommitmentInterface.forfeiture program)
         (ProtocolState.observe who program state)
-  | 0, _, _, program, refs, registry, revelations, outputs, store, history, state, decoded,
-      inside => by
+  | 0, _, _, program, refs, registry, revelations, outputs, store, history, defaults,
+      state, decoded, inside => by
       cases program with
       | ret _ => simp [eventCount] at inside
       | sample _ _ _ next =>
@@ -59,31 +64,89 @@ theorem decodeSourcePrefix?_available (who : Player) {Field : Type} [DecidableEq
           obtain ⟨_, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
           intro graphAction action decodedAction
           cases decodedAction
-          exact ⟨graphAction, by cases graphAction <;> trivial, rfl⟩
+          refine ⟨graphAction, ?_, rfl⟩
+          cases graphAction with
+          | none => trivial
+          | some result => cases result <;> trivial
       | reveal _ _ _ _ _ _ next =>
           obtain ⟨_, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
           intro graphAction action decodedAction
           cases decodedAction
           exact ⟨graphAction, rfl⟩
-  | count + 1, _, _, program, refs, registry, revelations, outputs, store, history, state,
+  | count + 1, _, _, program, refs, registry, revelations, outputs, store, history, defaults, state,
       decoded, inside => by
       cases program with
       | ret _ => cases decoded
       | sample _ _ _ next =>
           obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          exact decodeSourcePrefix?_available who count next _ _ _ _ store history rest
+          exact decodeSourcePrefix?_available who count next _ _ _ _ store history defaults rest
             restDecoded (by simpa [eventCount] using inside)
       | commit _ _ _ _ next =>
           obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          exact decodeSourcePrefix?_available who count next _ _ _ _ store history rest
+          exact decodeSourcePrefix?_available who count next _ _ _ _ store history defaults rest
             restDecoded (by simpa [eventCount] using inside)
       | reveal _ _ _ _ _ _ next =>
           obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          exact decodeSourcePrefix?_available who count next _ _ _ _ store history rest
+          exact decodeSourcePrefix?_available who count next _ _ _ _ store history defaults rest
             restDecoded (by simpa [eventCount] using inside)
 
 variable {setup : Setup (Player := Player) (L := L)}
   {runtime : EventGraphRuntime (graph setup)}
+
+private theorem sourceStep_congr :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (point : ProtocolState program) →
+    (first second : Player → Option (OwnAction Player L)) →
+    (∀ who, ProtocolView.actor who program (ProtocolState.observe who program point) =
+      some who → first who = second who) →
+    ProtocolState.step program point first = ProtocolState.step program point second
+  | _, _, .ret _, _, _, _, _ => rfl
+  | _, _, .sample _ _ _ next, point, first, second, agree => by
+      cases point with
+      | inl _ => rfl
+      | inr point =>
+          exact congrArg (fun law => law.map Sum.inr)
+            (sourceStep_congr next point first second agree)
+  | _, _, .commit name owner fresh guard next, point, first, second, agree => by
+      cases point with
+      | inl config =>
+          by_cases inactive : owner ∈ config.defaulted
+          · simp [ProtocolState.step, commitSuccessor, inactive]
+          · have choice := agree owner (by
+              simp [ProtocolView.actor, ProtocolState.observe, inactive])
+            simp only [ProtocolState.step, Sum.elim_inl, choice]
+      | inr point =>
+          exact congrArg (fun law => law.map Sum.inr)
+            (sourceStep_congr next point first second agree)
+  | _, _, .reveal published owner name fresh source unresolved next,
+      point, first, second, agree => by
+      cases point with
+      | inl config =>
+          by_cases inactive : owner ∈ config.defaulted
+          · simp [ProtocolState.step, revealSuccessor, inactive]
+          · have choice := agree owner (by
+              simp [ProtocolView.actor, ProtocolState.observe, inactive])
+            simp only [ProtocolState.step, Sum.elim_inl, choice]
+      | inr point =>
+          exact congrArg (fun law => law.map Sum.inr)
+            (sourceStep_congr next point first second agree)
+
+private theorem decodedPoint_step_actualDecision {config : (graph setup).Config}
+    {event : (graph setup).EventId} (ready : config.cut.Ready event)
+    {point : ProtocolState setup.program} (decoded : decodedPoint setup config = some point)
+    (action : (graph setup).Action event) :
+    ProtocolState.step setup.program point
+        (fun _ => (config.actualDecision event action).bind
+          (decodeEventAction setup.program event)) =
+      ProtocolState.step setup.program point
+        (fun _ => decodeEventAction setup.program event action) := by
+  apply sourceStep_congr
+  intro who acts
+  have filtered := (decodedPoint_actor who ready decoded).symm.trans acts
+  obtain ⟨owned, active⟩ := Option.filter_eq_some_iff.mp filtered
+  simp only [decide_eq_true_eq] at active
+  rw [config.actualDecision_of_active event who owned active action]
+  rfl
 
 /-- **A completion's decoded action is addressed to its decoded point**: it is
 available there to every active player under the forfeiture interface. -/
@@ -96,8 +159,12 @@ theorem decoded_addressed {config : (graph setup).Config} {event : (graph setup)
       action ∈ (setup.executionProtocol (CommitmentInterface.forfeiture setup.program)).available
         (some point) who := by
   intro who action decodedAction _
-  exact decodeSourcePrefix?_available who event.val setup.program _ _ _ _ _ _ point
-    (decodedPoint_decode ready decoded) event.isLt graphAction action decodedAction
+  have ordered : config.cut.IsPrefix event.val :=
+    ⟨event.isLt.le, fun query =>
+      setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+  rw [decodedPoint_eq_of_isPrefix ordered] at decoded
+  exact decodeSourcePrefix?_available who event.val setup.program _ _ _ _ _ _ _ point
+    decoded event.isLt graphAction action decodedAction
 
 section Between
 
@@ -183,7 +250,7 @@ theorem tracePrefix_of_advanceIntended? {leaks : MessageNetwork.ObservationRule 
       simp only [advanceIntended?] at advanced
       rcases dropped : List.drop before.execution.application.config.history.length
           after.execution.application.config.history with
-        _ | ⟨⟨event, action⟩, _ | ⟨_, _⟩⟩
+        _ | ⟨record, _ | ⟨_, _⟩⟩
       · rw [dropped] at advanced
         cases advanced
         exact .refl
@@ -193,6 +260,90 @@ theorem tracePrefix_of_advanceIntended? {leaks : MessageNetwork.ObservationRule 
         cases advanced
 
 variable [DecidableEq (CellTy Player L)]
+
+omit [DecidableEq (CellTy Player L)] in
+private theorem defaults_record_step :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (before after : ProtocolState program) →
+    (joint : Player → Option (OwnAction Player L)) → ¬ ProtocolState.terminal program before →
+    after ∈ (ProtocolState.step program before joint).support →
+    ∃ event, ProtocolState.defaults program after =
+      (ProtocolState.defaults program before).record event
+  | _, _, .ret _, _, _, _, running, _ => (running trivial).elim
+  | _, _, .sample _ _ _ next, before, after, joint, running, reached => by
+      cases before with
+      | inl config =>
+          obtain ⟨value, _, rfl⟩ := PMF.support_map .. ▸ reached
+          exact ⟨none, by rw [ProtocolState.defaults, Sum.elim_inr,
+            ProtocolState.defaults_entry]; rfl⟩
+      | inr rest =>
+          obtain ⟨target, supported, rfl⟩ := PMF.support_map .. ▸ reached
+          exact defaults_record_step next rest target joint running supported
+  | _, _, .commit _ _ _ _ next, before, after, joint, running, reached => by
+      cases before with
+      | inl config =>
+          have same := (PMF.mem_support_pure_iff _ _).mp reached
+          subst after
+          simp only [ProtocolState.defaults, Sum.elim_inl, Sum.elim_inr,
+            ProtocolState.defaults_entry, commitSuccessor]
+          exact ⟨_, rfl⟩
+      | inr rest =>
+          obtain ⟨target, supported, rfl⟩ := PMF.support_map .. ▸ reached
+          exact defaults_record_step next rest target joint running supported
+  | _, _, .reveal _ _ _ _ _ _ next, before, after, joint, running, reached => by
+      cases before with
+      | inl config =>
+          have same := (PMF.mem_support_pure_iff _ _).mp reached
+          subst after
+          simp only [ProtocolState.defaults, Sum.elim_inl, Sum.elim_inr,
+            ProtocolState.defaults_entry, revealSuccessor]
+          exact ⟨_, rfl⟩
+      | inr rest =>
+          obtain ⟨target, supported, rfl⟩ := PMF.support_map .. ▸ reached
+          exact defaults_record_step next rest target joint running supported
+
+omit [DecidableEq (CellTy Player L)] in
+private theorem intended_defaults_trace (wellFormed : setup.WellFormed) :
+    ∀ {state} (trace : setup.intendedProtocol.Trace state),
+      setup.protocolDefaults state = ⟨List.replicate (trace.length - 1) none⟩
+  | _, .start => rfl
+  | _, .extend (source := before) prior joint legal realized => by
+      have earlier := intended_defaults_trace wellFormed prior
+      cases before with
+      | none =>
+          have empty : prior.length = 0 :=
+            congrArg Trace.length (setup.intended_trace_none prior)
+          obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ realized
+          simp only [Setup.protocolDefaults, ProtocolState.defaults_entry, Config.initial,
+            Trace.length, empty, Nat.zero_add, Nat.sub_self, List.replicate_zero]
+      | some before =>
+          have positive : 0 < prior.length :=
+            setup.intended_trace_positive prior (by simp)
+          obtain ⟨after, supported, rfl⟩ := PMF.support_map .. ▸ realized
+          have intended : ProtocolState.Intended setup.program after :=
+            setup.intendedState_trace wellFormed (.extend prior joint legal
+              ((PMF.mem_support_map_iff _ _ _).mpr ⟨after, supported, rfl⟩))
+          obtain ⟨event, record⟩ := defaults_record_step setup.program before after joint
+            legal.1 supported
+          have silent : event = none := by
+            cases event with
+            | none => rfl
+            | some who =>
+                apply False.elim
+                apply ProtocolState.not_excluded_of_intended who setup.program after intended
+                unfold ProtocolState.Excluded
+                rw [ProtocolState.defaulted_eq_defaults, record,
+                  DefaultHistory.defaulted_record_some]
+                exact Finset.mem_insert_self who _
+          change ProtocolState.defaults setup.program after = _
+          change ProtocolState.defaults setup.program before = _ at earlier
+          rw [silent, earlier] at record
+          rw [record]
+          change (⟨none :: List.replicate (prior.length - 1) none⟩ : DefaultHistory Player) =
+            ⟨List.replicate (prior.length + 1 - 1) none⟩
+          apply congrArg DefaultHistory.mk
+          rw [show prior.length + 1 - 1 = (prior.length - 1) + 1 by omega,
+            List.replicate_succ]
 
 /-- **One step of a prefix lands on the next step of the corresponding prefix.**
 Let `extended` be a prefix of `first` extending `prior` by one step, and let
@@ -204,6 +355,8 @@ theorem extendIntended?_between {first second : setup.intendedProtocol.History}
     {p q : ProtocolState setup.program} (firstState : first.state = some p)
     (secondState : second.state = some q)
     (sameLength : first.trace.length = second.trace.length)
+    (sameDefaults : ProtocolState.defaults setup.program p =
+      ProtocolState.defaults setup.program q)
     {prior extended prior' : setup.intendedProtocol.History}
     (oneStep : extended.trace.length = prior.trace.length + 1)
     (extendedPrefix : TracePrefix extended.trace first.trace)
@@ -221,7 +374,8 @@ theorem extendIntended?_between {first second : setup.intendedProtocol.History}
       TracePrefix extended'.trace second.trace ∧
       extended'.trace.length = extended.trace.length := by
   obtain ⟨state', trace', prefix', length', stateEq⟩ :=
-    Setup.intended_prefix_between setup firstState secondState sameLength extended.trace
+    Setup.intended_prefix_between setup firstState secondState sameLength sameDefaults
+      extended.trace
       extendedPrefix
   obtain ⟨source, shorter, joint, legal, realized, rfl, shorterLength⟩ :=
     exists_extend_of_length_pos trace' (by omega)
@@ -273,17 +427,18 @@ theorem advanceIntended?_of_drop_nil (history : setup.intendedProtocol.History)
 omit [Fintype Player] [DecidableEq (CellTy Player L)] in
 theorem advanceIntended?_of_drop_single (history : setup.intendedProtocol.History)
     (before after : (application setup runtime leaks).Control) (event : (graph setup).EventId)
-    (action : (graph setup).Action event)
+    (decision : Option ((graph setup).Action event)) (defaultEvent : Option Player)
     (dropped : after.execution.application.config.history.drop
-      before.execution.application.config.history.length = [⟨event, action⟩]) :
+      before.execution.application.config.history.length = [⟨event, decision, defaultEvent⟩]) :
     advanceIntended? setup runtime leaks history (some before) (some after) =
-      extendIntended? setup history (decodeEventAction setup.program event action)
+      extendIntended? setup history (decision.bind (decodeEventAction setup.program event))
         (decodedPoint setup after.execution.application.config) := by
   simp only [advanceIntended?, dropped]
 
 /-- **Swapped histories replay the corresponding prefix of the second intended
 history.** -/
-theorem intendedHistory?_mapTrace {first second : setup.intendedProtocol.History}
+theorem intendedHistory?_mapTrace (wellFormed : setup.WellFormed)
+    {first second : setup.intendedProtocol.History}
     {p q : ProtocolState setup.program} (firstState : first.state = some p)
     (secondState : second.state = some q)
     (sameLength : first.trace.length = second.trace.length)
@@ -305,7 +460,8 @@ theorem intendedHistory?_mapTrace {first second : setup.intendedProtocol.History
       ∃ image, intendedHistory? setup runtime leaks bounds horizon scheduler
           ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
             (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
-            bounded).mapTrace trace guarded) = some image ∧
+            bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace trace guarded) =
+          some image ∧
         TracePrefix image.trace second.trace ∧ image.trace.length = replay.trace.length ∧
         image.state = replay.state.map
           ((CellSwap.between setup.program p q).protocolState setup.program)
@@ -314,10 +470,18 @@ theorem intendedHistory?_mapTrace {first second : setup.intendedProtocol.History
       exact ⟨setup.intendedProtocol.initHistory, rfl, TracePrefix.start second.trace, rfl, rfl⟩
   | _, .extend (source := before) (target := after) prior joint legal realized, guarded, replay,
       replayed, firstPrefix => by
+      have sameDefaults : ProtocolState.defaults setup.program p =
+          ProtocolState.defaults setup.program q := by
+        have firstDefaults := (congrArg setup.protocolDefaults firstState).symm.trans
+          (intended_defaults_trace wellFormed first.trace)
+        have secondDefaults := (congrArg setup.protocolDefaults secondState).symm.trans
+          (intended_defaults_trace wellFormed second.trace)
+        exact firstDefaults.trans (by rw [sameLength]; exact secondDefaults.symm)
       have priorGuard := (onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup)
         horizon scheduler
         (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
-        bounded).guard_source prior legal realized guarded
+        bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).guard_source prior legal realized
+          guarded
       change (intendedHistory? setup runtime leaks bounds horizon scheduler prior).bind
         (fun history => advanceIntended? setup runtime leaks history before after) = some replay
         at replayed
@@ -325,13 +489,14 @@ theorem intendedHistory?_mapTrace {first second : setup.intendedProtocol.History
       have previousPrefix := (tracePrefix_of_advanceIntended? (runtime := runtime) advanced).trans
         firstPrefix
       obtain ⟨previous', previousImage, previousPrefix', previousLength, previousState⟩ :=
-        intendedHistory?_mapTrace firstState secondState sameLength
+        intendedHistory?_mapTrace wellFormed firstState secondState sameLength
           handlePairs initialClosed
           bounded prior priorGuard previousReplay previousPrefix
       have mappedEq : intendedHistory? setup runtime leaks bounds horizon scheduler
           ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
             (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
-            bounded).mapTrace (.extend prior joint legal realized) guarded) =
+            bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace
+              (.extend prior joint legal realized) guarded) =
           advanceIntended? setup runtime leaks previous'
             ((HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs).protocolState
               (runtime := runtime)
@@ -346,7 +511,7 @@ theorem intendedHistory?_mapTrace {first second : setup.intendedProtocol.History
       have realizedImage := (onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup)
         horizon scheduler
         (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
-        bounded).realized prior legal realized guarded
+        bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).realized prior legal realized guarded
       rw [mappedEq]
       have oneStep : ∀ {choice target}, extendIntended? setup previous choice target =
           some replay → replay.trace.length = previous.trace.length + 1 := by
@@ -402,7 +567,7 @@ theorem intendedHistory?_mapTrace {first second : setup.intendedProtocol.History
           exact (PMF.mem_support_map_iff _ _ _).mpr ⟨initialValues, valuesMember, rfl⟩
         obtain ⟨image, extended, imagePrefix, imageLength⟩ := extendIntended?_between
           (admission := CommitmentInterface.forfeiture setup.program) firstState secondState
-          sameLength (oneStep advanced) firstPrefix previousPrefix' previousLength
+          sameLength sameDefaults (oneStep advanced) firstPrefix previousPrefix' previousLength
           (fun _ _ impossible => by cases impossible) reaches
         refine ⟨image, ?_, imagePrefix, imageLength, ?_⟩
         · change extendIntended? setup previous' none (decodedPoint setup
@@ -432,7 +597,7 @@ theorem intendedHistory?_mapTrace {first second : setup.intendedProtocol.History
               joint)).support at realizedImage
         rcases dropped : List.drop current.execution.application.config.history.length
             next.execution.application.config.history with
-          _ | ⟨⟨event, action⟩, _ | ⟨_, _⟩⟩
+          _ | ⟨record, _ | ⟨_, _⟩⟩
         · rw [dropped] at advanced droppedImage
           cases advanced
           exact ⟨previous', advanceIntended?_of_drop_nil (runtime := runtime) (leaks := leaks)
@@ -450,77 +615,127 @@ theorem intendedHistory?_mapTrace {first second : setup.intendedProtocol.History
             (bounds.onePacketMenu runtime leaks) horizon scheduler
             ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
               (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
-              bounded).mapTrace prior priorGuard) _ rfl
-          rcases transition_configStep (initialLaw setup) horizon scheduler _
-            _ _ realizedImage
-            with same | ⟨stepEvent, stepReady, stepAction, member⟩
-          · exfalso
-            have sameHistory := congrArg EventGraph.Config.history same
-            change (next.execution.application.config.swap (EventGraph.ValueSwap.ofPairs
-                (betweenPairs publicAgree succeed))).history =
-              (current.execution.application.config.swap (EventGraph.ValueSwap.ofPairs
-                (betweenPairs publicAgree succeed))).history at sameHistory
-            rw [sameHistory, List.drop_length] at droppedImage
-            cases droppedImage
-          · have historyEq := (current.execution.application.config.swap
-              (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed))).step_history
-              stepEvent stepReady stepAction _ member
-            change (next.execution.application.config.swap (EventGraph.ValueSwap.ofPairs
-              (betweenPairs publicAgree succeed))).history = _ at historyEq
-            have droppedStep : (next.execution.application.config.swap
-                (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed))).history.drop
-                (current.execution.application.config.swap (EventGraph.ValueSwap.ofPairs
-                  (betweenPairs publicAgree succeed))).history.length =
-                [⟨stepEvent, stepAction⟩] := by
-              rw [historyEq, List.drop_left]
-            rw [droppedStep] at droppedImage
-            obtain ⟨eventEq, actionEq⟩ := EventGraph.Completion.mk.injEq _ _ _ _ |>.mp
-              (List.singleton_inj.mp droppedImage)
-            subst eventEq
-            cases eq_of_heq actionEq
-            obtain ⟨point, target, decodedCurrent, decodedNext, reachedStep⟩ :=
-              decodedPoint_step residual stepEvent stepReady _ _ member
-            have previousPoint : previous'.state = some point := by
-              rw [previousState, previousStateEq, ← decodedPoint_betweenPairs
-                (publicAgree := publicAgree) (succeed := succeed)]
-              exact decodedCurrent
-            have targetEq : replay.state.map
-                ((CellSwap.between setup.program p q).protocolState setup.program) =
-                some target := by
-              rw [replayStateEq, ← decodedPoint_betweenPairs (publicAgree := publicAgree)
-                (succeed := succeed)]
-              exact decodedNext
-            have choiceEq := decodeEventAction_betweenPairs (publicAgree := publicAgree)
-              (succeed := succeed) stepEvent action
-            have reaches : replay.state.map
-                ((CellSwap.between setup.program p q).protocolState setup.program) ∈
-                (setup.protocolStep previous'.state (actingJoint setup previous'.state
-                  ((decodeEventAction setup.program stepEvent action).map
-                    (CellSwap.between setup.program p q).action))).support := by
-              rw [targetEq, previousPoint, protocolStep_actingJoint, ← choiceEq, PMF.support_map]
-              exact ⟨target, reachedStep, rfl⟩
-            obtain ⟨image, extended, imagePrefix, imageLength⟩ := extendIntended?_between
-              (admission := CommitmentInterface.forfeiture setup.program) firstState secondState
-              sameLength (oneStep advanced) firstPrefix previousPrefix' previousLength
-              (by
-                rw [previousPoint, ← choiceEq]
-                exact decoded_addressed stepReady decodedCurrent _)
-              reaches
-            refine ⟨image, ?_, imagePrefix, imageLength, ?_⟩
-            · refine (advanceIntended?_of_drop_single (runtime := runtime) (leaks := leaks)
-                previous'
-                (HiddenSwap.control (runtime := runtime) (HiddenSwap.ofPairs (betweenPairs
-                  publicAgree succeed)
-                  handlePairs) current)
-                (HiddenSwap.control (runtime := runtime) (HiddenSwap.ofPairs (betweenPairs
-                  publicAgree succeed)
-                  handlePairs) next) stepEvent _ droppedStep).trans ?_
-              change extendIntended? setup previous' _ (decodedPoint setup
-                (next.execution.application.config.swap (EventGraph.ValueSwap.ofPairs
-                  (betweenPairs publicAgree succeed)))) = _
-              rw [decodedPoint_betweenPairs, ← replayStateEq, choiceEq]
-              exact extended
-            · exact extendIntended?_state extended
+              bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace prior priorGuard) _ rfl
+          have path := reactive_protocol_graph_steps runtime leaks (initialLaw setup) horizon
+            scheduler _ _ _ realizedImage
+          change Relation.ReflTransGen EventGraph.Config.Step
+            (current.execution.application.config.swap
+              (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)))
+            (next.execution.application.config.swap
+              (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed))) at path
+          obtain ⟨stepReady, stepAction, member⟩ := EventGraph.Config.Step.path_singleton path
+            ((EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).completion record)
+            (by simpa only [dropped, List.map_singleton] using droppedImage)
+          obtain ⟨point, target, decodedCurrent, decodedNext, reachedStep⟩ :=
+            decodedPoint_step residual record.event stepReady stepAction _ member
+          obtain ⟨value, _output, historyEq⟩ :=
+            (current.execution.application.config.swap
+              (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed))).step_completion
+              record.event stepReady stepAction _ member
+          change (next.execution.application.config.swap
+            (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed))).history =
+              (current.execution.application.config.swap
+                (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed))).history ++
+                [EventGraph.completion (graph setup) record.event
+                  ((current.execution.application.config.swap
+                    (EventGraph.ValueSwap.ofPairs
+                      (betweenPairs publicAgree succeed))).actualDecision
+                      record.event stepAction) value] at historyEq
+          have recordEq : EventGraph.completion (graph setup) record.event
+              ((current.execution.application.config.swap
+                (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed))).actualDecision
+                  record.event stepAction) value =
+                (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).completion
+                  record := by
+            apply List.singleton_injective
+            simpa only [historyEq, List.drop_left, dropped, List.map_singleton] using droppedImage
+          have chosen :
+              ((EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).completion
+                record).decision =
+              (current.execution.application.config.swap
+                (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed))).actualDecision
+                  record.event stepAction := by
+            have packed := congrArg (fun completion : (graph setup).Completion =>
+              (⟨completion.event, completion.decision⟩ :
+                Σ event, Option ((graph setup).Action event))) recordEq
+            exact (eq_of_heq (Sigma.mk.inj packed).2).symm
+          have previousPoint : previous'.state = some point := by
+            rw [previousState, previousStateEq, ← decodedPoint_betweenPairs
+              (publicAgree := publicAgree) (succeed := succeed)]
+            exact decodedCurrent
+          have targetEq : replay.state.map
+              ((CellSwap.between setup.program p q).protocolState setup.program) =
+              some target := by
+            rw [replayStateEq, ← decodedPoint_betweenPairs (publicAgree := publicAgree)
+              (succeed := succeed)]
+            exact decodedNext
+          have choiceEq :
+              (((EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).completion
+                record).decision.bind (decodeEventAction setup.program record.event)) =
+              (record.decision.bind (decodeEventAction setup.program record.event)).map
+                (CellSwap.between setup.program p q).action := by
+            cases decision : record.decision with
+            | none => simp [EventGraph.ValueSwap.completion, decision]
+            | some action =>
+                simpa only [EventGraph.ValueSwap.completion, decision, Option.map_some,
+                  Option.bind_some] using decodeEventAction_betweenPairs
+                    (publicAgree := publicAgree) (succeed := succeed) record.event action
+          have actualStep := decodedPoint_step_actualDecision stepReady decodedCurrent stepAction
+          change ProtocolState.step setup.program point
+              (fun _ => ((current.execution.application.config.swap
+                (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed))).actualDecision
+                  record.event stepAction).bind (decodeEventAction setup.program record.event)) =
+            ProtocolState.step setup.program point
+              (fun _ => decodeEventAction setup.program record.event stepAction) at actualStep
+          have reaches : replay.state.map
+              ((CellSwap.between setup.program p q).protocolState setup.program) ∈
+              (setup.protocolStep previous'.state (actingJoint setup previous'.state
+                ((record.decision.bind (decodeEventAction setup.program record.event)).map
+                  (CellSwap.between setup.program p q).action))).support := by
+            rw [targetEq, previousPoint, protocolStep_actingJoint, ← choiceEq, chosen,
+              actualStep, PMF.support_map]
+            exact ⟨target, reachedStep, rfl⟩
+          obtain ⟨image, extended, imagePrefix, imageLength⟩ := extendIntended?_between
+            (admission := CommitmentInterface.forfeiture setup.program) firstState secondState
+            sameLength sameDefaults (oneStep advanced) firstPrefix previousPrefix' previousLength
+            (by
+              rw [previousPoint, ← choiceEq]
+              intro who action decodedAction active
+              cases choice : ((EventGraph.ValueSwap.ofPairs
+                  (betweenPairs publicAgree succeed)).completion record).decision with
+              | none => simp [choice] at decodedAction
+              | some graphAction =>
+                  exact decoded_addressed (event := record.event) stepReady decodedCurrent
+                    graphAction
+                    who action
+                    (by simpa only [choice, Option.bind_some] using decodedAction) active)
+            reaches
+          refine ⟨image, ?_, imagePrefix, imageLength, ?_⟩
+          · refine (advanceIntended?_of_drop_single (runtime := runtime) (leaks := leaks)
+              previous'
+              (HiddenSwap.control (runtime := runtime) (HiddenSwap.ofPairs
+                (betweenPairs publicAgree succeed) handlePairs) current)
+              (HiddenSwap.control (runtime := runtime) (HiddenSwap.ofPairs
+                (betweenPairs publicAgree succeed) handlePairs) next)
+              record.event _ _ (by
+                change (next.execution.application.config.swap
+                    (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed))).history.drop
+                  (current.execution.application.config.swap
+                    (EventGraph.ValueSwap.ofPairs
+                      (betweenPairs publicAgree succeed))).history.length =
+                    _
+                simpa only [dropped, List.map_singleton, EventGraph.ValueSwap.completion]
+                  using droppedImage)).trans ?_
+            change extendIntended? setup previous' _ (decodedPoint setup
+              (next.execution.application.config.swap (EventGraph.ValueSwap.ofPairs
+                (betweenPairs publicAgree succeed)))) = _
+            rw [decodedPoint_betweenPairs, ← replayStateEq]
+            change extendIntended? setup previous'
+              (((EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).completion
+                record).decision.bind (decodeEventAction setup.program record.event)) _ = _
+            rw [choiceEq]
+            exact extended
+          · exact extendIntended?_state extended
         · rw [dropped] at advanced
           cases advanced
 

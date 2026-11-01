@@ -72,9 +72,9 @@ theorem State.complete_playerView_congr (left right : State graph) (focal : Play
     (values : graph.fieldVisibleTo focal (.inr event) → leftValue = rightValue)
     (actions : graph.actor? event = some focal → leftAction = rightAction)
     (publicEffect :
-      (Completion.fromDecision event
+      (EventGraph.completion graph event
         (left.config.actualDecision event leftAction) leftValue).defaultEvent =
-      (Completion.fromDecision event
+      (EventGraph.completion graph event
         (right.config.actualDecision event rightAction) rightValue).defaultEvent) :
     (left.complete event leftReady leftAction leftValue).playerView focal =
       (right.complete event rightReady rightAction rightValue).playerView focal := by
@@ -83,7 +83,7 @@ theorem State.complete_playerView_congr (left right : State graph) (focal : Play
     publicEffect
   have publicObserved := publicObserve_eq_of_playerObserve_eq focal _ _ observed
   have cuts := cut_eq_of_completionOrder_eq _ _
-    (congrArg PlayerObservation.completionOrder observed)
+    (congrArg EventPlayerObservation.completionOrder observed)
   have acceptedEq := congrArg PublicView.accepted publicEq
   have clockEq := congrArg PublicView.clock publicEq
   have activatedEq := congrArg PublicView.activatedAt publicEq
@@ -121,9 +121,9 @@ theorem automaticReady_congr (left right : State graph) (focal : Player)
     left.AutomaticReady event ↔ right.AutomaticReady event := by
   have observations := left.playerView_observation_eq right focal views
   have cuts := cut_eq_of_completionOrder_eq left.config right.config
-    (congrArg PlayerObservation.completionOrder observations)
+    (congrArg EventPlayerObservation.completionOrder observations)
   have defaults : left.config.defaulted = right.config.defaulted :=
-    congrArg PlayerObservation.defaulted observations
+    congrArg EventPlayerObservation.defaulted observations
   unfold AutomaticReady
   rw [cuts, defaults]
 
@@ -137,7 +137,7 @@ theorem completeFailure_playerView_congr (left right : State graph) (focal : Pla
   have observations := left.playerView_observation_eq right focal views
   have candidatesEq := congrArg PlayerView.candidates views
   have defaults : left.config.defaulted = right.config.defaulted :=
-    congrArg PlayerObservation.defaulted observations
+    congrArg EventPlayerObservation.defaulted observations
   cases node : nodeView graph event with
   | bind owner payload outputEq codeEq =>
       simp only [completeFailure, node]
@@ -208,12 +208,148 @@ theorem drain_playerView_congr (left right : State graph) (focal : Player)
     left.drain.playerView focal = right.drain.playerView focal := by
   have observations := left.playerView_observation_eq right focal views
   have cuts := cut_eq_of_completionOrder_eq left.config right.config
-    (congrArg PlayerObservation.completionOrder observations)
+    (congrArg EventPlayerObservation.completionOrder observations)
   have fuel : left.config.remaining = right.config.remaining := by
     unfold EventGraph.Config.remaining
     rw [cuts]
   unfold drain
   rw [fuel]
   exact drainFuel_playerView_congr _ left right focal views
+
+end Vegas.EventGraphRuntime.State
+
+namespace Vegas.EventGraphRuntime.State
+
+open Interaction EventGraph
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+/-- Public output values and the new public default entry determine a completion's public effect. -/
+theorem complete_publicView_congr (left right : State graph)
+    (publicEq : left.publicView = right.publicView)
+    (event : graph.EventId) (leftReady : left.config.cut.Ready event)
+    (rightReady : right.config.cut.Ready event)
+    (leftAction rightAction : graph.Action event)
+    (leftValue rightValue : (graph.outputLayout event).Value)
+    (values : graph.fieldPublic (.inr event) → leftValue = rightValue)
+    (publicEffect :
+      (EventGraph.completion graph event
+        (left.config.actualDecision event leftAction) leftValue).defaultEvent =
+      (EventGraph.completion graph event
+        (right.config.actualDecision event rightAction) rightValue).defaultEvent) :
+    (left.complete event leftReady leftAction leftValue).publicView =
+      (right.complete event rightReady rightAction rightValue).publicView := by
+  have observations := congrArg PublicView.observation publicEq
+  change graph.publicObserve left.config = graph.publicObserve right.config at observations
+  have orders := congrArg EventPublicObservation.completionOrder observations
+  have cuts := cut_eq_of_completionOrder_eq left.config right.config orders
+  have observed : graph.publicObserve (left.config.complete event leftReady leftAction leftValue) =
+      graph.publicObserve (right.config.complete event rightReady rightAction rightValue) := by
+    apply EventPublicObservation.ext
+    · simpa only [publicObserve, Config.complete_history, List.map_append,
+        List.map_cons, List.map_nil, EventGraph.completion] using
+        congrArg (fun order => order ++ [event]) orders
+    · apply graph.publicStore_congr
+      intro field visible
+      by_cases same : field = .inr event
+      · subst field
+        rw [store_complete, store_complete, Function.update_self, Function.update_self,
+          values visible]
+      · rw [store_complete, store_complete, Function.update_of_ne same,
+          Function.update_of_ne same]
+        have prior := congrFun (congrArg EventPublicObservation.store observations) field
+        simpa only [State.publicView, publicObserve, publicStore_of_public, visible] using prior
+    · change (left.config.complete event leftReady leftAction leftValue).defaults =
+        (right.config.complete event rightReady rightAction rightValue).defaults
+      have priorDefaults : left.config.defaults = right.config.defaults :=
+        congrArg EventPublicObservation.defaults observations
+      rw [Config.complete_defaults, Config.complete_defaults, publicEffect, priorDefaults]
+  have clockEq := congrArg PublicView.clock publicEq
+  have activatedEq := congrArg PublicView.activatedAt publicEq
+  have acceptedEq := congrArg PublicView.accepted publicEq
+  have nextActivated :
+      refreshActivated (left.config.complete event leftReady leftAction leftValue)
+          left.clock left.activatedAt =
+        refreshActivated (right.config.complete event rightReady rightAction rightValue)
+          right.clock right.activatedAt := by
+    funext query
+    simp only [refreshActivated, Config.complete_cut, cuts]
+    rw [show left.clock = right.clock from clockEq,
+      show left.activatedAt = right.activatedAt from activatedEq]
+  unfold State.publicView State.complete
+  congr 1
+
+/-- Mechanical failures preserve equal public observations, including the complete default log. -/
+theorem completeFailure_publicView_congr (left right : State graph)
+    (views : left.publicView = right.publicView) (event : graph.EventId)
+    (leftReady : left.config.cut.Ready event) (rightReady : right.config.cut.Ready event) :
+    (left.completeFailure event leftReady).publicView =
+      (right.completeFailure event rightReady).publicView := by
+  have defaults : left.config.defaulted = right.config.defaulted :=
+    congrArg (fun view : PublicView graph => view.observation.defaulted) views
+  cases node : nodeView graph event with
+  | bind owner payload outputEq codeEq =>
+      simp only [completeFailure, node]
+      apply complete_publicView_congr left right views event leftReady rightReady
+      · exact fun _ => rfl
+      · rw [left.config.completion_bind_none_defaultEvent event owner payload outputEq codeEq,
+          right.config.completion_bind_none_defaultEvent event owner payload outputEq codeEq,
+          defaults]
+  | resolve owner payload binding checks outputEq codeEq =>
+      simp only [completeFailure, node]
+      apply complete_publicView_congr left right views event leftReady rightReady
+      · exact fun _ => rfl
+      · rw [left.config.completion_resolve_defaultEvent event owner payload binding checks
+          outputEq codeEq, right.config.completion_resolve_defaultEvent event owner payload
+          binding checks outputEq codeEq, defaults]
+  | sample payload law outputEq codeEq =>
+      simpa only [completeFailure, node] using views
+
+/-- Bounded automatic completion is determined by the public frontier and defaults. -/
+theorem drainFuel_publicView_congr (fuel : Nat) (left right : State graph)
+    (views : left.publicView = right.publicView) :
+    (drainFuel fuel left).publicView = (drainFuel fuel right).publicView := by
+  induction fuel generalizing left right with
+  | zero => exact views
+  | succ fuel ih =>
+      have observations := congrArg PublicView.observation views
+      have cuts := cut_eq_of_completionOrder_eq left.config right.config
+        (congrArg EventPublicObservation.completionOrder observations)
+      have defaults : left.config.defaulted = right.config.defaulted :=
+        congrArg EventPublicObservation.defaulted observations
+      have predicates : left.AutomaticReady = right.AutomaticReady := by
+        funext event
+        exact propext (by simp only [AutomaticReady, cuts, defaults])
+      by_cases leftPending : ∃ event, left.AutomaticReady event
+      · have rightPending : ∃ event, right.AutomaticReady event := by
+          rwa [← predicates]
+        have chosen := choose_eq_of_predicate_eq left.AutomaticReady right.AutomaticReady
+          predicates leftPending rightPending
+        simp only [drainFuel, dite_eq_left leftPending, dite_eq_left rightPending]
+        apply ih
+        have rightEligible : right.AutomaticReady (Classical.choose leftPending) := by
+          rw [chosen]
+          exact Classical.choose_spec rightPending
+        have paired := completeFailure_publicView_congr left right views
+          (Classical.choose leftPending) (Classical.choose_spec leftPending).1 rightEligible.1
+        simpa only [completeAutomatic, chosen] using paired
+      · have rightClear : ¬ ∃ event, right.AutomaticReady event := by
+          rwa [← predicates]
+        simpa only [drainFuel, dite_eq_right leftPending, dite_eq_right rightClear] using views
+
+/-- Full automatic service preserves equality of native public views. -/
+theorem drain_publicView_congr (left right : State graph)
+    (views : left.publicView = right.publicView) :
+    left.drain.publicView = right.drain.publicView := by
+  have observations := congrArg PublicView.observation views
+  have cuts := cut_eq_of_completionOrder_eq left.config right.config
+    (congrArg EventPublicObservation.completionOrder observations)
+  have fuel : left.config.remaining = right.config.remaining := by
+    unfold Config.remaining
+    rw [cuts]
+  unfold drain
+  rw [fuel]
+  exact drainFuel_publicView_congr _ left right views
 
 end Vegas.EventGraphRuntime.State

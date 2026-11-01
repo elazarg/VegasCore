@@ -193,21 +193,22 @@ theorem ProtocolState.cell?_eq_of_observe {who : Player} {name : VarId}
       {first second : ProtocolState program},
       observe who program first = observe who program second →
         cell? program first name kind = cell? program second name kind
-  | _, _, .ret _, _, _, same => State.cell?_eq_of_sourceObserve visible (congrArg Prod.fst same)
+  | _, _, .ret _, _, _, same =>
+      State.cell?_eq_of_sourceObserve visible (congrArg DecisionView.observation same)
   | _, _, .sample _ _ _ next, first, second, same => by
       cases first <;> cases second <;> simp only [observe, Sum.elim_inl, Sum.elim_inr,
         reduceCtorEq, Sum.inr.injEq, Sum.inl.injEq] at same
-      · exact State.cell?_eq_of_sourceObserve visible (congrArg Prod.fst same)
+      · exact State.cell?_eq_of_sourceObserve visible (congrArg DecisionView.observation same)
       · exact cell?_eq_of_observe visible next same
   | _, _, .commit _ _ _ _ next, first, second, same => by
       cases first <;> cases second <;> simp only [observe, Sum.elim_inl, Sum.elim_inr,
         reduceCtorEq, Sum.inr.injEq, Sum.inl.injEq] at same
-      · exact State.cell?_eq_of_sourceObserve visible (congrArg Prod.fst same)
+      · exact State.cell?_eq_of_sourceObserve visible (congrArg DecisionView.observation same)
       · exact cell?_eq_of_observe visible next same
   | _, _, .reveal _ _ _ _ _ _ next, first, second, same => by
       cases first <;> cases second <;> simp only [observe, Sum.elim_inl, Sum.elim_inr,
         reduceCtorEq, Sum.inr.injEq, Sum.inl.injEq] at same
-      · exact State.cell?_eq_of_sourceObserve visible (congrArg Prod.fst same)
+      · exact State.cell?_eq_of_sourceObserve visible (congrArg DecisionView.observation same)
       · exact cell?_eq_of_observe visible next same
 
 /-- **Commitment cells of the intended game hold values.** -/

@@ -94,41 +94,42 @@ private theorem decodeSourcePrefix?_revealedInto_of_revealed {Field : Type} [Dec
     {Γ : SourceCtx Player L} {O : Finset VarId} (program : SourceProgram Player L Γ O)
     (refs : ContextRefs layout Γ) (registry : Registry Γ) (revelations : Revelations Γ)
     (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
-    (store : EventGraph.Store layout) (history : History Player L) (state : ProtocolState program),
-    decodeSourcePrefix? program refs registry revelations outputs count store history =
+    (store : EventGraph.Store layout) (history : History Player L)
+    (defaults : DefaultHistory Player) (state : ProtocolState program),
+    decodeSourcePrefix? program refs registry revelations outputs count store history defaults =
       some state →
     name ∉ O → ∀ (source : HasVar Γ name (.commitment owner payload))
       (cell : HasVar Γ published (.publication payload)),
       revelations source = .revealed cell →
       ProtocolState.RevealedInto program state owner payload name published
-  | 0, _, _, program, refs, registry, revelations, outputs, store, history, state, decoded,
-      _, source, cell, recorded => by
+  | 0, _, _, program, refs, registry, revelations, outputs, store, history,
+      defaults, state, decoded, _, source, cell, recorded => by
       rw [decodeSourcePrefix?] at decoded
       obtain ⟨cells, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
       unfold ProtocolState.RevealedInto
       rw [currentConfig_entry]
       exact ⟨source, cell, recorded⟩
-  | count + 1, _, _, program, refs, registry, revelations, outputs, store, history, state,
-      decoded, closed, source, cell, recorded => by
+  | count + 1, _, _, program, refs, registry, revelations, outputs, store, history,
+      defaults, state, decoded, closed, source, cell, recorded => by
       cases program with
       | ret _ => cases decoded
       | sample introduced fresh law next =>
           obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
           exact decodeSourcePrefix?_revealedInto_of_revealed count next _ _ _ _ store history
-            rest restDecoded closed (.there source) (.there cell)
+            defaults rest restDecoded closed (.there source) (.there cell)
             (by rw [Revelations.weaken_there, recorded]; rfl)
       | commit introduced owner' fresh guard next =>
           obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
           have different : name ≠ introduced := fun same =>
             fresh (same ▸ source.mem_map_fst)
           exact decodeSourcePrefix?_revealedInto_of_revealed count next _ _ _ _ store history
-            rest restDecoded (by simp [different, closed]) (.there source) (.there cell)
+            defaults rest restDecoded (by simp [different, closed]) (.there source) (.there cell)
             (by rw [Revelations.weaken_there, recorded]; rfl)
       | reveal published' owner' revealed fresh selected unresolved next =>
           obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
           have different : name ≠ revealed := fun same => closed (same ▸ unresolved)
           exact decodeSourcePrefix?_revealedInto_of_revealed count next _ _ _ _ store history
-            rest restDecoded (fun member => closed (Finset.mem_of_mem_erase member))
+            defaults rest restDecoded (fun member => closed (Finset.mem_of_mem_erase member))
             (.there source) (.there cell)
             (by rw [Revelations.reveal_of_ne _ _ _ different, recorded]; rfl)
 
@@ -140,16 +141,17 @@ theorem decodeSourcePrefix?_revealedInto {Field : Type} [DecidableEq Field]
     {Γ : SourceCtx Player L} {O : Finset VarId} (program : SourceProgram Player L Γ O)
     (refs : ContextRefs layout Γ) (registry : Registry Γ) (revelations : Revelations Γ)
     (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
-    (store : EventGraph.Store layout) (history : History Player L) (state : ProtocolState program),
-    decodeSourcePrefix? program refs registry revelations outputs count store history =
+    (store : EventGraph.Store layout) (history : History Player L)
+    (defaults : DefaultHistory Player) (state : ProtocolState program),
+    decodeSourcePrefix? program refs registry revelations outputs count store history defaults =
       some state →
     ∀ (event : Fin (eventCount program)), event.val < count →
     ∀ {owner : Player} {payload : L.Ty} {name : VarId},
       revealedCell program event = some (name, .commitment owner payload) →
       ProtocolState.RevealedInto program state owner payload name (eventCell program event).1
-  | 0, _, _, _, _, _, _, _, _, _, _, _, _, below, _, _, _, _ => absurd below (Nat.not_lt_zero _)
-  | count + 1, _, _, program, refs, registry, revelations, outputs, store, history, state,
-      decoded, event, below, owner, payload, name, revealed => by
+  | 0, _, _, _, _, _, _, _, _, _, _, _, _, _, below, _, _, _, _ => absurd below (Nat.not_lt_zero _)
+  | count + 1, _, _, program, refs, registry, revelations, outputs, store, history,
+      defaults, state, decoded, event, below, owner, payload, name, revealed => by
       cases program with
       | ret _ => cases decoded
       | sample introduced fresh law next =>
@@ -157,14 +159,14 @@ theorem decodeSourcePrefix?_revealedInto {Field : Type} [DecidableEq Field]
           cases event using Fin.cases with
           | zero => cases revealed
           | succ event =>
-              exact decodeSourcePrefix?_revealedInto count next _ _ _ _ store history rest
+              exact decodeSourcePrefix?_revealedInto count next _ _ _ _ store history defaults rest
                 restDecoded event (by simpa using below) revealed
       | commit introduced owner' fresh guard next =>
           obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
           cases event using Fin.cases with
           | zero => cases revealed
           | succ event =>
-              exact decodeSourcePrefix?_revealedInto count next _ _ _ _ store history rest
+              exact decodeSourcePrefix?_revealedInto count next _ _ _ _ store history defaults rest
                 restDecoded event (by simpa using below) revealed
       | reveal published' owner' revealedName fresh selected unresolved next =>
           obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
@@ -175,10 +177,10 @@ theorem decodeSourcePrefix?_revealedInto {Field : Type} [DecidableEq Field]
                 simp only [Option.some.injEq, Prod.mk.injEq, CellTy.commitment.injEq] at revealed
                 exact revealed
               exact decodeSourcePrefix?_revealedInto_of_revealed count next _ _ _ _ store history
-                rest restDecoded (Finset.notMem_erase _ _) (.there selected) .here
+                defaults rest restDecoded (Finset.notMem_erase _ _) (.there selected) .here
                 (Revelations.reveal_source _ selected)
           | succ event =>
-              exact decodeSourcePrefix?_revealedInto count next _ _ _ _ store history rest
+              exact decodeSourcePrefix?_revealedInto count next _ _ _ _ store history defaults rest
                 restDecoded event (by simpa using below) revealed
 
 /-- **Decoded points record completed reveals.** At the decoded point of a
@@ -201,7 +203,7 @@ theorem decodedPoint_revealedInto {config : (graph setup).Config}
   split at decoded
   · rename_i ordered
     have below : event.val < ordered.choose := (ordered.choose_spec.2 event).mp completed
-    exact decodeSourcePrefix?_revealedInto _ setup.program _ _ _ _ _ _ point decoded event
+    exact decodeSourcePrefix?_revealedInto _ setup.program _ _ _ _ _ _ _ point decoded event
       below revealed
   · cases decoded
 

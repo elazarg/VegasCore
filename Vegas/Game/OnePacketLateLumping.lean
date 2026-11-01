@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketBindingOwner
+import Vegas.Game.SourceServiceFacts
 import Vegas.Pending.EventActivationOrigin
 
 /-! # One step of the one-packet game at a late decision
@@ -411,12 +412,12 @@ theorem decisionKept_step (key : LateKey setup runtime leaks)
       obtain ⟨extended, reached⟩ := controlStep_history (runtime := runtime) bounds horizon
         scheduler profile history
         (by rw [current]; exact member)
-      obtain ⟨control', rfl, step⟩ := controlStep_configStep (runtime := runtime) horizon
+      obtain ⟨control', rfl, step⟩ := controlStep_graphSteps (runtime := runtime) horizon
         scheduler _ control member
       refine ⟨⟨extended, reached⟩, control', rfl, ?_⟩
       rcases status with completed | ⟨forced, ready⟩
-      · exact Or.inl (completed_of_configStep step completed)
-      · exact forced_or_completed_of_configStep (runtime := runtime) step forced ready
+      · exact Or.inl (EventGraph.Config.Step.path_completed_mono step completed)
+      · exact forced_or_completed_of_path (runtime := runtime) step forced ready
 
 open Classical in
 /-- Failure of a kept state is read off its image. -/
@@ -511,6 +512,9 @@ theorem bindingKernel_close {LateOption : Type}
         (bindingImage (runtime := runtime) event key.owner payload (some
           control))) := by
   obtain ⟨_, ⟨outputEq, codeEq, view⟩, _⟩ := turn
+  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+    horizon scheduler (current ▸ history.trace)
+  have quiescent := (legalFacts setup leaks horizon scheduler control rawTrace).quiescent
   rcases status with completed | ⟨forced, ready⟩
   · convert (PMF.WithinTV.refl _).mono nonneg using 1
     have constant : ((application setup runtime leaks).controlStep (initialLaw setup) horizon
@@ -525,9 +529,9 @@ theorem bindingKernel_close {LateOption : Type}
       apply map_congr_on_support
       intro next member
       obtain ⟨control', rfl, step⟩ :=
-        controlStep_configStep (runtime := runtime) horizon scheduler _ control member
-      have completed' := completed_of_configStep step completed
-      have image := pendingImage_of_configStep (runtime := runtime) step completed
+        controlStep_graphSteps (runtime := runtime) horizon scheduler _ control member
+      have completed' := EventGraph.Config.Step.path_completed_mono step completed
+      have image := pendingImage_of_path (runtime := runtime) step completed
       simp only [bindingImage, image, Function.const_apply]
       simp only [pendingImage, completed, ↓reduceIte, attachStatuses]
     rw [constant, PMF.map_const]
@@ -641,7 +645,7 @@ theorem bindingKernel_close {LateOption : Type}
             exact (binding_round_image_congr (runtime := runtime) (initialLaw setup) horizon
               scheduler remaining
               execution represented.choose (stateEq.trans repSame.symm) repStatuses.symm ready
-              view).symm
+              quiescent view).symm
 
 /-- **One step of the native kernel at a late decision.** From a kept state,
 the control step of a decoded profile, read through the key's image, is within

@@ -61,7 +61,7 @@ private theorem initial_native_boundary (wellFormed : setup.WellFormed)
   have intended : ProtocolState.Intended setup.program
       (ProtocolState.entry setup.program (Config.initial inputs)) :=
     ProtocolState.intended_entry setup.program _
-      (Config.initial_intended wellFormed supported)
+      (setup.initialConfig_intended wellFormed supported)
       (wellFormed.guardsSatisfiable inputs supported)
   refine ⟨_, ?_, residual.decode, intended⟩
   apply reachedBoundary_of_onePacket bounds start
@@ -91,17 +91,20 @@ private theorem initial_native_boundary_of_step (wellFormed : setup.WellFormed)
 
 variable {delay bound : (graph setup).EventId → Nat}
   (opportunity : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+    control.execution.application.config.defaulted = ∅ →
     OpportunityAt runtime leaks control.execution delay)
   (inclusion : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+    control.execution.application.config.defaulted = ∅ →
     ProtectedInclusionAt runtime leaks control.execution bound)
   (timely : runtime.AsyncTimely delay bound)
   (completes : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+    control.execution.application.config.defaulted = ∅ →
     (application setup runtime leaks).terminal (some control) →
     control.execution.application.config.cut.Terminal)
 
@@ -131,7 +134,7 @@ theorem counted_honest_initialized_readout_law
     source
   let profile := setup.intendedOpeningProfile source.strategy
   let continuation : (application setup runtime leaks).ProtocolState →
-      PMF (Option (State L setup.program.terminalCtx)) := fun state =>
+      PMF (Option (Config Player L setup.program.terminalCtx)) := fun state =>
     state.elim ((setup.run profile).map some) (fun control =>
       sourceContinuation setup profile 0 control.execution.application.config)
   rw [setup.intendedOpeningProfile_run wellFormed source.strategy,
@@ -148,7 +151,7 @@ theorem counted_honest_initialized_readout_law
           supported
       have result := counted_honest_boundary_readout_law (runtime := runtime) opportunity
         inclusion
-        timely completes wellFormed covers capacity source certificate 0 start
+        timely completes covers capacity source certificate 0 start
           (ReactiveApplication.Execution.initial (application setup runtime leaks) native)
           (by simpa [ReactiveApplication.Execution.initial] using state) boundary point decoded
             intended
@@ -228,7 +231,7 @@ theorem counted_honest_initialized_intended
           (setup.intendedOpeningProfile source.strategy)
           players start initialMem
       have sourceLaw := counted_honest_boundary_readout_law (runtime := runtime) opportunity
-        inclusion timely completes wellFormed covers capacity source certificate 0 start
+        inclusion timely completes covers capacity source certificate 0 start
           (ReactiveApplication.Execution.initial (application setup runtime leaks) native)
           (by simpa [ReactiveApplication.Execution.initial] using state) boundary point decoded
             intended

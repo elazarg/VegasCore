@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapGuardSite
+import Vegas.Game.OnePacketFactorization
+import Vegas.Pending.ReactiveRuntime
 
 /-! # Accepted handles belong to the owner of their binding
 
@@ -38,22 +39,23 @@ theorem acceptedOwned_invariant :
     rw [submitStep_accepted, Submission.register_accepted] at accepted
     exact held field handle accepted
   handle state message next held handled field handle accepted := by
-    have call := reactiveHandle_call handled
+    obtain ⟨native, call, nextEq⟩ := reactiveHandle_call handled
+    rw [← nextEq, native.drain_tables.1] at accepted
     cases packet : message.payload.call with
     | malformed raw =>
         rw [packet] at call
         simp [EventGraphRuntime.handle] at call
     | opening named other raw =>
         rw [packet] at call
-        have tables := handle_resolution_tables runtime state next _
+        have tables := handle_resolution_tables runtime state native _
           (fun _ _ same => by cases same) call
         rw [tables.1] at accepted
         exact held field handle accepted
     | commitment named other =>
         rw [packet] at call
-        obtain ⟨_, _, owner, payload, outputEq, _, _, _, candidateOwner, _, _, _⟩ :=
-          (handle_commitment_iff runtime state next message.id named other).mp call
-        rw [(handle_commitment_tables runtime state next message.id named other
+        obtain ⟨_, _, _, owner, payload, outputEq, _, _, _, candidateOwner, _, _, _⟩ :=
+          (handle_commitment_iff runtime state native message.id named other).mp call
+        rw [(handle_commitment_tables runtime state native message.id named other
           call).2.1] at accepted
         by_cases same : field = .inr named
         · subst same
@@ -63,7 +65,8 @@ theorem acceptedOwned_invariant :
         · rw [Function.update_of_ne same] at accepted
           exact held field handle accepted
   environment state command next held reached field handle accepted := by
-    rw [(environmentStep_tables runtime state next command reached).1] at accepted
+    rw [(reactiveApplication_environment_tables runtime leaks state next command reached).1]
+      at accepted
     exact held field handle accepted
 
 /-- **Every accepted handle belongs to the owner** of its field's binding, along

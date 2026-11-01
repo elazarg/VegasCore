@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.ReactivePolicyFacts
-import Vegas.Pending.ReactiveHiddenInclusion
+import Vegas.Pending.EventCompletionObservation
+import Vegas.Pending.EventPublicState
 import Vegas.EventGraph.ObservationStep
 
 /-! # Allocation and transport during a hidden binding repair
@@ -53,56 +54,33 @@ theorem reactive_include_fixed_binding_candidates (runtime : EventGraphRuntime g
   | none => rfl
   | some next =>
       change next.candidates = execution.application.candidates
-      rw [(handle_commitment_tables runtime execution.application next id event candidate
-        (reactiveHandle_call accepted)).1]
+      obtain ⟨native, handled, after⟩ := reactiveHandle_call accepted
+      rw [← after, (native.drain_tables).2.1,
+        (handle_commitment_tables runtime execution.application native id event candidate
+          handled).1]
       exact execution.application.candidates.freeze_eq_self_of_not_fresh candidate fixed
 
-omit [DecidableEq Player] in
 private theorem complete_binding_public_congr
     (left right : State graph) (publicEq : left.publicView = right.publicView)
     (owner : Player) (payload : L.Ty) (event : graph.EventId)
     (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind owner payload)
     (leftReady : left.config.cut.Ready event) (rightReady : right.config.cut.Ready event)
-    (leftAction rightAction : graph.Action event)
-    (leftValue rightValue : (graph.outputLayout event).Value) :
-    (left.complete event leftReady leftAction leftValue).publicView =
-      (right.complete event rightReady rightAction rightValue).publicView := by
-  classical
-  have observations := congrArg PublicView.observation publicEq
-  have orders := congrArg EventGraph.PublicObservation.completionOrder observations
-  have cuts := EventGraph.cut_eq_of_completionOrder_eq left.config right.config orders
-  have observed : graph.publicObserve (left.config.complete event leftReady leftAction leftValue) =
-      graph.publicObserve (right.config.complete event rightReady rightAction rightValue) := by
-    apply EventGraph.PublicObservation.ext graph
-    · simpa only [State.publicView, EventGraph.publicObserve, EventGraph.Config.complete,
-        List.map_append, List.map_cons, List.map_nil] using
-        congrArg (fun order => order ++ [event]) orders
-    · apply graph.publicStore_congr
-      intro field visible
-      have different : field ≠ .inr event := by
-        rintro rfl
-        change (graph.outputLayout event).IsPublic at visible
-        rw [outputEq] at visible
-        exact visible
-      rw [EventGraph.store_complete, EventGraph.store_complete,
-        Function.update_of_ne different, Function.update_of_ne different]
-      have prior := congrFun (congrArg EventGraph.PublicObservation.store observations) field
-      simpa only [State.publicView, EventGraph.publicObserve, EventGraph.publicStore_of_public,
-        visible] using prior
-  have clockEq := congrArg PublicView.clock publicEq
-  have activatedEq := congrArg PublicView.activatedAt publicEq
-  have acceptedEq := congrArg PublicView.accepted publicEq
-  have nextActivated :
-      State.refreshActivated (left.config.complete event leftReady leftAction leftValue)
-          left.clock left.activatedAt =
-        State.refreshActivated (right.config.complete event rightReady rightAction rightValue)
-          right.clock right.activatedAt := by
-    funext query
-    simp only [State.refreshActivated, EventGraph.Config.complete_cut, cuts]
-    rw [show left.clock = right.clock from clockEq,
-      show left.activatedAt = right.activatedAt from activatedEq]
-  unfold State.publicView State.complete
-  congr 1
+    (leftValue rightValue : PublicationResult (L.Val payload)) :
+    (left.complete event leftReady
+      (cast (congrArg EventGraph.EventField.Action outputEq.symm) (some leftValue))
+      (cast (congrArg EventGraph.EventField.Value outputEq.symm) leftValue)).publicView =
+    (right.complete event rightReady
+      (cast (congrArg EventGraph.EventField.Action outputEq.symm) (some rightValue))
+      (cast (congrArg EventGraph.EventField.Value outputEq.symm) rightValue)).publicView := by
+  apply State.complete_publicView_congr left right publicEq event leftReady rightReady
+  · intro visible
+    change (graph.outputLayout event).IsPublic at visible
+    rw [outputEq] at visible
+    exact visible.elim
+  · rw [left.config.completion_bind_some_defaultEvent event owner payload outputEq codeEq,
+      right.config.completion_bind_some_defaultEvent event owner payload outputEq codeEq]
 
 /-- Commitment inclusion preserves the public frame without requiring that
 another player exists. The private candidate meanings may differ. -/
@@ -143,25 +121,37 @@ theorem reactive_include_binding_public_congr (runtime : EventGraphRuntime graph
   have unused' : right.application.HandleUnused candidate := by
     intro field associated
     exact unused field ((congrFun acceptedEq field).trans associated)
-  have handled := runtime.handle_commitment_eq left.application id event candidate owner payload
-    outputEq codeEq node ready timely sender owned vacant unused
-  have handled' := runtime.handle_commitment_eq right.application id event candidate owner payload
-    outputEq codeEq node ready' timely' sender owned vacant' unused'
   have found' : right.network.lookup id =
       some ⟨id, ⟨.commitment event candidate, evidence, some ⟨event⟩⟩⟩ := network ▸ found
+  have defaults : left.application.config.defaulted = right.application.config.defaulted :=
+    congrArg (fun view : PublicView graph => view.observation.defaulted) publicEq
+  by_cases active : id.1 ∉ left.application.config.defaulted
+  swap
+  · have inactive : id.1 ∈ left.application.config.defaulted := Classical.not_not.mp active
+    have inactive' : id.1 ∈ right.application.config.defaulted := defaults ▸ inactive
+    have rejected : handle runtime left.application ⟨id, .commitment event candidate⟩ = none := by
+      simp only [handle, Message.sender, ite_eq_left inactive]
+    have rejected' : handle runtime right.application ⟨id, .commitment event candidate⟩ = none := by
+      simp only [handle, Message.sender, ite_eq_left inactive']
+    have actual := reactiveHandle_none (runtime := runtime) (leaks := leaks)
+      (message := ⟨id, ⟨.commitment event candidate, evidence, some ⟨event⟩⟩⟩) rejected
+    have actual' := reactiveHandle_none (runtime := runtime) (leaks := leaks)
+      (message := ⟨id, ⟨.commitment event candidate, evidence, some ⟨event⟩⟩⟩) rejected'
+    simpa only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+      found, found', actual, actual', Option.getD_none] using publicEq
+  have active' : id.1 ∉ right.application.config.defaulted := defaults ▸ active
+  have handled := runtime.handle_commitment_eq left.application id event candidate owner payload
+    outputEq codeEq node ready timely active sender owned vacant unused
+  have handled' := runtime.handle_commitment_eq right.application id event candidate owner payload
+    outputEq codeEq node ready' timely' active' sender owned vacant' unused'
   simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
     found, found', reactiveApplication_handle, WitnessedPacket.tokenValid_commitment,
-    ite_true, handled, handled', Option.getD_some]
+    ite_true, handled, handled', Option.map_some, Option.getD_some]
+  apply State.drain_publicView_congr
   have completed := complete_binding_public_congr left.application right.application publicEq
-    owner payload event outputEq ready ready'
-    (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-      (left.application.bindingResult candidate payload))
-    (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-      (right.application.bindingResult candidate payload))
-    (cast (congrArg EventGraph.EventField.Value outputEq.symm)
-      (left.application.bindingResult candidate payload))
-    (cast (congrArg EventGraph.EventField.Value outputEq.symm)
-      (right.application.bindingResult candidate payload))
+    owner payload event outputEq codeEq ready ready'
+    (left.application.bindingResult candidate payload)
+    (right.application.bindingResult candidate payload)
   have observed := congrArg PublicView.observation completed
   have activated := congrArg PublicView.activatedAt completed
   have clockEq := congrArg PublicView.clock completed

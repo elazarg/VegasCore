@@ -127,26 +127,28 @@ theorem mapHistory_mapHistory_of_swap_eq {first second : HiddenSwap (graph setup
     (firstClosed : ∀ state ∈ (initialLaw setup).support,
       state.config.inputs ∈ swapAllowed first → state.swap first ∈ (initialLaw setup).support)
     (firstBounded : ∀ handle raw, raw ∈ bounds.values → first.raw handle raw ∈ bounds.values)
+    (firstFailures : ∀ event, first.values.ExpiryFixed event)
     (secondClosed : ∀ state ∈ (initialLaw setup).support,
       state.config.inputs ∈ swapAllowed second → state.swap second ∈ (initialLaw setup).support)
     (secondBounded : ∀ handle raw, raw ∈ bounds.values → second.raw handle raw ∈ bounds.values)
+    (secondFailures : ∀ event, second.values.ExpiryFixed event)
     (history : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
     (firstGuard : SwapGuardState setup runtime first (swapAllowed first) history.state)
     (secondGuard : SwapGuardState setup runtime second (swapAllowed second)
       ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
         first firstClosed
-        firstBounded).mapHistory history firstGuard).state) :
+        firstBounded firstFailures).mapHistory history firstGuard).state) :
     (onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler second
       secondClosed
-        secondBounded).mapHistory
+        secondBounded secondFailures).mapHistory
       ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
         first firstClosed
-        firstBounded).mapHistory history firstGuard) secondGuard = history := by
+        firstBounded firstFailures).mapHistory history firstGuard) secondGuard = history := by
   subst same
   exact StateSymmetry.mapHistory_mapHistory
     (onePacketSwapSymmetry_involutive (runtime := runtime) bounds (initialLaw setup) horizon
       scheduler second
-      secondClosed secondBounded (swapAllowed_closed second)) history firstGuard
+      secondClosed secondBounded secondFailures (swapAllowed_closed second)) history firstGuard
 
 
 section Site
@@ -371,7 +373,7 @@ theorem siteImage_class
     (bounded_betweenHandlePairs _ _ covered) mixed who trace guarded replayed ownTurn, ?_⟩
   apply Subtype.ext
   exact replayProjection_eq (runtime := runtime) decision projected _
-    (intendedHistory?_mapTrace_full (runtime := runtime) xState yState sameLength _
+    (intendedHistory?_mapTrace_full (runtime := runtime) wellFormed xState yState sameLength _
       (initialClosed_swapAllowed (siteSwap view wellFormed xState yState))
       (bounded_betweenHandlePairs _ _ covered) trace guarded replayed)
 
@@ -401,7 +403,9 @@ theorem siteMap_siteMap
   apply Subtype.ext
   apply Subtype.ext
   exact mapHistory_mapHistory_of_swap_eq (runtime := runtime)
-    (hiddenSwap_between_comm view.application.publicView.accepted) _ _ _ _ history.1.1 _ _
+    (hiddenSwap_between_comm view.application.publicView.accepted) _ _
+    (EventGraph.ValueSwap.ofPairs_expiryFixed _) _ _
+    (EventGraph.ValueSwap.ofPairs_expiryFixed _) history.1.1 _ _
 
 
 open Classical in

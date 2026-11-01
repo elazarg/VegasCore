@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketHonestContinuation
+import Vegas.Game.OnePacketForcedPrefix
+import Vegas.Game.OnePacketForcedRegular
+import Vegas.Game.OnePacketDebtFreeResponse
 import Vegas.Game.HonestContinuationIntended
 import GameTheory.Analysis.Protocol.RestrictionDomination
 import Interaction.ReactiveHistory
@@ -27,8 +30,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {scheduler : (application setup runtime leaks).Scheduler}
   {delay bound : (graph setup).EventId → Nat}
   (opportunity : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+    control.execution.application.config.defaulted = ∅ →
     OpportunityAt runtime leaks control.execution delay)
   (timely : runtime.AsyncTimely delay bound)
 
@@ -93,7 +97,7 @@ private theorem readyTurnsRecorded_transition
   refine ⟨next, afterEq, ?_⟩
   have trace : (E).Trace (some control) := state ▸ history.trace
   have raw := (menu).toRawTrace (initialLaw setup) horizon scheduler trace
-  have clear := exclusionEvidence_of_decodedIntended (runtime := runtime) raw decoded intended
+  have clear := defaulted_eq_empty_of_decodedIntended decoded intended
   have forced : ∀ player, ForcedState setup runtime leaks player (some control) := fun player =>
     (forcedState_iff_decodedPoint (runtime := runtime) control).mpr
       ⟨point, decoded, forcedPoint_of_intended player intended⟩
@@ -210,12 +214,14 @@ private theorem readyTurnsRecorded_transition
 
 variable
   (inclusion : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+    control.execution.application.config.defaulted = ∅ →
     ProtectedInclusionAt runtime leaks control.execution bound)
   (completes : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+    control.execution.application.config.defaulted = ∅ →
     (application setup runtime leaks).terminal (some control) →
     control.execution.application.config.cut.Terminal)
 
@@ -241,7 +247,7 @@ theorem counted_honest_reached_not_late
   let players := honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler
     source
   have law := counted_honest_boundary_readout_law (runtime := runtime) opportunity inclusion
-    timely completes wellFormed covers capacity source certificate rank start anchor state boundary
+    timely completes covers capacity source certificate rank start anchor state boundary
     point decoded intended
   change _ = (setup.continuationLaw (setup.intendedOpeningProfile source.strategy)
     (sourceServicePrefix? setup rank anchor.application.config)).map some at law

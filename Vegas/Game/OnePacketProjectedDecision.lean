@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketReplayExists
+import Vegas.Game.OnePacketOwnIntended
 import Vegas.Game.OnePacketHonestForced
 import Vegas.Game.SourceDebtObservation
 import Vegas.Pending.ReactiveServiceConditions
@@ -47,10 +48,11 @@ theorem intendedAvailable_of_decode_not_owes {Field : Type} [DecidableEq Field]
       (registry : Registry Γ) (revelations : Revelations Γ)
       (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
       (store : EventGraph.Store layout) (history : History Player L)
-      (state : ProtocolState program) (bound : count < eventCount program) (actor : Player)
+      (defaults : DefaultHistory Player) (state : ProtocolState program)
+      (bound : count < eventCount program) (actor : Player)
       (action : EventGraph.EventField.Action (outputLayout program ⟨count, bound⟩))
       (target : ProtocolState program),
-      decodeSourcePrefix? program refs registry revelations outputs count store history =
+      decodeSourcePrefix? program refs registry revelations outputs count store history defaults =
           some state →
       Intended program state →
       eventOwner? program ⟨count, bound⟩ = some actor →
@@ -59,82 +61,12 @@ theorem intendedAvailable_of_decode_not_owes {Field : Type} [DecidableEq Field]
       ¬ OwesFailure actor program target →
       ∃ act, decodeEventAction program ⟨count, bound⟩ action = some act ∧
         act ∈ ProtocolView.intendedAvailable actor program (observe actor program state) := by
-  induction program with
-  | ret _ =>
-      intro count _ _ _ _ _ _ _ bound
-      simp [eventCount] at bound
-  | sample _ fresh _ next ih =>
-      intro count refs registry revelations outputs store history state bound actor action target
-        decoded intended owned reached notOwes
-      cases count with
-      | zero => cases owned
-      | succ count =>
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
-          obtain ⟨after, supported, rfl⟩ := reached
-          exact ih count _ _ _ _ store history rest (Nat.lt_of_succ_lt_succ bound) actor action
-            after read intended owned supported notOwes
-  | @commit commitCtx commitNames name owner payload fresh guard next ih =>
-      intro count refs registry revelations outputs store history state bound actor action target
-        decoded intended owned reached notOwes
-      cases count with
-      | zero =>
-          cases Option.some.inj owned
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨cells, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          have same := (PMF.mem_support_pure_iff _ _).mp reached
-          subst same
-          change PublicationResult (L.Val payload) at action
-          change ∃ act, some (OwnAction.commit owner name payload action) = some act ∧ _
-          change ¬ OwesFailure owner (.commit name owner fresh guard next) (Sum.inr (entry next
-            (commitSuccessor name guard ⟨cells, registry, revelations, history⟩
-              (OwnAction.binding owner name payload
-                (some (OwnAction.commit owner name payload action)))))) at notOwes
-          rw [OwnAction.binding_commit] at notOwes
-          cases action with
-          | failure =>
-              exact (notOwes (Or.inr (failedBinding_entry next _
-                (Config.failedBinding_commit _ intended.1.unique fresh guard commitNames)))).elim
-          | success value =>
-              by_cases accepted : guard.predicts (sourceObserve owner cells) value = true
-              · exact ⟨_, rfl, value,
-                  (mem_intendedValues_self guard _ intended.2.1 value).mpr accepted, rfl⟩
-              · exact (notOwes (Or.inl (indebted_entry next _
-                  (intended.1.indebted_commit fresh guard value (by simpa using accepted))))).elim
-      | succ count =>
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
-          obtain ⟨after, supported, rfl⟩ := reached
-          exact ih count _ _ _ _ store history rest (Nat.lt_of_succ_lt_succ bound) actor action
-            after read intended owned supported notOwes
-  | reveal published owner name fresh source unresolved next ih =>
-      intro count refs registry revelations outputs store history state bound actor action target
-        decoded intended owned reached notOwes
-      cases count with
-      | zero =>
-          cases Option.some.inj owned
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨cells, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          have same := (PMF.mem_support_pure_iff _ _).mp reached
-          subst same
-          change Bool at action
-          change ∃ act, some (OwnAction.reveal owner name action) = some act ∧ _
-          cases action with
-          | true => exact ⟨_, rfl, rfl⟩
-          | false =>
-              refine (notOwes (Or.inl (Or.inl ⟨rfl, ?_⟩))).elim
-              rw [base_entry]
-              exact disclosureResult_false published source _
-      | succ count =>
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
-          obtain ⟨after, supported, rfl⟩ := reached
-          exact ih count _ _ _ _ store history rest (Nat.lt_of_succ_lt_succ bound) actor action
-            after read intended.2 owned supported fun owes => notOwes (owes.elim
-              (fun indebted => Or.inl (Or.inr indebted)) (fun failed => Or.inr (Or.inr failed)))
+  intro count refs registry revelations outputs store history defaults state bound actor action
+    target decoded intended owned reached notOwes
+  have before := intendedFor_of_intended actor program state intended
+  have after := (intendedFor_step actor program state _ target before reached).resolve_right notOwes
+  exact intendedAvailable_of_decode_intendedFor program count refs registry revelations outputs
+    store history defaults state bound actor action target decoded before owned reached after
 
 end Vegas.SourceProgram.ProtocolState
 
@@ -168,20 +100,9 @@ theorem debtFree_of_transition {before after : (application setup runtime leaks)
       ∀ player, ¬ ProtocolState.OwesFailure player setup.program point) :
     ∀ point, decodedPoint setup before.execution.application.config = some point →
       ∀ player, ¬ ProtocolState.OwesFailure player setup.program point := by
-  intro point decoded player owes
-  rcases transition_configStep (initialLaw setup) horizon scheduler before
-    after joint realized
-      with same | ⟨event, ready, action, member⟩
-  · exact free point (by rw [same]; exact decoded) player owes
-  · obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
-      setup.program)
-      (bounds.onePacketMenu runtime leaks) horizon scheduler prior before rfl
-    obtain ⟨current, target, beforeEq, afterEq, supported⟩ :=
-      decodedPoint_step residual event ready action _ member
-    rw [beforeEq, Option.some.injEq] at decoded
-    subst decoded
-    exact free target afterEq player (ProtocolState.owesFailure_step player setup.program current
-      _ target owes supported)
+  intro point decoded player
+  exact notOwes_of_transition prior joint realized (fun found read => free found read player)
+    point decoded
 
 /-- **The intended replay exists along debt-free histories.** For a
 well-formed setup, along a native history of the one-packet game whose decoded
@@ -226,6 +147,25 @@ theorem intendedHistory?_isSome_of_debtFree (wellFormed : setup.WellFormed) : �
       | some current =>
           have freeCurrent := debtFree_of_transition (runtime := runtime) prior joint realizedRaw
             free
+          obtain ⟨afterRank, ⟨afterResidual⟩, afterHolds⟩ :=
+            decodedState_intended_or_owes (runtime := runtime) wellFormed
+              (failureProfile setup.program) (bounds.onePacketMenu runtime leaks)
+              horizon scheduler (prior.extend joint legal realized) control rfl
+          have intendedAfter : ProtocolState.Intended setup.program
+              (afterResidual.lift (ProtocolState.entry afterResidual.program
+                afterResidual.source)) := by
+            rcases afterHolds _ afterResidual.decode with intended | ⟨player, owed⟩
+            · exact intended
+            · exact (free _ (decodedPoint_eq afterResidual) player owed).elim
+          have clear := defaulted_eq_empty_of_decodedIntended
+            (decodedPoint_eq afterResidual) intendedAfter
+          have priorClear : current.execution.application.config.defaulted = ∅ := by
+            apply Finset.eq_empty_iff_forall_notMem.mpr
+            intro player present
+            have later := runtime.reactive_protocol_defaulted_mono leaks (initialLaw setup)
+              horizon scheduler current control joint realizedRaw present
+            rw [clear] at later
+            exact Finset.notMem_empty player later
           obtain ⟨previous, previousReplay⟩ :=
             recursive current rfl freeCurrent
           change ∃ history, (intendedHistory? setup runtime leaks bounds horizon scheduler
@@ -247,8 +187,8 @@ theorem intendedHistory?_isSome_of_debtFree (wellFormed : setup.WellFormed) : �
                   ((joint actor).getD ⟨none⟩)).application.config.history.drop
                     current.execution.application.config.history.length with
                 | [] => some previous
-                | [⟨event, action⟩] => extendIntended? setup previous
-                    (decodeEventAction setup.program event action)
+                | [record] => extendIntended? setup previous
+                    (record.decision.bind (decodeEventAction setup.program record.event))
                     (decodedPoint setup (current.execution.respond (application setup runtime
                       leaks) actor
                       ((joint actor).getD ⟨none⟩)).application.config)
@@ -261,30 +201,54 @@ theorem intendedHistory?_isSome_of_debtFree (wellFormed : setup.WellFormed) : �
               have previousState : previous.state =
                   decodedPoint setup current.execution.application.config :=
                 intendedHistory?_state (runtime := runtime) prior previousReplay
-              rcases transition_configStep (initialLaw setup) horizon
-                scheduler current control
-                  joint realizedRaw with same | ⟨event, ready, action, member⟩
+              rcases runtime.reactive_protocol_config_eq_or_step_of_clear leaks (initialLaw setup)
+                  horizon scheduler current control joint realizedRaw clear with
+                    same | ⟨event, ready, action, member⟩
               · refine ⟨previous, ?_⟩
                 change (match control.execution.application.config.history.drop
                     current.execution.application.config.history.length with
                   | [] => some previous
-                  | [⟨event, action⟩] => extendIntended? setup previous
-                      (decodeEventAction setup.program event action)
+                  | [record] => extendIntended? setup previous
+                      (record.decision.bind (decodeEventAction setup.program record.event))
                       (decodedPoint setup control.execution.application.config)
                   | _ => none) = some previous
                 rw [same, List.drop_length]
-              · have dropped : control.execution.application.config.history.drop
-                    current.execution.application.config.history.length = [⟨event, action⟩] := by
-                  rw [EventGraph.Config.step_history _ event ready action _ member,
-                    List.drop_left]
+              · obtain ⟨value, _output, recorded⟩ :=
+                  current.execution.application.config.step_completion event ready action _ member
+                have decodedChoice :
+                    (current.execution.application.config.actualDecision event action).bind
+                        (decodeEventAction setup.program event) =
+                      decodeEventAction setup.program event action := by
+                  cases owned : (graph setup).actor? event with
+                  | none =>
+                      have noChoice := decodeEventAction_owner setup.program event action
+                      rw [eventOwner?_eq_actor] at noChoice
+                      change (decodeEventAction setup.program event action).map sourceActionOwner =
+                        (graph setup).actor? event at noChoice
+                      rw [owned] at noChoice
+                      have silent := Option.map_eq_none_iff.mp noChoice
+                      change ((graph setup).nodes event).actor = none at owned
+                      simp only [EventGraph.Config.actualDecision,
+                        EventGraph.EventCode.actualDecision, owned, Option.bind_none, silent]
+                  | some actor =>
+                      have active : actor ∉ current.execution.application.config.defaulted := by
+                        rw [priorClear]
+                        exact Finset.notMem_empty _
+                      rw [current.execution.application.config.actualDecision_of_active event actor
+                        owned active action, Option.bind_some]
                 change ∃ history, (match control.execution.application.config.history.drop
                     current.execution.application.config.history.length with
                   | [] => some previous
-                  | [⟨event, action⟩] => extendIntended? setup previous
-                      (decodeEventAction setup.program event action)
+                  | [record] => extendIntended? setup previous
+                      (record.decision.bind (decodeEventAction setup.program record.event))
                       (decodedPoint setup control.execution.application.config)
                   | _ => none) = some history
-                rw [dropped]
+                rw [recorded, List.drop_left]
+                change ∃ history, extendIntended? setup previous
+                    ((current.execution.application.config.actualDecision event action).bind
+                      (decodeEventAction setup.program event))
+                    (decodedPoint setup control.execution.application.config) = some history
+                rw [decodedChoice]
                 obtain ⟨point, target, decodedCurrent, decodedNext, reachedPoint⟩ :=
                   decodedPoint_step residual event ready action _ member
                 have currentState : previous.state = some point :=
@@ -310,7 +274,7 @@ theorem intendedHistory?_isSome_of_debtFree (wellFormed : setup.WellFormed) : �
                       rw [eventOwner?_eq_actor]
                       exact acts
                     exact ProtocolState.intendedAvailable_of_decode_not_owes setup.program
-                      event.val _ _ _ _ _ _ point event.isLt actor action target
+                      event.val _ _ _ _ _ _ _ point event.isLt actor action target
                       (decodedPoint_decode ready decodedCurrent) intendedPoint owned reachedPoint
                       (free target decodedNext actor)
                 have reachedStep : decodedPoint setup control.execution.application.config ∈
@@ -363,9 +327,16 @@ theorem projectedDecision_of_debtFree (wellFormed : setup.WellFormed) {who : Pla
   obtain ⟨publicReady, owned⟩ := PublicView.ownTurn?_spec _ who event turn
   have ready : control.execution.application.config.cut.Ready event :=
     (State.publicView_eventReady _ event).mp publicReady
+  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+    horizon scheduler native.1.trace
+  have atControl : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) := stateEq ▸ rawTrace
+  have facts := legalFacts setup leaks horizon scheduler control atControl
+  have active := control.execution.application.active_of_ready_owned facts.quiescent ready owned
   have acting : ProtocolView.actor who setup.program
-      (ProtocolState.observe who setup.program point) = some who :=
-    (decodedPoint_actor who ready decoded).trans owned
+      (ProtocolState.observe who setup.program point) = some who := by
+    rw [decodedPoint_actor who ready decoded, owned]
+    simp [active]
   obtain ⟨joint, offered⟩ := ProtocolState.intendedProgress setup.program point
   have own := offered who
   cases chosen : joint who with

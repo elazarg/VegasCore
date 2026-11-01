@@ -38,30 +38,9 @@ theorem intended_of_history (wellFormed : setup.WellFormed) :
     ∀ {state : setup.ProtocolState} (_trace : setup.intendedProtocol.Trace state)
       (point : ProtocolState setup.program), state = some point →
       ProtocolState.Intended setup.program point
-  | _, .start, _, initialized => by cases initialized
-  | _, .extend (source := before) prior joint legal realized, point, reached => by
-      have recursive := fun current same => intended_of_history wellFormed prior current same
-      subst reached
-      cases before with
-      | none =>
-          change some point ∈ (setup.initialLaw.map fun initial => some
-            (ProtocolState.entry setup.program (Config.initial initial))).support
-            at realized
-          obtain ⟨initial, supported, same⟩ := (PMF.mem_support_map_iff _ _ _).mp realized
-          cases Option.some.inj same
-          exact ProtocolState.intended_entry setup.program _
-            (Config.initial_intended wellFormed supported)
-            (wellFormed.guardsSatisfiable initial supported)
-      | some current =>
-          change some point ∈ ((ProtocolState.step setup.program current joint).map some).support
-            at realized
-          obtain ⟨target, reached, same⟩ := (PMF.mem_support_map_iff _ _ _).mp realized
-          cases Option.some.inj same
-          refine ProtocolState.intended_step setup.program current joint point
-            (recursive current rfl) (fun who => ?_) reached
-          have member := legal.2 who
-          revert member
-          cases joint who <;> exact id
+  | state, trace, point, same => by
+      have intended := setup.intendedState_trace wellFormed trace
+      simpa only [same, Setup.IntendedState] using intended
 
 end Vegas
 
@@ -112,8 +91,8 @@ theorem forcedState_swap_of_replay (player : Player) {control : (application set
       ((HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs).protocolState (runtime
         := runtime)
         (some control)) := by
-  obtain ⟨image, _, _, _, imageState⟩ := intendedHistory?_mapTrace (runtime := runtime) firstState
-    secondState
+  obtain ⟨image, _, _, _, imageState⟩ := intendedHistory?_mapTrace (runtime := runtime)
+    wellFormed firstState secondState
     sameLength handlePairs initialClosed bounded trace guarded replayed isPrefix
   have replayState := intendedHistory?_state (runtime := runtime) trace replayed
   change replay.state = decodedPoint setup control.execution.application.config at replayState
@@ -144,18 +123,19 @@ theorem regularTrace_mapTrace_of_weight_pos
       0 < othersSourceWeight setup runtime leaks bounds horizon scheduler assessment who
         ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
           (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
-          bounded).mapTrace trace guarded) →
+          bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace trace guarded) →
       RegularTrace setup runtime leaks bounds horizon scheduler assessment who
         ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
           (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
-          bounded).mapTrace trace guarded)
+          bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace trace guarded)
   | _, .start, _, _, _, _, _ => trivial
   | _, .extend (source := before) (target := after) prior joint legal realized, guarded, replay,
       replayed, firstPrefix, positive => by
       have priorGuard := (onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup)
         horizon scheduler
         (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
-        bounded).guard_source prior legal realized guarded
+        bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).guard_source prior legal realized
+          guarded
       change (intendedHistory? setup runtime leaks bounds horizon scheduler prior).bind
         (fun history => advanceIntended? setup runtime leaks history before after) = some replay
         at replayed
@@ -170,7 +150,7 @@ theorem regularTrace_mapTrace_of_weight_pos
         (scheduler := scheduler) assessment who
         ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
           (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
-          bounded).mapTrace prior priorGuard)
+          bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace prior priorGuard)
       have factorNonneg := transitionSourceFactor_nonneg (runtime := runtime) (setup := setup)
         (leaks := leaks)
         assessment who
@@ -200,7 +180,8 @@ theorem regularTrace_mapTrace_of_weight_pos
               refine ⟨⟨⟨⟨_, (onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup)
                 horizon scheduler
                 (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
-                bounded).mapTrace prior priorGuard⟩, ?_, forced actor⟩, forced who⟩, ?_⟩
+                bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace prior priorGuard⟩,
+                  ?_, forced actor⟩, forced who⟩, ?_⟩
               · exact (bounds.onePacketMenu runtime leaks).info (initialLaw setup)
                   horizon scheduler actor _
               · have actingCurrent : current.actor = some actor := acting
@@ -217,7 +198,7 @@ theorem regularTrace_mapTrace_of_weight_pos
                 simp only [HiddenSwap.control, actingCurrent, other, ↓reduceIte] at factorPos
                 exact factorPos
 
-include firstState secondState sameLength initialClosed bounded in
+include wellFormed firstState secondState sameLength initialClosed bounded in
 /-- **A replayed history maps to a history replaying `second`.** -/
 theorem intendedHistory?_mapTrace_full {state : (application setup runtime leaks).ProtocolState}
     (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
@@ -227,11 +208,12 @@ theorem intendedHistory?_mapTrace_full {state : (application setup runtime leaks
     intendedHistory? setup runtime leaks bounds horizon scheduler
         ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
           (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
-          bounded).mapTrace trace guarded) = some second := by
+          bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace trace guarded) = some
+            second := by
   obtain ⟨image, imageReplay, imagePrefix, imageLength, _⟩ := intendedHistory?_mapTrace (runtime
     := runtime)
-    firstState secondState sameLength handlePairs initialClosed bounded trace guarded replayed
-    .refl
+    wellFormed firstState secondState sameLength handlePairs initialClosed bounded trace guarded
+    replayed .refl
   rw [imageReplay]
   exact congrArg some (imagePrefix.eq_of_length (imageLength.trans sameLength))
 
@@ -250,11 +232,11 @@ theorem othersSourceWeight_mapTrace (assessment : setup.intendedModel.Behavioral
     othersSourceWeight setup runtime leaks bounds horizon scheduler assessment who
         ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
           (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
-          bounded).mapTrace trace guarded) =
+          bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace trace guarded) =
       setup.intendedModel.counterfactualReachProbability assessment.strategy who
         second.trace := by
-  have imageReplay := intendedHistory?_mapTrace_full (runtime := runtime) firstState secondState
-    sameLength
+  have imageReplay := intendedHistory?_mapTrace_full (runtime := runtime) wellFormed firstState
+    secondState sameLength
     handlePairs initialClosed bounded trace guarded replayed
   have forced := forcedState_swap_of_replay (runtime := runtime) wellFormed firstState secondState
     sameLength
@@ -262,7 +244,7 @@ theorem othersSourceWeight_mapTrace (assessment : setup.intendedModel.Behavioral
   have matching := actorCompletionsMatch_of_forced (runtime := runtime) assessment who
     ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
       (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
-      bounded).mapTrace trace guarded) _ rfl forced
+      bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace trace guarded) _ rfl forced
   have imageTurn : ((HiddenSwap.control (runtime := runtime) (HiddenSwap.ofPairs (betweenPairs
     publicAgree succeed)
       handlePairs) control).execution.observe (application setup runtime leaks)
@@ -276,7 +258,7 @@ theorem othersSourceWeight_mapTrace (assessment : setup.intendedModel.Behavioral
   have settled := unsettledContent_eq_one_of_ownTurn (runtime := runtime) assessment who
     ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
       (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
-      bounded).mapTrace trace guarded) forced imageTurn
+      bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace trace guarded) forced imageTurn
   rw [othersSourceWeight_eq_replay (runtime := runtime) assessment who _ imageReplay
     (replayMatches_of_actorCompletions (runtime := runtime) assessment who _ matching), settled,
       mul_one]
@@ -313,7 +295,7 @@ theorem regularTrace_mapTrace {assessment : setup.intendedModel.BehavioralAssess
     RegularTrace setup runtime leaks bounds horizon scheduler assessment who
       ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
         (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) initialClosed
-        bounded).mapTrace trace guarded) := by
+        bounded (EventGraph.ValueSwap.ofPairs_expiryFixed _)).mapTrace trace guarded) := by
   refine regularTrace_mapTrace_of_weight_pos (runtime := runtime) wellFormed firstState
     secondState sameLength
     handlePairs initialClosed bounded assessment who trace guarded replayed .refl ?_

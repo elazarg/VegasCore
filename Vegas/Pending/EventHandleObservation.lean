@@ -24,7 +24,7 @@ private theorem handle_playerView_transport_of_sender (runtime : EventGraphRunti
     congrArg PlayerView.publicView views
   have observationEq := left.playerView_observation_eq right focal views
   have statusEq : left.config.defaulted = right.config.defaulted :=
-    congrArg PlayerObservation.defaulted observationEq
+    congrArg EventPlayerObservation.defaulted observationEq
   have candidatesEq : (fun slot => left.candidates.lookup (focal, slot)) =
       fun slot => right.candidates.lookup (focal, slot) :=
     congrArg PlayerView.candidates views
@@ -33,14 +33,14 @@ private theorem handle_playerView_transport_of_sender (runtime : EventGraphRunti
   have clockEq : left.clock = right.clock := congrArg PublicView.clock publicEq
   have activatedEq : left.activatedAt = right.activatedAt :=
     congrArg PublicView.activatedAt publicEq
-  have orderEq : left.config.history.map Completion.event =
-      right.config.history.map Completion.event :=
-    congrArg PlayerObservation.completionOrder observationEq
+  have orderEq : left.config.history.map EventCompletion.event =
+      right.config.history.map EventCompletion.event :=
+    congrArg EventPlayerObservation.completionOrder observationEq
   have cutEq : left.config.cut = right.config.cut :=
     cut_eq_of_completionOrder_eq left.config right.config orderEq
   have playerStoreEq : graph.playerStore focal left.config.store =
       graph.playerStore focal right.config.store :=
-    congrArg PlayerObservation.store observationEq
+    congrArg EventPlayerObservation.store observationEq
   have readyTransport {event : graph.EventId} (ready : left.config.cut.Ready event) :
       right.config.cut.Ready event := by
     simpa only [← cutEq] using ready
@@ -168,7 +168,7 @@ private theorem handle_commitment_playerView_transport (runtime : EventGraphRunt
     congrArg PlayerView.publicView views
   have observationEq := left.playerView_observation_eq right focal views
   have statusEq : left.config.defaulted = right.config.defaulted :=
-    congrArg PlayerObservation.defaulted observationEq
+    congrArg EventPlayerObservation.defaulted observationEq
   have candidatesEq := congrArg PlayerView.candidates views
   have acceptedEq : left.accepted = right.accepted :=
     congrArg PublicView.accepted publicEq
@@ -177,7 +177,7 @@ private theorem handle_commitment_playerView_transport (runtime : EventGraphRunt
     congrArg PublicView.activatedAt publicEq
   have cutEq : left.config.cut = right.config.cut :=
     cut_eq_of_completionOrder_eq left.config right.config
-      (congrArg PlayerObservation.completionOrder observationEq)
+      (congrArg EventPlayerObservation.completionOrder observationEq)
   change (fun slot => left.candidates.lookup (focal, slot)) =
     (fun slot => right.candidates.lookup (focal, slot)) at candidatesEq
   obtain ⟨active, ready, timely, owner, payload, outputEq, codeEq, view, sender, handleOwner,

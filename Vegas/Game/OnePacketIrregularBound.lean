@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketCounterpartDomination
+import Vegas.Game.OnePacketComponentSteps
+import Vegas.Game.OnePacketSlotTrembles
 
 /-! # Irregular step bounds from response masses
 

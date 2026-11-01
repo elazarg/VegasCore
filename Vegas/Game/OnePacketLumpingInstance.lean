@@ -332,8 +332,8 @@ theorem lateKernel_close {LateOption : Type}
           apply map_congr_on_support
           intro next member
           obtain ⟨control', rfl, step⟩ :=
-            controlStep_configStep (runtime := runtime) horizon scheduler _ control member
-          exact pendingImage_of_configStep (runtime := runtime) step completed
+            controlStep_graphSteps (runtime := runtime) horizon scheduler _ control member
+          exact pendingImage_of_path (runtime := runtime) step completed
         rw [constant, PMF.map_const]
         simp only [pendingImage, completed, ↓reduceIte, pendingKernel]
       · have pending := ready.1

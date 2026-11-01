@@ -52,6 +52,7 @@ theorem infoOf_mapTrace (swap : HiddenSwap (graph setup))
     (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
       state.swap swap ∈ initial.support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
+    (failures : ∀ event, swap.values.ExpiryFixed event)
     (who : Player) {state : (application setup runtime leaks).ProtocolState}
     (trace : ((bounds.onePacketMenu runtime leaks).protocol initial horizon
       scheduler).Trace state) (guarded : SwapGuardState setup runtime swap allowed state) :
@@ -59,7 +60,7 @@ theorem infoOf_mapTrace (swap : HiddenSwap (graph setup))
       scheduler).infoOf who
       ((onePacketSwapSymmetry (runtime := runtime) bounds initial horizon scheduler swap
         initialClosed
-        bounded).mapTrace trace guarded) =
+        bounded failures).mapTrace trace guarded) =
       swap.info (((bounds.onePacketMenu runtime leaks).information initial
         horizon
         scheduler).infoOf who trace) := by
@@ -69,7 +70,7 @@ theorem infoOf_mapTrace (swap : HiddenSwap (graph setup))
   have mappedInfo : ((bounds.onePacketMenu runtime leaks).information initial horizon
       scheduler).infoOf who ((onePacketSwapSymmetry (runtime := runtime) bounds initial horizon
         scheduler swap
-        initialClosed bounded).mapTrace trace guarded) =
+        initialClosed bounded failures).mapTrace trace guarded) =
       (application setup runtime leaks).observe who (swap.protocolState
         state) :=
     (bounds.onePacketMenu runtime leaks).info initial horizon scheduler who _

@@ -31,9 +31,9 @@ theorem environmentStep_expire_playerView_congr
     unfold State.playerView
     congr 1
   have statusEq : left.config.defaulted = right.config.defaulted :=
-    congrArg PlayerObservation.defaulted observationEq
+    congrArg EventPlayerObservation.defaulted observationEq
   have cuts := cut_eq_of_completionOrder_eq left.config right.config
-    (congrArg PlayerObservation.completionOrder observationEq)
+    (congrArg EventPlayerObservation.completionOrder observationEq)
   have clockEq : left.clock = right.clock := congrArg PublicView.clock publicEq
   have activatedEq : left.activatedAt = right.activatedAt :=
     congrArg PublicView.activatedAt publicEq
