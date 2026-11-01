@@ -283,4 +283,126 @@ theorem Config.Reachable.publication_guards {inputs : graph.Inputs} {config : gr
           retained]
         exact ih published
 
+/-- A completed binding stores the value of its optional actual decision.
+Automatic completion and public omission both store failure. -/
+theorem Config.binding_step_output
+    (event : graph.EventId) (owner : Player) (payload : L.Ty)
+    (outputEq : graph.outputLayout event = .binding owner payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes event) = .bind owner payload)
+    (config next : graph.Config) (ready : config.cut.Ready event)
+    (action : graph.Action event)
+    (member : next ∈ (config.step event ready action).support) :
+    next.outputs event = some (cast (congrArg EventField.Value outputEq.symm)
+      (((config.actualDecision event action).bind fun chosen =>
+        cast (congrArg EventField.Action outputEq) chosen).getD .failure)) := by
+  let choice := cast (congrArg EventField.Action outputEq) action
+  have law := config.step_eq_map_of_code event ready outputEq (.bind owner payload) codeEq
+    choice (PMF.pure ((if owner ∈ config.defaulted then none else choice).getD .failure)) rfl
+  have actionRoundtrip : cast (congrArg EventField.Action outputEq.symm) choice = action := by
+    simp [choice]
+  rw [actionRoundtrip, PMF.pure_map] at law
+  rw [law, PMF.mem_support_pure_iff] at member
+  subst next
+  rw [Config.complete_output_same]
+  have owned : (graph.nodes event).actor = some owner :=
+    (EventCode.actor_cast outputEq (graph.nodes event)).symm.trans
+      (congrArg EventCode.actor codeEq)
+  by_cases inactive : owner ∈ config.defaulted <;>
+    simp [Config.actualDecision, EventCode.actualDecision, owned, inactive, choice]
+
+/-- Every recorded binding in a reachable graph retains its actual binding value. -/
+theorem Config.Reachable.binding_output {inputs : graph.Inputs} {config : graph.Config}
+    (reachable : config.Reachable inputs) (record : graph.Completion)
+    (present : record ∈ config.history) (owner : Player) (payload : L.Ty)
+    (outputEq : graph.outputLayout record.event = .binding owner payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
+      (graph.nodes record.event) = .bind owner payload) :
+    config.outputs record.event = some (cast (congrArg EventField.Value outputEq.symm)
+      ((record.decision.bind fun chosen =>
+        cast (congrArg EventField.Action outputEq) chosen).getD .failure)) := by
+  induction reachable with
+  | initial => cases present
+  | step priorReachable event ready action next supported ih =>
+      rename_i before
+      obtain ⟨value, stored, history⟩ := before.step_completion event ready action next supported
+      rw [history] at present
+      rcases List.mem_append.mp present with old | new
+      · exact before.step_store_of_some next event ready action supported (.inr record.event) _
+          (ih old)
+      · cases List.mem_singleton.mp new
+        exact before.binding_step_output event owner payload outputEq codeEq next ready action
+          supported
+
+/-- A successful recorded publication retains an actual disclosure decision,
+including after later supported graph completions. -/
+theorem Config.Reachable.publication_decision_of_success
+    {inputs : graph.Inputs} {config : graph.Config} (reachable : config.Reachable inputs)
+    (record : graph.Completion) (member : record ∈ config.history)
+    (owner : Player) (payload : L.Ty)
+    (binding : FieldRef graph.layout (.binding owner payload))
+    (checks : List (GuardCheck graph.layout payload))
+    (outputEq : graph.outputLayout record.event = .publication payload)
+    (codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes record.event) =
+      .resolve owner payload binding checks)
+    (value : L.Val payload)
+    (published : (⟨.inr record.event, outputEq⟩ : FieldRef graph.layout (.publication payload)).get?
+      config.store = some (.success value)) :
+    record.decision.map (cast (congrArg EventField.Action outputEq)) = some true := by
+  induction reachable with
+  | initial => cases member
+  | @step before prior completed ready action after reached ih =>
+      obtain ⟨result, _output, history⟩ :=
+        before.step_completion completed ready action after reached
+      rw [history, List.mem_append] at member
+      rcases member with member | fresh
+      · have done : record.event ∈ before.cut.completed :=
+          (before.history_exact record.event).mp (List.mem_map.mpr ⟨record, member, rfl⟩)
+        have different : record.event ≠ completed := by
+          intro same
+          exact ready.1 (same ▸ done)
+        have storedEq : after.outputs record.event = before.outputs record.event := by
+          obtain ⟨output, _, rfl⟩ := PMF.support_map .. ▸ reached
+          exact before.complete_output_of_ne completed record.event ready action output different
+        have viewEq :=
+          (⟨.inr record.event, outputEq⟩ : FieldRef graph.layout (.publication payload)).get?_congr
+            after.store before.store storedEq
+        exact ih member (by rwa [viewEq] at published)
+      · have same := List.mem_singleton.mp fresh
+        subst record
+        dsimp only [EventGraph.completion] at outputEq codeEq published ⊢
+        have resolved := Config.resolution_step_output completed owner payload binding checks
+          outputEq codeEq before after ready action reached
+        change EventCode.resolveOutput? binding checks _ before.store =
+          (⟨.inr completed, outputEq⟩ : FieldRef graph.layout (.publication payload)).get?
+            after.store at resolved
+        rw [published] at resolved
+        have disclosed : (if owner ∈ before.defaulted then false else
+            cast (congrArg EventField.Action outputEq) action) = true := by
+          cases chosen : (if owner ∈ before.defaulted then false else
+              cast (congrArg EventField.Action outputEq) action) with
+          | true => rfl
+          | false =>
+              rw [chosen] at resolved
+              unfold EventCode.resolveOutput? at resolved
+              cases boundEq : binding.get? before.store with
+              | none => simp [boundEq] at resolved
+              | some bound =>
+                  cases checkEq : GuardCheck.allAccepted? checks before.store .failure with
+                  | none => simp [boundEq, checkEq] at resolved
+                  | some accepted => cases accepted <;> simp [boundEq, checkEq] at resolved
+        have active : owner ∉ before.defaulted := by
+          intro inactive
+          simp only [inactive, ite_true, Bool.false_eq_true] at disclosed
+        have actor : (graph.nodes completed).actor = some owner := by
+          rw [← EventCode.actor_cast outputEq (graph.nodes completed), codeEq]
+          rfl
+        have actual := before.actualDecision_of_active completed owner actor active action
+        have requested : cast (congrArg EventField.Action outputEq) action = true := by
+          simpa only [active, ite_false] using disclosed
+        change (before.actualDecision completed action).map
+          (cast (congrArg EventField.Action outputEq)) = some true
+        rw [actual, Option.map_some, requested]
+
+
 end Vegas.EventGraph
