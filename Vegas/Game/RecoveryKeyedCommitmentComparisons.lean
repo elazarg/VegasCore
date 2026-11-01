@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.RecoveryCountedKeyedValues
-import Vegas.Game.RecoveryCommittedValueAffine
+import Vegas.Game.OnePacketCommittedValueAffine
+import Vegas.Game.OnePacketLateCommitFailure
 import Vegas.Game.RecoveryKeyedValueBounds
 import Vegas.Game.RecoverySourceBeliefBounds
 import Vegas.Game.OnePacketCommitmentSourcePolicy
@@ -286,7 +287,7 @@ theorem nativeComparison_keyed_commitment_comparisons_of_counted_service [Fintyp
   have strategyEq : (target n).strategy = common := rfl
   have unforcedMass := (unforcedBound n who site notFree notOwing keyed).trans (le_abs_self _)
   have decorrelation := (decorrelated n who site notFree notOwing keyed).mono (le_abs_self _)
-  have chosenNear := nativeComparison_committed_value_sub_le_of_counted_service setup runtime
+  have chosenNear := assembled_committed_value_sub_le setup runtime
     leaks bounds
     horizon scheduler
     wellFormed covers capacity sequence inputs.scale positive le_one weights

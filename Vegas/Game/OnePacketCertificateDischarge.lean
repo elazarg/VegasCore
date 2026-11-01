@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketSlotLaw
 import Vegas.Game.OnePacketCertificateLumping
+import Vegas.Game.IntendedChoiceReach
 import Vegas.Game.OnePacketLateDecomposition
 import Vegas.Game.OnePacketBaseAssembly
 import Vegas.Game.RecoveryNonLateChoices
@@ -205,23 +206,6 @@ theorem pendingEvent_of_turnSubmission {who : Player} (site : (onePacketN).Infor
     (onePacket_unrecorded_of_member (runtime := runtime) rawTrace who event response member
       submitted)
 
-omit [Finite setup.intendedProtocol.History] in
-/-- A function bounded by `bound` has expectations under two laws on a finite
-type within `bound` times their `ℓ¹` distance. -/
-theorem expect_sub_le_of_bounded {α : Type*} [Finite α] (first second : PMF α) (value : α → ℝ)
-    {bound : ℝ} (bounded : ∀ point, |value point| ≤ bound) :
-    expect first value - expect second value ≤
-      bound * ∑' point, |(first point).toReal - (second point).toReal| := by
-  let := Fintype.ofFinite α
-  rw [tsum_fintype, expect_eq_sum, expect_eq_sum, ← Finset.sum_sub_distrib, Finset.mul_sum]
-  refine Finset.sum_le_sum fun point _ => ?_
-  rw [← sub_mul]
-  calc _ ≤ |((first point).toReal - (second point).toReal) * value point| := le_abs_self _
-    _ = |(first point).toReal - (second point).toReal| * |value point| := abs_mul _ _
-    _ ≤ _ := by
-        rw [mul_comm bound]
-        exact mul_le_mul_of_nonneg_left (bounded point) (abs_nonneg _)
-
 /-- The local gain at a site of the one-packet game of installing a law: the
 expected exclusion payoff of the deviation minus that of the assessment. -/
 def onePacketSiteGain (assessment : (onePacketN).BehavioralAssessment) {who : Player}
@@ -231,106 +215,6 @@ def onePacketSiteGain (assessment : (onePacketN).BehavioralAssessment) {who : Pl
     (readoutExclusion setup runtime leaks bounds (initialLaw setup) horizon scheduler parameter
       utility
       excludedPayoff) assessment who (site, (assessment.strategy who).withLaw site.1 law)
-  expect comparison.alternative ((payoffComponent setup) · who) -
-    expect comparison.prescribed ((payoffComponent setup) · who)
-
-omit [Fintype Player] [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-      scheduler).InfoState who)] in
-/-- **A late delivery decides its pending event.** At a decision input of `who`
-with pending event `event`, along a history whose recall of `who` is the
-input's, the late-delivery key decides `event`. -/
-theorem decidedEvent_eq_of_pending {who : Player}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView} {event : (graph setup).EventId}
-    (pending : pendingEvent setup runtime leaks who (some (past, view)) = some event)
-    {control : (application setup runtime leaks).Control}
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
-      (some control))
-    (recallEq : control.execution.recall who = past) {key : LateKey setup runtime leaks}
-    (siteKey : lateKey setup runtime leaks who (some (past, view)) = some key) :
-    decidedEvent (runtime := runtime) key = some event := by
-  obtain ⟨turn, _, owned, unrecorded⟩ := pendingEvent_spec (runtime := runtime) pending
-  simp only [lateKey, Option.some.injEq] at siteKey
-  subst siteKey
-  cases node : nodeView (graph setup) event with
-  | sample payload law outputEq codeEq =>
-      have none := nodeView_sample_actor outputEq codeEq
-      rw [owned] at none
-      cases none
-  | resolve owner payload binding checks outputEq codeEq =>
-      have ownerEq : owner = who :=
-        Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
-      subst ownerEq
-      unfold decidedEvent
-      rw [turnEvent_of_publicationTurn (runtime := runtime) ⟨turn, payload, binding, checks,
-        outputEq, codeEq, node⟩]
-  | bind owner payload outputEq codeEq =>
-      have ownerEq : owner = who :=
-        Option.some.inj ((EventGraph.actor?_of_outputLayout_binding _ outputEq).symm.trans
-          owned)
-      subst ownerEq
-      have noPublication : turnEvent (runtime := runtime) (setup := setup) (leaks := leaks)
-          { owner := owner
-            current := operationalView setup runtime leaks view
-            recalled := past.map fun entry =>
-              (operationalView setup runtime leaks entry.beforeView, entry.emitted)
-            delivered := deliveredValue setup runtime leaks owner view } =
-              none := by
-        cases found : turnEvent (runtime := runtime) (setup := setup) (leaks := leaks) _ with
-        | none => rfl
-        | some other =>
-            obtain ⟨otherTurn, _, _, _, _, _, otherNode⟩ := publicationTurn_of_turnEvent (runtime
-              := runtime) found
-            have same : other = event := Option.some.inj (otherTurn.symm.trans turn)
-            subst same
-            rw [node] at otherNode
-            cases otherNode
-      have unsent : UnsentFor (runtime := runtime) (setup := setup) (leaks := leaks)
-          { owner := owner
-            current := operationalView setup runtime leaks view
-            recalled := past.map fun entry =>
-              (operationalView setup runtime leaks entry.beforeView, entry.emitted)
-            delivered := deliveredValue setup runtime leaks owner view }
-              event := by
-        intro recalledEntry member message emitted named
-        obtain ⟨entry, entryMember, rfl⟩ := List.mem_map.mp member
-        have recorded := (history_eventRecorded_iff (runtime := runtime) trace owner event).mpr
-          ⟨message, by
-            rw [recallEq]
-            exact List.mem_filterMap.mpr ⟨entry, entryMember, emitted⟩, named⟩
-        rw [recallEq, unrecorded] at recorded
-        cases recorded
-      have binding : BindingTurn (runtime := runtime) (setup := setup) (leaks := leaks)
-          { owner := owner
-            current := operationalView setup runtime leaks view
-            recalled := past.map fun entry =>
-              (operationalView setup runtime leaks entry.beforeView, entry.emitted)
-            delivered := deliveredValue setup runtime leaks owner view }
-              event payload :=
-        ⟨turn, ⟨outputEq, codeEq, node⟩, unsent⟩
-      unfold decidedEvent
-      rw [noPublication]
-      cases found : bindingTurn (runtime := runtime) (setup := setup) (leaks := leaks) _ with
-      | none =>
-          unfold bindingTurn at found
-          split at found
-          · cases found
-          · rename_i noTurn
-            exact (noTurn ⟨(event, payload), binding⟩).elim
-      | some decided =>
-          obtain ⟨decidedTurn, _, _⟩ := bindingTurn_spec (runtime := runtime) found
-          exact congrArg some (Option.some.inj (decidedTurn.symm.trans turn))
-
-/-- The gain of a deviation at a site of the intended game under the exclusion
-payoff: the expected exclusion payoff of the deviation minus that of the
-assessment. -/
-def intendedSiteGain (assessment : setup.intendedModel.BehavioralAssessment) {who : Player}
-    (deviation : setup.intendedModel.AssessmentDeviation who) : ℝ :=
-  let comparison := setup.intendedModel.assessmentComparisonWith
-    (setup.intendedModel.truncatedRunner (instructionCount setup.program + 1))
-    (intendedReadoutExclusion setup parameter utility excludedPayoff) assessment who deviation
   expect comparison.alternative ((payoffComponent setup) · who) -
     expect comparison.prescribed ((payoffComponent setup) · who)
 

@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryCommitmentGainBounds
-import Vegas.Game.RecoverySilenceComparison
+import Vegas.Game.OnePacketCommitmentComparisons
+import Vegas.Game.OnePacketSilenceComparison
 import Vegas.Game.OnePacketDisclosureComparison
 import Vegas.Game.OnePacketUnintendedComparison
 import Vegas.Game.RecoveryNonLateChoices
@@ -118,7 +118,7 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
           gain ≤ intendedSiteGain setup parameter utility excludedPayoff (sequence n)
             sourceDeviation + error n := by
   obtain ⟨commitError, commitLimit, commitments⟩ :=
-    nativeComparison_intendedCommitment_gain_bounds_of_counted_service setup runtime leaks bounds
+    OnePacketComparison.assembled_intendedCommitment_gain_bounds setup runtime leaks bounds
       horizon
       scheduler
       wellFormed independent observable covers coversInputs capacity sequence sourceMixed
@@ -213,7 +213,7 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
           congr 1
           exact congrArg (fun transmission =>
             (⟨transmission⟩ : (application setup runtime leaks).Action)) sends
-        exact nativeComparison_silence_history_comparison_of_counted_service setup runtime leaks
+        exact OnePacketComparison.assembled_silence_history_comparison setup runtime leaks
           bounds
           horizon scheduler
           wellFormed covers capacity sequence scale positive le_one weights n opportunity inclusion

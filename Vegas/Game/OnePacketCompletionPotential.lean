@@ -3,6 +3,7 @@
 import Vegas.Game.OnePacketCompletionLaw
 import Vegas.Game.OnePacketLateBadMass
 import Vegas.Game.OnePacketLateLumping
+import Vegas.Game.OnePacketLateSuccess
 
 /-! # Completion potentials for actual current-event laws -/
 
@@ -72,5 +73,50 @@ theorem completionPoint_badMass_eq_lateBadStop
       none ∧ ¬ DecisionFailed (runtime := runtime) key final.state
   · rw [ite_eq_left first, ite_eq_left (equivalence.mp first)]
   · rw [ite_eq_right first, ite_eq_right (fun second => first (equivalence.mpr second))]
+
+section CommitmentValues
+
+variable (setup runtime leaks bounds horizon scheduler)
+  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+  {Parameter : Type} (parameter : State L setup.context → Parameter)
+  (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+  (excludedPayoff : Player → ℝ)
+  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)]
+
+local notation "onePacketN" =>
+  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+
+open Classical in
+/-- **The value of committing a choice at a site history.** The expected source
+continuation value of `profile` after the source step of `choice` at the point
+the history's configuration decodes to after `rank` events, when that point is a
+point of the intended game; the exclusion payoff otherwise. -/
+def decodedCommitValue (profile : BehavioralProfile setup.program) (who : Player) (rank : Nat)
+    (choice : Option (OwnAction Player L))
+    (history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+      horizon scheduler).History) : ℝ :=
+  match history.state with
+  | none => excludedPayoff who
+  | some control =>
+      match sourceServicePrefix? setup rank control.execution.application.config with
+      | none => excludedPayoff who
+      | some point =>
+          if IntendedReached setup point then
+            expect (ProtocolState.step setup.program point fun _ => choice)
+              (sourcePointValue setup parameter utility excludedPayoff profile who)
+          else excludedPayoff who
+
+/-- **The value of committing a choice at a site.** The belief average, over the
+histories of a site, of the value of committing the choice at their decoded
+point of the site's rank. -/
+def siteCommitValue (assessment : (onePacketN).BehavioralAssessment)
+    (profile : BehavioralProfile setup.program) {who : Player}
+    (site : (onePacketN).InformationSite who) (choice : Option (OwnAction Player L)) : ℝ :=
+  expect (assessment.belief who site) fun history =>
+    decodedCommitValue setup runtime leaks bounds horizon scheduler parameter utility excludedPayoff
+      profile who (siteRank (runtime := runtime) site.1) choice history.1
+
+end CommitmentValues
 
 end Vegas

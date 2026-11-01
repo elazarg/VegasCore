@@ -2,6 +2,9 @@
 
 import Vegas.Game.IntendedCommitGain
 import Vegas.Game.OnePacketDecodedActor
+import Vegas.Game.RecoveryNonLateChoices
+import Vegas.Game.OnePacketUnintendedCommitment
+import Vegas.Game.OnePacketBeliefWiring
 
 /-! # One source policy for an intended native commitment -/
 

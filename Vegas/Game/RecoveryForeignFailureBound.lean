@@ -283,40 +283,6 @@ local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setu
 local notation "RP" => ReactiveApplication.ResponseMenu.protocol
   (Recovery.onePacketMenu runtime leaks bounds) Initial horizon scheduler
 
-theorem nativeComparisonStrategy_event_le_of_disjoint_main [Fintype (RP).History]
-    [(application setup runtime leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
-    [∀ who, DecidableEq ((R).InfoState who)] [∀ who, DecidableEq ((N).InfoState who)]
-    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
-    (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
-    {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (Part setup runtime leaks bounds Initial horizon scheduler slots p))
-      (n : ℕ)
-    (who : Player) (info : (application setup runtime leaks).Info)
-    (nonlate : ¬ LateDelivery setup runtime leaks who info)
-    (occurs : ∃ history : (ReactiveApplication.ResponseMenu.protocol
-      (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon
-        (NativeScheduler)).History, (N).infoOf who history.trace = info)
-    (forced : Vegas.forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks)
-      (initialLaw setup)
-      horizon (NativeScheduler) who info)
-    (event : Set ((N).Choice who info))
-    (disjoint : Disjoint
-      (honestChoice setup runtime leaks bounds (initialLaw setup) horizon (NativeScheduler)
-        (sequence n)
-        who info).support event) :
-    (((nativeComparisonStrategy setup runtime leaks bounds horizon scheduler sequence scale
-      positive le_one
-      weights n who info).toOuterMeasure event).toReal) ≤ (scale n) ^ 2 + scale n := by
-  exact OnePacketComparison.assembled_event_le_of_disjoint_main setup runtime leaks bounds horizon
-    (NativeScheduler) sequence scale positive le_one (fun n => nativeComparisonWeights setup
-      runtime leaks
-    bounds horizon scheduler (weights n)) (nativeComparisonSequence setup runtime leaks bounds
-      horizon
-    scheduler sequence scale positive le_one weights) (nativeComparisonSequence_assembled setup
-      runtime
-    leaks bounds horizon scheduler sequence scale positive le_one weights) n who info nonlate
-    occurs forced event disjoint
-
 theorem nativeComparison_joint_mainActivation_failure_le [Fintype (RP).History]
     [(application setup runtime leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
     [∀ who, DecidableEq ((R).InfoState who)] [∀ who, DecidableEq ((N).InfoState who)]

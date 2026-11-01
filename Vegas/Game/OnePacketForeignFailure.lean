@@ -5,7 +5,7 @@ import Vegas.Game.OnePacketForeignActivation
 import Vegas.Game.OnePacketMainResponseSafety
 import Vegas.Game.OnePacketCountedService
 import Vegas.Game.OnePacketForeignSubmission
-import Vegas.Game.OnePacketCompletionOrigin
+import Vegas.Pending.ReactiveCompletion
 import Vegas.Game.OnePacketFilteredPrefix
 
 /-! # First foreign failures under native counted pointwise service
@@ -41,11 +41,11 @@ theorem foreign_nonmain_prefix_of_firstFailure
     {delay bound : (graph setup).EventId → Nat}
     (opportunity : ∀ control : (application setup runtime leaks).Control,
       (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-      ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)) →
+      control.execution.application.config.defaulted = ∅ →
       OpportunityAt runtime leaks control.execution delay)
     (inclusion : ∀ control : (application setup runtime leaks).Control,
       (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-      ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)) →
+      control.execution.application.config.defaulted = ∅ →
       ProtectedInclusionAt runtime leaks control.execution bound)
     (timely : runtime.AsyncTimely delay bound)
     (start : (application setup runtime leaks).Control)
@@ -56,23 +56,22 @@ theorem foreign_nonmain_prefix_of_firstFailure
       scheduler).Trace
         (some ⟨remaining + 1, none, execution⟩))
     (startPrefix : TracePrefix startTrace trace)
-    (current event : (graph setup).EventId)
+    (current failedEvent : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
-    (clear : ExclusionEvidence 0 ∅
-      (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
+    (clear : execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup runtime leaks bounds horizon
       scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point)
-    (owned : (graph setup).actor? event = some owner)
+    (owned : (graph setup).actor? failedEvent = some owner)
     (command : (application setup runtime leaks).Command) (next : (application setup runtime
       leaks).Execution)
     (reached : next ∈ (execution.environmentStep (application setup runtime leaks) command).support)
     (target : (onePacketProtocol setup runtime leaks bounds horizon
       scheduler).Trace
         (some ⟨remaining, command.actor? (application setup runtime leaks), next⟩))
-    (tracePrefix : TracePrefix trace target) (failed : next.application.PublicFailure event) :
-    ∃ (before : (application setup runtime leaks).Control)
+    (tracePrefix : TracePrefix trace target) (failed : next.application.PublicFailure failedEvent) :
+    ∃ (event : (graph setup).EventId) (before : (application setup runtime leaks).Control)
       (prior : (onePacketProtocol setup runtime leaks bounds horizon
         scheduler).Trace (some before))
       (response : (application setup runtime leaks).Action)
@@ -99,9 +98,23 @@ theorem foreign_nonmain_prefix_of_firstFailure
           scheduler source owner
           (some (before.execution.recall owner,
             before.execution.observe (application setup runtime leaks) owner))).support := by
-  have origin := firstPublicFailure_pending_or_due (runtime := runtime) execution next command
-    reached clear event owner
-    owned failed
+  have rawPrior := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+    horizon scheduler trace
+  have rawTarget := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+    horizon scheduler target
+  have initialEq : initialLaw setup = (setup.initialLaw.map setup.eventInputs).map
+      (EventGraphRuntime.State.initial (graph := graph setup)) :=
+    serviceInitialLaw_eq_inputs (mode := .sequential) setup
+  rw [initialEq] at rawPrior rawTarget
+  have priorEvidence := ExclusionEvidence.history runtime leaks
+    (setup.initialLaw.map setup.eventInputs) horizon scheduler rawPrior
+  have targetEvidence := ExclusionEvidence.history runtime leaks
+    (setup.initialLaw.map setup.eventInputs) horizon scheduler rawTarget
+  have active : owner ∉ execution.application.config.defaulted := by simp [clear]
+  have introduced : owner ∈ next.application.config.defaulted :=
+    (targetEvidence.defaulted_zero owner).mpr ⟨failedEvent, owned, failed⟩
+  obtain ⟨event, owned, ready, failed, origin⟩ := ExclusionEvidence.new_default_origin runtime
+    leaks execution next command reached owner active introduced priorEvidence
   have extracted : ∃ (before : (application setup runtime leaks).Control)
       (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some before))
       (response : (application setup runtime leaks).Action)
@@ -118,18 +131,20 @@ theorem foreign_nonmain_prefix_of_firstFailure
         before.execution.observe (application setup runtime leaks) owner)) = some event ∧
       ∀ previous ∈ before.execution.recall owner,
         ¬ ActivatedAt setup runtime leaks owner event previous := by
-    rcases origin.2 with ⟨message, member, sender, named⟩ | ⟨_, entered, activated, due⟩
-    · have recorded := eventRecorded_of_pending (runtime := runtime) trace owner event message
+    rcases origin with ⟨message, member, _included, sender, named⟩ | ⟨_, entered, activated, due⟩
+    · have recorded := eventRecorded_of_pending setup leaks
+          ((bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+            scheduler trace) owner event message
         member sender named
       exact foreign_firstActivation_prefix_of_recorded (runtime := runtime) wellFormed source
         focal owner different
         start ⟨remaining + 1, none, execution⟩ startTrace trace startPrefix current event turn clear
-        regular notOwed owned origin.1 recorded
+        regular notOwed owned ready recorded
     · exact foreign_firstActivation_prefix_of_due (runtime := runtime) wellFormed source focal
         owner different timely
         start ⟨remaining + 1, none, execution⟩ startTrace trace
         (opportunity ⟨remaining + 1, none, execution⟩ trace clear) startPrefix current event turn
-        clear regular notOwed rfl owned origin.1 entered activated due
+        clear regular notOwed rfl owned ready entered activated due
   obtain ⟨before, prior, response, joint, legal, realized, future, afterPrefix, acting, chosen,
     pending, never⟩ := extracted
   have priorPrefix : TracePrefix prior trace :=
@@ -172,7 +187,8 @@ theorem foreign_nonmain_prefix_of_firstFailure
       focal horizon scheduler bound prior earlierClear earlierRegular earlierNotOwed event pending
       fits _ response selected (prior.extend joint legal realized) next settles _ rfl target
       targetPrefix failed
-  exact ⟨before, prior, response, joint, legal, realized, future, targetPrefix, acting, chosen,
+  exact ⟨event, before, prior, response, joint, legal, realized, future, targetPrefix, acting,
+    chosen,
     pending, never, notMain⟩
 
 /-- A first foreign failure violates the future first-activation main condition. -/
@@ -185,11 +201,11 @@ theorem firstForeignFailure_not_mainActivationTraceAfter
     {delay bound : (graph setup).EventId → Nat}
     (opportunity : ∀ control : (application setup runtime leaks).Control,
       (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-      ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)) →
+      control.execution.application.config.defaulted = ∅ →
       OpportunityAt runtime leaks control.execution delay)
     (inclusion : ∀ control : (application setup runtime leaks).Control,
       (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-      ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)) →
+      control.execution.application.config.defaulted = ∅ →
       ProtectedInclusionAt runtime leaks control.execution bound)
     (timely : runtime.AsyncTimely delay bound)
     (start : (application setup runtime leaks).Control)
@@ -202,8 +218,7 @@ theorem firstForeignFailure_not_mainActivationTraceAfter
     (startPrefix : TracePrefix startTrace trace)
     (current event : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
-    (clear : ExclusionEvidence 0 ∅
-      (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
+    (clear : execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup runtime leaks bounds horizon
       scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup execution.application.config = some point →
@@ -220,7 +235,8 @@ theorem firstForeignFailure_not_mainActivationTraceAfter
       scheduler source focal
       startTrace.length target := by
   intro main
-  obtain ⟨before, prior, response, joint, legal, realized, future, afterPrefix, acting, chosen,
+  obtain ⟨originEvent, before, prior, response, joint, legal, realized, future, afterPrefix,
+    acting, chosen,
     pending, never, outside⟩ :=
     foreign_nonmain_prefix_of_firstFailure (runtime := runtime) wellFormed covers
       capacity source focal owner different opportunity inclusion timely start
@@ -234,7 +250,7 @@ theorem firstForeignFailure_not_mainActivationTraceAfter
   have first : FirstActivation setup runtime leaks owner (some (before.execution.recall owner,
       before.execution.observe (application setup runtime leaks) owner)) :=
     ⟨before.execution.recall owner, before.execution.observe (application setup runtime leaks)
-      owner, event,
+      owner, originEvent,
       rfl, pending, never⟩
   have selected := supported owner acting different first
   simpa only [chosen, Option.getD_some] using selected

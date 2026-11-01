@@ -302,6 +302,22 @@ end PMF
 
 namespace GameTheory.Math.Probability
 
+/-- A function bounded by `bound` has expectations under two laws on a finite
+type within `bound` times their `ℓ¹` distance. -/
+theorem expect_sub_le_of_bounded {α : Type*} [Finite α] (first second : PMF α) (value : α → ℝ)
+    {bound : ℝ} (bounded : ∀ point, |value point| ≤ bound) :
+    expect first value - expect second value ≤
+      bound * ∑' point, |(first point).toReal - (second point).toReal| := by
+  let := Fintype.ofFinite α
+  rw [tsum_fintype, expect_eq_sum, expect_eq_sum, ← Finset.sum_sub_distrib, Finset.mul_sum]
+  refine Finset.sum_le_sum fun point _ => ?_
+  rw [← sub_mul]
+  calc _ ≤ |((first point).toReal - (second point).toReal) * value point| := le_abs_self _
+    _ = |(first point).toReal - (second point).toReal| * |value point| := abs_mul _ _
+    _ ≤ _ := by
+        rw [mul_comm bound]
+        exact mul_le_mul_of_nonneg_left (bounded point) (abs_nonneg _)
+
 /-- Classification with arbitrary unclassified outputs contracts TV without
 doubling the error. Classified outputs must have their declared actual image. -/
 theorem withinTV_map_of_partial_classes {Source Class Output : Type*}

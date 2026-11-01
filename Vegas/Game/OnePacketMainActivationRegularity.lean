@@ -5,6 +5,8 @@ import Vegas.Pending.ExclusionFailureOwners
 import Vegas.Game.OnePacketRareMainMass
 import Vegas.Game.OnePacketForeignFailure
 import Vegas.Game.OnePacketDebtRouting
+import Vegas.Game.OnePacketRecordedSilence
+import Vegas.Game.OnePacketSilenceMasses
 import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
 
 /-! # Source-main first responses preserve actual counted regularity -/
@@ -23,6 +25,11 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)}
 
+local notation "Clear" => ReactiveApplication.stateInvariant
+  (app := application setup runtime leaks)
+    (fun native : EventGraphRuntime.State (graph setup) =>
+      EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
+
 /-- At a clear regular prefix before focal debt, previous source-main foreign
 first callbacks prevent the current foreign callback from being a late delivery.
 The comparison begins at an actual focal source turn. -/
@@ -35,7 +42,7 @@ theorem nonlate_of_mainActivationTraceAfter
     {delay bound : (graph setup).EventId → Nat}
     (opportunity : ∀ control : (application setup runtime leaks).Control,
       (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-      ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)) →
+      control.execution.application.config.defaulted = ∅ →
       OpportunityAt runtime leaks control.execution delay)
     (timely : runtime.AsyncTimely delay bound)
     (start control : (application setup runtime leaks).Control)
@@ -46,8 +53,7 @@ theorem nonlate_of_mainActivationTraceAfter
     (startPrefix : TracePrefix startTrace trace)
     (current : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
-    (clear : ExclusionEvidence 0 ∅
-      (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
+    (clear : control.execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup runtime leaks bounds horizon
       scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
@@ -260,7 +266,7 @@ theorem response_main_of_mainActivationTraceAfter
     {delay bound : (graph setup).EventId → Nat}
     (opportunity : ∀ control : (application setup runtime leaks).Control,
       (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-      ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)) →
+      control.execution.application.config.defaulted = ∅ →
       OpportunityAt runtime leaks control.execution delay)
     (timely : runtime.AsyncTimely delay bound)
     (start control : (application setup runtime leaks).Control)
@@ -271,8 +277,7 @@ theorem response_main_of_mainActivationTraceAfter
     (startPrefix : TracePrefix startTrace trace)
     (current : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
-    (clear : ExclusionEvidence 0 ∅
-      (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
+    (clear : control.execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup runtime leaks bounds horizon
       scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
@@ -340,7 +345,7 @@ theorem regularStep_of_native_mainActivationTraceAfter
     {delay bound : (graph setup).EventId → Nat}
     (opportunity : ∀ control : (application setup runtime leaks).Control,
       (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-      ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)) →
+      control.execution.application.config.defaulted = ∅ →
       OpportunityAt runtime leaks control.execution delay)
     (timely : runtime.AsyncTimely delay bound)
     (start control : (application setup runtime leaks).Control)
@@ -351,8 +356,7 @@ theorem regularStep_of_native_mainActivationTraceAfter
     (startPrefix : TracePrefix startTrace trace)
     (current : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
-    (clear : ExclusionEvidence 0 ∅
-      (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
+    (clear : control.execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup runtime leaks bounds horizon
       scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
@@ -383,10 +387,8 @@ theorem regularStep_of_native_mainActivationTraceAfter
   rcases control with ⟨remaining, actor, execution⟩
   dsimp only at active
   subst actor
-  exact regularStep_of_clear_regular_main (runtime := runtime) wellFormed source focal owner covers
-    (by have positive := capacity owner; omega) trace clear regular notOwed joint legal next
-    realized
-    supported
+  exact regularStep_of_clear_regular_main (runtime := runtime) wellFormed source focal owner
+    trace clear regular notOwed joint legal next realized supported
 
 /-- Actual stopped play keeps regularity whenever no foreign first callback
 has left source-main support. Focal actions and the remaining behavioral laws
@@ -399,7 +401,7 @@ theorem stopped_regular_of_mainActivationTraceAfter
     {delay bound : (graph setup).EventId → Nat}
     (opportunity : ∀ control : (application setup runtime leaks).Control,
       (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-      ExclusionEvidence 0 ∅ (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)) →
+      control.execution.application.config.defaulted = ∅ →
       OpportunityAt runtime leaks control.execution delay)
     (timely : runtime.AsyncTimely delay bound)
     (certificate : (onePacketProtocol setup runtime leaks bounds horizon
@@ -419,8 +421,7 @@ theorem stopped_regular_of_mainActivationTraceAfter
     ∀ final ∈ ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
       scheduler).runBehavioralUntil
         certificate profile (fun history =>
-          ¬ ReactiveApplication.stateInvariant (app := application setup runtime leaks)
-            (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
+          ¬ Clear
               history.state ∨
           DecodedState setup runtime leaks (failureProfile setup.program)
             (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history)
@@ -442,8 +443,7 @@ theorem stopped_regular_of_mainActivationTraceAfter
   let model := onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
   let stopped := fun history :
       (onePacketProtocol setup runtime leaks bounds horizon scheduler).History =>
-    ¬ ReactiveApplication.stateInvariant (app := application setup runtime leaks)
-      (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
+    ¬ Clear
         history.state ∨
       DecodedState setup runtime leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history
@@ -459,8 +459,7 @@ theorem stopped_regular_of_mainActivationTraceAfter
       property history → ∀ next ∈ (model.runBehavioralFrom profile 1 history).support,
         property next := by
     intro history going running valid next supported
-    have clear : ReactiveApplication.stateInvariant (app := application setup runtime leaks)
-        (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup)))
+    have clear : Clear
           history.state := not_not.mp (fun failed => going (Or.inl failed))
     rw [model.runBehavioralFrom_succ_of_not_terminal profile 0 running,
       PMF.mem_support_bind_iff] at supported

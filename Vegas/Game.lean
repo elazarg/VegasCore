@@ -285,12 +285,9 @@ import Vegas.Game.RecoveryClearForced
 import Vegas.Game.RecoveryClientCompiler
 import Vegas.Game.RecoveryClientFunding
 import Vegas.Game.RecoveryClientObservables
-import Vegas.Game.RecoveryCommitmentBeliefValue
-import Vegas.Game.RecoveryCommitmentComparisons
 import Vegas.Game.RecoveryCommitmentFreshCall
-import Vegas.Game.RecoveryCommitmentGainBounds
 import Vegas.Game.OnePacketCommittedContinuationValue
-import Vegas.Game.RecoveryCommittedValueAffine
+import Vegas.Game.OnePacketCommittedValueAffine
 import Vegas.Game.RecoveryComparisonBelief
 import Vegas.Game.RecoveryComparisonContinuationValue
 import Vegas.Game.RecoveryComparisonInformation
@@ -368,7 +365,7 @@ import Vegas.Game.RecoveryPrescribedMixture
 import Vegas.Game.RecoveryPrescribedSourceKernel
 import Vegas.Game.RecoveryProtectedCalls
 import Vegas.Game.RecoverySequentialCompilation
-import Vegas.Game.RecoverySilenceComparison
+import Vegas.Game.OnePacketSilenceComparison
 import Vegas.Game.RecoverySourceBeliefBounds
 import Vegas.Game.OnePacketCompletionPoint
 import Vegas.Game.RecoveryStoppedAcceptance
@@ -459,3 +456,6 @@ import Vegas.Game.StoppedHonestResponseCount
 import Vegas.Game.TerminalObservation
 import Vegas.Game.TerminalObservationLaws
 import Vegas.Game.OnePacketOwingOptimality
+import Vegas.Game.OnePacketCommitmentComparisons
+import Vegas.Game.OnePacketStoppedValueComparison
+import Vegas.Game.OnePacketPendingValueAffine

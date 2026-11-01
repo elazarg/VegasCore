@@ -131,4 +131,24 @@ theorem intended_historyGain_abs_le_of_readoutBounded [Fintype Player]
       (assessment.strategy who)) history.1) nonnegative each
   exact (abs_sub _ _).trans (by linarith)
 
+section SiteGain
+
+variable [Fintype Player] (setup) {Parameter : Type}
+  (parameter : State L setup.context → Parameter)
+  (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+  (excludedPayoff : Player → ℝ)
+
+/-- The gain of a deviation at a site of the intended game under the exclusion
+payoff: the expected exclusion payoff of the deviation minus that of the
+assessment. -/
+def intendedSiteGain (assessment : setup.intendedModel.BehavioralAssessment) {who : Player}
+    (deviation : setup.intendedModel.AssessmentDeviation who) : ℝ :=
+  let comparison := setup.intendedModel.assessmentComparisonWith
+    (setup.intendedModel.truncatedRunner (instructionCount setup.program + 1))
+    (intendedReadoutExclusion setup parameter utility excludedPayoff) assessment who deviation
+  expect comparison.alternative ((payoffComponent setup) · who) -
+    expect comparison.prescribed ((payoffComponent setup) · who)
+
+end SiteGain
+
 end Vegas

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketLateCommitFailure
+import Vegas.Game.OnePacketLateCertificate
 import GameTheoryExtensions.Math.Probability.ProductDecorrelation
 
 /-! # Uniform errors over late-commitment sites
@@ -51,33 +52,6 @@ theorem operationalRecord_headD {state : (application setup runtime leaks).Proto
   match trace with
   | .start => rfl
   | .extend _ _ _ _ => rfl
-
-omit [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-    scheduler).InfoState who)] in
-/-- Every history of a decision site of `who` with a pending event is a prefix of
-the site's rank. -/
-theorem ordered_of_site {who : Player} {site : (onePacketN).InformationSite who}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView} (atSite : site.1 = some (past, view))
-    (history : (onePacketN).InformationHistory who site.1) :
-    ∃ remaining execution, history.1.state = some ⟨remaining, some who, execution⟩ ∧
-      execution.recall who = past ∧ execution.observe (application setup runtime leaks) who = view ∧
-      execution.application.config.cut.IsPrefix (siteRank (runtime := runtime) site.1) := by
-  obtain ⟨remaining, execution, current, recallEq, observeEq⟩ :=
-    state_of_site setup runtime leaks bounds horizon scheduler atSite history
-  refine ⟨remaining, execution, current, recallEq, observeEq, ?_⟩
-  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
-    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
-      (current ▸ history.1.trace)
-  obtain ⟨found, foundOrdered, _⟩ := pendingAt_history (runtime := runtime) rawTrace
-  have rankEq : siteRank (runtime := runtime) site.1 = found := by
-    rw [atSite, ← observeEq]
-    change (execution.application.config.history.map EventGraph.Completion.event).length = found
-    rw [List.length_map]
-    exact history_length_of_isPrefix _ foundOrdered
-  exact rankEq ▸ foundOrdered
 
 omit [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in

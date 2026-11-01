@@ -26,8 +26,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 
 local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 
-local instance : Fintype ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
-    horizon scheduler).History :=
+local instance sourceBeliefHistoryFintype : Fintype
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon scheduler).History :=
   (bounds.onePacketMenu runtime leaks).historyFintype (initialLaw setup) horizon scheduler
 
 open Classical in

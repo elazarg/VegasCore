@@ -101,6 +101,91 @@ theorem unsentFor_iff_unrecorded {who : Player}
     rw [recallEq, unrecorded] at recorded
     cases recorded
 
+/-- **A late delivery decides its pending event.** At a decision input of `who`
+with pending event `event`, along a history whose recall of `who` is the
+input's, the late-delivery key decides `event`. -/
+theorem decidedEvent_eq_of_pending {who : Player}
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} {event : (graph setup).EventId}
+    (pending : pendingEvent setup runtime leaks who (some (past, view)) = some event)
+    {control : (application setup runtime leaks).Control}
+    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some control))
+    (recallEq : control.execution.recall who = past) {key : LateKey setup runtime leaks}
+    (siteKey : lateKey setup runtime leaks who (some (past, view)) = some key) :
+    decidedEvent (runtime := runtime) key = some event := by
+  obtain ⟨turn, _, owned, unrecorded⟩ := pendingEvent_spec (runtime := runtime) pending
+  simp only [lateKey, Option.some.injEq] at siteKey
+  subst siteKey
+  cases node : nodeView (graph setup) event with
+  | sample payload law outputEq codeEq =>
+      have none := nodeView_sample_actor outputEq codeEq
+      rw [owned] at none
+      cases none
+  | resolve owner payload binding checks outputEq codeEq =>
+      have ownerEq : owner = who :=
+        Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
+      subst ownerEq
+      unfold decidedEvent
+      rw [turnEvent_of_publicationTurn (runtime := runtime) ⟨turn, payload, binding, checks,
+        outputEq, codeEq, node⟩]
+  | bind owner payload outputEq codeEq =>
+      have ownerEq : owner = who :=
+        Option.some.inj ((EventGraph.actor?_of_outputLayout_binding _ outputEq).symm.trans
+          owned)
+      subst ownerEq
+      have noPublication : turnEvent (runtime := runtime) (setup := setup) (leaks := leaks)
+          { owner := owner
+            current := operationalView setup runtime leaks view
+            recalled := past.map fun entry =>
+              (operationalView setup runtime leaks entry.beforeView, entry.emitted)
+            delivered := deliveredValue setup runtime leaks owner view } =
+              none := by
+        cases found : turnEvent (runtime := runtime) (setup := setup) (leaks := leaks) _ with
+        | none => rfl
+        | some other =>
+            obtain ⟨otherTurn, _, _, _, _, _, otherNode⟩ := publicationTurn_of_turnEvent (runtime
+              := runtime) found
+            have same : other = event := Option.some.inj (otherTurn.symm.trans turn)
+            subst same
+            rw [node] at otherNode
+            cases otherNode
+      have unsent : UnsentFor (runtime := runtime) (setup := setup) (leaks := leaks)
+          { owner := owner
+            current := operationalView setup runtime leaks view
+            recalled := past.map fun entry =>
+              (operationalView setup runtime leaks entry.beforeView, entry.emitted)
+            delivered := deliveredValue setup runtime leaks owner view }
+              event := by
+        intro recalledEntry member message emitted named
+        obtain ⟨entry, entryMember, rfl⟩ := List.mem_map.mp member
+        have recorded := (history_eventRecorded_iff (runtime := runtime) trace owner event).mpr
+          ⟨message, by
+            rw [recallEq]
+            exact List.mem_filterMap.mpr ⟨entry, entryMember, emitted⟩, named⟩
+        rw [recallEq, unrecorded] at recorded
+        cases recorded
+      have binding : BindingTurn (runtime := runtime) (setup := setup) (leaks := leaks)
+          { owner := owner
+            current := operationalView setup runtime leaks view
+            recalled := past.map fun entry =>
+              (operationalView setup runtime leaks entry.beforeView, entry.emitted)
+            delivered := deliveredValue setup runtime leaks owner view }
+              event payload :=
+        ⟨turn, ⟨outputEq, codeEq, node⟩, unsent⟩
+      unfold decidedEvent
+      rw [noPublication]
+      cases found : bindingTurn (runtime := runtime) (setup := setup) (leaks := leaks) _ with
+      | none =>
+          unfold bindingTurn at found
+          split at found
+          · cases found
+          · rename_i noTurn
+            exact (noTurn ⟨(event, payload), binding⟩).elim
+      | some decided =>
+          obtain ⟨decidedTurn, _, _⟩ := bindingTurn_spec (runtime := runtime) found
+          exact congrArg some (Option.some.inj (decidedTurn.symm.trans turn))
+
 end Recall
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
