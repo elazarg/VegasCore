@@ -821,6 +821,33 @@ theorem path_singleton {before after : graph.Config}
       subst event
       exact ⟨ready, action, supported⟩
 
+/-- A path past a unique ready event begins with that event's actual decision.
+An active owner's decision remains present even when later completions are automatic. -/
+theorem path_first_owned_decision {before after : graph.Config}
+    (event : graph.EventId) (ready : before.cut.Ready event)
+    (unique : ∀ other, before.cut.Ready other → other = event)
+    (owner : Player) (owned : (graph.nodes event).actor = some owner)
+    (active : owner ∉ before.defaulted)
+    (path : Relation.ReflTransGen Step before after)
+    (completed : event ∈ after.cut.completed) :
+    ∃ (action : graph.Action event) (value : (graph.outputLayout event).Value)
+      (middle : graph.Config) (extra : List graph.Completion),
+      middle ∈ (before.step event ready action).support ∧
+      Relation.ReflTransGen Step middle after ∧
+      after.history = before.history ++
+        EventGraph.completion graph event (some action) value :: extra := by
+  rcases path.cases_head with rfl | ⟨middle, moved, rest⟩
+  · exact (ready.1 completed).elim
+  · obtain ⟨other, otherReady, action, supported⟩ := moved
+    have same := unique other otherReady
+    subst other
+    obtain ⟨value, _, history⟩ := before.step_completion event otherReady action middle supported
+    rw [before.actualDecision_of_active event owner owned active action] at history
+    obtain ⟨extra, retained⟩ := path_history_prefix rest
+    refine ⟨action, value, middle, extra, supported, rest, ?_⟩
+    rw [← retained, history, List.append_assoc]
+    rfl
+
 /-- Any finite supported execution path preserves reachability from fixed inputs. -/
 theorem path_reachable {before after : graph.Config}
     (path : Relation.ReflTransGen Step before after) {inputs : graph.Inputs} :

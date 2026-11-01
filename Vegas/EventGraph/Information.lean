@@ -524,6 +524,26 @@ def LogicalObservation.defaulted [DecidableEq Player]
         completion.decision.isSome := by
   simp [ownCompletions]
 
+/-- Equal player observations preserve the actual decision at each completed owned event. -/
+theorem decisions_eq_of_playerObserve [DecidableEq Player] {left right : graph.Config}
+    (owner : Player) (event : graph.EventId) (owned : graph.actor? event = some owner)
+    (first second : graph.Action event)
+    (firstValue secondValue : (graph.outputLayout event).Value)
+    (firstPresent : EventGraph.completion graph event (some first) firstValue ∈ left.history)
+    (secondPresent : EventGraph.completion graph event (some second) secondValue ∈ right.history)
+    (same : graph.playerObserve owner left = graph.playerObserve owner right) : first = second := by
+  have recalled : EventGraph.completion graph event (some first) firstValue ∈
+      graph.ownCompletions owner left.history :=
+    (mem_ownCompletions owner left.history _).2 ⟨firstPresent, owned, rfl⟩
+  have histories := congrArg EventPlayerObservation.ownActions same
+  change graph.ownCompletions owner left.history =
+    graph.ownCompletions owner right.history at histories
+  rw [histories] at recalled
+  have retained := ((mem_ownCompletions owner right.history _).1 recalled).1
+  have records := List.inj_on_of_nodup_map right.history_nodup retained secondPresent rfl
+  unfold EventGraph.completion at records
+  exact Option.some.inj (eq_of_heq (EventCompletion.mk.inj records).2.1)
+
 /-- An automatic completion adds no actual decision to any player's recall. -/
 theorem ownCompletions_complete_of_defaulted [DecidableEq Player] (who : Player)
     (config : graph.Config) (event : graph.EventId) (ready : config.cut.Ready event)
