@@ -64,10 +64,14 @@ theorem readyOrCompleted_of_tracePrefix {before : (application setup runtime lea
               (initialLaw setup) horizon scheduler middle target joint realized
             refine ⟨next, targetEq, ?_⟩
             subst targetEq
-            exact readyOrCompleted_of_configStep
-              (transition_configStep (initialLaw setup) horizon scheduler
-                middle next joint
-                realized) event activeMiddle
+            have retained := EventGraph.Config.Step.path_completed_mono
+              (reactive_protocol_graph_steps runtime leaks (initialLaw setup) horizon scheduler
+                middle next joint realized)
+            rcases activeMiddle with ready | completed
+            · by_cases completed : event ∈ next.execution.application.config.cut.completed
+              · exact Or.inr completed
+              · exact Or.inl ⟨completed, ready.2.trans retained⟩
+            · exact Or.inr (retained completed)
   exact carry prior trace isPrefix before rfl active
 
 /-- An available typed field keeps its value through every actual history
@@ -79,6 +83,14 @@ theorem storedValue_of_tracePrefix {before after : (application setup runtime le
     (value : ((graph setup).layout field).Value)
     (stored : before.execution.application.config.store field = some value) :
     after.execution.application.config.store field = some value := by
+  have retain {first last : (graph setup).Config}
+      (path : Relation.ReflTransGen EventGraph.Config.Step first last)
+      (present : first.store field = some value) : last.store field = some value := by
+    induction path using Relation.ReflTransGen.head_induction_on with
+    | refl => exact present
+    | @head current next moved _ ih =>
+        obtain ⟨event, ready, action, supported⟩ := moved
+        exact ih (current.step_store_of_some next event ready action supported field value present)
   have carry : ∀ {first final :
       (onePacketProtocol setup runtime leaks bounds horizon scheduler).State}
       (firstTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace first)
@@ -104,14 +116,9 @@ theorem storedValue_of_tracePrefix {before after : (application setup runtime le
               (initialLaw setup) horizon scheduler middle target joint realized
             refine ⟨next, targetEq, ?_⟩
             subst targetEq
-            rcases transition_configStep (initialLaw setup) horizon scheduler
-              middle next joint
-                realized with stutter | ⟨event, ready, action, supported⟩
-            · rw [stutter]
-              exact storedMiddle
-            · exact middle.execution.application.config.step_store_of_some
-                next.execution.application.config event ready action supported field value
-                storedMiddle
+            have path := reactive_protocol_graph_steps runtime leaks (initialLaw setup) horizon
+              scheduler middle next joint realized
+            exact retain path storedMiddle
   obtain ⟨next, same, present⟩ := carry prior trace isPrefix before rfl stored
   cases Option.some.inj same
   exact present

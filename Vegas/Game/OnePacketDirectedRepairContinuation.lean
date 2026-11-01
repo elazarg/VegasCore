@@ -45,6 +45,7 @@ operational frame. Its remembered original result and successful-value
 agreement are exactly the candidate facts retained by the repair frame. -/
 theorem pending_binding_inclusion
     (frame : DirectedBindingFrame (runtime := runtime) memory owner original repaired)
+    (clear : original.application.config.defaulted = ∅)
     (event : (graph setup).EventId) (payload : L.Ty)
     (outputEq : (graph setup).outputLayout event = .binding owner payload)
     (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
@@ -62,7 +63,7 @@ theorem pending_binding_inclusion
     (rightFixed : repaired.application.candidates.lookup candidate ≠ .fresh)
     (rememberedAction : memory.shadow.actions event = some
       (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-        (original.application.bindingResult candidate payload)))
+        (some (original.application.bindingResult candidate payload))))
     (rememberedValue : memory.shadow.values (.inr event) = some
       (cast (congrArg EventGraph.EventField.Value outputEq.symm)
         (original.application.bindingResult candidate payload)))
@@ -74,7 +75,7 @@ theorem pending_binding_inclusion
         [⟨original.observeEnvironment app, .include id⟩] }
       { repaired.includePending app id with environmentRecall := repaired.environmentRecall ++
         [⟨repaired.observeEnvironment app, .include id⟩] } := by
-  refine ⟨frame.toFrame.pending_binding_inclusion event payload outputEq
+  refine ⟨frame.toFrame.pending_binding_inclusion clear event payload outputEq
     codeEq node id candidate
     sender owned found ready timely vacant unused leftFixed rightFixed rememberedAction
     rememberedValue successful, ?_⟩

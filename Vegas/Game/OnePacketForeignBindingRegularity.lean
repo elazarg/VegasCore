@@ -36,13 +36,14 @@ theorem decodeSourcePrefix?_commitment_not_failure (who : Player)
       (program : SourceProgram Player L Γ O) (refs : ContextRefs layout Γ)
       (registry : Registry Γ) (revelations : Revelations Γ)
       (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
-      (history : History Player L) (point : ProtocolState program),
-      decodeSourcePrefix? program refs registry revelations outputs count store history =
+      (history : History Player L) (defaults : DefaultHistory Player)
+      (point : ProtocolState program),
+      decodeSourcePrefix? program refs registry revelations outputs count store history defaults =
         some point →
       ∀ name owner payload value,
         ProtocolState.cell? program point name (.commitment owner payload) = some value →
         owner ≠ who → value ≠ .failure
-  | 0, _, _, program, refs, registry, revelations, outputs, history, point, decoded,
+  | 0, _, _, program, refs, registry, revelations, outputs, history, defaults, point, decoded,
       name, owner, payload, value, found, foreign => by
       rw [decodeSourcePrefix?] at decoded
       obtain ⟨cells, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
@@ -51,22 +52,22 @@ theorem decodeSourcePrefix?_commitment_not_failure (who : Player)
       have agrees := decodeState?_agrees refs store cells read source
       exact successful owner payload (refs.get source) value foreign
         (by simpa only [same, cellValue] using agrees)
-  | count + 1, _, _, program, refs, registry, revelations, outputs, history, point, decoded,
-      name, owner, payload, value, found, foreign => by
+  | count + 1, _, _, program, refs, registry, revelations, outputs, history, defaults, point,
+      decoded, name, owner, payload, value, found, foreign => by
       cases program with
       | ret _ => cases decoded
       | sample _ _ _ next =>
           obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
           exact decodeSourcePrefix?_commitment_not_failure who store successful count next
-            _ _ _ _ history rest read name owner payload value found foreign
+            _ _ _ _ history defaults rest read name owner payload value found foreign
       | commit _ _ _ _ next =>
           obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
           exact decodeSourcePrefix?_commitment_not_failure who store successful count next
-            _ _ _ _ history rest read name owner payload value found foreign
+            _ _ _ _ history defaults rest read name owner payload value found foreign
       | reveal _ _ _ _ _ _ next =>
           obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
           exact decodeSourcePrefix?_commitment_not_failure who store successful count next
-            _ _ _ _ history rest read name owner payload value found foreign
+            _ _ _ _ history defaults rest read name owner payload value found foreign
 
 variable {setup : Setup (Player := Player) (L := L)}
   {runtime : EventGraphRuntime (graph setup)}
@@ -86,7 +87,7 @@ theorem decodedPoint_commitment_not_failure (who : Player)
   split at decoded
   · rename_i ordered
     exact decodeSourcePrefix?_commitment_not_failure who config.store successful ordered.choose
-      setup.program _ _ _ _ _ point decoded name owner payload value found foreign
+      setup.program _ _ _ _ _ config.defaults point decoded name owner payload value found foreign
   · cases decoded
 
 /-- Equal focal views and successful foreign binding fields make the differing

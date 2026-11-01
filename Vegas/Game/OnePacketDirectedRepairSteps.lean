@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketDirectedRepairFrame
 import Vegas.Pending.ReactiveBindingSubmissionFrame
+import Interaction.ReactiveMessageReadout
 
 /-! # Directed binding repair through actual responses
 

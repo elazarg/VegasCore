@@ -71,6 +71,7 @@ theorem wait_step (frame : DirectedBindingFrame (runtime := runtime) memory owne
 /-- Advancing the actual public clock has a paired deterministic successor. -/
 theorem advanceClock_step (frame : DirectedBindingFrame (runtime := runtime) memory owner original
   repaired)
+    (clear : original.application.config.defaulted = ∅)
     (nextOriginal : (application setup runtime leaks).Execution)
     (left : nextOriginal ∈ (original.environmentStep (application setup runtime leaks)
       (.application .advanceClock)).support) :
@@ -78,6 +79,9 @@ theorem advanceClock_step (frame : DirectedBindingFrame (runtime := runtime) mem
       nextRepaired ∈ (repaired.environmentStep (application setup runtime leaks)
         (.application .advanceClock)).support ∧
       DirectedBindingFrame (runtime := runtime) memory owner nextOriginal nextRepaired := by
+  have repairedClear : repaired.application.config.defaulted = ∅ :=
+    (congrArg (fun view : PublicView (graph setup) => view.observation.defaulted)
+      frame.toFrame.publicView).symm.trans clear
   let next (execution : (application setup runtime leaks).Execution) :
       (application setup runtime leaks).Execution :=
     { execution with
@@ -85,18 +89,25 @@ theorem advanceClock_step (frame : DirectedBindingFrame (runtime := runtime) mem
       environmentRecall := execution.environmentRecall ++
         [⟨execution.observeEnvironment (application setup runtime leaks), .application
           .advanceClock⟩] }
-  have law (execution : (application setup runtime leaks).Execution) :
+  have law (execution : (application setup runtime leaks).Execution)
+      (empty : execution.application.config.defaulted = ∅) :
       execution.environmentStep (application setup runtime leaks) (.application .advanceClock) =
         PMF.pure (next execution) := by
     have appLaw : (application setup runtime leaks).environment execution.application
       .advanceClock =
-        PMF.pure { execution.application with clock := execution.application.clock + 1 } := rfl
+        PMF.pure { execution.application with clock := execution.application.clock + 1 } := by
+      change (EventGraphRuntime.environmentStep runtime execution.application .advanceClock).map
+        State.drain = _
+      rw [EventGraphRuntime.environmentStep, PMF.pure_map]
+      apply congrArg PMF.pure
+      apply State.drain_eq_of_empty
+      exact empty
     simp only [ReactiveApplication.Execution.environmentStep, appLaw, PMF.pure_map]
     rfl
-  rw [law, PMF.mem_support_pure_iff] at left
+  rw [law original clear, PMF.mem_support_pure_iff] at left
   subst nextOriginal
   refine ⟨next repaired, ?_, frame.advanceClock⟩
-  rw [law, PMF.mem_support_pure_iff]
+  rw [law repaired repairedClear, PMF.mem_support_pure_iff]
 
 end DirectedBindingFrame
 

@@ -30,61 +30,6 @@ theorem OwnBindings.input_value_none {memory : BindingShadow graph} {owner : Pla
       obtain ⟨event, payload, impossible, _⟩ := onlyBindings.1 (.inl input)
         (by simp only [stored]; rfl)
       cases impossible
-
-/-- At a completed service boundary, remembered completions refer only to
-past events. The temporary shadow created by submission becomes such a past
-completion at the immediately following protected inclusion. -/
-def CompletedAt (memory : BindingShadow graph) (config : graph.Config) : Prop :=
-  ∀ event, (memory.actions event).isSome ∨ (memory.values (.inr event)).isSome →
-    event ∈ config.cut.completed
-
-theorem completedAt_empty (config : graph.Config) :
-    (empty : BindingShadow graph).CompletedAt config := by
-  intro event present
-  rcases present with present | present <;> cases present
-
-theorem CompletedAt.rememberCandidate {memory : BindingShadow graph} {config : graph.Config}
-    (past : memory.CompletedAt config) (slot : CandidateSlot graph)
-    (value : CommitmentCandidate (Raw L)) :
-    (memory.rememberCandidate slot value).CompletedAt config := past
-
-theorem CompletedAt.complete {memory : BindingShadow graph} {config : graph.Config}
-    (past : memory.CompletedAt config) (event : graph.EventId) (ready : config.cut.Ready event)
-    (action : graph.Action event) (value : (graph.outputLayout event).Value) :
-    memory.CompletedAt (config.complete event ready action value) := by
-  intro query present
-  rw [Config.complete_cut, EventOrder.Cut.mem_complete]
-  exact Or.inr (past query present)
-
-theorem CompletedAt.rememberCompletion {memory : BindingShadow graph} {config : graph.Config}
-    (past : memory.CompletedAt config) (event : graph.EventId) (ready : config.cut.Ready event)
-    (originalAction actualAction : graph.Action event)
-    (originalValue actualValue : (graph.outputLayout event).Value) :
-    (memory.rememberCompletion event originalAction originalValue).CompletedAt
-      (config.complete event ready actualAction actualValue) := by
-  classical
-  intro query present
-  rw [Config.complete_cut, EventOrder.Cut.mem_complete]
-  by_cases same : query = event
-  · exact Or.inl same
-  · apply Or.inr
-    apply past query
-    simpa only [BindingShadow.rememberCompletion, Function.update_of_ne same,
-      Function.update_of_ne (Sum.inr_injective.ne same)] using present
-
-theorem CompletedAt.ready_none {memory : BindingShadow graph} {config : graph.Config}
-    (past : memory.CompletedAt config) (event : graph.EventId) (ready : config.cut.Ready event) :
-    memory.actions event = none ∧ memory.values (.inr event) = none := by
-  constructor
-  · cases stored : memory.actions event with
-    | none => rfl
-    | some action =>
-        exact False.elim (ready.1 (past event (Or.inl (by simp only [stored]; rfl))))
-  · cases stored : memory.values (.inr event) with
-    | none => rfl
-    | some value =>
-        exact False.elim (ready.1 (past event (Or.inr (by simp only [stored]; rfl))))
-
 end BindingShadow
 
 variable [DecidableEq Player]
@@ -160,7 +105,6 @@ theorem advanceClock (frame : Frame runtime leaks memory owner original repaired
       { view with publicView := { view.publicView with clock := view.publicView.clock + 1 } })
         (frame.views who different)
 
-omit [DecidableEq Player] in
 private theorem complete_publicView (left right : State graph)
     (publicEq : left.publicView = right.publicView)
     (event : graph.EventId) (leftReady : left.config.cut.Ready event)
@@ -168,39 +112,12 @@ private theorem complete_publicView (left right : State graph)
     (value : (graph.outputLayout event).Value) :
     (left.complete event leftReady action value).publicView =
       (right.complete event rightReady action value).publicView := by
-  classical
-  have observations := congrArg PublicView.observation publicEq
-  have orders := congrArg PublicObservation.completionOrder observations
-  have cuts := cut_eq_of_completionOrder_eq left.config right.config orders
-  have observed : graph.publicObserve (left.config.complete event leftReady action value) =
-      graph.publicObserve (right.config.complete event rightReady action value) := by
-    apply PublicObservation.ext graph
-    · simpa only [State.publicView, publicObserve, Config.complete,
-        List.map_append, List.map_cons, List.map_nil] using
-        congrArg (fun order => order ++ [event]) orders
-    · apply graph.publicStore_congr
-      intro field visible
-      rw [store_complete, store_complete]
-      by_cases selected : field = .inr event
-      · subst field
-        rw [Function.update_self, Function.update_self]
-      · rw [Function.update_of_ne selected, Function.update_of_ne selected]
-        have prior := congrFun (congrArg PublicObservation.store observations) field
-        simpa only [State.publicView, publicObserve, publicStore_of_public, visible] using prior
-  have clockEq := congrArg PublicView.clock publicEq
-  have activatedEq := congrArg PublicView.activatedAt publicEq
-  have acceptedEq := congrArg PublicView.accepted publicEq
-  have nextActivated :
-      State.refreshActivated (left.config.complete event leftReady action value)
-          left.clock left.activatedAt =
-        State.refreshActivated (right.config.complete event rightReady action value)
-          right.clock right.activatedAt := by
-    funext query
-    simp only [State.refreshActivated, Config.complete_cut, cuts]
-    rw [show left.clock = right.clock from clockEq,
-      show left.activatedAt = right.activatedAt from activatedEq]
-  unfold State.publicView State.complete
-  congr 1
+  apply State.complete_publicView_congr left right publicEq event leftReady rightReady
+  · intro _
+    rfl
+  · have defaults : left.config.defaulted = right.config.defaulted :=
+      congrArg (fun view : PublicView graph => view.observation.defaulted) publicEq
+    simp only [EventGraph.completion, Config.actualDecision, defaults]
 
 /-- A completion outside the shadow is read from the real runtime on both
 sides. This covers public results and other players' private bindings. -/
@@ -220,6 +137,7 @@ theorem complete_unmodified (frame : Frame runtime leaks memory owner original r
     original.application.config repaired.application.config
     (congrArg (fun view : PlayerView graph => view.observation.store) application)
     (congrArg (fun view : PlayerView graph => view.observation.ownActions) application)
+    (congrArg (fun view : PublicView graph => view.observation.defaulted) frame.publicView)
     event leftReady rightReady noValue noAction action value
   have nextPublic := complete_publicView original.application repaired.application frame.publicView
     event leftReady rightReady action value
@@ -228,11 +146,12 @@ theorem complete_unmodified (frame : Frame runtime leaks memory owner original r
         (repaired.application.complete event rightReady action value) owner)).observation =
       (app.observePlayer
         (original.application.complete event leftReady action value) owner).observation := by
-    apply PlayerObservation.ext graph
+    apply EventPlayerObservation.ext
     · exact (congrArg (fun view : PublicView graph => view.observation.completionOrder)
         nextPublic).symm
     · exact reconstructed.1
     · exact reconstructed.2
+    · exact (congrArg (fun view : PublicView graph => view.observation.defaults) nextPublic).symm
   have nextApplication : memory.shadow.view (app.observePlayer
       (repaired.application.complete event rightReady action value) owner) =
         app.observePlayer (original.application.complete event leftReady action value) owner := by
@@ -254,7 +173,11 @@ theorem complete_unmodified (frame : Frame runtime leaks memory owner original r
       (original.application.playerView_observation_eq repaired.application who
         (frame.views who different))
       (congrArg PlayerView.candidates (frame.views who different)) event leftReady rightReady
-      action action value value (fun _ => rfl) (fun _ => rfl)
+      action action value value (fun _ => rfl) (fun _ => rfl) (by
+        have defaults : original.application.config.defaulted =
+            repaired.application.config.defaulted :=
+          congrArg (fun view : PublicView graph => view.observation.defaulted) frame.publicView
+        simp only [EventGraph.completion, Config.actualDecision, defaults])
   · exact Config.bindingRefines_complete frame.successful event leftReady rightReady action action
       value value (EventField.BindingRefines.refl _ _)
 
@@ -262,6 +185,7 @@ theorem complete_unmodified (frame : Frame runtime leaks memory owner original r
 environment steps. Its support carries the full concrete frame, including the
 reconstructed owner input, not just the opponents' separate marginal laws. -/
 theorem sample_coupling (frame : Frame runtime leaks memory owner original repaired)
+    (clear : original.application.config.defaulted = ∅)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (event : graph.EventId) (ready : original.application.config.cut.Ready event)
     (payload : L.Ty) (law : PublicDist graph.layout payload)
@@ -277,6 +201,12 @@ theorem sample_coupling (frame : Frame runtime leaks memory owner original repai
           (.application (.executeSample event)) ∧
       ∀ pair ∈ coupled.support, Frame runtime leaks memory owner pair.1 pair.2 := by
   let app := runtime.reactiveApplication leaks
+  have rightClear : repaired.application.config.defaulted = ∅ :=
+    (congrArg (fun view : PublicView graph => view.observation.defaulted)
+      frame.publicView).symm.trans clear
+  have ownerless : (graph.nodes event).actor = none := by
+    rw [← EventCode.actor_cast outputEq (graph.nodes event), codeEq]
+    rfl
   have rightReady : repaired.application.config.cut.Ready event := by
     rw [← State.publicView_eventReady, ← frame.publicView, State.publicView_eventReady]
     exact ready
@@ -304,7 +234,7 @@ theorem sample_coupling (frame : Frame runtime leaks memory owner original repai
         (cast (congrArg EventField.Value outputEq.symm) value)
       environmentRecall := execution.environmentRecall ++
         [⟨execution.observeEnvironment app, .application (.executeSample event)⟩] }
-  have actual (execution : app.Execution)
+  have actual (execution : app.Execution) (empty : execution.application.config.defaulted = ∅)
       (ready : execution.application.config.cut.Ready event)
       (evaluates : law.eval? execution.application.config.store = some draw) :
       execution.environmentStep app (.application (.executeSample event)) =
@@ -317,16 +247,33 @@ theorem sample_coupling (frame : Frame runtime leaks memory owner original repai
         law outputEq codeEq node, execution.application.config.step_eq_map_of_code event ready
           outputEq (.sample payload law) codeEq PUnit.unit draw evaluates, PMF.map_comp]
       rfl
+    have nativeLaw : app.environment execution.application (.executeSample event) =
+        draw.map (fun value => execution.application.complete event ready
+          (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)
+          (cast (congrArg EventField.Value outputEq.symm) value)) := by
+      change (environmentStep runtime execution.application (.executeSample event)).map
+        State.drain = _
+      rw [applicationLaw, PMF.map_comp]
+      apply congrArg draw.map
+      funext value
+      apply State.drain_eq_of_empty
+      change (execution.application.config.complete event ready _ _).defaults.defaulted = ∅
+      rw [Config.complete_defaults]
+      have silent : execution.application.config.actualDecision event
+          (cast (congrArg EventField.Action outputEq.symm) PUnit.unit) = none := by
+        simp only [Config.actualDecision, EventCode.actualDecision, ownerless]
+      rw [silent]
+      exact empty
     simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp]
-    change (environmentStep runtime execution.application (.executeSample event)).map _ = _
-    rw [applicationLaw, PMF.map_comp]
+    change (app.environment execution.application (.executeSample event)).map _ = _
+    rw [nativeLaw, PMF.map_comp]
     rfl
   refine ⟨draw.map (fun value => (next original ready value, next repaired rightReady value)),
     ?_, ?_, ?_⟩
   · rw [PMF.map_comp]
-    exact (actual original ready leftLaw).symm
+    exact (actual original clear ready leftLaw).symm
   · rw [PMF.map_comp]
-    exact (actual repaired rightReady rightLaw).symm
+    exact (actual repaired rightClear rightReady rightLaw).symm
   · intro pair supported
     obtain ⟨value, _, rfl⟩ := PMF.support_map .. ▸ supported
     have visible : (graph.outputLayout event).IsPublic := by rw [outputEq]; trivial

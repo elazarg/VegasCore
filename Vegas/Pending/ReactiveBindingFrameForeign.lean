@@ -52,7 +52,11 @@ have the same typed result. This includes the repaired player's own lawful
 binding submitted before the conditional continuation began. -/
 theorem binding_inclusion_unmodified
     (frame : Frame runtime leaks memory owner original repaired)
-    (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
+    (clear : original.application.config.defaulted = ∅)
+    (id : MessageId Player)
+    (endpointClear : (original.includePending (runtime.reactiveApplication leaks)
+      id).application.config.defaulted = ∅)
+    (event : graph.EventId) (candidate : Handle graph)
     (actor : Player) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding actor payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
@@ -78,6 +82,9 @@ theorem binding_inclusion_unmodified
         [⟨original.observeEnvironment app, .include id⟩] }
       { repaired.includePending app id with environmentRecall := repaired.environmentRecall ++
         [⟨repaired.observeEnvironment app, .include id⟩] } := by
+  have rightClear : repaired.application.config.defaulted = ∅ :=
+    (congrArg (fun view : PublicView graph => view.observation.defaulted)
+      frame.publicView).symm.trans clear
   have rightReady : repaired.application.config.cut.Ready event := by
     rw [← State.publicView_eventReady, ← frame.publicView, State.publicView_eventReady]
     exact ready
@@ -97,21 +104,23 @@ theorem binding_inclusion_unmodified
     intro field associated
     exact unused field ((congrFun accepted field).trans associated)
   let action : graph.Action event := cast (congrArg EventField.Action outputEq.symm)
-    (original.application.bindingResult candidate payload)
+    (some (original.application.bindingResult candidate payload))
   let value : (graph.outputLayout event).Value := cast (congrArg EventField.Value outputEq.symm)
     (original.application.bindingResult candidate payload)
   let association := Function.update original.application.accepted (.inr event) (some candidate)
   have completed := frame.complete_unmodified event ready rightReady
     noValue noAction action value
   have paired := completed.setAccepted association
-  apply frame.include_accepted id _ found (WitnessedPacket.tokenValid_commitment _ _ _) _ _
+  apply frame.include_accepted id endpointClear _ found
+    (WitnessedPacket.tokenValid_commitment _ _ _) _ _
     paired
   · rw [handle_commitment_eq runtime original.application id event candidate actor payload outputEq
-      codeEq node ready timely sender owned vacant unused,
+      codeEq node ready timely (by simp [clear]) sender owned vacant unused,
         original.application.candidates.freeze_eq_self_of_not_fresh candidate fixed]
     rfl
   · rw [handle_commitment_eq runtime repaired.application id event candidate actor payload outputEq
-      codeEq node rightReady rightTimely sender owned rightVacant rightUnused,
+      codeEq node rightReady rightTimely (by simp [rightClear]) sender owned rightVacant
+        rightUnused,
         repaired.application.candidates.freeze_eq_self_of_not_fresh candidate rightFixed,
           sameResult]
     change some { (repaired.application.complete event rightReady action value) with
@@ -122,8 +131,12 @@ theorem binding_inclusion_unmodified
 the complete frame, for successful or failed private material. -/
 theorem foreign_binding_inclusion
     (frame : Frame runtime leaks memory owner original repaired)
+    (clear : original.application.config.defaulted = ∅)
     (onlyBindings : memory.shadow.OwnBindings owner)
-    (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
+    (id : MessageId Player)
+    (endpointClear : (original.includePending (runtime.reactiveApplication leaks)
+      id).application.config.defaulted = ∅)
+    (event : graph.EventId) (candidate : Handle graph)
     (actor : Player) (different : actor ≠ owner) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding actor payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
@@ -170,7 +183,8 @@ theorem foreign_binding_inclusion
         obtain ⟨_, binding⟩ := onlyBindings.2 event (by simp only [stored]; rfl)
         rw [outputEq] at binding
         exact (different (EventField.binding.inj binding).1).elim
-  exact frame.binding_inclusion_unmodified id event candidate actor payload outputEq codeEq node
+  exact frame.binding_inclusion_unmodified clear id endpointClear event candidate actor payload
+    outputEq codeEq node
     ready timely sender owned vacant unused fixed (candidates ▸ fixed) sameResult
     noValue noAction evidence found
 

@@ -83,6 +83,16 @@ theorem repair_binding_history_of_intended_witness
     witnessControl rfl witnessFree
   have secondState : second.state = some target :=
     (intendedHistory?_state (runtime := runtime) witnessTrace secondReplay).trans witnessDecoded
+  have witnessClear : witnessControl.execution.application.config.defaulted = ∅ :=
+    defaulted_eq_empty_of_decodedIntended witnessDecoded
+      (intended_of_history wellFormed second.trace target secondState)
+  have sameDefaults : current.execution.application.config.defaulted =
+      witnessControl.execution.application.config.defaulted :=
+    congrArg (fun observed : (application setup runtime leaks).PlayerView =>
+      observed.application.publicView.observation.defaulted)
+        (currentView.trans witnessView.symm)
+  have endpointClear : current.execution.application.config.defaulted = ∅ :=
+    sameDefaults.trans witnessClear
   have currentTurn : current.execution.application.publicView.ownTurn? focal = some event := by
     rw [← currentView] at turn
     exact turn
@@ -98,7 +108,7 @@ theorem repair_binding_history_of_intended_witness
       (scheduler := scheduler) ⟨⟨some current, trace⟩, seen⟩
       ⟨⟨some witnessControl, witnessTrace⟩, witnessSeen⟩ decoded witnessDecoded).mp owes)
   apply repair_binding_history (runtime := runtime) covered focal owner other forced decision
-    ⟨⟨some current, trace⟩, seen.trans decision.symm⟩ current rfl
+    ⟨⟨some current, trace⟩, seen.trans decision.symm⟩ current rfl endpointClear
   · intro before prior isPrefix event actor payload binding checks outputEq codeEq node ready
     exact binding_success_of_tracePrefix wellFormed secondState focal sameView trace decoded
       (decodedPoint_staticAt witnessDecoded) readyOwn prior isPrefix ready binding checks

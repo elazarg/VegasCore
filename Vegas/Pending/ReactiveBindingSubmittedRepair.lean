@@ -136,7 +136,8 @@ theorem RecordsSubmittedBindings.binding_submission
             (memory.shadow.inputView runtime leaks view).application.candidates
               (.prepared serial))).rememberCompletion_of_ne event different
           (cast (congrArg EventField.Action outputEq.symm)
-            ((opening.bind fun raw => raw.as? payload).elim .failure PublicationResult.success))
+            (some ((opening.bind fun raw => raw.as? payload).elim .failure
+              PublicationResult.success)))
           (cast (congrArg EventField.Value outputEq.symm)
             ((opening.bind fun raw => raw.as? payload).elim .failure PublicationResult.success))
       change changed.2.RecordsBinding other otherOutput _

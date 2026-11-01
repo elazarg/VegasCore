@@ -174,6 +174,7 @@ theorem forcedState_image_of_tracePrefix (swap : HiddenSwap (graph setup))
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
+    (failures : ∀ event, swap.values.ExpiryFixed event)
     (r : Player) {control : (application setup runtime leaks).Control}
     (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     {state} {trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state}
@@ -182,7 +183,7 @@ theorem forcedState_image_of_tracePrefix (swap : HiddenSwap (graph setup))
     ForcedState setup runtime leaks r (some (swap.control control)) := by
   let symmetry := onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon
     scheduler swap
-    initialClosed bounded
+    initialClosed bounded failures
   induction isPrefix with
   | refl => exact forced
   | @extend source target before earlier joint legal realized ih =>
@@ -201,6 +202,7 @@ theorem swapGuardState_of_tracePrefix (swap : HiddenSwap (graph setup))
     (initialClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
+    (failures : ∀ event, swap.values.ExpiryFixed event)
     {first : (application setup runtime leaks).ProtocolState}
     {prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace first}
     {state} {trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state}
@@ -209,7 +211,7 @@ theorem swapGuardState_of_tracePrefix (swap : HiddenSwap (graph setup))
     SwapGuardState setup runtime swap allowed first := by
   let symmetry := onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon
     scheduler swap
-    initialClosed bounded
+    initialClosed bounded failures
   induction isPrefix with
   | refl => exact guarded
   | @extend _ _ before earlier joint legal realized ih =>
@@ -253,6 +255,8 @@ theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
   have succeedQ : CommitmentCellsSucceed setup p q := succeed
   let swap := HiddenSwap.ofPairs (betweenPairs publicAgreeQ succeedQ)
     (betweenHandlePairs setup p q current.execution.application.accepted)
+  have failures : ∀ event, swap.values.ExpiryFixed event :=
+    EventGraph.ValueSwap.ofPairs_expiryFixed (betweenPairs publicAgreeQ succeedQ)
   -- The swap toward the splice is guarded at the end of the history.
   have drawnP : ∃ initial ∈ setup.initialLaw.support, InitialCellsAt initial p := by
     obtain ⟨initial, member, _, point, pointEq, found⟩ := decoded_initialCellsAt (runtime :=
@@ -289,20 +293,20 @@ theorem forcedAgent_of_splice (wellFormed : setup.WellFormed)
     rw [decodedPoint_betweenPairs, decodedP, Option.map_some]
   -- So is the image of the prefix, which carries `r`'s information there.
   have guardedPrior := swapGuardState_of_tracePrefix (runtime := runtime) swap
-    (initialClosed_swapAllowed swap) bounded
+    (initialClosed_swapAllowed swap) bounded failures
     isPrefix guarded
   have forcedPrior := forcedState_image_of_tracePrefix (runtime := runtime) swap
     (initialClosed_swapAllowed swap)
-    bounded r prior isPrefix guarded forcedEnd
+    bounded failures r prior isPrefix guarded forcedEnd
   let symmetry := onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon
     scheduler swap
-    (initialClosed_swapAllowed swap) bounded
+    (initialClosed_swapAllowed swap) bounded failures
   refine ⟨⟨_, symmetry.mapTrace prior guardedPrior⟩, ?_, forcedPrior⟩
   change (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf r
     (symmetry.mapTrace prior guardedPrior) = _
   rw [onePacket_infoOf]
   exact observe_swap_of_fixes (runtime := runtime) swap (initialClosed_swapAllowed swap) bounded
-    fixes prior
+    failures fixes prior
     guardedPrior
 
 end Native

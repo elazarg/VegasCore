@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.ReactiveBindingShadowInvariant
+import Vegas.Pending.ReactiveHiddenResponse
 
 /-! # Native responses inside the repaired continuation
 

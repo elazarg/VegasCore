@@ -57,9 +57,9 @@ private theorem decode_binding_output {Field : Type} [DecidableEq Field]
       (registry : Registry Γ) (revelations : Revelations Γ)
       (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
       (store : EventGraph.Store layout) (history : History Player L)
-      (point : ProtocolState program),
+      (defaults : DefaultHistory Player) (point : ProtocolState program),
       (Γ.map Prod.fst).Nodup →
-      decodeSourcePrefix? program refs registry revelations outputs count store history =
+      decodeSourcePrefix? program refs registry revelations outputs count store history defaults =
         some point →
       ∀ (event : Fin (eventCount program)), event.val < count →
       ∀ {owner payload} (outputEq : outputLayout program event = .binding owner payload)
@@ -68,9 +68,9 @@ private theorem decode_binding_output {Field : Type} [DecidableEq Field]
           EventGraph.FieldRef layout (.binding owner payload)).get? store = some value →
         ProtocolState.cell? program point (eventCell program event).1
           (.commitment owner payload) = some value
-  | 0, _, _, _, _, _, _, _, _, _, _, _, _, event, earlier, _, _, _, _, _ => by omega
+  | 0, _, _, _, _, _, _, _, _, _, _, _, _, _, event, earlier, _, _, _, _, _ => by omega
   | count + 1, _, _, program, refs, registry, revelations, outputs, store, history,
-      point, unique, decoded, event, earlier, owner, payload, outputEq, value, read => by
+      defaults, point, unique, decoded, event, earlier, owner, payload, outputEq, value, read => by
       cases program with
       | ret _ => exact Fin.elim0 event
       | sample _ fresh _ next =>
@@ -79,7 +79,7 @@ private theorem decode_binding_output {Field : Type} [DecidableEq Field]
           cases event using Fin.cases with
           | zero => cases outputEq
           | succ event =>
-              exact decode_binding_output count next _ _ _ _ store history rest
+              exact decode_binding_output count next _ _ _ _ store history defaults rest
                 (List.nodup_cons.mpr ⟨fresh, unique⟩) restDecoded event
                 (by simpa using earlier) outputEq value read
       | commit _ _ fresh _ next =>
@@ -88,10 +88,10 @@ private theorem decode_binding_output {Field : Type} [DecidableEq Field]
           cases event using Fin.cases with
           | zero =>
               cases outputEq
-              exact decodeSourcePrefix?_context_cell count next _ _ _ _ store history rest
+              exact decodeSourcePrefix?_context_cell count next _ _ _ _ store history defaults rest
                 (List.nodup_cons.mpr ⟨fresh, unique⟩) restDecoded .here value read
           | succ event =>
-              exact decode_binding_output count next _ _ _ _ store history rest
+              exact decode_binding_output count next _ _ _ _ store history defaults rest
                 (List.nodup_cons.mpr ⟨fresh, unique⟩) restDecoded event
                 (by simpa using earlier) outputEq value read
       | reveal _ _ _ fresh _ _ next =>
@@ -100,7 +100,7 @@ private theorem decode_binding_output {Field : Type} [DecidableEq Field]
           cases event using Fin.cases with
           | zero => cases outputEq
           | succ event =>
-              exact decode_binding_output count next _ _ _ _ store history rest
+              exact decode_binding_output count next _ _ _ _ store history defaults rest
                 (List.nodup_cons.mpr ⟨fresh, unique⟩) restDecoded event
                 (by simpa using earlier) outputEq value read
 
@@ -130,7 +130,8 @@ theorem decodedPoint_binding_cell {config : (graph setup).Config}
               source = (⟨.inl (inputId source), layoutEq⟩ : EventGraph.FieldRef
                 (graph setup).layout (.binding owner payload)) := rfl
           have found := decodeSourcePrefix?_context_cell ordered.choose setup.program _ _ _ _
-            config.store _ point setup.namesNodup decoded source value (refEq ▸ stored)
+            config.store _ config.defaults point setup.namesNodup decoded source value
+            (refEq ▸ stored)
           simpa only [fieldCell, inputId_get] using found
       | inr event =>
           have present : (config.outputs event).isSome := by
@@ -140,7 +141,7 @@ theorem decodedPoint_binding_cell {config : (graph setup).Config}
           have earlier : event.val < ordered.choose :=
             (ordered.choose_spec.2 event).mp completed
           exact decode_binding_output ordered.choose setup.program _ _ _ _ config.store _
-            point setup.namesNodup decoded event earlier layoutEq value stored
+            config.defaults point setup.namesNodup decoded event earlier layoutEq value stored
   · cases decoded
 
 section Witness

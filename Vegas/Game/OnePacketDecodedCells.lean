@@ -19,14 +19,14 @@ theorem decodeSourcePrefix?_context_cell {Field : Type} [DecidableEq Field]
       (registry : Registry Γ) (revelations : Revelations Γ)
       (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
       (store : EventGraph.Store layout) (history : History Player L)
-      (point : ProtocolState program),
+      (defaults : DefaultHistory Player) (point : ProtocolState program),
       (Γ.map Prod.fst).Nodup →
-      decodeSourcePrefix? program refs registry revelations outputs count store history =
+      decodeSourcePrefix? program refs registry revelations outputs count store history defaults =
         some point →
       ∀ {name kind} (source : HasVar Γ name kind) (value : CellVal L kind),
         (refs.get source).get? store = some (cellValue value) →
         ProtocolState.cell? program point name kind = some value
-  | 0, _, _, program, refs, registry, revelations, outputs, store, history, point,
+  | 0, _, _, program, refs, registry, revelations, outputs, store, history, defaults, point,
       unique, decoded, name, kind, source, value, read => by
       simp only [decodeSourcePrefix?] at decoded
       obtain ⟨cells, decodedCells, rfl⟩ := Option.map_eq_some_iff.mp decoded
@@ -37,23 +37,23 @@ theorem decodeSourcePrefix?_context_cell {Field : Type} [DecidableEq Field]
         cases kind <;> exact Option.some.inj agree
       exact congrArg some same.symm
   | count + 1, _, _, program, refs, registry, revelations, outputs, store, history,
-      point, unique, decoded, name, kind, source, value, read => by
+      defaults, point, unique, decoded, name, kind, source, value, read => by
       cases program with
       | ret _ => simp [decodeSourcePrefix?] at decoded
       | sample _ fresh _ next =>
           simp only [decodeSourcePrefix?] at decoded
           obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          exact decodeSourcePrefix?_context_cell count next _ _ _ _ store history rest
+          exact decodeSourcePrefix?_context_cell count next _ _ _ _ store history defaults rest
             (List.nodup_cons.mpr ⟨fresh, unique⟩) restDecoded (.there source) value read
       | commit _ _ fresh _ next =>
           simp only [decodeSourcePrefix?] at decoded
           obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          exact decodeSourcePrefix?_context_cell count next _ _ _ _ store history rest
+          exact decodeSourcePrefix?_context_cell count next _ _ _ _ store history defaults rest
             (List.nodup_cons.mpr ⟨fresh, unique⟩) restDecoded (.there source) value read
       | reveal _ _ _ fresh _ _ next =>
           simp only [decodeSourcePrefix?] at decoded
           obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          exact decodeSourcePrefix?_context_cell count next _ _ _ _ store history rest
+          exact decodeSourcePrefix?_context_cell count next _ _ _ _ store history defaults rest
             (List.nodup_cons.mpr ⟨fresh, unique⟩) restDecoded (.there source) value read
 
 end Vegas.SourceProgram

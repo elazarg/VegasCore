@@ -68,8 +68,8 @@ private theorem completed_iff_of_frame
     (event : (graph setup).EventId) :
     event ∈ original.application.config.cut.completed ↔
       event ∈ repaired.application.config.cut.completed := by
-  have order : original.application.config.history.map EventGraph.Completion.event =
-      repaired.application.config.history.map EventGraph.Completion.event :=
+  have order : original.application.config.history.map EventCompletion.event =
+      repaired.application.config.history.map EventCompletion.event :=
     congrArg (fun view : PublicView (graph setup) => view.observation.completionOrder)
       frame.publicView
   constructor
@@ -119,7 +119,7 @@ theorem directedRepair_completed_outputs_succeeded
     (congrArg PublicView.accepted frame.toFrame.publicView).symm
   apply recorded.accepted_output_succeeded signed count valid acceptedEq event payload layoutEq
   rw [acceptedEq]
-  exact record.1 event owner payload layoutEq foreign
+  exact record.bindingAccepted first event owner payload layoutEq foreign
     ((completed_iff_of_frame (runtime := runtime) frame.toFrame event).mpr
       completed)
 

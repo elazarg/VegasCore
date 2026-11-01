@@ -26,7 +26,7 @@ def RecordsBinding (memory : BindingShadow graph) (event : graph.EventId)
     {owner : Player} {payload : L.Ty}
     (outputEq : graph.outputLayout event = .binding owner payload)
     (result : PublicationResult (L.Val payload)) : Prop :=
-  memory.actions event = some (cast (congrArg EventField.Action outputEq.symm) result) ∧
+  memory.actions event = some (cast (congrArg EventField.Action outputEq.symm) (some result)) ∧
     memory.values (.inr event) = some (cast (congrArg EventField.Value outputEq.symm) result)
 
 omit [DecidableEq Player] in

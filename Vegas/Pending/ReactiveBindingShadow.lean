@@ -42,7 +42,8 @@ def store (memory : BindingShadow graph) (observed : EventGraph.Store graph.layo
   fun field => (observed field).map fun value => (memory.values field).getD value
 
 def completion (memory : BindingShadow graph) (entry : graph.Completion) : graph.Completion :=
-  ⟨entry.event, (memory.actions entry.event).getD entry.action⟩
+  { entry with decision := entry.decision.map fun action =>
+      (memory.actions entry.event).getD action }
 
 def view (memory : BindingShadow graph) (observed : PlayerView graph) :
     PlayerView graph where
@@ -50,7 +51,7 @@ def view (memory : BindingShadow graph) (observed : PlayerView graph) :
   publicView := observed.publicView
   observation := ⟨observed.observation.completionOrder,
     memory.store observed.observation.store,
-    observed.observation.ownActions.map memory.completion⟩
+    observed.observation.ownActions.map memory.completion, observed.observation.defaults⟩
   candidates := fun slot => (memory.candidates slot).getD (observed.candidates slot)
 
 @[simp] theorem store_empty (observed : EventGraph.Store graph.layout) :
@@ -60,8 +61,8 @@ def view (memory : BindingShadow graph) (observed : PlayerView graph) :
 
 @[simp] theorem completion_empty (entry : graph.Completion) :
     (empty : BindingShadow graph).completion entry = entry := by
-  cases entry
-  rfl
+  cases entry with
+  | mk event decision defaultEvent => cases decision <;> rfl
 
 @[simp] theorem view_empty (observed : PlayerView graph) :
     (empty : BindingShadow graph).view observed = observed := by
@@ -125,9 +126,9 @@ theorem rememberCompletion_unavailable (memory : BindingShadow graph)
 
 variable [DecidableEq Player]
 
-/-- Reconstruction commutes with actual completion of an owner-visible event.
-The original action and result are available from the original chosen binding;
-they are not recovered from anyone else's hidden state. -/
+/-- Reconstruction commutes with recorded owner-visible completions having the
+same public default effect. The original action and result are supplied by the
+owner's memory. Public metadata is retained from the actual completion. -/
 theorem rememberCompletion_observation (memory : BindingShadow graph)
     (who : Player) (left right : graph.Config)
     (stores : memory.store (graph.playerObserve who right).store =
@@ -139,7 +140,11 @@ theorem rememberCompletion_observation (memory : BindingShadow graph)
     (owned : graph.actor? event = some who)
     (visible : graph.fieldVisibleTo who (.inr event))
     (leftAction rightAction : graph.Action event)
-    (leftValue rightValue : (graph.outputLayout event).Value) :
+    (leftValue rightValue : (graph.outputLayout event).Value)
+    (leftRecorded : left.actualDecision event leftAction = some leftAction)
+    (rightRecorded : right.actualDecision event rightAction = some rightAction)
+    (sameDefault : (EventGraph.completion graph event (some rightAction) rightValue).defaultEvent =
+      (EventGraph.completion graph event (some leftAction) leftValue).defaultEvent) :
     let updated := memory.rememberCompletion event leftAction leftValue
     updated.store (graph.playerObserve who
       (right.complete event rightReady rightAction rightValue)).store =
@@ -175,14 +180,18 @@ theorem rememberCompletion_observation (memory : BindingShadow graph)
         have seen := List.mem_map.mpr ⟨entry, (List.mem_filter.mp member).1, same⟩
         exact rightReady.1 ((right.history_exact event).mp seen)
       simp only [completion, rememberCompletion, Function.update_of_ne different]
-    change List.map _ (graph.ownCompletions who (right.history ++ [⟨event, rightAction⟩])) =
-      graph.ownCompletions who (left.history ++ [⟨event, leftAction⟩])
-    simp only [EventGraph.ownCompletions, List.filter_append, List.filter_cons, owned,
-      decide_true, ↓reduceIte, List.filter_nil, List.map_append, List.map_cons, List.map_nil]
-    have old := List.map_congr_left earlier
-    dsimp only [EventGraph.playerObserve, EventGraph.ownCompletions] at old actions
-    rw [old, actions]
-    simp only [completion, rememberCompletion, Function.update_self, Option.getD_some]
+    change List.map _ (graph.ownCompletions who (right.history ++
+      [EventGraph.completion graph event (right.actualDecision event rightAction) rightValue])) =
+      graph.ownCompletions who (left.history ++
+        [EventGraph.completion graph event (left.actualDecision event leftAction) leftValue])
+    rw [rightRecorded, leftRecorded]
+    simp [EventGraph.ownCompletions, EventGraph.completion, owned]
+    constructor
+    · have old := List.map_congr_left earlier
+      simpa [EventGraph.playerObserve, EventGraph.ownCompletions] using old.trans actions
+    · have same : (graph.nodes event).defaultEvent rightAction rightValue =
+          (graph.nodes event).defaultEvent leftAction leftValue := sameDefault
+      simp [completion, rememberCompletion, same]
 
 variable (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -391,7 +400,7 @@ def repairResponse (who : Player) (memory : BindingMemory runtime leaks)
               | some _ => response
             (replacement,
               remembered.rememberCompletion event
-                (cast (congrArg EventGraph.EventField.Action outputEq.symm) result)
+                (cast (congrArg EventGraph.EventField.Action outputEq.symm) (some result))
                 (cast (congrArg EventGraph.EventField.Value outputEq.symm) result))
           else (response, memory.shadow)
       | .sample .. | .resolve .. => (response, memory.shadow)

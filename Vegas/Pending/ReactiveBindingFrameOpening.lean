@@ -3,6 +3,7 @@
 import Vegas.Pending.ReactiveBindingFrameStep
 import Vegas.Pending.ReactiveDisclosure
 import Interaction.ReactivePublication
+import Vegas.Pending.ReactiveHiddenInclusion
 
 /-! # Disclosure transitions of the repaired native continuation
 
@@ -121,7 +122,10 @@ theorem inert_submission (frame : Frame runtime leaks memory owner original repa
 network update and public receipt. Constructor-specific lemmas establish the
 application frame; this lemma adds no assumption about future play. -/
 theorem include_accepted (frame : Frame runtime leaks memory owner original repaired)
-    (id : MessageId Player) (packet : WitnessedPacket graph)
+    (id : MessageId Player)
+    (endpointClear : (original.includePending (runtime.reactiveApplication leaks)
+      id).application.config.defaulted = ∅)
+    (packet : WitnessedPacket graph)
     (found : original.network.lookup id = some ⟨id, packet⟩)
     (valid : packet.tokenValid = true)
     (leftState rightState : State graph)
@@ -143,20 +147,34 @@ theorem include_accepted (frame : Frame runtime leaks memory owner original repa
       (repaired.includePending app id).network := by
     rw [app.includePending_network, app.includePending_network]
     rw [frame.network]
+  have leftAppliedDrain : (original.includePending app id).application = leftState.drain := by
+    simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending, found]
+    rw [reactiveApplication_handle_of_tokenValid runtime leaks _ ⟨id, packet⟩ valid,
+      leftHandled]
+    rfl
+  have leftEmpty : leftState.config.defaulted = ∅ := by
+    rw [← leftState.drainFuel_defaulted leftState.config.remaining]
+    change leftState.drain.config.defaulted = ∅
+    rw [← leftAppliedDrain]
+    exact endpointClear
+  have rightEmpty : rightState.config.defaulted = ∅ :=
+    (congrArg (fun view : PublicView graph => view.observation.defaulted)
+      completed.publicView).symm.trans leftEmpty
   have applyHandler (execution : app.Execution)
       (located : execution.network.lookup id = some ⟨id, packet⟩)
-      (after : State graph)
+      (after : State graph) (empty : after.config.defaulted = ∅)
       (handled : handle runtime execution.application ⟨id, packet.call⟩ = some after) :
       (execution.includePending app id).application = after ∧
       (execution.includePending app id).receipts = execution.receipts ++ [⟨id, true⟩] ∧
       (execution.includePending app id).recall = execution.recall := by
     simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
       located]
-    rw [(reactiveApplication_handle_of_tokenValid runtime leaks _ ⟨id, packet⟩ valid).trans
-      handled]
-    exact ⟨rfl, rfl, trivial⟩
-  have leftApplied := applyHandler original found leftState leftHandled
-  have rightApplied := applyHandler repaired rightFound rightState rightHandled
+    rw [reactiveApplication_handle_of_tokenValid runtime leaks _ ⟨id, packet⟩ valid, handled]
+    simp only [Option.map_some, after.drain_eq_of_empty empty, Option.getD_some,
+      Option.isSome_some]
+    trivial
+  have leftApplied := applyHandler original found leftState leftEmpty leftHandled
+  have rightApplied := applyHandler repaired rightFound rightState rightEmpty rightHandled
   refine ⟨?_, ?_, ?_, nextNetwork, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · change memory.restoreRecall runtime leaks ((repaired.includePending app id).recall owner) =
       (original.includePending app id).recall owner
@@ -250,6 +268,7 @@ theorem opening_submission (frame : Frame runtime leaks memory owner original re
 through actual inclusion. The result is the existing deferred-guard result;
 this lemma does not identify application acceptance with successful disclosure. -/
 theorem opening_inclusion (frame : Frame runtime leaks memory owner original repaired)
+    (clear : original.application.config.defaulted = ∅)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
     (actor : Player) (payload : L.Ty)
@@ -273,7 +292,9 @@ theorem opening_inclusion (frame : Frame runtime leaks memory owner original rep
       some result)
     (evidence : Option (OpeningFact graph))
     (found : original.network.lookup id =
-      some ⟨id, ⟨.opening event candidate ⟨payload, value⟩, evidence, some ⟨event⟩⟩⟩) :
+      some ⟨id, ⟨.opening event candidate ⟨payload, value⟩, evidence, some ⟨event⟩⟩⟩)
+    (endpointClear : (original.includePending (runtime.reactiveApplication leaks)
+      id).application.config.defaulted = ∅) :
     let app := runtime.reactiveApplication leaks
     Frame runtime leaks memory owner
       { original.includePending app id with environmentRecall := original.environmentRecall ++
@@ -284,16 +305,22 @@ theorem opening_inclusion (frame : Frame runtime leaks memory owner original rep
     opening_right_facts runtime original.application repaired.application frame.publicView
       event actor payload binding checks candidate ready timely associated value leftStored
         rightStored result resolved
+  have rightClear : repaired.application.config.defaulted = ∅ :=
+    (congrArg (fun view : PublicView graph => view.observation.defaulted)
+      frame.publicView).symm.trans clear
   have visible : (graph.outputLayout event).IsPublic := by rw [outputEq]; trivial
-  exact frame.include_accepted id _ found (WitnessedPacket.tokenValid_opening _ _ _ _) _ _
+  exact frame.include_accepted id endpointClear _ found
+    (WitnessedPacket.tokenValid_opening _ _ _ _) _ _
     (frame.complete_unmodified event ready rightReady
       (onlyBindings.public_value_none (.inr event) visible)
       (onlyBindings.public_action_none event visible) _ _)
     (handle_opening_eq runtime original.application id event candidate actor payload binding checks
-      outputEq codeEq node ready timely sender owned associated value leftFixed leftStored result
+      outputEq codeEq node ready timely (by simp [clear]) sender owned associated value leftFixed
+        leftStored result
         resolved)
     (handle_opening_eq runtime repaired.application id event candidate actor payload binding checks
-      outputEq codeEq node rightReady rightTimely sender owned rightAssociated value rightFixed
+      outputEq codeEq node rightReady rightTimely (by simp [rightClear]) sender owned
+        rightAssociated value rightFixed
         rightStored result rightResolved)
 
 end Vegas.EventGraphRuntime.BindingMemory.Frame

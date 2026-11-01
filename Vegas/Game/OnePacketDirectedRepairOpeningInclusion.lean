@@ -28,6 +28,7 @@ binding is unchanged by directed repair, so both native handlers accept the
 same packets and execute the same public deferred-guard result. -/
 theorem ready_opening_inclusion
     (frame : Frame runtime leaks memory owner original repaired)
+    (clear : original.application.config.defaulted = ∅)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (leftBinding : original.application.BindingInvariant)
     (rightBinding : repaired.application.BindingInvariant)
@@ -44,7 +45,10 @@ theorem ready_opening_inclusion
     (id : MessageId Player) (candidate : Handle (graph setup)) (raw : Raw L)
     (evidence : Option (OpeningFact (graph setup)))
     (found : original.network.lookup id =
-      some ⟨id, ⟨.opening event candidate raw, evidence, some ⟨event⟩⟩⟩) :
+      some ⟨id, ⟨.opening event candidate raw, evidence, some ⟨event⟩⟩⟩)
+    (endpointClear :
+      (original.includePending (application setup runtime leaks) id).application.config.defaulted =
+        ∅) :
     let app := application setup runtime leaks
     Frame runtime leaks memory owner
       { original.includePending app id with environmentRecall := original.environmentRecall ++
@@ -74,10 +78,8 @@ theorem ready_opening_inclusion
             rw [handled] at previousHandled
             cases previousHandled
       exact frame.include_rejected id _ found
-        (by simpa only [reactiveApplication_handle, WitnessedPacket.tokenValid_opening,
-          ite_true] using handled)
-        (by simpa only [reactiveApplication_handle, WitnessedPacket.tokenValid_opening,
-          ite_true] using rightRejected)
+        (reactiveHandle_none (runtime := runtime) (leaks := leaks) handled)
+        (reactiveHandle_none (runtime := runtime) (leaks := leaks) rightRejected)
   | some next =>
       obtain ⟨timely, sender, owned, associated, chosen, rawEq, stored⟩ :=
         handle_opening_accepted_facts (runtime := runtime) original.application next ready node id
@@ -98,9 +100,9 @@ theorem ready_opening_inclusion
         rw [← EventGraph.EventCode.readFields_cast outputEq ((graph setup).nodes event), codeEq]
         exact member
       obtain ⟨result, resolved⟩ := Option.isSome_iff_exists.mp available
-      exact frame.opening_inclusion onlyBindings id event candidate actor payload binding checks
-        outputEq codeEq node ready timely sender owned associated value leftFixed rightFixed
-        successful rightStored result resolved evidence found
+      exact frame.opening_inclusion clear onlyBindings id event candidate actor payload binding
+        checks outputEq codeEq node ready timely sender owned associated value leftFixed rightFixed
+        successful rightStored result resolved evidence found endpointClear
 
 end EventGraphRuntime.BindingMemory.Frame
 

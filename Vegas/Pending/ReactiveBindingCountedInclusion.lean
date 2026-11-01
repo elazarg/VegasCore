@@ -24,11 +24,15 @@ for either owner and whether the contract accepts or rejects it. Delayed own
 acceptance obtains its original private result from recorded submission
 provenance; foreign acceptance reads the unchanged foreign catalogue. -/
 theorem counted_binding_inclusion (frame : Frame runtime leaks memory owner original repaired)
+    (clear : original.application.config.defaulted = ∅)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (recorded : memory.RecordsSubmittedBindings runtime leaks owner original repaired)
     (clean : runtime.CountClean leaks original)
     (signed : runtime.SignedCommitments leaks original)
-    (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
+    (id : MessageId Player)
+    (endpointClear : (original.includePending (runtime.reactiveApplication leaks)
+      id).application.config.defaulted = ∅)
+    (event : graph.EventId) (candidate : Handle graph)
     (evidence : Option (OpeningFact graph)) (token : Option (ReadinessToken graph))
     (found : original.network.lookup id =
       some ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩) :
@@ -64,9 +68,10 @@ theorem counted_binding_inclusion (frame : Frame runtime leaks memory owner orig
           exact same.symm
         have owned : candidate.1 = actor := candidateOwner.trans sender
         simp only [PublicView.BindingIncludable, node] at includable
-        change original.application.publicView.EventReady event ∧
+        change id.1 ∉ original.application.config.defaulted ∧
+          original.application.publicView.EventReady event ∧
           original.application.WithinDeadline runtime event ∧ _ at includable
-        obtain ⟨readyPublic, timely, rest⟩ := includable
+        obtain ⟨_, readyPublic, timely, rest⟩ := includable
         have ready := (original.application.publicView_eventReady event).mp readyPublic
         change id.1 = actor ∧ candidate.1 = actor ∧
           original.application.accepted (.inr event) = none ∧
@@ -74,8 +79,8 @@ theorem counted_binding_inclusion (frame : Frame runtime leaks memory owner orig
         obtain ⟨_, _, vacant, unused⟩ := rest
         by_cases sameOwner : actor = owner
         · cases sameOwner
-          exact frame.recorded_binding_inclusion recorded clean.1 signed.provenance event payload
-            outputEq codeEq node id candidate sender owned found ready timely vacant unused
+          exact frame.recorded_binding_inclusion clear recorded clean.1 signed.provenance event
+            payload outputEq codeEq node id candidate sender owned found ready timely vacant unused
         · have output : (⟨id, ⟨.commitment event candidate, none, some ⟨event⟩⟩⟩ :
               Message Player (WitnessedPacket graph)) ∈
                 (runtime.reactiveApplication leaks).outputs (original.recall actor) := by
@@ -86,7 +91,8 @@ theorem counted_binding_inclusion (frame : Frame runtime leaks memory owner orig
             rw [candidateEq]
             apply signed.ownFixed actor _ output event candidate.2
             exact congrArg (Payload.commitment event) candidateEq
-          exact frame.foreign_binding_inclusion onlyBindings id event candidate actor sameOwner
+          exact frame.foreign_binding_inclusion clear onlyBindings id endpointClear event candidate
+            actor sameOwner
             payload outputEq codeEq node ready timely sender owned vacant unused fixed none found
   · have refused (state : State graph)
         (publicEq : state.publicView = original.application.publicView) :
@@ -101,9 +107,9 @@ theorem counted_binding_inclusion (frame : Frame runtime leaks memory owner orig
           rw [handled]
           rfl
     exact frame.include_rejected id _ found
-      (by simpa only [reactiveApplication_handle, WitnessedPacket.tokenValid_commitment,
-        ite_true] using refused original.application rfl)
-      (by simpa only [reactiveApplication_handle, WitnessedPacket.tokenValid_commitment,
-        ite_true] using refused repaired.application frame.publicView.symm)
+      (reactiveHandle_none (runtime := runtime) (leaks := leaks)
+        (refused original.application rfl))
+      (reactiveHandle_none (runtime := runtime) (leaks := leaks)
+        (refused repaired.application frame.publicView.symm))
 
 end Vegas.EventGraphRuntime.BindingMemory.Frame

@@ -27,6 +27,7 @@ variable {memory : BindingMemory runtime leaks} {owner : Player}
 
 private theorem application_stutter (frame : DirectedBindingFrame (runtime := runtime) memory
   owner original repaired)
+    (clear : original.application.config.defaulted = ∅)
     (command : EnvironmentCommand (graph setup))
     (firstLaw : EventGraphRuntime.environmentStep runtime original.application command =
       PMF.pure original.application)
@@ -40,12 +41,20 @@ private theorem application_stutter (frame : DirectedBindingFrame (runtime := ru
         (.application command)).support ∧
       DirectedBindingFrame (runtime := runtime) memory owner nextOriginal nextRepaired := by
   let app := application setup runtime leaks
+  have repairedClear : repaired.application.config.defaulted = ∅ := by
+    have defaults := congrArg
+      (fun view : PublicView (graph setup) => view.observation.defaulted) frame.toFrame.publicView
+    exact defaults.symm.trans clear
   have firstActual : (application setup runtime leaks).environment original.application command =
-      PMF.pure original.application :=
-    firstLaw
+      PMF.pure original.application := by
+    change (EventGraphRuntime.environmentStep runtime original.application command).map
+      State.drain = _
+    rw [firstLaw, PMF.pure_map, original.application.drain_eq_of_empty clear]
   have secondActual : (application setup runtime leaks).environment repaired.application command =
-      PMF.pure repaired.application :=
-    secondLaw
+      PMF.pure repaired.application := by
+    change (EventGraphRuntime.environmentStep runtime repaired.application command).map
+      State.drain = _
+    rw [secondLaw, PMF.pure_map, repaired.application.drain_eq_of_empty repairedClear]
   simp only [ReactiveApplication.Execution.environmentStep, firstActual, PMF.pure_map,
     PMF.mem_support_pure_iff] at left
   subst nextOriginal
@@ -59,6 +68,7 @@ private theorem application_stutter (frame : DirectedBindingFrame (runtime := ru
 
 private theorem sample_stutter (frame : DirectedBindingFrame (runtime := runtime) memory owner
   original repaired)
+    (clear : original.application.config.defaulted = ∅)
     (event : (graph setup).EventId) (ready : original.application.config.cut.Ready event)
     (nonsample : ∀ payload law outputEq codeEq,
       nodeView (graph setup) event ≠ .sample payload law outputEq codeEq)
@@ -73,17 +83,19 @@ private theorem sample_stutter (frame : DirectedBindingFrame (runtime := runtime
     rw [← State.publicView_eventReady, ← frame.toFrame.publicView,
       State.publicView_eventReady]
     exact ready
-  exact frame.application_stutter (.executeSample event)
+  exact frame.application_stutter clear (.executeSample event)
     (environmentStep_executeSample_of_nonsample runtime original.application event ready
       nonsample)
     (environmentStep_executeSample_of_nonsample runtime repaired.application event
       rightReady nonsample) nextOriginal left
 
 /-- Every supported actual scheduler command has a supported repaired successor.
-The hypotheses concern the original history's ready bindings and public
-omission detector; no repaired successor or command-specific frame is assumed. -/
+Both original boundaries are clear. The remaining hypotheses concern the
+original history's ready bindings and public omission detector; no repaired
+successor or command-specific frame is assumed. -/
 theorem environment_step (frame : DirectedBindingFrame (runtime := runtime) memory owner original
   repaired)
+    (clear : original.application.config.defaulted = ∅)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (recorded : memory.RecordsSubmittedBindings runtime leaks owner original repaired)
     (clean : runtime.CountClean leaks original)
@@ -103,6 +115,7 @@ theorem environment_step (frame : DirectedBindingFrame (runtime := runtime) memo
     (nextOriginal : (application setup runtime leaks).Execution)
     (left : nextOriginal ∈ (original.environmentStep (application setup runtime leaks)
       command).support)
+    (nextClear : nextOriginal.application.config.defaulted = ∅)
     (accepted : ∀ event actor payload,
       (graph setup).outputLayout event = .binding actor payload →
       event ∈ nextOriginal.application.config.cut.completed →
@@ -131,30 +144,30 @@ theorem environment_step (frame : DirectedBindingFrame (runtime := runtime) memo
           PMF.mem_support_pure_iff]
       exact ⟨nextRepaired, right, frame.environmentStep (.include id) _ _
         left right
-        (frame.toFrame.pending_inclusion onlyBindings
+        (frame.toFrame.pending_inclusion clear onlyBindings
           recorded clean signed leftBinding rightBinding
-          successfulReady id)⟩
+          successfulReady id nextClear)⟩
   | application operation =>
       cases operation with
-      | advanceClock => exact frame.advanceClock_step nextOriginal left
+      | advanceClock => exact frame.advanceClock_step clear nextOriginal left
       | executeSample event =>
           by_cases ready : original.application.config.cut.Ready event
           · cases node : nodeView (graph setup) event with
             | sample payload law outputEq codeEq =>
-                exact frame.sample_step onlyBindings event ready payload law
+                exact frame.sample_step clear onlyBindings event ready payload law
                   outputEq codeEq node
                   nextOriginal left
             | bind actor payload outputEq codeEq =>
-                exact frame.sample_stutter event ready
+                exact frame.sample_stutter clear event ready
                   (by intro _ _ _ _ same; rw [node] at same; cases same) nextOriginal left
             | resolve actor payload binding checks outputEq codeEq =>
-                exact frame.sample_stutter event ready
+                exact frame.sample_stutter clear event ready
                   (by intro _ _ _ _ same; rw [node] at same; cases same) nextOriginal left
           · have rightNotReady : ¬ repaired.application.config.cut.Ready event := by
               rw [← State.publicView_eventReady, ← frame.toFrame.publicView,
                 State.publicView_eventReady]
               exact ready
-            exact frame.application_stutter (.executeSample event)
+            exact frame.application_stutter clear (.executeSample event)
               (environmentStep_executeSample_of_not_ready runtime original.application event
                 ready)
               (environmentStep_executeSample_of_not_ready runtime repaired.application event
@@ -171,12 +184,12 @@ theorem environment_step (frame : DirectedBindingFrame (runtime := runtime) memo
               exact frame.toFrame.expiry_public onlyBindings event (by
                 rw [outputEq]
                 trivial)
-                nextOriginal nextRepaired left right
+                nextOriginal nextRepaired left nextClear right
           | resolve actor payload binding checks outputEq codeEq =>
               exact frame.toFrame.expiry_public onlyBindings event (by
                 rw [outputEq]
                 trivial)
-                nextOriginal nextRepaired left right
+                nextOriginal nextRepaired left nextClear right
           | bind actor payload outputEq codeEq =>
               have notMissed : nextOriginal.application.publicView.missedBinding event = false := by
                 apply Bool.eq_false_iff.mpr
@@ -184,7 +197,7 @@ theorem environment_step (frame : DirectedBindingFrame (runtime := runtime) memo
                 obtain ⟨completed, absent⟩ := (State.publicView_missedBinding _ event actor payload
                   outputEq).mp missed
                 exact accepted event actor payload outputEq completed absent
-              exact frame.toFrame.binding_expiry leftBinding event actor
+              exact frame.toFrame.binding_expiry clear leftBinding event actor
                 payload outputEq codeEq
                 node nextOriginal nextRepaired left right notMissed
 

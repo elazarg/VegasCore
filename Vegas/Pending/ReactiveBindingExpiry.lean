@@ -116,9 +116,9 @@ private theorem expiry_application_frame
     subst right
     exact frame
 
-/-- Actual expiry preserves the complete joint frame whenever the addressed
-event has no private override. No readiness, completion or timing premise is
-needed: all real stuttering and due branches are included. -/
+/-- Expiry ending without public default preserves the complete joint frame
+when the addressed event has no private override. The clear endpoint makes
+automatic completion inert on both sides. -/
 theorem expiry_unmodified
     (frame : Frame runtime leaks memory owner original repaired)
     (event : graph.EventId)
@@ -127,6 +127,7 @@ theorem expiry_unmodified
     (left right : (runtime.reactiveApplication leaks).Execution)
     (leftSupport : left ∈ (original.environmentStep (runtime.reactiveApplication leaks)
       (.application (.expire event))).support)
+    (endpointClear : left.application.config.defaulted = ∅)
     (rightSupport : right ∈ (repaired.environmentStep (runtime.reactiveApplication leaks)
       (.application (.expire event))).support) :
     Frame runtime leaks memory owner left right := by
@@ -135,8 +136,21 @@ theorem expiry_unmodified
     at leftSupport rightSupport
   obtain ⟨leftState, leftMoved, rfl⟩ := PMF.support_map .. ▸ leftSupport
   obtain ⟨rightState, rightMoved, rfl⟩ := PMF.support_map .. ▸ rightSupport
-  have next := frame.expiry_application_frame event noValue noAction leftState rightState
-    leftMoved rightMoved
+  change leftState ∈ ((environmentStep runtime original.application (.expire event)).map
+    State.drain).support at leftMoved
+  change rightState ∈ ((environmentStep runtime repaired.application (.expire event)).map
+    State.drain).support at rightMoved
+  obtain ⟨leftNative, leftRawMoved, rfl⟩ := PMF.support_map .. ▸ leftMoved
+  obtain ⟨rightNative, rightRawMoved, rfl⟩ := PMF.support_map .. ▸ rightMoved
+  change leftNative.drain.config.defaulted = ∅ at endpointClear
+  have leftEmpty : leftNative.config.defaulted = ∅ :=
+    (leftNative.drainFuel_defaulted leftNative.config.remaining).symm.trans endpointClear
+  have next := frame.expiry_application_frame event noValue noAction leftNative rightNative
+    leftRawMoved rightRawMoved
+  have rightEmpty : rightNative.config.defaulted = ∅ :=
+    (congrArg (fun view : PublicView graph => view.observation.defaulted)
+      next.publicView).symm.trans leftEmpty
+  rw [leftNative.drain_eq_of_empty leftEmpty, rightNative.drain_eq_of_empty rightEmpty]
   exact { next with
     service := by
       change original.environmentRecall ++ [_] = repaired.environmentRecall ++ [_]
@@ -150,10 +164,12 @@ theorem expiry_public
     (left right : (runtime.reactiveApplication leaks).Execution)
     (leftSupport : left ∈ (original.environmentStep (runtime.reactiveApplication leaks)
       (.application (.expire event))).support)
+    (endpointClear : left.application.config.defaulted = ∅)
     (rightSupport : right ∈ (repaired.environmentStep (runtime.reactiveApplication leaks)
       (.application (.expire event))).support) :
     Frame runtime leaks memory owner left right :=
   frame.expiry_unmodified event (onlyBindings.public_value_none (.inr event) visible)
-    (onlyBindings.public_action_none event visible) left right leftSupport rightSupport
+    (onlyBindings.public_action_none event visible) left right leftSupport endpointClear
+      rightSupport
 
 end Vegas.EventGraphRuntime.BindingMemory.Frame

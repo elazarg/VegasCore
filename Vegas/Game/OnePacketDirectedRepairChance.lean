@@ -31,6 +31,7 @@ same concrete private-memory frame. The original sample outcome is retained
 jointly with the network, scheduler history, and all foreign decision inputs. -/
 theorem sample_step (frame : DirectedBindingFrame (runtime := runtime) memory owner original
   repaired)
+    (clear : original.application.config.defaulted = ∅)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (event : (graph setup).EventId) (ready : original.application.config.cut.Ready event)
     (payload : L.Ty) (law : EventGraph.PublicDist (graph setup).layout payload)
@@ -46,7 +47,7 @@ theorem sample_step (frame : DirectedBindingFrame (runtime := runtime) memory ow
         (.application (.executeSample event))).support ∧
       DirectedBindingFrame (runtime := runtime) memory owner nextOriginal nextRepaired := by
   obtain ⟨coupled, first, second, framed⟩ := frame.toFrame.sample_coupling
-    onlyBindings
+    clear onlyBindings
     event ready payload law outputEq codeEq node
   have firstSupport : nextOriginal ∈ (coupled.map Prod.fst).support := by
     rw [first]

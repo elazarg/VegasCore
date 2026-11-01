@@ -59,6 +59,7 @@ theorem RecordsSubmittedBindings.pending_binding
 by the invariant; no separate remembered-result premise is required. -/
 theorem Frame.recorded_binding_inclusion
     (frame : Frame runtime leaks memory who original repaired)
+    (clear : original.application.config.defaulted = ∅)
     (recorded : memory.RecordsSubmittedBindings runtime leaks who original repaired)
     (count : runtime.CountRecall leaks original)
     (provenance : original.Provenance (runtime.reactiveApplication leaks))
@@ -84,7 +85,7 @@ theorem Frame.recorded_binding_inclusion
   obtain ⟨remembered, firstFixed, secondFixed, _, successes⟩ :=
     recorded.pending_binding count provenance event payload outputEq codeEq node id candidate
       sender found
-  exact frame.pending_binding_inclusion event payload outputEq codeEq node id candidate sender
+  exact frame.pending_binding_inclusion clear event payload outputEq codeEq node id candidate sender
     owned found ready timely vacant unused firstFixed secondFixed remembered.1 remembered.2
     successes
 

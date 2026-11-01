@@ -22,6 +22,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 Due expiry of a ready binding would create a completed event without an
 accepted handle, so that branch is excluded by the actual public endpoint. -/
 theorem binding_expiry (frame : Frame runtime leaks memory owner original repaired)
+    (clear : original.application.config.defaulted = ∅)
     (valid : original.application.BindingInvariant)
     (event : graph.EventId) (actor : Player) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding actor payload)
@@ -39,11 +40,13 @@ theorem binding_expiry (frame : Frame runtime leaks memory owner original repair
   simp only [ReactiveApplication.Execution.environmentStep, PMF.map_comp] at left right
   obtain ⟨first, firstMoved, rfl⟩ := PMF.support_map .. ▸ left
   obtain ⟨second, secondMoved, rfl⟩ := PMF.support_map .. ▸ right
-  change first ∈ (environmentStep runtime original.application (.expire event)).support
-    at firstMoved
-  change second ∈ (environmentStep runtime repaired.application (.expire event)).support
-    at secondMoved
-  change first.publicView.missedBinding event = false at notMissed
+  change first ∈ ((environmentStep runtime original.application (.expire event)).map
+    State.drain).support at firstMoved
+  change second ∈ ((environmentStep runtime repaired.application (.expire event)).map
+    State.drain).support at secondMoved
+  obtain ⟨firstNative, firstRawMoved, rfl⟩ := PMF.support_map .. ▸ firstMoved
+  obtain ⟨secondNative, secondRawMoved, rfl⟩ := PMF.support_map .. ▸ secondMoved
+  change firstNative.drain.publicView.missedBinding event = false at notMissed
   have clocks : original.application.clock = repaired.application.clock :=
     congrArg PublicView.clock frame.publicView
   have activations : original.application.activatedAt = repaired.application.activatedAt :=
@@ -74,10 +77,16 @@ theorem binding_expiry (frame : Frame runtime leaks memory owner original repair
               | none => rfl
               | some candidate =>
                   exact False.elim (ready.1 (valid.accepted_complete event candidate found))
-            have missed := runtime.missedBinding_expire original.application first event ready
-              entered activated due actor payload outputEq codeEq node absent firstMoved
-            rw [notMissed] at missed
-            cases missed
+            have missed := runtime.missedBinding_expire original.application firstNative event ready
+              entered activated due actor payload outputEq codeEq node absent firstRawMoved
+            obtain ⟨completed, unaccepted⟩ :=
+              (State.publicView_missedBinding firstNative event actor payload outputEq).mp missed
+            have afterMissed : firstNative.drain.publicView.missedBinding event = true :=
+              (State.publicView_missedBinding firstNative.drain event actor payload outputEq).mpr
+                ⟨Config.Step.path_completed_mono firstNative.drain_graph_steps completed,
+                  by rw [(firstNative.drain_tables).1]; exact unaccepted⟩
+            rw [notMissed] at afterMissed
+            cases afterMissed
           · have rightNotDue : ¬ runtime.deadline event ≤ repaired.application.clock - entered := by
               rwa [← clocks]
             exact ⟨environmentStep_expire_of_not_due runtime original.application event ready
@@ -88,10 +97,15 @@ theorem binding_expiry (frame : Frame runtime leaks memory owner original repair
         exact ready
       exact ⟨environmentStep_expire_of_not_ready runtime original.application event ready,
         environmentStep_expire_of_not_ready runtime repaired.application event rightNotReady⟩
-  rw [laws.1, PMF.mem_support_pure_iff _ _] at firstMoved
-  rw [laws.2, PMF.mem_support_pure_iff _ _] at secondMoved
-  subst first
-  subst second
+  rw [laws.1, PMF.mem_support_pure_iff _ _] at firstRawMoved
+  rw [laws.2, PMF.mem_support_pure_iff _ _] at secondRawMoved
+  subst firstNative
+  subst secondNative
+  have rightClear : repaired.application.config.defaulted = ∅ :=
+    (congrArg (fun view : PublicView graph => view.observation.defaulted)
+      frame.publicView).symm.trans clear
+  rw [original.application.drain_eq_of_empty clear,
+    repaired.application.drain_eq_of_empty rightClear]
   exact frame.recordEnvironment (.application (.expire event))
 
 end Vegas.EventGraphRuntime.BindingMemory.Frame

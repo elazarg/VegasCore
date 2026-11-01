@@ -119,6 +119,8 @@ theorem counterpart_of_witness (wellFormed : setup.WellFormed)
   have readyOwn := readyOwn_of_ownTurn current.execution.application currentTurn
   let swap := HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
     (betweenHandlePairs setup p w current.execution.application.accepted)
+  have failures : ∀ event, swap.values.ExpiryFixed event :=
+    EventGraph.ValueSwap.ofPairs_expiryFixed (betweenPairs publicAgree succeed)
   have guarded : SwapGuardState setup runtime swap (swapAllowed swap) (some current) :=
     swapGuardState_of_decoded (runtime := runtime) wellFormed secondState who sameView trace
       decodedP staticW
@@ -130,13 +132,13 @@ theorem counterpart_of_witness (wellFormed : setup.WellFormed)
       accepted)
   let symmetry := onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon
     scheduler swap
-    (initialClosed_swapAllowed swap) bounded
+    (initialClosed_swapAllowed swap) bounded failures
   have imageInfo := infoOf_mapTrace_of_fixes (runtime := runtime) swap (initialClosed_swapAllowed
-    swap) bounded
+    swap) bounded failures
     fixes ⟨some current, trace⟩ guarded seen
   refine ⟨⟨⟨_, symmetry.mapTrace trace guarded⟩, imageInfo⟩, ?_,
     operationalRecord_mapTrace (runtime := runtime) swap (initialClosed_swapAllowed swap) bounded
-      trace guarded⟩
+      failures trace guarded⟩
   -- Nobody owes at the image's decoded point.
   have freeImage : ∀ point, decodedPoint setup (swap.control
     current).execution.application.config =

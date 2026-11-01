@@ -3,6 +3,7 @@
 import Vegas.Pending.ReactiveBindingFrame
 import Vegas.Pending.ReactiveBindingAllocation
 import Vegas.Pending.ReactiveRawBindingFrame
+import Vegas.Pending.ReactiveHiddenInclusion
 
 /-! # Binding repair before delayed inclusion
 
@@ -123,6 +124,7 @@ implementation memory; the successful-value premise is the actual candidate
 fact established by the repair and preserved until this inclusion. -/
 theorem pending_binding_inclusion
     (frame : Frame runtime leaks memory owner original repaired)
+    (clear : original.application.config.defaulted = ∅)
     (event : graph.EventId) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
@@ -140,7 +142,7 @@ theorem pending_binding_inclusion
     (rightFixed : repaired.application.candidates.lookup candidate ≠ .fresh)
     (rememberedAction : memory.shadow.actions event = some
       (cast (congrArg EventField.Action outputEq.symm)
-        (original.application.bindingResult candidate payload)))
+        (some (original.application.bindingResult candidate payload))))
     (rememberedValue : memory.shadow.values (.inr event) = some
       (cast (congrArg EventField.Value outputEq.symm)
         (original.application.bindingResult candidate payload)))
@@ -157,7 +159,7 @@ theorem pending_binding_inclusion
     frame.network frame.receipts frame.publicView frame.views frame.recall id event candidate
       none found
   have own := memory.shadow.include_binding_input runtime leaks original repaired owner
-    frame.observed frame.network event payload outputEq codeEq node id candidate sender owned
+    frame.observed frame.network clear event payload outputEq codeEq node id candidate sender owned
       found ready timely vacant unused leftFixed rightFixed rememberedAction rememberedValue
   have recall (execution : app.Execution) :
       (execution.includePending app id).recall = execution.recall := by
@@ -200,19 +202,34 @@ theorem pending_binding_inclusion
     have rightUnused : repaired.application.HandleUnused candidate := by
       intro field accepted
       exact unused field ((congrFun associated field).trans accepted)
+    have rightClear : repaired.application.config.defaulted = ∅ :=
+      (congrArg (fun view : PublicView graph => view.observation.defaulted)
+        frame.publicView).symm.trans clear
     have handled := runtime.handle_commitment_eq original.application id event candidate owner
-      payload outputEq codeEq node ready timely sender owned vacant unused
+      payload outputEq codeEq node ready timely (by simp [clear]) sender owned vacant unused
     have handledRight := runtime.handle_commitment_eq repaired.application id event candidate owner
-      payload outputEq codeEq node rightReady rightTimely sender owned rightVacant rightUnused
+      payload outputEq codeEq node rightReady rightTimely (by simp [rightClear]) sender owned
+        rightVacant rightUnused
     change (original.includePending app id).application.config.store.BindingRefines
       (repaired.includePending app id).application.config.store
     simp only [app, ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
       found, foundRight, reactiveApplication_handle, WitnessedPacket.tokenValid_commitment,
-      ite_true, handled, handledRight, Option.getD_some, State.complete]
-    apply Config.bindingRefines_complete frame.successful event ready rightReady
-    apply EventField.BindingRefines.cast_some outputEq.symm
-    intro value equal
-    exact congrArg some (successful value (Option.some.inj equal))
+      ite_true, handled, handledRight, Option.map_some, Option.getD_some]
+    rw [State.drain_eq_of_empty _ ?_, State.drain_eq_of_empty _ ?_]
+    · apply Config.bindingRefines_complete frame.successful event ready rightReady
+      apply EventField.BindingRefines.cast_some outputEq.symm
+      intro value equal
+      exact congrArg some (successful value (Option.some.inj equal))
+    · change (repaired.application.config.complete event rightReady _ _).defaults.defaulted = ∅
+      rw [Config.complete_defaults,
+        repaired.application.config.completion_bind_some_defaultEvent event owner payload outputEq
+          codeEq, DefaultHistory.defaulted_record_none]
+      exact rightClear
+    · change (original.application.config.complete event ready _ _).defaults.defaulted = ∅
+      rw [Config.complete_defaults,
+        original.application.config.completion_bind_some_defaultEvent event owner payload outputEq
+          codeEq, DefaultHistory.defaulted_record_none]
+      exact clear
   · change runtime.submissionRecall leaks ((original.includePending app id).recall owner) =
       runtime.submissionRecall leaks ((repaired.includePending app id).recall owner)
     rw [recall original, recall repaired]

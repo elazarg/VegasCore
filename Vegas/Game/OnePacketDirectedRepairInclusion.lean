@@ -20,12 +20,13 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 namespace EventGraphRuntime.BindingMemory.Frame
 
-/-- Every actual pending-message inclusion has a repaired frame in clean
-one-packet traffic. Ready disclosures read successful original bindings;
-all remaining memory, candidate, acceptance and rejection facts are derived
+/-- Every actual pending-message inclusion between clear boundaries has a
+repaired frame in clean one-packet traffic. Ready disclosures read successful
+original bindings; all remaining memory, candidate, acceptance and rejection facts are derived
 from actual signed inputs and the carried submission invariant. -/
 theorem pending_inclusion
     (frame : Frame runtime leaks memory owner original repaired)
+    (clear : original.application.config.defaulted = ∅)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (recorded : memory.RecordsSubmittedBindings runtime leaks owner original repaired)
     (clean : runtime.CountClean leaks original)
@@ -41,7 +42,10 @@ theorem pending_inclusion
       nodeView (graph setup) event = .resolve actor payload binding checks outputEq codeEq →
       original.application.config.cut.Ready event →
       ∃ value, binding.get? original.application.config.store = some (.success value))
-    (id : MessageId Player) :
+    (id : MessageId Player)
+    (endpointClear :
+      (original.includePending (application setup runtime leaks) id).application.config.defaulted =
+        ∅) :
     let app := application setup runtime leaks
     Frame runtime leaks memory owner
       { original.includePending app id with environmentRecall := original.environmentRecall ++
@@ -63,8 +67,8 @@ theorem pending_inclusion
           cases call with
           | malformed raw => cases correct
           | commitment event candidate =>
-              exact frame.counted_binding_inclusion onlyBindings recorded clean signed id event
-                candidate evidence token found
+              exact frame.counted_binding_inclusion clear onlyBindings recorded clean signed id
+                endpointClear event candidate evidence token found
           | opening event candidate raw =>
               obtain ⟨tokenEvent, named, tokenEq⟩ := (WitnessedPacket.tokenValid_iff _).mp valid
               change some event = some tokenEvent at named
@@ -80,10 +84,10 @@ theorem pending_inclusion
                   by_cases ready : original.application.config.cut.Ready event
                   · obtain ⟨value, successful⟩ := successfulReady event actor payload binding checks
                       outputEq codeEq node ready
-                    exact frame.ready_opening_inclusion onlyBindings
+                    exact frame.ready_opening_inclusion clear onlyBindings
                       leftBinding rightBinding
                       event actor payload binding checks outputEq codeEq node ready value successful
-                      id candidate raw evidence found
+                      id candidate raw evidence found endpointClear
                   · have rightNotReady : ¬ repaired.application.config.cut.Ready event := by
                       rw [← State.publicView_eventReady, ← frame.publicView,
                         State.publicView_eventReady]
@@ -91,14 +95,12 @@ theorem pending_inclusion
                     have refused (state : EventGraphRuntime.State (graph setup))
                         (notReady : ¬ state.config.cut.Ready event) :
                         handle runtime state ⟨id, .opening event candidate raw⟩ = none := by
-                      simp only [handle, dite_eq_right notReady]
+                      simp only [handle, dite_eq_right notReady, ite_self]
                     exact frame.include_rejected id _ found
-                      (by simpa only [reactiveApplication_handle,
-                        WitnessedPacket.tokenValid_opening, ite_true] using
-                          refused original.application ready)
-                      (by simpa only [reactiveApplication_handle,
-                        WitnessedPacket.tokenValid_opening, ite_true] using
-                          refused repaired.application rightNotReady)
+                      (reactiveHandle_none (runtime := runtime) (leaks := leaks)
+                        (refused original.application ready))
+                      (reactiveHandle_none (runtime := runtime) (leaks := leaks)
+                        (refused repaired.application rightNotReady))
 
 end EventGraphRuntime.BindingMemory.Frame
 

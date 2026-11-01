@@ -38,14 +38,15 @@ theorem rememberCompletion_eq_self (memory : BindingShadow graph)
       rw [← rememberedValue, ← rememberedAction]
       simp only [Function.update_eq_self, and_self]
 
-/-- The owner sees its original typed binding result and action after actual
-inclusion. The same public receipt and network observation remain visible. -/
+/-- Before public default, the owner sees its original typed binding result and
+action after actual inclusion. Public receipts and network observations are retained. -/
 theorem include_binding_input (memory : BindingShadow graph)
     (left right : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (observed : memory.inputView runtime leaks
       (right.observe (runtime.reactiveApplication leaks) who) =
         left.observe (runtime.reactiveApplication leaks) who)
     (network : left.network = right.network)
+    (clear : left.application.config.defaulted = ∅)
     (event : graph.EventId) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding who payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
@@ -62,7 +63,7 @@ theorem include_binding_input (memory : BindingShadow graph)
     (rightFixed : right.application.candidates.lookup candidate ≠ .fresh)
     (rememberedAction : memory.actions event = some
       (cast (congrArg EventField.Action outputEq.symm)
-        (left.application.bindingResult candidate payload)))
+        (some (left.application.bindingResult candidate payload))))
     (rememberedValue : memory.values (.inr event) = some
       (cast (congrArg EventField.Value outputEq.symm)
         (left.application.bindingResult candidate payload))) :
@@ -75,6 +76,22 @@ theorem include_binding_input (memory : BindingShadow graph)
   have application := congrArg ReactiveApplication.PlayerView.application observed
   have visible : left.application.publicView = right.application.publicView :=
     (congrArg PlayerView.publicView application).symm
+  have rightClear : right.application.config.defaulted = ∅ :=
+    (congrArg (fun view : PublicView graph => view.observation.defaulted) visible).symm.trans clear
+  have active : id.1 ∉ left.application.config.defaulted := by simp [clear]
+  have active' : id.1 ∉ right.application.config.defaulted := by
+    simp [rightClear]
+  have actorEq : (graph.nodes event).actor = some who := by
+    rw [← EventCode.actor_cast outputEq (graph.nodes event), codeEq]
+    rfl
+  have leftRecorded := left.application.config.actualDecision_of_active event who actorEq
+    (by simp [clear])
+    (cast (congrArg EventField.Action outputEq.symm)
+      (some (left.application.bindingResult candidate payload)))
+  have rightRecorded := right.application.config.actualDecision_of_active event who actorEq
+    (by simp [rightClear])
+    (cast (congrArg EventField.Action outputEq.symm)
+      (some (right.application.bindingResult candidate payload)))
   have receipts : left.receipts = right.receipts :=
     (congrArg ReactiveApplication.PlayerView.receipts observed).symm
   have accepted := congrArg PublicView.accepted visible
@@ -96,9 +113,9 @@ theorem include_binding_input (memory : BindingShadow graph)
   have found' : right.network.lookup id =
       some ⟨id, ⟨.commitment event candidate, none, some ⟨event⟩⟩⟩ := network ▸ found
   have handled := runtime.handle_commitment_eq left.application id event candidate who payload
-    outputEq codeEq node ready timely sender owned vacant unused
+    outputEq codeEq node ready timely active sender owned vacant unused
   have handled' := runtime.handle_commitment_eq right.application id event candidate who payload
-    outputEq codeEq node ready' timely' sender owned vacant' unused'
+    outputEq codeEq node ready' timely' active' sender owned vacant' unused'
   have nextPublic := runtime.reactive_include_binding_public_congr leaks left right network
     visible who event payload outputEq codeEq node id candidate none sender owned found ready
       timely vacant unused
@@ -118,36 +135,56 @@ theorem include_binding_input (memory : BindingShadow graph)
       rw [outputEq]
       rfl)
     (cast (congrArg EventField.Action outputEq.symm)
-      (left.application.bindingResult candidate payload))
+      (some (left.application.bindingResult candidate payload)))
     (cast (congrArg EventField.Action outputEq.symm)
-      (right.application.bindingResult candidate payload))
+      (some (right.application.bindingResult candidate payload)))
     (cast (congrArg EventField.Value outputEq.symm)
       (left.application.bindingResult candidate payload))
     (cast (congrArg EventField.Value outputEq.symm)
       (right.application.bindingResult candidate payload))
+    leftRecorded rightRecorded (by
+      rw [← leftRecorded, ← rightRecorded,
+        left.application.config.completion_bind_some_defaultEvent event who payload outputEq codeEq,
+        right.application.config.completion_bind_some_defaultEvent event who payload outputEq
+          codeEq])
   rw [memory.rememberCompletion_eq_self event _ _ rememberedAction rememberedValue] at restores
   have leftConfig : (left.includePending app id).application.config =
       left.application.config.complete event ready
         (cast (congrArg EventField.Action outputEq.symm)
-          (left.application.bindingResult candidate payload))
+          (some (left.application.bindingResult candidate payload)))
         (cast (congrArg EventField.Value outputEq.symm)
           (left.application.bindingResult candidate payload)) := by
     simp only [app, ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
       found, reactiveApplication_handle, WitnessedPacket.tokenValid_commitment, ite_true,
-      handled, Option.getD_some, State.complete]
+      handled, Option.map_some, Option.getD_some]
+    rw [State.drain_eq_of_empty _ ?_]
+    · rfl
+    · change (left.application.config.complete event ready _ _).defaults.defaulted = ∅
+      rw [EventGraph.Config.complete_defaults,
+        left.application.config.completion_bind_some_defaultEvent event who payload outputEq codeEq,
+        DefaultHistory.defaulted_record_none]
+      exact clear
   have rightConfig : (right.includePending app id).application.config =
       right.application.config.complete event ready'
         (cast (congrArg EventField.Action outputEq.symm)
-          (right.application.bindingResult candidate payload))
+          (some (right.application.bindingResult candidate payload)))
         (cast (congrArg EventField.Value outputEq.symm)
           (right.application.bindingResult candidate payload)) := by
     simp only [app, ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
       found', reactiveApplication_handle, WitnessedPacket.tokenValid_commitment, ite_true,
-      handled', Option.getD_some, State.complete]
+      handled', Option.map_some, Option.getD_some]
+    rw [State.drain_eq_of_empty _ ?_]
+    · rfl
+    · change (right.application.config.complete event ready' _ _).defaults.defaulted = ∅
+      rw [EventGraph.Config.complete_defaults,
+        right.application.config.completion_bind_some_defaultEvent event who payload outputEq
+          codeEq,
+        DefaultHistory.defaulted_record_none]
+      exact rightClear
   have nextObservation :
       (memory.view (app.observePlayer (right.includePending app id).application who)).observation =
         (app.observePlayer (left.includePending app id).application who).observation := by
-    apply EventGraph.PlayerObservation.ext
+    apply EventPlayerObservation.ext
     · exact (congrArg (fun view : PublicView graph => view.observation.completionOrder)
         nextPublic).symm
     · change memory.store (graph.playerObserve who
@@ -160,6 +197,7 @@ theorem include_binding_input (memory : BindingShadow graph)
           (graph.playerObserve who (left.includePending app id).application.config).ownActions
       rw [leftConfig, rightConfig]
       exact restores.2
+    · exact (congrArg (fun view : PublicView graph => view.observation.defaults) nextPublic).symm
   have nextApplication : memory.view (app.observePlayer
       (right.includePending app id).application who) =
         app.observePlayer (left.includePending app id).application who := by
@@ -182,7 +220,7 @@ theorem include_binding_input (memory : BindingShadow graph)
       (right.includePending app id).receipts := by
     simp only [app, ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
       found, found', reactiveApplication_handle, WitnessedPacket.tokenValid_commitment, ite_true,
-      handled, handled', Option.isSome_some, receipts]
+      handled, handled', Option.map_some, Option.isSome_some, receipts]
   rw [← nextNetwork, ← nextReceipts]
   rfl
 

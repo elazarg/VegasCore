@@ -85,6 +85,7 @@ theorem complete_unmodified_observation (memory : BindingShadow graph) (who : Pl
       (graph.playerObserve who left).store)
     (actions : (graph.playerObserve who right).ownActions.map memory.completion =
       (graph.playerObserve who left).ownActions)
+    (defaulted : left.defaulted = right.defaulted)
     (event : graph.EventId) (leftReady : left.cut.Ready event)
     (rightReady : right.cut.Ready event)
     (noValue : memory.values (.inr event) = none)
@@ -114,20 +115,22 @@ theorem complete_unmodified_observation (memory : BindingShadow graph) (who : Pl
       have prior := congrFun stores field
       simpa only [store, EventGraph.playerObserve, EventGraph.playerStore,
         Function.update_of_ne selected] using prior
-  · change List.map memory.completion
-      (graph.ownCompletions who (right.history ++ [⟨event, action⟩])) =
-        graph.ownCompletions who (left.history ++ [⟨event, action⟩])
-    by_cases owned : graph.actor? event = some who
-    · simp only [EventGraph.ownCompletions, List.filter_append, List.filter_cons, owned,
-        decide_true, ↓reduceIte, List.filter_nil, List.map_append, List.map_cons, List.map_nil]
-      change (graph.playerObserve who right).ownActions.map memory.completion ++
-        [memory.completion ⟨event, action⟩] =
-          (graph.playerObserve who left).ownActions ++ [⟨event, action⟩]
-      rw [actions]
-      simp only [completion, noAction, Option.getD_none]
-    · simp only [EventGraph.ownCompletions, List.filter_append, List.filter_cons, owned,
-        decide_false, Bool.false_eq_true, ↓reduceIte, List.filter_nil, List.append_nil]
-      exact actions
+  · have sameDecision : left.actualDecision event action = right.actualDecision event action := by
+      simp only [EventGraph.Config.actualDecision, defaulted]
+    change List.map memory.completion
+      (graph.ownCompletions who (right.history ++
+        [EventGraph.completion graph event (right.actualDecision event action) value])) =
+      graph.ownCompletions who (left.history ++
+        [EventGraph.completion graph event (left.actualDecision event action) value])
+    rw [← sameDecision]
+    simp only [EventGraph.ownCompletions, List.filter_append, List.map_append]
+    change (graph.playerObserve who right).ownActions.map memory.completion ++ _ =
+      (graph.playerObserve who left).ownActions ++ _
+    rw [actions]
+    congr 1
+    by_cases owned : graph.actor? event = some who <;>
+      cases decision : left.actualDecision event action <;>
+      simp [EventGraph.completion, owned, completion, noAction]
 
 end BindingShadow
 

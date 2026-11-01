@@ -4,6 +4,7 @@ import Vegas.Game.OnePacketDirectedRepairEnvironment
 import Vegas.Game.OnePacketDirectedRepairEnvironmentTrace
 import Vegas.Game.OnePacketDirectedRepairOwnerResponse
 import Vegas.Game.OnePacketDirectedRepairDelivery
+import Vegas.Game.OnePacketFilteredPrefix
 
 /-! # Concrete repaired whole histories at forced information -/
 
@@ -40,9 +41,9 @@ structure BindingRepairHistory (owner : Player)
   records : operationalRecord setup runtime leaks bounds horizon scheduler sourceTrace =
     operationalRecord setup runtime leaks bounds horizon scheduler trace
 
-/-- Repair an owner's binding submissions throughout an actual forced-information
-history. The guards are facts solely about original prefixes: ready disclosure
-reads are successful and completed bindings have accepted handles. Every image
+/-- Repair an owner's binding submissions throughout an actual clear
+forced-information history. The guards are facts solely about original prefixes:
+ready disclosure reads are successful and completed bindings have accepted handles. Every image
 transition and its one-packet legality are constructed by the induction. -/
 theorem repair_binding_history
     (covered : bounds.CoversOutputValues) (focal owner : Player) (other : owner ≠ focal)
@@ -56,6 +57,7 @@ theorem repair_binding_history
       scheduler).InformationHistory focal
       info)
     (final : (application setup runtime leaks).Control) (current : history.1.state = some final)
+    (endpointClear : final.execution.application.config.defaulted = ∅)
     (successful : ∀ (before : (application setup runtime leaks).Control)
       (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
         before)),
@@ -78,6 +80,15 @@ theorem repair_binding_history
       before.execution.application.accepted (.inr event) ≠ none) :
     Nonempty (BindingRepairHistory (runtime := runtime) owner history.1.trace final) := by
   classical
+  have prefixClear : ∀ {state}
+      (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state),
+      TracePrefix prior history.1.trace →
+      ReactiveApplication.stateInvariant (app := application setup runtime leaks)
+        (fun native => native.config.defaulted = ∅) state := by
+    intro state prior isPrefix
+    apply clearRecord_of_tracePrefix (runtime := runtime) isPrefix
+    rw [current]
+    exact endpointClear
   have construct : ∀ {state : (onePacketProtocol setup runtime leaks bounds horizon
     scheduler).State}
       (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state),
@@ -122,6 +133,8 @@ theorem repair_binding_history
             · exact BindingShadow.ownBindings_empty owner
         | some before =>
             obtain ⟨image⟩ := ih priorPrefix before rfl
+            have beforeClear : before.execution.application.config.defaulted = ∅ :=
+              prefixClear prior priorPrefix
             have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace
               (initialLaw setup) horizon scheduler prior
             have clean := (bounds.onePacketMenu_countClean runtime leaks scheduler).history
@@ -189,10 +202,12 @@ theorem repair_binding_history
                       Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ realized)
                     obtain ⟨nextOriginal, left, same⟩ := PMF.support_map .. ▸ supported
                     cases Option.some.inj same
+                    have nextClear : nextOriginal.application.config.defaulted = ∅ :=
+                      prefixClear afterTrace afterPrefix
                     obtain ⟨nextRepaired, right, afterFrame⟩ := image.frame.environment_step
-                      image.onlyBindings image.recorded
+                      beforeClear image.onlyBindings image.recorded
                         clean signed leftBinding rightBinding
-                      (successful _ prior priorPrefix) command nextOriginal left
+                      (successful _ prior priorPrefix) command nextOriginal left nextClear
                       (accepted _ afterTrace afterPrefix)
                     have delivered := afterFrame.deliveredValue_of_successful
                       (by

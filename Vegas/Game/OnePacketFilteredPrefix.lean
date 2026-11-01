@@ -58,9 +58,9 @@ theorem clearRecord_of_tracePrefix
     {top : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace final}
     (isPrefix : TracePrefix prior top)
     (clear : ReactiveApplication.stateInvariant (app := application setup runtime leaks)
-      (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup))) final) :
+      (fun native => native.config.defaulted = ∅) final) :
     ReactiveApplication.stateInvariant (app := application setup runtime leaks)
-      (fun native => ExclusionEvidence 0 ∅ (⟨native, ∅⟩ : RecoveryState (graph setup))) first := by
+      (fun native => native.config.defaulted = ∅) first := by
   induction isPrefix with
   | refl => exact clear
   | @extend source target before earlier joint legal realized ih =>
@@ -69,9 +69,7 @@ theorem clearRecord_of_tracePrefix
       | none => trivial
       | some current =>
           apply native_clear_before_transition runtime leaks (initialLaw setup)
-            (serviceInitialLaw_initialized setup) horizon scheduler
-            ((bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
-              scheduler before) joint realized ?_ current rfl
+            horizon scheduler joint realized ?_ current rfl
           intro next same
           subst target
           exact clear
@@ -86,12 +84,11 @@ theorem clear_regular_notOwes_of_tracePrefix
     (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some before))
     (top : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some final))
     (isPrefix : TracePrefix prior top)
-    (clear : ExclusionEvidence 0 ∅
-      (⟨final.execution.application, ∅⟩ : RecoveryState (graph setup)))
+    (clear : final.execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup runtime leaks bounds horizon scheduler source focal top)
     (notOwed : ∀ point, decodedPoint setup final.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point) :
-    ExclusionEvidence 0 ∅ (⟨before.execution.application, ∅⟩ : RecoveryState (graph setup)) ∧
+    before.execution.application.config.defaulted = ∅ ∧
       RegularTrace setup runtime leaks bounds horizon scheduler source focal prior ∧
       ∀ point, decodedPoint setup before.execution.application.config = some point →
         ¬ ProtocolState.OwesFailure focal setup.program point := by
