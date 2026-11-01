@@ -38,7 +38,7 @@ def sourceServicePolicy (profile : BehavioralProfile setup.program) (who : Playe
     | none => PMF.pure ⟨none⟩
     | some event =>
         if owned : (graph setup).actor? event = some who then
-          let observed := setup.eventGraph.fromModeObservation .sequential who
+          let observed := id
             (identity ▸ view.application.observation)
           if active : who ∉ observed.defaulted then
             ((compileEventProfile setup.program profile) who event owned observed active).map

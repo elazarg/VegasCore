@@ -3,6 +3,7 @@
 import Vegas.Game.OnePacketForced
 import Vegas.Pending.ReactiveOnePacketMenu
 import Vegas.Game.IntendedPreservation
+import Vegas.Source.Exclusion
 
 /-! # Current native endpoints and partial intended replay
 
@@ -85,6 +86,45 @@ def decodedPoint (config : (graph setup).Config) : setup.ProtocolState :=
   else none
 
 variable {setup runtime}
+
+/-- A native endpoint's decoded source point has exactly its public defaults. -/
+theorem decodedPoint_defaults {setup : Setup (Player := Player) (L := L)}
+    {config : (graph setup).Config} {point : ProtocolState setup.program}
+    (decoded : decodedPoint setup config = some point) :
+    ProtocolState.defaults setup.program point = config.defaults := by
+  unfold decodedPoint at decoded
+  split at decoded
+  · exact decodeSourcePrefix?_defaults _ _ _ _ _ _ _ _ _ _ decoded
+  · cases decoded
+
+/-- An intended source decoding certifies that the native default set is empty. -/
+theorem defaulted_eq_empty_of_decodedIntended {setup : Setup (Player := Player) (L := L)}
+    {config : (graph setup).Config} {point : ProtocolState setup.program}
+    (decoded : decodedPoint setup config = some point)
+    (intended : ProtocolState.Intended setup.program point) : config.defaulted = ∅ := by
+  apply Finset.eq_empty_iff_forall_notMem.mpr
+  intro who present
+  apply ProtocolState.not_excluded_of_intended who setup.program point intended
+  unfold ProtocolState.Excluded
+  rw [ProtocolState.defaulted_eq_defaults]
+  rw [decodedPoint_defaults decoded]
+  exact present
+
+/-- At a decoded forced point, activity of the focal player makes every
+player active: the forced point excludes defaults of all other players. -/
+theorem defaulted_eq_empty_of_decodedForced {setup : Setup (Player := Player) (L := L)}
+    {config : (graph setup).Config} {point : ProtocolState setup.program} {who : Player}
+    (decoded : decodedPoint setup config = some point)
+    (forced : ForcedPoint setup who point) (active : who ∉ config.defaulted) :
+    config.defaulted = ∅ := by
+  apply Finset.eq_empty_iff_forall_notMem.mpr
+  intro other present
+  by_cases same : other = who
+  · exact active (same ▸ present)
+  · apply (forced.2 other same).1
+    unfold ProtocolState.Excluded
+    rw [ProtocolState.defaulted_eq_defaults, decodedPoint_defaults decoded]
+    exact present
 
 /-- At a configuration with a source residual, the decoded point is the
 residual's point. -/

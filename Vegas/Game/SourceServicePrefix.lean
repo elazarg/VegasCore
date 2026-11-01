@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceCheckpoint
 import Vegas.Compile.EventGraphReadout
 import Vegas.Source.SetupProtocolEvaluation
+import Vegas.Source.DefaultControl
 
 /-! # Reading full source protocol positions from native checkpoints
 
@@ -160,6 +161,35 @@ theorem decodeSourcePrefix?_terminal
       obtain ⟨nextState, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
       exact ih _ _ _ _ nextState read
 
+/-- The prefix reader retains the full public default history. -/
+theorem decodeSourcePrefix?_defaults {Field : Type} [DecidableEq Field]
+    {layout : Field → EventGraph.EventField Player L} :
+    (count : Nat) → {Γ : SourceCtx Player L} → {names : Finset VarId} →
+    (program : SourceProgram Player L Γ names) → (refs : ContextRefs layout Γ) →
+    (registry : Registry Γ) → (revelations : Revelations Γ) →
+    (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event)) →
+    (store : EventGraph.Store layout) → (history : History Player L) →
+    (defaults : DefaultHistory Player) → (point : ProtocolState program) →
+    decodeSourcePrefix? program refs registry revelations outputs count store history defaults =
+      some point → ProtocolState.defaults program point = defaults
+  | 0, _, _, program, _, _, _, _, _, _, _, _, decoded => by
+      simp only [decodeSourcePrefix?] at decoded
+      obtain ⟨state, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
+      exact ProtocolState.defaults_entry program _
+  | count + 1, _, _, .ret _, _, _, _, _, _, _, _, _, decoded => by cases decoded
+  | count + 1, _, _, .sample _ _ _ next, _, _, _, _, _, _, _, _, decoded => by
+      rw [decodeSourcePrefix?_sample] at decoded
+      obtain ⟨point, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
+      exact decodeSourcePrefix?_defaults count next _ _ _ _ _ _ _ point read
+  | count + 1, _, _, .commit _ _ _ _ next, _, _, _, _, _, _, _, _, decoded => by
+      rw [decodeSourcePrefix?_commit] at decoded
+      obtain ⟨point, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
+      exact decodeSourcePrefix?_defaults count next _ _ _ _ _ _ _ point read
+  | count + 1, _, _, .reveal _ _ _ _ _ _ next, _, _, _, _, _, _, _, _, decoded => by
+      rw [decodeSourcePrefix?_reveal] at decoded
+      obtain ⟨point, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
+      exact decodeSourcePrefix?_defaults count next _ _ _ _ _ _ _ point read
+
 /-- The deterministic readout of a configuration of the service graph of any
 dependency mode into the original initialized source protocol. Each owner's
 completions keep source rank in every mode, so the chronological completions
@@ -170,8 +200,7 @@ def serviceSourcePrefix? (setup : Setup (Player := Player) (L := L))
   decodeSourcePrefix? setup.program
     (ContextRefs.initial setup.context (outputLayout setup.program)) []
     (Revelations.initial setup.context) (outputRef setup.program) rank config.store
-    (decodeHistory setup.program (config.history.map
-      (setup.eventGraph.fromModeCompletion mode))) config.defaults
+    (decodeHistory setup.program (config.history)) config.defaults
 
 /-- The readout on the default sequential graph. -/
 abbrev sourceServicePrefix? (setup : Setup (Player := Player) (L := L)) :
@@ -209,8 +238,7 @@ theorem SourceCheckpoint.decode
     (outputs : ∀ event, EventGraph.FieldRef (serviceGraph setup mode).layout
         (outputLayout program event)) :
     decodeSourcePrefix? program refs source.registry source.revelations outputs 0 native.store
-      (decodeHistory setup.program (native.history.map
-        (setup.eventGraph.fromModeCompletion mode))) native.defaults =
+      (decodeHistory setup.program (native.history)) native.defaults =
       some (ProtocolState.entry program source) := by
   rw [checkpoint.history, checkpoint.defaults]
   exact decodeSourcePrefix?_zero_of_agrees program refs outputs source native.store
@@ -272,8 +300,8 @@ theorem SourcePrefixCheckpoint.decode {setup : Setup (Player := Player) (L := L)
         (outputLayout program event)) (offset count : Nat) (state : ProtocolState program)
     (native : (serviceGraph setup mode).Config), SourcePrefixCheckpoint setup program refs registry
     revelations outputs offset count state native → decodeSourcePrefix? program refs registry
-    revelations outputs count native.store (decodeHistory setup.program (native.history.map
-          (setup.eventGraph.fromModeCompletion mode))) native.defaults = some state := by
+    revelations outputs count native.store (decodeHistory setup.program native.history)
+      native.defaults = some state := by
   intro Γ openNames program refs registry revelations outputs offset count
   induction count generalizing Γ openNames program refs registry revelations outputs offset with
   | zero =>
@@ -343,11 +371,10 @@ theorem serviceSourcePrefix?_terminal_readout
       decodeConfig? setup.program setup.program
         (ContextRefs.initial setup.context (outputLayout setup.program))
         (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
-        (config.history.map (setup.eventGraph.fromModeCompletion mode)) := by
+        (config.history) := by
   rw [serviceSourcePrefix?, Setup.protocolReadout]
   rw [decodeSourcePrefix?_terminal_readout]
-  simp only [decodeConfig?, EventGraph.Config.defaults, EventGraph.Completion.defaults,
-    List.map_map]
+  simp only [decodeConfig?, EventGraph.Config.defaults, EventCompletion.defaults]
   rfl
 
 /-- The sequential native prefix reader agrees with the full terminal compiler
@@ -358,7 +385,7 @@ theorem sourceServicePrefix?_terminal_readout
       decodeConfig? setup.program setup.program
         (ContextRefs.initial setup.context (outputLayout setup.program))
         (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
-        (config.history.map (setup.eventGraph.fromModeCompletion .sequential)) :=
+        (config.history) :=
   serviceSourcePrefix?_terminal_readout setup .sequential config
 
 /-- Every completed native cut decodes to a terminal source position. Field

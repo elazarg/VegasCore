@@ -72,10 +72,10 @@ def profile (chosen : Bool) : SourceProgram.BehavioralProfile program := fun
   | .alice =>
       ((fun h => nomatch h),
         ((fun h => nomatch h),
-          (fun _ _ => PMF.pure true, PUnit.unit)))
+          (fun _ _ _ => PMF.pure true, PUnit.unit)))
   | .bob =>
-      (fun _ _ => PMF.pure (.success chosen),
-        (fun _ _ => PMF.pure true,
+      (fun _ _ _ => PMF.pure (some (.success chosen)),
+        (fun _ _ _ => PMF.pure true,
           ((fun h => nomatch h), PUnit.unit)))
 
 end

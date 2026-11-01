@@ -6,10 +6,10 @@ import Vegas.Source.ProtocolBehavioralPolicy
 
 /-! # Authentic source openings
 
-An authentic opening retains every binding kernel and opens every own binding
-that contains a value, including attempts rejected by deferred guards. Its
-source action law agrees with an always-disclosing policy at intended points.
-The static registry and revelation invariant also follows the source syntax.
+An authentic opening retains every binding kernel and chooses each opening
+whose guarded publication succeeds. At intended points carrying the program's
+static metadata it agrees with an always-disclosing policy. The static registry
+and revelation invariant follows the source syntax.
 -/
 
 noncomputable section
@@ -18,19 +18,27 @@ namespace Vegas.SourceProgram
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-/-- Authentic openings retain the original binding admission guarantee. -/
-theorem BehavioralPolicy.admitted_authenticOpening {who : Player} :
+private theorem admitted_forceDisclose {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
     (program : SourceProgram Player L Γ O) → (admission : CommitmentInterface program) →
     (policy : BehavioralPolicy who program) → policy.Admitted program admission →
-    (policy.authenticOpening program).Admitted program admission
+    (policy.forceDisclose program).Admitted program admission
   | _, _, .ret _, _, _, _ => trivial
   | _, _, .sample _ _ _ next, admission, policy, permitted =>
-      admitted_authenticOpening next admission policy permitted
+      admitted_forceDisclose next admission policy permitted
   | _, _, .commit _ _ _ _ next, _, policy, permitted =>
-      ⟨permitted.1, admitted_authenticOpening next _ policy.2 permitted.2⟩
+      ⟨permitted.1, admitted_forceDisclose next _ policy.2 permitted.2⟩
   | _, _, .reveal _ _ _ _ _ _ next, admission, policy, permitted =>
-      admitted_authenticOpening next admission policy.2 permitted
+      admitted_forceDisclose next admission policy.2 permitted
+
+/-- Authentic openings retain the original binding admission guarantee. -/
+theorem BehavioralPolicy.admitted_authenticOpening {who : Player}
+    {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (admission : CommitmentInterface program)
+    (policy : BehavioralPolicy who program) (permitted : policy.Admitted program admission) :
+    (policy.authenticOpening program).Admitted program admission :=
+  (normalizeDisclosures_admitted_iff program admission (policy.forceDisclose program)).mpr
+    (admitted_forceDisclose program admission policy permitted)
 
 namespace ProtocolState
 
@@ -124,58 +132,67 @@ theorem Config.Intended.binding_isSuccess {Γ : SourceCtx Player L}
   rw [bound]
   rfl
 
-/-- At an intended source point an authentic opening has the same action law
-as the original always-disclosing policy. Static metadata agreement is unnecessary. -/
-theorem BehavioralPolicy.protocolAction_authenticOpening {who : Player} :
+private theorem protocolAction_openingFrom {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → (policy : BehavioralPolicy who program) →
+    (program : SourceProgram Player L Γ O) → (registry : Registry Γ) →
+    (revelations : Revelations Γ) → (policy : BehavioralPolicy who program) →
     Disclosing program policy → (state : ProtocolState program) →
+    ProtocolState.StaticAt program registry revelations state →
     ProtocolState.Intended program state →
-    (policy.authenticOpening program).protocolAction program
-        (ProtocolState.observe who program state) =
+    BehavioralPolicy.protocolAction program
+        ((policy.forceDisclose program).normalizeDisclosuresFrom program registry revelations)
+          (ProtocolState.observe who program state) =
       policy.protocolAction program (ProtocolState.observe who program state)
-  | _, _, .ret _, _, _, _, _ => rfl
-  | _, _, .sample _ _ _ next, policy, disclosing, state, intended => by
-      cases state with
-      | inl _ => rfl
-      | inr rest => exact protocolAction_authenticOpening next policy disclosing rest intended
-  | _, _, .commit _ _ _ _ next, policy, disclosing, state, intended => by
+  | _, _, .ret _, _, _, _, _, _, _, _ => rfl
+  | _, _, .sample _ _ _ next, _, _, policy, disclosing, state, static, intended => by
       cases state with
       | inl _ => rfl
       | inr rest =>
-          exact protocolAction_authenticOpening next policy.2 disclosing rest intended
-  | _, _, .reveal _ owner name _ selected _ next, policy, disclosing, state, intended => by
+          exact protocolAction_openingFrom next _ _ policy disclosing rest static intended
+  | _, _, .commit _ _ _ _ next, _, _, policy, disclosing, state, static, intended => by
+      cases state with
+      | inl _ => rfl
+      | inr rest =>
+          exact protocolAction_openingFrom next _ _ policy.2 disclosing rest static intended
+  | _, _, .reveal published owner name _ selected _ next, registry, revelations,
+      policy, disclosing, state, static, intended => by
       cases state with
       | inl config =>
-          simp only [authenticOpening, forceDisclose, normalizeDisclosures,
-            PMF.pure_map, Bool.true_and]
-          change (if own : owner = who then
-              if active : who ∉ (config.view who).defaulted then
-                (PMF.pure
-                  (((config.view who).observation.cells.get (own ▸ selected)).getD
-                    .failure).isSuccess).map
-                  (fun disclose => some (OwnAction.reveal owner name disclose))
-              else PMF.pure none
-            else PMF.pure none) =
-            (if own : owner = who then
-              if active : who ∉ (config.view who).defaulted then
-                (policy.1 own (config.view who) active).map
-                  (fun disclose => some (OwnAction.reveal owner name disclose))
-              else PMF.pure none
-            else PMF.pure none)
+          change config.registry = registry ∧ @config.revelations = @revelations at static
+          rcases static with ⟨rfl, rfl⟩
+          have effective : effectiveDisclosureView published selected config.registry
+              config.revelations (config.view owner) true = true := by
+            rw [effectiveDisclosureView_observe]
+            unfold effectiveDisclosure disclosureResult
+            rw [intended.1.reveal_state selected]
+            obtain ⟨value, bound⟩ := intended.1.bound selected
+            simp only [Env.cons_get_here, Config.bindingOf, bound]
+          simp only [BehavioralPolicy.forceDisclose, BehavioralPolicy.normalizeDisclosuresFrom,
+            BehavioralPolicy.protocolAction,
+            ProtocolState.observe, Sum.elim_inl, PMF.pure_map]
           by_cases own : owner = who
           · subst who
+            have active : owner ∉ (config.view owner).defaulted := intended.1.not_defaulted owner
             rw [dite_eq_left (show owner = owner from rfl),
-              dite_eq_left (show owner = owner from rfl)]
-            by_cases active : owner ∉ (config.view owner).defaulted
-            · rw [dite_eq_left active, dite_eq_left active,
-                eq_pure_true_of_false_not_mem (disclosing.1 rfl (config.view owner) active)]
-              congr 2
-              simpa only [Config.view, sourceObserve, Env.get, ite_true, Option.getD_some] using
-                intended.1.binding_isSuccess selected
-            · rw [dite_eq_right active, dite_eq_right active]
+              dite_eq_left (show owner = owner from rfl), dite_eq_left active, dite_eq_left active,
+              effective, eq_pure_true_of_false_not_mem
+                (disclosing.1 rfl (config.view owner) active), PMF.pure_map]
           · rw [dite_eq_right own, dite_eq_right own]
       | inr rest =>
-          exact protocolAction_authenticOpening next policy.2 disclosing.2 rest intended.2
+          exact protocolAction_openingFrom next _ _ policy.2 disclosing.2 rest static intended.2
+
+/-- At an intended source point carrying its static metadata, the canonical
+opening has exactly the original always-disclosing action law. -/
+theorem BehavioralPolicy.protocolAction_authenticOpening {who : Player}
+    {Γ : SourceCtx Player L} {O : Finset VarId} (program : SourceProgram Player L Γ O)
+    (policy : BehavioralPolicy who program) (disclosing : Disclosing program policy)
+    (state : ProtocolState program)
+    (static : ProtocolState.StaticAt program [] (Revelations.initial Γ) state)
+    (intended : ProtocolState.Intended program state) :
+    (policy.authenticOpening program).protocolAction program
+        (ProtocolState.observe who program state) =
+      policy.protocolAction program (ProtocolState.observe who program state) :=
+  protocolAction_openingFrom program [] (Revelations.initial Γ) policy disclosing state static
+    intended
 
 end Vegas.SourceProgram

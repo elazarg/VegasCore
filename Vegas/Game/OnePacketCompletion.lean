@@ -3,6 +3,7 @@
 import Vegas.Game.SourcePrefixPublications
 import Vegas.Pending.ReactiveAcceptedOutput
 import Vegas.Pending.ReactiveCompletion
+import Vegas.Pending.ReactiveOnePacketMenu
 
 /-! # Source actions and accepted packet certificates for owned completions -/
 
@@ -155,7 +156,7 @@ private theorem record_eq_of_complete
     (action : (graph setup).Action record.event)
     (value : ((graph setup).outputLayout record.event).Value)
     (complete : native.config = state.config.complete record.event ready action value) :
-    record = EventGraph.Completion.fromDecision record.event
+    record = EventGraph.completion (graph setup) record.event
       (state.config.actualDecision record.event action) value := by
   rw [complete, EventGraph.Config.complete_history] at present
   exact List.mem_singleton.mp ((List.mem_append.mp present).resolve_left fresh)
@@ -198,7 +199,7 @@ private theorem accepted_record_content
           (execution.application.bindingResult candidate payload)) (by rw [nativeEq]; rfl)
       rw [execution.application.config.actualDecision_of_active record.event owner actor
         activeOwner] at recorded
-      have decision := eq_of_heq (EventGraph.Completion.mk.inj recorded).2.1
+      have decision := eq_of_heq (EventCompletion.mk.inj recorded).2.1
       refine ⟨?_, ?_, ?_⟩
       · rw [decision, Option.bind_some]
         simp only [callContent, view]
@@ -230,7 +231,7 @@ private theorem accepted_record_content
         (by rw [nativeEq]; rfl)
       rw [execution.application.config.actualDecision_of_active record.event owner actor
         activeOwner] at recorded
-      have decision := eq_of_heq (EventGraph.Completion.mk.inj recorded).2.1
+      have decision := eq_of_heq (EventCompletion.mk.inj recorded).2.1
       refine ⟨?_, ?_, ?_⟩
       · rw [decision, Option.bind_some]
         simp only [callContent, view]
@@ -256,7 +257,7 @@ theorem owned_completion_cases
         runtime.deadline record.event ≤ execution.application.clock - entered ∧
         ∃ (action : (graph setup).Action record.event)
           (value : ((graph setup).outputLayout record.event).Value),
-          ExpiredAction record.event action ∧ record = EventGraph.Completion.fromDecision
+          ExpiredAction record.event action ∧ record = EventGraph.completion (graph setup)
             record.event (execution.application.config.actualDecision record.event action) value) ∨
     (∃ native, native.drain = next.application ∧ record ∉ native.config.history ∧
       ((∃ message ∈ execution.network.pending, command = .include message.id ∧
@@ -294,5 +295,21 @@ theorem owned_completion_cases
     have same : owner = actor := Option.some.inj (owned.symm.trans acts)
     subst owner
     exact Or.inr (Or.inr ⟨native, drained, freshNative, trigger, silent, unchanged, inactive⟩)
+
+section Stopping
+
+variable [Fintype Player] (setup runtime)
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (bounds : MessageBounds (graph setup)) (horizon : Nat)
+  (scheduler : (application setup runtime leaks).Scheduler)
+
+/-- The event of the requested source rank has completed, possibly together
+with later events through automatic completion. -/
+def LateStopped (rank : Nat) (history : ((bounds.onePacketMenu runtime leaks).protocol
+    (initialLaw setup) horizon scheduler).History) : Prop :=
+  ∃ control : (application setup runtime leaks).Control, history.state = some control ∧
+    ∃ event ∈ control.execution.application.config.cut.completed, event.val = rank
+
+end Stopping
 
 end Vegas

@@ -46,7 +46,7 @@ def serviceCanonicalPolicy (profile : BehavioralProfile setup.program) (who : Pl
     | none => PMF.pure ⟨none⟩
     | some event =>
         if owned : (serviceGraph setup mode).actor? event = some who then
-          let observed := setup.eventGraph.fromModeObservation mode who
+          let observed := id
             (identity ▸ view.application.observation)
           if inactive : who ∈ observed.defaulted then PMF.pure ⟨none⟩ else
             ((compileEventProfile setup.program profile) who event owned observed inactive).map
@@ -101,7 +101,7 @@ theorem sourceServiceCanonicalPolicy_at_event (profile : BehavioralProfile setup
         (execution.observe (serviceApplication setup mode deadline leaks) who) =
       if inactive : who ∈ execution.application.config.defaulted then PMF.pure ⟨none⟩ else
         ((compileEventProfile setup.program profile) who event owned
-          (setup.eventGraph.fromModeObservation mode who
+          (id
             ((serviceGraph setup mode).playerObserve who execution.application.config))
           inactive).map
           ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
@@ -133,7 +133,7 @@ theorem sourceServiceCanonicalPolicy_at_event_history
       serviceCanonicalPolicy setup mode deadline leaks profile who (control.execution.recall who)
           (control.execution.observe (serviceApplication setup mode deadline leaks) who) =
         ((compileEventProfile setup.program profile) who event owned
-          (setup.eventGraph.fromModeObservation mode who
+          (id
             ((serviceGraph setup mode).playerObserve who control.execution.application.config))
           active).map
           ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
@@ -173,8 +173,8 @@ theorem serviceCanonicalPolicy_commit_of_observation {Γ : SourceCtx Player L}
       ((serviceGraph setup mode).playerStore owner execution.application.config.store) =
         some (sourceObserve owner source.state))
     (ownHistory : decodeCompletions setup.program
-      (((serviceGraph setup mode).ownCompletions owner execution.application.config.history).map
-        (setup.eventGraph.fromModeCompletion mode)) = source.history owner)
+      ((serviceGraph setup mode).ownCompletions owner execution.application.config.history) =
+        source.history owner)
     (defaults : execution.application.config.defaults = source.defaults)
     (turn : execution.application.publicView.ownTurn? owner =
       some (embedding.event ⟨0, by simp [eventCount]⟩)) :
@@ -202,7 +202,7 @@ theorem serviceCanonicalPolicy_commit_of_observation {Γ : SourceCtx Player L}
     simpa [event, headIndex, eventOwner?, eventCount] using aligned.actorEq headIndex
   rw [sourceServiceCanonicalPolicy_at_event setup leaks wholeProfile owner execution event
     turn actor]
-  let observation := setup.eventGraph.fromModeObservation mode owner
+  let observation := id
     ((serviceGraph setup mode).playerObserve owner execution.application.config)
   by_cases inactive : owner ∈ source.defaulted
   · have nativeInactive : owner ∈ execution.application.config.defaulted := by
@@ -253,8 +253,7 @@ theorem sourceServiceCanonicalPolicy_commit {Γ : SourceCtx Player L}
     (execution : (serviceApplication setup mode deadline leaks).Execution)
     (agree : refs.Agrees source.state execution.application.config.store)
     (history : decodeHistory setup.program
-      (execution.application.config.history.map
-        (setup.eventGraph.fromModeCompletion mode)) = source.history)
+      (execution.application.config.history) = source.history)
     (defaults : execution.application.config.defaults = source.defaults)
     (ready : execution.application.config.cut.Ready
       (embedding.event ⟨0, by simp [eventCount]⟩)) :
@@ -282,7 +281,6 @@ theorem sourceServiceCanonicalPolicy_commit {Γ : SourceCtx Player L}
     (decodeObservation?_playerStore_eq_some (graph := serviceGraph setup mode) refs owner
       source.state execution.application.config.store agree) ?_ defaults
     (serviceOwnTurn?_of_ready setup execution.application ready actor)
-  rw [ownCompletions_fromModeCompletion]
   exact congrFun history owner
 
 /-- The local source disclosure distribution is retained exactly. -/
@@ -304,8 +302,7 @@ theorem sourceServiceCanonicalPolicy_reveal {Γ : SourceCtx Player L}
     (execution : (serviceApplication setup mode deadline leaks).Execution)
     (agree : refs.Agrees source.state execution.application.config.store)
     (history : decodeHistory setup.program
-      (execution.application.config.history.map
-        (setup.eventGraph.fromModeCompletion mode)) = source.history)
+      (execution.application.config.history) = source.history)
     (defaults : execution.application.config.defaults = source.defaults)
     (ready : execution.application.config.cut.Ready
       (embedding.event ⟨0, by simp [eventCount]⟩)) :
@@ -333,7 +330,7 @@ theorem sourceServiceCanonicalPolicy_reveal {Γ : SourceCtx Player L}
     simpa [event, headIndex, eventOwner?, eventCount] using aligned.actorEq headIndex
   rw [sourceServiceCanonicalPolicy_at_event setup leaks wholeProfile owner execution event
     (serviceOwnTurn?_of_ready setup execution.application ready actor) actor]
-  let observation := setup.eventGraph.fromModeObservation mode owner
+  let observation := id
     ((serviceGraph setup mode).playerObserve owner execution.application.config)
   by_cases inactive : owner ∈ source.defaulted
   · have nativeInactive : owner ∈ execution.application.config.defaulted := by
@@ -354,9 +351,7 @@ theorem sourceServiceCanonicalPolicy_reveal {Γ : SourceCtx Player L}
     have ownHistory : decodeCompletions setup.program observation.ownActions =
         source.history owner := by
       change decodeCompletions setup.program
-        (((serviceGraph setup mode).ownCompletions owner execution.application.config.history).map
-          (setup.eventGraph.fromModeCompletion mode)) = _
-      rw [ownCompletions_fromModeCompletion]
+        (((serviceGraph setup mode).ownCompletions owner execution.application.config.history)) = _
       exact congrFun history owner
     have viewDefaults : observation.defaults = source.defaults := defaults
     rw [ownHistory, viewDefaults] at law

@@ -44,17 +44,18 @@ private def refusalPays : SourceProgram Unit simpleExpr [] ∅ :=
 
 /-- Bind a value and then refuse to open it. -/
 private def withholdOpen : BehavioralPolicy (who := ()) openPays :=
-  (fun _ _ => PMF.pure (.success false), fun _ _ => PMF.pure false, PUnit.unit)
+  (fun _ _ _ => PMF.pure (some (.success false)), fun _ _ _ => PMF.pure false, PUnit.unit)
 
 private def withholdRefusal : BehavioralPolicy (who := ()) refusalPays :=
-  (fun _ _ => PMF.pure (.success false), fun _ _ => PMF.pure false, PUnit.unit)
+  (fun _ _ _ => PMF.pure (some (.success false)), fun _ _ _ => PMF.pure false, PUnit.unit)
 
 /-- Refusing to open is outside the disclosing class. -/
 example : ¬ Disclosing openPays withholdOpen := by
   intro h
   exact h.1 rfl
-    (sourceObserve () (Env.cons (Val := CellVal simpleExpr) (x := bid)
-      (τ := .commitment () .bool) (.success false) (Env.empty (CellVal simpleExpr))), [])
+    ⟨sourceObserve () (Env.cons (Val := CellVal simpleExpr) (x := bid)
+      (τ := .commitment () .bool) (.success false) (Env.empty (CellVal simpleExpr))), ⟨[]⟩, []⟩
+    (by simp [DecisionView.defaulted, DefaultHistory.defaulted])
     (by simp [withholdOpen])
 
 example : Disclosing openPays (BehavioralPolicy.forceDisclose openPays withholdOpen) :=
@@ -62,37 +63,42 @@ example : Disclosing openPays (BehavioralPolicy.forceDisclose openPays withholdO
 
 private def payoffLaw {p : SourceProgram Unit simpleExpr [] ∅}
     (policy : BehavioralPolicy (who := ()) p) : PMF (List (Unit × Int)) :=
-  (p.run (fun _ => policy) (Env.empty (CellVal simpleExpr))).map p.evaluatePayoffs
+  (p.run (fun _ => policy) (Env.empty (CellVal simpleExpr))).map
+    (fun terminal => p.evaluatePayoffs terminal.state)
 
 /-- Withholding where opening pays is worth nothing. -/
 example : payoffLaw withholdOpen = PMF.pure [((), 0)] := by
-  simp only [payoffLaw, SourceProgram.run, openPays, withholdOpen, SourceProgram.runFrom,
+  simp [payoffLaw, SourceProgram.run, openPays, withholdOpen, SourceProgram.runFrom,
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
-    PMF.pure_bind, PMF.pure_map]
+    Config.initial, Config.defaulted, DefaultHistory.defaulted, DefaultHistory.record,
+    commitSuccessor, PMF.pure_map]
   rfl
 
 /-- Forcing the owner to open collects the payoff it was refusing. -/
 example :
     payoffLaw (BehavioralPolicy.forceDisclose openPays withholdOpen) = PMF.pure [((), 1)] := by
-  simp only [payoffLaw, SourceProgram.run, openPays, withholdOpen,
+  simp [payoffLaw, SourceProgram.run, openPays, withholdOpen,
     BehavioralPolicy.forceDisclose, SourceProgram.runFrom, SourceProgram.commitKernel,
-    SourceProgram.revealKernel, SourceProgram.afterCommit, PMF.pure_bind, PMF.pure_map]
+    SourceProgram.revealKernel, SourceProgram.afterCommit, Config.initial, Config.defaulted,
+    DefaultHistory.defaulted, DefaultHistory.record, commitSuccessor, PMF.pure_map]
   rfl
 
 /-- Where refusing is what pays, the same forcing destroys the payoff, so the
 premise cannot hold there. -/
 example : payoffLaw withholdRefusal = PMF.pure [((), 1)] := by
-  simp only [payoffLaw, SourceProgram.run, refusalPays, withholdRefusal, SourceProgram.runFrom,
+  simp [payoffLaw, SourceProgram.run, refusalPays, withholdRefusal, SourceProgram.runFrom,
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
-    PMF.pure_bind, PMF.pure_map]
+    Config.initial, Config.defaulted, DefaultHistory.defaulted, DefaultHistory.record,
+    commitSuccessor, PMF.pure_map]
   rfl
 
 example :
     payoffLaw (BehavioralPolicy.forceDisclose refusalPays withholdRefusal) =
       PMF.pure [((), 0)] := by
-  simp only [payoffLaw, SourceProgram.run, refusalPays, withholdRefusal,
+  simp [payoffLaw, SourceProgram.run, refusalPays, withholdRefusal,
     BehavioralPolicy.forceDisclose, SourceProgram.runFrom, SourceProgram.commitKernel,
-    SourceProgram.revealKernel, SourceProgram.afterCommit, PMF.pure_bind, PMF.pure_map]
+    SourceProgram.revealKernel, SourceProgram.afterCommit, Config.initial, Config.defaulted,
+    DefaultHistory.defaulted, DefaultHistory.record, commitSuccessor, PMF.pure_map]
   rfl
 
 /-- A published value pays; a failure does not. -/
@@ -135,9 +141,9 @@ example :
   have applied := premise.1 rfl
     ⟨Env.cons (Val := CellVal simpleExpr) (x := bid) (τ := .commitment () .bool)
       (.success false) (Env.empty (CellVal simpleExpr)),
-      [], Revelations.initial _, fun _ => []⟩
+      [], Revelations.initial _, fun _ => [], ⟨[]⟩⟩
   simp [runFrom, refusalPaysValue, revealSuccessor, payOnSuccess, expect_pure,
-    Registry.completedBy] at applied
+    Registry.completedBy, Config.defaulted, DefaultHistory.defaulted] at applied
   norm_num at applied
 
 end

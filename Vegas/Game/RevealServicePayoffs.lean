@@ -45,7 +45,7 @@ def serviceSourceReadout (state : (serviceApplication setup mode deadline leaks)
       Vegas.decodeConfig? setup.program setup.program
         (ContextRefs.initial setup.context (outputLayout setup.program))
         (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
-        (config.history.map (setup.eventGraph.fromModeCompletion mode))
+        (config.history.map (id))
     else none
 
 /-- Successful full decoding already certifies that every source event is
@@ -58,7 +58,7 @@ theorem serviceSourceReadout_eq_decode
         (Revelations.initial setup.context) [] (outputEmbedding setup.program)
         control.execution.application.config.store
         (control.execution.application.config.history.map
-          (setup.eventGraph.fromModeCompletion mode)) := by
+          (id)) := by
   unfold serviceSourceReadout
   rw [Option.bind_some]
   change (if control.execution.application.config.cut.Terminal then
@@ -82,7 +82,7 @@ theorem serviceSourceReadout_defaults
     source.defaults = control.execution.application.config.defaults := by
   rw [serviceSourceReadout_eq_decode, decodeConfig?] at read
   obtain ⟨_, _, rfl⟩ := Option.map_eq_some_iff.mp read
-  simp only [EventGraph.Config.defaults, EventGraph.Completion.defaults, List.map_map]
+  simp only [EventGraph.Config.defaults, EventCompletion.defaults, List.map_map]
   rfl
 
 /-- Every complete native cut has a full source readout, without an execution

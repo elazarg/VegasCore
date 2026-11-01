@@ -3,7 +3,6 @@
 import Vegas.Game.SourceServiceFirstTurnMixture
 import Vegas.Game.SourceServiceFacts
 import Vegas.Game.SourceServiceCompletion
-import Vegas.Game.SourceServiceCompletion
 import Vegas.Pending.ReactiveAcceptedOutput
 import Vegas.Pending.ReactiveCanonicalMenu
 

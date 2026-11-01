@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.SourceServiceSettledSound
+import Vegas.Game.ServiceSettledEvidence
+import Vegas.Game.SourceServiceAsyncTimeliness
 import Interaction.ReactiveReceipts
 
 /-! # Settled packet soundness for one prescribed owner
@@ -131,88 +133,66 @@ theorem SettledGood.owner_environment {horizon : Nat}
     (emitted : Emitted setup leaks execution message)
     (good : SettledGood setup leaks execution message) :
     SettledGood setup leaks next message := by
+  let app := serviceApplication setup mode deadline leaks
   obtain ⟨inputsEq, _, _⟩ := environmentStep_shape setup leaks execution next command reached
   have nextEmitted : Emitted setup leaks next message := by
     unfold Emitted at emitted ⊢
     rw [inputsEq]
     exact emitted
-  have step := contractStep_environment (serviceRuntime setup mode deadline) leaks execution next
-      command reached
-  have prefixOf := (serviceApplication setup mode deadline leaks).environmentStep_receipts_prefix
-      execution next command reached
+  have path := (reactiveApplication_graphSteps (serviceRuntime setup mode deadline)
+    leaks).environmentStep execution next command reached
+  have prefixOf := app.environmentStep_receipts_prefix execution next command reached
   obtain ⟨event, named, ⟨ready, unaccepted, pending⟩ | ⟨accepted, completed, content⟩⟩ := good
-  · rcases step with ⟨configEq, _, _, _⟩ | ⟨other, otherReady, action, member⟩
-    · by_cases acceptedNow : (message.id, true) ∈ next.receipts
-      · obtain ⟨after, handled, applicationEq⟩ :=
-          (serviceApplication setup mode deadline leaks).environmentStep_newly_accepted
-            execution next command facts.unique reached emitted unaccepted acceptedNow
-        obtain ⟨_, acceptedEvent, acceptedNamed, _, acceptedCompleted, _⟩ :=
+  · by_cases completedNext : event ∈ next.application.config.cut.completed
+    · have acceptedNow := owner_packet_accepted inclusion trace who calls conform once message
+        authored nextEmitted event named completedNext
+      obtain ⟨after, handled, applicationEq⟩ := app.environmentStep_newly_accepted
+        execution next command facts.unique reached emitted unaccepted acceptedNow
+      obtain ⟨native, nativeHandle, drained⟩ := reactiveHandle_call handled
+      obtain ⟨stepEvent, stepNamed, stepReady, stepAction, stepMember⟩ := handle_config_mem_step
+        (serviceRuntime setup mode deadline) execution.application native _ nativeHandle
+      have sameEvent : stepEvent = event := Option.some.inj (stepNamed.symm.trans named)
+      subst stepEvent
+      have nativeDone : event ∈ native.config.cut.completed := by
+        rw [execution.application.config.step_cut event stepReady stepAction native.config
+          stepMember]
+        exact Finset.mem_insert_self _ _
+      have nativeContent := settledContent_of_pending execution.application native next.receipts
+        message event named stepReady stepAction stepMember pending
+      have retained := (State.settledContent_iff_of_path native.drain_graph_steps next.receipts
+        next.receipts message event named nativeDone).mpr nativeContent
+      refine ⟨event, named, Or.inr ⟨acceptedNow, completedNext, ?_⟩⟩
+      unfold settledRecord
+      rw [applicationEq, ← drained]
+      exact retained
+    · have owned : (serviceGraph setup mode).actor? event = some message.sender := by
+        have legal := legalFacts setup leaks horizon scheduler _ trace
+        obtain ⟨issuer, issuerMember, material, transmission, issuerEmitted, _, _, _⟩ :=
+          legal.provenance.inputs message nextEmitted
+        rw [authored] at issuerMember
+        have conforming := conform issuer issuerMember material message transmission issuerEmitted
+        obtain ⟨named', namedEq, _, actor⟩ :=
+          (serviceRuntime setup mode deadline).freshServiceEnvelope_owned _ message conforming
+        rw [named] at namedEq
+        cases Option.some.inj namedEq
+        exact actor
+      refine ⟨event, named, Or.inl ⟨?_, ?_,
+        pendingContent_of_path owned ready path completedNext pending⟩⟩
+      · exact ⟨completedNext, fun predecessor member =>
+          EventGraph.Config.Step.path_completed_mono path (ready.2 member)⟩
+      · intro acceptedNow
+        obtain ⟨after, handled, applicationEq⟩ := app.environmentStep_newly_accepted
+          execution next command facts.unique reached emitted unaccepted acceptedNow
+        obtain ⟨_, acceptedEvent, acceptedNamed, _, done, _⟩ :=
           accepted_inclusion execution.application after message handled
         rw [named] at acceptedNamed
         cases Option.some.inj acceptedNamed
-        rw [← applicationEq, configEq] at acceptedCompleted
-        exact (ready.1 acceptedCompleted).elim
-      · have observationEq : next.application.publicView.observation =
-            execution.application.publicView.observation := by
-          change (serviceGraph setup mode).publicObserve next.application.config =
-            (serviceGraph setup mode).publicObserve execution.application.config
-          rw [configEq]
-        exact ⟨event, named, Or.inl ⟨configEq ▸ ready, acceptedNow,
-          pendingContent_congr observationEq pending⟩⟩
-    · by_cases same : other = event
-      swap
-      · have owned : (serviceGraph setup mode).actor? event = some message.sender := by
-          have legal := legalFacts setup leaks horizon scheduler _ trace
-          obtain ⟨issuer, issuerMember, material, transmission, issuerEmitted, _, _, _⟩ :=
-            legal.provenance.inputs message nextEmitted
-          rw [authored] at issuerMember
-          have conforming := conform issuer issuerMember material message transmission
-            issuerEmitted
-          obtain ⟨named', namedEq, _, actor⟩ :=
-            (serviceRuntime setup mode deadline).freshServiceEnvelope_owned _ message conforming
-          rw [named] at namedEq
-          cases Option.some.inj namedEq
-          exact actor
-        refine ⟨event, named, Or.inl ⟨?_, fun acceptedNow => ?_, ?_⟩⟩
-        · rw [execution.application.config.step_cut other otherReady action _ member]
-          exact ready.after_complete otherReady (Ne.symm same)
-        · obtain ⟨after, handled, applicationEq⟩ :=
-            (serviceApplication setup mode deadline leaks).environmentStep_newly_accepted
-            execution next command facts.unique reached emitted unaccepted acceptedNow
-          obtain ⟨_, acceptedEvent, acceptedNamed, _, acceptedCompleted, _⟩ :=
-            accepted_inclusion execution.application after message handled
-          rw [named] at acceptedNamed
-          cases Option.some.inj acceptedNamed
-          rw [← applicationEq, execution.application.config.step_cut other otherReady action _
-            member, EventOrder.Cut.mem_complete] at acceptedCompleted
-          rcases acceptedCompleted with equal | old
-          · exact same equal.symm
-          · exact ready.1 old
-        · exact pendingContent_of_other_step named owned ready otherReady same member pending
-      have reversed : event = other := same.symm
-      subst reversed
-      have completedNext : event ∈ next.application.config.cut.completed := by
-        rw [execution.application.config.step_cut event otherReady action
-          next.application.config member]
-        exact (EventOrder.Cut.mem_complete _ _ _ _).mpr (Or.inl rfl)
-      have acceptedNow := owner_packet_accepted inclusion trace who calls conform once message
-        authored nextEmitted event named completedNext
-      obtain ⟨after, handled, applicationEq⟩ :=
-        (serviceApplication setup mode deadline leaks).environmentStep_newly_accepted
-            execution next command facts.unique reached emitted unaccepted acceptedNow
-      obtain ⟨stepEvent, stepNamed, stepReady, stepAction, stepMember⟩ := handle_config_mem_step
-        (serviceRuntime setup mode deadline) execution.application after _
-        (reactiveHandle_call handled)
-      have sameEvent : stepEvent = event := Option.some.inj (stepNamed.symm.trans named)
-      subst stepEvent
-      refine ⟨event, named, Or.inr ⟨acceptedNow, completedNext, ?_⟩⟩
-      unfold settledRecord
-      rw [applicationEq]
-      exact settledContent_of_pending execution.application after next.receipts message event
-        named stepReady stepAction stepMember pending
-  · refine ⟨event, named, Or.inr ⟨prefixOf.subset accepted, step.completed_mono completed, ?_⟩⟩
-    exact settledContent_step step execution.receipts next.receipts message event named
-      completed content
+        rw [← applicationEq] at done
+        exact completedNext done
+  · refine ⟨event, named, Or.inr ⟨prefixOf.subset accepted,
+      EventGraph.Config.Step.path_completed_mono path completed, ?_⟩⟩
+    exact (State.settledContent_iff_of_path path execution.receipts next.receipts message event
+      named completed).mpr content
 
 /-- An arbitrary response preserves prior good packets of the selected owner;
 only a fresh response authored by that owner needs a conformance premise. -/
@@ -291,8 +271,8 @@ theorem sourceServiceTurnPolicy_settledGood {horizon : Nat}
           players count (by omega) prior priorMem
       rw [show horizon - count = (horizon - (count + 1)) + 1 by omega] at trace
       have facts := settledFacts_history (serviceInitialLaw setup mode) horizon scheduler trace
-      obtain ⟨calls, once, _⟩ := serialFacts_roundsFrom contract players who timing profile follows
-        count (by omega) prior priorMem
+      obtain ⟨calls, once⟩ := sourceServiceTurnPolicy_freshCalls scheduler players who timing
+        profile follows count prior priorMem
       have conform : FreshCallsConform setup leaks prior who :=
         fun entry member material message transmission emitted =>
           sourceServiceTurnPolicy_freshServiceEnvelope scheduler players who timing profile

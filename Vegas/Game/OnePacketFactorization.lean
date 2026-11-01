@@ -565,19 +565,6 @@ theorem transition_respond (control : (application setup runtime leaks).Control)
   rfl
 
 omit [Fintype Player] in
-/-- A response appends one entry, with the responder's view and action, to its
-own recall. -/
-private theorem respond_recall_self (execution : (application setup runtime leaks).Execution) (who
-  : Player)
-    (action : (application setup runtime leaks).Action) :
-    ∃ emitted, (execution.respond (application setup runtime leaks) who action).recall who =
-      execution.recall who ++
-        [⟨execution.observe (application setup runtime leaks) who, action, emitted⟩] := by
-  rcases action with ⟨transmission⟩
-  cases transmission <;>
-    simp only [ReactiveApplication.Execution.respond, ↓reduceIte] <;> exact ⟨_, rfl⟩
-
-omit [Fintype Player] in
 /-- A scheduler round from an initialized state reaches an initialized state
 with the same recalls. -/
 theorem transition_environment (control : (application setup runtime leaks).Control)
@@ -705,7 +692,7 @@ theorem step_factor {sequence : ℕ → setup.intendedModel.BehavioralAssessment
           rw [transitionOne, mul_one] at mass
           by_cases owner : actor = who
           · subst owner
-            obtain ⟨emitted, recallEq⟩ := respond_recall_self (runtime := runtime)
+            obtain ⟨emitted, recallEq, _⟩ := respond_recall_self setup leaks
               control.execution actor
               ((joint actor).getD ⟨none⟩)
             have active : (application setup runtime leaks).actor (some control) = some actor :=

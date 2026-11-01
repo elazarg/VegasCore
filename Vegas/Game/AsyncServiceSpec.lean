@@ -98,6 +98,13 @@ theorem completes : CompletesPlay (serviceRuntime service.setup service.mode ser
   service.contract.completes
 
 
+/-- The bounded raw response menu: every native response within the service's
+message bounds. -/
+abbrev rawMenu [Fintype Player] : (serviceApplication service.setup service.mode service.deadline
+    service.leaks).ResponseMenu :=
+  service.bounds.rawMenu (serviceRuntime service.setup service.mode service.deadline) service.leaks
+
+
 variable (admission : CommitmentInterface service.setup.program)
 
 /-- The source information model of the service's program, at its supplied commitment
@@ -149,7 +156,7 @@ theorem clientProfile_congr (menu : (serviceApplication service.setup service.mo
     normalizeDisclosureProfile service.setup.program
       (service.setup.decodeBehavioralProfile admission
         other) who := by
-    simp only [normalizeDisclosureProfile,
+    simp only [normalizeDisclosureProfile, normalizeDisclosureProfileFrom,
       Setup.decodeBehavioralProfile, same]
   exact congrArg (menu.restrictPolicy (serviceInitialLaw service.setup service.mode) service.horizon
     service.scheduler who) (clientPolicy_congr service timing _ _ who decoded)

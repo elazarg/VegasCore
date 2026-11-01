@@ -117,7 +117,7 @@ private theorem ready_view_completion_step (saved : PublicView graph)
       ⟨completed, completedReady, action, member, activatedEq, acceptedOnly⟩
   · refine ⟨extra, ?_, together, fun owner owned entered seen => ?_,
       fun field changed => ?_⟩
-    · change after.config.history.map Completion.event = _
+    · change after.config.history.map EventCompletion.event = _
       rw [configEq]
       exact order
     · rw [activatedEq]
@@ -130,7 +130,7 @@ private theorem ready_view_completion_step (saved : PublicView graph)
       action _ member
     refine ⟨extra ++ [completed], ?_, fun other inside => ?_,
       fun owner owned entered seen => ?_, fun field changed => ?_⟩
-    · change after.config.history.map Completion.event = _
+    · change after.config.history.map EventCompletion.event = _
       rw [historyEq, ← List.append_assoc]
       exact congrArg (· ++ [completed]) order
     · rcases List.mem_append.mp inside with old | new
@@ -277,7 +277,7 @@ private theorem store_view_completion_step (saved : PublicView graph)
       action _ stepped
     have orderEq : after.publicView.observation.completionOrder =
         before.publicView.observation.completionOrder ++ [completed] := by
-      change after.config.history.map Completion.event = _
+      change after.config.history.map EventCompletion.event = _
       rw [historyEq]
       rfl
     refine ⟨orderEq ▸ prefixBefore.trans (List.prefix_append _ _), fun field changed => ?_⟩

@@ -159,8 +159,8 @@ theorem sourceServiceFirstTurn_no_miss {horizon : Nat}
       rw [show horizon - count = (horizon - (count + 1)) + 1 by omega] at trace
       obtain ⟨nextTrace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon
           scheduler players (count + 1) within execution reachedNext
-      obtain ⟨calls, once, _⟩ := serialFacts_roundsFrom contract players who
-        (firstTurnTiming setup turns mode) profile follows (count + 1) within execution reachedNext
+      obtain ⟨calls, once⟩ := sourceServiceTurnPolicy_freshCalls scheduler players who
+        (firstTurnTiming setup turns mode) profile follows (count + 1) execution reachedNext
       have conform : FreshCallsConform setup leaks execution who :=
         fun entry member material message fresh emitted =>
           sourceServiceTurnPolicy_freshServiceEnvelope scheduler players who

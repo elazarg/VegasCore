@@ -1,17 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceRetainedSlots
+import Vegas.Game.RevealService
+import Vegas.Pending.ReactiveCanonicalMenu
+import Vegas.Pending.ReactiveBoundedValues
 
 /-! # Prescribed policy support on retained service histories
 
-A completed binding miss still supplies its failure-valued output to later
-source observations. The compiler therefore decodes every ready source-ranked
-decision, including decisions reached after misses. Value-only source admission
-then supplies successful binding choices at these abstract views.
-
-This is local policy admissibility. It does not identify a miss-reached source
-continuation with a legal history of the original value-only game, and does not
-assert that retained histories have zero audit charges.
+Canonical responses are bounded raw responses. Authentic opening packets carry
+values from successful stored bindings and handles from the native accepted
+table. These local bounds do not depend on a publication guard succeeding.
 -/
 
 noncomputable section
@@ -44,8 +41,8 @@ theorem canonicalMenu_in_raw (bounds : MessageBounds (serviceGraph setup mode)) 
       original allowed
 
 omit [Fintype Player] in
-/-- A successful resolution packet uses the covered candidate value and an
-admitted accepted handle. Failed resolution intentions transmit no packet. -/
+/-- An authentic opening uses the covered binding value and an admitted accepted
+handle, regardless of the eventual publication guard result. -/
 theorem sourceService_resolutionPacket_allowed
     (bounds : MessageBounds (serviceGraph setup mode))
     (execution : (serviceApplication setup mode deadline leaks).Execution)
@@ -61,25 +58,22 @@ theorem sourceService_resolutionPacket_allowed
       choice (execution.observe (serviceApplication setup mode deadline leaks) who).application =
           some packet) :
     bounds.AllowsPacket packet := by
-  dsimp only [reactiveResolutionPacket] at sent
-  split at sent
-  · split at sent
-    · rename_i value resolved
-      split at sent
-      · rename_i candidate accepted
-        split at sent
-        · cases sent
-          refine ⟨handles binding.field candidate accepted, ?_⟩
-          apply bounds.resolved_value_covered execution.application valid values binding checks
-            value
-          change EventGraph.EventCode.resolveOutput? binding checks true
-            ((serviceGraph setup mode).playerStore who execution.application.config.store) = _
-            at resolved
-          rwa [EventGraph.EventCode.resolveOutput?_playerStore] at resolved
-        · cases sent
-      · cases sent
-    · cases sent
-    · cases sent
-  · cases sent
+  rcases reactiveResolutionPacket_shape who event payload binding checks outputEq choice
+      (execution.observe (serviceApplication setup mode deadline leaks) who).application with
+    ⟨candidate, raw, opened⟩ | quiet
+  · have same : packet = .opening event candidate raw := Option.some.inj (sent.symm.trans opened)
+    subst packet
+    obtain ⟨_active, _disclose, _named, value, stored, accepted, _owned, rawEq⟩ :=
+      reactiveResolutionPacket_opening_spec who event payload binding checks outputEq choice
+        (execution.observe (serviceApplication setup mode deadline leaks) who).application event
+        candidate raw opened
+    subst raw
+    refine ⟨handles binding.field candidate accepted, ?_⟩
+    apply bounds.binding_value_covered execution.application valid values binding value
+    change binding.get? ((serviceGraph setup mode).playerStore who
+      execution.application.config.store) = some (.success value) at stored
+    rwa [binding.get?_playerStore who execution.application.config.store rfl] at stored
+  · rw [quiet] at sent
+    cases sent
 
 end Vegas

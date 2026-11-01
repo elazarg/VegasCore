@@ -94,8 +94,6 @@ theorem counted_accepted_stop_runFrom
     (compileEventProfile setup.program wholeProfile) certificate players start current clear
     invariant atSent owned fresh
   have historyEq := checkpoint.history
-  have completionId : setup.eventGraph.fromModeCompletion .sequential = id := rfl
-  rw [completionId, List.map_id] at historyEq
   have sourceLaw := CompiledPolicySuffix.runFrom_remaining_law setup.program wholeProfile
     program profile refs source
     embedding refsBefore offset aligned (sent.complete event ready action output)
@@ -107,7 +105,7 @@ theorem counted_accepted_stop_runFrom
       start).bind fun _ => (SourceProgram.runFrom program profile source).map some) := by
         apply bind_congr_on_support _
         intro history supported
-        obtain ⟨final, ready', state, _done, _actual, law⟩ := stopped history supported
+        obtain ⟨final, ready', state, _done, _actual, _config, law⟩ := stopped history supported
         rw [state]
         dsimp only
         rw [law]

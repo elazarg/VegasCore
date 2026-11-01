@@ -97,31 +97,5 @@ theorem foreign_firstActivation_prefix_of_recorded
   exact ⟨before, prior, response, joint, legal, realized, future, isPrefix, acting, chosen, pending,
     never⟩
 
-/-- A pending authentic envelope names a submission already retained in its
-sender's recall. It can therefore be attributed before an inclusion attempt. -/
-theorem eventRecorded_of_pending
-    {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
-    (owner : Player) (event : (graph setup).EventId)
-    (message : Message Player (WitnessedPacket (graph setup)))
-    (member : message ∈ control.execution.network.pending)
-    (sender : message.sender = owner)
-    (named : message.payload.call.event? (graph setup) = some event) :
-    runtime.eventRecorded leaks (control.execution.recall owner) event = true := by
-  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
-    horizon scheduler trace
-  have signed := signedCommitments_history runtime leaks (initialLaw setup)
-    (serviceInitialLaw_initialized setup) horizon scheduler rawTrace
-  obtain ⟨entry, remembered, material, transmitted, emitted, _⟩ :=
-    signed.provenance.pending message member
-  rw [sender] at remembered
-  obtain ⟨_, actual, sent, call⟩ := signed.emissions owner entry remembered message emitted
-  apply (runtime.eventRecorded_iff leaks (control.execution.recall owner) event).mpr
-  refine ⟨entry, remembered, ?_⟩
-  unfold EventGraphRuntime.submittedEvent?
-  rw [sent]
-  change actual.call.packet.event? (graph setup) = some event
-  rw [← call]
-  exact named
 
 end Vegas

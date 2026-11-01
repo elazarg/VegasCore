@@ -2,7 +2,10 @@
 
 import Vegas.Source.IntendedForPlayer
 import Vegas.Game.SourcePrefixPublications
-import Vegas.Game.OnePacketOpeningUnique
+import Vegas.Game.OnePacketPrescribedSupport
+import Vegas.Game.OnePacketIntendedProjection
+import Vegas.Pending.ReactiveDisclosure
+import Vegas.EventGraph.ResolutionProvenance
 
 /-! # Disclosures resolve at states forced for the observer
 
@@ -157,7 +160,7 @@ theorem decodedState_intendedFor_or_owes (wellFormed : setup.WellFormed) (who : 
     menu horizon scheduler trace control current
   intro initial member
   exact Or.inl (ProtocolState.intendedFor_entry setup.program _
-    ((Config.initial_intended wellFormed member).intendedFor who))
+    ((setup.initialConfig_intended wellFormed member).intendedFor who))
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}
@@ -196,30 +199,26 @@ theorem disclosureResolves_of_forced (wellFormed : setup.WellFormed)
     apply control.execution.application.config.read_available ready
     rw [← EventGraph.EventCode.readFields_cast outputEq ((graph setup).nodes event), codeEq]
     exact member
+  have active := control.execution.application.active_of_ready_owned facts.quiescent ready owned
   obtain ⟨result, resolved⟩ := Option.isSome_iff_exists.mp available
   have discloses : (cast (congrArg EventGraph.EventField.Action outputEq)
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) : Bool) = true := by
     simp
   cases result with
   | success value =>
-      obtain ⟨_, _, _, _, packet⟩ := EventGraphRuntime.reactiveResolutionPacket_provenance
-        runtime leaks control.execution.application facts.binding owner event payload
-        binding checks outputEq _ discloses value resolved
-      simp only [EventGraphRuntime.canonicalServiceDecision,
-        EventGraphRuntime.canonicalReactiveDecision, node]
-      change ((EventGraphRuntime.reactiveNormalization runtime leaks).action owner
-        (control.execution.recall owner) (control.execution.observe (application setup runtime
-          leaks)
-          owner)
-        ⟨(EventGraphRuntime.reactiveResolutionPacket owner event payload binding checks
-          outputEq _ (runtime.reactiveApplication leaks |>.observePlayer
-            control.execution.application owner)).map fun packet =>
-          (disclosureSubmission packet).normalizeReactive owner
-            (runtime.reactiveApplication leaks |>.observePlayer
-              control.execution.application owner) []⟩).transmission ≠ none
-      rw [packet]
-      simp only [Option.map_some, ReactiveApplication.SubmissionNormalization.action, ne_eq,
-        reduceCtorEq, not_false_eq_true]
+      have stored := EventGraph.EventCode.binding_success_of_resolve_success binding checks true
+        control.execution.application.config.store value resolved
+      obtain ⟨candidate, accepted, candidateOwner, _verified, _packet⟩ :=
+        EventGraphRuntime.reactiveResolutionPacket_provenance runtime leaks
+          control.execution.application facts.binding owner event payload binding checks outputEq
+          _ active discloses value stored
+      apply runtime.canonicalServiceDecision_openable leaks owner
+        (control.execution.recall owner)
+        (control.execution.observe (application setup runtime leaks) owner) event owner payload
+          binding checks outputEq codeEq node active value _ candidate accepted candidateOwner
+      change binding.get? ((graph setup).playerStore owner
+        control.execution.application.config.store) = _
+      rw [EventGraph.FieldRef.get?_playerStore binding owner _ rfl, stored]
   | failure =>
       exfalso
       -- The decoded point is intended for the actor and shows no failed reveal of it.
@@ -237,12 +236,20 @@ theorem disclosureResolves_of_forced (wellFormed : setup.WellFormed)
         rcases holds _ decoded with intended | owed
         · exact intended
         · exact (notOwed owed).elim
+      have publicationProvenance := publicationsDefaulted_of_decode
+        (menu := bounds.onePacketMenu runtime leaks) ⟨some control, trace⟩ control rfl ordered
+          decoded
       have clean : ¬ ProtocolState.RevealFailed owner setup.program point := fun failed =>
-        notExcluded (ProtocolState.RevealFailed.excluded setup.program _ failed)
+        notExcluded (ProtocolState.RevealFailed.excluded setup.program _
+          publicationProvenance failed)
       -- Complete the reveal by disclosing: its output is a failure.
       have stepEq := control.execution.application.config.step_eq_map_of_code event ready
         outputEq _ codeEq true (PMF.pure .failure)
-        (by rw [EventGraph.EventCode.resolve_eval?, resolved]; rfl)
+        (by
+          simp only [EventGraph.EventCode.effectiveAction, EventGraph.EventCode.actor,
+            ite_eq_right active]
+          rw [EventGraph.EventCode.resolve_eval?, resolved]
+          rfl)
       rw [PMF.pure_map] at stepEq
       have member : control.execution.application.config.complete event ready
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
@@ -254,13 +261,16 @@ theorem disclosureResolves_of_forced (wellFormed : setup.WellFormed)
         exact (PMF.mem_support_pure_iff _ _).mpr rfl
       obtain ⟨next, reached⟩ := residual.step event ready _ _ member
       rw [pointEq] at reached
-      have atRank := (ready_iff_rank setup _ forcedRank ordered event).mp ready
+      have atEvent : control.execution.application.config.cut.IsPrefix event.val :=
+        ⟨event.isLt.le, fun query =>
+          setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+      have atRank := atEvent.unique ordered
       subst atRank
       have nextDecoded := next.decode
       unfold sourceServicePrefix? serviceSourcePrefix? at nextDecoded
       have failedNext := ProtocolState.revealFailed_of_decode_failure setup.program event.val
         (ContextRefs.initial setup.context (outputLayout setup.program)) []
-        (Revelations.initial setup.context) (outputRef setup.program) _ _ _ event.isLt owner
+        (Revelations.initial setup.context) (outputRef setup.program) _ _ _ _ event.isLt owner
         payload outputEq nextDecoded ((eventOwner?_eq_actor setup.program event).trans owned)
         (by
           change (control.execution.application.config.complete event ready _ _).outputs

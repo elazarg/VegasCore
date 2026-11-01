@@ -53,7 +53,7 @@ theorem intendedOpening_step_closed [Fintype Player]
         setup.program
           (ProtocolState.observe who setup.program state)).support at chosen
     rw [BehavioralPolicy.protocolAction_authenticOpening setup.program _ disclosing state
-      intendedState] at chosen
+      static intendedState] at chosen
     change joint who ∈ ((BehavioralPolicy.fromProtocol setup.program
       (CommitmentInterface.values setup.program)
       (fun view => setup.intendedSourceProfile intended who (some view))).protocolAction

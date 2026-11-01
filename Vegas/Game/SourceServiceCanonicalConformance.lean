@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.SourceServiceCanonicalSlots
+import Vegas.Game.SourceServiceCanonicalAcceptance
+import Vegas.Pending.ReactiveCompiledResolution
 
 /-! # Prescribed fresh calls conform to the audit
 
@@ -31,41 +33,6 @@ section Decision
 
 variable {setup leaks}
 
-/-- An opening prepared by the resolution decision discloses the owner-locally
-validated value under the accepted handle of the player's own binding. -/
-theorem reactiveResolutionPacket_opening {owner : Player} (who : Player)
-    (event : (serviceGraph setup mode).EventId) (payload : L.Ty)
-    (binding : EventGraph.FieldRef (serviceGraph setup mode).layout (.binding owner payload))
-    (checks : List (EventGraph.GuardCheck (serviceGraph setup mode).layout payload))
-    (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
-    (action : (serviceGraph setup mode).Action event) (view : PlayerView (serviceGraph setup mode))
-    (named : (serviceGraph setup mode).EventId) (candidate : Handle (serviceGraph setup mode))
-    (raw : Raw L)
-    (opened : reactiveResolutionPacket who event payload binding checks outputEq action view =
-      some (.opening named candidate raw)) :
-    (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) = true ∧
-      ∃ value, EventGraph.EventCode.resolveOutput? binding checks true view.observation.store =
-          some (.success value) ∧
-        view.publicView.accepted binding.field = some candidate ∧ candidate.1 = who ∧
-        raw = ⟨payload, value⟩ := by
-  unfold reactiveResolutionPacket at opened
-  dsimp only at opened
-  split at opened
-  · rename_i disclose
-    split at opened
-    · rename_i value resolved
-      split at opened
-      · rename_i handle accepted
-        split at opened
-        · rename_i owned
-          cases opened
-          exact ⟨disclose, value, resolved, accepted, owned, rfl⟩
-        · cases opened
-      · cases opened
-    · cases opened
-    · cases opened
-  · cases opened
-
 /-- **A canonical decision conforms.** At a legal history where `event` is the
 turn of `who`, within its deadline, with the counted slot fresh, every fresh
 call of the canonical decision satisfies the audit's conformance rule on the
@@ -92,135 +59,53 @@ theorem canonicalServiceDecision_freshServiceEnvelope {horizon remaining : Nat}
       ⟨(who, middle.network.nextSerial who), (serviceApplication setup mode deadline leaks).packet
         ((serviceApplication setup mode deadline leaks).submit middle.application who material) who
         (middle.network.known who) material⟩ := by
+  let runtime := serviceRuntime setup mode deadline
   let app := serviceApplication setup mode deadline leaks
-  have facts := legalFacts setup leaks horizon scheduler _ trace
-  have readyView := (PublicView.ownTurn?_spec _ who event turn).1
+  have acceptable := canonicalServiceDecision_freshServiceAcceptable trace who event turn within
+    action material submits
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
-  have ready := (middle.application.publicView_eventReady event).mp readyView
-  have inTime : (match middle.application.activatedAt event with
-      | none => False
-      | some entered => middle.application.clock - entered <
-          (serviceRuntime setup mode deadline).deadline event) := within
+  have active := runtime.canonicalServiceDecision_active leaks who (middle.recall who)
+    (middle.observe app who) event action material submits
   cases node : nodeView (serviceGraph setup mode) event with
   | sample payload law outputEq codeEq =>
-      have none := nodeView_sample_actor outputEq codeEq
-      rw [owned] at none
-      cases none
+      have ownerless := nodeView_sample_actor outputEq codeEq
+      rw [owned] at ownerless
+      cases ownerless
   | bind actor payload outputEq codeEq =>
-      have actorEq : actor = who :=
+      have same : actor = who :=
         Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans owned)
-      subst actorEq
-      obtain ⟨choice, rfl⟩ : ∃ choice : PublicationResult (L.Val payload),
+      subst actor
+      obtain ⟨choice, rfl⟩ : ∃ choice : Option (PublicationResult (L.Val payload)),
           action = cast (congrArg EventGraph.EventField.Action outputEq.symm) choice :=
         ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
-      have canonical := canonicalFreshSlot_canonical actor (middle.observe app actor).application
-        fresh
-      rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_binding leaks actor
-              (middle.recall actor) (middle.observe app actor) event payload outputEq codeEq node _
-              canonical choice] at submits
-      cases Option.some.inj submits
-      have vacant : middle.application.accepted (.inr event) = none := by
-        cases associated : middle.application.accepted (.inr event) with
-        | none => rfl
-        | some candidate =>
-            exact False.elim (ready.1
-              (facts.binding.toAssociationInvariant.accepted_complete event candidate
-                associated))
-      have unused : middle.application.HandleUnused
-          (actor, .prepared (middle.application.publicView.bindingCount actor)) :=
-        fun field associated => facts.binding.accepted_fixed field _ associated fresh
-      rw [reactiveApplication_packet_none,
-        middle.application.publicView_tokenFor_of_ready _ event rfl ready]
-      apply ((serviceRuntime setup mode deadline).freshServiceEnvelope_binding_iff
-              middle.application.publicView (actor, middle.network.nextSerial actor) event
-              (actor, .prepared (middle.application.publicView.bindingCount actor)) none _).mpr
-      refine ⟨?_, rfl, rfl, rfl⟩
-      simp only [PublicView.BindingIncludable, node]
-      exact ⟨readyView, inTime, by trivial, by trivial, vacant, unused⟩
-  | resolve actor payload binding checks outputEq codeEq =>
-      have actorEq : actor = who :=
-        Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
-      subst actorEq
-      rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_eq_of_not_bind leaks actor
-        (middle.recall actor) (middle.observe app actor) event action
-        (fun _ _ _ _ bind => by rw [node] at bind; cases bind)] at submits
-      unfold EventGraphRuntime.serviceDecision EventGraphRuntime.reactiveDecision at submits
-      simp only [node] at submits
-      rcases reactiveResolutionPacket_shape actor event payload binding checks outputEq action
-          (middle.observe app actor).application with ⟨candidate, raw, packet⟩ | packet
-      · obtain ⟨isTrue, value, localResolved, associated, handleOwner, rawEq⟩ :=
-          reactiveResolutionPacket_opening actor event payload binding checks outputEq action
-            (middle.observe app actor).application event candidate raw packet
-        subst rawEq
-        have resolved : EventGraph.EventCode.resolveOutput? binding checks true
-            middle.application.config.store = some (.success value) := by
-          have local' := localResolved
-          change EventGraph.EventCode.resolveOutput? binding checks true
-            ((serviceGraph setup mode).playerStore actor middle.application.config.store) = _
-            at local'
-          rwa [EventGraph.EventCode.resolveOutput?_playerStore] at local'
-        have stored := EventGraph.EventCode.binding_success_of_resolve_success binding checks
-          true middle.application.config.store value resolved
-        obtain ⟨handle, associatedHandle, _, fixed⟩ :=
-          facts.binding.success_provenance binding value stored
-        have handleEq : handle = candidate := by
-          have same : middle.application.accepted binding.field = some candidate := associated
-          rw [associatedHandle] at same
-          exact Option.some.inj same
-        subst handleEq
-        have actionEq : action =
-            cast (congrArg EventGraph.EventField.Action outputEq.symm) true := by
-          rw [← isTrue, cast_cast, cast_eq]
-        subst actionEq
-        have decision := (serviceRuntime setup mode deadline).serviceDecision_successful_opening
-            leaks middle facts.inputs actor event payload binding checks outputEq codeEq node handle
-            value associatedHandle handleOwner fixed resolved
-        have materialEq : material =
-            (disclosureSubmission (.opening event handle ⟨payload, value⟩)).normalizeReactive
-              actor (app.observePlayer middle.application actor) (middle.network.known actor) := by
-          have transmission := congrArg ReactiveApplication.Action.transmission decision
-          unfold EventGraphRuntime.serviceDecision EventGraphRuntime.reactiveDecision
-            at transmission
-          simp only [node] at transmission
-          rw [transmission] at submits
+      cases choice with
+      | none =>
+          rw [runtime.canonicalServiceDecision_binding_none leaks who (middle.recall who)
+            (middle.observe app who) event who payload outputEq codeEq node] at submits
           cases submits
-          rfl
-        subst materialEq
-        have packetEq : app.packet (app.submit middle.application actor
-            ((disclosureSubmission (.opening event handle ⟨payload, value⟩)).normalizeReactive
-              actor (app.observePlayer middle.application actor) (middle.network.known actor)))
-            actor (middle.network.known actor)
-            ((disclosureSubmission (.opening event handle ⟨payload, value⟩)).normalizeReactive
-              actor (app.observePlayer middle.application actor) (middle.network.known actor)) =
-              ⟨.opening event handle ⟨payload, value⟩, some ⟨handle, ⟨payload, value⟩⟩,
-                middle.application.publicView.tokenFor (.opening event handle ⟨payload, value⟩)⟩
-              := by
-          have emitted := WitnessedSubmission.normalizeReactive_emit
-              (serviceRuntime setup mode deadline) leaks middle.application actor
-              (middle.network.known actor)
-              (disclosureSubmission (.opening event handle ⟨payload, value⟩))
-          have packet := (serviceRuntime setup mode deadline).windowOpening_packet leaks actor event
-              handle ⟨payload, value⟩ middle.application (middle.network.known actor)
-              handleOwner fixed
-          exact emitted.trans packet
-        rw [packetEq, middle.application.publicView_tokenFor_of_ready _ event rfl ready]
-        apply ((serviceRuntime setup mode deadline).freshServiceEnvelope_opening_iff
-                middle.application.publicView (actor, middle.network.nextSerial actor) event actor
-                payload binding checks outputEq codeEq node handle ⟨payload, value⟩
-                (some ⟨handle, ⟨payload, value⟩⟩) _).mpr
-        refine ⟨readyView, inTime, by simp only [certifiedOpening, decide_true], ?_, rfl,
-          handleOwner, associatedHandle, rfl, rfl⟩
-        apply (middle.application.publicView.openingGuardsAccepted_iff actor event payload
-          binding checks outputEq codeEq node handle ⟨payload, value⟩ _).mpr
-        refine ⟨value, rfl, ?_⟩
-        change EventGraph.GuardCheck.allAccepted? checks
-          ((serviceGraph setup mode).publicStore middle.application.config.store) (.success value) =
-            some true
-        rw [EventGraph.GuardCheck.allAccepted?_publicStore]
-        exact EventGraph.EventCode.guards_pass_of_resolve_success binding checks true
-          middle.application.config.store value resolved
-      · rw [packet] at submits
+      | some result =>
+          have canonical := canonicalFreshSlot_canonical who (middle.observe app who).application
+            fresh
+          rw [runtime.canonicalServiceDecision_binding leaks who (middle.recall who)
+            (middle.observe app who) event payload outputEq codeEq node active _ canonical result]
+            at submits
+          cases Option.some.inj submits
+          exact ⟨acceptable.1, rfl, rfl, acceptable.2⟩
+  | resolve actor payload binding checks outputEq codeEq =>
+      obtain ⟨choice, rfl⟩ : ∃ choice : Bool,
+          action = cast (congrArg EventGraph.EventField.Action outputEq.symm) choice :=
+        ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
+      rw [runtime.canonicalServiceDecision_eq_of_not_bind leaks who (middle.recall who)
+        (middle.observe app who) event _
+        (fun _ _ _ _ different => by rw [node] at different; cases different)] at submits
+      rcases runtime.serviceDecision_resolution_cases leaks who (middle.recall who)
+        (middle.observe app who) event actor payload binding checks outputEq codeEq node choice
+        with silent | ⟨candidate, value, evidence, _, _, _, responseEq⟩
+      · rw [silent] at submits
         cases submits
+      · rw [responseEq] at submits
+        cases Option.some.inj submits
+        exact acceptable
 
 end Decision
 
@@ -292,13 +177,18 @@ theorem freshCallsConform_round {horizon remaining : Nat}
           change transmission = _ at submitted
           rw [submitted]
         subst responseEq
-        have submitRecall := respond_submit_recall middle who material
+        have submitRecall : (middle.respond app who ⟨some material⟩).recall who =
+            middle.recall who ++ [⟨middle.observe app who, ⟨some material⟩,
+              some ⟨(who, middle.network.nextSerial who),
+                app.packet (app.submit middle.application who material) who
+                  (middle.network.known who) material⟩⟩] := by
+          simp [ReactiveApplication.Execution.respond, MessageNetwork.submit]
         rw [recalled] at submitRecall
         have lastEq := List.append_cancel_left submitRecall
         simp only [List.cons.injEq, ReactiveApplication.PlayerEntry.mk.injEq, true_and,
           and_true] at lastEq
         change emittedOption = some message at emitted
-        rw [lastEq] at emitted
+        rw [lastEq.2] at emitted
         cases emitted
         have fresh := canonicalSlot_fresh_of_used middleTrace who atMiddle validMiddle event turn
           unrecorded

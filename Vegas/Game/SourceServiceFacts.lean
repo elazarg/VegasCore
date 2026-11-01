@@ -2,11 +2,13 @@
 
 import Vegas.Game.RevealService
 import Vegas.Game.SourceServiceFreshCall
+import Vegas.Pending.ReactiveSignedCommitments
 import Vegas.Pending.ReactiveEventStability
 import Vegas.Pending.ReactiveAssociationEvidence
 import Vegas.Pending.ReactivePacketEvidence
 import Vegas.Pending.ReactiveStateInvariant
 import Vegas.Pending.ReactiveSubmissionRecall
+import Vegas.Pending.EventCommandFrame
 import Interaction.ReactiveProvenance
 import Interaction.ReactiveMessageIdentity
 import Interaction.ReactiveAllocation
@@ -224,5 +226,148 @@ theorem ownTurn?_of_entry_ready
     exact relaxed.ready_actor_unique cut eventReady otherReady owned otherOwned
   · exact relaxed.ready_actor_unique execution.application.config.cut ready
       (ready_of_eventReady_extends order otherSeen done) owned otherOwned
+
+
+/-- A pending authentic envelope names a submission already retained in its
+sender's recall. It can therefore be attributed before an inclusion attempt. -/
+theorem eventRecorded_of_pending
+    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {control : (serviceApplication setup mode deadline leaks).Control}
+    (trace : ((serviceApplication setup mode deadline leaks).protocol
+      (serviceInitialLaw setup mode) horizon scheduler).Trace (some control))
+    (owner : Player) (event : (serviceGraph setup mode).EventId)
+    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (member : message ∈ control.execution.network.pending)
+    (sender : message.sender = owner)
+    (named : message.payload.call.event? (serviceGraph setup mode) = some event) :
+    (serviceRuntime setup mode deadline).eventRecorded leaks
+      (control.execution.recall owner) event = true := by
+  have signed := signedCommitments_history (serviceRuntime setup mode deadline) leaks
+    (serviceInitialLaw setup mode) (fun state supported => by
+      obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
+      exact ⟨_, rfl⟩) horizon scheduler trace
+  obtain ⟨entry, remembered, material, transmitted, emitted, _⟩ :=
+    signed.provenance.pending message member
+  rw [sender] at remembered
+  obtain ⟨_, actual, sent, call⟩ := signed.emissions owner entry remembered message emitted
+  apply ((serviceRuntime setup mode deadline).eventRecorded_iff leaks
+    (control.execution.recall owner) event).mpr
+  refine ⟨entry, remembered, ?_⟩
+  unfold EventGraphRuntime.submittedEvent?
+  rw [sent]
+  change actual.call.packet.event? (serviceGraph setup mode) = some event
+  rw [← call]
+  exact named
+
+
+section SequentialWaiting
+
+open EventGraph
+variable {setup}
+
+private theorem pending_waiting_call_rejected (runtime : EventGraphRuntime (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (execution : (application setup runtime leaks).Execution)
+    (event : (graph setup).EventId) (ready : execution.application.config.cut.Ready event)
+    (owner : Player) (owned : (graph setup).actor? event = some owner)
+    (safe : ∀ message ∈ execution.network.pending, message.sender = owner →
+      message.payload.call.event? (graph setup) ≠ some event)
+    (message : Message Player (WitnessedPacket (graph setup)))
+    (pending : message ∈ execution.network.pending) :
+    (application setup runtime leaks).handle execution.application message = none := by
+  apply reactiveHandle_none
+  cases handled : handle runtime execution.application ⟨message.id, message.payload.call⟩ with
+  | none => rfl
+  | some next =>
+      obtain ⟨query, named, queryReady, _action, _moved⟩ :=
+        handle_config_mem_step runtime execution.application next _ handled
+      have same := setup.eventGraph.sequentialize_ready_unique _ queryReady ready
+      subst query
+      have authored := handle_sender_actor runtime execution.application next _ handled event named
+      have sender : message.sender = owner := Option.some.inj (authored.symm.trans owned)
+      exact (safe message pending sender named).elim
+
+private theorem native_waiting_config (runtime : EventGraphRuntime (graph setup))
+    (state next : EventGraphRuntime.State (graph setup))
+    (operation : EnvironmentCommand (graph setup))
+    (event : (graph setup).EventId) (ready : state.config.cut.Ready event)
+    (owner : Player) (owned : (graph setup).actor? event = some owner)
+    (within : state.WithinDeadline runtime event)
+    (quiescent : ∀ query, ¬ state.AutomaticReady query)
+    (moved : next ∈ (environmentStep runtime state operation).support) :
+    next.drain.config = state.config := by
+  have unfinished : event ∉ next.config.cut.completed := by
+    by_cases other : operation ≠ .expire event
+    · exact fun done => ready.1 ((environmentStep_owned_completed_iff runtime state next operation
+        event owner owned other moved).mp done)
+    · have expires : operation = .expire event := by simpa only [not_not] using other
+      subst operation
+      cases activated : state.activatedAt event with
+      | none => simp only [EventGraphRuntime.State.WithinDeadline, activated] at within
+      | some entered =>
+          have beforeDue : state.clock - entered < runtime.deadline event := by
+            simpa only [EventGraphRuntime.State.WithinDeadline, activated] using within
+          rw [environmentStep_expire_of_not_due runtime state event ready entered activated
+            (Nat.not_le.mpr beforeDue), PMF.mem_support_pure_iff] at moved
+          cases moved
+          exact ready.1
+  have same := EventGraph.Config.Step.path_eq_of_ready_of_not_completed event
+    (fun _ otherReady => setup.eventGraph.sequentialize_ready_unique _ otherReady ready)
+    unfinished (environmentStep_graph_steps runtime state next operation moved)
+  have cleared : ∀ query, ¬ next.AutomaticReady query := by
+    simpa only [EventGraphRuntime.State.AutomaticReady, same] using quiescent
+  exact (congrArg EventGraphRuntime.State.config (next.drain_eq_of_clear cleared)).trans same
+
+/-- Before its deadline, no environment command changes the unique ready owned
+configuration when the network has no call from that owner naming that event. -/
+theorem environment_waiting_config (runtime : EventGraphRuntime (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (execution next : (application setup runtime leaks).Execution)
+    (command : (application setup runtime leaks).Command)
+    (event : (graph setup).EventId) (owner : Player)
+    (ready : execution.application.config.cut.Ready event)
+    (owned : (graph setup).actor? event = some owner)
+    (within : execution.application.WithinDeadline runtime event)
+    (quiescent : ∀ query, ¬ execution.application.AutomaticReady query)
+    (safe : ∀ message ∈ execution.network.pending, message.sender = owner →
+      message.payload.call.event? (graph setup) ≠ some event)
+    (reached : next ∈
+      (execution.environmentStep (application setup runtime leaks) command).support) :
+    next.application.config = execution.application.config := by
+  cases command with
+  | wait =>
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+        PMF.mem_support_pure_iff] at reached
+      subst next
+      rfl
+  | activate actor =>
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _chosen, rfl⟩ := PMF.support_map .. ▸ supported
+      rfl
+  | «include» id =>
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+        PMF.mem_support_pure_iff] at reached
+      subst next
+      cases found : execution.network.lookup id with
+      | none =>
+          simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+            found]
+      | some message =>
+          have rejected := pending_waiting_call_rejected runtime leaks execution event ready owner
+            owned safe message (List.mem_of_find?_eq_some found)
+          simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+            found, rejected, Option.getD_none]
+  | application operation =>
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
+      change state ∈ ((environmentStep runtime execution.application operation).map
+        EventGraphRuntime.State.drain).support at changed
+      obtain ⟨native, nativeMoved, rfl⟩ := PMF.support_map .. ▸ changed
+      exact native_waiting_config runtime execution.application native operation event ready owner
+        owned within quiescent nativeMoved
+
+
+
+end SequentialWaiting
 
 end Vegas

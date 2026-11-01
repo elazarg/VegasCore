@@ -1,7 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketComponentSteps
+import Vegas.Game.ServiceSettledEvidence
 import Vegas.Pending.ReactiveRuntime
+import Vegas.Pending.ReactiveCanonicalDecision
+import Vegas.Pending.ReactiveSignedCommitments
 
 /-! # Fresh prepared slots are public
 
@@ -254,29 +256,20 @@ theorem environment_lookup_prepared (execution next : (application setup runtime
                 simp only [ReactiveApplication.Execution.includePending,
                   MessageNetwork.includePending, found, accepted, Option.getD_some]
               rw [applicationEq]
-              have call := reactiveHandle_call accepted
-              cases packet : message.payload.call with
-              | malformed raw =>
-                  rw [packet] at call
-                  simp [handle] at call
-              | opening event handle raw =>
-                  rw [packet] at call
-                  rw [(handle_resolution_tables runtime _ _ _
-                    (fun _ _ same => by cases same) call).2]
-              | commitment event handle =>
-                  rw [packet] at call
-                  obtain ⟨frozen, _, handleOwner⟩ :=
-                    handle_commitment_tables runtime _ _ _ event handle call
-                  rw [frozen]
-                  by_cases same : (owner, (Slot.prepared serial : CandidateSlot (graph setup))) =
+              rcases reactiveHandle_tables_cases runtime leaks execution.application after
+                  message accepted with
+                ⟨event, handle, packet, frozen, _accepted, handleOwner⟩ | ⟨_accepted, same⟩
+              · rw [frozen]
+                by_cases same : (owner, (Slot.prepared serial : CandidateSlot (graph setup))) =
                     handle
-                  · subst same
-                    apply CommitmentCandidates.lookup_freeze_eq_of_not_fresh
-                    intro isFresh
-                    apply (fresh owner serial).mp isFresh
-                    exact ⟨message, facts.carried.pending message present, handleOwner.symm,
-                      event, packet⟩
-                  · exact CommitmentCandidates.lookup_freeze_other _ _ _ same
+                · subst same
+                  apply CommitmentCandidates.lookup_freeze_eq_of_not_fresh
+                  intro isFresh
+                  apply (fresh owner serial).mp isFresh
+                  exact ⟨message, facts.carried.pending message present, handleOwner.symm,
+                    event, packet⟩
+                · exact CommitmentCandidates.lookup_freeze_other _ _ _ same
+              · rw [same]
 
 /-- Prepared freshness, with the settled facts it rests on. -/
 def FreshFacts (execution : (application setup runtime leaks).Execution) : Prop :=

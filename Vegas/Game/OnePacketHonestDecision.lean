@@ -75,6 +75,18 @@ theorem encodeEventAction?_commitsValue :
       | succ tail =>
           exact encodeEventAction?_commitsValue next tail action commits encoded encodes
 
+
+/-- Canonical realizations of successful binding choices and authentic disclosures
+transmit at the supplied event and physical view. -/
+def CanonicalTransmitsAt (setup : Setup (Player := Player) (L := L))
+    (runtime : EventGraphRuntime (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (who : Player) (past : List (application setup runtime leaks).PlayerEntry)
+    (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId) : Prop :=
+  ∀ action graphAction, encodeEventAction? setup.program event action = some graphAction →
+    action.CommitsValue → (∀ owner name, action ≠ .reveal owner name false) →
+    (runtime.canonicalServiceDecision leaks who past view event graphAction).transmission ≠ none
+
 end Effective
 
 section Repeated

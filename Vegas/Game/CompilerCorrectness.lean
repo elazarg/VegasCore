@@ -1,15 +1,17 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.AsyncServiceRawNash
+import Vegas.Game.SourceServiceClientPolicy
+import Vegas.Game.SourceServiceSiteBridge
+import Vegas.Game.ServiceHonestLaw
 import Vegas.Compile.EventGraphCanonical
+import Interaction.ReactiveRestrictedContinuation
 
 /-! # Ordinary correctness of the bounded message compiler
 
-The actual first-opportunity clients preserve the complete typed source outcome
-law without an equilibrium or audit premise. Comparing this law with canonical
-graph execution exposes the second compiler pass on its supported graph and
-policy image. Total readers retain initial cells, public results and executable
-payouts jointly, without introducing a default for unfinished execution.
+Actual first-turn clients preserve every observation of the complete typed
+state and public default history for every source profile. Their bounded-menu
+realization has the same execution law. Comparing with canonical graph execution
+identifies the second compiler pass on its compiled graph and policy image.
 -/
 
 noncomputable section
@@ -24,77 +26,88 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   (service : AsyncServiceSpec Player L)
   (admission : CommitmentInterface service.setup.program)
 
-private theorem firstTurnClientProfile_readout_law
-    (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
-    (turns : Nat) (source : Profile (service.sourceModel admission).behavioralSignature) :
-    ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
-        service.horizon service.scheduler).runBehavioral
-      (service.clientProfile admission service.rawMenu
-        (firstTurnTiming service.setup turns service.mode) source)
-      (2 * service.horizon + 1)).map
-        (fun final => serviceSourceReadout service.setup service.mode service.deadline
-          service.leaks final.state) =
-      (service.setup.run (service.setup.decodeBehavioralProfile admission source)).map some := by
-  have law := service.firstTurnClientProfile_settlement_law admission ordered
-    (fun _ => ()) (fun _ _ => 0) (fun _ => PMF.pure [])
-    (by
-      intro actual observed supported
-      have same := (PMF.mem_support_pure_iff _ _).mp supported
-      subst observed
-      exact List.nil_subset _)
-    (fun _ => 0) turns source
-  have projected := congrArg (PMF.map Prod.fst) law
-  have erase (law : PMF (Player → ℝ))
-      (result : Option (State L service.setup.program.terminalCtx)) :
-      law.map (fun _ => result) = PMF.pure result := PMF.map_const law result
-  have mapPure {Input Output : Type} (law : PMF Input) (read : Input → Output) :
-      law.bind (fun input => PMF.pure (read input)) = law.map read :=
-    PMF.bind_pure_comp read law
-  simpa only [PMF.map_bind, PMF.map_comp, Function.comp_def, erase,
-    mapPure] using projected
-
-/-- Every total observation of the typed terminal state has its exact source
-law under the actual bounded first-opportunity clients. No equilibrium, audit,
-utility bound or private-input independence premise is needed. -/
+/-- Every total observation of the typed terminal state and public defaults has
+its exact source law under the actual bounded first-turn clients. -/
 theorem firstTurnClientProfile_outcome_law {Outcome : Type*}
     (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (turns : Nat) (source : Profile (service.sourceModel admission).behavioralSignature)
-    (observe : State L service.setup.program.terminalCtx → Outcome) :
+    (observe : State L service.setup.program.terminalCtx × DefaultHistory Player → Outcome) :
     ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
         service.horizon service.scheduler).runBehavioral
       (service.clientProfile admission service.rawMenu
         (firstTurnTiming service.setup turns service.mode) source)
       (2 * service.horizon + 1)).map
         (fun final => (serviceSourceReadout service.setup service.mode service.deadline
-          service.leaks final.state).map observe) =
+          service.leaks final.state).map fun terminal =>
+            observe (terminal.state, terminal.defaults)) =
       (service.setup.run (service.setup.decodeBehavioralProfile admission source)).map
-        (fun terminal => some (observe terminal)) := by
-  have law := congrArg (PMF.map (Option.map observe))
-    (service.firstTurnClientProfile_readout_law admission ordered turns source)
-  simpa only [PMF.map_comp, Function.comp_def, Option.map_some] using law
+        (fun terminal => some (observe (terminal.state, terminal.defaults))) := by
+  let app := serviceApplication service.setup service.mode service.deadline service.leaks
+  let original := service.setup.decodeBehavioralProfile admission source
+  let clients := serviceClientPolicy service.setup service.mode service.deadline service.leaks
+    service.bound turns (firstTurnTiming service.setup turns service.mode)
+      (normalizeDisclosureProfile service.setup.program original)
+  have physical := service.rawMenu.run_restrict_eq_finish
+    (serviceInitialLaw service.setup service.mode) service.horizon service.scheduler clients
+    (service.rawMenu_admits admission (firstTurnTiming service.setup turns service.mode) source)
+    (2 * service.horizon + 1)
+    (service.rawMenu.protocol (serviceInitialLaw service.setup service.mode)
+      service.horizon service.scheduler).initHistory le_rfl
+  have initialized : (service.rawMenu.protocol (serviceInitialLaw service.setup service.mode)
+      service.horizon service.scheduler).initHistory.state = none := rfl
+  rw [initialized] at physical
+  have states : ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
+        service.horizon service.scheduler).runBehavioral
+      (service.clientProfile admission service.rawMenu
+        (firstTurnTiming service.setup turns service.mode) source)
+      (2 * service.horizon + 1)).map (fun final => final.state) =
+      (app.roundsFrom (serviceInitialLaw service.setup service.mode) service.scheduler clients
+        service.horizon).map app.finished := by
+    rw [InformationModel.runBehavioral]
+    change ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
+        service.horizon service.scheduler).runBehavioralFrom
+      (fun who => service.rawMenu.restrictPolicy (serviceInitialLaw service.setup service.mode)
+        service.horizon service.scheduler who (clients who))
+      (2 * service.horizon + 1)
+      (service.rawMenu.protocol (serviceInitialLaw service.setup service.mode)
+        service.horizon service.scheduler).initHistory).map ExecutionProtocol.History.state = _
+    simpa only [ReactiveApplication.finish, ReactiveApplication.roundsFrom, PMF.map_bind]
+      using physical
+  have projected := congrArg (PMF.map (fun final : app.ProtocolState =>
+    (serviceSourceReadout service.setup service.mode service.deadline service.leaks final).map
+      fun terminal => observe (terminal.state, terminal.defaults))) states
+  simp only [PMF.map_comp, Function.comp_def] at projected
+  apply projected.trans
+  apply sourceServiceClientPolicy_outcome_law_of_firstTurn original ?_ observe
+  exact firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely
+    turns (normalizeDisclosureProfile service.setup.program original)
+      (fun who => BehavioralPolicy.normalizeDisclosures_authentic service.setup.program
+        (original who))
 
-/-- The ledger clients and the canonical compiled graph have the same exact
-law of every total typed-source readout. The graph and policies are the actual
-source compiler's outputs; the runtime may use either supported dependency mode. -/
+/-- The bounded ledger clients and the canonical compiled graph have the same
+joint law of typed state and public defaults, in every supported dependency mode. -/
 theorem firstTurnClientProfile_graph_law {Outcome : Type*}
     (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (turns : Nat) (source : Profile (service.sourceModel admission).behavioralSignature)
-    (observe : State L service.setup.program.terminalCtx → Outcome) :
+    (observe : State L service.setup.program.terminalCtx × DefaultHistory Player → Outcome) :
     ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
         service.horizon service.scheduler).runBehavioral
       (service.clientProfile admission service.rawMenu
         (firstTurnTiming service.setup turns service.mode) source)
       (2 * service.horizon + 1)).map
         (fun final => (serviceSourceReadout service.setup service.mode service.deadline
-          service.leaks final.state).map observe) =
+          service.leaks final.state).map fun terminal =>
+            observe (terminal.state, terminal.defaults)) =
       ((service.setup.eventGraph.canonicalGame
-          (service.setup.initialLaw.map fun initial => service.setup.eventInputs initial)).play
+          (service.setup.initialLaw.map service.setup.eventInputs)).play
         (compileEventProfile service.setup.program
-          (service.setup.decodeBehavioralProfile admission source))).map
-        (fun terminal => some (observe (terminalState service.setup.program terminal))) := by
+          (service.setup.decodeBehavioralProfile admission source))).map (fun terminal =>
+          let final := terminalConfig service.setup.program terminal
+          some (observe (final.state, final.defaults))) := by
   rw [service.firstTurnClientProfile_outcome_law admission ordered turns source observe]
-  have law := congrArg (PMF.map (fun terminal => some (observe terminal)))
-    (canonical_setup_law service.setup (service.setup.decodeBehavioralProfile admission source))
+  have law := congrArg (PMF.map (fun final : Config Player L service.setup.program.terminalCtx =>
+    some (observe (final.state, final.defaults))))
+      (canonical_setup_law service.setup (service.setup.decodeBehavioralProfile admission source))
   simpa only [PMF.map_comp, Function.comp_def] using law.symm
 
 end Vegas.AsyncServiceSpec

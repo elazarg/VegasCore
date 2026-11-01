@@ -302,7 +302,7 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
   have nextDecode (state : ProtocolState program) (next : (graph setup).Config)
       (read : decodeSourcePrefix? program refs source.registry source.revelations embedding.ref
         1 next.store (decodeHistory setup.program
-          (next.history.map (setup.eventGraph.fromModeCompletion .sequential))) next.defaults =
+          next.history) next.defaults =
         some state) :
       sourceContinuation setup profile (rank + 1) next =
         (ProtocolState.continuationLaw setup.program profile (lift state)).map some := by

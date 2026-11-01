@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.AsyncServiceSpec
+import Vegas.Game.SourceServiceTurnSettlement
 import Vegas.Game.SourceServiceClientPolicy
 import GameTheory.Core.Approximate
 import Vegas.Game.SourceInformation
@@ -121,7 +122,7 @@ private theorem clientProfile_value_close {Parameter : Type}
     (some state, stateUtility state)
   have close : PMF.WithinTV timing.deferralError nativeJoint sourceJoint :=
     sourceServiceClients_clientPolicy_settlement_lawError service.contract
-      service.timely timing
+      timing
       decoded terminal menu (covered source) sample authentic stateUtility deposit
   have settled (state : (serviceApplication service.setup service.mode service.deadline
     service.leaks).ProtocolState)

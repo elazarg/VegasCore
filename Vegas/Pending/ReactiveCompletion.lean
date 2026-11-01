@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.PublicFailureEvidence
+import Vegas.Pending.ExclusionEvidence
 import Vegas.Pending.AcceptedEventOwnership
 import Vegas.Pending.EventCommandFrame
 import Interaction.ReactiveMessageIdentity
@@ -52,7 +53,7 @@ private theorem completion_eq_of_new_step {config next : graph.Config}
     {event : graph.EventId} {ready : config.cut.Ready event} {action : graph.Action event}
     (member : next ∈ (config.step event ready action).support) (record : graph.Completion)
     (fresh : record ∉ config.history) (present : record ∈ next.history) :
-    ∃ value, record = EventGraph.Completion.fromDecision event
+    ∃ value, record = EventGraph.completion graph event
       (config.actualDecision event action) value := by
   obtain ⟨value, _output, history⟩ := config.step_completion event ready action next member
   rw [history] at present
@@ -131,14 +132,14 @@ private theorem native_new_completion_cases (runtime : EventGraphRuntime graph)
       ∃ entered, state.activatedAt record.event = some entered ∧
         runtime.deadline record.event ≤ state.clock - entered ∧
         ∃ (action : graph.Action record.event) (value : (graph.outputLayout record.event).Value),
-          ExpiredAction record.event action ∧ record = EventGraph.Completion.fromDecision
+          ExpiredAction record.event action ∧ record = EventGraph.completion graph
             record.event (state.config.actualDecision record.event action) value) ∨
       graph.actor? record.event = none := by
   rcases completionStep_environmentStep runtime state native command supported with
     ⟨same, _⟩ | ⟨event, ready, action, member, _⟩
   · exact (fresh (by simpa only [same] using present)).elim
   obtain ⟨value, recorded⟩ := completion_eq_of_new_step member record fresh present
-  have same : record.event = event := congrArg EventGraph.Completion.event recorded
+  have same : record.event = event := congrArg EventCompletion.event recorded
   subst event
   cases acting : graph.actor? record.event with
   | none => exact Or.inr rfl
@@ -211,7 +212,7 @@ theorem reactive_new_completion_cases (runtime : EventGraphRuntime graph)
       ∃ entered, execution.application.activatedAt record.event = some entered ∧
         runtime.deadline record.event ≤ execution.application.clock - entered ∧
         ∃ (action : graph.Action record.event) (value : (graph.outputLayout record.event).Value),
-          ExpiredAction record.event action ∧ record = EventGraph.Completion.fromDecision
+          ExpiredAction record.event action ∧ record = EventGraph.completion graph
             record.event (execution.application.config.actualDecision record.event action) value) ∨
     graph.actor? record.event = none ∨
     (∃ native, native.drain = next.application ∧ record ∉ native.config.history ∧
@@ -265,7 +266,7 @@ theorem reactive_new_completion_cases (runtime : EventGraphRuntime graph)
               · obtain ⟨event, named, ready, action, moved⟩ :=
                   handle_config_mem_step runtime execution.application native _ handled
                 obtain ⟨value, same⟩ := completion_eq_of_new_step moved record fresh primary
-                have namedRecord : record.event = event := congrArg EventGraph.Completion.event same
+                have namedRecord : record.event = event := congrArg EventCompletion.event same
                 obtain ⟨other, otherNamed, actor⟩ :=
                   handle_event_actor runtime execution.application native _ handled
                 have sameEvent : other = event := Option.some.inj (otherNamed.symm.trans named)
@@ -294,8 +295,8 @@ theorem reactive_new_completion_cases (runtime : EventGraphRuntime graph)
   | application operation =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      change state ∈ ((environmentStep runtime execution.application operation).map
-        State.drain).support at changed
+      change state ∈ ((EventGraphRuntime.environmentStep runtime execution.application
+        operation).map State.drain).support at changed
       obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ changed
       by_cases primary : record ∈ native.config.history
       · rcases native_new_completion_cases runtime execution.application native operation
@@ -310,3 +311,155 @@ theorem reactive_new_completion_cases (runtime : EventGraphRuntime graph)
 
 end EventGraphRuntime
 end Vegas
+
+namespace Vegas.EventGraphRuntime.ExclusionEvidence
+
+open Interaction EventGraph GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+private theorem failed_primary (before native : State graph)
+    (evidence : ExclusionEvidence 0 ∅ before)
+    (nativeEvidence : ExclusionEvidence 0 ∅ native)
+    (event : graph.EventId) (ready : before.config.cut.Ready event)
+    (action : graph.Action event)
+    (supported : native.config ∈ (before.config.step event ready action).support)
+    (footprint : CompletionStep before native)
+    (owner : Player) (active : owner ∉ before.config.defaulted)
+    (introduced : owner ∈ native.config.defaulted) : native.PublicFailure event := by
+  obtain ⟨query, owned, failed⟩ := (nativeEvidence.defaulted_zero owner).mp introduced
+  rcases footprint with ⟨same, _accepted, _activated⟩ |
+      ⟨named, namedReady, chosen, moved, _activated, acceptedOnly⟩
+  · exact (config_ne_of_step supported same).elim
+  · have namedCompleted : named ∈ native.config.cut.completed := by
+      rw [before.config.step_cut named namedReady chosen _ moved]
+      exact Finset.mem_insert_self _ _
+    have same := State.completed_event_eq_of_step supported namedReady.1 namedCompleted
+    subst named
+    by_cases same : query = event
+    · simpa only [same] using failed
+    · have failedBefore := (State.PublicFailure.of_step_of_ne supported
+        (fun field changed => (acceptedOnly field changed).2) same).mp failed
+      exact (active ((evidence.defaulted_zero owner).mpr ⟨query, owned, failedBefore⟩)).elim
+
+/-- A newly defaulted owner is attributed to the primary owned event of the
+actual command. Automatic completions introduce no new default. -/
+theorem new_default_origin (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (execution next : (runtime.reactiveApplication leaks).Execution)
+    (command : (runtime.reactiveApplication leaks).Command)
+    (reached : next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
+      command).support)
+    (owner : Player) (active : owner ∉ execution.application.config.defaulted)
+    (introduced : owner ∈ next.application.config.defaulted)
+    (evidence : ExclusionEvidence 0 ∅ execution.application) :
+    ∃ event, graph.actor? event = some owner ∧ execution.application.config.cut.Ready event ∧
+      next.application.PublicFailure event ∧
+      ((∃ message ∈ execution.network.pending, command = .include message.id ∧
+        message.sender = owner ∧ message.payload.call.event? graph = some event) ∨
+      (command = .application (.expire event) ∧
+        ∃ entered, execution.application.activatedAt event = some entered ∧
+          runtime.deadline event ≤ execution.application.clock - entered)) := by
+  cases command with
+  | wait =>
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+        PMF.mem_support_pure_iff] at reached
+      subst next
+      exact (active introduced).elim
+  | activate who =>
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
+      exact (active introduced).elim
+  | «include» id =>
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+        PMF.mem_support_pure_iff] at reached
+      subst next
+      cases found : execution.network.lookup id with
+      | none =>
+          simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+            found] at introduced
+          exact (active introduced).elim
+      | some message =>
+          cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+              message with
+          | none =>
+              simp only [ReactiveApplication.Execution.includePending,
+                MessageNetwork.includePending, found, accepted, Option.getD_none] at introduced
+              exact (active introduced).elim
+          | some state =>
+              have stateMember : owner ∈ state.config.defaulted := by
+                simpa only [ReactiveApplication.Execution.includePending,
+                  MessageNetwork.includePending, found, accepted, Option.getD_some] using introduced
+              obtain ⟨native, handled, drained⟩ := reactiveHandle_call accepted
+              have nativeMember : owner ∈ native.config.defaulted := by
+                rw [← native.drain_defaulted, drained]
+                exact stateMember
+              obtain ⟨event, named, ready, action, moved⟩ :=
+                handle_config_mem_step runtime execution.application native _ handled
+              have owned := EventGraph.Config.step_new_default_actor
+                execution.application.config native.config event ready action moved owner active
+                nativeMember
+              have authored := handle_sender_actor runtime execution.application native _ handled
+                event named
+              have failed := failed_primary execution.application native evidence
+                (evidence.handle runtime _ native handled) event ready action moved
+                (completionStep_handle runtime _ _ _ handled) owner active nativeMember
+              have finalFailed : State.PublicFailure
+                  (execution.includePending (runtime.reactiveApplication leaks) id).application
+                  event := by
+                simp only [ReactiveApplication.Execution.includePending,
+                  MessageNetwork.includePending, found, accepted, Option.getD_some]
+                rw [← drained]
+                exact failed.of_completionPath native.drain_completionPath
+              refine ⟨event, owned, ready, finalFailed,
+                Or.inl ⟨message, List.mem_of_find?_eq_some found, ?_,
+                  Option.some.inj (authored.symm.trans owned), named⟩⟩
+              have identified : message.id = id := by simpa using List.find?_some found
+              rw [identified]
+  | application operation =>
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
+      change state ∈ ((EventGraphRuntime.environmentStep runtime execution.application
+        operation).map State.drain).support at changed
+      obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ changed
+      have nativeMember : owner ∈ native.config.defaulted := by
+        rw [← native.drain_defaulted]
+        exact introduced
+      rcases completionStep_environmentStep runtime execution.application native operation moved
+        with ⟨same, _, _⟩ | ⟨event, ready, action, sampled, _, _⟩
+      · rw [same] at nativeMember
+        exact (active nativeMember).elim
+      · have owned := EventGraph.Config.step_new_default_actor
+          execution.application.config native.config event ready action sampled owner active
+          nativeMember
+        have expired : operation = .expire event := by
+          by_contra different
+          apply ready.1
+          apply (environmentStep_owned_completed_iff runtime execution.application native
+            operation event owner owned different moved).mp
+          rw [execution.application.config.step_cut event ready action native.config sampled]
+          exact Finset.mem_insert_self _ _
+        subst operation
+        have timed : ∃ entered, execution.application.activatedAt event = some entered ∧
+            runtime.deadline event ≤ execution.application.clock - entered := by
+          cases activated : execution.application.activatedAt event with
+          | none =>
+              rw [environmentStep_expire_of_not_activated runtime execution.application event
+                ready activated, PMF.mem_support_pure_iff] at moved
+              exact (config_ne_of_step sampled (congrArg State.config moved)).elim
+          | some entered =>
+              by_cases due : runtime.deadline event ≤ execution.application.clock - entered
+              · exact ⟨entered, rfl, due⟩
+              · rw [environmentStep_expire_of_not_due runtime execution.application event ready
+                  entered activated due, PMF.mem_support_pure_iff] at moved
+                exact (config_ne_of_step sampled (congrArg State.config moved)).elim
+        have failed := failed_primary execution.application native evidence
+          (evidence.environmentStep runtime (.expire event) native moved) event ready action
+          sampled (completionStep_environmentStep runtime _ _ (.expire event) moved)
+          owner active nativeMember
+        exact ⟨event, owned, ready, failed.of_completionPath native.drain_completionPath,
+          Or.inr ⟨rfl, timed⟩⟩
+
+
+end Vegas.EventGraphRuntime.ExclusionEvidence

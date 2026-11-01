@@ -64,7 +64,7 @@ theorem actor_completion_cause (execution next : (application setup runtime leak
     exact Or.inl ⟨accepted.message, accepted.ledger, accepted.receipt, accepted.named,
       accepted.sender⟩
   · obtain ⟨_, _, _, _, action, value, expires, recorded⟩ := expired
-    have decision := eq_of_heq (EventGraph.Completion.mk.inj recorded).2.1
+    have decision := eq_of_heq (EventCompletion.mk.inj recorded).2.1
     rw [decision]
     exact Or.inr (expired_record_failing execution.application.config expires)
   · obtain ⟨_, _, _, _, silent, _, _⟩ := automatic
@@ -107,7 +107,7 @@ private theorem SourceResidual.debt_of_failing_record_path
           current.step_completion event ready action middle supported
         rw [history] at primary
         have recorded := List.mem_singleton.mp ((List.mem_append.mp primary).resolve_left fresh)
-        have eventEq : record.event = event := congrArg EventGraph.Completion.event recorded
+        have eventEq : record.event = event := congrArg EventCompletion.event recorded
         subst event
         have failingStep : ∃ choice : (graph setup).Action record.event,
             middle ∈ (current.step record.event ready choice).support ∧
@@ -129,7 +129,7 @@ private theorem SourceResidual.debt_of_failing_record_path
               action choice]
             exact supported
           · rw [current.actualDecision_of_active record.event actor owned inactive] at recorded
-            have decision := eq_of_heq (EventGraph.Completion.mk.inj recorded).2.1
+            have decision := eq_of_heq (EventCompletion.mk.inj recorded).2.1
             exact ⟨action, supported, by
               simpa only [decision, Option.bind_some] using failed⟩
         obtain ⟨choice, supportedChoice, failing⟩ := failingStep

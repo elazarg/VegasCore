@@ -147,7 +147,7 @@ theorem intendedOpeningProfile_extends (wellFormed : setup.WellFormed)
         BehavioralPolicy.disclosing_fromProtocol setup.program _ _
           (fun view => setup.intendedSourceProfile_notRefusal intended who (some view))
       rw [BehavioralPolicy.protocolAction_authenticOpening setup.program _ disclosing
-        state intendedState]
+        state staticState intendedState]
       exact BehavioralPolicy.protocolAction_fromProtocol setup.program _ _ _
 
 /-- **The intended law through authentic openings.** For a well-formed setup,

@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.ServiceRevealDecode
-import Vegas.Game.ServiceHonestLaw
+import Vegas.Game.ServiceBlockPredraw
 
 /-! # The honest law of a block of disclosures
 
@@ -51,14 +51,14 @@ theorem DecidedEventPhase.opened {bound : (serviceGraph setup mode).EventId → 
   intro action member
   rcases phase.completed done with ⟨decided, effective⟩ | ⟨ineffective, expired, expiry, member'⟩
   · have same := completion_eq_of_event member decided rfl
-    simp only [EventGraph.Completion.mk.injEq, heq_eq_eq, true_and] at same
+    simp only [EventCompletion.mk.injEq, heq_eq_eq, true_and] at same
     subst same
     unfold EffectiveAction at effective
     rw [node] at effective
     simp only [cast_cast, cast_eq] at effective ⊢
     exact ⟨fun _ => effective trivial, fun _ => trivial⟩
   · have same := completion_eq_of_event member member' rfl
-    simp only [EventGraph.Completion.mk.injEq, heq_eq_eq, true_and] at same
+    simp only [EventCompletion.mk.injEq, heq_eq_eq, true_and] at same
     subst same
     unfold ExpiryAction at expiry
     rw [node] at expiry
@@ -226,7 +226,7 @@ theorem honest_revealBlock_law (relaxed : (serviceGraph setup mode).RevealRelaxe
         decodeSourcePrefix? program refs (source seed).registry (source seed).revelations
           embedding.ref count final.application.config.store
           (decodeHistory setup.program (final.application.config.history.map
-            (setup.eventGraph.fromModeCompletion mode)))) =
+            (id)))) =
       (prior.map source).map fun config =>
         some ((revealTail count program prefixed).lift
           (ProtocolState.entry _ (openChain count program prefixed config))) := by
@@ -267,7 +267,7 @@ theorem honest_revealBlock_law (relaxed : (serviceGraph setup mode).RevealRelaxe
       decodeSourcePrefix? program refs (source seed).registry (source seed).revelations
           embedding.ref count final.application.config.store
           (decodeHistory setup.program (final.application.config.history.map
-            (setup.eventGraph.fromModeCompletion mode))) =
+            (id))) =
         some ((revealTail count program prefixed).lift
           (ProtocolState.entry _ (openChain count program prefixed (source seed)))) := by
     have done := runUntil_blockDone_of_trace _ contract.completes (low + count) _ _ final trace
@@ -302,7 +302,13 @@ theorem honest_revealBlock_law (relaxed : (serviceGraph setup mode).RevealRelaxe
       embedding refsBefore suffix _ 0 (by simpa only [Nat.zero_add] using trace) final reached
       index below (fun _ _ => trivial) (done _ upper)
   unfold ReactiveApplication.runUntilHorizon
-  rw [firstTurnProfile_eq_drawnPlayers bound turns wholeProfile others, opened]
+  have playersEq : serviceTurnPolicy setup mode deadline leaks bound turns
+      (firstTurnTiming setup turns mode) wholeProfile =
+      drawnPlayers bound turns wholeProfile (fun _ => True) others (fun _ => none) := by
+    funext player
+    simp only [drawnPlayers, ↓reduceIte]
+    exact (assignedTurnPolicy_empty bound turns wholeProfile player).symm
+  rw [playersEq, opened]
   rw [map_congr_on_support _ (g := fun _ => some ((revealTail count program prefixed).lift
     (ProtocolState.entry _ (openChain count program prefixed (source seed)))))
     (fun final reached => decoded final reached), pmf_map_fun_const]

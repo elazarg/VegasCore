@@ -1,8 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketForeignSubmission
-import Vegas.Game.AnchoredOpeningClients
-import Vegas.Game.OnePacketCompletionOrigin
+import Vegas.Game.OnePacketOwnSubmissions
+import Vegas.Game.SourceServiceFacts
+import Vegas.Game.OnePacketFirstActivation
+import Vegas.Game.OnePacketPrescribedSupport
+import Vegas.Game.SourceServiceCompletion
+import Vegas.Game.RevealServiceCalendarState
 import Vegas.Pending.ReactiveOwnerActivationRecall
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
 
@@ -24,8 +27,9 @@ variable [Fintype Player]
   {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
   {delay bound : (graph setup).EventId → Nat}
   (opportunity : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+    control.execution.application.config.defaulted = ∅ →
     OpportunityAt runtime leaks control.execution delay)
   (timely : runtime.AsyncTimely delay bound)
 
@@ -40,7 +44,7 @@ theorem counted_waiting_environment
     {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (trace : ((Menu).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining + 1, none, execution⟩))
-    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk execution.application ∅))
+    (clear : execution.application.config.defaulted = ∅)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
@@ -54,41 +58,49 @@ theorem counted_waiting_environment
     (reached : next ∈ (execution.environmentStep (application setup runtime leaks)
       command).support) :
     next.application.config = execution.application.config ∧
-      ExclusionEvidence 0 ∅ (RecoveryState.mk next.application ∅) := by
-  have same : next.application.config = execution.application.config := by
-    rcases environmentStep_configStep setup leaks execution next command reached with
-      same | ⟨other, otherReady, action, member⟩
-    · exact same
-    · have which := setup.eventGraph.sequentialize_ready_unique execution.application.config.cut otherReady ready
-      subst other
-      rcases completion_pending_or_due (runtime := runtime) execution next command reached ready
-        action member owned with
-        packet | ⟨_, entered, activated, due⟩
-      · obtain ⟨message, pending, sender, named⟩ := packet
-        have recorded := eventRecorded_of_pending (runtime := runtime) trace owner event message
-          pending sender named
-        obtain ⟨entry, remembered, submitted⟩ :=
-          (runtime.eventRecorded_iff leaks (execution.recall owner) event).mp recorded
-        have submissions := onePacket_ownSubmissionsAtTurn (runtime := runtime) bounds trace
-          ordered point decoded
-          intendedPoint
-          owner
-        exact (never entry remembered (submissions entry remembered event submitted)).elim
-      · have actual := opportunity _ trace clear
-        have rawTrace := (Menu).toRawTrace (initialLaw setup) horizon scheduler trace
-        obtain ⟨entry, remembered, activatedAt⟩ := due_owner_recalled_turn_of_opportunity
-          runtime leaks timely (serviceGraph_revealRelaxedOrdered setup .sequential)
-          _ rawTrace rfl actual event owner owned ready entered activated due
-        exact (never entry remembered activatedAt).elim
-  exact ⟨same, clear.completionStep_sameConfig
-    ((reactiveApplication_completionStep runtime leaks).environmentStep
-      execution next command reached) same⟩
+      next.application.config.defaulted = ∅ := by
+  have rawTrace := (Menu).toRawTrace (initialLaw setup) horizon scheduler trace
+  have facts := legalFacts setup leaks horizon scheduler _ rawTrace
+  have safe : ∀ message ∈ execution.network.pending, message.sender = owner →
+      message.payload.call.event? (graph setup) ≠ some event := by
+    intro message pending sender named
+    have recorded := eventRecorded_of_pending setup leaks rawTrace owner event message
+      pending sender named
+    obtain ⟨entry, remembered, submitted⟩ :=
+      (runtime.eventRecorded_iff leaks (execution.recall owner) event).mp recorded
+    have submissions := onePacket_ownSubmissionsAtTurn (runtime := runtime) bounds trace ordered
+      point decoded intendedPoint owner
+    exact never entry remembered (submissions entry remembered event submitted)
+  have rawInputs : ((application setup runtime leaks).protocol
+      ((setup.initialLaw.map setup.eventInputs).map State.initial) horizon scheduler).Trace
+        (some ⟨remaining + 1, none, execution⟩) := by
+    have initialEq : initialLaw setup =
+        (setup.initialLaw.map setup.eventInputs).map (State.initial (graph := graph setup)) :=
+      serviceInitialLaw_eq_inputs (mode := .sequential) setup
+    rw [← initialEq]
+    exact rawTrace
+  obtain ⟨inputs, _supported, invariant⟩ := runtime.reactive_history_invariant leaks
+    (setup.initialLaw.map setup.eventInputs) horizon scheduler rawInputs
+  obtain ⟨entered, activated⟩ := invariant.activatedAt_eq_some_of_ready_actor event ready
+    (by simp only [owned, Option.isSome_some])
+  change execution.application.activatedAt event = some entered at activated
+  have within : execution.application.WithinDeadline runtime event := by
+    simp only [EventGraphRuntime.State.WithinDeadline, activated]
+    apply Nat.lt_of_not_ge
+    intro due
+    obtain ⟨entry, remembered, activatedAt⟩ := due_owner_recalled_turn_of_opportunity
+      runtime leaks timely (serviceGraph_revealRelaxedOrdered setup .sequential)
+      _ rawTrace rfl (opportunity _ trace clear) event owner owned ready entered activated due
+    exact never entry remembered activatedAt
+  have same := environment_waiting_config runtime leaks execution next command event owner ready
+    owned within facts.quiescent safe reached
+  exact ⟨same, by simpa only [same] using clear⟩
 
 include opportunity timely in
 private theorem counted_waiting_transition
     {control : (application setup runtime leaks).Control}
     (trace : ((Menu).protocol (initialLaw setup) horizon scheduler).Trace (some control))
-    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅))
+    (clear : control.execution.application.config.defaulted = ∅)
     {rank : Nat} (ordered : control.execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank control.execution.application.config = some point)
@@ -105,7 +117,7 @@ private theorem counted_waiting_transition
       scheduler (some control) joint).support) :
     ∃ next, target = some next ∧
       next.execution.application.config = control.execution.application.config ∧
-      ExclusionEvidence 0 ∅ (RecoveryState.mk next.execution.application ∅) ∧
+      next.execution.application.config.defaulted = ∅ ∧
       next.execution.recall owner = control.execution.recall owner := by
   let app := application setup runtime leaks
   rcases control with ⟨remaining, active, execution⟩
@@ -120,10 +132,10 @@ private theorem counted_waiting_transition
       cases (PMF.mem_support_pure_iff _ _).mp realized
       refine ⟨_, rfl, (runtime.reactive_respond_application leaks execution responder _).1,
         ?_, app.respond_recall_other execution responder owner different _⟩
-      rcases responseEq : (joint responder).getD ⟨none⟩ with ⟨transmission⟩
-      cases transmission with
-      | none => exact clear
-      | some submission => exact clear.submit responder submission
+      change (execution.respond (application setup runtime leaks) responder
+        ((joint responder).getD ⟨none⟩)).application.config.defaulted = ∅
+      rw [(runtime.reactive_respond_application leaks execution responder _).1]
+      exact clear
   | none =>
       cases remaining with
       | zero =>
@@ -146,8 +158,9 @@ source point, public clarity and the owner's complete recall are unchanged
 through the waiting phase. All players' continuation policies are arbitrary. -/
 theorem counted_waiting_until_firstActivation
     (completes : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-      ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+      control.execution.application.config.defaulted = ∅ →
       (application setup runtime leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
     (certificate : ((Menu).protocol (initialLaw setup) horizon
@@ -157,7 +170,7 @@ theorem counted_waiting_until_firstActivation
     (start : ((Menu).protocol (initialLaw setup) horizon scheduler).History)
     {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (current : start.state = some ⟨remaining, none, execution⟩)
-    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk execution.application ∅))
+    (clear : execution.application.config.defaulted = ∅)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
@@ -173,7 +186,7 @@ theorem counted_waiting_until_firstActivation
           start).support,
       ∃ control, stopped.state = some control ∧ control.actor = some owner ∧
         control.execution.application.config = execution.application.config ∧
-        ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) ∧
+        control.execution.application.config.defaulted = ∅ ∧
         control.execution.recall owner = execution.recall owner := by
   classical
   let model := (Menu).information (initialLaw setup) horizon scheduler
@@ -183,7 +196,7 @@ theorem counted_waiting_until_firstActivation
   let property := fun history : protocol.History =>
     ∃ control, history.state = some control ∧
       control.execution.application.config = execution.application.config ∧
-      ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) ∧
+      control.execution.application.config.defaulted = ∅ ∧
       control.execution.recall owner = execution.recall owner
   have initialProperty : property start := ⟨_, current, rfl, clear, rfl⟩
   have preserved : ∀ history, ¬ stopped history → ¬ protocol.terminal history.state →
@@ -236,8 +249,9 @@ arbitrary play. Its source configuration is unchanged and its complete owner
 recall still equals the boundary recall. -/
 theorem counted_boundary_firstActivation
     (completes : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-      ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+      control.execution.application.config.defaulted = ∅ →
       (application setup runtime leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
     (certificate : ((Menu).protocol (initialLaw setup) horizon
@@ -249,7 +263,7 @@ theorem counted_boundary_firstActivation
     (current : start.state =
       some ⟨horizon - execution.environmentRecall.length, none, execution⟩)
     (boundary : ReachedBoundary setup runtime leaks horizon scheduler rank execution)
-    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk execution.application ∅))
+    (clear : execution.application.config.defaulted = ∅)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
     (intendedPoint : ProtocolState.Intended setup.program point)
@@ -262,7 +276,7 @@ theorem counted_boundary_firstActivation
       ∃ (remaining : Nat) (anchor : (application setup runtime leaks).Execution),
         stopped.state = some ⟨remaining, some owner, anchor⟩ ∧
         anchor.application.config = execution.application.config ∧
-        ExclusionEvidence 0 ∅ (RecoveryState.mk anchor.application ∅) ∧
+        anchor.application.config.defaulted = ∅ ∧
         anchor.recall owner = execution.recall owner ∧
         pendingEvent setup runtime leaks owner
           (some (anchor.recall owner,

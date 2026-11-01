@@ -342,19 +342,6 @@ private theorem expired_eq_completeFailure (runtime : EventGraphRuntime graph)
         actor payload binding checks outputEq codeEq node, PMF.mem_support_pure_iff] at reached
       simpa only [State.completeFailure, node] using reached
 
-private theorem defaulted_of_ownerless_step (before after : graph.Config)
-    (event : graph.EventId) (ready : before.cut.Ready event) (action : graph.Action event)
-    (supported : after ∈ (before.step event ready action).support)
-    (ownerless : graph.actor? event = none) : after.defaulted = before.defaulted := by
-  change (graph.nodes event).actor = none at ownerless
-  have noDecision : before.actualDecision event action = none := by
-    simp only [Config.actualDecision, EventCode.actualDecision, ownerless]
-  rw [Config.step, PMF.support_map] at supported
-  obtain ⟨value, _chosen, rfl⟩ := supported
-  change (before.complete event ready action value).defaults.defaulted = before.defaults.defaulted
-  rw [Config.complete_defaults, noDecision]
-  rfl
-
 /-- Native chance, clocks and expiry preserve exact public failure provenance. -/
 theorem environmentStep (valid : ExclusionEvidence low inherited state)
     (runtime : EventGraphRuntime graph) (command : EnvironmentCommand graph) (next : State graph)
@@ -386,7 +373,8 @@ theorem environmentStep (valid : ExclusionEvidence low inherited state)
             have ownerless : graph.actor? event = none :=
               (EventCode.actor_cast outputEq (graph.nodes event)).symm.trans
                 (congrArg EventCode.actor codeEq)
-            have defaults := defaulted_of_ownerless_step state.config next.config event ready
+            have defaults := EventGraph.Config.step_defaulted_of_actor_none
+              state.config next.config event ready
               action supported ownerless
             apply valid.advance next footprint ?_ ?_
             · intro query unfinished failed _owner _acting
@@ -408,8 +396,8 @@ theorem environmentStep (valid : ExclusionEvidence low inherited state)
                 expired_eq_completeFailure runtime state next event reached same owner actor
               exact valid.completeFailure event ready owner actor
           | none =>
-              have defaults := defaulted_of_ownerless_step state.config next.config event ready
-                action supported actor
+              have defaults := EventGraph.Config.step_defaulted_of_actor_none
+                state.config next.config event ready action supported actor
               apply valid.advance next footprint ?_ ?_
               · intro query unfinished failed _owner _acting
                 have eq := State.completed_event_eq_of_step supported unfinished failed.completed

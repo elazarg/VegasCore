@@ -271,4 +271,17 @@ theorem LateDelivery.pending {who : Player} {info : (application setup runtime l
 end Classification
 
 
+/-- **The disclosure resolves.** At a pending reveal of a player, its canonical
+disclosure transmits. -/
+def DisclosureResolves (who : Player) (past : List (application setup runtime leaks).PlayerEntry)
+    (view : (application setup runtime leaks).PlayerView) : Prop :=
+  ∀ event, pendingEvent setup runtime leaks who (some (past, view)) = some event →
+    ∀ owner payload (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
+      checks outputEq codeEq,
+      nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
+      (runtime.canonicalServiceDecision leaks who past view event
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)).transmission ≠
+        none
+
+
 end Vegas

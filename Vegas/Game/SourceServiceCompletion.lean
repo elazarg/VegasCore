@@ -220,6 +220,41 @@ variable (setup : Setup (Player := Player) (L := L))
   (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
+variable {setup} in
+/-- Every saved ready event lies at or before the current actual sequential prefix. -/
+theorem readySeen_of_rawTrace {horizon rank : Nat}
+    {scheduler : (application setup runtime leaks).Scheduler}
+    {control : (application setup runtime leaks).Control}
+    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some control))
+    (ordered : control.execution.application.config.cut.IsPrefix rank) :
+    ReadySeen setup leaks rank control.execution := by
+  have facts := legalFacts setup leaks horizon scheduler control trace
+  intro owner entry member event readyView
+  by_cases completed : event ∈ control.execution.application.config.cut.completed
+  · exact Nat.le_of_lt ((ordered.2 event).mp completed)
+  · obtain ⟨extra, order, _together, _activated, _accepted⟩ :=
+      facts.eventStable owner entry member event readyView completed
+    have ready := ready_of_eventReady_extends order readyView completed
+    have actual : control.execution.application.config.cut.IsPrefix event.val :=
+      ⟨event.isLt.le, fun query =>
+        setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+    exact (actual.unique ordered).le
+
+/-- **A reached boundary.** The execution of a legal history at a scheduler
+boundary, whose configuration is a prefix at `rank`, with every event from
+`rank` on untouched and every own submission made at its author's turn. -/
+structure ReachedBoundary (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
+    (rank : Nat) (execution : (application setup runtime leaks).Execution) : Prop where
+  trace : Nonempty (((application setup runtime leaks).protocol (initialLaw setup) horizon
+    scheduler).Trace (some ⟨horizon - execution.environmentRecall.length, none, execution⟩))
+  bounded : execution.environmentRecall.length ≤ horizon
+  ordered : execution.application.config.cut.IsPrefix rank
+  untouched : ∀ event : (graph setup).EventId, rank ≤ event.val →
+    Untouched setup leaks event execution
+  turns : ∀ who, OwnSubmissionsAtTurn setup leaks execution who
+
+
 /-- One scheduler round preserves the starting bound on remembered ready events
 and extends the completed prefix through its actual finite graph path. -/
 theorem round_prefix (scheduler : (application setup runtime leaks).Scheduler)

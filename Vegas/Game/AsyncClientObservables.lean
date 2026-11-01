@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.AsyncServiceRawNash
+import Vegas.Game.SourceServiceTurnSettlement
 import Vegas.Game.TerminalObservationLaws
 
 /-! # Client laws and observable guarantees under asynchronous service
@@ -68,7 +69,7 @@ theorem clientSettlementLaw_withinTV
       (service.clientSettlementLaw admission timing source sample utility deposit)
       (service.sourceSettlementLaw admission source utility) := by
   have close := sourceServiceClients_clientPolicy_settlement_lawError service.contract
-    service.timely timing
+    timing
     (service.setup.decodeBehavioralProfile admission source)
     (firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely
       turns _ (fun who => BehavioralPolicy.normalizeDisclosures_authentic _ _)) service.rawMenu

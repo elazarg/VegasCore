@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.AsyncServiceDeviationBound
+import Vegas.Game.SourceServiceTurnSettlement
 
 /-! # Approximate Nash correspondence on the bounded raw ledger
 
@@ -42,26 +43,6 @@ namespace AsyncServiceSpec
 variable (service : AsyncServiceSpec Player L)
   (admission : CommitmentInterface service.setup.program)
 
-/-- The bounded raw response menu: every native response within the service's
-message bounds. -/
-abbrev rawMenu : (serviceApplication service.setup service.mode service.deadline
-    service.leaks).ResponseMenu :=
-  service.bounds.rawMenu (serviceRuntime service.setup service.mode service.deadline) service.leaks
-
-/-- **The bounded raw menu admits every profile's clients.** For every turn
-timing and every source profile, each player's client policy is admissible in
-the bounded raw response menu. -/
-theorem rawMenu_admits {turns : Nat}
-    (timing : TurnTiming service.setup turns service.mode)
-    (source : Profile (service.sourceModel admission).behavioralSignature) (who : Player) :
-    service.rawMenu.Admissible (serviceInitialLaw service.setup service.mode) service.horizon
-      service.scheduler who
-      (serviceClientPolicy service.setup service.mode service.deadline service.leaks service.bound
-        turns timing
-        (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
-          admission source)) who) :=
-  sourceServiceClientPolicy_raw_admissible service.bounds service.values service.initialValues
-    service.capacity service.bound turns timing _ service.horizon service.scheduler who
 
 theorem isεNash_rawClientProfile_approximate {Parameter : Type}
     (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
@@ -350,7 +331,7 @@ theorem firstTurnClientProfile_settlement_law {Parameter : Type}
         (fun state => (some state, utility (service.setup.parameterOutcome parameter state))) := by
   intro base settle
   have close := sourceServiceClients_clientPolicy_settlement_lawError service.contract
-    service.timely (firstTurnTiming service.setup turns service.mode)
+    (firstTurnTiming service.setup turns service.mode)
     (service.setup.decodeBehavioralProfile admission
       source)
     (firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely

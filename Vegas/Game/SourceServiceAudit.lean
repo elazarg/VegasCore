@@ -1,17 +1,15 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceSettledSound
-import GameTheory.Analysis.Protocol.CounterfactualDecomposition
+import Vegas.Game.RevealService
+import Vegas.Pending.ReactiveServiceAudit
+import Interaction.ReactiveAuditCollection
 
-/-! # Actual settlement on full-source compiled executions
+/-! # Protocol audits of compiled source executions
 
-The fixed service samples authentic signed packets, judges each against the
-contract's settled record, and checks the record's missed-binding obligations.
-No verdict reads when a packet was sent. Every retained history has zero
-collection probability, including intermediate histories and correlated
-private inputs. Consequently the compiled profile preserves the original joint
-terminal-state and realized-payoff law. Incentives for arbitrary raw deviations
-remain the separate continuation-repair obligation.
+The service samples authentic signed traffic and checks each packet against the
+native contract's settled record. The resulting audit charges protocol
+violations. Source omissions and authentic openings whose public guards reject
+retain the game payoff declared for their public default history.
 -/
 
 noncomputable section
@@ -23,7 +21,7 @@ open SourceProgram
 open GameTheory.Math.Probability GameTheory.Protocol GameTheory.Enforcement
 open Interaction EventGraphRuntime
 
-variable {Player : Type} [DecidableEq Player] [Fintype Player]
+variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 /-- Authenticated audit evidence: the contract's settled record and one signed
@@ -33,10 +31,9 @@ abbrev SettledEvidence (setup : Setup (Player := Player) (L := L))
   SettledRecord (serviceGraph setup mode) × Message Player (WitnessedPacket (serviceGraph setup
     mode))
 
-/-- A terminal audit of signed packets against the settled record and of public
-binding omissions. The sample is authenticated separately; the verdict denotes
-an actually collected charge under the declared inclusion and escrow service
-contract. -/
+/-- A terminal audit of signed packets against the settled record. The sample is
+authenticated separately; its verdict denotes an actually collected charge
+under the declared inclusion and escrow service contract. -/
 def serviceSourceAudit
     (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
     (deadline : (serviceGraph setup mode).EventId → Nat)

@@ -285,6 +285,21 @@ theorem AcceptanceWitness.complete
     change state.config.complete event ready _ _ = state.config.complete event ready action output
     rw [decision, outputValue]
 
+/-- Native acceptance retains its actual raw completion and automatic-drain endpoint. -/
+theorem AcceptanceWitness.reactive_complete
+    {event : graph.EventId} {message : Message Player (WitnessedPacket graph)}
+    {sent : graph.Config} {action : graph.Action event} {output : (graph.outputLayout event).Value}
+    {state next : State graph}
+    (witness : AcceptanceWitness event message sent action output state)
+    (sameConfig : state.config = sent)
+    (accepted : (runtime.reactiveApplication leaks).handle state message = some next) :
+    ∃ ready : sent.cut.Ready event, sent.actualDecision event action = some action ∧
+      ∃ native, handle runtime state ⟨message.id, message.payload.call⟩ = some native ∧
+        native.drain = next ∧ native.config = sent.complete event ready action output := by
+  obtain ⟨native, handled, drained⟩ := reactiveHandle_call accepted
+  obtain ⟨ready, actual, completed⟩ := witness.complete runtime sameConfig handled
+  exact ⟨ready, actual, native, handled, drained, completed⟩
+
 /-- A ready active owner's typed accepted-call result is supported by the graph executor. -/
 theorem AcceptanceWitness.complete_mem_step
     {event : graph.EventId} {message : Message Player (WitnessedPacket graph)}

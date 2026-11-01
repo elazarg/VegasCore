@@ -65,6 +65,9 @@ theorem accepted_until_continuation
           final.execution.application.config = sent) ∧
         (event ∈ final.execution.application.config.cut.completed →
           ∃ ready : sent.cut.Ready event, sent.actualDecision event action = some action ∧
+            ((sent.complete event ready action output).defaulted = ∅ ∨
+                final.execution.application.config.defaulted = ∅ →
+              final.execution.application.config = sent.complete event ready action output) ∧
             (graph setup).runPlan
                 ((graph setup).policyPlan reference (graph setup).canonicalScheduler)
                 final.execution.application.config.remaining final.execution.application.config =
@@ -176,7 +179,21 @@ theorem accepted_until_continuation
                 (unique.inputs message (List.mem_filter.mp recorded).1).lookup message.id packet
                   found named
               subst packet
-              exact (priorInvariant.2.2.2.2.1).reactive_runPlan setup.eventGraph runtime leaks
-                reference beforeAt handled
+              obtain ⟨ready, actual, native, _handled, drained, completed⟩ :=
+                (priorInvariant.2.2.2.2.1).reactive_complete runtime leaks beforeAt handled
+              refine ⟨ready, actual, ?_, ?_⟩
+              · intro empty
+                have nativeEmpty : native.config.defaulted = ∅ := by
+                  rcases empty with certified | observed
+                  · rw [completed]
+                    exact certified
+                  · have defaults : native.drain.config.defaulted = native.config.defaulted :=
+                      native.drainFuel_defaulted native.config.remaining
+                    rw [← defaults, drained]
+                    exact observed
+                rw [← drained, native.drain_eq_of_empty nativeEmpty, completed]
+              · rw [← drained]
+                simpa only [completed] using
+                  (State.drain_runPlan_canonical setup.eventGraph reference native).symm
 
 end Vegas

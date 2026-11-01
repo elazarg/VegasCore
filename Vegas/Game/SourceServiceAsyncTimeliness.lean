@@ -1,94 +1,69 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ServiceSettledEvidence
-import Vegas.Game.SourceServiceFreshCall
 import Vegas.Game.SourceServiceFacts
-import Vegas.Pending.ReactiveCanonicalDecision
+import Vegas.Game.SourceServiceFreshCall
 import Vegas.Pending.ReactiveServiceConditions
-import Interaction.ReactivePacketEvidence
-import Vegas.Pending.ReactiveAssociationEvidence
-import Vegas.Pending.ReactivePacketEvidence
+import Vegas.Pending.ReactiveGraphSteps
+import Vegas.Pending.EventCommandFrame
+import Vegas.Pending.ExclusionInvariant
+import Vegas.Pending.PublicFailureEvidence
+import Interaction.ReactiveReceipts
 
-/-! # An acceptable fresh call settles in time under the asynchronous contract
+/-! # Protected-call settlement in the native runtime
 
-An owner emits a fresh call for its ready event early enough that an inclusion
-within `bound` slots still lands before the deadline, acceptable on the view it
-saw (the handler's part of the audit's public conformance rule), and emits no
-other identifier of its own for the event. Under the contract's protected
-inclusion that call is accepted, and the event completes only through it: it is never
-rejected and the event never expires first (`Vegas.prescribed_packet_settles`).
-
-The proof is one invariant over every legal history, for every scheduler and
-arbitrary responses of everyone else, on the service graph of every dependency
-mode. While the event is unfinished, every event that completes was ready
-together with it, so it belongs to another owner, and its output is not read by
-the event's guards; the event's activation time is unchanged and the call stays
-acceptable. An inclusion before `sent + bound` is
-then within the deadline and is accepted. An expiry or a late inclusion needs a
-clock past `sent + bound`, where protected inclusion has already produced a
-receipt.
+An acceptable call sent within its protected inclusion window is accepted
+when its owner emits no other packet for the event. The event cannot expire
+or complete through a different packet first.
+Authentic guard rejection produces an accepting receipt and the source's
+declared failure result. Other commands may advance independent owners and
+drain automatic events. Same-owner readiness and active-owner preservation
+keep the protected event unfinished until its own inclusion.
 -/
 
 noncomputable section
 
 namespace Vegas
 
-open SourceProgram
+open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 
-open GameTheory.Math.Probability Interaction EventGraphRuntime
-
-variable {Player : Type} [DecidableEq Player]
-  {L : IExpr} [IExpr.ResultTypes L]
-
-
-variable (setup : Setup (Player := Player) (L := L))
-  {mode : EventGraph.ExecutionMode}
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
   {deadline : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
-/-- Completed events stay completed across a public step. -/
-theorem PublicStep.completed_mono {before after : EventGraphRuntime.State (serviceGraph setup mode)}
-    (step : PublicStep before after) :
-    before.config.cut.completed ⊆ after.config.cut.completed := by
-  intro event member
-  rcases step with ⟨configEq, _, _⟩ | ⟨completion, historyEq⟩
-  · rw [configEq]
-    exact member
-  · apply (after.config.history_exact event).mp
-    rw [historyEq, List.map_append]
-    exact List.mem_append_left _ ((before.config.history_exact event).mpr member)
-
-/-- A scheduler command preserves the settlement invariant under protected
-inclusion. -/
-theorem settlesFreshCalls_environment
-    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+/-- A native command preserves protected fresh-call settlement. -/
+theorem SettlesFreshCalls.environment
+    {horizon : Nat}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
     {bound : (serviceGraph setup mode).EventId → Nat}
     (owner : Player) (event : (serviceGraph setup mode).EventId)
     (owned : (serviceGraph setup mode).actor? event = some owner)
-    (remaining : Nat) (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (inclusion : ProtectedInclusionAt (serviceRuntime setup mode deadline) leaks execution bound)
-    (prior :
-        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
-        horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
+    (remaining : Nat)
+    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (inclusion : ProtectedInclusionAt (serviceRuntime setup mode deadline)
+      leaks execution bound)
+    (prior : ((serviceApplication setup mode deadline leaks).protocol
+      (serviceInitialLaw setup mode) horizon scheduler).Trace
+        (some ⟨remaining + 1, none, execution⟩))
     (valid : SettlesFreshCalls setup leaks owner event bound execution)
     (command : (serviceApplication setup mode deadline leaks).Command)
     (next : (serviceApplication setup mode deadline leaks).Execution)
-    (reached : next ∈
-        (execution.environmentStep (serviceApplication setup mode deadline leaks)
-        command).support) :
+    (reached : next ∈ (execution.environmentStep
+      (serviceApplication setup mode deadline leaks) command).support) :
     SettlesFreshCalls setup leaks owner event bound next := by
+  let runtime := serviceRuntime setup mode deadline
   let app := serviceApplication setup mode deadline leaks
   have facts := legalFacts setup leaks horizon scheduler _ prior
   have recallEq := app.environmentStep_recall execution next command reached
-  have publicStep := publicStep_reactive_environmentStep (serviceRuntime setup mode deadline) leaks
-      execution next command reached
-  have mono := PublicStep.completed_mono setup publicStep
+  have mono := CompletionStep.completed_mono_path
+    (completionPath_reactive_environmentStep runtime leaks execution next command reached)
   intro earlier entry later message split call sole
   rw [recallEq] at split
   have before := valid earlier entry later message split call sole
   have member : entry ∈ execution.recall owner := by rw [split]; simp
   obtain ⟨entered, activated, early⟩ := call.fits.exists
-  -- Before the bound has passed the event is still timely; after it, a receipt exists.
+  change entry.beforeView.application.publicView.clock - entered + bound event <
+    deadline event at early
   have notLate (unfinished : event ∉ execution.application.config.cut.completed) :
       execution.application.clock ≤
         entry.beforeView.application.publicView.clock + bound event := by
@@ -104,44 +79,37 @@ theorem settlesFreshCalls_environment
     obtain ⟨_, _, _, kept, _⟩ := stableAt unfinished
     exact kept owner owned entered activated
   have withinDeadline (unfinished : event ∉ execution.application.config.cut.completed) :
-      execution.application.WithinDeadline (serviceRuntime setup mode deadline) event := by
+      execution.application.WithinDeadline runtime event := by
     have clockBound := notLate unfinished
     unfold State.WithinDeadline
     rw [activatedNow unfinished]
-    change execution.application.clock - entered <
-        (serviceRuntime setup mode deadline).deadline event
+    change execution.application.clock - entered < deadline event
     omega
-  -- The settlement facts carry over whenever receipts only grow by unrelated or
-  -- accepting entries and the event is not newly completed without acceptance.
   by_cases finished : event ∈ execution.application.config.cut.completed
   · have accepted := before.1 finished
-    unfold ReactiveApplication.Execution.environmentStep at reached
-    rw [PMF.support_map] at reached
-    obtain ⟨updated, supported, rfl⟩ := reached
-    have kept : (message.id, true) ∈ updated.receipts := by
-      cases command with
-      | activate who =>
-          rw [PMF.support_map] at supported
-          obtain ⟨_, _, rfl⟩ := supported
-          exact accepted
-      | wait =>
-          cases (PMF.mem_support_pure_iff _ _).mp supported
-          exact accepted
-      | «include» id =>
-          cases (PMF.mem_support_pure_iff _ _).mp supported
-          unfold ReactiveApplication.Execution.includePending
-          cases execution.network.includePending id with
-          | mk envelope network =>
-              cases envelope with
-              | none => exact accepted
-              | some envelope => exact List.mem_append_left _ accepted
-      | application command =>
-          rw [PMF.support_map] at supported
-          obtain ⟨_, _, rfl⟩ := supported
-          exact accepted
+    have kept := (app.environmentStep_receipts_prefix execution next command reached).subset
+      accepted
     exact ⟨fun _ => kept, fun _ _ => kept, fun _ => mono finished⟩
-  · -- The event is unfinished before the command.
-    obtain ⟨extra, order, together, _, acceptedChanged⟩ := stableAt finished
+  · obtain ⟨extra, order, together, _, acceptedChanged⟩ := stableAt finished
+    have readyNow := ready_of_eventReady_extends order call.ready finished
+    have readyActive := execution.application.active_of_ready_owned facts.quiescent readyNow owned
+    have afterActive (native : EventGraphRuntime.State (serviceGraph setup mode))
+        (unfinished : event ∉ native.config.cut.completed)
+        (footprint : CompletionStep execution.application native) :
+        owner ∉ native.config.defaulted := by
+      intro excluded
+      rcases footprint with ⟨same, _accepted, _activated⟩ |
+          ⟨named, ready, action, moved, _activated, _accepted⟩
+      · exact readyActive (same ▸ excluded)
+      · have acting := EventGraph.Config.step_new_default_actor
+          execution.application.config native.config named ready action moved owner readyActive
+          excluded
+        have same := (serviceGraph_revealRelaxedOrdered setup mode).ready_actor_unique
+          execution.application.config.cut readyNow ready owned acting
+        subst named
+        apply unfinished
+        rw [execution.application.config.step_cut event ready action _ moved]
+        exact Finset.mem_insert_self _ _
     unfold ReactiveApplication.Execution.environmentStep at reached
     rw [PMF.support_map] at reached
     obtain ⟨updated, supported, rfl⟩ := reached
@@ -159,54 +127,49 @@ theorem settlesFreshCalls_environment
           { (execution.includePending app id) with
             environmentRecall := execution.environmentRecall ++
               [⟨execution.observeEnvironment app, .include id⟩] }
-        unfold Settled ReactiveApplication.Execution.includePending
-        unfold MessageNetwork.includePending
+        unfold Settled ReactiveApplication.Execution.includePending MessageNetwork.includePending
         cases found : execution.network.lookup id with
         | none => exact before
         | some envelope =>
             have pending : envelope ∈ execution.network.pending :=
               List.mem_of_find?_eq_some found
-            have envelopeId : envelope.id = id := by
-              simpa using List.find?_some found
+            have envelopeId : envelope.id = id := by simpa using List.find?_some found
             dsimp only
             by_cases sameId : id = message.id
-            · -- The included envelope is the owner's fresh call itself.
-              have output : message ∈ app.outputs (execution.recall owner) :=
+            · have output : message ∈ app.outputs (execution.recall owner) :=
                 List.mem_filterMap.mpr ⟨entry, member, call.emitted⟩
               rw [← facts.inputs owner] at output
               have inputMember := (List.mem_filter.mp output).1
-              have envelopeEq : envelope = message := by
-                exact (facts.unique.inputs message inputMember).pending envelope pending
+              have envelopeEq : envelope = message :=
+                (facts.unique.inputs message inputMember).pending envelope pending
                   (envelopeId.trans sameId)
               subst envelopeEq
-              obtain ⟨accepted, handled⟩ := freshServiceAcceptable_accepted_of_extends
-                  (serviceRuntime setup mode deadline) (serviceGraph_revealRelaxedOrdered setup
-                    mode) execution.application entry.beforeView.application.publicView
-                  envelope call.conforming event call.addressed order together acceptedChanged
-                  (facts.storeStable owner entry member).2 finished
-                  (withinDeadline finished)
-                  (fun fact fact_member => facts.evidence.pending envelope pending fact fact_member)
-                  facts.binding
-              have reactiveHandled : app.handle execution.application envelope = some accepted :=
-                (reactiveApplication_handle_of_tokenValid (serviceRuntime setup mode deadline) leaks
-                    _ envelope
-                    (EventGraphRuntime.freshServiceAcceptable.tokenValid
-                    (serviceRuntime setup mode deadline) call.conforming)).trans handled
+              obtain ⟨accepted, handled⟩ := freshServiceAcceptable_accepted_of_extends runtime
+                (serviceGraph_revealRelaxedOrdered setup mode) execution.application
+                entry.beforeView.application.publicView envelope call.conforming event
+                call.addressed order together acceptedChanged finished (withinDeadline finished)
+                (fun fact inside => facts.evidence.pending envelope pending fact inside)
+                facts.quiescent facts.binding
+              have reactiveHandled : app.handle execution.application envelope =
+                  some accepted.drain := by
+                rw [reactiveApplication_handle_of_tokenValid runtime leaks _ envelope
+                  (freshServiceAcceptable.tokenValid runtime call.conforming), handled]
+                rfl
               rw [reactiveHandled]
               obtain ⟨named, namedEq, ready, action, stepped⟩ :=
-                handle_config_mem_step (serviceRuntime setup mode deadline) _ _ _ handled
+                handle_config_mem_step runtime _ _ _ handled
               have namedIs : named = event := Option.some.inj (namedEq.symm.trans call.addressed)
               subst namedIs
-              have completed : named ∈ accepted.config.cut.completed := by
+              have completed : named ∈ accepted.drain.config.cut.completed := by
+                apply CompletionStep.completed_mono_path accepted.drain_completionPath
                 rw [execution.application.config.step_cut named ready action _ stepped]
                 exact (EventOrder.Cut.mem_complete _ _ _ _).mpr (Or.inl rfl)
               rw [← sameId]
               have receipt : (id, true) ∈ execution.receipts ++
-                  [(id, (some accepted).isSome)] :=
+                  [(id, (some accepted.drain).isSome)] :=
                 List.mem_append_right _ (List.mem_singleton_self _)
               exact ⟨fun _ => receipt, fun _ _ => receipt, fun _ => completed⟩
-            · -- Another envelope cannot complete the event, and leaves our receipts alone.
-              have otherReceipt (accepted : Bool)
+            · have otherReceipt (accepted : Bool)
                   (receipt : (message.id, accepted) ∈ execution.receipts ++
                     [(id, (app.handle execution.application envelope).isSome)]) :
                   (message.id, accepted) ∈ execution.receipts := by
@@ -218,23 +181,19 @@ theorem settlesFreshCalls_environment
                 cases handled : app.handle execution.application envelope with
                 | none => exact finished
                 | some accepted =>
-                    intro completedNow
-                    obtain ⟨named, namedEq, ready, action, stepped⟩ :=
-                      handle_config_mem_step (serviceRuntime setup mode deadline) _ _ _
-                          (reactiveHandle_call handled)
-                    have afterCut := execution.application.config.step_cut named ready action _
-                      stepped
-                    change event ∈ accepted.config.cut.completed at completedNow
-                    rw [afterCut, EventOrder.Cut.mem_complete] at completedNow
-                    rcases completedNow with rfl | old
-                    · have sender := handle_sender_actor (serviceRuntime setup mode deadline) _ _ _
-                        (reactiveHandle_call handled) event namedEq
+                    obtain ⟨native, rawHandled, drained⟩ := reactiveHandle_call handled
+                    obtain ⟨named, namedEq, ready, action, moved⟩ :=
+                      handle_config_mem_step runtime _ _ _ rawHandled
+                    have different : named ≠ event := by
+                      intro same
+                      subst named
+                      have sender := handle_sender_actor runtime _ _ _ rawHandled event namedEq
                       rw [owned] at sender
                       have senderEq : envelope.sender = owner := (Option.some.inj sender).symm
                       obtain ⟨issuer, issuerMember, material, submitted, issued, _⟩ :=
                         facts.provenance.pending envelope pending
                       rw [senderEq, split] at issuerMember
-                      have different : issuer ≠ entry := by
+                      have differentEntry : issuer ≠ entry := by
                         rintro rfl
                         rw [call.emitted] at issued
                         exact sameId ((Option.some.inj issued) ▸ envelopeId).symm
@@ -242,12 +201,22 @@ theorem settlesFreshCalls_environment
                         rcases List.mem_append.mp issuerMember with inside | inside
                         · exact List.mem_append_left _ inside
                         · rcases List.mem_cons.mp inside with rfl | inside
-                          · exact (different rfl).elim
+                          · exact (differentEntry rfl).elim
                           · exact List.mem_append_right _ inside
                       exact sole issuer elsewhere ⟨envelope, issued,
                         senderEq.trans call.authored.symm, namedEq,
                         fun equal => sameId (envelopeId.symm.trans equal)⟩
-                    · exact finished old
+                    have unfinished : event ∉ native.config.cut.completed := by
+                      rw [execution.application.config.step_cut named ready action _ moved,
+                        EventOrder.Cut.mem_complete]
+                      exact not_or_intro (Ne.symm different) finished
+                    have active := afterActive native unfinished
+                      (completionStep_handle runtime _ _ _ rawHandled)
+                    change event ∉ accepted.config.cut.completed
+                    rw [← drained]
+                    exact fun completed => unfinished
+                      ((native.drain_completed_iff_of_active event owner owned active).mp
+                        completed)
               exact ⟨fun completedNow => (notCompleted completedNow).elim,
                 fun accepted receipt => List.mem_append_left _
                   (before.2.1 accepted (otherReceipt accepted receipt)),
@@ -255,25 +224,20 @@ theorem settlesFreshCalls_environment
     | application command =>
         rw [PMF.support_map] at supported
         obtain ⟨state, changed, rfl⟩ := supported
-        change Settled setup leaks event message.id
-          { execution with
-            application := state
-            environmentRecall := execution.environmentRecall ++
-              [⟨execution.observeEnvironment app, .application command⟩] }
-        change state ∈
-            (environmentStep (serviceRuntime setup mode deadline) execution.application
-                command).support at changed
-        have notCompleted : event ∉ state.config.cut.completed := by
+        change state ∈ ((environmentStep runtime execution.application command).map
+          State.drain).support at changed
+        obtain ⟨native, rawChanged, rfl⟩ := PMF.support_map .. ▸ changed
+        have unfinished : event ∉ native.config.cut.completed := by
           intro completedNow
           cases command with
           | advanceClock =>
-              simp only [environmentStep, PMF.mem_support_pure_iff] at changed
-              subst changed
+              simp only [environmentStep, PMF.mem_support_pure_iff] at rawChanged
+              subst rawChanged
               exact finished completedNow
           | executeSample sampled =>
               rcases
                   (environmentStep_executeSample_config_activated
-                      (serviceRuntime setup mode deadline) _ _ sampled changed).2 with
+                      runtime _ _ sampled rawChanged).2 with
                   ⟨configEq, _⟩ | ⟨ready, action, stepped, _⟩
               · rw [configEq] at completedNow
                 exact finished completedNow
@@ -281,18 +245,18 @@ theorem settlesFreshCalls_environment
                   EventOrder.Cut.mem_complete] at completedNow
                 rcases completedNow with rfl | old
                 · rw [environmentStep_executeSample_of_nonsample
-                          (serviceRuntime setup mode deadline) _ event ready
+                          runtime _ event ready
                     (fun payload law outputEq codeEq view => by
                       rw [nodeView_sample_actor outputEq codeEq] at owned
-                      cases owned)] at changed
-                  cases (PMF.mem_support_pure_iff _ _).mp changed
+                      cases owned)] at rawChanged
+                  cases (PMF.mem_support_pure_iff _ _).mp rawChanged
                   exact finished (execution.application.config.step_cut event ready action _
                     stepped ▸ (EventOrder.Cut.mem_complete _ _ _ _).mpr (Or.inl rfl))
                 · exact finished old
           | expire expired =>
               rcases
-                  (environmentStep_expire_config_activated (serviceRuntime setup mode deadline) _ _
-                      expired changed).2 with ⟨configEq, _⟩ | ⟨ready, action, stepped, _⟩
+                  (environmentStep_expire_config_activated runtime _ _
+                      expired rawChanged).2 with ⟨configEq, _⟩ | ⟨ready, action, stepped, _⟩
               · rw [configEq] at completedNow
                 exact finished completedNow
               · have completedAfter := completedNow
@@ -300,16 +264,28 @@ theorem settlesFreshCalls_environment
                   EventOrder.Cut.mem_complete] at completedNow
                 rcases completedNow with rfl | old
                 · have clockBound := notLate finished
-                  by_cases due : (serviceRuntime setup mode deadline).deadline event ≤
+                  by_cases due : runtime.deadline event ≤
                       execution.application.clock - entered
-                  · omega
-                  · rw [environmentStep_expire_of_not_due (serviceRuntime setup mode deadline) _
-                            event ready entered (activatedNow finished) due] at changed
-                    cases (PMF.mem_support_pure_iff _ _).mp changed
+                  · change deadline event ≤ execution.application.clock - entered at due
+                    omega
+                  · rw [environmentStep_expire_of_not_due runtime _
+                            event ready entered (activatedNow finished) due] at rawChanged
+                    cases (PMF.mem_support_pure_iff _ _).mp rawChanged
                     exact finished completedAfter
                 · exact finished old
+        have active := afterActive native unfinished
+          (completionStep_environmentStep runtime _ _ command rawChanged)
+        have notCompleted : event ∉ native.drain.config.cut.completed := fun completed =>
+          unfinished ((native.drain_completed_iff_of_active event owner owned active).mp
+            completed)
+        change Settled setup leaks event message.id
+          { execution with
+            application := native.drain
+            environmentRecall := execution.environmentRecall ++
+              [⟨execution.observeEnvironment app, .application command⟩] }
         exact ⟨fun completedNow => (notCompleted completedNow).elim, before.2.1,
           fun receipt => (finished (before.2.2 receipt)).elim⟩
+
 
 /-- The settlement invariant holds at every legal history. -/
 theorem settlesFreshCalls_history {horizon : Nat}
@@ -346,7 +322,7 @@ theorem settlesFreshCalls_history {horizon : Nat}
                   obtain ⟨command, _, moved⟩ :=
                     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
                   obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
-                  exact settlesFreshCalls_environment setup leaks owner event owned remaining
+                  exact SettlesFreshCalls.environment setup leaks owner event owned remaining
                     execution (inclusion ⟨remaining + 1, none, execution⟩ prior) prior valid command
                     next supported
 

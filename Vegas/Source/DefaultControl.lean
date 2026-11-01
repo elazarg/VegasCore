@@ -115,6 +115,25 @@ def defaulted : {Γ : SourceCtx Player L} → {O : Finset VarId} →
     defaulted program (entry program config) = config.defaulted := by
   cases program <;> rfl
 
+/-- Public default membership is read from the complete public default record. -/
+theorem defaulted_eq_defaults :
+    {Γ : SourceCtx Player L} → {names : Finset VarId} →
+    (program : SourceProgram Player L Γ names) → (point : ProtocolState program) →
+    ProtocolState.defaulted program point = (ProtocolState.defaults program point).defaulted
+  | _, _, .ret _, _ => rfl
+  | _, _, .sample _ _ _ next, point => by
+      cases point with
+      | inl config => rfl
+      | inr rest => exact defaulted_eq_defaults next rest
+  | _, _, .commit _ _ _ _ next, point => by
+      cases point with
+      | inl config => rfl
+      | inr rest => exact defaulted_eq_defaults next rest
+  | _, _, .reveal _ _ _ _ _ _ next, point => by
+      cases point with
+      | inl config => rfl
+      | inr rest => exact defaulted_eq_defaults next rest
+
 /-- Every player observes the complete public default status. -/
 theorem defaulted_observe (who : Player) :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →

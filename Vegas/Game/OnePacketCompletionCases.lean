@@ -64,7 +64,7 @@ theorem completion_cases
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       exact (reactiveApplication_environment_tables runtime leaks execution.application state
         (.expire record.event) changed).1
-    have decision := eq_of_heq (EventGraph.Completion.mk.inj recorded).2.1
+    have decision := eq_of_heq (EventCompletion.mk.inj recorded).2.1
     have failed : Failing
         (record.decision.bind (decodeEventAction setup.program record.event)) := by
       rw [decision]

@@ -146,44 +146,5 @@ theorem retainedOwnSubmissionsAtTurn_respond
       exact serviceOwnTurn?_of_ready setup middle.application
         ((middle.application.publicView_eventReady event).mp ready) owned
 
-omit [Fintype Player] in
-/-- **The counted slot supplies an unrecorded own decision.** On every legal
-history where the owner's submissions were made at its own turns and its used
-prepared slots stay canonical, the counted slot at an unrecorded own turn is
-fresh, below the candidate count, and selected by the canonical decision. -/
-theorem canonicalSlot_resources_of_used {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    (capacity : (serviceGraph setup mode).order.eventCount ≤ bounds.candidateCount)
-    {control : (serviceApplication setup mode deadline leaks).Control}
-    (trace :
-        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
-        horizon scheduler).Trace (some control))
-    (who : Player) (atTurn : OwnSubmissionsAtTurn setup leaks control.execution who)
-    (valid : CanonicalSlotsUsed setup leaks control.execution who)
-    (event : (serviceGraph setup mode).EventId)
-    (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-        (control.execution.recall who) event = false) :
-    control.execution.application.publicView.bindingCount who < bounds.candidateCount ∧
-      control.execution.application.candidates.lookup
-        (who, .prepared (control.execution.application.publicView.bindingCount who)) = .fresh ∧
-      canonicalFreshSlot who
-        (control.execution.observe (serviceApplication setup mode deadline leaks) who).application =
-          some (control.execution.application.publicView.bindingCount who) := by
-  classical
-  have fresh := canonicalSlot_fresh_of_used trace who atTurn valid event turn unrecorded
-  refine ⟨?_, fresh, canonicalFreshSlot_canonical who _ fresh⟩
-  let history := control.execution.application.config.history.map EventGraph.Completion.event
-  have ready := (control.execution.application.publicView_eventReady event).mp
-    (PublicView.ownTurn?_spec _ who event turn).1
-  have absent : event ∉ history := fun present => ready.1
-    ((control.execution.application.config.history_exact event).mp present)
-  have distinct : (event :: history).Nodup :=
-    List.nodup_cons.mpr ⟨absent, control.execution.application.config.history_nodup⟩
-  have lengthBound := distinct.length_le_card
-  change history.countP _ < bounds.candidateCount
-  apply lt_of_le_of_lt List.countP_le_length
-  simp only [List.length_cons, Fintype.card_fin] at lengthBound
-  omega
 
 end Vegas

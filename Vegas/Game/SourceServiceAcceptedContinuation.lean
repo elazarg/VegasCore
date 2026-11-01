@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceSequentialTimeliness
+import Vegas.Game.SourceServiceAsyncTimeliness
 import Vegas.Pending.ExclusionPolicyLaw
 import Vegas.Pending.ReactiveSignedCommitments
 import Interaction.ReactiveRawRoundTrace

@@ -31,12 +31,11 @@ theorem SourceResidual.terminal_readout {rank : Nat} {config : (graph setup).Con
             (residual.lift (ProtocolState.terminalState residual.program terminal)) := by
   have count := residual.aligned.graphSuffix.countEq
   change rank + eventCount residual.program = eventCount setup.program at count
-  have completionId : setup.eventGraph.fromModeCompletion .sequential = id := rfl
   have transport := residual.transport (eventCount residual.program) final.store
     (decodeHistory setup.program final.history) final.defaults
   rw [count] at transport
   unfold Setup.protocolReadout sourceServicePrefix? serviceSourcePrefix?
-  rw [completionId, List.map_id, transport,
+  rw [transport,
     decodeSourcePrefix?_terminal_state, Option.bind_map, Option.bind_map]
   rfl
 
@@ -88,8 +87,6 @@ theorem SourceResidual.runPlan_readout_law {rank : Nat} {config : (graph setup).
     rw [residual.decode]
     exact evaluated
   have history := residual.checkpoint.history
-  have completionId : setup.eventGraph.fromModeCompletion .sequential = id := rfl
-  rw [completionId, List.map_id] at history
   have compiled := CompiledPolicySuffix.runFrom_remaining_law setup.program profile
     residual.program residual.residualProfile residual.refs residual.source residual.embedding
     residual.refsBefore rank residual.aligned config residual.checkpoint.ordered
@@ -103,7 +100,7 @@ theorem SourceResidual.runPlan_readout_law {rank : Nat} {config : (graph setup).
       ProtocolState.readout setup.program
         (residual.lift (ProtocolState.terminalState residual.program terminal)) := by
     have decoded := residual.terminal_readout final
-    rw [sourceServicePrefix?_terminal_readout, completionId, List.map_id] at decoded
+    rw [sourceServicePrefix?_terminal_readout] at decoded
     exact decoded
   change run.map read = _
   calc

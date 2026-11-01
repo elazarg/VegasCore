@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceDecidedCompletion
+import Vegas.Game.SourceServiceTurnSubmissions
+import Vegas.Pending.ReactiveCandidateBudget
+import Vegas.Pending.ReactiveCanonicalMenu
+import Interaction.ReactiveRawRoundTrace
 
 /-! # Canonical slots on the support of the turn-counted policy
 
@@ -70,9 +73,14 @@ theorem sourceServiceCanonicalPolicy_submission {profile : BehavioralProfile set
       cases submits
     · rename_i event turn
       split at chosen
-      · rw [PMF.support_map] at chosen
-        obtain ⟨action, _, rfl⟩ := chosen
-        exact ⟨event, action, turn, rfl⟩
+      · dsimp only at chosen
+        split at chosen
+        · rw [PMF.mem_support_pure_iff] at chosen
+          subst chosen
+          cases submits
+        · rw [PMF.support_map] at chosen
+          obtain ⟨action, _, rfl⟩ := chosen
+          exact ⟨event, action, turn, rfl⟩
       · rw [PMF.mem_support_pure_iff] at chosen
         subst chosen
         cases submits
@@ -200,6 +208,10 @@ theorem canonicalServiceDecision_candidateSlot (who : Player)
         ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view event
             action) =
           some event := by
+  by_cases inactive : who ∈ view.application.publicView.observation.defaulted
+  · rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_defaulted leaks who past
+      view event action inactive] at slot
+    cases slot
   cases node : nodeView (serviceGraph setup mode) event with
   | sample payload law outputEq codeEq =>
       have none := nodeView_sample_actor outputEq codeEq
@@ -209,25 +221,33 @@ theorem canonicalServiceDecision_candidateSlot (who : Player)
       have actorEq : actor = who :=
         Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans owned)
       subst actorEq
-      obtain ⟨choice, rfl⟩ : ∃ choice : PublicationResult (L.Val payload),
+      obtain ⟨choice, rfl⟩ : ∃ choice : Option (PublicationResult (L.Val payload)),
           action = cast (congrArg EventGraph.EventField.Action outputEq.symm) choice :=
         ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
-      cases selected : canonicalFreshSlot actor view.application with
+      cases choice with
       | none =>
-          simp only [EventGraphRuntime.canonicalServiceDecision,
-            EventGraphRuntime.canonicalReactiveDecision, node, selected, Option.map_none] at slot
+          rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_binding_none leaks
+            actor past view event actor payload outputEq codeEq node] at slot
           cases slot
-      | some chosen =>
-          rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_binding leaks actor past
-                  view event payload outputEq codeEq node chosen selected choice] at slot ⊢
-          cases Option.some.inj slot
-          exact ⟨rfl, ⟨payload, outputEq⟩, rfl⟩
+      | some result =>
+          cases selected : canonicalFreshSlot actor view.application with
+          | none =>
+              simp only [EventGraphRuntime.canonicalServiceDecision,
+                EventGraphRuntime.canonicalReactiveDecision, ite_eq_right inactive, node,
+                cast_cast, cast_eq, Option.bind_some, selected, Option.map_none] at slot
+              cases slot
+          | some chosen =>
+              rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_binding leaks actor
+                past view event payload outputEq codeEq node inactive chosen selected result]
+                  at slot ⊢
+              cases Option.some.inj slot
+              exact ⟨rfl, ⟨payload, outputEq⟩, rfl⟩
   | resolve actor payload binding checks outputEq codeEq =>
       exfalso
       rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_eq_of_not_bind leaks who
-              past view event action (fun _ _ _ _ bind => by rw [node] at bind; cases bind)] at slot
+        past view event action (fun _ _ _ _ bind => by rw [node] at bind; cases bind)] at slot
       unfold EventGraphRuntime.serviceDecision EventGraphRuntime.reactiveDecision at slot
-      simp only [node] at slot
+      simp only [ite_eq_right inactive, node] at slot
       rcases reactiveResolutionPacket_shape who event payload binding checks outputEq action
           view.application with ⟨candidate, raw, packet⟩ | packet
       · rw [packet] at slot
@@ -331,67 +351,49 @@ theorem canonicalSlotsUsed_environment
         (execution.environmentStep (serviceApplication setup mode deadline leaks) command).support)
     (who : Player) (valid : CanonicalSlotsUsed setup leaks execution who) :
     CanonicalSlotsUsed setup leaks next who := by
-  have recallEq := (serviceApplication setup mode deadline leaks).environmentStep_recall execution
-      next command reached
+  let app := serviceApplication setup mode deadline leaks
+  have recallEq := app.environmentStep_recall execution next command reached
+  have path := ((serviceRuntime setup mode deadline).reactiveApplication_graphSteps
+    leaks).environmentStep execution next command reached
+  obtain ⟨extra, appended⟩ := EventGraph.Config.Step.path_history_prefix path
+  have historyEq : next.application.config.history = execution.application.config.history ++
+      extra := appended.symm
+  have countEq : next.application.publicView.bindingCount who =
+      execution.application.publicView.bindingCount who +
+        ((extra.map EventCompletion.event).countP fun event =>
+          match (serviceGraph setup mode).outputLayout event with
+          | .binding owner _ => decide (owner = who)
+          | .publicData _ | .privateInput _ _ | .publication _ => false) := by
+    unfold PublicView.bindingCount
+    change List.countP _ (next.application.config.history.map EventCompletion.event) = _
+    rw [historyEq, List.map_append, List.countP_append]
+    rfl
   intro serial used
   rw [recallEq] at used
-  rcases environmentStep_configStep setup leaks execution next command reached with
-    same | ⟨completed, ready, action, member⟩
-  · have countEq : next.application.publicView.bindingCount who =
-        execution.application.publicView.bindingCount who := by
-      simp only [PublicView.bindingCount, State.publicView, same]
+  rcases valid serial used with lower | ⟨equal, other, payload, layout, unfinished, recorded⟩
+  · left
     rw [countEq]
-    rcases valid serial used with lower | ⟨equal, other, payload, layout, unfinished, recorded⟩
-    · exact Or.inl lower
-    · refine Or.inr ⟨equal, other, payload, layout, ?_, ?_⟩
-      · rw [same]
-        exact unfinished
+    omega
+  · by_cases sameCount : execution.application.publicView.bindingCount who =
+        next.application.publicView.bindingCount who
+    · refine Or.inr ⟨equal.trans sameCount, other, payload, layout, ?_, ?_⟩
+      · intro completed
+        have listed := (next.application.config.history_exact other).mpr completed
+        rw [historyEq, List.map_append, List.mem_append] at listed
+        rcases listed with old | fresh
+        · exact unfinished ((execution.application.config.history_exact other).mp old)
+        · have zero : ((extra.map EventCompletion.event).countP fun event =>
+              match (serviceGraph setup mode).outputLayout event with
+              | .binding owner _ => decide (owner = who)
+              | .publicData _ | .privateInput _ _ | .publication _ => false) = 0 := by omega
+          have absent := List.countP_eq_zero.mp zero other fresh
+          apply absent
+          simp only [layout, decide_true]
       · rw [recallEq]
         exact recorded
-  · have history := execution.application.config.step_history completed ready action
-      next.application.config member
-    have countEq : next.application.publicView.bindingCount who =
-        execution.application.publicView.bindingCount who +
-          ([completed].countP fun event => match (serviceGraph setup mode).outputLayout event with
-            | .binding owner _ => decide (owner = who)
-            | .publicData _ | .privateInput _ _ | .publication _ => false) := by
-      unfold PublicView.bindingCount
-      change List.countP _ (next.application.config.history.map EventGraph.Completion.event) =
-        List.countP _ (execution.application.config.history.map EventGraph.Completion.event) + _
-      rw [history, List.map_append, List.countP_append]
-      rfl
-    rcases valid serial used with lower | ⟨equal, other, payload, layout, unfinished, recorded⟩
     · left
-      rw [countEq]
+      rw [countEq] at sameCount ⊢
       omega
-    · by_cases same : other = completed
-      · subst same
-        left
-        rw [countEq]
-        have one :
-            ([other].countP fun event => match (serviceGraph setup mode).outputLayout event with
-            | .binding owner _ => decide (owner = who)
-            | .publicData _ | .privateInput _ _ | .publication _ => false) = 1 := by
-          simp only [List.countP_cons, List.countP_nil, layout, decide_true]
-          rfl
-        omega
-      · have countGe : execution.application.publicView.bindingCount who ≤
-            next.application.publicView.bindingCount who := by
-          rw [countEq]
-          omega
-        rcases Nat.eq_or_lt_of_le countGe with countSame | countMore
-        · refine Or.inr ⟨equal.trans countSame, other, payload, layout, ?_, ?_⟩
-          · intro finished
-            have listed := (next.application.config.history_exact other).mpr finished
-            rw [history, List.map_append, List.mem_append] at listed
-            rcases listed with old | new
-            · exact unfinished ((execution.application.config.history_exact other).mp old)
-            · simp only [List.map_cons, List.map_nil, List.mem_singleton] at new
-              exact same new
-          · rw [recallEq]
-            exact recorded
-        · left
-          omega
 
 /-- Another player's response leaves `who`'s used slots and their count. -/
 theorem canonicalSlotsUsed_respond_other
@@ -558,6 +560,216 @@ theorem canonicalSlots_roundsFrom
         (follows ▸ sourceServiceTurnPolicy_submitsAtTurn setup leaks bound turns timing profile
           who) trace atTurn valid moved
 
+/-- **The counted slot supplies an unrecorded own decision.** On every legal
+history where the owner's submissions were made at its own turns and its used
+prepared slots stay canonical, the counted slot at an unrecorded own turn is
+fresh, below the candidate count, and selected by the canonical decision. -/
+theorem canonicalSlot_resources_of_used
+    (bounds : MessageBounds (serviceGraph setup mode)) {horizon : Nat}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (capacity : (serviceGraph setup mode).order.eventCount ≤ bounds.candidateCount)
+    {control : (serviceApplication setup mode deadline leaks).Control}
+    (trace :
+        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        horizon scheduler).Trace (some control))
+    (who : Player) (atTurn : OwnSubmissionsAtTurn setup leaks control.execution who)
+    (valid : CanonicalSlotsUsed setup leaks control.execution who)
+    (event : (serviceGraph setup mode).EventId)
+    (turn : control.execution.application.publicView.ownTurn? who = some event)
+    (unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
+        (control.execution.recall who) event = false) :
+    control.execution.application.publicView.bindingCount who < bounds.candidateCount ∧
+      control.execution.application.candidates.lookup
+        (who, .prepared (control.execution.application.publicView.bindingCount who)) = .fresh ∧
+      canonicalFreshSlot who
+        (control.execution.observe (serviceApplication setup mode deadline leaks) who).application =
+          some (control.execution.application.publicView.bindingCount who) := by
+  classical
+  have fresh := canonicalSlot_fresh_of_used trace who atTurn valid event turn unrecorded
+  refine ⟨?_, fresh, canonicalFreshSlot_canonical who _ fresh⟩
+  let history := control.execution.application.config.history.map EventCompletion.event
+  have ready := (control.execution.application.publicView_eventReady event).mp
+    (PublicView.ownTurn?_spec _ who event turn).1
+  have absent : event ∉ history := fun present => ready.1
+    ((control.execution.application.config.history_exact event).mp present)
+  have distinct : (event :: history).Nodup :=
+    List.nodup_cons.mpr ⟨absent, control.execution.application.config.history_nodup⟩
+  have lengthBound := distinct.length_le_card
+  change history.countP _ < bounds.candidateCount
+  apply lt_of_le_of_lt List.countP_le_length
+  simp only [List.length_cons, Fintype.card_fin] at lengthBound
+  omega
+
 end Invariant
+
+/-- Every fresh call of `who` emitted its own packet addressed to the event it
+submitted for, early enough to be included before the deadline within
+`bound`. -/
+def OwnFreshCalls (bound : (serviceGraph setup mode).EventId → Nat)
+    (execution : (serviceApplication setup mode deadline leaks).Execution) (who : Player) : Prop :=
+  ∀ entry ∈ execution.recall who, ∀ material,
+    entry.action.transmission = some material →
+    ∃ event message, entry.emitted = some message ∧ message.sender = who ∧
+      message.payload.call.event? (serviceGraph setup mode) = some event ∧
+      (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action = some event ∧
+      entry.beforeView.application.publicView.InclusionFitsDeadline
+          (serviceRuntime setup mode deadline) bound event
+
+/-- Two fresh calls of `who` for one event emitted the same identifier. -/
+def OneCallPerEvent (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (who : Player) : Prop := ∀ first ∈ execution.recall who, ∀ second ∈ execution.recall who, ∀
+    event (firstMessage secondMessage : Message Player (WitnessedPacket (serviceGraph setup mode))),
+    (serviceRuntime setup mode deadline).submittedEvent? leaks first.action = some event →
+    (serviceRuntime setup mode deadline).submittedEvent? leaks second.action = some event →
+    first.emitted = some firstMessage → second.emitted = some secondMessage → firstMessage.id =
+    secondMessage.id
+
+
+variable {setup leaks}
+
+/-- A completed round preserves the owner's timely once-per-event calls. -/
+private theorem freshCalls_round
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode deadline leaks).Policy} {who : Player}
+    {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
+    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
+    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing
+      profile who)
+    {execution next : (serviceApplication setup mode deadline leaks).Execution}
+    (calls : OwnFreshCalls setup leaks bound execution who)
+    (once : OneCallPerEvent setup leaks execution who)
+    (reached : next ∈ ((serviceApplication setup mode deadline leaks).round scheduler players
+      execution).support) :
+    OwnFreshCalls setup leaks bound next who ∧ OneCallPerEvent setup leaks next who := by
+  let app := serviceApplication setup mode deadline leaks
+  let runtime := serviceRuntime setup mode deadline
+  obtain ⟨command, _, middle, moved, cases⟩ := round_cases setup leaks reached
+  have recallEq := app.environmentStep_recall execution middle command moved
+  have callsMiddle : OwnFreshCalls setup leaks bound middle who := by
+    unfold OwnFreshCalls
+    rw [recallEq]
+    exact calls
+  have onceMiddle : OneCallPerEvent setup leaks middle who := by
+    unfold OneCallPerEvent
+    rw [recallEq]
+    exact once
+  rcases cases with ⟨_, rfl⟩ | ⟨responder, _, response, chosen, rfl⟩
+  · exact ⟨callsMiddle, onceMiddle⟩
+  · by_cases same : responder = who
+    · subst responder
+      rw [follows] at chosen
+      rcases response with ⟨transmission⟩
+      cases transmission with
+      | none =>
+          obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who ⟨none⟩
+          refine ⟨?_, ?_⟩
+          · intro entry member material submitted
+            rw [recalled] at member
+            rcases List.mem_append.mp member with old | fresh
+            · exact callsMiddle entry old material submitted
+            · obtain rfl := List.mem_singleton.mp fresh
+              cases submitted
+          · intro first firstMember second secondMember event firstMessage secondMessage
+              firstEvent secondEvent firstEmitted secondEmitted
+            rw [recalled] at firstMember secondMember
+            rcases List.mem_append.mp firstMember with firstOld | firstNew
+            · rcases List.mem_append.mp secondMember with secondOld | secondNew
+              · exact onceMiddle first firstOld second secondOld event _ _ firstEvent secondEvent
+                  firstEmitted secondEmitted
+              · obtain rfl := List.mem_singleton.mp secondNew
+                cases secondEvent
+            · obtain rfl := List.mem_singleton.mp firstNew
+              cases firstEvent
+      | some material =>
+          obtain ⟨event, action, _turn, unrecorded, fits, decided⟩ :=
+            sourceServiceTurnPolicy_submission chosen rfl
+          have canonical := runtime.canonicalServiceDecision_cases leaks who (middle.recall who)
+            (middle.observe app who) event action
+          rw [← decided] at canonical
+          have named : runtime.submittedEvent? leaks (⟨some material⟩ : app.Action) =
+              some event := by
+            rcases canonical with silent | named
+            · have impossible := congrArg
+                (fun response : app.Action => response.transmission) silent
+              cases impossible
+            · exact named
+          let message : Message Player (WitnessedPacket (serviceGraph setup mode)) :=
+            ⟨(who, middle.network.nextSerial who), app.packet
+              (app.submit middle.application who material) who (middle.network.known who) material⟩
+          let entry : app.PlayerEntry :=
+            ⟨middle.observe app who, ⟨some material⟩, some message⟩
+          have recalled : (middle.respond app who ⟨some material⟩).recall who =
+              middle.recall who ++ [entry] := by
+            simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
+            rfl
+          have absent : ∀ old ∈ middle.recall who,
+              runtime.submittedEvent? leaks old.action ≠ some event := by
+            intro old present submitted
+            have recorded := (runtime.eventRecorded_iff leaks _ event).mpr ⟨old, present, submitted⟩
+            rw [unrecorded] at recorded
+            cases recorded
+          refine ⟨?_, ?_⟩
+          · intro current member content submitted
+            rw [recalled] at member
+            rcases List.mem_append.mp member with old | fresh
+            · exact callsMiddle current old content submitted
+            · obtain rfl := List.mem_singleton.mp fresh
+              exact ⟨event, message, rfl, rfl, named, named, fits⟩
+          · intro first firstMember second secondMember shared firstMessage secondMessage
+              firstEvent secondEvent firstEmitted secondEmitted
+            rw [recalled] at firstMember secondMember
+            rcases List.mem_append.mp firstMember with firstOld | firstNew <;>
+              rcases List.mem_append.mp secondMember with secondOld | secondNew
+            · exact onceMiddle first firstOld second secondOld shared _ _ firstEvent secondEvent
+                firstEmitted secondEmitted
+            · obtain rfl := List.mem_singleton.mp secondNew
+              rw [named] at secondEvent
+              cases Option.some.inj secondEvent
+              exact (absent first firstOld firstEvent).elim
+            · obtain rfl := List.mem_singleton.mp firstNew
+              rw [named] at firstEvent
+              cases Option.some.inj firstEvent
+              exact (absent second secondOld secondEvent).elim
+            · obtain rfl := List.mem_singleton.mp firstNew
+              obtain rfl := List.mem_singleton.mp secondNew
+              exact congrArg Message.id (Option.some.inj (firstEmitted.symm.trans secondEmitted))
+    · have different : who ≠ responder := fun equal => same equal.symm
+      have recallSame := app.respond_recall_other middle responder who different response
+      refine ⟨?_, ?_⟩
+      · unfold OwnFreshCalls
+        rw [recallSame]
+        exact callsMiddle
+      · unfold OneCallPerEvent
+        rw [recallSame]
+        exact onceMiddle
+
+/-- Every prescribed player's transmitted calls are timely and use one identifier
+per event, under arbitrary other policies and scheduler, for every turn timing. -/
+theorem sourceServiceTurnPolicy_freshCalls
+    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
+    {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
+    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
+    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing
+      profile who) (count : Nat)
+    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (reached : execution ∈ ((serviceApplication setup mode deadline leaks).roundsFrom
+      (serviceInitialLaw setup mode) scheduler players count).support) :
+    OwnFreshCalls setup leaks bound execution who ∧ OneCallPerEvent setup leaks execution who := by
+  let app := serviceApplication setup mode deadline leaks
+  induction count generalizing execution with
+  | zero =>
+      obtain ⟨state, _, supported⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      cases (PMF.mem_support_pure_iff _ _).mp supported
+      constructor
+      · intro entry member
+        cases member
+      · intro entry member
+        cases member
+  | succ count ih =>
+      rw [app.roundsFrom_succ] at reached
+      obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+      obtain ⟨calls, once⟩ := ih prior priorMem
+      exact freshCalls_round timing profile follows calls once moved
 
 end Vegas

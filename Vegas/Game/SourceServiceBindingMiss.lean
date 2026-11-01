@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceCanonicalSerial
+import Vegas.Game.SourceServiceCanonicalSlots
 import Vegas.Game.SourceServiceProtectedBinding
 
 /-! # Binding omission facts for actual owner calls

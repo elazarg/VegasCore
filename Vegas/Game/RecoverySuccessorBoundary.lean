@@ -5,8 +5,8 @@ import Vegas.Game.RecoveryCountedService
 import Vegas.Game.RecoveryPrescribedSourceKernel
 import Vegas.Game.SourceFailureRecord
 import Vegas.Pending.ExclusionAcceptedOutput
-import Vegas.Game.AnchoredHonestLaw
-import Vegas.Game.AnchoredOpeningClients
+import Vegas.Game.OnePacketOwnSubmissions
+import Vegas.Game.SourceServiceCompletion
 import Vegas.Game.IntendedOpeningContinuation
 
 /-! # Genuine clear successor boundaries after honest source steps -/

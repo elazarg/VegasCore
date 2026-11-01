@@ -36,33 +36,46 @@ private def program : SourceProgram Unit simpleExpr [] ∅ :=
 
 /-- Bind the value the guard accepts, and open it. -/
 private def honestPolicy : BehavioralPolicy (who := ()) program :=
-  (fun _ _ => PMF.pure (.success true), fun _ _ => PMF.pure true, PUnit.unit)
+  (fun _ _ _ => PMF.pure (some (.success true)), fun _ _ _ => PMF.pure true, PUnit.unit)
 
 /-- Bind the value the guard rejects, and open it. Still honest: honesty is
 about binding a value and opening it, not about what the guard says. -/
 private def rejectedPolicy : BehavioralPolicy (who := ()) program :=
-  (fun _ _ => PMF.pure (.success false), fun _ _ => PMF.pure true, PUnit.unit)
+  (fun _ _ _ => PMF.pure (some (.success false)), fun _ _ _ => PMF.pure true, PUnit.unit)
 
 private def start : Config Unit simpleExpr [] :=
-  ⟨Env.empty (CellVal simpleExpr), [], Revelations.initial [], fun _ => []⟩
+  Config.initial (Env.empty (CellVal simpleExpr))
 
-example : Honest program honestPolicy :=
-  ⟨⟨fun _ _ => by simp [honestPolicy], trivial⟩,
-    ⟨fun _ _ => by simp [honestPolicy], trivial⟩⟩
+private theorem honestPolicy_honest : Honest program honestPolicy := by
+  refine ⟨?_, ?_, trivial⟩
+  · intro _ _ _ choice supported
+    exact ⟨true, (PMF.mem_support_pure_iff _ _).mp supported⟩
+  · intro _ _ _
+    simp [honestPolicy]
 
-example : Honest program rejectedPolicy :=
-  ⟨⟨fun _ _ => by simp [rejectedPolicy], trivial⟩,
-    ⟨fun _ _ => by simp [rejectedPolicy], trivial⟩⟩
+private theorem rejectedPolicy_honest : Honest program rejectedPolicy := by
+  refine ⟨?_, ?_, trivial⟩
+  · intro _ _ _ choice supported
+    exact ⟨false, (PMF.mem_support_pure_iff _ _).mp supported⟩
+  · intro _ _ _
+    simp [rejectedPolicy]
+
+example : Honest program honestPolicy := honestPolicy_honest
+
+example : Honest program rejectedPolicy := rejectedPolicy_honest
 
 /-- The premise holds for the profile that binds what the guard accepts. -/
 private theorem guardsAccept :
     GuardsAcceptFrom program (fun _ => honestPolicy) start := by
   intro choice choiceMember
-  simp only [GuardsAcceptFrom, SourceProgram.commitKernel, honestPolicy,
-    PMF.mem_support_pure_iff _ _] at choiceMember ⊢
-  subst choiceMember
+  have chosen : choice = some (.success true) := by
+    simpa [SourceProgram.commitKernel, honestPolicy, start, Config.initial,
+      Config.defaulted, DefaultHistory.defaulted] using choiceMember
+  subst choice
   refine ⟨fun value bound => ?_, fun disclose _ => trivial⟩
-  simp only [commitSuccessor, Env.cons_get_here] at bound
+  simp only [commitSuccessor, start, Config.initial, Config.defaulted,
+    DefaultHistory.defaulted, List.filterMap_nil, List.toFinset_nil, Finset.notMem_empty,
+    ite_false, Option.getD_some, Env.cons_get_here] at bound
   obtain rfl : true = value := by injection bound
   refine List.all_eq_true.mpr fun obligation member => ?_
   obtain ⟨original, filtered, rfl⟩ := List.mem_map.mp member
@@ -72,39 +85,41 @@ private theorem guardsAccept :
       (fun _ _ h _ => match h with | .here => true) (fun _ => rfl) ?_ (fun h => nomatch h) rfl
     intro published publishedEq
     simpa [Obligation.weaken, Revelation.result] using publishedEq.symm
-  · simp [start, Registry.weaken] at empty
+  · simp [start, Config.initial, Registry.weaken] at empty
 
 /-- So the honest run records no failure anywhere. -/
 example : ∀ terminal ∈ (program.run (fun _ => honestPolicy)
-    (Env.empty (CellVal simpleExpr))).support, Successful terminal :=
+    (Env.empty (CellVal simpleExpr))).support, Successful terminal.state ∧ terminal.defaulted = ∅ :=
   run_successful program (fun _ => honestPolicy)
-    (fun _ => ⟨⟨fun _ _ => by simp [honestPolicy], trivial⟩,
-      ⟨fun _ _ => by simp [honestPolicy], trivial⟩⟩)
+    (fun _ => honestPolicy_honest)
     (Env.empty (CellVal simpleExpr)) successful_empty guardsAccept
 
 /-- And it pays, because the publication carries the value. -/
 example :
     (program.run (fun _ => honestPolicy) (Env.empty (CellVal simpleExpr))).map
-      program.evaluatePayoffs = PMF.pure [((), 1)] := by
-  simp only [SourceProgram.run, program, honestPolicy, SourceProgram.runFrom,
+      (fun terminal => program.evaluatePayoffs terminal.state) = PMF.pure [((), 1)] := by
+  simp [SourceProgram.run, program, honestPolicy, SourceProgram.runFrom,
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
-    PMF.pure_bind, PMF.pure_map]
+    Config.initial, Config.defaulted, DefaultHistory.defaulted, DefaultHistory.record,
+    commitSuccessor, PMF.pure_map]
   rfl
 
 /-- The premise has content: it fails for the equally honest profile that binds
 what the guard rejects, whose publication does fail. -/
 example : ¬ GuardsAcceptFrom program (fun _ => rejectedPolicy) start := by
   intro guards
-  have applied := (guards (.success false) (by
-    simp [SourceProgram.commitKernel, rejectedPolicy])).1 false rfl
+  have applied := (guards (some (.success false)) (by
+    simp [SourceProgram.commitKernel, rejectedPolicy, start, Config.initial,
+      Config.defaulted, DefaultHistory.defaulted])).1 false rfl
   simp +decide at applied
 
 example :
     (program.run (fun _ => rejectedPolicy) (Env.empty (CellVal simpleExpr))).map
-      program.evaluatePayoffs = PMF.pure [((), 0)] := by
-  simp only [SourceProgram.run, program, rejectedPolicy, SourceProgram.runFrom,
+      (fun terminal => program.evaluatePayoffs terminal.state) = PMF.pure [((), 0)] := by
+  simp [SourceProgram.run, program, rejectedPolicy, SourceProgram.runFrom,
     SourceProgram.commitKernel, SourceProgram.revealKernel, SourceProgram.afterCommit,
-    PMF.pure_bind, PMF.pure_map]
+    Config.initial, Config.defaulted, DefaultHistory.defaulted, DefaultHistory.record,
+    commitSuccessor, PMF.pure_map]
   rfl
 
 end

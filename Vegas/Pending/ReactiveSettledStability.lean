@@ -151,8 +151,8 @@ theorem State.settledContent_iff_of_path {before after : State graph}
       (⟨before.publicView, beforeReceipts⟩ : SettledRecord graph).SettledContent message := by
   obtain ⟨suffix, histories⟩ := EventGraph.Config.Step.path_history_prefix path
   have extended : after.publicView.observation.completionOrder =
-      before.publicView.observation.completionOrder ++ suffix.map Completion.event := by
-    change after.config.history.map Completion.event = _
+      before.publicView.observation.completionOrder ++ suffix.map EventCompletion.event := by
+    change after.config.history.map EventCompletion.event = _
     rw [← histories, List.map_append]
     rfl
   have member : event ∈ before.publicView.observation.completionOrder :=

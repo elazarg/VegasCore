@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketCanonicalAcceptance
 import Vegas.Game.OnePacketFreshSlots
+import Vegas.Game.SourceServiceFacts
 import Mathlib.Combinatorics.Enumerative.DoubleCounting
 
 /-! # Retention of first canonical packets from bounds adequacy
@@ -53,7 +54,7 @@ def EffectiveDecision (event : graph.EventId) (action : graph.Action event) : Pr
   match nodeView graph event with
   | .bind _ payload outputEq _ => ∃ value : L.Val payload,
       action = cast (congrArg EventGraph.EventField.Action outputEq.symm)
-        (PublicationResult.success value)
+        (some (PublicationResult.success value))
   | .resolve .. | .sample .. => True
 
 /-- A player's completed bindings are distinct binding events of its own. -/
@@ -61,8 +62,8 @@ theorem bindingCount_le_bindingEventCount (state : EventGraphRuntime.State graph
     (who : Player) :
     state.publicView.bindingCount who ≤ bindingEventCount graph who := by
   have nodup := state.config.history_nodup
-  change (state.config.history.map EventGraph.Completion.event).countP _ ≤ _
-  generalize state.config.history.map EventGraph.Completion.event = order at nodup
+  change (state.config.history.map EventCompletion.event).countP _ ≤ _
+  generalize state.config.history.map EventCompletion.event = order at nodup
   rw [List.countP_eq_length_filter, ← List.toFinset_card_of_nodup (nodup.filter _)]
   apply Finset.card_le_card
   intro event member
@@ -309,12 +310,18 @@ theorem retainsCoveredCanonical_of_adequate (covers : bounds.CoversOutputValues)
   intro control trace who event action turn unsent fits effective transmits
   have ready := (PublicView.ownTurn?_spec _ who event turn).1
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
+  have active : who ∉ (control.execution.observe (application setup runtime leaks)
+      who).application.publicView.observation.defaulted := by
+    intro inactive
+    rw [runtime.canonicalServiceDecision_defaulted leaks who (control.execution.recall who)
+      (control.execution.observe (application setup runtime leaks) who) event action inactive]
+      at transmits
+    exact transmits rfl
   cases node : nodeView (graph setup) event with
   | sample payload law outputEq codeEq =>
-      exfalso
-      apply transmits
-      simp only [canonicalServiceDecision, canonicalReactiveDecision, node]
-      rfl
+      have noActor := nodeView_sample_actor outputEq codeEq
+      rw [owned] at noActor
+      cases noActor
   | bind owner payload outputEq codeEq =>
       have ownerEq : owner = who :=
         Option.some.inj ((EventGraph.actor?_of_outputLayout_binding _ outputEq).symm.trans owned)
@@ -328,8 +335,8 @@ theorem retainsCoveredCanonical_of_adequate (covers : bounds.CoversOutputValues)
       | none =>
           exfalso
           apply transmits
-          simp only [canonicalServiceDecision, canonicalReactiveDecision, node, selected,
-            Option.map_none]
+          simp only [canonicalServiceDecision, canonicalReactiveDecision, node,
+            ite_eq_right active, selected, cast_cast, cast_eq, Option.bind_some, Option.map_none]
           rfl
       | some serial =>
           exact bounds.canonical_binding_value_retained runtime leaks owner _ _ event

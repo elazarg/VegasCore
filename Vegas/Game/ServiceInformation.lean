@@ -26,17 +26,6 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {deadline : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
-/-- Changing only the dependency order leaves the owner's completion list
-unchanged after the existing mode conversion. -/
-theorem ownCompletions_fromModeCompletion (who : Player)
-    (history : List (serviceGraph setup mode).Completion) :
-    ((serviceGraph setup mode).ownCompletions who history).map
-        (setup.eventGraph.fromModeCompletion mode) =
-      setup.eventGraph.ownCompletions who
-        (history.map (setup.eventGraph.fromModeCompletion mode)) := by
-  simp only [EventGraph.ownCompletions, List.filter_map]
-  rfl
-
 /-- The identity carried in an arbitrary native view is checked before reading
 its dependent observation. At an actual observation that check is reflexive. -/
 def decisionView? {Γ : SourceCtx Player L}
@@ -48,7 +37,7 @@ def decisionView? {Γ : SourceCtx Player L}
         view.application.observation
     (decodeObservation? who refs observed.store).map fun source =>
       ⟨source, observed.defaults, decodeCompletions setup.program
-        (observed.ownActions.map (setup.eventGraph.fromModeCompletion mode))⟩
+        (observed.ownActions)⟩
   else none
 
 /-- Compiler agreement recovers all three components of the source view exactly. -/
@@ -58,8 +47,7 @@ theorem decisionView?_observe {Γ : SourceCtx Player L}
     (execution : (serviceApplication setup mode deadline leaks).Execution)
     (store : refs.Agrees source.state execution.application.config.store)
     (history : decodeHistory setup.program
-        (execution.application.config.history.map
-          (setup.eventGraph.fromModeCompletion mode)) = source.history)
+        (execution.application.config.history) = source.history)
     (defaults : execution.application.config.defaults = source.defaults) :
     decisionView? setup leaks refs who
         (execution.observe (serviceApplication setup mode deadline leaks) who) =
@@ -72,15 +60,13 @@ theorem decisionView?_observe {Γ : SourceCtx Player L}
       ((serviceGraph setup mode).playerStore who execution.application.config.store)).map
         (fun observed => DecisionView.mk observed execution.application.config.defaults
           (decodeCompletions setup.program
-          (((serviceGraph setup mode).ownCompletions who execution.application.config.history).map
-            (setup.eventGraph.fromModeCompletion mode)))) = _
+            ((serviceGraph setup mode).ownCompletions who
+              execution.application.config.history))) = _
   rw [decodeObservation?_playerStore_eq_some (graph := serviceGraph setup mode) refs who
-          source.state execution.application.config.store store, Option.map_some,
-          ownCompletions_fromModeCompletion]
+          source.state execution.application.config.store store, Option.map_some]
   change some (DecisionView.mk (sourceObserve who source.state)
     execution.application.config.defaults (decodeHistory setup.program
-      (execution.application.config.history.map
-        (setup.eventGraph.fromModeCompletion mode)) who)) = _
+      (execution.application.config.history) who)) = _
   rw [history, defaults]
   rfl
 
@@ -93,11 +79,9 @@ theorem source_view_eq_of_observe_eq {Γ : SourceCtx Player L}
     (leftStore : refs.Agrees left.state nativeLeft.application.config.store)
     (rightStore : refs.Agrees right.state nativeRight.application.config.store)
     (leftHistory : decodeHistory setup.program
-        (nativeLeft.application.config.history.map
-          (setup.eventGraph.fromModeCompletion mode)) = left.history)
+        (nativeLeft.application.config.history) = left.history)
     (rightHistory : decodeHistory setup.program
-        (nativeRight.application.config.history.map
-          (setup.eventGraph.fromModeCompletion mode)) = right.history)
+        (nativeRight.application.config.history) = right.history)
     (leftDefaults : nativeLeft.application.config.defaults = left.defaults)
     (rightDefaults : nativeRight.application.config.defaults = right.defaults)
     (same : nativeLeft.observe (serviceApplication setup mode deadline leaks) who =

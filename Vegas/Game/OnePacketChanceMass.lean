@@ -84,7 +84,7 @@ theorem completionMass_of_chance (before after : EventGraphRuntime.State (graph 
   unfold completionMass
   rw [← reached]
   simp only [EventGraph.Config.complete_history, List.drop_left,
-    EventGraph.Completion.fromDecision, chance, ↓reduceDIte,
+    EventGraph.completion, chance, ↓reduceDIte,
     EventGraph.Config.complete_output_same, evaluate]
   change (law value).toReal =
     ((law.map (before.config.complete event ready action))
@@ -118,7 +118,7 @@ theorem replayStepMatches_chance (assessment : setup.intendedModel.BehavioralAss
       before.execution.application.config.history.length = [completion] := by
     rw [changed, List.drop_left]
     have ownerless : ((graph setup).nodes event).actor = none := chance
-    simp only [EventGraph.Completion.fromDecision, EventGraph.Config.actualDecision,
+    simp only [EventGraph.completion, EventGraph.Config.actualDecision,
       EventGraph.EventCode.actualDecision, ownerless]
     rfl
   refine replayStepMatches_completion (runtime := runtime) assessment who history pending before

@@ -5,6 +5,7 @@ import Vegas.Game.SourceServiceAsyncStep
 import Vegas.Game.RevealServiceCalendarState
 import Vegas.Game.OnePacketLawApproximation
 import Vegas.Game.OnePacketIntendedProjection
+import Vegas.Game.OnePacketCompletion
 
 /-! # The successful part of a late delivery
 
@@ -157,13 +158,6 @@ variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
 
-variable (setup runtime leaks) in
-/-- The event of the requested source rank has completed, possibly together
-with later events through automatic completion. -/
-def LateStopped (rank : Nat) (history : ((bounds.onePacketMenu runtime leaks).protocol
-    (initialLaw setup) horizon scheduler).History) : Prop :=
-  ∃ control : (application setup runtime leaks).Control, history.state = some control ∧
-    ∃ event ∈ control.execution.application.config.cut.completed, event.val = rank
 
 open Classical in
 variable (setup runtime leaks) in

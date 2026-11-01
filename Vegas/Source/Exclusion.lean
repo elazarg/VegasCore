@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Source.FailedBindingDeviation
+import Vegas.Source.IntendedForPlayer
 import Vegas.Source.DefaultControl
 import Vegas.Source.PublicObservation
 
@@ -26,6 +27,25 @@ def OwnAction.IsFailure : OwnAction Player L → Prop
   | .reveal _ _ disclose => disclose = false
 
 namespace ProtocolState
+
+/-- A source point intended for one player keeps that player publicly active. -/
+theorem not_excluded_of_intendedFor (who : Player) :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (state : ProtocolState program) →
+    IntendedFor who program state → who ∉ defaulted program state
+  | _, _, .ret _, _, intended => intended.active
+  | _, _, .sample _ _ _ next, state, intended => by
+      cases state with
+      | inl _ => exact intended.active
+      | inr rest => exact not_excluded_of_intendedFor who next rest intended
+  | _, _, .commit _ _ _ _ next, state, intended => by
+      cases state with
+      | inl _ => exact intended.active
+      | inr rest => exact not_excluded_of_intendedFor who next rest intended
+  | _, _, .reveal _ _ _ _ _ _ next, state, intended => by
+      cases state with
+      | inl _ => exact intended.active
+      | inr rest => exact not_excluded_of_intendedFor who next rest intended
 
 /-- Exclusion is read from the sole public default record at the current position. -/
 def Excluded (who : Player) {Γ : SourceCtx Player L} {O : Finset VarId}

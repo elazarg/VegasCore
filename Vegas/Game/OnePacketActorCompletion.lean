@@ -60,7 +60,7 @@ theorem completionMass_of_actor (before after : EventGraphRuntime.State (graph s
   obtain ⟨value, _output, changed⟩ := before.config.step_completion event ready action _ member
   unfold completionMass
   rw [changed, List.drop_left]
-  simp [EventGraph.Completion.fromDecision, acts]
+  simp [EventGraph.completion, acts]
 
 variable [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
@@ -94,7 +94,7 @@ theorem replayStepMatches_actor (assessment : setup.intendedModel.BehavioralAsse
   have mass := residual.actorStepMass completion.event ready action _ member acts
   obtain ⟨value, _output, changed⟩ :=
     before.execution.application.config.step_completion completion.event ready action _ member
-  have recordEq : EventGraph.Completion.fromDecision completion.event
+  have recordEq : EventGraph.completion (graph setup) completion.event
       (before.execution.application.config.actualDecision completion.event action) value =
         completion := by
     apply List.singleton_injective

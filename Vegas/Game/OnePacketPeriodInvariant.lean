@@ -474,7 +474,7 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                 obtain ⟨suffix, kept⟩ := EventGraph.Config.Step.path_history_prefix rest
                 have dropped : control.execution.application.config.history.drop
                     current.execution.application.config.history.length =
-                    EventGraph.Completion.fromDecision event
+                    EventGraph.completion (graph setup) event
                       (current.execution.application.config.actualDecision event action) value ::
                         suffix := by
                   rw [← kept, historyEq, List.append_assoc, List.drop_left]
@@ -485,7 +485,7 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                     (some current) joint (some control) = 1 := by
                   simp only [unsettledStep, acting, dropped, List.any_cons]
                   cases owner : (graph setup).actor? event with
-                  | some sender => simp [EventGraph.Completion.fromDecision, owner]
+                  | some sender => simp [EventGraph.completion, owner]
                   | none =>
                       have quiet := earlier.quiet fun other otherReady sender acts => by
                         have sameEvent := setup.eventGraph.sequentialize_ready_unique _
@@ -493,7 +493,7 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                         subst sameEvent
                         rw [owner] at acts
                         cases acts
-                      simp [EventGraph.Completion.fromDecision, owner, quiet]
+                      simp [EventGraph.completion, owner, quiet]
                 change PeriodInvariant setup runtime assessment who _ (unsettledStep setup runtime
                   leaks assessment who _ (some current) joint _)
                 rw [one]

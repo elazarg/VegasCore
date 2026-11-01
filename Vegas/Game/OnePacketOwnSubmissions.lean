@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketActorRecord
 import Vegas.Game.SourceServiceFacts
+import Vegas.Game.SourceServiceCompletion
 import Vegas.Pending.ReactiveSignedCommitments
 import Vegas.Source.FailedBindingDeviation
 
@@ -258,5 +259,34 @@ theorem onePacket_ownSubmissionsAtTurn {horizon : Nat}
   · exact turn
   · exact (ProtocolState.Intended.not_owesFailure who setup.program point intendedPoint
       (owed point decoded)).elim
+
+
+/-- **One-packet boundaries are reached boundaries.** A history of the
+one-packet game ending between rounds at an execution whose configuration is a
+prefix of `rank`, with every event from `rank` on untouched and a decoding to a
+point of the intended game, ends at a reached boundary: its own submissions
+were made at the owners' turns (`Vegas.onePacket_ownSubmissionsAtTurn`). -/
+theorem reachedBoundary_of_onePacket (bounds : MessageBounds (graph setup))
+    {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler} {rank : Nat}
+    {anchor : (application setup runtime leaks).Execution}
+    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).History)
+    (state : start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩)
+    (bounded : anchor.environmentRecall.length ≤ horizon)
+    (ordered : anchor.application.config.cut.IsPrefix rank)
+    (untouched : ∀ event : (graph setup).EventId, rank ≤ event.val →
+      Untouched setup leaks event anchor)
+    (point : ProtocolState setup.program)
+    (decoded : sourceServicePrefix? setup rank anchor.application.config = some point)
+    (intendedPoint : ProtocolState.Intended setup.program point) :
+    ReachedBoundary setup runtime leaks horizon scheduler rank anchor := by
+  have trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩) :=
+    state ▸ start.trace
+  exact ⟨⟨(bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+      scheduler trace⟩, bounded, ordered, untouched,
+    onePacket_ownSubmissionsAtTurn (runtime := runtime) bounds trace ordered point decoded
+      intendedPoint⟩
+
 
 end Vegas

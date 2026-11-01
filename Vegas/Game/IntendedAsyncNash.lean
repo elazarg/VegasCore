@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.IntendedNash
+import Vegas.Game.SourceServiceTurnSettlement
 import Vegas.Game.AsyncServiceNash
 
 /-! # Approximate Nash equilibria of the intended game under a contract builder
@@ -156,7 +157,7 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
   let stateUtility := fun state : State L service.setup.program.terminalCtx =>
     forfeited (service.setup.parameterOutcome parameter state)
   have close := sourceServiceClients_clientPolicy_settlement_lawError service.contract
-    service.timely timing decoded terminal menu (covered source) sample authentic stateUtility
+    timing decoded terminal menu (covered source) sample authentic stateUtility
     deposit
   have readoutLaw : ((service.sourceModel (CommitmentInterface.values
     service.setup.program)).runBehavioral source

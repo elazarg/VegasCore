@@ -3,7 +3,7 @@
 import Vegas.Game.OnePacketForeignFailure
 import Vegas.Game.RecoveryForeignActivation
 import Vegas.Game.OnePacketForeignSubmission
-import Vegas.Game.OnePacketCompletionOrigin
+import Vegas.Pending.ReactiveCompletion
 import Vegas.Game.OnePacketFilteredPrefix
 import Vegas.Game.RecoveryMainResponseSafety
 

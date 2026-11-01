@@ -66,6 +66,9 @@ theorem counted_accepted_until_continuation
           final.execution.application.config = sent) ∧
         (event ∈ final.execution.application.config.cut.completed →
           ∃ ready : sent.cut.Ready event, sent.actualDecision event action = some action ∧
+            ((sent.complete event ready action output).defaulted = ∅ ∨
+                final.execution.application.config.defaulted = ∅ →
+              final.execution.application.config = sent.complete event ready action output) ∧
             (graph setup).runPlan
                 ((graph setup).policyPlan reference (graph setup).canonicalScheduler)
                 final.execution.application.config.remaining final.execution.application.config =
@@ -122,6 +125,9 @@ theorem counted_accepted_stop_continuation
       ∃ final, ∃ ready : sent.cut.Ready event, stop.state = some final ∧
         event ∈ final.execution.application.config.cut.completed ∧
         sent.actualDecision event action = some action ∧
+        ((sent.complete event ready action output).defaulted = ∅ ∨
+            final.execution.application.config.defaulted = ∅ →
+          final.execution.application.config = sent.complete event ready action output) ∧
         (graph setup).runPlan
             ((graph setup).policyPlan reference (graph setup).canonicalScheduler)
             final.execution.application.config.remaining final.execution.application.config =
@@ -153,7 +159,7 @@ theorem counted_accepted_stop_continuation
     · rw [state] at ended
       have terminal := completes final (state ▸ stopped.trace) (clearPending pending) ended
       exact pending (by rw [terminal]; exact Finset.mem_univ _)
-  obtain ⟨ready, actual, continuation⟩ := completed done
-  exact ⟨final, ready, state, done, actual, continuation⟩
+  obtain ⟨ready, actual, exactConfig, continuation⟩ := completed done
+  exact ⟨final, ready, state, done, actual, exactConfig, continuation⟩
 
 end Vegas

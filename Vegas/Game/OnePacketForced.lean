@@ -233,7 +233,7 @@ event, so at a prefix its length is the prefix rank. -/
 theorem history_length_of_isPrefix {graph : EventGraph Player L} (config : graph.Config)
     {rank : Nat} (ordered : config.cut.IsPrefix rank) : config.history.length = rank := by
   classical
-  have completed : (config.history.map EventGraph.Completion.event).toFinset =
+  have completed : (config.history.map EventCompletion.event).toFinset =
       config.cut.completed := by
     ext event
     rw [List.mem_toFinset]
@@ -244,7 +244,7 @@ theorem history_length_of_isPrefix {graph : EventGraph Player L} (config : graph
     rw [Finset.mem_filter]
     exact ⟨fun member => ⟨Finset.mem_univ _, (ordered.2 event).mp member⟩,
       fun below => (ordered.2 event).mpr below.2⟩
-  rw [← List.length_map (f := EventGraph.Completion.event),
+  rw [← List.length_map (f := EventCompletion.event),
     ← List.toFinset_card_of_nodup config.history_nodup, completed, filtered]
   rw [show ((Finset.univ : Finset graph.EventId).filter fun event => event.val < rank) =
       Finset.univ.filter (fun event : Fin graph.order.eventCount => (event : Nat) < rank) from rfl,
@@ -269,7 +269,7 @@ def sourceViewOf (who : Player) (view : (application setup runtime leaks).Player
       (ContextRefs.initial setup.context (outputLayout setup.program))
       (outputRef setup.program) observed.completionOrder.length observed.store
       (decodeCompletions setup.program
-        (observed.ownActions.map (setup.eventGraph.fromModeCompletion .sequential)))
+        (observed.ownActions))
       observed.defaults
   else none
 
@@ -302,19 +302,12 @@ theorem projectView_observe (who : Player) (execution : (application setup runti
       ((graph setup).playerObserve who execution.application.config).completionOrder.length
       ((graph setup).playerStore who execution.application.config.store)
       (decodeCompletions setup.program
-        (((graph setup).ownCompletions who execution.application.config.history).map
-          (setup.eventGraph.fromModeCompletion .sequential)))
+        (((graph setup).ownCompletions who execution.application.config.history)))
       execution.application.config.defaults = _
   rw [EventGraph.playerObserve_completionOrder, List.length_map,
     history_length_of_isPrefix execution.application.config ordered]
   refine (decodeViewPrefix?_playerStore (graph := graph setup) who rank setup.program _ _ _
     _ _).trans ?_
-  refine (congrArg (fun own => decodeViewPrefix? who setup.program
-    (ContextRefs.initial setup.context (outputLayout setup.program)) (outputRef setup.program) rank
-    execution.application.config.store (decodeCompletions setup.program own)
-    execution.application.config.defaults)
-    (ownCompletions_fromModeCompletion setup (mode := .sequential) who
-      execution.application.config.history)).trans ?_
   exact decodeViewPrefix?_eq_observe who rank setup.program _ [] _ _ _ _ _ point decoded
 
 variable {setup runtime leaks}

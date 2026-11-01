@@ -38,7 +38,6 @@ theorem initial_history (setup : Setup (Player := Player) (L := L))
     {mode : EventGraph.ExecutionMode} (initial : State L setup.context) : decodeHistory
     setup.program
     ((EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
-        (setup.eventInputs initial)).config.history.map
-        (setup.eventGraph.fromModeCompletion mode)) = fun _ => [] := rfl
+        (setup.eventInputs initial)).config.history) = fun _ => [] := rfl
 
 end Vegas

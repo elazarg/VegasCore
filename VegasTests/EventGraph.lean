@@ -90,9 +90,8 @@ private def rangeBinding :
     Vegas.EventGraph.EventCode BindingLayout (.binding false (.range 1 0)) :=
   Vegas.EventGraph.EventCode.bind (layout := BindingLayout) false (.range 1 0)
 
-/-- A native candidate that will never open binds to failure. No source policy
-produces one, and the graph still has to represent it. -/
-example : rangeBinding.eval? .failure (fun _ => none) =
+/-- An admitted unusable candidate binds to failure, independently of payload inhabitation. -/
+example : rangeBinding.eval? (some .failure) (fun _ => none) =
     some (PMF.pure .failure) := rfl
 
 private abbrev DeferredLayout : Fin 2 → Vegas.EventGraph.EventField Bool simpleExpr :=
@@ -234,16 +233,18 @@ private theorem pairInitial_ready (event : pairGraph.EventId) :
     EventOrder.Cut.empty, pairGraph, pairOrder]
 
 private def secondAccepted : pairGraph.Config :=
-  pairInitial.complete (1 : Fin 2) (pairInitial_ready 1) (.success true) (.success true)
+  pairInitial.complete (1 : Fin 2) (pairInitial_ready 1) (some (.success true)) (.success true)
 
 private theorem secondAccepted_ready0 : secondAccepted.cut.Ready (0 : Fin 2) := by
   exact (pairInitial_ready 0).after_complete (pairInitial_ready 1) (by decide)
 
 /-- This is an actual binding transition, not just a reordered submission. -/
-example : pairInitial.step (1 : Fin 2) (pairInitial_ready 1) (.success true) =
+example : pairInitial.step (1 : Fin 2) (pairInitial_ready 1) (some (.success true)) =
     PMF.pure secondAccepted := by
+  have active : true ∉ pairInitial.defaulted := by decide
   simp [Vegas.EventGraph.Config.step, Vegas.EventGraph.EventCode.eval?, secondAccepted,
-    PMF.pure_map]
+    Vegas.EventGraph.Config.effectiveAction, Vegas.EventGraph.EventCode.effectiveAction,
+    Vegas.EventGraph.EventCode.actor, active, PMF.pure_map]
 
 example : secondAccepted.outputs 1 = some (.success true) ∧
     secondAccepted.outputs 0 = none := by
@@ -255,7 +256,7 @@ example : secondAccepted.outputs 1 = some (.success true) ∧
 
 /-- Completion order remains visible even though the other player's value is hidden. -/
 example : (pairGraph.publicObserve secondAccepted).completionOrder = [1] := by
-  simp [secondAccepted, pairInitial, Vegas.EventGraph.Config.initial]
+  simp [secondAccepted, pairInitial, Vegas.EventGraph.Config.initial, Vegas.EventGraph.completion]
 
 example : (pairGraph.playerObserve false secondAccepted).store (.inr 1) = none := rfl
 
@@ -279,20 +280,20 @@ example :
   pairInformation.logicalObserve_ownActions secondAccepted 0 false secondAccepted_ready0 rfl
 
 private def firstAccepted : pairGraph.Config :=
-  pairInitial.complete (0 : Fin 2) (pairInitial_ready 0) (.success false) (.success false)
+  pairInitial.complete (0 : Fin 2) (pairInitial_ready 0) (some (.success false)) (.success false)
 
 private theorem firstAccepted_ready1 : firstAccepted.cut.Ready (1 : Fin 2) := by
   exact (pairInitial_ready 1).after_complete (pairInitial_ready 0) (by decide)
 
 private def canonicalResult : pairGraph.Config :=
-  firstAccepted.complete (1 : Fin 2) firstAccepted_ready1 (.success true) (.success true)
+  firstAccepted.complete (1 : Fin 2) firstAccepted_ready1 (some (.success true)) (.success true)
 
 private def reverseResult : pairGraph.Config :=
-  secondAccepted.complete (0 : Fin 2) secondAccepted_ready0 (.success false) (.success false)
+  secondAccepted.complete (0 : Fin 2) secondAccepted_ready0 (some (.success false)) (.success false)
 
 /-- Each player supplies its own Boolean bit at its binding event. -/
 private def pairProfile : pairGraph.BehavioralProfile :=
-  fun who _event _owner _observation => PMF.pure (.success who)
+  fun who _event _owner _observation _active => PMF.pure (some (.success who))
 
 private theorem pairInitial_notTerminal : ¬ pairInitial.cut.Terminal := by
   intro terminal
@@ -312,9 +313,11 @@ example :
     intro event _
     omega
   simp [Vegas.EventGraph.policyPlan, Vegas.EventGraph.canonicalScheduler, pairProfile,
-    Vegas.EventGraph.actor?, Vegas.EventGraph.EventCode.actor,
+    Vegas.EventGraph.EventCode.actor,
     pairInitial, Vegas.EventGraph.Config.initial, pairGraph, pairOrder,
-    EventOrder.Cut.enabled, EventOrder.Cut.empty, EventOrder.Cut.Ready, minUniv, PMF.pure_map]
+    EventOrder.Cut.enabled, EventOrder.Cut.empty, EventOrder.Cut.Ready, minUniv,
+    Vegas.EventGraph.Config.defaulted, Vegas.EventGraph.Config.defaults,
+    Vegas.EventCompletion.defaults, Vegas.DefaultHistory.defaulted, PMF.pure_map]
 
 example :
     (pairGraph.policyPlan pairProfile pairGraph.greatestScheduler pairInitial
@@ -325,25 +328,33 @@ example :
     intro event _
     omega
   simp [Vegas.EventGraph.policyPlan, Vegas.EventGraph.greatestScheduler, pairProfile,
-    Vegas.EventGraph.actor?, Vegas.EventGraph.EventCode.actor,
+    Vegas.EventGraph.EventCode.actor,
     pairInitial, Vegas.EventGraph.Config.initial, pairGraph, pairOrder,
-    EventOrder.Cut.enabled, EventOrder.Cut.empty, EventOrder.Cut.Ready, maxUniv, PMF.pure_map]
+    EventOrder.Cut.enabled, EventOrder.Cut.empty, EventOrder.Cut.Ready, maxUniv,
+    Vegas.EventGraph.Config.defaulted, Vegas.EventGraph.Config.defaults,
+    Vegas.EventCompletion.defaults, Vegas.DefaultHistory.defaulted, PMF.pure_map]
 
 /-- Both schedule traces consist of supported semantic binding transitions. -/
-example : pairInitial.step (0 : Fin 2) (pairInitial_ready 0) (.success false) =
+example : pairInitial.step (0 : Fin 2) (pairInitial_ready 0) (some (.success false)) =
     PMF.pure firstAccepted := by
+  have active : false ∉ pairInitial.defaulted := by decide
   simp [Vegas.EventGraph.Config.step, Vegas.EventGraph.EventCode.eval?, firstAccepted,
-    PMF.pure_map]
+    Vegas.EventGraph.Config.effectiveAction, Vegas.EventGraph.EventCode.effectiveAction,
+    Vegas.EventGraph.EventCode.actor, active, PMF.pure_map]
 
-example : firstAccepted.step (1 : Fin 2) firstAccepted_ready1 (.success true) =
+example : firstAccepted.step (1 : Fin 2) firstAccepted_ready1 (some (.success true)) =
     PMF.pure canonicalResult := by
+  have active : true ∉ firstAccepted.defaulted := by decide
   simp [Vegas.EventGraph.Config.step, Vegas.EventGraph.EventCode.eval?, canonicalResult,
-    PMF.pure_map]
+    Vegas.EventGraph.Config.effectiveAction, Vegas.EventGraph.EventCode.effectiveAction,
+    Vegas.EventGraph.EventCode.actor, active, PMF.pure_map]
 
-example : secondAccepted.step (0 : Fin 2) secondAccepted_ready0 (.success false) =
+example : secondAccepted.step (0 : Fin 2) secondAccepted_ready0 (some (.success false)) =
     PMF.pure reverseResult := by
+  have active : false ∉ secondAccepted.defaulted := by decide
   simp [Vegas.EventGraph.Config.step, Vegas.EventGraph.EventCode.eval?, reverseResult,
-    PMF.pure_map]
+    Vegas.EventGraph.Config.effectiveAction, Vegas.EventGraph.EventCode.effectiveAction,
+    Vegas.EventGraph.EventCode.actor, active, PMF.pure_map]
 
 /-- The semantic outputs do not depend on which independent binding ran first. -/
 example (event : pairGraph.EventId) :
@@ -354,10 +365,12 @@ example (event : pairGraph.EventId) :
 
 /-- Scheduling metadata exposes both genuine chronological orders. -/
 example : (pairGraph.publicObserve canonicalResult).completionOrder = [0, 1] := by
-  simp [canonicalResult, firstAccepted, pairInitial, Vegas.EventGraph.Config.initial]
+  simp [canonicalResult, firstAccepted, pairInitial, Vegas.EventGraph.Config.initial,
+    Vegas.EventGraph.completion]
 
 example : (pairGraph.publicObserve reverseResult).completionOrder = [1, 0] := by
-  simp [reverseResult, secondAccepted, pairInitial, Vegas.EventGraph.Config.initial]
+  simp [reverseResult, secondAccepted, pairInitial, Vegas.EventGraph.Config.initial,
+    Vegas.EventGraph.completion]
 
 /-- Neither final public observation exposes the two private binding values. -/
 example (event : pairGraph.EventId) :

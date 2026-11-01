@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketForced
 import Vegas.Source.IntendedGame
+import Vegas.Source.IntendedForPlayer
 
 /-! # Failures in typed source prefix readouts
 
@@ -171,8 +172,8 @@ theorem decodeSourcePrefix?_base_agrees {Field : Type} [DecidableEq Field]
           exact decodeSourcePrefix?_base_agrees count next _ _ _ _ store history defaults rest
             restDecoded (.there source)
 
-/-- Every failed source reveal at a decoded point is reflected in an earlier
-publication output. In particular, nonfailed earlier outputs rule it out. -/
+/-- Failed source reveals of a player occur only at earlier owned publication
+outputs. Cleanliness of other players' outputs is unnecessary. -/
 theorem not_revealFailed_of_decodeSourcePrefix? {Field : Type} [DecidableEq Field]
     {layout : Field → EventGraph.EventField Player L} :
     ∀ (count : Nat) {Γ : SourceCtx Player L} {O : Finset VarId}
@@ -183,49 +184,47 @@ theorem not_revealFailed_of_decodeSourcePrefix? {Field : Type} [DecidableEq Fiel
       (defaults : DefaultHistory Player)
       (point : ProtocolState program),
       decodeSourcePrefix? program refs registry revelations outputs count
-        store history defaults =
-        some point →
-      (∀ event : Fin (eventCount program), event.val < count → ∀ payload
+        store history defaults = some point →
+      ∀ who, (∀ event : Fin (eventCount program), event.val < count →
+        eventOwner? program event = some who → ∀ payload
         (outputEq : outputLayout program event = .publication payload),
         cast (congrArg (fun kind : EventGraph.EventField Player L => Option kind.Value) outputEq)
           ((outputs event).get? store) ≠ some .failure) →
-      ∀ who, ¬ ProtocolState.RevealFailed who program point
+      ¬ ProtocolState.RevealFailed who program point
   | 0, _, _, program, refs, registry, revelations, outputs, store, history, defaults, point,
-      decoded,
-      _clean, who => by
+      decoded, who, _clean => by
       simp only [decodeSourcePrefix?] at decoded
       obtain ⟨cells, _cellsDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
       exact ProtocolState.not_revealFailed_entry who program _
   | count + 1, _, _, program, refs, registry, revelations, outputs, store, history, defaults, point,
-      decoded, clean, who => by
+      decoded, who, clean => by
       cases program with
       | ret _ => simp [decodeSourcePrefix?] at decoded
       | sample _ _ _ next =>
           simp only [decodeSourcePrefix?] at decoded
           obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
           apply not_revealFailed_of_decodeSourcePrefix? count next _ _ _ _ store history defaults
-            rest
-            restDecoded ?_ who
-          intro event earlier payload outputEq
-          exact clean event.succ (by simpa using Nat.succ_lt_succ earlier) payload outputEq
+            rest restDecoded who
+          intro event earlier owned payload outputEq
+          exact clean event.succ (by simpa using Nat.succ_lt_succ earlier) owned payload outputEq
       | commit _ _ _ _ next =>
           simp only [decodeSourcePrefix?] at decoded
           obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
           apply not_revealFailed_of_decodeSourcePrefix? count next _ _ _ _ store history defaults
-            rest
-            restDecoded ?_ who
-          intro event earlier payload outputEq
-          exact clean event.succ (by simpa using Nat.succ_lt_succ earlier) payload outputEq
+            rest restDecoded who
+          intro event earlier owned payload outputEq
+          exact clean event.succ (by simpa using Nat.succ_lt_succ earlier) owned payload outputEq
       | reveal published owner name fresh selected unresolved next =>
           simp only [decodeSourcePrefix?] at decoded
           obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
           have later := not_revealFailed_of_decodeSourcePrefix? count next _ _ _ _ store history
-            defaults rest restDecoded (fun event earlier payload outputEq =>
-              clean event.succ (by simpa using Nat.succ_lt_succ earlier) payload outputEq) who
-          rintro (⟨_sameOwner, failed⟩ | failed)
+            defaults rest restDecoded who (fun event earlier owned payload outputEq =>
+              clean event.succ (by simpa using Nat.succ_lt_succ earlier) owned payload outputEq)
+          rintro (⟨sameOwner, failed⟩ | failed)
           · have agrees := decodeSourcePrefix?_base_agrees count next _ _ _ _ store history
               defaults rest restDecoded HasVar.here
-            have noFailure := clean ⟨0, by simp [eventCount]⟩ (by simp) _ rfl
+            have noFailure := clean ⟨0, by simp [eventCount]⟩ (by simp)
+              (by simpa [eventOwner?, eventCount, Fin.cases] using congrArg some sameOwner) _ rfl
             apply noFailure
             simpa [ContextRefs.cons, cellValue, failed] using agrees
           · exact later failed
@@ -468,6 +467,133 @@ theorem owesFailure_of_decode_failing {Field : Type} [DecidableEq Field]
             indebted | failed
           · exact Or.inl (Or.inr indebted)
           · exact Or.inr (Or.inr failed)
+
+private theorem intendedFor_of_entry {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (config : Config Player L Γ) (who : Player)
+    (holds : IntendedFor who program (entry program config)) : config.IntendedFor who O := by
+  cases program <;> exact holds
+
+/-- If an actual owned completion keeps its player intended, its decoded
+choice belongs to that player's intended source menu. -/
+theorem intendedAvailable_of_decode_intendedFor {Field : Type} [DecidableEq Field]
+    {layout : Field → EventGraph.EventField Player L} {Γ : SourceCtx Player L}
+    {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames) :
+    ∀ (count : Nat) (refs : ContextRefs layout Γ)
+      (registry : Registry Γ) (revelations : Revelations Γ)
+      (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
+      (store : EventGraph.Store layout) (history : History Player L)
+      (defaults : DefaultHistory Player)
+      (state : ProtocolState program) (bound : count < eventCount program) (actor : Player)
+      (action : EventGraph.EventField.Action (outputLayout program ⟨count, bound⟩))
+      (target : ProtocolState program),
+      decodeSourcePrefix? program refs registry revelations outputs count store history defaults =
+          some state →
+      IntendedFor actor program state →
+      eventOwner? program ⟨count, bound⟩ = some actor →
+      target ∈ (step program state
+        (fun _ => decodeEventAction program ⟨count, bound⟩ action)).support →
+      IntendedFor actor program target →
+      ∃ act, decodeEventAction program ⟨count, bound⟩ action = some act ∧
+        act ∈ ProtocolView.intendedAvailable actor program (observe actor program state) := by
+  induction program with
+  | ret _ =>
+      intro count _ _ _ _ _ _ _ _ bound
+      simp [eventCount] at bound
+  | sample _ fresh _ next ih =>
+      intro count refs registry revelations outputs store history defaults state bound actor action
+        target decoded intended owned reached after
+      cases count with
+      | zero => cases owned
+      | succ count =>
+          simp only [decodeSourcePrefix?] at decoded
+          obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
+          simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
+          obtain ⟨later, supported, rfl⟩ := reached
+          exact ih count _ _ _ _ store history defaults rest (Nat.lt_of_succ_lt_succ bound)
+            actor action later read intended owned supported after
+  | @commit commitCtx commitNames name owner payload fresh guard next ih =>
+      intro count refs registry revelations outputs store history defaults state bound actor action
+        target decoded intended owned reached after
+      cases count with
+      | zero =>
+          cases Option.some.inj owned
+          simp only [decodeSourcePrefix?] at decoded
+          obtain ⟨cells, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
+          have same := (PMF.mem_support_pure_iff _ _).mp reached
+          subst same
+          change Option (PublicationResult (L.Val payload)) at action
+          change ∃ act, some (OwnAction.commit owner name payload action) = some act ∧ _
+          have before : (⟨cells, registry, revelations, history, defaults⟩ :
+              Config Player L commitCtx).IntendedFor owner commitNames := intended
+          have afterConfig : (commitSuccessor name guard
+              ⟨cells, registry, revelations, history, defaults⟩ action).IntendedFor owner
+                (insert name commitNames) := by
+            change IntendedFor owner next (entry next (commitSuccessor name guard
+              ⟨cells, registry, revelations, history, defaults⟩
+              (OwnAction.binding owner name payload
+                (some (.commit owner name payload action))))) at after
+            rw [OwnAction.binding_commit] at after
+            exact intendedFor_of_entry next _ owner after
+          cases action with
+          | none =>
+              obtain ⟨value, succeeded⟩ := afterConfig.bound .here
+              simp [commitSuccessor] at succeeded
+          | some result =>
+              cases result with
+              | failure =>
+                  obtain ⟨value, succeeded⟩ := afterConfig.bound .here
+                  simp [commitSuccessor, before.active] at succeeded
+              | success value =>
+                  have prediction := afterConfig.predicted
+                    { owner := owner, subject := name, payload := payload, source := .here,
+                      guard := guard.weaken }
+                    (List.mem_cons_self ..) rfl value
+                    (by simp [commitSuccessor, before.active])
+                  have accepted : guard.predicts (sourceObserve owner cells) value = true := by
+                    simpa only [commitSuccessor, before.active, ite_false, Option.getD_some,
+                      SourceGuard.predicts_weaken] using prediction
+                  exact ⟨_, rfl, value,
+                    Or.inl ((mem_predictedValues_self guard _ value).mpr accepted), rfl⟩
+      | succ count =>
+          simp only [decodeSourcePrefix?] at decoded
+          obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
+          simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
+          obtain ⟨later, supported, rfl⟩ := reached
+          exact ih count _ _ _ _ store history defaults rest (Nat.lt_of_succ_lt_succ bound)
+            actor action later read intended owned supported after
+  | @reveal revealCtx revealNames published owner name payload fresh source unresolved next ih =>
+      intro count refs registry revelations outputs store history defaults state bound actor action
+        target decoded intended owned reached after
+      cases count with
+      | zero =>
+          cases Option.some.inj owned
+          simp only [decodeSourcePrefix?] at decoded
+          obtain ⟨cells, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
+          have same := (PMF.mem_support_pure_iff _ _).mp reached
+          subst same
+          change Bool at action
+          change ∃ act, some (OwnAction.reveal owner name action) = some act ∧ _
+          have before : (⟨cells, registry, revelations, history, defaults⟩ :
+              Config Player L revealCtx).IntendedFor owner revealNames := intended
+          have afterConfig : (revealSuccessor published source
+              ⟨cells, registry, revelations, history, defaults⟩ action).IntendedFor owner
+                (revealNames.erase name) := by
+            change IntendedFor owner next (entry next (revealSuccessor published source
+              ⟨cells, registry, revelations, history, defaults⟩ action)) at after
+            exact intendedFor_of_entry next _ owner after
+          cases action with
+          | true => exact ⟨_, rfl, rfl⟩
+          | false =>
+              have active := afterConfig.active
+              simp [revealSuccessor, Config.defaulted, DefaultHistory.defaulted,
+                DefaultHistory.record, PublicationResult.isFailure] at active
+      | succ count =>
+          simp only [decodeSourcePrefix?] at decoded
+          obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
+          simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
+          obtain ⟨later, supported, rfl⟩ := reached
+          exact ih count _ _ _ _ store history defaults rest (Nat.lt_of_succ_lt_succ bound)
+            actor action later read intended owned supported after
 
 end ProtocolState
 

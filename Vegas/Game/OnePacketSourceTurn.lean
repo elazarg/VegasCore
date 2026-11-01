@@ -4,6 +4,7 @@ import Vegas.Game.OnePacketHonestDecision
 import Vegas.Game.OnePacketPrescribedSupport
 import Vegas.Game.IntendedAuthenticOpening
 import Vegas.Game.SourceStateKernel
+import Vegas.Game.SourceDebtObservation
 
 /-! # Source turns at decoded views
 
@@ -356,18 +357,11 @@ private theorem decodeViewPrefix?_rank (who : Player)
       (ContextRefs.initial setup.context (outputLayout setup.program)) (outputRef setup.program)
       rank ((graph setup).playerStore who execution.application.config.store)
       (decodeCompletions setup.program
-        (((graph setup).ownCompletions who execution.application.config.history).map
-          (setup.eventGraph.fromModeCompletion .sequential)))
+        (((graph setup).ownCompletions who execution.application.config.history)))
       execution.application.config.defaults =
       some (ProtocolState.observe who setup.program point) := by
   refine (decodeViewPrefix?_playerStore (graph := graph setup) who rank setup.program _ _ _
     _ _).trans ?_
-  refine (congrArg (fun own => decodeViewPrefix? who setup.program
-    (ContextRefs.initial setup.context (outputLayout setup.program)) (outputRef setup.program)
-    rank execution.application.config.store (decodeCompletions setup.program own)
-      execution.application.config.defaults)
-    (ownCompletions_fromModeCompletion setup (mode := .sequential) who
-      execution.application.config.history)).trans ?_
   exact decodeViewPrefix?_eq_observe who rank setup.program _ [] _ _ _ _ _ point decoded
 
 /-- A source choice of the intended game at a point's view: an action the
@@ -546,8 +540,14 @@ theorem asIfHonest_bind_step_eq_behavioralStateStep [Fintype Player]
     change (((setup.decodeBehavioralProfile (CommitmentInterface.values setup.program)
       (setup.intendedSourceProfile source.strategy) who).authenticOpening
         setup.program).protocolAction setup.program _) = _
+    have static := decodeSourcePrefix?_staticAt rank setup.program
+      (ContextRefs.initial setup.context (outputLayout setup.program)) []
+      (Revelations.initial setup.context) (outputRef setup.program)
+      execution.application.config.store
+      (decodeHistory setup.program execution.application.config.history)
+      execution.application.config.defaults point decoded
     rw [BehavioralPolicy.protocolAction_authenticOpening setup.program _ disclosing point
-      intendedPoint]
+      static intendedPoint]
     refine (BehavioralPolicy.protocolAction_fromProtocol setup.program _ _ _).trans ?_
     change ((source.strategy who (some (ProtocolState.observe who setup.program point))).map
       _).map Subtype.val = _

@@ -253,4 +253,49 @@ theorem encodeCompletions?_decodeCompletions_eq_some
       · exact chosen.symm
       · exact noNew.symm
 
+
+/-- A source action other than withholding encodes, at a publication event, to
+disclosure. -/
+theorem encodeEventAction?_discloses :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (event : Fin (eventCount program)) →
+    (action : OwnAction Player L) → (∀ owner name, action ≠ .reveal owner name false) →
+    ∀ encoded, encodeEventAction? program event action = some encoded →
+    ∀ payload (publication : outputLayout program event = .publication payload),
+      cast (congrArg EventGraph.EventField.Action publication) encoded = true
+  | _, _, .ret _, event, _, _, _, _ => nomatch event
+  | _, _, .sample name fresh law next, event, action, discloses, encoded, encodes => by
+      cases event using Fin.cases with
+      | zero => cases encodes
+      | succ tail =>
+          exact encodeEventAction?_discloses next tail action discloses encoded encodes
+  | _, _, .commit name owner fresh guard next, event, action, discloses, encoded, encodes => by
+      cases event using Fin.cases with
+      | zero =>
+          intro _ publication
+          cases publication
+      | succ tail =>
+          exact encodeEventAction?_discloses next tail action discloses encoded encodes
+  | _, _, .reveal published owner name fresh selected unresolved next, event, action, discloses,
+      encoded, encodes => by
+      cases event using Fin.cases with
+      | zero =>
+          intro _ publication
+          cases action with
+          | commit => cases encodes
+          | reveal actionOwner actionName disclose =>
+              simp only [encodeEventAction?, Fin.cases_zero] at encodes
+              split_ifs at encodes with ownerEq nameEq
+              cases encodes
+              cases publication
+              revert encoded
+              change ∀ value : Bool, (∀ owner name, OwnAction.reveal actionOwner actionName value ≠
+                .reveal owner name false) → value = true
+              intro value discloses
+              cases value
+              · exact (discloses actionOwner actionName rfl).elim
+              · rfl
+      | succ tail =>
+          exact encodeEventAction?_discloses next tail action discloses encoded encodes
+
 end Vegas

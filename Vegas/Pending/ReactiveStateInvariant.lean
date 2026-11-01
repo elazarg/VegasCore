@@ -17,23 +17,6 @@ open GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-theorem reactive_respond_application (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (action : (runtime.reactiveApplication leaks).Action) :
-    (execution.respond (runtime.reactiveApplication leaks) who action).application.config =
-        execution.application.config ∧
-      (execution.respond (runtime.reactiveApplication leaks) who action).application.publicView =
-        execution.application.publicView := by
-  rcases action with ⟨transmission⟩
-  cases transmission with
-  | none => exact ⟨rfl, rfl⟩
-  | some material =>
-      exact ⟨(submitStep_config _ who material.call.packet).trans
-        (material.call.register_facts who execution.application).1,
-        (submitStep_publicView _ who material.call.packet).trans
-          (material.call.register_facts who execution.application).2⟩
-
 theorem reactiveStateInvariant (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : graph.Inputs) :

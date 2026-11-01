@@ -2,7 +2,7 @@
 
 import Interaction.ReactiveDecisionPredecessor
 import Vegas.Game.OnePacketFirstActivation
-import Vegas.Game.SourceServiceSequentialTimeliness
+import Vegas.Game.SourceServiceAsyncTimeliness
 import Vegas.Pending.ReactiveFirstOpportunity
 import Vegas.Pending.ExclusionNativeFailure
 

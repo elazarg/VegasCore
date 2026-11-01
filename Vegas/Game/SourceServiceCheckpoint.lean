@@ -34,7 +34,7 @@ structure SourceCheckpoint (setup : Setup (Player := Player) (L := L))
     (native : (serviceGraph setup mode).Config) : Prop where
   agrees : refs.Agrees source.state native.store
   history : decodeHistory setup.program
-    (native.history.map (setup.eventGraph.fromModeCompletion mode)) = source.history
+    (native.history) = source.history
   defaults : native.defaults = source.defaults
   ordered : native.cut.IsPrefix rank
 
@@ -51,24 +51,21 @@ private theorem complete_source_history (setup : Setup (Player := Player) (L := 
     (event : (serviceGraph setup mode).EventId) (ready : native.config.cut.Ready event)
     (action : (serviceGraph setup mode).Action event)
     (value : ((serviceGraph setup mode).outputLayout event).Value) : decodeHistory setup.program
-    ((native.complete event ready action value).config.history.map
-        (setup.eventGraph.fromModeCompletion mode)) =
+    ((native.complete event ready action value).config.history) =
       match (native.config.actualDecision event action).bind
           (decodeEventAction setup.program event) with
       | none => decodeHistory setup.program
-          (native.config.history.map (setup.eventGraph.fromModeCompletion mode))
+          (native.config.history)
       | some sourceAction => Function.update
           (decodeHistory setup.program
-            (native.config.history.map (setup.eventGraph.fromModeCompletion mode)))
+            (native.config.history))
           (sourceActionOwner sourceAction)
           (decodeHistory setup.program
-            (native.config.history.map (setup.eventGraph.fromModeCompletion mode))
+            (native.config.history)
               (sourceActionOwner sourceAction) ++ [sourceAction]) := by
   change decodeHistory setup.program
-    ((native.config.history ++ [EventGraph.Completion.fromDecision event
-      (native.config.actualDecision event action) value]).map
-      (setup.eventGraph.fromModeCompletion mode)) = _
-  rw [List.map_append, List.map_singleton]
+    ((native.config.history ++ [EventGraph.completion (serviceGraph setup mode) event
+      (native.config.actualDecision event action) value])) = _
   exact decodeHistory_append_completion setup.program _ event
     (native.config.actualDecision event action) _
 
