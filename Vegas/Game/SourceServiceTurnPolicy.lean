@@ -115,6 +115,72 @@ def serviceClientPolicy (bound : (serviceGraph setup mode).EventId → Nat) (tur
 
 end Configured
 
+section ClientRuns
+
+variable {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+
+/-- Completing clients after their own off-policy responses preserves their run law. -/
+theorem sourceServiceClientPolicy_roundsFrom
+    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
+    (count : Nat) :
+    (serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+      scheduler (serviceClientPolicy setup mode deadline leaks bound turns timing profile) count =
+      (serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler (serviceTurnPolicy setup mode deadline leaks bound turns timing profile)
+        count := by
+  unfold ReactiveApplication.roundsFrom
+  congr 1
+  funext state
+  have completed := ReactiveApplication.Policy.recoverWhere_runRounds
+    (serviceTurnPolicy setup mode deadline leaks bound turns timing profile) (fun _ => True)
+    (fun _ => (serviceApplication setup mode deadline leaks).silentPolicy) scheduler count
+    (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks) state)
+      (fun _ _ => .nil)
+  simp only [ite_true] at completed
+  exact completed
+
+/-- Against a unilateral deviation, completing the other clients preserves the run law. -/
+theorem sourceServiceClientPolicy_deviation_roundsFrom
+    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
+    (who : Player) (alternative : (serviceApplication setup mode deadline leaks).Policy)
+    (count : Nat) :
+    (serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+      scheduler (Function.update
+        (serviceClientPolicy setup mode deadline leaks bound turns timing profile)
+        who alternative) count =
+      (serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler (Function.update
+          (serviceTurnPolicy setup mode deadline leaks bound turns timing profile)
+          who alternative) count := by
+  let players := Function.update
+    (serviceTurnPolicy setup mode deadline leaks bound turns timing profile) who alternative
+  have shape : Function.update
+      (serviceClientPolicy setup mode deadline leaks bound turns timing profile) who alternative =
+      fun player => if player ≠ who then (players player).recover
+        (serviceApplication setup mode deadline leaks).silentPolicy else players player := by
+    funext player
+    by_cases same : player = who
+    · subst player
+      simp only [players, Function.update_self, ne_eq, not_true_eq_false, ↓reduceIte]
+    · simp only [players, Function.update_of_ne same, ne_eq, same, not_false_eq_true, ↓reduceIte]
+      rfl
+  unfold ReactiveApplication.roundsFrom
+  rw [shape]
+  congr 1
+  funext state
+  exact ReactiveApplication.Policy.recoverWhere_runRounds players (fun player => player ≠ who)
+    (fun _ => (serviceApplication setup mode deadline leaks).silentPolicy) scheduler count
+    (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks) state)
+      (fun _ _ => .nil)
+
+end ClientRuns
+
 /-- The first-turn clients of a source profile have the complete terminal
 configuration law of the profile's source run. -/
 def FirstTurnSourceLaw (setup : Setup (Player := Player) (L := L))
