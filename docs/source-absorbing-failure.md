@@ -12,8 +12,10 @@ Exact graph-deviation backtranslation and source-to-graph approximate Nash
 correspondence are checked, including parameter-dependent expression payments.
 Whole native source-continuation laws, arbitrary physical unilateral-deviation
 backtranslation and common consistent equilibrium completion are checked.
-Higher native Nash, sequential-equilibrium and client-compiler consumers still
-require ports. The full branch is not a verified replacement for the maintained
+Native Nash correspondence, program-payment wrappers and the concrete monetary
+runtime are checked with ranges restricted to actual settlements. Higher native
+sequential-equilibrium and client-compiler consumers still require ports.
+The full branch is not a verified replacement for the maintained
 tower; the complete build and paper acceptance gates remain open.
 
 ## Authoritative source execution

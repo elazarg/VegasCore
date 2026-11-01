@@ -2,7 +2,6 @@
 
 import Vegas.Game.OnePacketComparisonRetention
 import Vegas.Game.RecoveryCountedService
-import Vegas.Game.RecoveryHonestRecall
 import Vegas.Game.RecoveryNativeComparison
 
 /-! # The common comparison strategy retains honest boundary continuations -/

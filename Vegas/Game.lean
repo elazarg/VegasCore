@@ -280,7 +280,6 @@ import Vegas.Game.ProgramPaymentAsyncNash
 import Vegas.Game.ProgramPaymentNash
 import Vegas.Game.ProgramPayoffs
 import Vegas.Game.RecoveryBeliefContinuation
-import Vegas.Game.RecoveryBoundaryWaiting
 import Vegas.Game.RecoveryCanonicalSafety
 import Vegas.Game.RecoveryChanceStoppedLaw
 import Vegas.Game.RecoveryClearDecisionSites
@@ -321,8 +320,6 @@ import Vegas.Game.RecoveryForeignExitBounds
 import Vegas.Game.RecoveryForeignExitComparison
 import Vegas.Game.RecoveryForeignFailure
 import Vegas.Game.RecoveryForeignFailureBound
-import Vegas.Game.RecoveryHonestContinuation
-import Vegas.Game.RecoveryHonestRecall
 import Vegas.Game.RecoveryInitializedClearance
 import Vegas.Game.RecoveryInitializedCounted
 import Vegas.Game.RecoveryInitializedCoupling
