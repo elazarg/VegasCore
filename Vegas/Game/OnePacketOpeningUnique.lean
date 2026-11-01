@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketRevealStep
+import Vegas.Pending.ReactivePolicyFacts
 
 /-! # The offered opening at a reveal is the canonical disclosure
 
@@ -52,79 +53,31 @@ theorem disclosure_transmits_form {control : (application setup runtime leaks).C
         (control.execution.observe (application setup runtime leaks) who).application =
           some (.opening event handle ⟨payload, value⟩) := by
   have facts := legalFacts setup leaks horizon scheduler control trace
-  -- The canonical decision transmits exactly when the resolution packet exists.
-  have packetSome : ∃ packet, reactiveResolutionPacket who event payload binding checks outputEq
+  have active := runtime.canonicalServiceDecision_active leaks who
+    (control.execution.recall who) (control.execution.observe (application setup runtime leaks) who)
+    event _ material sends
+  rcases reactiveResolutionPacket_shape who event payload binding checks outputEq
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
-      (control.execution.observe (application setup runtime leaks) who).application = some packet
-        := by
-    cases sent : reactiveResolutionPacket who event payload binding checks outputEq
-        (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
-        (control.execution.observe (application setup runtime leaks) who).application with
-    | some packet => exact ⟨packet, rfl⟩
-    | none =>
-        exfalso
-        unfold EventGraphRuntime.canonicalServiceDecision at sends
-        simp only [EventGraphRuntime.canonicalReactiveDecision, node, sent, Option.map_none]
-          at sends
-        cases sends
-  obtain ⟨packet, sent⟩ := packetSome
-  have original := sent
-  have discloses : (cast (congrArg EventGraph.EventField.Action outputEq)
-      (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) : Bool) = true := by
-    simp
-  unfold reactiveResolutionPacket at sent
-  simp only [discloses, ↓reduceIte] at sent
-  split at sent
-  · rename_i value resolved
-    split at sent
-    · rename_i handle accepted
-      split at sent
-      · rename_i owned
-        cases sent
-        -- The stored binding is the resolved value's binding.
-        have stored : binding.get? control.execution.application.config.store =
-            some (.success value) := by
-          have bound := resolved
-          unfold EventGraph.EventCode.resolveOutput? at bound
-          rw [← EventGraph.FieldRef.get?_playerStore binding who _ rfl]
-          change (do
-            let bound ← binding.get? ((graph setup).playerStore who
-              control.execution.application.config.store)
-            let accepted ← EventGraph.GuardCheck.allAccepted? checks
-              ((graph setup).playerStore who control.execution.application.config.store)
-              (if true then bound else .failure)
-            pure (if accepted then (if true then bound else .failure) else .failure)) =
-              some (.success value) at bound
-          cases readBinding : binding.get? ((graph setup).playerStore who
-              control.execution.application.config.store) with
-          | none =>
-              rw [readBinding] at bound
-              cases bound
-          | some result =>
-              rw [readBinding] at bound
-              simp only [Option.bind_eq_bind, Option.bind_some, ↓reduceIte] at bound
-              cases acceptedCheck : EventGraph.GuardCheck.allAccepted? checks
-                  ((graph setup).playerStore who control.execution.application.config.store)
-                  result with
-              | none =>
-                  rw [acceptedCheck] at bound
-                  cases bound
-              | some isAccepted =>
-                  rw [acceptedCheck] at bound
-                  cases isAccepted
-                  · simp at bound
-                  · simpa using bound
-        obtain ⟨provenance, acceptedProvenance, _, openable⟩ :=
-          facts.binding.success_provenance binding value stored
-        have same : provenance = handle := by
-          have := acceptedProvenance.symm.trans accepted
-          exact Option.some.inj this
-        subst same
-        exact ⟨provenance, value, acceptedProvenance, owned, openable, original⟩
-      · cases sent
-    · cases sent
-  · cases sent
-  · cases sent
+      (control.execution.observe (application setup runtime leaks) who).application with
+    ⟨handle, raw, packet⟩ | silent
+  · obtain ⟨_, _, _, value, stored, accepted, owned, rawEq⟩ :=
+      reactiveResolutionPacket_opening_spec who event payload binding checks outputEq _
+        (control.execution.observe (application setup runtime leaks) who).application
+        event handle raw packet
+    subst rawEq
+    change binding.get? ((graph setup).playerStore who
+      control.execution.application.config.store) = some (.success value) at stored
+    rw [EventGraph.FieldRef.get?_playerStore binding who _ rfl] at stored
+    obtain ⟨provenance, acceptedProvenance, _, openable⟩ :=
+      facts.binding.success_provenance binding value stored
+    have same : provenance = handle := Option.some.inj (acceptedProvenance.symm.trans accepted)
+    subst same
+    exact ⟨provenance, value, acceptedProvenance, owned, openable, packet⟩
+  · exfalso
+    simp only [EventGraphRuntime.canonicalServiceDecision,
+      EventGraphRuntime.canonicalReactiveDecision, ite_eq_right active, node, silent,
+      Option.map_none, ReactiveApplication.SubmissionNormalization.action] at sends
+    cases sends
 
 /-- A resolved opening fact holds at the state: an owned fact opens the
 player's own candidate, and a forwarded fact is sound evidence of the
@@ -204,6 +157,9 @@ theorem disclosure_normal_form {control : (application setup runtime leaks).Cont
             (control.execution.observe (application setup runtime leaks) who))
             (some ⟨handle, ⟨payload, value⟩⟩)⟩⟩ := by
   classical
+  have active := runtime.canonicalServiceDecision_active leaks who
+    (control.execution.recall who) (control.execution.observe (application setup runtime leaks) who)
+    event _ material sends
   obtain ⟨handle, value, accepted, owner, openable, packetEq⟩ :=
     disclosure_transmits_form (runtime := runtime) trace who event node material sends
   refine ⟨handle, value, accepted, owner, openable, ?_⟩
@@ -214,7 +170,8 @@ theorem disclosure_normal_form {control : (application setup runtime leaks).Cont
     rw [show (who, handle.2) = handle from Prod.ext owner.symm rfl]
     exact openable
   unfold EventGraphRuntime.canonicalServiceDecision
-  simp only [EventGraphRuntime.canonicalReactiveDecision, node, packetEq, Option.map_some]
+  simp only [EventGraphRuntime.canonicalReactiveDecision, ite_eq_right active, node, packetEq,
+    Option.map_some]
   rw [disclosureSubmission_normalize_opening who _ event handle _ owner verified]
   simp only [ReactiveApplication.SubmissionNormalization.action,
     EventGraphRuntime.reactiveNormalization, WitnessedSubmission.normalizeReactive,

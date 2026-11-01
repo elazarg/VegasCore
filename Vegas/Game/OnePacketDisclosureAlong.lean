@@ -11,7 +11,7 @@ along `h`, so the argument for states forced for the observer
 (`Vegas.disclosureResolves_of_forced`) does not apply to it. Its pending reveals
 still resolve (`Vegas.disclosureResolves_along`):
 
-* events complete one at a time in program order, so a ready reveal whose
+* graph events complete in program order, including automatic service, so a ready reveal whose
   resolution fails at a state stays ready until it completes, and completing it,
   disclosing or not, stores a failed publication, a failed reveal of its owner at
   the decoded point (`Vegas.revealFailed_of_failing_step`), which persists
@@ -57,21 +57,25 @@ theorem revealFailed_of_failing_step {profile : BehavioralProfile setup.program}
   have actionEq : action = cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose := by
     simp [disclose]
   have stepEq := config.step_eq_map_of_code event ready outputEq _ codeEq disclose
-    (PMF.pure .failure) (by rw [EventGraph.EventCode.resolve_eval?, failing disclose]; rfl)
+    (PMF.pure .failure) (by rw [EventGraph.EventCode.resolve_eval?, failing]; rfl)
   rw [actionEq, stepEq, PMF.pure_map, PMF.mem_support_pure_iff] at member
   have member' : after ∈ (config.step event ready action).support := by
     rw [actionEq, stepEq, PMF.pure_map, member]
     exact (PMF.mem_support_pure_iff _ _).mpr rfl
   obtain ⟨next, _⟩ := residual.step event ready action after member'
-  have atRank := (ready_iff_rank setup config rank residual.checkpoint.ordered event).mp ready
+  have atEvent : config.cut.IsPrefix event.val :=
+    ⟨event.isLt.le, fun query =>
+      setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+  have atRank := atEvent.unique residual.checkpoint.ordered
   subst atRank
   have nextDecoded := next.decode
   unfold sourceServicePrefix? serviceSourcePrefix? at nextDecoded
   have owned : (graph setup).actor? event = some owner := nodeView_resolve_actor outputEq codeEq
   refine ⟨_, decodedPoint_eq next, ProtocolState.revealFailed_of_decode_failure setup.program
-    event.val (ContextRefs.initial setup.context (outputLayout setup.program)) []
-    (Revelations.initial setup.context) (outputRef setup.program) _ _ _ event.isLt owner payload
-    outputEq nextDecoded ((eventOwner?_eq_actor setup.program event).trans owned) ?_⟩
+    event.val (event.val + 1) (ContextRefs.initial setup.context (outputLayout setup.program)) []
+    (Revelations.initial setup.context) (outputRef setup.program) _ _ _ _ event.isLt
+    (Nat.lt_succ_self _) owner payload outputEq nextDecoded
+    ((eventOwner?_eq_actor setup.program event).trans owned) ?_⟩
   rw [member]
   change (config.complete event ready _ _).outputs event = _
   rw [EventGraph.Config.complete_output_same]
@@ -101,6 +105,24 @@ theorem revealFailed_along {control : (application setup runtime leaks).Control}
         current.execution.application.config = control.execution.application.config ∨
           ∃ point, decodedPoint setup current.execution.application.config = some point ∧
             ProtocolState.RevealFailed owner setup.program point := by
+  have closed : StepClosed setup (ProtocolState.RevealFailed owner setup.program) :=
+    fun state joint target failed reached =>
+      ProtocolState.revealFailed_step owner setup.program state joint target failed reached
+  have propagate {first last : (graph setup).Config} {rank : Nat}
+      (residual : SourceResidual setup (failureProfile setup.program) rank first)
+      (point : ProtocolState setup.program) (decoded : decodedPoint setup first = some point)
+      (failed : ProtocolState.RevealFailed owner setup.program point)
+      (path : Relation.ReflTransGen EventGraph.Config.Step first last) :
+      ∃ next, decodedPoint setup last = some next ∧
+        ProtocolState.RevealFailed owner setup.program next := by
+    have holds : DecodedHolds (ProtocolState.RevealFailed owner setup.program) rank first := by
+      intro next read
+      rw [← decodedPoint_eq_of_isPrefix residual.checkpoint.ordered, decoded,
+        Option.some.injEq] at read
+      subst next
+      exact failed
+    obtain ⟨_, ⟨lastResidual⟩, lastHolds⟩ := residual.decodedHolds_path closed holds path
+    exact ⟨_, decodedPoint_eq lastResidual, lastHolds _ lastResidual.decode⟩
   intro state trace isPrefix
   induction isPrefix with
   | refl =>
@@ -113,36 +135,29 @@ theorem revealFailed_along {control : (application setup runtime leaks).Control}
       cases source with
       | none => exact (not_tracePrefix_start (runtime := runtime) before earlier).elim
       | some previous =>
-          have step := transition_configStep (initialLaw setup) horizon
-            scheduler previous current
-            joint realized
+          have path := reactive_protocol_graph_steps runtime leaks (initialLaw setup) horizon
+            scheduler previous current joint realized
           obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime)
             (failureProfile setup.program)
             (bounds.onePacketMenu runtime leaks) horizon scheduler before previous rfl
           rcases ih previous rfl with same | ⟨point, decoded, failed⟩
-          · rcases step with unchanged | ⟨other, otherReady, action, member⟩
-            · exact Or.inl (unchanged.trans same)
-            · right
+          · rcases path.cases_head with unchanged | ⟨middle, moved, rest⟩
+            · exact Or.inl (unchanged.symm.trans same)
+            · obtain ⟨other, otherReady, action, member⟩ := moved
               have readyPrevious : previous.execution.application.config.cut.Ready event :=
-                same ▸ ready
+                by simpa only [same] using ready
               have failingPrevious : ∀ disclose, EventGraph.EventCode.resolveOutput? binding
                   checks disclose previous.execution.application.config.store =
-                    some .failure := same ▸ failing
+                    some .failure := by simpa only [same] using failing
               have otherEq := setup.eventGraph.sequentialize_ready_unique _ otherReady
                 readyPrevious
               subst otherEq
-              exact revealFailed_of_failing_step (outputEq := outputEq) (codeEq := codeEq)
+              obtain ⟨point, decoded, failed⟩ :=
+                revealFailed_of_failing_step (outputEq := outputEq) (codeEq := codeEq)
                 residual otherReady failingPrevious action member
-          · right
-            rcases step with unchanged | ⟨other, otherReady, action, member⟩
-            · rw [unchanged]
-              exact ⟨point, decoded, failed⟩
-            · obtain ⟨point', next, before', after', reached⟩ :=
-                decodedPoint_step residual other otherReady action _ member
-              rw [decoded, Option.some.injEq] at before'
-              subst before'
-              exact ⟨next, after', ProtocolState.revealFailed_step owner setup.program _ _ _
-                failed reached⟩
+              obtain ⟨nextResidual, _⟩ := residual.step _ otherReady action middle member
+              exact Or.inr (propagate nextResidual point decoded failed rest)
+          · exact Or.inr (propagate residual point decoded failed path)
 
 /-- **Disclosures resolve along a history at a forced site.** For a well-formed
 setup, take a history ending at a state `current` with decoded point `p`, at
@@ -180,6 +195,7 @@ theorem disclosureResolves_along (wellFormed : setup.WellFormed) {who : Player}
   have ready : control.execution.application.config.cut.Ready event :=
     (control.execution.application.publicView_eventReady event).mp
       (PublicView.ownTurn?_spec _ owner event turn).1
+  have active := control.execution.application.active_of_ready_owned facts.quiescent ready owned
   have fieldsAvailable : ∀ field ∈ insert binding.field (EventGraph.GuardCheck.listReadFields
       checks), (control.execution.application.config.store field).isSome = true := by
     intro field member
@@ -195,24 +211,19 @@ theorem disclosureResolves_along (wellFormed : setup.WellFormed) {who : Player}
     simp
   cases result with
   | success value =>
-      obtain ⟨_, _, _, _, packet⟩ := EventGraphRuntime.reactiveResolutionPacket_provenance
-        runtime leaks control.execution.application facts.binding owner event payload
-        binding checks outputEq _ discloses value resolved
-      simp only [EventGraphRuntime.canonicalServiceDecision,
-        EventGraphRuntime.canonicalReactiveDecision, node]
-      change ((EventGraphRuntime.reactiveNormalization runtime leaks).action owner
-        (control.execution.recall owner) (control.execution.observe (application setup runtime
-          leaks)
-          owner)
-        ⟨(EventGraphRuntime.reactiveResolutionPacket owner event payload binding checks
-          outputEq _ (runtime.reactiveApplication leaks |>.observePlayer
-            control.execution.application owner)).map fun packet =>
-          (disclosureSubmission packet).normalizeReactive owner
-            (runtime.reactiveApplication leaks |>.observePlayer
-              control.execution.application owner) []⟩).transmission ≠ none
-      rw [packet]
-      simp only [Option.map_some, ReactiveApplication.SubmissionNormalization.action, ne_eq,
-        reduceCtorEq, not_false_eq_true]
+      have stored := EventGraph.EventCode.binding_success_of_resolve_success binding checks true
+        control.execution.application.config.store value resolved
+      obtain ⟨candidate, accepted, candidateOwner, _verified, _packet⟩ :=
+        EventGraphRuntime.reactiveResolutionPacket_provenance runtime leaks
+          control.execution.application facts.binding owner event payload binding checks outputEq
+          _ active discloses value stored
+      apply runtime.canonicalServiceDecision_openable leaks owner
+        (control.execution.recall owner)
+        (control.execution.observe (application setup runtime leaks) owner) event owner payload
+          binding checks outputEq codeEq node active value _ candidate accepted candidateOwner
+      change binding.get? ((graph setup).playerStore owner
+        control.execution.application.config.store) = _
+      rw [EventGraph.FieldRef.get?_playerStore binding owner _ rfl, stored]
   | failure =>
       exfalso
       have failing : ∀ disclose, EventGraph.EventCode.resolveOutput? binding checks disclose
