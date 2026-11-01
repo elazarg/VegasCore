@@ -2,7 +2,9 @@
 
 import Vegas.Game.SourceServiceFailureReadout
 import Vegas.Game.IntendedOpeningContinuation
-import Vegas.Game.OnePacketFirstActivationCompletion
+import Vegas.Game.OnePacketIntendedProjection
+import Vegas.Game.OnePacketLawApproximation
+import Vegas.Game.OnePacketHonestForced
 
 /-! # Honest continuation laws exclude latent source failures -/
 

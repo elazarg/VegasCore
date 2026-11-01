@@ -1,13 +1,12 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketLateCompletion
+import Vegas.Game.OnePacketIntendedProjection
+import Vegas.Game.OnePacketForcedPrefix
+import Vegas.Game.OnePacketHonestForced
+import Vegas.Game.OnePacketProjectedDecision
 
 /-! # Forced debt-free first activations
-
-**Resolving disclosures transmit canonically.** When the canonical disclosure
-at the player's pending reveal transmits, as it does at a debt-free forced
-state, so do the canonical decisions of every encoded source action there other
-than a refusal (`Vegas.canonicalTransmitsAt_of_disclosureResolves`).
 
 **A forced debt-free first activation.** At a history of a first activation of
 a forced player, where no player owes a failure at the decoded point, the
@@ -38,35 +37,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
 
 local notation "onePacketN" =>
   onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
-
-omit [Fintype Player] [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-    scheduler).InfoState who)] in
-/-- **Resolving disclosures transmit canonically.** When the canonical
-disclosure of `who` at its pending reveal transmits, so do the canonical
-decisions of every encoded source action at it other than a refusal. -/
-theorem canonicalTransmitsAt_of_disclosureResolves {who : Player}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView} (resolves : DisclosureResolves setup
-      runtime leaks who
-      past view) {event : (graph setup).EventId}
-    (pending : pendingEvent setup runtime leaks who (some (past, view)) = some event) {payload :
-      L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve who payload binding checks}
-    (node : nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq) :
-    CanonicalTransmitsAt setup runtime leaks who past view event := by
-  intro action graphAction encoded _ discloses
-  have disclose := encodeEventAction?_discloses setup.program event action discloses
-    graphAction encoded payload outputEq
-  have graphEq : graphAction = cast (congrArg EventGraph.EventField.Action outputEq.symm) true := by
-    rw [← disclose]
-    simp
-  rw [graphEq]
-  exact resolves event pending who payload binding checks outputEq codeEq node
 
 omit [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
   [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
@@ -131,7 +101,7 @@ theorem firstActivation_history_facts (wellFormed : setup.WellFormed) {who : Pla
   obtain ⟨found, ordered, _⟩ := pendingAt_history (runtime := runtime) rawTrace
   have rankEq : siteRank (runtime := runtime) site.1 = found := by
     rw [← observedState]
-    change (execution.application.config.history.map EventGraph.Completion.event).length = found
+    change (execution.application.config.history.map EventCompletion.event).length = found
     rw [List.length_map]
     exact history_length_of_isPrefix _ ordered
   have decoded : sourceServicePrefix? setup found execution.application.config = some point :=

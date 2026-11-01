@@ -75,6 +75,10 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
   (runtime : EventGraphRuntime (graph setup))
 
+/-- A source point at which some history of the intended game ends. -/
+def IntendedReached (point : ProtocolState setup.program) : Prop :=
+  ∃ history : setup.intendedProtocol.History, history.state = some point
+
 section Decoding
 
 open Classical in

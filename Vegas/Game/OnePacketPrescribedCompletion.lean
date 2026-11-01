@@ -1,30 +1,17 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFirstActivationCompletion
-import Vegas.Game.SourceDebtObservation
-import Vegas.Game.OnePacketSourceTurn
+import Vegas.Game.OnePacketSlotTrembles
 
-/-! # Trembled expectations, behavioral steps and canonical transmissions
+/-! # Expectation bounds for slot trembles
 
 **Trembles move an expectation by the scale.** A slot-trembled mixture whose
 main law has expectation target of a function bounded by bound has
 expectation within six times the scale times bound of target
 (`Vegas.abs_expect_slotTrembledChoice_sub_le`).
 
-**The behavioral step at an actor's point** draws the actor's choice and steps
-with it (`Vegas.SourceProgram.ProtocolState.behavioralStateStep_eq_bind_of_actor`),
-so at a turn the source step of the as-if-honest law of an intended assessment
-is the step of its intended effective opening
-(`Vegas.asIfHonest_bind_step_eq_behavioralStateStep`).
-
-**Canonical decisions at a binding transmit.** Along every history of the
-one-packet game, the canonical decision of every encoded source action at a
-binding of the player transmits (`Vegas.canonicalTransmitsAt_of_binding`).
 -/
 
 noncomputable section
-
-
 
 namespace Vegas
 
@@ -106,27 +93,5 @@ theorem abs_expect_slotTrembledChoice_sub_le {scale : ℝ} (nonnegative : 0 ≤ 
   refine outer.trans ?_
   nlinarith [mul_le_mul_of_nonneg_right cube boundNonneg,
     mul_le_mul_of_nonneg_right square boundNonneg]
-
-/-- **Canonical decisions at a binding transmit.** Along every history of the
-one-packet game, at a binding of who, the canonical decision of every encoded
-source action transmits. -/
-theorem canonicalTransmitsAt_of_binding {control : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace (some control))
-    (who : Player) (event : (graph setup).EventId) {payload : L.Ty}
-    {outputEq : (graph setup).outputLayout event = .binding who payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .bind who payload}
-    (node : nodeView (graph setup) event = .bind who payload outputEq codeEq) :
-    CanonicalTransmitsAt setup runtime leaks who (control.execution.recall who)
-      (control.execution.observe (application setup runtime leaks) who) event := by
-  intro action graphAction _ _ _
-  obtain ⟨serial, selected⟩ := onePacket_canonicalFreshSlot_exists (runtime := runtime) trace who
-  obtain ⟨choice, rfl⟩ : ∃ choice : PublicationResult (L.Val payload),
-      graphAction = cast (congrArg EventGraph.EventField.Action outputEq.symm) choice :=
-    ⟨cast (congrArg EventGraph.EventField.Action outputEq) graphAction, by simp⟩
-  rw [runtime.canonicalServiceDecision_binding leaks who _ _ event payload outputEq
-    codeEq node serial selected choice]
-  exact Option.some_ne_none _
 
 end Vegas

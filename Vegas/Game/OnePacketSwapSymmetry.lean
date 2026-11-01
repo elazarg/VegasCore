@@ -44,6 +44,35 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {allowed : Set (graph setup).Inputs}
 
+/-- **The allowed inputs of a swap**: the inputs of an initial state the swap
+sends into the support of the initial law. -/
+def swapAllowed (swap : HiddenSwap (graph setup)) : Set (graph setup).Inputs :=
+  {inputs | ∃ state ∈ (initialLaw setup).support, state.config.inputs = inputs ∧
+    state.swap swap ∈ (initialLaw setup).support}
+
+/-- An initial state is the initial state of its inputs. -/
+private theorem eq_initial_of_mem_initialLaw {state : EventGraphRuntime.State (graph setup)}
+    (member : state ∈ (initialLaw setup).support) :
+    state = EventGraphRuntime.State.initial state.config.inputs := by
+  rw [initialLaw, serviceInitialLaw, PMF.support_map] at member
+  obtain ⟨_, _, rfl⟩ := member
+  rfl
+
+/-- **The initial law is closed under the swap at the allowed inputs.** -/
+theorem initialClosed_swapAllowed (swap : HiddenSwap (graph setup)) :
+    ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ swapAllowed swap →
+      state.swap swap ∈ (initialLaw setup).support := by
+  rintro state member ⟨other, otherMember, sameInputs, swapped⟩
+  rw [eq_initial_of_mem_initialLaw member, ← sameInputs, ← eq_initial_of_mem_initialLaw otherMember]
+  exact swapped
+
+/-- **The allowed inputs are closed under the swap.** -/
+theorem swapAllowed_closed (swap : HiddenSwap (graph setup)) :
+    ∀ inputs ∈ swapAllowed swap,
+      (fun input => swap.values.value (.inl input) (inputs input)) ∈ swapAllowed swap := by
+  rintro inputs ⟨state, member, rfl, swapped⟩
+  exact ⟨state.swap swap, swapped, rfl, by rw [State.swap_involutive]; exact member⟩
+
 namespace EventGraphRuntime.HiddenSwap
 
 variable (swap : HiddenSwap (graph setup))

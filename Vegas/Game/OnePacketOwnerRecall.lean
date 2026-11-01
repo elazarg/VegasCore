@@ -7,6 +7,7 @@ import Vegas.Game.OnePacketFreshSlots
 import Vegas.Game.ServiceSettledEvidence
 import Vegas.Pending.ReactiveGraphSteps
 import Vegas.Pending.ReactiveRuntime
+import Vegas.Pending.ReactiveSignedCommitments
 
 /-! # What a player's recall records along one-packet histories
 
@@ -282,6 +283,27 @@ theorem initialCandidates_of_trace {state}
                 (fun state _ => runtime.countClean_initial leaks state) prior)
               player input
           · rw [same]
+
+/-- Initial binding inputs retain their accepted initial handles along every history. -/
+theorem accepted_initial_of_trace {control : (application setup runtime leaks).Control}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    {input : (graph setup).InputId} {owner : Player} {payload : L.Ty}
+    (layoutEq : (graph setup).inputLayout input = .binding owner payload) :
+    control.execution.application.accepted (.inl input) = some (owner, .initial input) := by
+  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+    scheduler trace
+  let invariant : (application setup runtime leaks).Invariant
+      (fun state => state.accepted (.inl input) = some (owner, .initial input)) :=
+    { submit := fun state who material held =>
+        ((keepsInputHandles_step runtime leaks).submit state who material input).trans held
+      handle := fun state message next held handled =>
+        ((keepsInputHandles_step runtime leaks).handle state message next handled input).trans held
+      environment := fun state command next held reached =>
+        ((keepsInputHandles_step runtime leaks).environment state command next reached input).trans
+          held }
+  exact invariant.history (initialLaw setup) horizon scheduler (fun state member => by
+    obtain ⟨_, _, rfl⟩ := PMF.support_map .. ▸ member
+    exact State.initial_accepted_binding _ input owner payload layoutEq) rawTrace
 
 end Initial
 

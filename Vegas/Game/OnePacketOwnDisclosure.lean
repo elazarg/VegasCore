@@ -2,6 +2,8 @@
 
 import Vegas.Game.OnePacketDisclosureResolves
 import Vegas.Game.OnePacketIntendedProjection
+import Vegas.Game.OnePacketHonestDecision
+import Vegas.Game.RevealServiceCalendarState
 
 /-! # The player's own disclosure resolves at its debt-free forced states
 
@@ -32,6 +34,33 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}
 
+omit [Fintype Player] in
+/-- **Resolving disclosures transmit canonically.** When the canonical
+disclosure of `who` at its pending reveal transmits, so do the canonical
+decisions of every encoded source action at it other than a refusal. -/
+theorem canonicalTransmitsAt_of_disclosureResolves {who : Player}
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} (resolves : DisclosureResolves setup
+      runtime leaks who
+      past view) {event : (graph setup).EventId}
+    (pending : pendingEvent setup runtime leaks who (some (past, view)) = some event) {payload :
+      L.Ty}
+    {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}
+    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
+    {outputEq : (graph setup).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve who payload binding checks}
+    (node : nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq) :
+    CanonicalTransmitsAt setup runtime leaks who past view event := by
+  intro action graphAction encoded _ discloses
+  have disclose := encodeEventAction?_discloses setup.program event action discloses
+    graphAction encoded payload outputEq
+  have graphEq : graphAction = cast (congrArg EventGraph.EventField.Action outputEq.symm) true := by
+    rw [← disclose]
+    simp
+  rw [graphEq]
+  exact resolves event pending who payload binding checks outputEq codeEq node
+
 /-- **The own disclosure resolves at debt-free forced states.** For a
 well-formed setup, along every history of the one-packet game at a state forced
 for a player at which the player owes no failure at the decoded point, the
@@ -59,6 +88,9 @@ theorem disclosureResolves_of_debtFree (wellFormed : setup.WellFormed)
   have ready : control.execution.application.config.cut.Ready event :=
     (control.execution.application.publicView_eventReady event).mp
       (PublicView.ownTurn?_spec _ owner event turn).1
+  have active := control.execution.application.active_of_ready_owned facts.quiescent ready owned
+  have observedActive : owner ∉ (control.execution.observe (application setup runtime leaks)
+      owner).application.publicView.observation.defaulted := active
   have available : (EventGraph.EventCode.resolveOutput? binding checks true
       control.execution.application.config.store).isSome = true := by
     apply EventGraph.EventCode.resolveOutput?_isSome
@@ -74,9 +106,11 @@ theorem disclosureResolves_of_debtFree (wellFormed : setup.WellFormed)
   | success value =>
       obtain ⟨_, _, _, _, packet⟩ := EventGraphRuntime.reactiveResolutionPacket_provenance
         runtime leaks control.execution.application facts.binding owner event payload
-        binding checks outputEq _ discloses value resolved
+        binding checks outputEq _ active discloses value
+        (EventGraph.EventCode.binding_success_of_resolve_success binding checks true _ value
+          resolved)
       simp only [EventGraphRuntime.canonicalServiceDecision,
-        EventGraphRuntime.canonicalReactiveDecision, node]
+        EventGraphRuntime.canonicalReactiveDecision, node, ite_eq_right observedActive]
       change ((EventGraphRuntime.reactiveNormalization runtime leaks).action owner
         (control.execution.recall owner) (control.execution.observe (application setup runtime
           leaks)
@@ -117,7 +151,12 @@ theorem disclosureResolves_of_debtFree (wellFormed : setup.WellFormed)
       -- Complete the reveal by disclosing: its output is a failure.
       have stepEq := control.execution.application.config.step_eq_map_of_code event ready
         outputEq _ codeEq true (PMF.pure .failure)
-        (by rw [EventGraph.EventCode.resolve_eval?, resolved]; rfl)
+        (by
+          change (EventGraph.EventCode.resolveOutput? binding checks
+            (if owner ∈ control.execution.application.config.defaulted then false else true)
+            control.execution.application.config.store).map PMF.pure = _
+          rw [ite_eq_right active, resolved]
+          rfl)
       rw [PMF.pure_map] at stepEq
       have member : control.execution.application.config.complete event ready
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
@@ -134,9 +173,10 @@ theorem disclosureResolves_of_debtFree (wellFormed : setup.WellFormed)
       have nextDecoded := next.decode
       unfold sourceServicePrefix? serviceSourcePrefix? at nextDecoded
       have failedNext := ProtocolState.revealFailed_of_decode_failure setup.program event.val
-        (ContextRefs.initial setup.context (outputLayout setup.program)) []
-        (Revelations.initial setup.context) (outputRef setup.program) _ _ _ event.isLt owner
-        payload outputEq nextDecoded ((eventOwner?_eq_actor setup.program event).trans owned)
+        (event.val + 1) (ContextRefs.initial setup.context (outputLayout setup.program)) []
+        (Revelations.initial setup.context) (outputRef setup.program) _ _ _ _ event.isLt
+        (Nat.lt_succ_self _) owner payload outputEq nextDecoded
+        ((eventOwner?_eq_actor setup.program event).trans owned)
         (by
           change (control.execution.application.config.complete event ready _ _).outputs
             event = _

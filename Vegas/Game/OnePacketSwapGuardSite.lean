@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketAcceptedInjective
+import Vegas.Game.OnePacketOwnerRecall
 import Vegas.Game.OnePacketSwapInputs
 
 /-! # The swap guard along a replayed history
@@ -36,29 +37,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}
-
-/-- **Initial binding inputs keep their initial handles** along every history. -/
-theorem accepted_initial_of_trace {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
-    {input : (graph setup).InputId} {owner : Player} {payload : L.Ty}
-    (layoutEq : (graph setup).inputLayout input = .binding owner payload) :
-    control.execution.application.accepted (.inl input) = some (owner, .initial input) := by
-  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
-    scheduler).Trace
-      (some control) :=
-    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
-      trace
-  have grows := acceptedGrows_step (runtime := runtime) (setup := setup) leaks
-  have invariant : (application setup runtime leaks).Invariant
-      (fun state => state.accepted (.inl input) = some (owner, .initial input)) :=
-    ⟨fun state who material held => grows.submit state who material _ _ held,
-      fun state message next held handled => grows.handle state message next handled _ _ held,
-      fun state command next held reached => grows.environment state command next reached _ _
-        held⟩
-  refine invariant.history (initialLaw setup) horizon scheduler (fun state member => ?_) rawTrace
-  rw [initialLaw, serviceInitialLaw, PMF.support_map] at member
-  obtain ⟨_, _, rfl⟩ := member
-  exact State.initial_accepted_binding _ input owner payload layoutEq
 
 variable [DecidableEq (CellTy Player L)] {p q : ProtocolState setup.program}
   {publicAgree : PublicCellsAgree setup p q} {succeed : CommitmentCellsSucceed setup p q}

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFirstActivationCompletion
+import Vegas.Game.OnePacketEventSuccess
+import Vegas.Game.OnePacketFreshSlots
 
 /-! # Fresh slots and the acceptance invariant after a one-packet commitment
 
@@ -115,17 +116,6 @@ theorem onePacket_commitment_fresh {control : (application setup runtime leaks).
       from evidenceNone] at evidence
     exact evidence.symm
 
-omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
-private theorem exists_of_forall₂_mem' {α β : Type} {relation : α → β → Prop} :
-    ∀ {left : List α} {right : List β}, List.Forall₂ relation left right →
-      ∀ b ∈ right, ∃ a ∈ left, relation a b
-  | _, _, .nil, _, member => (List.not_mem_nil member).elim
-  | _, _, .cons head tail, b, member => by
-      rcases List.mem_cons.mp member with rfl | later
-      · exact ⟨_, List.mem_cons_self .., head⟩
-      · obtain ⟨a, inTail, related⟩ := exists_of_forall₂_mem' tail b later
-        exact ⟨a, List.mem_cons_of_mem _ inTail, related⟩
-
 /-- **The acceptance invariant after a commitment.** At a decision of who at
 its turn at a binding event in the one-packet game, a transmission of the
 one-packet menu committing the event to a prepared slot of who whose meaning
@@ -154,6 +144,8 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
     AcceptanceInvariant setup runtime leaks bounds horizon scheduler who
         (respondEntry setup runtime leaks execution who response)
         (sentEnvelope setup runtime leaks execution who material) event execution.application.config
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm) (some (.success value)))
+        (cast (congrArg EventGraph.EventField.Value outputEq.symm) (.success value))
         (some ⟨remaining, none, execution.respond (application setup runtime leaks) who response⟩) ∧
       (execution.respond (application setup runtime leaks) who
         response).application.candidates.lookup
@@ -163,7 +155,6 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
       (some ⟨remaining, some who, execution⟩) :=
     (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
-  have facts := legalFacts setup leaks horizon scheduler _ rawTrace
   have ready := (execution.application.publicView_eventReady event).mp
     (PublicView.ownTurn?_spec _ who event turn).1
   have evidenceNone := (onePacket_commitment_fresh (runtime := runtime) trace who response member
@@ -191,6 +182,13 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
       material.call.packet).candidates.lookup (who, .prepared serial) = _
     rw [Submission.candidateAfter_eq]
     exact after
+  have bindingResult : (execution.respond (application setup runtime leaks) who
+      response).application.bindingResult (who, .prepared serial) payload = .success value := by
+    simp only [State.bindingResult, lookupAfter, Raw.as?_mk, Option.elim_some]
+  have serials := (application setup runtime leaks).serialsBeforeNext_history scheduler
+    (initialLaw setup) horizon rawTrace
+  have identifiers := (application setup runtime leaks).receipt_identifiers_history
+    (initialLaw setup) horizon scheduler _ rawTrace
   have callEq : (sentEnvelope setup runtime leaks execution who material).payload.call =
       .commitment event (who, .prepared serial) := by
     rcases material with ⟨call, evidence⟩
@@ -199,20 +197,32 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
     unfold sentEnvelope
     rw [reactiveApplication_packet_none]
     exact packet
+  have witness : AcceptanceWitness event (sentEnvelope setup runtime leaks execution who material)
+      execution.application.config
+      (cast (congrArg EventGraph.EventField.Action outputEq.symm) (some (.success value)))
+      (cast (congrArg EventGraph.EventField.Value outputEq.symm) (.success value))
+      (execution.respond (application setup runtime leaks) who response).application := by
+    left
+    refine ⟨(who, .prepared serial), who, payload, outputEq, callEq, ?_, ?_, ?_⟩
+    · rw [lookupAfter]
+      intro impossible
+      cases impossible
+    · rw [bindingResult]
+    · rw [bindingResult]
   refine ⟨⟨⟨afterTrace⟩, recordsEntry_respond (runtime := runtime) execution who _ remaining none,
     by rw [respondEntry_of_transmission (runtime := runtime) execution who _ material sends], ready,
-    Or.inl ⟨(who, .prepared serial), who, payload, value, callEq, outputEq, lookupAfter⟩,
-    fun _ => ?_, fun receipt => ?_⟩, lookupAfter⟩
+    witness, fun _ => ?_, fun receipt => ?_⟩, lookupAfter⟩
   · change (execution.respond (application setup runtime leaks) who response).application.config = _
     rw [respondApplication]
     exact sameConfig
   · exfalso
     change (_, true) ∈ execution.receipts at receipt
-    obtain ⟨ledgerMessage, inLedger, sameId, _⟩ :=
-      exists_of_forall₂_mem' facts.receipts _ receipt
-    have lower := facts.serials.ledger ledgerMessage inLedger
-    change (who, execution.network.nextSerial who) = ledgerMessage.id at sameId
-    rw [← sameId] at lower
+    have member : (who, execution.network.nextSerial who) ∈ execution.receipts.map Prod.fst :=
+      List.mem_map.mpr ⟨_, receipt, rfl⟩
+    rw [identifiers] at member
+    obtain ⟨ledgerMessage, inLedger, sameId⟩ := List.mem_map.mp member
+    have lower := serials.ledger ledgerMessage inLedger
+    rw [sameId] at lower
     exact Nat.lt_irrefl _ lower
 
 /-- A count-permitted commitment sent while its protected inclusion window fits
@@ -257,6 +267,8 @@ theorem onePacket_commitment_freshCall {bound : (graph setup).EventId → Nat}
     | some candidate =>
         exact False.elim (ready.1
           (facts.binding.toAssociationInvariant.accepted_complete event candidate associated))
+  have active := execution.application.active_of_ready_owned facts.quiescent ready
+    (PublicView.ownTurn?_spec _ who event turn).2
   have unused : ∀ field, execution.application.accepted field ≠ some (who, .prepared serial) :=
     fun field associated => facts.binding.accepted_fixed field _ associated fresh
   rcases material with ⟨⟨sentPacket, opening⟩, sentEvidence⟩
@@ -283,6 +295,6 @@ theorem onePacket_commitment_freshCall {bound : (graph setup).EventId → Nat}
       execution.application.publicView_tokenFor_of_ready _ event rfl ready]
     refine ⟨?_, rfl⟩
     simp only [PublicView.BindingIncludable, node]
-    exact ⟨readyView, inTime, by trivial, by trivial, vacant, unused⟩
+    exact ⟨active, readyView, inTime, by trivial, by trivial, vacant, unused⟩
 
 end Vegas

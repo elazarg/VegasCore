@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketLateSuccess
+import Vegas.Game.OnePacketIntendedProjection
 import Vegas.Game.OnePacketCertificateDischarge
 
 /-! # Site values at forced sites
@@ -49,10 +50,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
 
 local notation "onePacketN" =>
   onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
-
-/-- A source point at which some history of the intended game ends. -/
-def IntendedReached (point : ProtocolState setup.program) : Prop :=
-  ∃ history : setup.intendedProtocol.History, history.state = some point
 
 section Values
 

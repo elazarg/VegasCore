@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketEnvironmentSteps
 import Vegas.Pending.EventSampleObservation
+import Vegas.EventGraph.BarrierInformation
 
 /-! # Chance mass depends only on paired public endpoints -/
 
@@ -14,7 +15,6 @@ open GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
 
-omit [DecidableEq Player] in
 /-- Public sample laws and their realized public values determine the exact
 completion mass, even when private binding stores differ. -/
 theorem sample_step_mass_of_public {left right afterLeft afterRight : graph.Config}
@@ -90,63 +90,91 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
   {runtime : EventGraphRuntime (graph setup)}
 
-/-- Matching public endpoints of actual configuration steps have equal chance
-completion factors. Binding changes may be directed and need not be invertible. -/
-theorem completionMass_eq_of_public_steps
+/-- Public completion order, sampled outputs and sample distributions determine
+completion mass, without a reachability or one-step premise. -/
+theorem completionMass_eq_of_public
     {before after imageBefore imageAfter : EventGraphRuntime.State (graph setup)}
-    (leftStep : ConfigStep setup before.config after.config)
-    (rightStep : ConfigStep setup imageBefore.config imageAfter.config)
     (beforePublic : (graph setup).publicObserve before.config =
       (graph setup).publicObserve imageBefore.config)
     (afterPublic : (graph setup).publicObserve after.config =
       (graph setup).publicObserve imageAfter.config) :
     completionMass setup before after = completionMass setup imageBefore imageAfter := by
-  have beforeOrder := congrArg EventGraph.PublicObservation.completionOrder beforePublic
-  have afterOrder := congrArg EventGraph.PublicObservation.completionOrder afterPublic
+  have beforeOrder := congrArg EventPublicObservation.completionOrder beforePublic
+  have afterOrder := congrArg EventPublicObservation.completionOrder afterPublic
+  change before.config.history.map EventCompletion.event =
+    imageBefore.config.history.map EventCompletion.event at beforeOrder
+  change after.config.history.map EventCompletion.event =
+    imageAfter.config.history.map EventCompletion.event at afterOrder
   have beforeLength := congrArg List.length beforeOrder
-  have afterLength := congrArg List.length afterOrder
-  change before.config.history.map EventGraph.Completion.event =
-    imageBefore.config.history.map EventGraph.Completion.event at beforeOrder
-  change after.config.history.map EventGraph.Completion.event =
-    imageAfter.config.history.map EventGraph.Completion.event at afterOrder
-  simp only [EventGraph.publicObserve, List.length_map] at beforeLength afterLength
-  rcases leftStep with leftSame | ⟨event, ready, action, member⟩
-  · rcases rightStep with rightSame | ⟨other, otherReady, otherAction, otherMember⟩
-    · rw [completionMass_of_config_eq leftSame, completionMass_of_config_eq rightSame]
-    · have extended := imageBefore.config.step_history other otherReady otherAction _ otherMember
-      rw [leftSame, extended] at afterLength
-      simp only [List.length_append, List.length_cons, List.length_nil] at afterLength
-      omega
-  · rcases rightStep with rightSame | ⟨other, otherReady, otherAction, otherMember⟩
-    · have extended := before.config.step_history event ready action _ member
-      rw [rightSame, extended] at afterLength
-      simp only [List.length_append, List.length_cons, List.length_nil] at afterLength
-      omega
-    · rw [before.config.step_history event ready action _ member,
-        imageBefore.config.step_history other otherReady otherAction _ otherMember,
-        List.map_append, List.map_append] at afterOrder
-      change before.config.history.map EventGraph.Completion.event ++ [event] =
-        imageBefore.config.history.map EventGraph.Completion.event ++ [other] at afterOrder
-      rw [beforeOrder] at afterOrder
-      have eventEq := List.singleton_inj.mp (List.append_cancel_left afterOrder)
-      subst other
-      rw [completionMass_of_step member, completionMass_of_step otherMember]
-      cases chance : (graph setup).actor? event with
-      | some owner => rfl
-      | none =>
-          cases node : nodeView (graph setup) event with
-          | bind owner payload outputEq codeEq =>
-              rw [nodeView_bind_actor outputEq codeEq] at chance
-              cases chance
-          | resolve owner payload binding checks outputEq codeEq =>
-              rw [nodeView_resolve_actor outputEq codeEq] at chance
-              cases chance
-          | sample payload law outputEq codeEq =>
-              apply congrArg ENNReal.toReal
-              exact EventGraph.sample_step_mass_of_public event ready otherReady action
-                otherAction payload law outputEq codeEq
-                (congrArg EventGraph.PublicObservation.store beforePublic)
-                (congrArg EventGraph.PublicObservation.store afterPublic) member otherMember
+  simp only [List.length_map] at beforeLength
+  have suffix : (after.config.history.drop before.config.history.length).map
+        EventCompletion.event =
+      (imageAfter.config.history.drop imageBefore.config.history.length).map
+        EventCompletion.event := by
+    rw [List.map_drop, List.map_drop, afterOrder, beforeLength]
+  cases left : after.config.history.drop before.config.history.length with
+  | nil =>
+      cases right : imageAfter.config.history.drop imageBefore.config.history.length with
+      | nil =>
+          unfold completionMass
+          rw [left, right]
+      | cons record rest =>
+          simp only [left, right, List.map_nil, List.map_cons] at suffix
+          cases suffix
+  | cons record rest =>
+      cases right : imageAfter.config.history.drop imageBefore.config.history.length with
+      | nil =>
+          simp only [left, right, List.map_nil, List.map_cons] at suffix
+          cases suffix
+      | cons imageRecord imageRest =>
+          have eventEq : record.event = imageRecord.event := by
+            simp only [left, right, List.map_cons, List.cons.injEq] at suffix
+            exact suffix.1
+          rcases record with ⟨event, decision, defaultEvent⟩
+          rcases imageRecord with ⟨imageEvent, imageDecision, imageDefault⟩
+          change event = imageEvent at eventEq
+          subst imageEvent
+          unfold completionMass
+          rw [left, right]
+          dsimp only
+          by_cases chance : (graph setup).actor? event = none
+          · simp only [chance, ↓reduceDIte]
+            have publicField : (graph setup).fieldPublic (.inr event) :=
+              EventGraph.EventCode.output_public_of_actor_none
+                ((graph setup).nodes event) chance
+            have outputs := congrFun (congrArg EventPublicObservation.store afterPublic)
+              (.inr event)
+            change (graph setup).publicStore after.config.store (.inr event) =
+              (graph setup).publicStore imageAfter.config.store (.inr event) at outputs
+            rw [(graph setup).publicStore_of_public _ _ publicField,
+              (graph setup).publicStore_of_public _ _ publicField] at outputs
+            change after.config.outputs event = imageAfter.config.outputs event
+              at outputs
+            have stores := congrArg EventPublicObservation.store beforePublic
+            change (graph setup).publicStore before.config.store =
+              (graph setup).publicStore imageBefore.config.store at stores
+            have evalPublic {output : EventGraph.EventField Player L}
+                (code : EventGraph.EventCode (graph setup).layout output)
+                (nobody : code.actor = none) :
+                code.eval? (EventGraph.EventCode.actionOfActorNone code nobody)
+                    before.config.store =
+                  code.eval? (EventGraph.EventCode.actionOfActorNone code nobody)
+                    imageBefore.config.store := by
+              cases code with
+              | bind owner payload => cases nobody
+              | resolve owner payload binding checks => cases nobody
+              | sample payload law =>
+                  change law.eval? before.config.store = law.eval? imageBefore.config.store
+                  rw [← law.eval?_publicStore before.config.store, stores,
+                    law.eval?_publicStore imageBefore.config.store]
+            rw [outputs, evalPublic ((graph setup).nodes event) chance]
+            cases imageAfter.config.outputs event with
+            | none => rfl
+            | some value =>
+                cases ((graph setup).nodes event).eval?
+                    (EventGraph.EventCode.actionOfActorNone _ chance) imageBefore.config.store <;>
+                  rfl
+          · simp only [chance, ↓reduceDIte]
 
 variable {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
@@ -156,10 +184,10 @@ any two realized native transitions, including scheduler and response rounds. -/
 theorem completionMass_eq_of_operational_transitions
     {before after imageBefore imageAfter : (application setup runtime leaks).Control}
     (joint imageJoint : Player → Option (application setup runtime leaks).Action)
-    (realized : some after ∈ ((application setup runtime leaks).transition (initialLaw setup)
+    (_realized : some after ∈ ((application setup runtime leaks).transition (initialLaw setup)
       horizon
       scheduler (some before) joint).support)
-    (imageRealized : some imageAfter ∈ ((application setup runtime leaks).transition (initialLaw
+    (_imageRealized : some imageAfter ∈ ((application setup runtime leaks).transition (initialLaw
       setup)
       horizon scheduler (some imageBefore) imageJoint).support)
     (beforeOperational : operationalState setup runtime leaks (some before) =
@@ -168,12 +196,7 @@ theorem completionMass_eq_of_operational_transitions
       operationalState setup runtime leaks (some imageAfter)) :
     completionMass setup before.execution.application after.execution.application =
       completionMass setup imageBefore.execution.application imageAfter.execution.application := by
-  apply completionMass_eq_of_public_steps
-    (transition_configStep (initialLaw setup) horizon scheduler before after
-      joint realized)
-    (transition_configStep (initialLaw setup) horizon scheduler imageBefore
-      imageAfter imageJoint
-      imageRealized)
+  apply completionMass_eq_of_public
   · exact congrArg (fun state : OperationalState setup runtime leaks =>
       state.environment.application.observation) (Option.some.inj
         beforeOperational)

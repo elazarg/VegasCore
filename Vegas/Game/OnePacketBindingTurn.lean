@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnerStep
+import Vegas.Game.OnePacketLumpingInstance
 import Vegas.Pending.EventActivationOrigin
 
 /-! # Scheduler rounds of the one-packet game at a pending binding
@@ -213,6 +213,16 @@ theorem isFailure_cast_binding_iff {kind : EventGraph.EventField Player L} {owne
   subst kindEq
   rfl
 
+private theorem failed_drain (state : EventGraphRuntime.State (graph setup))
+    {event : (graph setup).EventId} (completed : event ∈ state.config.cut.completed) :
+    StoreEventFailed state.drain.config.store event ↔
+      StoreEventFailed state.config.store event := by
+  have present : (state.config.store (.inr event)).isSome := by
+    rw [EventGraph.Config.store_output]
+    exact (state.config.output_available event).mpr completed
+  obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp present
+  simp only [StoreEventFailed, state.drain_store_of_some _ value stored, stored]
+
 open Classical in
 /-- Expiring a due binding fails it, read through the pending image. -/
 theorem environmentStep_expire_due_bind_image (remaining : Nat)
@@ -229,33 +239,36 @@ theorem environmentStep_expire_due_bind_image (remaining : Nat)
         (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) =
           PMF.pure (.inr true) := by
   unfold ReactiveApplication.Execution.environmentStep
-  change (((EventGraphRuntime.environmentStep runtime execution.application
-    (.expire event)).map _).map _).map _ = _
+  change ((((EventGraphRuntime.environmentStep runtime execution.application
+    (.expire event)).map State.drain).map _).map _).map _ = _
   rw [environmentStep_expire_bind_eq runtime _ event ready entered activated due owner
     payload outputEq codeEq view]
   simp only [PMF.pure_map]
   have completed : event ∈ (execution.application.complete event ready
       (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-        (PublicationResult.failure : PublicationResult (L.Val payload)))
+        (none : Option (PublicationResult (L.Val payload))))
       (cast (congrArg EventGraph.EventField.Value outputEq.symm)
         (PublicationResult.failure : PublicationResult (L.Val payload)))).config.cut.completed :=
     (EventOrder.Cut.mem_complete _ event ready event).mpr (Or.inl rfl)
   have failed : StoreEventFailed (execution.application.complete event ready
       (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-        (PublicationResult.failure : PublicationResult (L.Val payload)))
+        (none : Option (PublicationResult (L.Val payload))))
       (cast (congrArg EventGraph.EventField.Value outputEq.symm)
         (PublicationResult.failure : PublicationResult (L.Val payload)))).config.store event :=
     ⟨_, by simp [EventGraphRuntime.State.complete, EventGraph.Config.complete,
       EventGraph.Config.store], isFailure_cast_binding_failure outputEq⟩
-  simp only [pendingImage, completed, ↓reduceIte, failed, decide_true]
+  have drained := EventGraph.Config.Step.path_completed_mono
+    (State.drain_graph_steps _) completed
+  simp only [pendingImage, drained, ↓reduceIte, failed_drain _ completed, failed, decide_true]
 
-/-- **Contract rounds at a pending binding read off the operational state.** -/
+/-- Contract rounds at a quiescent pending binding read off the operational state. -/
 theorem application_image_congr_bind (remaining : Nat)
     (first second : (application setup runtime leaks).Execution)
     (same : operationalState setup runtime leaks (some ⟨remaining + 1, none, first⟩) =
       operationalState setup runtime leaks (some ⟨remaining + 1, none, second⟩))
     {event : (graph setup).EventId}
     (ready : first.application.config.cut.Ready event)
+    (quiescent : ∀ query, ¬ first.application.AutomaticReady query)
     {owner : Player} {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding owner payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
@@ -273,6 +286,17 @@ theorem application_image_congr_bind (remaining : Nat)
     (SameOperational.ready (runtime := runtime) same event).mp ready
   have views : first.application.publicView = second.application.publicView :=
     SameOperational.publicView same
+  have secondQuiescent : ∀ query, ¬ second.application.AutomaticReady query := by
+    intro query eligible
+    apply quiescent query
+    have defaults := congrArg (fun view => view.observation.defaults.defaulted) views
+    change first.application.config.defaulted = second.application.config.defaulted at defaults
+    refine ⟨(SameOperational.ready (runtime := runtime) same query).mpr eligible.1, ?_⟩
+    change (match (graph setup).actor? query with
+      | none => False
+      | some owner => owner ∈ first.application.config.defaulted)
+    rw [defaults]
+    exact eligible.2
   have readyIff : ∀ other, first.application.config.cut.Ready other ↔
       second.application.config.cut.Ready other := SameOperational.ready (runtime := runtime) same
   have stutterBoth : ∀ command,
@@ -286,16 +310,18 @@ theorem application_image_congr_bind (remaining : Nat)
           (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) := by
     intro command firstStutter secondStutter
     rw [environmentStep_stutter_image (runtime := runtime) remaining first pending command
-      firstStutter,
+      quiescent firstStutter,
       environmentStep_stutter_image (runtime := runtime) remaining second pending' command
-        secondStutter, same, views]
+        secondQuiescent secondStutter, same, views]
   cases command with
   | advanceClock =>
-      rw [environmentStep_contract_image (runtime := runtime) remaining first pending _ (by
+      rw [environmentStep_contract_image (runtime := runtime) remaining first pending _
+          quiescent (by
           intro next member
           simp only [EventGraphRuntime.environmentStep, PMF.mem_support_pure_iff] at member
           rw [member]),
-        environmentStep_contract_image (runtime := runtime) remaining second pending' _ (by
+        environmentStep_contract_image (runtime := runtime) remaining second pending' _
+          secondQuiescent (by
           intro next member
           simp only [EventGraphRuntime.environmentStep, PMF.mem_support_pure_iff] at member
           rw [member])]
@@ -312,7 +338,8 @@ theorem application_image_congr_bind (remaining : Nat)
       rw [ticked]
   | executeSample sampled =>
       by_cases sampledReady : first.application.config.cut.Ready sampled
-      · have sameEvent : sampled = event := setup.eventGraph.sequentialize_ready_unique _ sampledReady ready
+      · have sameEvent : sampled = event :=
+          setup.eventGraph.sequentialize_ready_unique _ sampledReady ready
         subst sameEvent
         exact stutterBoth _
           (environmentStep_executeSample_of_nonsample runtime _ sampled ready
@@ -325,7 +352,8 @@ theorem application_image_congr_bind (remaining : Nat)
             (fun other => sampledReady ((readyIff sampled).mpr other)))
   | expire expired =>
       by_cases expiredReady : first.application.config.cut.Ready expired
-      · have sameEvent : expired = event := setup.eventGraph.sequentialize_ready_unique _ expiredReady ready
+      · have sameEvent : expired = event :=
+          setup.eventGraph.sequentialize_ready_unique _ expiredReady ready
         subst sameEvent
         have activations : first.application.activatedAt = second.application.activatedAt :=
           congrArg PublicView.activatedAt views
@@ -446,6 +474,11 @@ theorem handle_commitment_accepted_transfer
       (StoreEventFailed next.config.store event ↔ StoreEventFailed next'.config.store event) := by
   obtain ⟨timely, sender, owned, vacant, unused⟩ :=
     handle_commitment_accepted_facts (runtime := runtime) first ready view id candidate accepted
+  have firstActive := (handle_commitment_iff runtime first next id event candidate).mp accepted |>.1
+  have secondActive : id.1 ∉ second.config.defaulted := by
+    have defaults := congrArg (fun view => view.observation.defaults.defaulted) publics
+    change first.config.defaulted = second.config.defaulted at defaults
+    rwa [← defaults]
   have ready' : second.config.cut.Ready event := by
     rw [← EventGraphRuntime.State.publicView_eventReady, ← publics,
       EventGraphRuntime.State.publicView_eventReady]
@@ -464,20 +497,20 @@ theorem handle_commitment_accepted_transfer
     rw [← acceptedEq]
     exact unused
   rw [EventGraphRuntime.handle_commitment_eq runtime first id event candidate owner payload
-    outputEq codeEq view ready timely sender owned vacant unused] at accepted
+    outputEq codeEq view ready timely firstActive sender owned vacant unused] at accepted
   cases accepted
   refine ⟨_, EventGraphRuntime.handle_commitment_eq runtime second id event candidate owner
-    payload outputEq codeEq view ready' timely' sender owned vacant' unused',
+    payload outputEq codeEq view ready' timely' secondActive sender owned vacant' unused',
     (EventOrder.Cut.mem_complete _ event ready event).mpr (Or.inl rfl),
     (EventOrder.Cut.mem_complete _ event ready' event).mpr (Or.inl rfl), ?_⟩
   have firstStore := complete_store_output first ready
     (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-      (first.bindingResult candidate payload))
+      (some (first.bindingResult candidate payload)))
     (cast (congrArg EventGraph.EventField.Value outputEq.symm)
       (first.bindingResult candidate payload))
   have secondStore := complete_store_output second ready'
     (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-      (second.bindingResult candidate payload))
+      (some (second.bindingResult candidate payload)))
     (cast (congrArg EventGraph.EventField.Value outputEq.symm)
       (second.bindingResult candidate payload))
   have failedIff : ∀ result : PublicationResult (L.Val payload),
@@ -601,18 +634,22 @@ theorem include_bindingImage_congr (remaining : Nat)
             event ∈ next.config.cut.completed ∧ event ∈ next'.config.cut.completed ∧
             (StoreEventFailed next.config.store event ↔
               StoreEventFailed next'.config.store event) := by
-        obtain ⟨valid, handled⟩ :=
+        obtain ⟨valid, primary, handled, rfl⟩ :=
           reactiveApplication_handle_eq_some runtime leaks one next message accepted
         obtain ⟨candidate, call, sender⟩ :=
           handle_of_binding_ready (runtime := runtime) one oneReady view message.id
             message.payload.call handled
         rw [call] at handled
-        obtain ⟨next', handled', facts⟩ := handle_commitment_accepted_transfer (runtime :=
-          runtime) one other
-          publicsEq oneReady view message.id candidate (succeeds candidate call sender) handled
-        refine ⟨next', ?_, facts⟩
-        rw [reactiveApplication_handle_of_tokenValid runtime leaks _ _ valid, call]
-        exact handled'
+        obtain ⟨otherPrimary, handled', completed, completed', failed⟩ :=
+          handle_commitment_accepted_transfer (runtime := runtime) one other publicsEq oneReady
+            view message.id candidate (succeeds candidate call sender) handled
+        refine ⟨otherPrimary.drain, ?_,
+          EventGraph.Config.Step.path_completed_mono primary.drain_graph_steps completed,
+          EventGraph.Config.Step.path_completed_mono otherPrimary.drain_graph_steps completed', ?_⟩
+        · rw [reactiveApplication_handle_of_tokenValid runtime leaks _ _ valid, call, handled']
+          rfl
+        · exact (failed_drain primary completed).trans
+            (failed.trans (failed_drain otherPrimary completed').symm)
       have succeeds : ∀ candidate, message.payload.call = .commitment event candidate →
           message.sender = owner →
           candidateSucceeds first.application candidate payload =
@@ -651,8 +688,9 @@ theorem include_bindingImage_congr (remaining : Nat)
 variable (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
   (scheduler : (application setup runtime leaks).Scheduler) in
 /-- **Scheduler rounds at a pending binding read off the image.** Two
-executions with the same operational state and statuses, with a binding
-ready, give a scheduler round the same law of images. -/
+executions with the same operational state and statuses, with a binding ready,
+give a scheduler round the same law of images when the first is quiescent.
+Equal public views transfer quiescence to the second execution. -/
 theorem binding_round_image_congr (remaining : Nat)
     (first second : (application setup runtime leaks).Execution)
     (same : operationalState setup runtime leaks (some ⟨remaining + 1, none, first⟩) =
@@ -663,6 +701,7 @@ theorem binding_round_image_congr (remaining : Nat)
       commitStatuses (runtime := runtime) event owner payload second.application
         second.network.pending)
     (ready : first.application.config.cut.Ready event)
+    (quiescent : ∀ query, ¬ first.application.AutomaticReady query)
     {outputEq : (graph setup).outputLayout event = .binding owner payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind owner payload}
@@ -767,11 +806,11 @@ theorem binding_round_image_congr (remaining : Nat)
         rw [PMF.support_map] at supported
         obtain ⟨contract, stepped, rfl⟩ := supported
         exact commitStatuses_congr_candidates (runtime := runtime)
-          (EventGraphRuntime.environmentStep_tables runtime _ contract command
-            stepped).2 _
+          (reactiveApplication_environment_tables runtime leaks execution.application contract
+            command stepped).2 _
       rw [map_bindingImage_of_statuses (runtime := runtime) _ _ _ (kept first),
         map_bindingImage_of_statuses (runtime := runtime) _ _ _ (kept second),
-        application_image_congr_bind (runtime := runtime) remaining first second same ready view
-          command, statuses]
+        application_image_congr_bind (runtime := runtime) remaining first second same ready
+          quiescent view command, statuses]
 
 end Vegas

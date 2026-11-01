@@ -2,7 +2,6 @@
 
 import Vegas.Game.OnePacketStoppedSourceLaw
 import Vegas.Game.RecoveryCountedService
-import Vegas.Game.RecoveryStoppedCommitment
 import Vegas.Game.RecoveryStoppedAcceptance
 import Vegas.Game.RecoveryCommitmentFreshCall
 

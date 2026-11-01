@@ -1,9 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnerSwap
+import Vegas.Game.OnePacketOwnerRecall
 import Vegas.Game.OnePacketFailureBridge
-import Vegas.Game.OnePacketDisclosureResolves
-import Vegas.Game.AsyncDeviationForeign
+import Vegas.Game.OnePacketIntendedProjection
+import Vegas.Game.OnePacketCertificateField
+import Vegas.Game.OnePacketSwapSymmetry
+import Vegas.EventGraph.ResolutionProvenance
 
 /-! # The swap guard of the owner swap
 
@@ -173,18 +175,11 @@ theorem initialSlots_of_trace {state}
           exact State.initial_candidate _ owner (.initial input)
       | some current =>
           obtain ⟨initial, member, inputsEq, candidates⟩ := ih current rfl
-          have step := transition_configStep (initialLaw setup) horizon
-            scheduler current
-            control joint realized
+          have path := reactive_protocol_graph_steps runtime leaks (initialLaw setup) horizon
+            scheduler current control joint realized
           have kept := (keepsFixedCandidates_step runtime leaks).transition
             (initialLaw setup) horizon scheduler current control joint realized
-          have sameInputs : control.execution.application.config.inputs =
-              current.execution.application.config.inputs := by
-            rcases step with same | ⟨other, ready, action, completed⟩
-            · rw [same]
-            · rw [EventGraph.Config.step, PMF.support_map] at completed
-              obtain ⟨_, _, completedEq⟩ := completed
-              exact (congrArg EventGraph.Config.inputs completedEq).symm
+          have sameInputs := EventGraph.Config.Step.path_inputs_eq path
           refine ⟨initial, member, sameInputs.trans inputsEq, fun input owner payload
             layoutEq => ?_⟩
           have before := candidates input owner payload layoutEq
@@ -296,216 +291,50 @@ def RevealRecord (profile : BehavioralProfile setup.program)
           execution.application.config
 
 omit [Fintype Player] in
-/-- Completing a ready event keeps every stored field. -/
-private theorem store_complete_of_some {config : (graph setup).Config}
-    {event : (graph setup).EventId} (ready : config.cut.Ready event)
-    (action : (graph setup).Action event) (output : ((graph setup).outputLayout event).Value)
-    {field : (graph setup).Field} {value : ((graph setup).layout field).Value}
-    (stored : config.store field = some value) :
-    (config.complete event ready action output).store field = some value := by
-  cases field with
-  | inl input => exact stored
-  | inr other =>
-      have different : other ≠ event := by
-        intro same
-        subst same
-        apply ready.1
-        rw [← config.output_available]
-        change (config.store (.inr other)).isSome
-        rw [stored]
-        rfl
-      change (config.complete event ready action output).outputs other = some value
-      rw [EventGraph.Config.complete_output_of_ne _ _ _ _ _ _ different]
-      exact stored
-
-omit [Fintype Player] in
-private theorem get?_complete_of_some {config : (graph setup).Config}
-    {event : (graph setup).EventId} (ready : config.cut.Ready event)
-    (action : (graph setup).Action event) (output : ((graph setup).outputLayout event).Value)
-    {kind : EventGraph.EventField Player L} (ref : EventGraph.FieldRef (graph setup).layout kind)
-    {value : kind.Value} (read : ref.get? config.store = some value) :
-    ref.get? (config.complete event ready action output).store = some value := by
-  rcases ref with ⟨field, layoutEq⟩
-  subst layoutEq
-  change config.store field = some value at read
-  exact store_complete_of_some ready action output read
-
-omit [Fintype Player] in
-/-- The output a completed resolve event writes is its resolution output. -/
-private theorem step_resolve_output {config next : (graph setup).Config}
-    {event : (graph setup).EventId} {ready : config.cut.Ready event}
-    {action : (graph setup).Action event} {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    (outputEq : (graph setup).outputLayout event = .publication payload)
-    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks)
-    (member : next ∈ (config.step event ready action).support) :
-    ∃ result, EventGraph.EventCode.resolveOutput? binding checks
-        (cast (congrArg EventGraph.EventField.Action outputEq) action) config.store =
-          some result ∧
-      next = config.complete event ready action
-        (cast (congrArg EventGraph.EventField.Value outputEq.symm) result) := by
-  have available : (EventGraph.EventCode.resolveOutput? binding checks
-      (cast (congrArg EventGraph.EventField.Action outputEq) action) config.store).isSome =
-        true := by
-    apply EventGraph.EventCode.resolveOutput?_isSome
-    intro field member
-    apply config.read_available ready
-    rw [← EventGraph.EventCode.readFields_cast outputEq ((graph setup).nodes event), codeEq]
-    exact member
-  obtain ⟨result, resolved⟩ := Option.isSome_iff_exists.mp available
-  refine ⟨result, resolved, ?_⟩
-  have actionEq : action = cast (congrArg EventGraph.EventField.Action outputEq.symm)
-      (cast (congrArg EventGraph.EventField.Action outputEq) action) := by
-    simp only [cast_cast, cast_eq]
-  have stepEq := config.step_eq_map_of_code event ready outputEq _ codeEq
-    (cast (congrArg EventGraph.EventField.Action outputEq) action) (PMF.pure result)
-    (by rw [EventGraph.EventCode.resolve_eval?, resolved]; rfl)
-  rw [PMF.pure_map, ← actionEq] at stepEq
-  rw [stepEq, PMF.mem_support_pure_iff] at member
-  exact member
-
-omit [Fintype Player] in
-/-- A successful resolution output publishes the success its binding holds. -/
-private theorem binding_of_resolveOutput {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)} {disclose : Bool}
-    {store : EventGraph.Store (graph setup).layout} {value : L.Val payload}
-    (resolved : EventGraph.EventCode.resolveOutput? binding checks disclose store =
-      some (.success value)) :
-    binding.get? store = some (.success value) := by
-  unfold EventGraph.EventCode.resolveOutput? at resolved
-  cases bound : binding.get? store with
-  | none => simp [bound] at resolved
-  | some found =>
-      rw [bound] at resolved
-      cases disclose
-      · cases accepted : EventGraph.GuardCheck.allAccepted? checks store .failure with
-        | none => simp [accepted] at resolved
-        | some verdict =>
-            simp [accepted] at resolved
-      · cases accepted : EventGraph.GuardCheck.allAccepted? checks store found with
-        | none => simp [accepted] at resolved
-        | some verdict =>
-            cases verdict
-            · simp [accepted] at resolved
-            · have foundEq : found = .success value := by simpa [accepted] using resolved
-              exact congrArg some foundEq
-
-omit [Fintype Player] in
-/-- The reveal record holds at every legal history of the supplied runtime,
-under arbitrary responses and every scheduler. -/
-theorem revealRecord_serviceInvariant (profile : BehavioralProfile setup.program)
-    (scheduler : (application setup runtime leaks).Scheduler) :
-    (application setup runtime leaks).ServiceInvariant scheduler (RevealRecord setup runtime leaks
-      profile) where
-  respond execution who action valid := by
-    have configEq := (runtime.reactive_respond_application leaks execution who action).1
-    unfold RevealRecord at valid ⊢
-    rw [configEq]
-    exact valid
-  environment execution next command valid _ reached := by
-    obtain ⟨rank, ⟨residual⟩, record⟩ := valid
-    rcases environmentStep_configStep setup leaks execution next command reached with
-      same | ⟨completed, ready, action, member⟩
-    · refine ⟨rank, ?_, ?_⟩
-      · rw [same]
-        exact ⟨residual⟩
-      · rw [same]
-        exact record
-    · have rankEq : completed.val = rank :=
-        (ready_iff_rank setup _ rank residual.checkpoint.ordered completed).mp ready
-      obtain ⟨successor, reachedPoint⟩ := residual.step completed ready action _ member
-      have advanced : next.application.config.cut.IsPrefix (rank + 1) := by
-        rw [execution.application.config.step_cut completed ready action _ member]
-        exact residual.checkpoint.ordered.complete_at completed ready rankEq
-      refine ⟨rank + 1, ⟨successor⟩, fun other done owner payload binding checks outputEq codeEq
-        view result read => ?_⟩
-      rw [execution.application.config.step_cut completed ready action _ member,
-        EventOrder.Cut.mem_complete] at done
-      rcases done with rfl | earlier
-      · obtain ⟨output, resolved, nextEq⟩ := step_resolve_output outputEq codeEq member
-        have written : result = output := by
-          rw [nextEq] at read
-          change cast _ ((execution.application.config.complete other ready action
-            (cast (congrArg EventGraph.EventField.Value outputEq.symm) output)).outputs other) =
-              _ at read
-          rw [EventGraph.Config.complete_output_same] at read
-          have castSome {A B : Type} (same : A = B) (value : A) :
-              cast (congrArg Option same) (some value) = some (cast same value) := by
-            cases same
-            rfl
-          rw [castSome (congrArg EventGraph.EventField.Value outputEq)] at read
-          have castInverse {A B : Type} (same : A = B) (value : B) :
-              cast same (cast same.symm value) = value := by
-            cases same
-            rfl
-          rw [castInverse] at read
-          exact (Option.some.inj read).symm
-        subst written
-        cases result with
-        | success value =>
-            left
-            refine ⟨value, rfl, ?_⟩
-            rw [nextEq]
-            exact get?_complete_of_some ready action _ binding
-              (binding_of_resolveOutput resolved)
-        | failure =>
-            right
-            intro state decoded
-            rw [successor.decode] at decoded
-            obtain rfl := Option.some.inj decoded
-            subst rankEq
-            have nextDecoded := successor.decode
-            unfold sourceServicePrefix? serviceSourcePrefix? at nextDecoded
-            have owned : (graph setup).actor? other = some owner :=
-              nodeView_resolve_actor outputEq codeEq
-            exact ProtocolState.revealFailed_of_decode_failure setup.program other.val
-              (ContextRefs.initial setup.context (outputLayout setup.program)) []
-              (Revelations.initial setup.context) (outputRef setup.program) _ _ _ other.isLt
-              owner payload outputEq nextDecoded
-              ((eventOwner?_eq_actor setup.program other).trans owned)
-              (by
-                rw [nextEq]
-                change (execution.application.config.complete other ready _ _).outputs
-                  other = _
-                rw [EventGraph.Config.complete_output_same])
-      · have different : other ≠ completed := fun same => ready.1 (same ▸ earlier)
-        obtain ⟨written, writtenEq⟩ := step_complete_of_mem member
-        have kept : (⟨.inr other, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
-            (.publication payload)).get? execution.application.config.store = some result := by
-          rw [← read]
-          apply EventGraph.FieldRef.get?_congr
-          change execution.application.config.outputs other =
-            next.application.config.outputs other
-          rw [writtenEq, EventGraph.Config.complete_output_of_ne _ _ _ _ _ _ different]
-        rcases record other earlier owner payload binding checks outputEq codeEq view result
-            kept with ⟨value, resultEq, bound⟩ | failed
-        · left
-          refine ⟨value, resultEq, ?_⟩
-          rw [writtenEq]
-          exact get?_complete_of_some ready action _ binding bound
-        · right
-          exact residual.decodedHolds_configStep (revealFailed_stepClosed owner) failed
-            (Or.inr ⟨completed, ready, action, member⟩) advanced
-
-omit [Fintype Player] in
-/-- The reveal record holds along every history of the supplied runtime from its
-initial law. -/
+/-- Every initialized native history retains each publication's successful binding
+or the source failure recorded by its failed output. -/
 theorem revealRecord_history (profile : BehavioralProfile setup.program)
     {control : (application setup runtime leaks).Control}
     (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some control)) :
-    RevealRecord setup runtime leaks profile control.execution :=
-  (revealRecord_serviceInvariant (runtime := runtime) profile scheduler).history (initialLaw
-    setup) horizon
-    (fun state supported => by
-      obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
-      let residual := SourceResidual.initial setup profile initial
-      refine ⟨0, ⟨residual⟩, fun event completed => ?_⟩
+    RevealRecord setup runtime leaks profile control.execution := by
+  obtain ⟨rank, ⟨residual⟩, _record⟩ := SourceFailureRecord.history profile horizon scheduler trace
+  have native := trace
+  change ((runtime.reactiveApplication leaks).protocol (serviceInitialLaw setup .sequential)
+    horizon scheduler).Trace (some control) at native
+  rw [serviceInitialLaw_eq_inputs setup] at native
+  obtain ⟨inputs, _supported, invariant⟩ := runtime.reactive_history_invariant leaks
+    (setup.initialLaw.map setup.eventInputs) horizon scheduler native
+  refine ⟨rank, ⟨residual⟩, ?_⟩
+  intro event completed owner payload binding checks outputEq codeEq _view result read
+  cases result with
+  | success value =>
+      exact Or.inl ⟨value, rfl, invariant.reachable.publication_binding event owner payload
+        binding checks outputEq codeEq value read⟩
+  | failure =>
+      right
+      intro point decoded
       have below := (residual.checkpoint.ordered.2 event).mp completed
-      exact absurd below (Nat.not_lt_zero _)) trace
+      unfold sourceServicePrefix? serviceSourcePrefix? at decoded
+      have readOutput : (outputRef setup.program event).get?
+          control.execution.application.config.store =
+            some (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+              (PublicationResult.failure : PublicationResult (L.Val payload))) := by
+        change control.execution.application.config.outputs event = _
+        change cast (congrArg Option (congrArg EventGraph.EventField.Value outputEq))
+          (control.execution.application.config.outputs event) = some .failure at read
+        have castSome {A B : Type} (same : A = B) (value : B) :
+            cast (congrArg Option same) (some (cast same.symm value)) = some value := by
+          cases same
+          rfl
+        rw [← castSome (congrArg EventGraph.EventField.Value outputEq) .failure] at read
+        exact (cast_inj _).mp read
+      exact ProtocolState.revealFailed_of_decode_failure setup.program event.val rank
+        (ContextRefs.initial setup.context (outputLayout setup.program)) []
+        (Revelations.initial setup.context) (outputRef setup.program) _ _ _ _ event.isLt below
+        owner payload outputEq decoded
+        ((eventOwner?_eq_actor setup.program event).trans
+          (nodeView_resolve_actor outputEq codeEq)) readOutput
 
 end Reveals
 

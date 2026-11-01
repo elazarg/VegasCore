@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketPrescribedSites
 import Vegas.Game.OnePacketOwnDisclosure
+import Vegas.Game.OnePacketBindingSite
+import Vegas.Game.OnePacketRetention
 
 /-! # Genuine debt-free main responses transmit successful canonical calls -/
 
@@ -43,14 +44,29 @@ theorem canonicalTransmitsAt_of_debtFree (wellFormed : setup.WellFormed)
       have same : owner = who :=
         Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans owned)
       subst owner
-      exact canonicalTransmitsAt_of_binding (runtime := runtime) trace who event node
+      intro sourceAction graphAction encoded commitsValue _
+      obtain ⟨value, actionEq⟩ := encodeEventAction?_commitsValue setup.program event sourceAction
+        commitsValue graphAction encoded who payload outputEq
+      rw [actionEq]
+      have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+        horizon scheduler trace
+      have readyView := (pendingEvent_spec (runtime := runtime) pending).2.1
+      have ready := (control.execution.application.publicView_eventReady event).mp readyView
+      have facts := legalFacts setup leaks horizon scheduler _ rawTrace
+      have active := control.execution.application.active_of_ready_owned facts.quiescent ready owned
+      obtain ⟨serial, selected⟩ := onePacket_canonicalFreshSlot_exists (runtime := runtime)
+        trace who
+      rw [runtime.canonicalServiceDecision_binding leaks who (control.execution.recall who)
+        (control.execution.observe (application setup runtime leaks) who) event payload outputEq
+        codeEq node active serial selected (.success value)]
+      exact Option.some_ne_none _
   | resolve owner payload binding checks outputEq codeEq =>
       have same : owner = who :=
         Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
       subst owner
       have resolves := disclosureResolves_of_debtFree (runtime := runtime) wellFormed trace who
         forced notOwed
-      exact canonicalTransmitsAt_of_disclosureResolves setup runtime leaks resolves pending node
+      exact canonicalTransmitsAt_of_disclosureResolves resolves pending node
 
 /-- A sampled source-main response is an actual transmitting canonical call at a
 forced debt-free prefix, with a successful binding action if the event binds.
@@ -78,7 +94,7 @@ theorem honestResponse_canonical_of_debtFree (wellFormed : setup.WellFormed)
       ∀ owner payload outputEq codeEq,
         nodeView (graph setup) event = .bind owner payload outputEq codeEq →
           ∃ value, (cast (congrArg EventGraph.EventField.Action outputEq) action :
-            PublicationResult (L.Val payload)) = .success value := by
+            Option (PublicationResult (L.Val payload))) = some (.success value) := by
   have transmits := canonicalTransmitsAt_of_debtFree (runtime := runtime) wellFormed trace who
     forced notOwed event
     pending
@@ -87,9 +103,16 @@ theorem honestResponse_canonical_of_debtFree (wellFormed : setup.WellFormed)
   unfold honestResponse at supported
   rw [turn] at supported
   obtain ⟨sourceChoice, chosen, responseEq⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+    horizon scheduler trace
+  have ready := (control.execution.application.publicView_eventReady event).mp
+    (pendingEvent_spec (runtime := runtime) pending).2.1
+  have facts := legalFacts setup leaks horizon scheduler _ rawTrace
+  have active := control.execution.application.active_of_ready_owned facts.quiescent ready
+    (pendingEvent_spec (runtime := runtime) pending).2.2.1
   have encodes := asIfHonestProfile_encodes (runtime := runtime) source who control.execution rank
     ordered point
-    decoded (control.execution.recall who) event turn sourceChoice chosen
+    decoded (control.execution.recall who) event turn active sourceChoice chosen
   rcases sourceChoice with _ | sourceAction
   · simp at encodes
   cases encoded : encodeEventAction? setup.program event sourceAction with
@@ -100,13 +123,7 @@ theorem honestResponse_canonical_of_debtFree (wellFormed : setup.WellFormed)
         point decoded (control.execution.recall who) sourceAction chosen
       have sends := transmits sourceAction action encoded success.1 success.2
       obtain ⟨material, submits⟩ := Option.ne_none_iff_exists'.mp sends
-      have commits : sourceAction.CommitsValue := by
-        cases sourceAction with
-        | commit owner name payload result =>
-            cases result with
-            | failure => exact (success.1 owner name payload rfl).elim
-            | success value => exact ⟨value, rfl⟩
-        | reveal => trivial
+      have commits := success.1
       simp only [Option.bind_some, encoded] at responseEq
       subst responseEq
       refine ⟨action, material, rfl, submits, ?_⟩
@@ -154,7 +171,7 @@ theorem honestChoice_canonical_of_debtFree (wellFormed : setup.WellFormed)
       ∀ owner payload outputEq codeEq,
         nodeView (graph setup) event = .bind owner payload outputEq codeEq →
           ∃ value, (cast (congrArg EventGraph.EventField.Action outputEq) action :
-            PublicationResult (L.Val payload)) = .success value := by
+            Option (PublicationResult (L.Val payload))) = some (.success value) := by
   classical
   obtain ⟨response, responded, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
   obtain ⟨action, material, responseEq, sends, bindSuccess⟩ :=

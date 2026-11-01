@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketBindingTurn
+import Vegas.Game.OnePacketOwnerStep
 
 /-! # The owner's step of the one-packet game at a pending binding
 

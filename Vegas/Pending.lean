@@ -89,7 +89,6 @@ import Vegas.Pending.ReactiveBindingPreparationRecord
 import Vegas.Pending.ReactiveBindingReceipts
 import Vegas.Pending.ReactiveBindingRejectedInclusion
 import Vegas.Pending.ReactiveBindingRepair
-import Vegas.Pending.ReactiveBindingResources
 import Vegas.Pending.ReactiveBindingRestoration
 import Vegas.Pending.ReactiveBindingSchedule
 import Vegas.Pending.ReactiveBindingShadow

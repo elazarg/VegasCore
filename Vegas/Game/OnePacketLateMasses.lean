@@ -135,24 +135,27 @@ theorem map_slotChoiceOf_apply {assessment : setup.intendedModel.BehavioralAsses
           slotCapacity serialCapacity
         (site.covered choice supported) (site.covered
           other otherSupported) offered equal).1.symm
-    · obtain ⟨action, encoded, _⟩ := site.covered choice supported
+    · obtain ⟨action, encoded, values⟩ := site.covered choice supported
+      obtain ⟨value, successful, _⟩ := values who payload outputEq codeEq site.node
       obtain ⟨material, transmits, _⟩ := slotResponse_transmission setup runtime leaks who past view
-        event site.node slot choice action encoded
-      have values := congrArg Subtype.val equal
+        event site.node slot choice action encoded (by rw [successful]; rfl)
+      have responses := congrArg Subtype.val equal
       have offeredValue : (slotChoiceOf setup runtime leaks bounds initial horizon scheduler who
         past view
           event slot choice).1 = some (slotResponse setup runtime leaks who past view event slot
             choice) :=
         by simp only [slotChoiceOf, responseChoice, offered, ↓reduceDIte]
-      rw [offeredValue] at values
+      rw [offeredValue] at responses
       by_cases otherOffered : slotResponse setup runtime leaks who past view event serial other ∈
           bounds.onePacketActions runtime leaks who past view
-      · obtain ⟨otherAction, otherEncoded, _⟩ := site.covered other
+      · obtain ⟨otherAction, otherEncoded, otherValues⟩ := site.covered other
           otherSupported
+        obtain ⟨otherValue, otherSuccessful, _⟩ :=
+          otherValues who payload outputEq codeEq site.node
         obtain ⟨otherMaterial, otherTransmits, otherEnvelope⟩ := slotResponse_transmission setup
           runtime
           leaks who past view event site.node serial other otherAction
-            otherEncoded
+            otherEncoded (by rw [otherSuccessful]; rfl)
         have effective := ((bounds.mem_onePacketActions runtime leaks who past view
           _).mp otherOffered).1
         have packetEq : otherMaterial.call.packet = .commitment event (who, .prepared serial) :=
@@ -165,8 +168,8 @@ theorem map_slotChoiceOf_apply {assessment : setup.intendedModel.BehavioralAsses
           past view
             event serial other).1 = some ⟨none⟩ := by
           simp only [slotChoiceOf, responseChoice, otherOffered, ↓reduceDIte]
-        rw [otherValue] at values
-        have silent := congrArg ReactiveApplication.Action.transmission (Option.some.inj values)
+        rw [otherValue] at responses
+        have silent := congrArg ReactiveApplication.Action.transmission (Option.some.inj responses)
         rw [transmits] at silent
         cases silent
 

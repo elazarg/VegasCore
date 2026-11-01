@@ -681,15 +681,12 @@ default record, without a response-menu or settlement premise.
 every compiler dependency mode equals the sequential graph. The compiler's
 source order is total; removing an independent reveal dependency would violate
 that certificate. This equality retains the original set of admitted modes.
-The source-law theorem still requires transport of the mode-indexed clients,
-observations and readout; that adapter remains an acceptance obligation.
+[ServiceHonestLaw](../Vegas/Game/ServiceHonestLaw.lean) transports the
+mode-indexed clients, observations and readout through that certified equality.
 
 The first-turn source-law specification is owned by
 [SourceServiceTurnPolicy](../Vegas/Game/SourceServiceTurnPolicy.lean), alongside
-the client definition. The source commitment factorization in
-[SourceCommitBlock](../Vegas/Game/SourceCommitBlock.lean) retains its original
-scope while treating inactive callbacks mechanically and retaining the
-distinction between omission and admitted unopenable bindings.
+the client definition.
 
 Native receipt origins are handled by
 [ReactiveReceipts](../Interaction/ReactiveReceipts.lean). Completed packet

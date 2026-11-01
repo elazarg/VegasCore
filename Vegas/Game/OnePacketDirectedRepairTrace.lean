@@ -3,7 +3,6 @@
 import Vegas.Game.OnePacketDirectedRepairSteps
 import Vegas.Game.OnePacketDirectedRepairMenu
 import Vegas.Pending.ReactiveOnePacketFreshness
-import Vegas.Game.SourceServiceDecidedCompletion
 
 /-! # Actual one-packet traces through directed binding repair
 
