@@ -1,20 +1,19 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoverySequentialCompilation
+import Vegas.Game.SequentialCompilation
 import Vegas.Game.NativePaymentReadout
 import Vegas.Game.TerminalObservation
 
-/-! # Monetary preservation by the permanent-exclusion runtime
+/-! # Monetary sequential preservation
 
-The source's executable receipts and private valuation remain distinct. The
-existing recovery theorem supplies its exact utility law and clean support;
-the same readout then recovers the realized cash vector, with all original
-inputs, typed terminal data and public results jointly retained.
+Valuation and executable receipts share the native public default and complete
+source readout. Their joint utility law determines the realized cash law while
+retaining the initial inputs, terminal state and public results.
 -/
 
 noncomputable section
 
-namespace Vegas.Recovery
+namespace Vegas
 
 open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Protocol.InformationModel GameTheory.Math.Probability GameTheory.Enforcement
@@ -26,26 +25,20 @@ variable {Player : Type} [instDecEq : DecidableEq Player] [instFintype : Fintype
   (runtime : EventGraphRuntime (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (recoveryApplication runtime leaks).Scheduler)
+  (scheduler : (application setup runtime leaks).Scheduler)
 
-local notation "app" => recoveryApplication runtime leaks
-local notation "Initial" => PMF.map
-  (fun native : EventGraphRuntime.State (Vegas.graph setup) =>
-    (RecoveryState.mk native (∅ : Finset Player) : RecoveryState (Vegas.graph setup)))
-      (Vegas.initialLaw setup)
+local notation "app" => application setup runtime leaks
+local notation "Initial" => initialLaw setup
 
-variable [finiteNature : (recoveryApplication runtime leaks).FiniteNature
-    (PMF.map
-      (fun native =>
-        (RecoveryState.mk native (∅ : Finset Player) : RecoveryState (Vegas.graph setup)))
-      (Vegas.initialLaw setup)) scheduler]
+variable [finiteNature : (application setup runtime leaks).FiniteNature
+    (initialLaw setup) scheduler]
   [finiteSource : Finite setup.intendedProtocol.History]
 
 include finiteNature finiteSource
 
-local notation "raw" => Recovery.rawMenu runtime leaks bounds
+local notation "raw" => bounds.rawMenu runtime leaks
 local notation "R" => ReactiveApplication.ResponseMenu.information
-  (Recovery.rawMenu runtime leaks bounds) Initial horizon scheduler
+  (bounds.rawMenu runtime leaks) Initial horizon scheduler
 
 variable {Public : Type*} {signal : State L setup.context → Public}
 
@@ -56,22 +49,19 @@ variable {Parameter : Type} (parameter : State L setup.context → Parameter)
 local notation "utility" => setup.program.parameterPaymentUtility valuation
 local notation "exitPayoff" => (fun who => exitValuation who + exitTransfer who)
 
-local notation "base" => recoveryExclusionBase (runtime := runtime) (leaks := leaks)
-  parameter utility exitPayoff
-local notation "read" => fun state => sourceReadout setup runtime leaks
-  (RecoveryProjection.protocolState runtime leaks state)
+local notation "base" => exclusionBase setup runtime parameter utility exitPayoff leaks
+local notation "read" => sourceReadout setup runtime leaks
 
-/-- The original raw sequential-equilibrium guarantee also preserves the actual
-cash vector. The actual intended histories have no failed publication, so no
-restriction on valuation or executable transfers at other source outcomes is
-required. Declared exit valuation and cash remain separate runtime inputs. -/
+/-- Native raw-menu sequential compilation preserves realized cash jointly with
+initial inputs, terminal state and public results. Exit valuation and cash are
+separately declared; the source utilities keep their original bounds. -/
 theorem intended_raw_programPayments_preserved
     (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal) {delay bound : (graph setup).EventId → Nat}
-    (opportunity : Recovery.Opportunity runtime leaks Initial horizon scheduler delay)
-    (inclusion : Recovery.ProtectedInclusion runtime leaks Initial horizon scheduler bound)
-    (completes : Recovery.CompletesPlay runtime leaks Initial horizon scheduler)
+    (opportunity : Opportunity runtime leaks Initial horizon scheduler delay)
+    (inclusion : ProtectedInclusion runtime leaks Initial horizon scheduler bound)
+    (completes : CompletesPlay runtime leaks Initial horizon scheduler)
     (timely : AsyncTimely runtime delay bound)
     (lowerUtility upperUtility : Player → ℝ)
     (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
@@ -93,7 +83,7 @@ theorem intended_raw_programPayments_preserved
           min 0 (min (exitPayoff who) (lowerUtility who)) ≤
         observationRate who * deliveryRate who * deposit who) :
     let observe := (app).stateTraffic
-    let audit := Recovery.countAudit runtime leaks service.sample
+    let audit := runtime.countAudit leaks service.sample
     let payoff := TerminalAudit.utility base observe audit deposit
     let settle := TerminalAudit.settlement base observe audit deposit
     ∃ target : (R).BehavioralAssessment,
@@ -103,7 +93,7 @@ theorem intended_raw_programPayments_preserved
           (fun final => payoff final.state who) (2 * horizon + 1)) ∧
       (∀ final ∈ ((R).runBehavioral target.strategy (2 * horizon + 1)).support,
         ∀ control, final.state = some control →
-          control.execution.application.excluded = ∅) ∧
+          control.execution.application.config.defaulted = ∅) ∧
       (∀ final ∈ ((R).runBehavioral target.strategy (2 * horizon + 1)).support,
         ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
       ((R).runBehavioral target.strategy (2 * horizon + 1)).bind
@@ -113,19 +103,21 @@ theorem intended_raw_programPayments_preserved
           (intendedReadoutExclusion setup parameter utility exitPayoff) ∧
       ((R).runBehavioral target.strategy (2 * horizon + 1)).bind
         (fun final => (TerminalAudit.settlement
-          (recoveryExclusionBase (runtime := runtime) (leaks := leaks) parameter
-            (fun outcome who => setup.program.publicTransfers outcome.2 who) exitTransfer)
+          (exclusionBase setup runtime parameter
+            (fun outcome who => setup.program.publicTransfers outcome.2 who) exitTransfer leaks)
           observe audit deposit final.state).map fun receipts =>
-            TerminalObservation.read setup (read final.state) receipts) =
+            TerminalObservation.read setup
+              ((read final.state).map (fun config => (config.state, config.defaults))) receipts) =
         (setup.intendedModel.runBehavioral intended.strategy
           (instructionCount setup.program + 1)).map (fun final =>
-            TerminalObservation.read setup (setup.protocolReadout final.state)
+            TerminalObservation.read setup ((setup.protocolReadout final.state).map
+              (fun config => (config.state, config.defaults)))
               (fun who => (setup.protocolReadout final.state).elim 0 (fun terminal =>
                 setup.program.publicTransfers (setup.program.publicOutcome terminal) who))) := by
   classical
   intro observe audit payoff settle
   obtain ⟨target, targetSE, clear, clean, joint⟩ :=
-    recovery_intended_raw_sequentialEquilibrium_preserved (setup := setup) (runtime := runtime)
+    intended_raw_sequentialEquilibrium_preserved (setup := setup) (runtime := runtime)
       (leaks := leaks) (bounds := bounds) (horizon := horizon) (scheduler := scheduler) parameter
       utility exitPayoff wellFormed independent observable opportunity inclusion completes timely
       lowerUtility upperUtility lower_le le_upper below intended equilibrium covers coversInputs
@@ -168,7 +160,7 @@ theorem intended_raw_programPayments_preserved
         simp only [Option.elim_none, Option.elim_some, parameterPaymentUtility_eq, add_zero]
       rfl
   have cleanSupport : ∀ control, some control ∈ targetLaw.support →
-      control.execution.application.excluded = ∅ := by
+      control.execution.application.config.defaulted = ∅ := by
     intro control supported
     obtain ⟨final, finalSupported, same⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
     exact clear final finalSupported control same
@@ -178,8 +170,9 @@ theorem intended_raw_programPayments_preserved
     valuation (fun outcome who => setup.program.publicTransfers outcome.2 who)
     exitValuation exitTransfer targetLaw sourceLaw factors observe audit deposit utilityLaw
   have observed := congrArg (PMF.map (fun realized =>
-    TerminalObservation.read setup realized.1 realized.2)) cash
+    TerminalObservation.read setup
+      (realized.1.map (fun config => (config.state, config.defaults))) realized.2)) cash
   simpa only [targetLaw, sourceLaw, TerminalAudit.jointSettlement, PMF.map_bind, PMF.bind_map,
     PMF.map_comp, Function.comp_def] using observed
 
-end Vegas.Recovery
+end Vegas

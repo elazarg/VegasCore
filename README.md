@@ -14,8 +14,8 @@ source policy. The manuscript is maintained separately in `overleaf/`.
 
 | Result | Checked scope |
 | --- | --- |
-| `Vegas.Paper.recovery_intended_raw_sequential_equilibrium` | Intended-game SE extends to the bounded raw-menu game of the forced-exit contract on the sequential graph under a finitely branching asynchronous builder, arbitrary pending observation, conditional independence of initial private data given a public signal, and funded count-audit coverage. The realized joint outcome/payoff law is preserved and no player is excluded or charged on the implementing path. |
-| `Vegas.Recovery.intended_raw_programPayments_preserved` | Monetary specialization with executable program transfers and valuation, retaining the initialized typed/public/net-payoff joint law. |
+| `Vegas.intended_raw_sequentialEquilibrium_preserved` | Intended-game SE extends to the bounded raw-menu game of the forced-exit contract on the sequential graph under a finitely branching asynchronous builder, arbitrary pending observation, conditional independence of initial private data given a public signal, and funded count-audit coverage. The realized joint outcome/payoff law is preserved and no player is excluded or charged on the implementing path. |
+| `Vegas.intended_raw_programPayments_preserved` | Monetary specialization with executable program transfers and valuation, retaining the initialized typed/public/net-payoff joint law. |
 | `Vegas.Paper.one_packet_raw_sequential_equilibrium` | Extension from the one-permitted-packet game to the bounded raw response menu on the plain contract, under conditional audit coverage and adequate deposits. |
 
 These theorems need neither complete pending visibility nor independent
@@ -40,8 +40,8 @@ payoff of 100 per player, and funding scope are checked.
 
 Programs are finite, straight-line typed descriptions of public samples,
 owner-private commitments, guarded reveals and terminal payments. The intended
-game is the analysis view in which commitments and reveals succeed. Failure is
-accounted for by the source failure view and the runtime's exclusion rules.
+game is the analysis view in which commitments and reveals succeed. Public defaults are absorbing: a defaulted player stays inactive at later
+instructions. The graph and ledger preserve the same source configuration.
 See [source semantics](docs/source-semantics.md).
 
 The compiler lowers source instructions to a typed event graph. Its checked

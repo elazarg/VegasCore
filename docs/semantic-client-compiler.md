@@ -1,20 +1,19 @@
 # Uniform semantic compilation of equilibrium clients
 
-The [semantic compiler](../Vegas/Game/RecoveryClientCompiler.lean) accepts a
+The [semantic compiler](../Vegas/Game/ClientCompiler.lean) accepts a
 source setup, a certified runtime specification, and a supplied intended
 equilibrium. It returns an assessment of the **bounded raw response-menu game**
 and physical clients realizing that assessment. The SE certificate quantifies
 over behavioral deviations within that finite menu. Arbitrary physical
 `app.Policy` deviations that leave the menu are outside this result.
 
-The compiler composes source-to-graph compilation, permanent-exclusion
-equilibrium completion, raw-menu audit extension and physical response
+The compiler composes source-to-graph compilation, native equilibrium completion, raw-menu audit extension and physical response
 decoding. The [ledger realization](../Interaction/ReactiveLedgerAssessment.lean)
 supplies the information and continuation bridge for ledger-reading clients.
 
 ## Input and output
 
-`Vegas.RecoveryClientSpec` packages the source and runtime premises:
+`Vegas.ClientSpec` packages the source and runtime premises:
 
 * source well-formedness and private-input independence conditional on a signal
   determined by public initial inputs;
@@ -45,15 +44,15 @@ specification is fixed before selecting the source equilibrium.
 `Setup.IntendedSequentialEquilibrium` names the intended-game hypothesis in
 [the source preservation layer](../Vegas/Game/IntendedPreservation.lean).
 
-`Vegas.RecoveryClientSpec.compile` returns a `RecoveryClientCompilation` with:
+`Vegas.ClientSpec.compile` returns a `ClientCompilation` with:
 
 * a bounded raw-menu assessment with consistent beliefs;
 * whole-continuation sequential rationality against that menu's behavioral
   policies, including off-path decisions;
-* no exclusions or audit charges on its supported paths;
-* the exact joint typed-source-readout and settled-payoff law.
+* no public defaults or audit charges on its supported paths;
+* the exact joint full source-configuration/default-history and settled-payoff law.
 
-The artifact exposes physical `clients` and pending-independent `ledgerClients`
+The artifact exposes physical `clients` and pending-independent `ClientCompilation.ledgerClients`
 over the Interaction callback API. Each callback law is supported within a
 finite response menu. Physical policy realization does not enlarge the
 assessment's deviation domain: its menu is
@@ -63,20 +62,19 @@ Interaction deviations is a separate target.
 
 ## Compiler correctness
 
-`Vegas.RecoveryClientSpec.compile_correct` is the ordinary-client capstone.
-`Vegas.RecoveryClientSpec.compile_ledger_correct` additionally combines the
+`Vegas.ClientSpec.compile_correct` is the ordinary-client capstone.
+`Vegas.ClientSpec.compile_ledger_correct` additionally combines the
 ledger information restriction, bounded-menu SE, strategy agreement at every
 legal bounded-menu decision and the initialized outcome law under no pending
 delivery.
 
-`RecoveryClientCompilation.clients_strategy` proves that restricting decoded
+`ClientCompilation.clients_strategy` proves that restricting decoded
 physical clients recovers the selected behavioral strategy exactly.
-`RecoveryClientCompilation.clients_stateLaw` identifies the physical execution
-state law with the assessment's state law. Its `clients_outcomeLaw` composes
-that identity with source preservation, retaining the full typed terminal
-readout jointly with the settled payoff vector.
+`ClientCompilation.clients_stateLaw` identifies the physical execution
+state law with the assessment's state law. Its `ClientCompilation.clients_outcomeLaw` composes
+that identity with source preservation, retaining the full source configuration and default history jointly with the settled payoff vector.
 
-`RecoveryClientCompilation.clients_sequentiallyRational` states the incentive
+`ClientCompilation.clients_sequentiallyRational` states the incentive
 guarantee directly for physical policies: at every information set, the
 assessment's belief average of the actual physical continuation payoff cannot
 increase under any `app.Policy` satisfying the menu's `Admissible` predicate.
@@ -85,26 +83,26 @@ off-path histories; it imposes no condition on inconsistent callback inputs.
 This is the physical form of the same bounded-menu guarantee, with no extra
 service, observation or prior premise.
 
-`RecoveryClientCompilation.clients_noExclusions` and
-`RecoveryClientCompilation.clients_noCharges` transfer clean-path guarantees
+`ClientCompilation.clients_noDefaults` and
+`ClientCompilation.clients_noCharges` transfer clean-path guarantees
 to supported ordinary physical runs. They require no empty-observation
 premise: arbitrary pending-observation kernels satisfying the specification
 remain allowed.
 
 For interfaces delivering no pending observations:
 
-* `RecoveryClientCompilation.ledgerClients_agree` proves callback-law identity
+* `ClientCompilation.ledgerClients_agree` proves callback-law identity
   at every initialized legal raw history, including arbitrary earlier
   responses. This identity does not extend the SE deviation domain.
-* `RecoveryClientCompilation.ledgerClients_strategy_at_history` identifies the
+* `ClientCompilation.ledgerClients_strategy_at_history` identifies the
   represented strategy at every legal bounded-menu decision, including
   zero-probability decision histories.
-* `RecoveryClientCompilation.ledgerClients_continuation` identifies complete
+* `ClientCompilation.ledgerClients_continuation` identifies complete
   physical continuation laws from legal bounded-menu histories.
-* `RecoveryClientCompilation.ledgerClients_sequentiallyRational` compares the
+* `ClientCompilation.ledgerClients_sequentiallyRational` compares the
   actual ledger clients against every admissible physical continuation policy,
   using the same beliefs at on-path and off-path information sets.
-* `RecoveryClientCompilation.ledgerClients_finish_eq_clients` identifies the
+* `ClientCompilation.ledgerClients_finish_eq_clients` identifies the
   initialized ledger and ordinary physical runs. The ledger outcome and
   clean-path lemmas follow from the ordinary-client results.
 
@@ -116,19 +114,19 @@ no game-specific client policy is an input.
 
 ## Observable laws and coverage
 
-[Observable closure](../Vegas/Game/RecoveryClientObservables.lean) exports
-`RecoveryClientCompilation.clients_postprocessLaw` and its ledger counterpart.
-Any common stochastic observation of the certified terminal-store/payoff pair
+[Observable closure](../Vegas/Game/ClientObservables.lean) exports
+`ClientCompilation.clients_postprocessLaw` and its ledger counterpart.
+Any common stochastic observation of the certified full-configuration/payoff pair
 has exactly the intended law. Deterministic readers are the pure-kernel case;
 the observation kernel itself needs no finite-support premise.
 
-`Vegas.RecoveryClientSpec.intended_outcomeLaws_subset` states the coverage
+`Vegas.ClientSpec.intended_outcomeLaws_subset` states the coverage
 conclusion as set inclusion: every intended SE joint law belongs to the clean
 bounded-runtime SE laws. Additional runtime equilibria and their outcome laws
 are not characterized by this inclusion.
 
-[Funding monotonicity](../Vegas/Game/RecoveryClientFunding.lean) is packaged as
-`Vegas.RecoveryClientSpec.withDeposit`: every pointwise larger deposit produces
+[Funding monotonicity](../Vegas/Game/ClientFunding.lean) is packaged as
+`Vegas.ClientSpec.withDeposit`: every pointwise larger deposit produces
 another certified specification for the same source, runtime and evidence
 service. It normalizes the declared observation-rate lower bound to be
 nonnegative, without adding a hypothesis or changing the actual observations.

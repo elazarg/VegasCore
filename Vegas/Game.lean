@@ -282,9 +282,9 @@ import Vegas.Game.RecoveryBeliefContinuation
 import Vegas.Game.RecoveryCanonicalSafety
 import Vegas.Game.RecoveryClearDecisionSites
 import Vegas.Game.RecoveryClearForced
-import Vegas.Game.RecoveryClientCompiler
-import Vegas.Game.RecoveryClientFunding
-import Vegas.Game.RecoveryClientObservables
+import Vegas.Game.ClientCompiler
+import Vegas.Game.ClientFunding
+import Vegas.Game.ClientObservables
 import Vegas.Game.RecoveryCommitmentFreshCall
 import Vegas.Game.OnePacketCommittedContinuationValue
 import Vegas.Game.OnePacketCommittedValueAffine
@@ -347,7 +347,7 @@ import Vegas.Game.OnePacketCommonCompletion
 import Vegas.Game.OnePacketComponents
 import Vegas.Game.RecoveryOnePacketPreservation
 import Vegas.Game.OnePacketRawLaw
-import Vegas.Game.RecoveryPaymentPreservation
+import Vegas.Game.PaymentPreservation
 import Vegas.Game.NativePaymentReadout
 import Vegas.Game.RecoveryPendingCompletion
 import Vegas.Game.OnePacketPendingFailure
@@ -456,3 +456,6 @@ import Vegas.Game.OnePacketPooledMemberGains
 import Vegas.Game.OnePacketKeyedCommitmentComparisons
 import Vegas.Game.OnePacketKeyedComparisons
 import Vegas.Game.SequentialCompilation
+import Vegas.Game.RecoveryClientCompiler
+import Vegas.Game.RecoveryClientFunding
+import Vegas.Game.RecoveryClientObservables

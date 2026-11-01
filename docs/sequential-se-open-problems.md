@@ -24,8 +24,8 @@ its outstanding formal adapters. It does not settle generic correlated priors.
 ## Checked starting points
 
 The permanent-exclusion capstone is
-`Vegas.recovery_intended_raw_sequentialEquilibrium_preserved` in
-[RecoverySequentialCompilation](../Vegas/Game/RecoverySequentialCompilation.lean).
+`Vegas.intended_raw_sequentialEquilibrium_preserved` in
+[SequentialCompilation](../Vegas/Game/SequentialCompilation.lean).
 It compiles the sequential graph, uses the supplied runtime's relative deadline
 durations, and quantifies over a supplied scheduler and pending-observation rule.
 It constructs an actual raw-runtime assessment with whole-continuation
@@ -37,8 +37,8 @@ readers therefore retains their joint law too; the utility's parameter reader
 does not restrict this typed-store conclusion.
 
 The monetary specialization
-`Vegas.Recovery.intended_raw_programPayments_preserved` in
-[RecoveryPaymentPreservation](../Vegas/Game/RecoveryPaymentPreservation.lean)
+`Vegas.intended_raw_programPayments_preserved` in
+[PaymentPreservation](../Vegas/Game/PaymentPreservation.lean)
 additionally retains executable cash with the initial reader and full typed
 store. It separates valuation, declared exit valuation and exit transfer.
 

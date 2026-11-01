@@ -55,7 +55,7 @@ The relevant declaration surfaces are in
 [OnePacketLateRecords](../Vegas/Game/OnePacketLateRecords.lean), and
 [OnePacketSpliceForced](../Vegas/Game/OnePacketSpliceForced.lean).
 The active raw capstone is
-[forced-exit recovery](../Vegas/Game/RecoverySequentialCompilation.lean).
+[forced-exit recovery](../Vegas/Game/SequentialCompilation.lean).
 
 There are two separate obligations. An owner swap must replace one player's
 hidden initial cells while retaining a supported draw and the required

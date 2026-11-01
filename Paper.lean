@@ -13,8 +13,8 @@ import Vegas.Game.AsyncClientObservables
 import Vegas.Game.ProgramPaymentAsyncNash
 import Vegas.Game.OnePacketExtension
 import Vegas.Game.RecoverySequentialCompilation
-import Vegas.Game.RecoveryClientObservables
-import Vegas.Game.RecoveryPaymentPreservation
+import Vegas.Game.ClientObservables
+import Vegas.Game.PaymentPreservation
 import Vegas.Game.ServiceRosterAsync
 import Vegas.Examples.LateLeak
 import Vegas.Examples.CommitRevealAuction
@@ -766,35 +766,35 @@ theorem recovery_intended_raw_sequential_equilibrium [Fintype Player] [IExpr.Res
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.recovery_intended_raw_sequential_equilibrium
 
-/-- info: 'Vegas.RecoveryClientSpec.compile_correct' depends on axioms:
+/-- info: 'Vegas.ClientSpec.compile_correct' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.RecoveryClientSpec.compile_correct
+#print axioms Vegas.ClientSpec.compile_correct
 
-/-- info: 'Vegas.RecoveryClientCompilation.clients_sequentiallyRational' depends on axioms:
+/-- info: 'Vegas.ClientCompilation.clients_sequentiallyRational' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.RecoveryClientCompilation.clients_sequentiallyRational
+#print axioms Vegas.ClientCompilation.clients_sequentiallyRational
 
-/-- info: 'Vegas.RecoveryClientSpec.compile_ledger_correct' depends on axioms:
+/-- info: 'Vegas.ClientSpec.compile_ledger_correct' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.RecoveryClientSpec.compile_ledger_correct
+#print axioms Vegas.ClientSpec.compile_ledger_correct
 
-/-- info: 'Vegas.RecoveryClientCompilation.ledgerClients_sequentiallyRational' depends on axioms:
+/-- info: 'Vegas.ClientCompilation.ledgerClients_sequentiallyRational' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.RecoveryClientCompilation.ledgerClients_sequentiallyRational
+#print axioms Vegas.ClientCompilation.ledgerClients_sequentiallyRational
 
-/-- info: 'Vegas.RecoveryClientSpec.intended_outcomeLaws_subset' depends on axioms:
+/-- info: 'Vegas.ClientSpec.intended_outcomeLaws_subset' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.RecoveryClientSpec.intended_outcomeLaws_subset
+#print axioms Vegas.ClientSpec.intended_outcomeLaws_subset
 
-/-- info: 'Vegas.RecoveryClientCompilation.clients_postprocessLaw' depends on axioms:
+/-- info: 'Vegas.ClientCompilation.clients_postprocessLaw' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.RecoveryClientCompilation.clients_postprocessLaw
+#print axioms Vegas.ClientCompilation.clients_postprocessLaw
 
 end Vegas.Paper
 
@@ -826,10 +826,10 @@ end Vegas.Paper
 #print axioms
   Vegas.Examples.BoundedPaymentAuction.truthful_not_dominant
 
-/-- info: 'Vegas.Recovery.intended_raw_programPayments_preserved' depends on axioms:
+/-- info: 'Vegas.intended_raw_programPayments_preserved' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms Vegas.Recovery.intended_raw_programPayments_preserved
+#print axioms Vegas.intended_raw_programPayments_preserved
 
 /-- info: 'Vegas.Examples.OddsEvensRecoveryRaw.intended_equilibrium_preserved' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

@@ -48,11 +48,11 @@ structural source induction carries typed checkpoints and automatic paths;
 defaulted instructions require no callback. Native Nash correspondence and its
 program-payment specialization use this same observation and actual-history
 settlement ranges (`AsyncServiceSpec.SettlementRange`). The concrete monetary
-runtime retains the joint typed-state/default-history/cash law. Higher native
-sequential-equilibrium and client-compiler proofs remain acceptance obligations.
+runtime retains the joint typed-state/default-history/cash law. Native sequential preservation and the uniform semantic client compiler use
+this same runtime and preserve the complete source configuration and payoff law.
 
-Start with [recovery preservation](../Vegas/Game/RecoverySequentialCompilation.lean),
-[monetary preservation](../Vegas/Game/RecoveryPaymentPreservation.lean) and
+Start with [sequential preservation](../Vegas/Game/SequentialCompilation.lean),
+[monetary preservation](../Vegas/Game/PaymentPreservation.lean) and
 the [one-packet raw extension](../Vegas/Game/OnePacketExtension.lean).
 Their imports identify the actual proof adapters. The
 [open-problems guide](sequential-se-open-problems.md) distinguishes hypotheses
@@ -67,7 +67,7 @@ The [Odds–Evens raw instance](../Vegas/Examples/OddsEvensRecoveryRawEquilibriu
 consumes the forced-exit theorem and the
 [imperfect-evidence adapter](../Vegas/Pending/ThinnedCountCollection.lean).
 The [instance guide](sequential-se-instances.md) describes their exact scope.
-The [semantic client compiler](../Vegas/Game/RecoveryClientCompiler.lean) selects
+The [semantic client compiler](../Vegas/Game/ClientCompiler.lean) selects
 a consistent bounded-menu completion uniformly for each source equilibrium.
 [Ledger assessment realization](../Interaction/ReactiveLedgerAssessment.lean)
 identifies complete physical continuations and source-independent client laws.

@@ -72,7 +72,7 @@ and evidence service are fixed before the source equilibrium is chosen.
 Specializing to the explicit fair assessment gives its exact joint law and
 expected payout 100 per player.
 
-[Monetary preservation](../Vegas/Game/RecoveryPaymentPreservation.lean) uses the
+[Monetary preservation](../Vegas/Game/PaymentPreservation.lean) uses the
 same forced-exit runtime and distinguishes executable cash from valuation.
 Neither result needs phase recovery machinery. Concurrent SE preservation is
 separate research; its failure rules must be justified by its own argument.
