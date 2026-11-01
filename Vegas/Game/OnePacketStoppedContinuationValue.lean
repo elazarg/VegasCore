@@ -23,17 +23,20 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {scheduler : (application setup runtime leaks).Scheduler}
   {delay bound : (graph setup).EventId → Nat}
   (opportunity : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+    control.execution.application.config.defaulted = ∅ →
     OpportunityAt runtime leaks control.execution delay)
   (inclusion : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+    control.execution.application.config.defaulted = ∅ →
     ProtectedInclusionAt runtime leaks control.execution bound)
   (timely : runtime.AsyncTimely delay bound)
   (completes : ∀ control : (application setup runtime leaks).Control,
-    (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-    ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some control) →
+    control.execution.application.config.defaulted = ∅ →
     (application setup runtime leaks).terminal (some control) →
     control.execution.application.config.cut.Terminal)
 
@@ -41,12 +44,13 @@ local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setu
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
   (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
-    native ∅))
+  (app := application setup runtime leaks)
+    (fun native : EventGraphRuntime.State (graph setup) =>
+      EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 include opportunity inclusion timely completes in
 open Classical in
-/-- Actual recovery service supplies the reference source value; choice retention
+/-- Counted native service supplies the reference source value; choice retention
 controls its approximation before public exclusion or latent own debt. -/
 theorem counted_stopped_boundary_value_sub_le
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
@@ -96,7 +100,7 @@ theorem counted_stopped_boundary_value_sub_le
     · exact excludedBounded
     · exact payoffBounded final
   have sourceLaw := counted_honest_boundary_readout_law (runtime := runtime) opportunity inclusion
-    timely completes wellFormed covers capacity assessment certificate rank start execution state
+    timely completes covers capacity assessment certificate rank start execution state
       boundary point decoded intended
   have sourceEq : sourceContinuation setup (setup.intendedOpeningProfile assessment.strategy) rank
       execution.application.config =
@@ -129,7 +133,22 @@ theorem counted_stopped_boundary_value_sub_le
           (fun final => sourceReadout setup runtime leaks final.state))
           (fun readout =>
             exclusionReadoutUtility setup parameter utility excludedPayoff readout who)
-          := by simp only [expect_map, Function.comp_def, exclusionBase_eq_readout]
+          := by
+            rw [expect_map]
+            apply expect_congr_on_support
+            intro final member
+            have projected : sourceReadout setup runtime leaks final.state ∈
+                (sourceContinuation setup (setup.intendedOpeningProfile assessment.strategy) rank
+                  execution.application.config).support := by
+              rw [← sourceLaw]
+              exact (PMF.mem_support_map_iff _ _ _).mpr ⟨final, member, rfl⟩
+            change sourceReadout setup runtime leaks final.state ∈
+              ((setup.continuationLaw (setup.intendedOpeningProfile assessment.strategy)
+                (sourceServicePrefix? setup rank execution.application.config)).map some).support
+              at projected
+            obtain ⟨terminal, _, read⟩ := (PMF.mem_support_map_iff _ _ _).mp projected
+            exact exclusionBase_eq_readout_of_readout setup runtime parameter utility
+              excludedPayoff leaks final.state terminal read.symm who
       _ = _ := by rw [sourceLaw]
   change |expect _ payoff - _| ≤ _
   rw [← reference]

@@ -4,6 +4,7 @@ import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 import Vegas.Game.SourceServiceAsyncStep
 import Vegas.Game.RevealServiceCalendarState
 import Vegas.Game.OnePacketLawApproximation
+import Vegas.Game.OnePacketExclusionPayoff
 import Vegas.Game.OnePacketIntendedProjection
 import Vegas.Game.OnePacketCompletion
 import Vegas.Game.OnePacketPrescribedSupport
@@ -287,14 +288,6 @@ def completionPoint (rank : Nat) (fresh : (application setup runtime leaks).Cont
             else none
         | none => none
       else none
-
-variable (setup runtime) in
-/-- The source continuation value of a profile at a point: the expected
-exclusion payoff of `who` under the typed readout of its continuation. -/
-def sourcePointValue (profile : BehavioralProfile setup.program) (who : Player)
-    (point : ProtocolState setup.program) : ℝ :=
-  expect ((ProtocolState.continuationLaw setup.program profile point).map some)
-    (fun readout => exclusionReadoutUtility setup parameter utility excludedPayoff readout who)
 
 open Classical in
 variable (setup runtime leaks) in

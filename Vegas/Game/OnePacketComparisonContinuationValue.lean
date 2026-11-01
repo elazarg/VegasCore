@@ -3,7 +3,7 @@
 import Vegas.Game.OnePacketComparisonRetention
 import Vegas.Game.OnePacketStoppedContinuationValue
 
-/-! # Source continuation values of the common recovery comparison profile -/
+/-! # Source continuation values of the common native comparison profile -/
 
 noncomputable section
 
@@ -11,7 +11,6 @@ namespace Vegas.OnePacketComparison
 
 open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Protocol.InformationModel GameTheory.Math.Probability Interaction EventGraphRuntime
-  RecoveryProjection
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
@@ -24,8 +23,9 @@ local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setu
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
   (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
-    native ∅))
+  (app := application setup runtime leaks)
+    (fun native : EventGraphRuntime.State (graph setup) =>
+      EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 omit [Fintype Player] in
 private theorem sourceContinuation_value_of_prefix
@@ -46,7 +46,7 @@ private theorem sourceContinuation_value_of_prefix
     lawEq
 
 open Classical in
-/-- The same common recovery weights approximate the source value at every
+/-- The same common native weights approximate the source value at every
 intended boundary, under counted native service and completion. -/
 theorem assembled_stopped_boundary_value_sub_le
     [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
@@ -56,24 +56,28 @@ theorem assembled_stopped_boundary_value_sub_le
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
     (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
       positive
       le_one weights targetSequence) (n : ℕ)
     {delay bound : (graph setup).EventId → Nat}
     (opportunity : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-      ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+        scheduler).Trace (some control) →
+      control.execution.application.config.defaulted = ∅ →
       OpportunityAt runtime leaks control.execution delay)
     (inclusion : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-      ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+        scheduler).Trace (some control) →
+      control.execution.application.config.defaulted = ∅ →
       ProtectedInclusionAt runtime leaks control.execution bound)
     (timely : runtime.AsyncTimely delay bound)
     (completes : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
-      ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+        scheduler).Trace (some control) →
+      control.execution.application.config.defaulted = ∅ →
       (application setup runtime leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
     (certificate : (NP).WellFoundedHistories)
@@ -87,8 +91,9 @@ theorem assembled_stopped_boundary_value_sub_le
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ) (who : Player) {payoffBound : ℝ}
     (boundNonneg : 0 ≤ payoffBound)
-    (readoutBounded : ∀ readout,
-      |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
+    (payoffBounded : ∀ history : (NP).History,
+      |exclusionBase setup runtime parameter utility excludedPayoff leaks history.state who| ≤
+        payoffBound)
     (excludedBounded : |excludedPayoff who| ≤ payoffBound) :
     let stopped := fun history : (NP).History => ¬ Clear history.state ∨
       DecodedState setup runtime leaks (failureProfile setup.program)
@@ -113,9 +118,7 @@ theorem assembled_stopped_boundary_value_sub_le
     (sequence n) certificate rank start anchor state boundary point decoded intended
     ((targetSequence n).strategy) (slotRetention_nonneg (positive n).le (le_one n))
     (slotRetention_le_one (positive n).le (le_one n)) retained parameter utility excludedPayoff who
-    boundNonneg (fun history => by
-      rw [exclusionBase_eq_readout]
-      exact readoutBounded _) excludedBounded
+    boundNonneg payoffBounded excludedBounded
   have sourceValue := sourceContinuation_value_of_prefix setup
     (setup.intendedOpeningProfile (sequence n).strategy) parameter utility excludedPayoff who
     decoded

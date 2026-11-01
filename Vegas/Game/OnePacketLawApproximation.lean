@@ -120,6 +120,43 @@ theorem onePacket_withinTV_honest
     assessment
     nonnegative le_one profile _ dominates fuel
 
+/-- Exact agreement with a complete intended readout law excludes public defaults
+on every supported native history. The full typed readout carries the default
+history, so no separate convergence or coupling argument is needed. -/
+theorem onePacket_defaulted_eq_empty_of_readout_law
+    (wellFormed : setup.WellFormed)
+    (intended : ∀ who, setup.intendedModel.BehavioralPolicy who)
+    (target : ∀ who,
+      (onePacketModel setup runtime leaks bounds initial horizon scheduler).BehavioralPolicy who)
+    (fuel : Nat)
+    (law : ((onePacketModel setup runtime leaks bounds initial horizon scheduler).runBehavioral
+        target fuel).map (fun final => sourceReadout setup runtime leaks final.state) =
+      (setup.intendedModel.runBehavioral intended (instructionCount setup.program + 1)).map
+        (fun final => setup.protocolReadout final.state))
+    (final : ((bounds.onePacketMenu runtime leaks).protocol initial horizon scheduler).History)
+    (supported : final ∈ ((onePacketModel setup runtime leaks bounds initial horizon
+      scheduler).runBehavioral target fuel).support)
+    (control : (application setup runtime leaks).Control) (state : final.state = some control) :
+    control.execution.application.config.defaulted = ∅ := by
+  have observed := (PMF.mem_support_map_iff
+    (fun final => sourceReadout setup runtime leaks final.state) _ _).mpr
+      ⟨final, supported, rfl⟩
+  rw [law] at observed
+  obtain ⟨original, reached, same⟩ := (PMF.mem_support_map_iff _ _ _).mp observed
+  have terminal := setup.intendedModel.runBehavioralFrom_terminal_of_bound intended
+    setup.intended_bounded setup.intendedProtocol.initHistory original reached
+  obtain ⟨source, read⟩ := setup.exists_protocolReadout_of_terminal
+    (CommitmentInterface.values setup.program) terminal
+  have clear : source.defaulted = ∅ := Finset.eq_empty_iff_forall_notMem.mpr fun who =>
+    setup.not_defaulted_of_intendedState (setup.intendedState_trace wellFormed original.trace)
+      who read
+  have nativeRead : sourceReadout setup runtime leaks (some control) = some source := by
+    rw [← state]
+    exact same.symm.trans read
+  have defaults := serviceSourceReadout_defaults setup .sequential runtime.deadline leaks
+    control source nativeRead
+  exact (congrArg DefaultHistory.defaulted defaults).symm.trans clear
+
 end Law
 
 section Readout

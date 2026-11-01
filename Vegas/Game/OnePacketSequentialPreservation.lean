@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketComponents
+import Vegas.Game.OnePacketSlotLaw
 import Vegas.Game.OnePacketExtension
 import Vegas.Game.OnePacketLawApproximation
 import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
@@ -62,9 +63,9 @@ local notation "Initial" => initialLaw setup
 section Certificate
 
 local notation "onePacketN" =>
-  onePacketModel setup runtime leaks bounds Initial horizon scheduler
+  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 
-variable [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds Initial horizon
+variable [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
   scheduler).InfoState who)]
 
 /-- The fallback of the one-packet certificate: some choice at every information
@@ -76,9 +77,11 @@ def onePacketFallback (who : Player) :
 open Classical in
 /-- The free laws of the one-packet certificate along a scale sequence. -/
 def onePacketUnforced (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n)
-    (scale_le_one : ∀ n, scale n ≤ 1) (n : ℕ) :=
+    (scale_le_one : ∀ n, scale n ≤ 1) (n : ℕ)
+    (agent : (onePacketN).InformationAgent (onePacketN).playedInformation) :
+    (onePacketN).Choice agent.1 agent.2.1 → PMF ((onePacketN).Choice agent.1 agent.2.1) :=
   unforcedLaw setup runtime leaks bounds Initial horizon scheduler (scale n) (scale_pos n).le
-    (scale_le_one n)
+    (scale_le_one n) agent
 
 open Classical in
 /-- The prescribed laws of the one-packet certificate along a source sequence
@@ -102,6 +105,183 @@ def onePacketLate (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
   lateComponent setup runtime leaks bounds Initial horizon scheduler (sequence n)
     (scale n)
     (scale_pos n).le (scale_le_one n) agent.1 agent.2.1 option
+
+omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
+private theorem apply_eq_one_of_subsingleton {α : Type} [Subsingleton α] (law : PMF α) (a : α) :
+    law a = 1 := by
+  rw [← law.tsum_coe, tsum_eq_single a (fun other different =>
+    (different (Subsingleton.elim other a)).elim)]
+
+omit [Finite setup.intendedProtocol.History] in
+/-- **Mixtures of one-packet components keep as-if-honest play away from late
+deliveries.** At every forced information state that some history reaches and
+that is not a late delivery, every mixture of the components of the one-packet
+certificate gives each choice at least the slot retention of the scale times
+its as-if-honest mass: its components are all the slot-trembled prescribed
+component. -/
+theorem onePacketMixture_ge_honest_of_not_late
+    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    {slots : Nat} (n : ℕ)
+    (weights : ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler slots p))
+    {who : Player} {info : (application setup runtime leaks).Info}
+    (notLate : ¬ LateDelivery setup runtime leaks who info)
+    (occurs : ∃ history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+      horizon scheduler).History, (onePacketN).infoOf who history.trace = info)
+    (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
+      setup) horizon
+      scheduler who info)
+    (clear : info.isSome → runtime.ClearInput leaks info)
+    (choice : (onePacketN).Choice who info) :
+    slotRetention (scale n) * ((honestProfile setup runtime leaks bounds (initialLaw setup) horizon
+        scheduler (sequence n) who info) choice).toReal ≤
+      (((onePacketN).agentBehavior (onePacketN).playedInformation
+        (onePacketFallback setup runtime leaks bounds horizon scheduler)
+        (fun agent => (weights (onePacketPool setup runtime leaks bounds (initialLaw setup)
+          horizon scheduler
+          agent)).bind
+          (freeKeyedComponent
+            (onePacketUnforced setup runtime leaks bounds horizon scheduler scale scale_pos
+              scale_le_one n)
+            (onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale
+              scale_pos
+              scale_le_one n)
+            (onePacketLate setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+              scale_le_one (slots := slots) n) agent)) who info) choice).toReal := by
+  classical
+  have retention_le_one := slotRetention_le_one (scale_pos n).le (scale_le_one n)
+  by_cases inactive : info = none
+  · subst info
+    have : Subsingleton ((onePacketN).Choice who none) :=
+      InformationModel.subsingleton_choice_of_menu_subsingleton _ _ Set.subsingleton_singleton
+    rw [apply_eq_one_of_subsingleton _ choice, apply_eq_one_of_subsingleton _ choice,
+      ENNReal.toReal_one, mul_one]
+    exact retention_le_one
+  have actualClear := clear (by
+    cases info with
+    | none => exact (inactive rfl).elim
+    | some _ => rfl)
+  by_cases present : info ∈ (onePacketN).playedInformation who
+  · let agent : (onePacketN).InformationAgent (onePacketN).playedInformation :=
+      ⟨who, ⟨info, present⟩⟩
+    have notFree : ¬ FreeAgent setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler agent :=
+      fun unforced => unforced ⟨actualClear, forced⟩
+    have notKeyed : ¬ ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler)
+        (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler) agent :=
+      fun keyed => notLate keyed.1
+    obtain ⟨identify, componentEq⟩ := freeKeyedComponent_of_not_free
+      (key := agentLateKey setup runtime leaks bounds (initialLaw setup) horizon scheduler)
+      (onePacketUnforced setup runtime leaks bounds horizon scheduler scale scale_pos scale_le_one
+        n)
+      (onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+        scale_le_one n)
+      (onePacketLate setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+        scale_le_one (slots := slots) n) notFree
+    have constant : ∀ part, freeKeyedComponent
+        (onePacketUnforced setup runtime leaks bounds horizon scheduler scale scale_pos
+          scale_le_one n)
+        (onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+          scale_le_one n)
+        (onePacketLate setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+          scale_le_one (slots := slots) n) agent part =
+        onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+          scale_le_one n agent := fun part => by
+      rw [componentEq]
+      exact keyedComponent_of_not_keyed _ _ notKeyed _
+    have atAgent := (onePacketN).agentBehavior_at (onePacketN).playedInformation
+      (onePacketFallback setup runtime leaks bounds horizon scheduler)
+      (fun agent => (weights (onePacketPool setup runtime leaks bounds (initialLaw setup)
+        horizon scheduler
+        agent)).bind
+        (freeKeyedComponent
+          (onePacketUnforced setup runtime leaks bounds horizon scheduler scale scale_pos
+            scale_le_one n)
+          (onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+            scale_le_one n)
+          (onePacketLate setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+            scale_le_one (slots := slots) n) agent)) agent
+    change _ ≤ (((onePacketN).agentBehavior _ _ _ agent.1 agent.2.1) choice).toReal
+    have mixture : (weights (onePacketPool setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler agent)).bind
+        (freeKeyedComponent
+          (onePacketUnforced setup runtime leaks bounds horizon scheduler scale scale_pos
+            scale_le_one n)
+          (onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+            scale_le_one n)
+          (onePacketLate setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+            scale_le_one (slots := slots) n) agent) =
+        onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+          scale_le_one n agent := by
+      rw [show freeKeyedComponent
+          (onePacketUnforced setup runtime leaks bounds horizon scheduler scale scale_pos
+            scale_le_one n)
+          (onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+            scale_le_one n)
+          (onePacketLate setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+            scale_le_one (slots := slots) n) agent = fun _ =>
+          onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+            scale_le_one n agent from funext constant]
+      exact PMF.bind_const _ _
+    rw [atAgent]
+    refine le_of_le_of_eq (slotTrembledChoice_ge_main setup runtime leaks bounds (initialLaw
+      setup) horizon
+      scheduler (scale_pos n).le (scale_le_one n) who info
+      (honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler (sequence n)
+        who info)
+      (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
+        info))
+      (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler (sequence n) who
+        info)
+      choice) ?_
+    exact congrArg (fun law => (law choice).toReal) mixture.symm
+  · have none : info = none := by
+      obtain ⟨history, infoEq⟩ := occurs
+      cases infoCase : info with
+      | none => rfl
+      | some observed =>
+          exfalso
+          apply present
+          rw [← infoEq]
+          apply (onePacketN).mem_playedInformation
+          have active : (application setup runtime leaks).observe who history.state = some
+            observed :=
+            ((bounds.onePacketMenu runtime leaks).info (initialLaw setup) horizon
+              scheduler who history.trace).symm.trans (infoEq.trans infoCase)
+          have isSome := ((application setup runtime leaks).observe_isSome who history.state).mp
+            (by rw [active]; rfl)
+          intro stopped
+          revert stopped isSome
+          cases history.state with
+          | none => exact fun _ stopped => stopped.elim
+          | some control =>
+              rintro actorSome ⟨_, actorNone⟩
+              simp [ReactiveApplication.actor, actorNone] at actorSome
+    exact (inactive none).elim
+
+
+/-- Profiles assembled from mixtures of the components of the one-packet
+certificate: at each index, every agent mixes its pool's components with the
+pool's weights. -/
+def OnePacketAssembled (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
+    (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
+    {slots : Nat}
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler slots p))
+    (targetSequence : ℕ → (onePacketN).BehavioralAssessment) : Prop :=
+  ∀ n, (targetSequence n).strategy = (onePacketN).agentBehavior (onePacketN).playedInformation
+    (onePacketFallback setup runtime leaks bounds horizon scheduler)
+    fun agent => (weights n (onePacketPool setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler agent)).bind
+      (freeKeyedComponent
+        (onePacketUnforced setup runtime leaks bounds horizon scheduler scale scale_pos
+          scale_le_one n)
+        (onePacketPrescribed setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+          scale_le_one n)
+        (onePacketLate setup runtime leaks bounds horizon scheduler sequence scale scale_pos
+          scale_le_one (slots := slots) n) agent)
 
 open Classical in
 /-- **The open inputs of the one-packet certificate** for one source sequence:

@@ -258,12 +258,13 @@ theorem onePacket_pendingBinding_lateChoice
             have offered := (slotResponse_mem_onePacket_iff setup runtime leaks bounds who _ _
               event node
               slot.val open_.1 other covered).mpr open_.2
-            obtain ⟨action, encoded, _⟩ := covered
+            obtain ⟨action, encoded, values⟩ := covered
+            obtain ⟨value, successful, _⟩ := values who payload outputEq codeEq node
             obtain ⟨material, transmits, _⟩ := slotResponse_transmission setup runtime leaks who
               (control.execution.recall who)
               (control.execution.observe (application setup runtime leaks) who) event node
                 slot.val other
-              action encoded
+              action encoded (by rw [successful]; rfl)
             have values := congrArg Subtype.val same
             simp only [slotChoiceOf, responseChoice, offered, silenceChoice,
               bounds.silence_onePacket runtime leaks who, ↓reduceDIte] at values
@@ -281,13 +282,14 @@ theorem onePacket_pendingBinding_lateChoice
                   have covered := onePacket_honest_covered (runtime := runtime) assessment covers
                     trace who event turn
                     other supported
-                  obtain ⟨action, encoded, _⟩ := covered
+                  obtain ⟨action, encoded, values⟩ := covered
+                  obtain ⟨value, successful, _⟩ := values who payload outputEq codeEq node
                   obtain ⟨material, transmits, envelope⟩ := slotResponse_transmission setup
                     runtime leaks
                     who (control.execution.recall who)
                     (control.execution.observe (application setup runtime leaks) who) event node
                       slot.val
-                    other action encoded
+                    other action encoded (by rw [successful]; rfl)
                   have packetEq : material.call.packet =
                       .commitment event (who, .prepared slot.val) :=
                     congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
@@ -332,7 +334,7 @@ theorem onePacket_pendingBinding_lateChoice
             (control.execution.recall who) (control.execution.observe (application setup runtime
               leaks)
               who) event node serial (sourceOfValue setup event outputEq value) _
-            (sourceOfValue_encoded setup event outputEq codeEq value)
+            (sourceOfValue_encoded setup event outputEq codeEq value) (by simp)
           rw [← responseEq, sends] at transmits
           cases Option.some.inj transmits
           have packetEq : material.call.packet = .commitment event (who, .prepared serial) :=

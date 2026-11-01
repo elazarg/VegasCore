@@ -154,27 +154,26 @@ theorem decoded_initialCellsAt : ∀ {state}
             initialCellsAt_entry initial⟩
       | some current =>
           obtain ⟨initial, member, inputsEq, point, decoded, found⟩ := recursive current rfl
-          have step := transition_configStep (initialLaw setup) horizon
-            scheduler current
-            control joint realized
-          have sameInputs : control.execution.application.config.inputs =
-              current.execution.application.config.inputs := by
-            rcases step with same | ⟨other, ready, action, completed⟩
-            · rw [same]
-            · rw [EventGraph.Config.step, PMF.support_map] at completed
-              obtain ⟨_, _, completedEq⟩ := completed
-              exact (congrArg EventGraph.Config.inputs completedEq).symm
+          have path := reactive_protocol_graph_steps runtime leaks (initialLaw setup) horizon
+            scheduler current control joint realized
+          have sameInputs := EventGraph.Config.Step.path_inputs_eq path
           refine ⟨initial, member, sameInputs.trans inputsEq, ?_⟩
-          rcases step with same | ⟨event, ready, action, completed⟩
-          · exact ⟨point, by rw [same]; exact decoded, found⟩
-          · obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime)
-              (failureProfile setup.program)
-              (bounds.onePacketMenu runtime leaks) horizon scheduler prior current rfl
-            obtain ⟨before, target, beforeEq, afterEq, reached⟩ :=
-              decodedPoint_step residual event ready action _ completed
-            rw [decoded, Option.some.injEq] at beforeEq
-            subst beforeEq
-            exact ⟨target, afterEq, initialCellsAt_step reached found⟩
+          obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime)
+            (failureProfile setup.program) (bounds.onePacketMenu runtime leaks) horizon scheduler
+            prior current rfl
+          have holds : DecodedHolds (InitialCellsAt initial) rank
+              current.execution.application.config := by
+            intro sourcePoint read
+            rw [← decodedPoint_eq_of_isPrefix residual.checkpoint.ordered, decoded,
+              Option.some.injEq] at read
+            subst read
+            exact found
+          have closed : StepClosed setup (InitialCellsAt (setup := setup) initial) := by
+            intro before joint after held reached
+            exact initialCellsAt_step (setup := setup) (initial := initial) reached held
+          obtain ⟨nextRank, ⟨nextResidual⟩, nextHolds⟩ :=
+            residual.decodedHolds_path closed holds path
+          exact ⟨_, decodedPoint_eq nextResidual, nextHolds _ nextResidual.decode⟩
 
 variable {p q : ProtocolState setup.program}
   {publicAgree : PublicCellsAgree setup p q} {succeed : CommitmentCellsSucceed setup p q}

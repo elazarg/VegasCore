@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketSlotContent
+import Vegas.Game.OnePacketContentSupport
 import Vegas.Game.OnePacketOwnSubmissions
 import Vegas.Game.OnePacketIntendedProjection
 
@@ -108,7 +109,7 @@ theorem zeroContent_binding_of_turn (assessment : setup.intendedModel.Behavioral
           rw [callEq] at correct
           unfold contentFactor sentSourceAction at zero
           rw [sends] at zero
-          dsimp only at zero
+          simp only [Option.bind_some] at zero
           generalize material.call.packet = packet at correct packetEvent zero
           cases packet with
           | malformed => exact correct.elim
@@ -120,7 +121,7 @@ theorem zeroContent_binding_of_turn (assessment : setup.intendedModel.Behavioral
               cases ownedBy
           | opening event candidate raw =>
               cases Option.some.inj packetEvent
-              simp only [node] at zero
+              simp only [callContent, node] at zero
               rw [decoded] at zero
               have positive := (PMF.mem_support_iff _ _).mp supported
               exact positive ((ENNReal.toReal_eq_zero_iff _).mp zero |>.resolve_right

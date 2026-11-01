@@ -19,8 +19,9 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
-    native ∅))
+  (app := application setup runtime leaks)
+    (fun native : EventGraphRuntime.State (graph setup) =>
+      EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 /-- An honest continuation with the intended source law cannot encounter a
 public exclusion or hidden own debt, so stopping there leaves its terminal law unchanged. -/
@@ -67,8 +68,7 @@ theorem honest_debt_stopped_terminal_law_of_readout_law
           reached control current
       have clear : Clear history.state := by
         rw [current]
-        exact exclusionEvidence_of_decodedIntended (runtime := runtime)
-          (menu.toRawTrace (initialLaw setup) horizon scheduler (current ▸ history.trace)) decodedEq
+        exact defaulted_eq_empty_of_decodedIntended decodedEq
           intendedDecoded
       refine fun stop => ?_
       rcases stop with notClear | owed

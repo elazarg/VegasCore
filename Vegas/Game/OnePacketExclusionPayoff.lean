@@ -59,6 +59,13 @@ def exclusionReadoutUtility (readout : Option (Config Player L setup.program.ter
   readout.elim 0 fun terminal =>
     exclusionTerminalUtility setup parameter utility excludedPayoff terminal who
 
+/-- The source continuation value of a profile at a point: the expected
+exclusion payoff of `who` under the typed readout of its continuation. -/
+def sourcePointValue (profile : BehavioralProfile setup.program) (who : Player)
+    (point : ProtocolState setup.program) : ℝ :=
+  expect ((ProtocolState.continuationLaw setup.program profile point).map some)
+    (fun readout => exclusionReadoutUtility setup parameter utility excludedPayoff readout who)
+
 /-- An intended history's full source configuration and fixed-exit payoff. -/
 def intendedReadoutExclusion (final : setup.intendedProtocol.History) :
     Option (Config Player L setup.program.terminalCtx) × (Player → ℝ) :=
