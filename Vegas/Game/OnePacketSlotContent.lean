@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketLateMasses
+import Vegas.Game.OnePacketBindingSite
+import Vegas.Pending.ReactiveUnusableBinding
 
 /-! # The content of a slot-tier response
 
@@ -71,7 +73,7 @@ theorem contentFactor_slotResponse_bind
   obtain ⟨value, successful, _⟩ := values who payload outputEq codeEq node
   obtain ⟨material, transmits, envelope⟩ := slotResponse_transmission setup runtime leaks who
     (control.execution.recall who) (control.execution.observe (application setup runtime leaks) who)
-    event node slot choice action encoded
+    event node slot choice action encoded (by rw [successful]; rfl)
   -- The count verdict leaves the slot fresh.
   obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions runtime leaks who _ _ _).mp member
   have verdict : CountPermits ((application setup runtime leaks).outputs (control.execution.recall
@@ -112,8 +114,9 @@ theorem contentFactor_slotResponse_bind
       (control.execution.observe (application setup runtime leaks) who) event slot choice =
       ⟨some ⟨⟨.commitment event (who, .prepared slot), some ⟨payload, value⟩⟩, .none⟩⟩ := by
     rw [slotResponse_of_bind setup runtime leaks who _ _ event node slot choice action encoded,
-      runtime.reactiveBinding_normal_of_fresh leaks who _ _ event payload _ slot fresh,
       successful]
+    dsimp only
+    rw [runtime.reactiveBinding_normal_of_fresh leaks who _ _ event payload _ slot fresh]
     rfl
   have result := submitted_bindingResult runtime leaks control.execution who event payload
     slot (some ⟨payload, value⟩) freshState
@@ -124,17 +127,29 @@ theorem contentFactor_slotResponse_bind
         exact decodeEventAction_encodeEventAction?_eq_some setup.program event source action
           encoded
   have actionEq : action = cast (congrArg EventGraph.EventField.Action outputEq.symm)
-      (PublicationResult.success value : PublicationResult (L.Val payload)) := by
+      (some (.success value) : Option (PublicationResult (L.Val payload))) := by
     rw [← successful]
     simp
+  let committed : (application setup runtime leaks).Action :=
+    ⟨some ⟨⟨.commitment event (who, .prepared slot), some ⟨payload, value⟩⟩, .none⟩⟩
+  have sourceEq : sentSourceAction setup runtime leaks
+      (control.execution.respond (application setup runtime leaks) who committed) committed =
+        choice := by
+    change callContent setup
+      (control.execution.respond (application setup runtime leaks) who committed).application
+      (.commitment event (who, .prepared slot)) = choice
+    simp only [callContent, node]
+    rw [result]
+    simp only [Option.bind_some, Raw.as?_mk, Option.elim_some]
+    rw [← actionEq, decoded]
   rw [responseEq]
-  unfold contentFactor sentSourceAction
-  dsimp only
-  simp only [node]
-  rw [result]
-  simp only [Option.bind_some, Raw.as?_mk, Option.elim_some]
-  rw [← actionEq, decoded]
-  rfl
+  change ((asIfHonestProfile setup runtime leaks assessment who
+    (some (control.execution.recall who,
+      control.execution.observe (application setup runtime leaks) who)))
+        (sentSourceAction setup runtime leaks
+          (control.execution.respond (application setup runtime leaks) who committed)
+          committed)).toReal = _
+  rw [sourceEq]
 
 /-- **A zero-content commitment is no slot-tier choice of a supported source
 choice.** At a covered pending binding of the player's turn, a transmitting
@@ -263,7 +278,7 @@ theorem tierMasses_of_zeroContent
   · change (honestResponse setup runtime leaks assessment who _ _).map _ choice = 0
     rw [honestResponse_eq_slotResponse setup runtime leaks assessment who _ _ event site.turn
       site.node
-      canonical selected, PMF.map_comp]
+      canonical site.active selected, PMF.map_comp]
     exact map_apply_eq_zero_of_forall_ne _ _ _ fun source supported =>
       avoided canonical source supported
   · rw [slotChoice_eq_map (runtime := runtime) (initialLaw setup) horizon scheduler site.turn]

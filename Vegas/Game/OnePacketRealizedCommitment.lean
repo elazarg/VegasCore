@@ -4,6 +4,8 @@ import Vegas.Game.OnePacketSlotChoiceMasses
 import Vegas.Game.OnePacketContentSupport
 import Vegas.Game.OnePacketActorRecord
 import Vegas.Game.SourcePrefixPublications
+import Vegas.Game.OnePacketFreshSlots
+import Vegas.Pending.ReactiveUnusableBinding
 
 /-! # Realized commitments with positive content
 
@@ -198,27 +200,27 @@ theorem onePacket_commitment_realized (assessment : setup.intendedModel.Behavior
         ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩)
       ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩ =
       decodeEventAction setup.program event (cast (congrArg EventGraph.EventField.Action
-        outputEq.symm) ((opening.bind fun raw => raw.as? payload).elim .failure
-          PublicationResult.success)) := by
-    unfold sentSourceAction
-    simp only [node]
-    exact congrArg _ (congrArg _ result)
+        outputEq.symm) (some ((opening.bind fun raw => raw.as? payload).elim .failure
+          PublicationResult.success))) := by
+    unfold sentSourceAction callContent
+    simp only [Option.bind_some, node]
+    exact congrArg _ (congrArg _ (congrArg some result))
   cases read : opening.bind fun raw => raw.as? payload with
   | none =>
       exfalso
       rw [read, Option.elim_none] at sentEq
       have failing : Failing (decodeEventAction setup.program event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-            (PublicationResult.failure : PublicationResult (L.Val payload)))) :=
+            (some .failure : Option (PublicationResult (L.Val payload))))) :=
         decodeEventAction_failing_binding setup.program event.val (by exact event.isLt)
-          (by exact outputEq)
+          (by exact outputEq) (some .failure) rfl
       obtain ⟨rank, point, ordered, decoded⟩ :=
         onePacket_decodes (runtime := runtime) (setup.intendedOpeningProfile assessment.strategy)
           trace
       obtain ⟨action, decodedAction⟩ := Option.isSome_iff_exists.mp
         (decodeEventAction_isSome setup.program event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-            (PublicationResult.failure : PublicationResult (L.Val payload)))
+            (some .failure : Option (PublicationResult (L.Val payload))))
           fun payload same => by
             rw [show outputLayout setup.program event = (graph setup).outputLayout event
               from rfl, outputEq] at same
@@ -231,8 +233,9 @@ theorem onePacket_commitment_realized (assessment : setup.intendedModel.Behavior
       cases action with
       | commit owner name actionPayload choice =>
           have failed := failing.1 owner name actionPayload choice rfl
-          subst failed
-          exact noFailure owner name actionPayload rfl
+          obtain ⟨value, successful⟩ := noFailure
+          rw [successful] at failed
+          cases failed
       | reveal owner name disclose =>
           have withheld : disclose = false := failing.2
           subst withheld

@@ -2,6 +2,8 @@
 
 import Vegas.Game.OnePacketLateLumping
 import Vegas.Game.OnePacketLateMasses
+import Vegas.Game.OnePacketOperationalFactors
+import Vegas.Game.OnePacketBindingSite
 
 /-! # The owner's law of moves for slot-trembled late components
 
@@ -191,34 +193,30 @@ theorem commitMove_slotChoiceOf {control : (application setup runtime leaks).Con
     obtain ⟨material, transmits, envelope⟩ := slotResponse_transmission setup runtime leaks who
       (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
         who)
-      event site.node slot choice action encoded
+      event site.node slot choice action encoded (by rw [successful]; rfl)
     have call : material.call.packet = .commitment event (who, .prepared slot) :=
       congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
         message.payload.call) envelope
-    have bound := slotResponse_of_bind setup runtime leaks who (control.execution.recall who)
-      (control.execution.observe (application setup runtime leaks) who) event site.node slot choice
-      action encoded
+    have fresh : control.execution.application.candidates.lookup (who, .prepared slot) = .fresh :=
+      site.freshOfPermitted slot permitted
+    have bound : slotResponse setup runtime leaks who (control.execution.recall who)
+        (control.execution.observe (application setup runtime leaks) who) event slot choice =
+          ⟨some ⟨⟨.commitment event (who, .prepared slot), some ⟨payload, value⟩⟩, .none⟩⟩ := by
+      rw [slotResponse_of_bind setup runtime leaks who (control.execution.recall who)
+        (control.execution.observe (application setup runtime leaks) who) event site.node slot
+        choice action encoded, successful]
+      dsimp only
+      rw [runtime.reactiveBinding_normal_of_fresh leaks who _ _ event payload _ slot fresh]
+      rfl
     rw [bound] at transmits
     have materialEq := Option.some.inj transmits.symm
     have submitted : (application setup runtime leaks).submit control.execution.application who
-      material =
-        (control.execution.respond (application setup runtime leaks) who
-          ⟨some ⟨⟨.commitment event (who, .prepared slot), some ⟨payload, value⟩⟩,
-            .none⟩⟩).application := by
+        material =
+          (control.execution.respond (application setup runtime leaks) who
+            ⟨some ⟨⟨.commitment event (who, .prepared slot), some ⟨payload, value⟩⟩,
+              .none⟩⟩).application := by
       rw [materialEq]
-      change (application setup runtime leaks).submit control.execution.application who
-        ((runtime.reactiveNormalization leaks).normalize who
-          ((application setup runtime leaks).observePlayer control.execution.application who)
-          (ReactiveApplication.ResponseMenu.knownPackets (control.execution.recall who)
-            (control.execution.observe (application setup runtime leaks) who))
-          ⟨⟨.commitment event (who, .prepared slot), match (cast (congrArg
-            EventGraph.EventField.Action outputEq) action : PublicationResult (L.Val payload)) with
-            | .failure => none
-            | .success value => some ⟨payload, value⟩⟩, .none⟩) = _
-      rw [(runtime.reactiveNormalization leaks).submit, successful]
       rfl
-    have fresh : control.execution.application.candidates.lookup (who, .prepared slot) = .fresh :=
-      site.freshOfPermitted slot permitted
     have result := submitted_bindingResult runtime leaks control.execution who event
       payload slot (some ⟨payload, value⟩) fresh
     apply commitMove_eq_some (runtime := runtime) (submission := material) (by rw [bound]; exact

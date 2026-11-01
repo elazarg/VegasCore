@@ -403,7 +403,7 @@ theorem onePacket_pendingBinding_operational_masses
         (control.execution.recall who) (control.execution.observe (application setup runtime
           leaks) who)
         event node serial (sourceOfValue setup event outputEq value) _
-        (sourceOfValue_encoded setup event outputEq codeEq value)
+        (sourceOfValue_encoded setup event outputEq codeEq value) (by simp)
       rw [← responseEq, sends] at transmits
       cases Option.some.inj transmits
       have packetEq : material.call.packet = .commitment event (who, .prepared serial) :=

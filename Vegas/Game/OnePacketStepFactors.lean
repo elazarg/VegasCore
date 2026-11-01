@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketLateMasses
+import Vegas.Game.OnePacketOperationalFactors
 
 /-! # Factors of a response step, read from late-delivery keys
 

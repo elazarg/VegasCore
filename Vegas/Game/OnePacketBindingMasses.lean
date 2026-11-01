@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketBindingSite
+import Vegas.Game.OnePacketRealizedCommitment
+import Vegas.Game.OnePacketRetention
 
 /-! # Component masses at realized commitments
 

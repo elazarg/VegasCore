@@ -85,6 +85,8 @@ theorem ownerSwap_baseLawAgrees
       (fun history => RegularTrace setup runtime leaks bounds horizon scheduler assessment who
         history.trace) site₁ site₂ payoff := by
   set swap := ownerSwap who view₁.application view₂.application with swapEq
+  have failures : ∀ event, swap.values.ExpiryFixed event :=
+    EventGraph.ValueSwap.ofPairs_expiryFixed (ownerPairs who view₁.application view₂.application)
   have bounded := ownerSwap_bounded_sites (runtime := runtime) covers firstSite secondSite
   have fixesOthers : ∀ other, other ≠ who → swap.Fixes other := fun other different =>
     ownerSwap_fixes who _ _ different
@@ -134,24 +136,26 @@ theorem ownerSwap_baseLawAgrees
     signal observable)
     (view₁ := view₁) (view₂ := view₂) baseMember otherMember baseStore otherStore
   refine baseLawAgrees_of_swap_scaled (runtime := runtime) _ _ site₁ site₂ swap (swapAllowed swap)
-    (initialClosed_swapAllowed swap) bounded (swapAllowed_closed swap) guardedFirst guardedSecond
+    (initialClosed_swapAllowed swap) bounded failures (swapAllowed_closed swap) guardedFirst
+      guardedSecond
     (fun history member => ?_) (fun history member => ?_) (fun history member => ?_) ratio
     ratioPos.ne' (fun history member => ?_) payoff
   · change (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf who
       ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler swap
-        (initialClosed_swapAllowed swap) bounded).mapTrace history.trace
+        (initialClosed_swapAllowed swap) bounded failures).mapTrace history.trace
           (guardedFirst history member)) = site₂.1
     rw [infoOf_mapTrace, member]
     exact infoEq
   · change (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf who
       ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler swap
-        (initialClosed_swapAllowed swap) bounded).mapTrace history.trace
+        (initialClosed_swapAllowed swap) bounded failures).mapTrace history.trace
           (guardedSecond history member)) = site₁.1
     rw [infoOf_mapTrace, member, ← infoEq]
     exact swap.info_involutive _
   · by_cases other : ∃ observer, observer ≠ who
     · obtain ⟨observer, distinct⟩ := other
-      exact regularTrace_mapTrace_iff_of_fixes (runtime := runtime) swap _ bounded assessment who
+      exact regularTrace_mapTrace_iff_of_fixes (runtime := runtime) swap _ bounded failures
+        assessment who
         fixesOthers
         observer distinct history.trace _
     · push Not at other
@@ -174,23 +178,23 @@ theorem ownerSwap_baseLawAgrees
       trace⟩ member)
       inside
     have recordEq := operationalRecord_mapTrace (runtime := runtime) swap
-      (initialClosed_swapAllowed swap) bounded
+      (initialClosed_swapAllowed swap) bounded failures
       trace (guardedFirst ⟨some control, trace⟩ member)
     have congrTrace := mapTrace_allowed_congr (runtime := runtime) swap (initialClosed_swapAllowed
       swap)
-      sharedClosed bounded trace (guardedFirst ⟨some control, trace⟩ member) restricted
+      sharedClosed bounded failures trace (guardedFirst ⟨some control, trace⟩ member) restricted
     have weightEq := othersSourceWeight_mapTrace_scaled (runtime := runtime) swap sharedClosed
-      bounded assessment who
+      bounded failures assessment who
       fixesOthers ratio scaled trace restricted
     change othersSourceWeight setup runtime leaks bounds horizon scheduler assessment who
         ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
           swap
-          (initialClosed_swapAllowed swap) bounded).mapTrace trace
+          (initialClosed_swapAllowed swap) bounded failures).mapTrace trace
             (guardedFirst ⟨some control, trace⟩ member)) *
         weight (operationalRecord setup runtime leaks bounds horizon scheduler
           ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
             swap
-            (initialClosed_swapAllowed swap) bounded).mapTrace trace
+            (initialClosed_swapAllowed swap) bounded failures).mapTrace trace
               (guardedFirst ⟨some control, trace⟩ member))) =
       ratio * (othersSourceWeight setup runtime leaks bounds horizon scheduler assessment who
         trace *

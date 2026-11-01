@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketSwapFiberSum
 import Vegas.Game.OnePacketOwnerSwap
+import Vegas.Pending.ReactiveBoundedValues
 
 /-! # The owner swap keeps the message bounds
 
@@ -32,82 +33,6 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
   {runtime : EventGraphRuntime (graph setup)}
 
-/-- Every openable candidate of the catalogue is within the message bounds. -/
-def CandidatesWithin (bounds : MessageBounds (graph setup))
-    (state : EventGraphRuntime.State (graph setup)) : Prop :=
-  ∀ handle raw, state.candidates.lookup handle = .openable raw → raw ∈ bounds.values
-
-/-- An openable candidate after a preparation is the prepared value or was
-openable before. -/
-private theorem openable_of_prepare
-    (candidates : CommitmentCandidates Player (CandidateSlot (graph setup)) (Raw L))
-    (owner : Player) (slot : CandidateSlot (graph setup)) (value : Raw L)
-    (handle : Handle (graph setup)) (raw : Raw L)
-    (found : (candidates.prepare owner slot value).lookup handle = .openable raw) :
-    raw = value ∨ candidates.lookup handle = .openable raw := by
-  by_cases same : handle = (owner, slot)
-  · subst same
-    rw [CommitmentCandidates.lookup_prepare_self] at found
-    cases before : candidates.lookup (owner, slot) <;> rw [before] at found <;> cases found
-    · exact Or.inl rfl
-    · exact Or.inr rfl
-  · rw [candidates.lookup_prepare_other owner slot value handle same] at found
-    exact Or.inr found
-
-/-- Freezing creates no openable candidate. -/
-private theorem openable_of_freeze
-    (candidates : CommitmentCandidates Player (CandidateSlot (graph setup)) (Raw L))
-    (frozen handle : Handle (graph setup)) (raw : Raw L)
-    (found : (candidates.freeze frozen).lookup handle = .openable raw) :
-    candidates.lookup handle = .openable raw := by
-  by_cases same : handle = frozen
-  · subst same
-    rw [CommitmentCandidates.lookup_freeze_self] at found
-    cases before : candidates.lookup handle <;> rw [before] at found <;> cases found
-    rfl
-  · rwa [candidates.lookup_freeze_other frozen handle same] at found
-
-/-- Submitting an envelope creates no openable candidate. -/
-private theorem openable_of_submitStep (state : EventGraphRuntime.State (graph setup))
-    (who : Player) (packet : Payload (graph setup)) (handle : Handle (graph setup))
-    (raw : Raw L) (found : (submitStep state who packet).candidates.lookup handle = .openable raw) :
-    state.candidates.lookup handle = .openable raw := by
-  cases packet with
-  | commitment event candidate =>
-      simp only [submitStep] at found
-      split_ifs at found
-      · exact openable_of_freeze _ _ _ _ found
-      · exact found
-  | opening | malformed => exact found
-
-/-- Registering a submission makes openable only its own opening data. -/
-private theorem openable_of_register (submission : Submission (graph setup))
-    (state : EventGraphRuntime.State (graph setup)) (who : Player)
-    (handle : Handle (graph setup)) (raw : Raw L)
-    (found : (submission.register state who).candidates.lookup handle = .openable raw) :
-    submission.opening = some raw ∨ state.candidates.lookup handle = .openable raw := by
-  rcases submission with ⟨packet, opening⟩
-  cases opening with
-  | none =>
-      right
-      cases packet with
-      | commitment event candidate =>
-          rcases candidate with ⟨owner, input | serial⟩ <;> exact found
-      | opening | malformed => exact found
-  | some value =>
-      cases packet with
-      | commitment event candidate =>
-          rcases candidate with ⟨owner, input | serial⟩
-          · exact Or.inr found
-          · simp only [Submission.register] at found
-            split_ifs at found
-            · rcases openable_of_prepare _ _ _ _ _ _ found with same | old
-              · subst same
-                exact Or.inl rfl
-              · exact Or.inr old
-            · exact Or.inr found
-      | opening | malformed => exact Or.inr found
-
 omit [IExpr.ResultTypes L] in
 /-- A typed initial value makes openable only a value of a binding field. -/
 private theorem openable_of_candidateOfValue (owner : Player)
@@ -126,71 +51,14 @@ private theorem openable_of_candidateOfValue (owner : Player)
 
 variable {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-/-- Inclusion and environment service create no openable candidate. -/
-private theorem openable_of_environmentStep
-    (execution next : (application setup runtime leaks).Execution)
-    (command : (application setup runtime leaks).Command)
-    (reached : next ∈ (execution.environmentStep (application setup runtime leaks) command).support)
-    (handle : Handle (graph setup)) (raw : Raw L)
-    (found : next.application.candidates.lookup handle = .openable raw) :
-    execution.application.candidates.lookup handle = .openable raw := by
-  let app := application setup runtime leaks
-  cases command with
-  | wait =>
-      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      exact found
-  | activate who =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
-      exact found
-  | «include» id =>
-      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      revert found
-      unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
-      cases lookedUp : execution.network.lookup id with
-      | none => exact fun held => held
-      | some message =>
-          change ((app.handle execution.application message).getD
-            execution.application).candidates.lookup handle = .openable raw → _
-          cases accepted : app.handle execution.application message with
-          | none => exact fun held => held
-          | some next =>
-              intro found
-              have call := reactiveHandle_call accepted
-              cases packet : message.payload.call with
-              | malformed value =>
-                  rw [packet] at call
-                  simp [EventGraphRuntime.handle] at call
-              | opening named other value =>
-                  rw [packet] at call
-                  have tables := handle_resolution_tables runtime
-                    execution.application next _ (fun _ _ same => by cases same) call
-                  change next.candidates.lookup handle = .openable raw at found
-                  rwa [tables.2] at found
-              | commitment named other =>
-                  rw [packet] at call
-                  have tables := handle_commitment_tables runtime
-                    execution.application next _ named other call
-                  change next.candidates.lookup handle = .openable raw at found
-                  rw [tables.1] at found
-                  exact openable_of_freeze _ _ _ _ found
-  | application command =>
-      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
-      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      change state.candidates.lookup handle = .openable raw at found
-      rwa [(environmentStep_tables runtime execution.application state command
-        changed).2] at found
-
 variable {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}
 
 /-- Every initial state of the supplied runtime has its openable candidates
 within the bounds when the bounds cover the initial binding inputs. -/
-private theorem candidatesWithin_initial (covers : bounds.CoversInputValues)
+private theorem candidateValues_initial (covers : bounds.CoversInputValues)
     (state : EventGraphRuntime.State (graph setup)) (member : state ∈ (initialLaw setup).support) :
-    CandidatesWithin bounds state := by
+    bounds.CandidateValues state := by
   rw [initialLaw, serviceInitialLaw, PMF.support_map] at member
   obtain ⟨initial, _, rfl⟩ := member
   rintro ⟨owner, slot⟩ raw found
@@ -251,28 +119,18 @@ variable [Fintype Player]
 variable (leaks bounds) in
 /-- Openable candidates stay within the bounds along every one-packet response
 and every environment step. -/
-private theorem candidatesWithin_serviceInvariant :
+private theorem candidateValues_serviceInvariant :
     (bounds.onePacketMenu runtime leaks).ServiceInvariant scheduler
-      (fun execution => CandidatesWithin bounds execution.application) where
-  respond execution who action valid member := by
-    rcases action with ⟨transmission⟩
-    cases transmission with
-    | none => exact valid
-    | some material =>
-        have allowed := ((bounds.menu_mem runtime leaks who _ _ _).mp
-          ((bounds.mem_onePacketActions runtime leaks who _ _ _).mp member).1).1.1.2
-        intro handle raw found
-        change (submitStep (material.call.register execution.application who) who
-          material.call.packet).candidates.lookup handle = .openable raw at found
-        rcases openable_of_register material.call execution.application who handle raw
-          (openable_of_submitStep _ who _ handle raw found) with opened | old
-        · change bounds.AllowsOpening material.call.opening at allowed
-          rw [opened] at allowed
-          exact allowed
-        · exact valid handle raw old
-  environment execution next command valid _ reached handle raw found :=
-    valid handle raw (openable_of_environmentStep (runtime := runtime) execution next command
-      reached handle raw found)
+      (fun execution => bounds.CandidateValues execution.application) where
+  respond execution who action valid member :=
+    bounds.candidateValues_respond runtime leaks execution who action valid (by
+      intro material transmitted
+      have allowed := (bounds.menu_mem runtime leaks who _ _ _).mp
+        ((bounds.mem_onePacketActions runtime leaks who _ _ _).mp member).1
+      rw [transmitted] at allowed
+      exact allowed.1.1.2)
+  environment execution next command valid _ reached :=
+    bounds.candidateValues_environment runtime leaks execution next command valid reached
 
 /-- **Openable candidates are within the bounds.** Along every history of the
 one-packet game, every openable candidate of the catalogue is within the message
@@ -283,9 +141,9 @@ theorem candidate_mem_values_of_trace (covers : bounds.CoversInputValues)
     {handle : Handle (graph setup)} {raw : Raw L}
     (found : control.execution.application.candidates.lookup handle = .openable raw) :
     raw ∈ bounds.values :=
-  (candidatesWithin_serviceInvariant (runtime := runtime) leaks bounds).history (initialLaw setup)
+  (candidateValues_serviceInvariant (runtime := runtime) leaks bounds).history (initialLaw setup)
     horizon
-    (fun state member => candidatesWithin_initial covers state member) trace handle raw found
+    (fun state member => candidateValues_initial covers state member) trace handle raw found
 
 /-- **The owner swap between two views of one-packet histories keeps the
 bounds.** For two histories of the one-packet game, the owner swap between the

@@ -195,10 +195,16 @@ theorem slotResponse_names (who : Player) (past : List (application setup runtim
   | some action =>
       cases node : nodeView (graph setup) event with
       | bind owner payload outputEq codeEq =>
+          by_cases omitted : cast (congrArg EventGraph.EventField.Action outputEq) action = none
+          · left
+            rw [slotResponse_of_bind setup runtime leaks who past view event node slot choice
+              action encoded, omitted]
+          have present : (cast (congrArg EventGraph.EventField.Action outputEq) action).isSome =
+              true := Option.isSome_iff_ne_none.mpr omitted
           right
           obtain ⟨material, transmits, envelope⟩ := slotResponse_transmission setup runtime leaks
             who past
-            view event node slot choice action encoded
+            view event node slot choice action encoded present
           unfold EventGraphRuntime.submittedEvent?
           rw [transmits]
           change material.call.packet.event? (graph setup) = some event

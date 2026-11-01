@@ -39,31 +39,38 @@ private theorem bind_map_pair_map_fst_eq {α β : Type} (first : PMF α) (second
   change (first.bind fun x => second.map (fun _ => x)) = first
   simp only [constant, PMF.bind_pure]
 
-/-- At a binding of the player's turn whose canonical slot is fresh, the
+/-- At an active player's binding turn whose canonical slot is fresh, the
 canonical decision of an encoded source choice is the slot tier's response at
 the canonical slot. -/
-theorem canonical_eq_slotResponse (who : Player)
+private theorem canonical_eq_slotResponse (who : Player)
     (past : List (application setup runtime leaks).PlayerEntry)
     (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId)
     {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq) (serial : Nat)
+    (active : who ∉ view.application.publicView.observation.defaulted)
     (selected : canonicalFreshSlot who view.application = some serial)
     (choice : Option (OwnAction Player L)) (action : (graph setup).Action event)
     (encoded : choice.bind (encodeEventAction? setup.program event) = some action) :
     runtime.canonicalServiceDecision leaks who past view event action =
       slotResponse setup runtime leaks who past view event serial choice := by
   have fresh := canonicalFreshSlot_spec who view.application serial selected
-  obtain ⟨result, rfl⟩ : ∃ result : PublicationResult (L.Val payload),
+  obtain ⟨result, rfl⟩ : ∃ result : Option (PublicationResult (L.Val payload)),
       action = cast (congrArg EventGraph.EventField.Action outputEq.symm) result :=
     ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
   rw [slotResponse_of_bind setup runtime leaks who past view event node serial choice _ encoded]
   simp only [cast_cast, cast_eq]
-  rw [runtime.reactiveBinding_normal_of_fresh leaks who past view event payload _
-    serial fresh]
-  exact runtime.canonicalServiceDecision_binding leaks who past view event payload
-    outputEq codeEq node serial selected result
+  cases result with
+  | none =>
+      exact runtime.canonicalServiceDecision_binding_none leaks who past view event
+        who payload outputEq codeEq node
+  | some value =>
+      dsimp only
+      rw [runtime.reactiveBinding_normal_of_fresh leaks who past view event payload _
+        serial fresh]
+      exact runtime.canonicalServiceDecision_binding leaks who past view event payload
+        outputEq codeEq node active serial selected value
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}
@@ -95,16 +102,23 @@ theorem onePacket_canonical_permitted (assessment : setup.intendedModel.Behavior
   obtain ⟨choice, supported⟩ := (asIfHonestProfile setup runtime leaks assessment who
     (some (control.execution.recall who,
       control.execution.observe (application setup runtime leaks) who))).support_nonempty
-  obtain ⟨action, encoded, _⟩ :=
+  obtain ⟨action, encoded, values⟩ :=
     onePacket_honest_covered (runtime := runtime) assessment covers trace who event turn choice
       supported
+  obtain ⟨value, successful, _⟩ := values who payload outputEq codeEq node
+  have active := control.execution.application.active_of_ready_owned
+    (legalFacts setup leaks horizon scheduler control rawTrace).quiescent
+    ((control.execution.application.publicView_eventReady event).mp
+      (PublicView.ownTurn?_spec _ who event turn).1)
+    (PublicView.ownTurn?_spec _ who event turn).2
   have decision := canonical_eq_slotResponse (runtime := runtime) who (control.execution.recall who)
-    (control.execution.observe (application setup runtime leaks) who) event node serial selected
+    (control.execution.observe (application setup runtime leaks) who) event node serial active
+      selected
       choice
     action encoded
   obtain ⟨material, transmits, envelope⟩ := slotResponse_transmission setup runtime leaks who
     (control.execution.recall who) (control.execution.observe (application setup runtime leaks) who)
-    event node serial choice action encoded
+    event node serial choice action encoded (by rw [successful]; rfl)
   rw [← decision] at transmits
   rw [← envelope]
   exact canonicalServiceDecision_countPermits rawTrace who event turn unsent action material
@@ -141,8 +155,11 @@ theorem honestChoice_silence_of_pending (assessment : setup.intendedModel.Behavi
     event turn unsent
     node serial selected
   change (honestResponse setup runtime leaks assessment who _ _).map _ _ = 0
+  have site := onePacket_coveredPendingBinding (runtime := runtime) assessment covers
+    (Nat.one_le_iff_ne_zero.mpr fun zero => by have := capacity who; omega)
+    trace who event turn node
   rw [honestResponse_eq_slotResponse setup runtime leaks assessment who _ _ event turn node serial
-    selected, PMF.map_comp]
+    site.active selected, PMF.map_comp]
   apply map_apply_eq_zero_of_forall_ne
   intro choice supported same
   have covered := onePacket_honest_covered (runtime := runtime) assessment covers trace who event
@@ -150,10 +167,11 @@ theorem honestChoice_silence_of_pending (assessment : setup.intendedModel.Behavi
   have offered := (slotResponse_mem_onePacket_iff setup runtime leaks bounds who _ _ event node
     serial
     serialCapacity choice covered).mpr permitted
-  obtain ⟨action, encoded, _⟩ := covered
+  obtain ⟨action, encoded, values⟩ := covered
+  obtain ⟨value, successful, _⟩ := values who payload outputEq codeEq node
   obtain ⟨material, transmits, _⟩ := slotResponse_transmission setup runtime leaks who
     (control.execution.recall who) (control.execution.observe (application setup runtime leaks) who)
-    event node serial choice action encoded
+    event node serial choice action encoded (by rw [successful]; rfl)
   have values := congrArg Subtype.val same
   change (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who _
     (slotResponse setup runtime leaks who _ _ event serial choice)).1 =
@@ -230,11 +248,12 @@ theorem slotChoice_silence_of_pending (assessment : setup.intendedModel.Behavior
       (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
         who)
       event node slot slotCapacity choice covered
-    obtain ⟨action, encoded, _⟩ := covered
+    obtain ⟨action, encoded, values⟩ := covered
+    obtain ⟨value, successful, _⟩ := values who payload outputEq codeEq node
     obtain ⟨material, transmits, _⟩ := slotResponse_transmission setup runtime leaks who
       (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
         who)
-      event node slot choice action encoded
+      event node slot choice action encoded (by rw [successful]; rfl)
     change slotChoiceOf setup runtime leaks bounds (initialLaw setup) horizon scheduler who _ _
       event slot
       choice = silence ↔ _ = false

@@ -38,20 +38,21 @@ theorem mapTrace_allowed_congr (swap : HiddenSwap (graph setup))
       state.swap swap ∈ (initialLaw setup).support)
     (secondClosed : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ second →
       state.swap swap ∈ (initialLaw setup).support)
-    (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values) :
+    (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
+    (failures : ∀ event, swap.values.ExpiryFixed event) :
     ∀ {state} (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
       (firstGuard : SwapGuardState setup runtime swap first state)
       (secondGuard : SwapGuardState setup runtime swap second state),
     (onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler swap
       firstClosed
-        bounded).mapTrace trace firstGuard =
+        bounded failures).mapTrace trace firstGuard =
       (onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler swap
         secondClosed
-        bounded).mapTrace trace secondGuard
+        bounded failures).mapTrace trace secondGuard
   | _, .start, _, _ => rfl
   | _, .extend prior joint legal reached, firstGuard, secondGuard => by
       rw [StateSymmetry.mapTrace_extend, StateSymmetry.mapTrace_extend,
-        mapTrace_allowed_congr swap firstClosed secondClosed bounded prior]
+        mapTrace_allowed_congr swap firstClosed secondClosed bounded failures prior]
       rfl
 
 omit [Fintype Player] in

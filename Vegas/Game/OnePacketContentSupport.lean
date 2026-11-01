@@ -3,6 +3,7 @@
 import Vegas.Game.OnePacketSourceTurn
 import Vegas.Game.OnePacketFactorization
 import Vegas.Game.IntendedAuthenticOpening
+import Vegas.Game.SourceServiceFacts
 
 /-! # Transmissions with positive content
 
@@ -83,9 +84,12 @@ theorem onePacket_sentSourceAction (who : Player)
   have callEq : (runtime.localEnvelope leaks who past view material).payload.call =
       material.call.packet := rfl
   rw [callEq] at correct
-  unfold sentSourceAction
-  rw [sends]
-  dsimp only
+  have content : sentSourceAction setup runtime leaks after response =
+      callContent setup after.application material.call.packet := by
+    unfold sentSourceAction
+    rw [sends]
+    rfl
+  rw [content]
   generalize material.call.packet = packet at correct ⊢
   cases packet with
   | malformed => exact correct.elim
@@ -100,15 +104,14 @@ theorem onePacket_sentSourceAction (who : Player)
           rw [outputEq] at owned
           cases owned
       | bind owner payload outputEq codeEq =>
-          dsimp only
           have defined := decodeEventAction_isSome setup.program event
             (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-              (after.application.bindingResult candidate payload)) fun payload same => by
+              (some (after.application.bindingResult candidate payload))) fun payload same => by
               rw [show outputLayout setup.program event = (graph setup).outputLayout event
                 from rfl, outputEq] at same
               cases same
           obtain ⟨action, decoded⟩ := Option.isSome_iff_exists.mp defined
-          exact ⟨event, action, rfl, by simp only [node]; exact decoded, by
+          exact ⟨event, action, rfl, by simp only [callContent, node]; exact decoded, by
             rw [encodeEventAction?_decodeEventAction_eq_some _ _ _ _ decoded]
             rfl⟩
   | opening event candidate raw =>
@@ -121,7 +124,6 @@ theorem onePacket_sentSourceAction (who : Player)
           rw [node] at resolves
           exact resolves.elim
       | resolve owner payload binding checks outputEq codeEq =>
-          dsimp only
           have defined := decodeEventAction_isSome setup.program event
             (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
             fun payload same => by
@@ -129,7 +131,7 @@ theorem onePacket_sentSourceAction (who : Player)
                 from rfl, outputEq] at same
               cases same
           obtain ⟨action, decoded⟩ := Option.isSome_iff_exists.mp defined
-          exact ⟨event, action, rfl, by simp only [node]; exact decoded, by
+          exact ⟨event, action, rfl, by simp only [callContent, node]; exact decoded, by
             rw [encodeEventAction?_decodeEventAction_eq_some _ _ _ _ decoded]
             rfl⟩
 
@@ -186,9 +188,17 @@ theorem onePacket_content_pos (assessment : setup.intendedModel.BehavioralAssess
         decoded _ turn] at supported
       cases (PMF.mem_support_pure_iff _ _).mp supported
   | some event =>
+      have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+        horizon scheduler trace
+      have ready : control.execution.application.config.cut.Ready event :=
+        (control.execution.application.publicView_eventReady event).mp
+          (PublicView.ownTurn?_spec _ who event turn).1
+      have active := control.execution.application.active_of_ready_owned
+        (legalFacts setup leaks horizon scheduler control rawTrace).quiescent ready
+        (PublicView.ownTurn?_spec _ who event turn).2
       have atTurn := asIfHonestProfile_encodes (runtime := runtime) assessment who
         control.execution rank ordered
-        point decoded _ event turn _ supported
+        point decoded _ event turn active _ supported
       have same : named = event :=
         encodeEventAction?_event_unique setup.program named event action encoded atTurn
       subst same
