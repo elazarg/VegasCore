@@ -51,7 +51,8 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExp
   (excludedPayoff : Player → ℝ)
 
 /-- The utility of an observation of readout and payoffs: its payoff component. -/
-abbrev payoffComponent (outcome : Option (State L setup.program.terminalCtx) × (Player → ℝ))
+abbrev payoffComponent
+    (outcome : Option (Config Player L setup.program.terminalCtx) × (Player → ℝ))
     (who : Player) : ℝ :=
   outcome.2 who
 
@@ -72,12 +73,14 @@ def onePacketFallback (who : Player) :
     (onePacketModel setup runtime leaks bounds Initial horizon scheduler).Policy who :=
   fun _ => Classical.arbitrary _
 
+open Classical in
 /-- The free laws of the one-packet certificate along a scale sequence. -/
 def onePacketUnforced (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n)
     (scale_le_one : ∀ n, scale n ≤ 1) (n : ℕ) :=
   unforcedLaw setup runtime leaks bounds Initial horizon scheduler (scale n) (scale_pos n).le
     (scale_le_one n)
 
+open Classical in
 /-- The prescribed laws of the one-packet certificate along a source sequence
 and a scale sequence. -/
 def onePacketPrescribed (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
@@ -88,6 +91,7 @@ def onePacketPrescribed (sequence : ℕ → setup.intendedModel.BehavioralAssess
     (sequence n)
     (scale n) (scale_pos n).le (scale_le_one n) agent.1 agent.2.1
 
+open Classical in
 /-- The late laws of the one-packet certificate along a source sequence and a
 scale sequence. -/
 def onePacketLate (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
@@ -347,8 +351,7 @@ structure OnePacketCertificateInputs (sequence : ℕ → setup.intendedModel.Beh
           slots p))
             p,
           ∑ agent ∈ Finset.univ.filter (fun agent => onePacketPool setup runtime leaks bounds
-            horizon
-              scheduler agent = p),
+            Initial horizon scheduler agent = p),
             (if decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1 then
               let comparison := (onePacketN).assessmentComparisonWith ((onePacketN).truncatedRunner
                   (2 * horizon + 1))

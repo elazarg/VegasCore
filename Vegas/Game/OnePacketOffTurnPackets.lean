@@ -3,41 +3,19 @@
 import Vegas.Game.OnePacketForcedRegular
 import Vegas.Game.SourceServiceFacts
 
-/-! # No other player's off-turn packet at a forced site
+/-! # Foreign submissions at forced native inputs
 
-**Public event failures.** An event of a player is publicly failed at a native
-state when it is completed with no accepted handle and, if it publishes, the
-player's reveal has failed at the decoded point (`Vegas.PublicEventFailure`).
-Both are read from the public contract view, and both persist along every
-transition (`Vegas.publicEventFailure_transition`).
-
-**Completions.** Every completed event with an actor was completed by a packet
-of that actor on the ledger, or is publicly failed
-(`Vegas.completedByOwner_of_trace`): a completion without the actor's packet
-binds no handle, and at a publication it withholds.
-
-**Submissions.** A one-packet submission names the event at its sender's turn,
-or an earlier completed event of the sender for which the sender sent nothing,
-by the count verdict's readiness token and first-packet test. Such an event is
-publicly failed (`Vegas.submissionsAtTurnOrFailed_of_trace`).
-
-**Forced sites.** At a forced decision input of `who`, every history shares
-`who`'s public contract view with a forced history, at which every completed
-binding of another player has an accepted handle and no other player's reveal
-has failed. So along every history of the input, every submission of another
-player names the event at that player's turn
-(`Vegas.submittedAtTurn_of_forcedSite`).
+A completed owned event has an actual packet by its owner on the ledger or a
+publicly defaulted owner. Accepted records, expiry and automatic completion
+establish this invariant under the sole native executor. One-packet readiness
+credentials then place each recalled submission at its own turn unless its
+owner has defaulted. Forced information rules out foreign public default.
 -/
 
 noncomputable section
-
 namespace Vegas
-
-open SourceProgram
-
-open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-  GameTheory.Math.Probability Interaction EventGraphRuntime
-
+open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
+  GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
   {runtime : EventGraphRuntime (graph setup)}
@@ -45,50 +23,60 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}
 
-variable (setup runtime) in
-/-- **A public failure** of an event of `actor` at a native control state: the
-event is completed, no handle is accepted for it, and if it publishes, `actor`'s
-reveal has failed at the decoded point. -/
-def PublicEventFailure (actor : Player) (event : (graph setup).EventId)
-    (control : (application setup runtime leaks).Control) : Prop :=
-  event ∈ control.execution.application.config.cut.completed ∧
-    control.execution.application.accepted (.inr event) = none ∧
-    ∀ payload, (graph setup).outputLayout event = .publication payload →
-      ∀ point, decodedPoint setup control.execution.application.config = some point →
-        ProtocolState.RevealFailed actor setup.program point
+omit [Fintype Player] in
+private theorem expired_owner_defaulted
+    {remaining : Nat} {before after : (application setup runtime leaks).Execution}
+    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, none, before⟩))
+    (event : (graph setup).EventId) (actor : Player)
+    (owned : (graph setup).actor? event = some actor)
+    (unfinished : event ∉ before.application.config.cut.completed)
+    (completed : event ∈ after.application.config.cut.completed)
+    (entered : Nat) (activated : before.application.activatedAt event = some entered)
+    (due : runtime.deadline event ≤ before.application.clock - entered)
+    (reached : after ∈ (before.environmentStep (application setup runtime leaks)
+      (.application (.expire event))).support) :
+    actor ∈ after.application.config.defaulted := by
+  have facts := legalFacts setup leaks horizon scheduler _ trace
+  have nativeTrace := trace
+  have initialEq : initialLaw setup = (setup.initialLaw.map setup.eventInputs).map
+      (EventGraphRuntime.State.initial (graph := graph setup)) :=
+    serviceInitialLaw_eq_inputs (mode := .sequential) setup
+  rw [initialEq] at nativeTrace
+  have valid : ExclusionEvidence 0 ∅ before.application :=
+    ExclusionEvidence.history runtime leaks (setup.initialLaw.map setup.eventInputs)
+      horizon scheduler nativeTrace
+  obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+  obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
+  change state ∈ ((environmentStep runtime before.application (.expire event)).map
+    State.drain).support at changed
+  obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ changed
+  change actor ∈ native.drain.config.defaulted
+  change event ∈ native.drain.config.cut.completed at completed
+  by_cases ready : before.application.config.cut.Ready event
+  · have same : native = before.application.completeFailure event ready := by
+      cases node : nodeView (graph setup) event with
+      | sample payload law outputEq codeEq =>
+          rw [nodeView_sample_actor outputEq codeEq] at owned
+          cases owned
+      | bind owner payload outputEq codeEq =>
+          rw [environmentStep_expire_bind_eq runtime before.application event ready entered
+            activated due owner payload outputEq codeEq node, PMF.mem_support_pure_iff] at moved
+          simpa only [EventGraphRuntime.State.completeFailure, node] using moved
+      | resolve owner payload binding checks outputEq codeEq =>
+          rw [environmentStep_expire_resolve_eq runtime before.application event ready entered
+            activated due owner payload binding checks outputEq codeEq node,
+            PMF.mem_support_pure_iff] at moved
+          simpa only [EventGraphRuntime.State.completeFailure, node] using moved
+    rw [same, State.drain_defaulted]
+    exact ((valid.completeFailure event ready actor owned).defaulted_zero actor).mpr
+      ⟨event, owned, State.completeFailure_publicFailure _ valid.receipts event ready owned⟩
+  · rw [environmentStep_expire_of_not_ready runtime before.application event ready,
+      PMF.mem_support_pure_iff] at moved
+    subst native
+    rw [before.application.drain_eq_of_clear facts.quiescent] at completed
+    exact (unfinished completed).elim
 
-/-- **Public failures persist** along every transition. -/
-theorem publicEventFailure_transition {actor : Player} {event : (graph setup).EventId}
-    {current next : (application setup runtime leaks).Control}
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some current))
-    (joint : Player → Option (application setup runtime leaks).Action)
-    (realized : some next ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
-      scheduler (some current) joint).support)
-    (failure : PublicEventFailure setup runtime actor event current) :
-    PublicEventFailure setup runtime actor event next := by
-  obtain ⟨completed, vacant, failed⟩ := failure
-  refine ⟨completed_transition (runtime := runtime) leaks joint realized completed, ?_,
-    fun payload layout point decoded => ?_⟩
-  · rcases acceptedKept_transition (runtime := runtime) leaks (initialLaw setup) horizon scheduler
-      current next joint
-        realized event with same | ⟨ready, _, _⟩
-    · rw [same]
-      exact vacant
-    · exact (ready.1 completed).elim
-  · obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
-      setup.program)
-      (bounds.onePacketMenu runtime leaks) horizon scheduler prior current rfl
-    rcases transition_configStep (initialLaw setup) horizon scheduler current
-      next joint realized
-        with same | ⟨stepEvent, ready, action, member⟩
-    · rw [same] at decoded
-      exact failed payload layout point decoded
-    · obtain ⟨before, target, beforeEq, afterEq, reached⟩ :=
-        decodedPoint_step residual stepEvent ready action _ member
-      rw [afterEq, Option.some.injEq] at decoded
-      subst decoded
-      exact ProtocolState.revealFailed_step actor setup.program before _ target
-        (failed payload layout before beforeEq) reached
 
 omit [Fintype Player] in
 private theorem ledger_transition {current next : (application setup runtime leaks).Control}
@@ -96,47 +84,50 @@ private theorem ledger_transition {current next : (application setup runtime lea
     (realized : some next ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
       scheduler (some current) joint).support) :
     ∀ message ∈ current.execution.network.ledger, message ∈ next.execution.network.ledger := by
+  let app := application setup runtime leaks
   cases acting : current.actor with
   | some actor =>
       rw [transition_respond (runtime := runtime) current acting joint, PMF.mem_support_pure_iff]
         at realized
       cases Option.some.inj realized
       intro message member
-      change message ∈ (current.execution.respond (application setup runtime leaks) actor
-        ((joint actor).getD ⟨none⟩)).network.ledger
-      rw [(application setup runtime leaks).respond_ledger]
+      rw [app.respond_ledger]
       exact member
   | none =>
       rcases transition_idle_cases (runtime := runtime) (initialLaw setup) horizon scheduler
-        current acting joint
-          realized with same | ⟨command, moved⟩
-      · rw [same]
-        exact fun _ member => member
-      · exact (environment_ledger_receipts_grow (runtime := runtime) current.execution _ command
-          moved).1
+        current acting joint realized with same | ⟨command, moved⟩
+      · rw [same]; exact fun _ member => member
+      · apply app.environmentStep_cases current.execution next.execution command moved
+          (predicate := fun _ after => current.execution.network.ledger ⊆ after.network.ledger)
+        · exact List.Subset.refl _
+        · intros; exact List.Subset.refl _
+        · intro id
+          change current.execution.network.ledger ⊆
+            (current.execution.includePending app id).network.ledger
+          rw [app.includePending_network]
+          cases found : current.execution.network.lookup id with
+          | none =>
+              simp only [MessageNetwork.includePending, found]
+              exact List.Subset.refl _
+          | some message =>
+              simp only [MessageNetwork.includePending, found]
+              exact List.subset_append_left _ _
+        · intros; exact List.Subset.refl _
 
-variable (setup runtime) in
-/-- **Completions by their owners.** Every completed event with an actor was
-completed by a packet of that actor on the ledger, or is publicly failed. -/
-def CompletedByOwner (control : (application setup runtime leaks).Control) : Prop :=
-  ∀ event ∈ control.execution.application.config.cut.completed, ∀ actor,
-    (graph setup).actor? event = some actor →
-      (∃ message ∈ control.execution.network.ledger, message.sender = actor ∧
-        message.payload.call.event? (graph setup) = some event) ∨
-      PublicEventFailure setup runtime actor event control
-
-/-- **Completions by their owners along every history.** -/
-theorem completedByOwner_of_trace : ∀ {state}
+private theorem completed_packet_or_defaulted : ∀ {state}
     (_ : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
     (control : (application setup runtime leaks).Control), state = some control →
-    CompletedByOwner setup runtime control
+    ∀ event ∈ control.execution.application.config.cut.completed, ∀ actor,
+      (graph setup).actor? event = some actor →
+      (∃ message ∈ control.execution.network.ledger, message.sender = actor ∧
+        message.payload.call.event? (graph setup) = some event) ∨
+      actor ∈ control.execution.application.config.defaulted
   | _, .start, _, current => by cases current
   | _, .extend (source := before) prior joint _ realized, control, current => by
-      have recursive := fun next same => completedByOwner_of_trace prior next
-        same
+      have recursive := fun next same => completed_packet_or_defaulted prior next same
       subst current
-      change some control ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
-        scheduler before joint).support at realized
+      change some control ∈ ((application setup runtime leaks).transition (initialLaw setup)
+        horizon scheduler before joint).support at realized
       cases before with
       | none =>
           change some control ∈ ((initialLaw setup).map fun state => some
@@ -145,73 +136,66 @@ theorem completedByOwner_of_trace : ∀ {state}
           obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realized
           cases Option.some.inj same
           obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
-          have ordered := (SourceResidual.initial setup (failureProfile setup.program)
-            initial).checkpoint.ordered
           intro event completed
-          exact absurd ((ordered.2 event).mp completed) (Nat.not_lt_zero _)
+          exact (Finset.notMem_empty event completed).elim
       | some current =>
-          have earlier := recursive current rfl
           intro event completed actor acts
-          by_cases before_ : event ∈ current.execution.application.config.cut.completed
-          · rcases earlier event before_ actor acts with ⟨message, onLedger, sender, named⟩ |
-                failure
-            · exact Or.inl ⟨message, ledger_transition (runtime := runtime) joint realized message
-                onLedger, sender,
-                named⟩
-            · exact Or.inr (publicEventFailure_transition (runtime := runtime) prior joint
-                realized failure)
-          · rcases transition_configStep (initialLaw setup) horizon scheduler
-              current control
-                joint realized with same | ⟨completedEvent, ready, action, member⟩
-            · rw [same] at completed
-              exact (before_ completed).elim
-            · have which : event = completedEvent := by
-                rw [current.execution.application.config.step_cut completedEvent ready action _
-                  member, EventOrder.Cut.mem_complete] at completed
-                exact completed.resolve_right before_
-              subst which
-              have idle : current.actor = none := by
-                cases acting : current.actor with
-                | none => rfl
-                | some responder =>
-                    exfalso
-                    rw [transition_respond (runtime := runtime) current acting joint,
-                      PMF.mem_support_pure_iff]
-                      at realized
-                    cases Option.some.inj realized
-                    exact config_ne_of_step member
-                      (runtime.reactive_respond_application leaks current.execution
-                        responder _).1
-              rcases transition_idle_cases (runtime := runtime) (initialLaw setup) horizon
-                scheduler current idle
-                  joint realized with sameExecution | ⟨command, moved⟩
-              · exact (config_ne_of_step member (by rw [sameExecution])).elim
-              rcases completion_cases (runtime := runtime) current.execution control.execution
-                command moved ready
-                  action member acts with
-                ⟨message, onLedger, sender, named, _⟩ | ⟨tables, failing⟩
-              · exact Or.inl ⟨message, onLedger, sender, named⟩
-              · right
-                refine ⟨completed, ?_, fun payload layout point decoded => ?_⟩
-                · have vacant : current.execution.application.accepted (.inr event) = none := by
-                    by_contra present
-                    exact ready.1 (accepted_completed (runtime := runtime) leaks prior current rfl
-                      event present)
-                  rw [tables]
-                  exact vacant
-                · obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime)
-                    (failureProfile setup.program) (bounds.onePacketMenu runtime leaks)
-                    horizon scheduler prior current rfl
-                  obtain ⟨before, target, decodedCurrent, decodedNext, reached⟩ :=
-                    decodedPoint_step residual event ready action _ member
-                  rw [decodedNext, Option.some.injEq] at decoded
-                  subst decoded
-                  have owned : eventOwner? setup.program ⟨event.val, event.isLt⟩ = some actor := by
-                    rw [eventOwner?_eq_actor]
-                    exact acts
-                  exact ProtocolState.revealFailed_of_decode_failing setup.program event.val _ _ _
-                    _ _ _ before event.isLt actor payload _ target
-                    (decodedPoint_decode ready decodedCurrent) owned layout failing reached
+          by_cases earlier : event ∈ current.execution.application.config.cut.completed
+          · rcases recursive current rfl event earlier actor acts with
+                ⟨message, onLedger, sender, named⟩ | inactive
+            · exact Or.inl ⟨message, ledger_transition joint realized message onLedger,
+                sender, named⟩
+            · exact Or.inr (runtime.reactive_protocol_defaulted_mono leaks (initialLaw setup)
+                horizon scheduler current control joint realized inactive)
+          · have idle : current.actor = none := by
+              cases acting : current.actor with
+              | none => rfl
+              | some responder =>
+                  exfalso
+                  rw [transition_respond (runtime := runtime) current acting joint,
+                    PMF.mem_support_pure_iff] at realized
+                  cases Option.some.inj realized
+                  apply earlier
+                  simpa only [(runtime.reactive_respond_application leaks current.execution
+                    responder _).1] using completed
+            rcases transition_idle_cases (runtime := runtime) (initialLaw setup) horizon
+              scheduler current idle joint realized with sameExecution | ⟨command, moved⟩
+            · rw [sameExecution] at completed
+              exact (earlier completed).elim
+            obtain ⟨record, present, eventEq⟩ :=
+              List.mem_map.mp ((control.execution.application.config.history_exact event).mpr
+                completed)
+            have fresh : record ∉ current.execution.application.config.history := by
+              intro old
+              apply earlier
+              rw [← eventEq]
+              exact (current.execution.application.config.history_exact record.event).mp
+                (List.mem_map_of_mem (f := EventCompletion.event) old)
+            subst event
+            rcases owned_completion_cases current.execution control.execution command moved
+                record fresh present acts with accepted | expired | automatic
+            · obtain ⟨accepted⟩ := accepted
+              exact Or.inl ⟨accepted.message, accepted.ledger, accepted.sender, accepted.named⟩
+            · obtain ⟨commandEq, entered, activated, due, _action, _value, _expired, _recorded⟩ :=
+                expired
+              right
+              have rawPrior := (bounds.onePacketMenu runtime leaks).toRawTrace
+                (initialLaw setup) horizon scheduler prior
+              have idleTrace : ((application setup runtime leaks).protocol (initialLaw setup)
+                  horizon scheduler).Trace
+                    (some ⟨current.remaining, none, current.execution⟩) := by
+                rcases current with ⟨remaining, actor, execution⟩
+                change actor = none at idle
+                cases idle
+                exact rawPrior
+              rw [commandEq] at moved
+              exact expired_owner_defaulted idleTrace record.event actor acts earlier completed
+                entered activated due moved
+            · obtain ⟨native, drained, _, _, _, _, inactive⟩ := automatic
+              right
+              rw [← drained, State.drain_defaulted]
+              exact inactive
+
 
 /-- A one-packet submission names the event at its sender's turn, or a completed
 event of the sender for which the sender has no packet on the ledger. -/
@@ -287,26 +271,17 @@ private theorem submission_atTurn_or_unsent {remaining : Nat} {who : Player}
     exact setup.eventGraph.sequentialize_ready_unique _
       ((execution.application.publicView_eventReady other).mp otherReady) ready
 
-variable (setup runtime) in
-/-- **Submissions at turns.** Every submission recalled by a player names the
-event at that player's turn when it was made, or an event of the player that is
-publicly failed. -/
-def SubmissionsAtTurnOrFailed (control : (application setup runtime leaks).Control) : Prop :=
-  ∀ player, ∀ entry ∈ control.execution.recall player, ∀ event,
-    runtime.submittedEvent? leaks entry.action = some event →
-      entry.beforeView.application.publicView.ownTurn? player = some event ∨
-        ((graph setup).actor? event = some player ∧
-          PublicEventFailure setup runtime player event control)
 
-/-- **Submissions are at turns along every history**, or name a publicly
-failed event of their sender. -/
-theorem submissionsAtTurnOrFailed_of_trace : ∀ {state}
+private theorem submissions_at_turn_or_defaulted : ∀ {state}
     (_ : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
     (control : (application setup runtime leaks).Control), state = some control →
-    SubmissionsAtTurnOrFailed setup runtime control
+    ∀ player, ∀ entry ∈ control.execution.recall player, ∀ event,
+      runtime.submittedEvent? leaks entry.action = some event →
+        entry.beforeView.application.publicView.ownTurn? player = some event ∨
+          player ∈ control.execution.application.config.defaulted
   | _, .start, _, current => by cases current
   | _, .extend (source := before) prior joint legal realized, control, current => by
-      have recursive := fun next same => submissionsAtTurnOrFailed_of_trace
+      have recursive := fun next same => submissions_at_turn_or_defaulted
         prior next same
       subst current
       have realizedRaw : some control ∈ ((application setup runtime leaks).transition (initialLaw
@@ -323,12 +298,12 @@ theorem submissionsAtTurnOrFailed_of_trace : ∀ {state}
           exact fun _ _ member => (List.not_mem_nil member).elim
       | some current =>
           have earlier := recursive current rfl
-          have persist : ∀ player event, ((graph setup).actor? event = some player ∧
-              PublicEventFailure setup runtime player event current) →
-              ((graph setup).actor? event = some player ∧
-                PublicEventFailure setup runtime player event control) :=
-            fun _ _ failure => ⟨failure.1,
-              publicEventFailure_transition (runtime := runtime) prior joint realizedRaw failure.2⟩
+          have persist (player : Player) :
+              player ∈ current.execution.application.config.defaulted →
+                player ∈ control.execution.application.config.defaulted := by
+            intro inactive
+            exact runtime.reactive_protocol_defaulted_mono leaks (initialLaw setup) horizon
+              scheduler current control joint realizedRaw inactive
           have rawPrior := (bounds.onePacketMenu runtime leaks).toRawTrace
             (initialLaw setup) horizon scheduler prior
           rcases current with ⟨remaining, acting, execution⟩
@@ -365,29 +340,28 @@ theorem submissionsAtTurnOrFailed_of_trace : ∀ {state}
                   · rename_i same
                     subst same
                     rcases List.mem_append.mp entryMember with old | new
-                    · exact (earlier player entry old event submitted).imp id (persist _ _)
+                    · exact (earlier player entry old event submitted).imp id (persist player)
                     · cases List.mem_singleton.mp new
                       rcases submission_atTurn_or_unsent (runtime := runtime) rawPrior action
                         chosen event submitted with
                         turn | ⟨completed, owned, unsent⟩
                       · exact Or.inl turn
-                      · refine Or.inr (persist _ _ ⟨owned, ?_⟩)
-                        rcases completedByOwner_of_trace (runtime := runtime) prior _ rfl event
-                          completed player owned
-                          with ⟨message, onLedger, messageSender, messageNamed⟩ | failure
+                      · rcases completed_packet_or_defaulted (runtime := runtime) prior _ rfl
+                            event completed player owned with
+                            ⟨message, onLedger, messageSender, messageNamed⟩ | inactive
                         · exact (unsent message onLedger messageSender messageNamed).elim
-                        · exact failure
-                  · exact (earlier player entry entryMember event submitted).imp id (persist _ _)
+                        · exact Or.inr (persist player inactive)
+                  · exact (earlier player entry entryMember event submitted).imp id (persist player)
           | none =>
               intro player entry entryMember event submitted
               rcases transition_idle_cases (runtime := runtime) (initialLaw setup) horizon scheduler
                   ⟨remaining, none, execution⟩ rfl joint realizedRaw with same | ⟨command, moved⟩
               · rw [same] at entryMember
-                exact (earlier player entry entryMember event submitted).imp id (persist _ _)
+                exact (earlier player entry entryMember event submitted).imp id (persist player)
               · rw [(application setup runtime leaks).environmentStep_recall execution _ command
                   moved]
                   at entryMember
-                exact (earlier player entry entryMember event submitted).imp id (persist _ _)
+                exact (earlier player entry entryMember event submitted).imp id (persist player)
 
 private theorem control_of_infoOf {who : Player}
     {past : List (application setup runtime leaks).PlayerEntry}
@@ -407,6 +381,7 @@ private theorem control_of_infoOf {who : Player}
       · simp only [ReactiveApplication.observe, active, ↓reduceIte] at seen
         exact ⟨control, rfl, (Prod.mk.inj (Option.some.inj seen)).2⟩
       · simp [ReactiveApplication.observe, active] at seen
+
 
 /-- **No other player's off-turn packet at a forced site.** At a forced
 decision input of `who`, along every history of the input, every submission of
@@ -439,10 +414,7 @@ theorem submittedAtTurn_of_forcedSite {who : Player}
   obtain ⟨witnessState, witnessTrace⟩ := witness
   change witnessState = some witnessControl at witnessStateEq
   subst witnessStateEq
-  have witnessRecord := publicRecord_of_forced (runtime := runtime) who witnessTrace
-    witnessControl rfl witnessForced
-  obtain ⟨witnessPoint, witnessDecoded, witnessForcedPoint⟩ :=
-    (forcedState_iff_decodedPoint (runtime := runtime) witnessControl).mp witnessForced
+  have witnessRecord := publicRecord_of_forced (runtime := runtime) who witnessControl witnessForced
   have sameView : control.execution.observe (application setup runtime leaks) who =
       witnessControl.execution.observe (application setup runtime leaks) who :=
     viewEq.trans witnessViewEq.symm
@@ -450,48 +422,14 @@ theorem submittedAtTurn_of_forcedSite {who : Player}
       witnessControl.execution.application.publicView :=
     congrArg (fun observed : (application setup runtime leaks).PlayerView =>
       observed.application.publicView) sameView
-  have sameAccepted : control.execution.application.accepted =
-      witnessControl.execution.application.accepted :=
-    congrArg PublicView.accepted samePublic
-  have sameOrder : control.execution.application.config.history.map EventGraph.Completion.event =
-      witnessControl.execution.application.config.history.map EventGraph.Completion.event :=
-    congrArg (fun publicView : PublicView (graph setup) =>
-      publicView.observation.completionOrder) samePublic
-  have sameSource := (sourceViewOf_eq_decodedPoint (runtime := runtime) who trace).symm.trans
-    ((congrArg (sourceViewOf setup runtime leaks who) sameView).trans
-      (sourceViewOf_eq_decodedPoint (runtime := runtime) who witnessTrace))
+  have sameDefaults : control.execution.application.config.defaulted =
+      witnessControl.execution.application.config.defaulted :=
+    congrArg (fun publicView : PublicView (graph setup) => publicView.observation.defaulted)
+      samePublic
   intro entry entryMember event submitted
-  rcases submissionsAtTurnOrFailed_of_trace (runtime := runtime) trace control rfl player entry
-    entryMember event
-      submitted with turn | ⟨acts, completed, vacant, failed⟩
+  rcases submissions_at_turn_or_defaulted trace control rfl player entry entryMember event
+      submitted with turn | inactive
   · exact turn
-  exfalso
-  cases nodeView_eq : nodeView (graph setup) event with
-  | bind owner payload outputEq codeEq =>
-      have sameOwner : owner = player :=
-        Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans acts)
-      subst sameOwner
-      have witnessCompleted : event ∈ witnessControl.execution.application.config.cut.completed :=
-        (witnessControl.execution.application.config.history_exact event).mp (by
-          rw [← sameOrder]
-          exact (control.execution.application.config.history_exact event).mpr completed)
-      apply witnessRecord.1 event owner payload outputEq other witnessCompleted
-      rw [← sameAccepted]
-      exact vacant
-  | resolve owner payload binding checks outputEq codeEq =>
-      obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
-        setup.program)
-        (bounds.onePacketMenu runtime leaks) horizon scheduler trace control rfl
-      have decoded := decodedPoint_eq residual
-      have revealed := failed payload outputEq _ decoded
-      rw [decoded, witnessDecoded] at sameSource
-      have observed := Option.some.inj sameSource
-      exact (witnessForcedPoint.2 player other).1
-        (ProtocolState.RevealFailed.excluded setup.program _
-          ((ProtocolState.revealFailed_iff_of_observe_eq player who setup.program _ _
-            observed).mp revealed))
-  | sample _ _ outputEq codeEq =>
-      rw [nodeView_sample_actor outputEq codeEq] at acts
-      cases acts
+  · exact (witnessRecord player other (sameDefaults ▸ inactive)).elim
 
 end Vegas
