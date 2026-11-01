@@ -32,7 +32,9 @@ private theorem apply_eq_one_of_subsingleton {α : Type} [Subsingleton α]
   rw [← law.tsum_coe, tsum_eq_single choice (fun other different =>
     (different (Subsingleton.elim other choice)).elim)]
 
-private theorem clearInput_of_intended (history : (NP).History)
+/-- An actual intended endpoint gives a default-free observation whenever the
+player receives an input. -/
+theorem clearInput_of_intended (history : (NP).History)
     {control : (application setup runtime leaks).Control}
     (current : history.state = some control) {point : ProtocolState setup.program}
     (decoded : decodedPoint setup control.execution.application.config = some point)

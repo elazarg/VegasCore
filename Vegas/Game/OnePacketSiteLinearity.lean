@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateDecomposition
+import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 
 /-! # Play until a stopping set stays in the start's cone
 
@@ -12,10 +12,8 @@ noncomputable section
 
 namespace Vegas
 
-open SourceProgram
-
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-  GameTheory.Protocol.InformationModel GameTheory.Math.Probability Interaction EventGraphRuntime
+  GameTheory.Protocol.InformationModel GameTheory.Math.Probability
 
 section Reach
 
@@ -50,21 +48,5 @@ theorem historyReaches_of_mem_runBehavioralUntil (certificate : E.WellFoundedHis
 
 end Reach
 
-variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
-  [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
-  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-    scheduler).InfoState who)]
-  {Parameter : Type} (parameter : State L setup.context → Parameter)
-  (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-  (excludedPayoff : Player → ℝ)
-
-local notation "onePacketN" =>
-  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 
 end Vegas

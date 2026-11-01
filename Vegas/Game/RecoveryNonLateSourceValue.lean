@@ -168,7 +168,7 @@ theorem nativeComparison_local_phase_value_sub_le_of_boundary_values [Fintype (R
     rintro ⟨_, impossible⟩
     cases impossible
   have active : (NP).active history.state who := by rw [current]; rfl
-  have splitLaw := debtStopped_eq_bind_eventPhase (runtime := runtime) certificate installed who
+  have splitLaw := OnePacketComparison.debtStopped_eq_bind_eventPhase (runtime := runtime) certificate installed who
     history _ current
     ordered point decoded intended
   have pointwise : ∀ final ∈ phaseLaw.support,
@@ -212,7 +212,7 @@ theorem nativeComparison_local_phase_value_sub_le_of_boundary_values [Fintype (R
             terminalCompletes) certificate
             installed history current ordered event
             ready final member decodedState targetIntended
-        have after := runUntil_after_localLaw_eq certificate
+        have after := OnePacketComparison.runUntil_after_localLaw_eq certificate
           ((bounds.onePacketMenu runtime leaks).decisionRecall (initialLaw setup) horizon
             (NativeScheduler)).actsOnceWhereItMatters common who info law phase stopped history
           observed active running going final member

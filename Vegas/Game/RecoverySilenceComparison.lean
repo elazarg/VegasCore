@@ -2,7 +2,7 @@
 
 import Vegas.Game.RecoveryLocalCompletionValue
 import Vegas.Game.RecoveryPhaseValueBlind
-import Vegas.Game.RecoveryFirstActivationValue
+import Vegas.Game.OnePacketFirstActivationValue
 import Vegas.Game.OnePacketValueTransport
 
 /-! # A single source deviation for all histories of a nonlate commitment -/
@@ -219,7 +219,7 @@ theorem nativeComparison_silence_history_comparison_of_counted_service [Fintype 
     funext control
     simp only [siteFresh, pending]
   rw [← freshEq, ← phaseEq] at tail
-  have baseline := nativeComparison_firstActivation_value_lower_of_counted_service setup runtime
+  have baseline := OnePacketComparison.assembled_firstActivation_value_lower setup runtime
     leaks bounds horizon
     scheduler wellFormed covers capacity sequence scale positive le_one weights n opportunity
     inclusion timely completes certificate history.1 current clear event pendingHere never ordered

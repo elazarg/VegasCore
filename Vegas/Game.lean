@@ -310,7 +310,7 @@ import Vegas.Game.RecoveryEventPhaseLaw
 import Vegas.Game.NativeExitContinuation
 import Vegas.Game.RecoveryFiniteStoppedValue
 import Vegas.Game.RecoveryFirstActivation
-import Vegas.Game.RecoveryFirstActivationValue
+import Vegas.Game.OnePacketFirstActivationValue
 import Vegas.Game.RecoveryForeignActivation
 import Vegas.Game.RecoveryForeignExitBound
 import Vegas.Game.RecoveryForeignExitBounds

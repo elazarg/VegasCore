@@ -46,23 +46,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
 local notation "onePacketN" =>
   onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 
-/-- **The source step keeps the continuation value.** The expected source
-continuation value of a profile after one step of its own behavioral step law
-is the continuation value before it. -/
-theorem expect_sourcePointValue_behavioralStateStep (profile : BehavioralProfile setup.program)
-    (who : Player) {bound : ℝ}
-    (readoutBounded : ∀ readout, |exclusionReadoutUtility setup parameter utility excludedPayoff
-      readout who| ≤ bound)
-    (point : ProtocolState setup.program) :
-    expect (ProtocolState.behavioralStateStep setup.program profile point)
-        (sourcePointValue setup parameter utility excludedPayoff profile who) =
-      sourcePointValue setup parameter utility excludedPayoff profile who point := by
-  unfold sourcePointValue
-  simp only [expect_map]
-  rw [← expect_bind_tower_bounded _ _ ((fun readout => exclusionReadoutUtility setup
-    parameter utility excludedPayoff readout who) ∘ some) (fun terminal => readoutBounded
-      (some terminal)), ProtocolState.behavioralStateStep_continuation]
-
 /-- **The completion-point law.** From a history, under play of `installed`
 until the event of rank `rank` completes, the law of the completion point,
 as a sub-probability law on source points, is `success` times stepLaw up to

@@ -230,7 +230,7 @@ theorem unintendedCommitment_stopped_value
       exact readoutBounded _
   have valueEq : expect ((N).runBehavioralUntil certificate installed stopped history.1) payoff =
       excludedPayoff who := by
-    rw [debtStopped_eq_bind_eventPhase (runtime := runtime) certificate installed who history.1 _
+    rw [OnePacketComparison.debtStopped_eq_bind_eventPhase (runtime := runtime) certificate installed who history.1 _
       current ordered point
       decoded intended, expect_bind_tower_bounded _ _ _ payoffBounded]
     have constant : ∀ final ∈ ((N).runBehavioralUntil certificate installed

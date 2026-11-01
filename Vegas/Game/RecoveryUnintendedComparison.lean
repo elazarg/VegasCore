@@ -2,7 +2,7 @@
 
 import Vegas.Game.RecoveryLateSourcePhase
 import Vegas.Game.RecoveryEventPhaseLaw
-import Vegas.Game.RecoveryFirstActivationValue
+import Vegas.Game.OnePacketFirstActivationValue
 import Vegas.Game.OnePacketValueTransport
 
 /-! # Unintended nonlate commitments have exclusion value -/
@@ -267,7 +267,7 @@ theorem nativeComparison_unintendedCommitment_history_comparison_of_counted_serv
       exact readoutBounded _
   have valueEq : expect ((N).runBehavioralUntil certificate installed stopped history.1) payoff =
       excludedPayoff who := by
-    rw [debtStopped_eq_bind_eventPhase (runtime := runtime) certificate installed who history.1 _
+    rw [OnePacketComparison.debtStopped_eq_bind_eventPhase (runtime := runtime) certificate installed who history.1 _
       current ordered point
       decoded intended, expect_bind_tower_bounded _ _ _ payoffBounded]
     have constant : ∀ final ∈ ((N).runBehavioralUntil certificate installed
@@ -286,7 +286,7 @@ theorem nativeComparison_unintendedCommitment_history_comparison_of_counted_serv
     (setup.intendedOpeningProfile (sequence n).strategy) who upper le_upper
     (fun target reachable => excludedPayoff_le_of_reached setup parameter utility excludedPayoff
       wellFormed below (sequence n).strategy target reachable who) point reached).1
-  have baseline := nativeComparison_firstActivation_value_lower_of_counted_service setup runtime
+  have baseline := OnePacketComparison.assembled_firstActivation_value_lower setup runtime
     leaks bounds horizon
     scheduler wellFormed covers capacity sequence scale positive le_one weights n opportunity
     inclusion timely completes certificate history.1 current clear event (by rwa [← actualAt])

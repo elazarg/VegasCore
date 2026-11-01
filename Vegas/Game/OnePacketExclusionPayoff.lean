@@ -3,7 +3,9 @@
 import Vegas.Game.IntendedPreservation
 import Vegas.Game.RevealServicePayoffs
 import Vegas.Game.SourceTerminalReadout
+import Vegas.Game.SourceStateKernel
 import Interaction.ReactiveNormalHistory
+import GameTheory.Math.Probability.ExpectationComposition
 
 /-! # The exclusion payoff on the supplied runtime
 
@@ -65,6 +67,24 @@ def sourcePointValue (profile : BehavioralProfile setup.program) (who : Player)
     (point : ProtocolState setup.program) : ℝ :=
   expect ((ProtocolState.continuationLaw setup.program profile point).map some)
     (fun readout => exclusionReadoutUtility setup parameter utility excludedPayoff readout who)
+
+variable [Fintype Player] in
+/-- **The source step keeps the continuation value.** The expected source
+continuation value of a profile after one step of its own behavioral step law
+is the continuation value before it. -/
+theorem expect_sourcePointValue_behavioralStateStep (profile : BehavioralProfile setup.program)
+    (who : Player) {bound : ℝ}
+    (readoutBounded : ∀ readout, |exclusionReadoutUtility setup parameter utility excludedPayoff
+      readout who| ≤ bound)
+    (point : ProtocolState setup.program) :
+    expect (ProtocolState.behavioralStateStep setup.program profile point)
+        (sourcePointValue setup parameter utility excludedPayoff profile who) =
+      sourcePointValue setup parameter utility excludedPayoff profile who point := by
+  unfold sourcePointValue
+  simp only [expect_map]
+  rw [← expect_bind_tower_bounded _ _ ((fun readout => exclusionReadoutUtility setup
+    parameter utility excludedPayoff readout who) ∘ some) (fun terminal => readoutBounded
+      (some terminal)), ProtocolState.behavioralStateStep_continuation]
 
 /-- An intended history's full source configuration and fixed-exit payoff. -/
 def intendedReadoutExclusion (final : setup.intendedProtocol.History) :

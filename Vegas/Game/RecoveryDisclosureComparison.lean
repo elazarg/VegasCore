@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryFirstActivationValue
+import Vegas.Game.OnePacketFirstActivationValue
 import Vegas.Game.RecoveryPhasePotential
 import Vegas.Game.RecoveryLocalCompletionValue
 
@@ -206,7 +206,7 @@ theorem nativeComparison_firstActivation_disclosure_gain_le_of_counted_service [
     apply expect_nonneg
     intro final _
     split <;> norm_num
-  have baseline := nativeComparison_firstActivation_value_lower_of_counted_service setup runtime
+  have baseline := OnePacketComparison.assembled_firstActivation_value_lower setup runtime
     leaks bounds horizon
     scheduler wellFormed covers capacity sequence scale positive le_one weights n opportunity
     inclusion timely completes certificate history.1 current clear event pendingHere never ordered

@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.RecoveryNonLateSourceValue
-import Vegas.Game.RecoveryFirstActivationValue
+import Vegas.Game.OnePacketFirstActivationValue
 import Vegas.Game.RecoveryCompletionPotential
 import Vegas.Game.IntendedChoiceReach
 import Vegas.Game.RecoveryLateSourcePhase
@@ -284,7 +284,7 @@ theorem nativeComparison_firstActivation_commitment_gain_le_of_counted_service [
         (sourcePointValue setup parameter utility excludedPayoff profile who) := by
     rw [physical]
     nlinarith [mul_nonneg probabilityNonneg (sub_nonneg.mpr choiceLower)]
-  have baseline := nativeComparison_firstActivation_value_lower_of_counted_service setup runtime
+  have baseline := OnePacketComparison.assembled_firstActivation_value_lower setup runtime
     leaks bounds horizon
     scheduler wellFormed covers capacity sequence scale positive le_one weights n opportunity
     inclusion timely completes certificate history.1 current clear event pendingHere never ordered
