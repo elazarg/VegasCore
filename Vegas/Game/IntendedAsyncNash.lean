@@ -16,7 +16,7 @@ bounded by a source deviation, the turn-counted clients of every source profile
 extending an `ε`-Nash equilibrium of the intended game are an
 `(ε + 2 * δ * R)`-Nash equilibrium of every admitting response menu, and their
 joint law of typed outcome and realized settlement is within `δ` of the
-intended joint law of terminal store and payoff.
+intended joint law of typed cells, public default history and payoff.
 -/
 
 noncomputable section
@@ -48,7 +48,9 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
     (wellFormed : service.setup.WellFormed)
     (parameter : State L service.setup.context → Parameter)
     (utility : Parameter × PublicOutcome service.setup.program → Player → ℝ)
-    (forfeit : ℝ) (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
+    (forfeit : ℝ)
+    (range : service.setup.TerminalPayoffSpread (CommitmentInterface.values
+      service.setup.program) parameter utility forfeit)
     (sample : List (SettledEvidence service.setup service.mode) →
       PMF (List (SettledEvidence service.setup service.mode)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
@@ -64,14 +66,8 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
           (normalizeDisclosureProfile service.setup.program (service.setup.decodeBehavioralProfile
             (CommitmentInterface.values service.setup.program) source)) who))
     (low : Player → ℝ) (spread : ℝ)
-    (within : ∀ who (output : Option (State L service.setup.program.terminalCtx))
-      (charged : Bool),
-      low who ≤ output.elim 0 (fun state => forfeitUtility service.setup.program forfeit utility
-          (service.setup.parameterOutcome parameter state) who) -
-            (if charged then deposit who else 0) ∧
-        output.elim 0 (fun state => forfeitUtility service.setup.program forfeit utility
-          (service.setup.parameterOutcome parameter state) who) -
-            (if charged then deposit who else 0) ≤ low who + spread)
+    (within : service.SettlementRange parameter
+      (forfeitUtility service.setup.program forfeit utility) sample deposit low (fun _ => spread))
     (intended : Profile service.setup.intendedModel.behavioralSignature)
     (source : Profile (service.sourceModel (CommitmentInterface.values
       service.setup.program)).behavioralSignature)
@@ -128,36 +124,31 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
             service.setup.program) menu timing source)
             (2 * service.horizon + 1)).bind (fun final =>
               (settle final.state).map fun payoffs =>
-                (serviceSourceReadout service.setup service.mode service.deadline service.leaks
-                  final.state, payoffs)))
+                (
+                  (serviceSourceReadout service.setup service.mode service.deadline service.leaks
+                    final.state).map (fun config => (config.state, config.defaults)), payoffs)))
         ((service.setup.intendedModel.runBehavioral intended
             (instructionCount service.setup.program + 1)).map
-          (fun final => (service.setup.protocolReadout final.state,
+          (fun final => ((service.setup.protocolReadout final.state).map
+              (fun config => (config.state, config.defaults)),
             fun who => (service.setup.protocolReadout final.state).elim 0
               (fun state => utility (service.setup.parameterOutcome parameter state) who)))) := by
   intro forfeited base payoff settle clients firstTurn
-  have supportedRange : service.setup.TerminalPayoffSpread
-      (CommitmentInterface.values service.setup.program) parameter utility forfeit := by
-    intro high low highTerminal lowTerminal who
-    obtain ⟨highFinal, highRead⟩ := service.setup.exists_protocolReadout_of_terminal
-      (CommitmentInterface.values service.setup.program) highTerminal
-    obtain ⟨lowFinal, lowRead⟩ := service.setup.exists_protocolReadout_of_terminal
-      (CommitmentInterface.values service.setup.program) lowTerminal
-    rw [highRead, lowRead]
-    exact range _ _ who
   obtain ⟨sourceNash, _, sourceLaw⟩ := service.setup.intended_forfeit_isεNash_preserved
     (sourceService_finiteBindingTypes service.setup service.bounds service.values)
-    wellFormed parameter utility forfeit supportedRange intended source agrees ε equilibrium
+    wellFormed parameter utility forfeit range intended source agrees ε equilibrium
   refine ⟨(isεNash_iff_εBestResponse _ _).mpr
     (service.isεBestResponse_clientProfile_of_firstTurn_bounds (CommitmentInterface.values
       service.setup.program) parameter forfeited sample authentic deposit menu timing covered low
       (fun _ => spread) within ε source terminal firstTurn sourceNash), ?_⟩
   let decoded := service.setup.decodeBehavioralProfile
     (CommitmentInterface.values service.setup.program) source
-  let stateUtility := fun state : State L service.setup.program.terminalCtx =>
-    forfeited (service.setup.parameterOutcome parameter state)
+  let pairUtility := fun result : State L service.setup.program.terminalCtx ×
+      DefaultHistory Player =>
+    forfeited (parameter (initialState service.setup.program result.1),
+      ⟨sourcePublicEnv result.1, result.2⟩)
   have close := sourceServiceClients_clientPolicy_settlement_lawError service.contract
-    timing decoded terminal menu (covered source) sample authentic stateUtility
+    timing decoded terminal menu (covered source) sample authentic pairUtility
     deposit
   have readoutLaw : ((service.sourceModel (CommitmentInterface.values
     service.setup.program)).runBehavioral source
@@ -169,21 +160,24 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
       (service.setup.executionProtocol
         (CommitmentInterface.values service.setup.program)).initHistory
       (Nat.le_refl _)
-  have sourceJoint : (service.setup.run decoded).map (fun state => (some state,
-      stateUtility state)) =
+  have sourceJoint : (service.setup.run decoded).map (fun config =>
+      (some (config.state, config.defaults), pairUtility (config.state, config.defaults))) =
       ((service.sourceModel (CommitmentInterface.values service.setup.program)).runBehavioral
         source (instructionCount service.setup.program + 1)).map
-        (fun final => (service.setup.protocolReadout final.state,
+        (fun final => ((service.setup.protocolReadout final.state).map
+          (fun config => (config.state, config.defaults)),
           fun who => (service.setup.protocolReadout final.state).elim 0
-            (fun state => forfeited (service.setup.parameterOutcome parameter state) who))) := by
+            (fun config => forfeited (service.setup.parameterOutcome parameter config) who))) := by
     have mapped := congrArg (PMF.map fun output :
-        Option (State L service.setup.program.terminalCtx) =>
-      (output, fun who => output.elim 0
-        (fun state => forfeited (service.setup.parameterOutcome parameter state) who)))
-      readoutLaw
-    simp only [PMF.map_comp] at mapped
-    exact mapped.symm
-  rw [sourceJoint, sourceLaw] at close
+        Option (Config Player L service.setup.program.terminalCtx) =>
+      (output.map (fun config => (config.state, config.defaults)), fun who => output.elim 0
+        (fun config => forfeited (service.setup.parameterOutcome parameter config) who))) readoutLaw
+    simpa only [PMF.map_comp, Function.comp_def, Option.map_some, Option.elim_some,
+      pairUtility, Setup.parameterOutcome, publicOutcome] using mapped.symm
+  have projectedLaw := congrArg (PMF.map fun outcome =>
+    (outcome.1.map (fun config => (config.state, config.defaults)), outcome.2)) sourceLaw
+  simp only [PMF.map_comp, Function.comp_def] at projectedLaw
+  rw [sourceJoint, projectedLaw] at close
   exact close
 
 end AsyncServiceSpec

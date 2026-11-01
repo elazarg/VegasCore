@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.ServiceDecisionPhase
-import Vegas.Game.SourceServiceFirstTurnBinding
 import Interaction.ReactiveMixtureRounds
 
 /-! # First-turn clients with decisions drawn in advance

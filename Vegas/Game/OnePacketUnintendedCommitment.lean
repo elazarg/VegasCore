@@ -1,9 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketProjectedDecision
+import Vegas.Game.OnePacketReplayExists
+import Vegas.Game.OnePacketSlotMasses
 import Vegas.Game.OnePacketSureFailure
-import Vegas.Game.OnePacketDisclosureResolves
-import Vegas.Game.ServiceBlockView
+import Vegas.Game.SourceServiceDecodedDebt
+import Vegas.Game.SourceServiceCompletion
+import Vegas.Compile.EventGraphStep
 import Vegas.Game.SourcePrefixPublications
 import Vegas.Game.SourceDebtObservation
 
@@ -30,104 +32,32 @@ after `count` events, stepping with the decoded action of the event of index
 `actor`'s view, leaves `actor` owing a failure. -/
 theorem owesFailure_of_decode_not_intendedAvailable {Field : Type} [DecidableEq Field]
     {layout : Field → EventGraph.EventField Player L} {Γ : SourceCtx Player L}
-    {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames) :
-    ∀ (count : Nat) (refs : ContextRefs layout Γ)
-      (registry : Registry Γ) (revelations : Revelations Γ)
-      (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
-      (store : EventGraph.Store layout) (history : History Player L)
-      (state : ProtocolState program) (bound : count < eventCount program) (actor : Player)
-      (action : EventGraph.EventField.Action (outputLayout program ⟨count, bound⟩))
-      (target : ProtocolState program),
-      decodeSourcePrefix? program refs registry revelations outputs count store history =
-          some state →
-      IntendedFor actor program state →
-      eventOwner? program ⟨count, bound⟩ = some actor →
-      target ∈ (step program state
-        (fun _ => decodeEventAction program ⟨count, bound⟩ action)).support →
-      (∀ act, decodeEventAction program ⟨count, bound⟩ action = some act →
-        act ∉ ProtocolView.intendedAvailable actor program (observe actor program state)) →
-      OwesFailure actor program target := by
-  induction program with
-  | ret _ =>
-      intro count _ _ _ _ _ _ _ bound
-      simp [eventCount] at bound
-  | sample _ fresh _ next ih =>
-      intro count refs registry revelations outputs store history state bound actor action target
-        decoded intended owned reached unintended
-      cases count with
-      | zero => cases owned
-      | succ count =>
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
-          obtain ⟨after, supported, rfl⟩ := reached
-          exact ih count _ _ _ _ store history rest (Nat.lt_of_succ_lt_succ bound) actor action
-            after read intended owned supported unintended
-  | @commit commitCtx commitNames name owner payload fresh guard next ih =>
-      intro count refs registry revelations outputs store history state bound actor action target
-        decoded intended owned reached unintended
-      cases count with
-      | zero =>
-          cases Option.some.inj owned
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨cells, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          have same := (PMF.mem_support_pure_iff _ _).mp reached
-          subst same
-          change PublicationResult (L.Val payload) at action
-          change ∀ act, some (OwnAction.commit owner name payload action) = some act → _
-            at unintended
-          change OwesFailure owner (.commit name owner fresh guard next) (Sum.inr (entry next
-            (commitSuccessor name guard ⟨cells, registry, revelations, history⟩
-              (OwnAction.binding owner name payload
-                (some (OwnAction.commit owner name payload action))))))
-          rw [OwnAction.binding_commit]
-          cases action with
-          | failure =>
-              exact Or.inr (failedBinding_entry next _ (intended.failedBinding_commit fresh guard))
-          | success value =>
-              have outside := unintended _ rfl
-              have rejected : guard.predicts (sourceObserve owner cells) value = false := by
-                cases predicted : guard.predicts (sourceObserve owner cells) value with
-                | false => rfl
-                | true =>
-                    exact (outside ⟨value, Or.inl
-                      ((mem_predictedValues_self guard _ value).mpr predicted), rfl⟩).elim
-              exact Or.inl (indebted_entry next _ (intended.indebted_commit fresh guard value
-                rejected))
-      | succ count =>
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
-          obtain ⟨after, supported, rfl⟩ := reached
-          exact ih count _ _ _ _ store history rest (Nat.lt_of_succ_lt_succ bound) actor action
-            after read intended owned supported unintended
-  | reveal published owner name fresh source unresolved next ih =>
-      intro count refs registry revelations outputs store history state bound actor action target
-        decoded intended owned reached unintended
-      cases count with
-      | zero =>
-          cases Option.some.inj owned
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨cells, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          have same := (PMF.mem_support_pure_iff _ _).mp reached
-          subst same
-          change Bool at action
-          change ∀ act, some (OwnAction.reveal owner name action) = some act → _ at unintended
-          cases action with
-          | true => exact (unintended _ rfl rfl).elim
-          | false =>
-              refine Or.inl (Or.inl ⟨rfl, ?_⟩)
-              rw [base_entry]
-              exact disclosureResult_false published source _
-      | succ count =>
-          simp only [decodeSourcePrefix?] at decoded
-          obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
-          simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
-          obtain ⟨after, supported, rfl⟩ := reached
-          rcases ih count _ _ _ _ store history rest (Nat.lt_of_succ_lt_succ bound) actor action
-            after read intended owned supported unintended with indebted | failed
-          · exact Or.inl (Or.inr indebted)
-          · exact Or.inr (Or.inr failed)
+    {openNames : Finset VarId} (program : SourceProgram Player L Γ openNames)
+    (count : Nat) (refs : ContextRefs layout Γ)
+    (registry : Registry Γ) (revelations : Revelations Γ)
+    (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
+    (store : EventGraph.Store layout) (history : History Player L)
+    (defaults : DefaultHistory Player)
+    (state : ProtocolState program) (bound : count < eventCount program) (actor : Player)
+    (action : EventGraph.EventField.Action (outputLayout program ⟨count, bound⟩))
+    (target : ProtocolState program)
+    (decoded : decodeSourcePrefix? program refs registry revelations outputs count store history
+      defaults = some state)
+    (intended : IntendedFor actor program state)
+    (owned : eventOwner? program ⟨count, bound⟩ = some actor)
+    (reached : target ∈ (step program state
+      (fun _ => decodeEventAction program ⟨count, bound⟩ action)).support)
+    (unintended : ∀ act, decodeEventAction program ⟨count, bound⟩ action = some act →
+      act ∉ ProtocolView.intendedAvailable actor program (observe actor program state)) :
+    OwesFailure actor program target := by
+  rcases intendedFor_step actor program state
+      (fun _ => decodeEventAction program ⟨count, bound⟩ action) target intended reached with
+      after | owed
+  · obtain ⟨act, actual, allowed⟩ := intendedAvailable_of_decode_intendedFor program count refs
+      registry revelations outputs store history defaults state bound actor action target decoded
+      intended owned reached after
+    exact (unintended act actual allowed).elim
+  · exact owed
 
 end Vegas.SourceProgram.ProtocolState
 
@@ -171,7 +101,7 @@ def UnintendedCommitmentInvariant (profile : BehavioralProfile setup.program) (w
           .openable ⟨payload, value⟩ →
         decodeEventAction setup.program event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm)
-            (PublicationResult.success value)) = some act →
+            (some (PublicationResult.success value))) = some act →
         act ∉ ProtocolView.intendedAvailable who setup.program
           (ProtocolState.observe who setup.program point)) ∧
       (event ∉ control.execution.application.config.cut.completed →
@@ -189,6 +119,18 @@ private theorem cast_cast_symm' {A B : Type} (same : A = B) (value : B) :
     cast same (cast same.symm value) = value := by
   subst same
   rfl
+
+omit [Fintype Player] in
+private theorem store_value_of_path {compiled : EventGraph Player L}
+    {before after : compiled.Config}
+    (path : Relation.ReflTransGen EventGraph.Config.Step before after)
+    (field : compiled.Field) (value : (compiled.layout field).Value)
+    (stored : before.store field = some value) : after.store field = some value := by
+  induction path using Relation.ReflTransGen.head_induction_on with
+  | refl => exact stored
+  | @head first middle moved _ ih =>
+      obtain ⟨event, ready, action, supported⟩ := moved
+      exact ih (first.step_store_of_some middle event ready action supported field value stored)
 
 /-- **The unintended-commitment invariant persists** under every transition of
 the one-packet game, from a configuration decoding to a point intended for
@@ -219,11 +161,9 @@ theorem unintendedCommitmentInvariant_transition (profile : BehavioralProfile se
   cases before with
   | none => exact holds.elim
   | some control =>
-      obtain ⟨⟨trace⟩, records, emitted, sender, call, fixed, unintended, pending, settled⟩ :=
-        holds
-      have afterRecords := recordsEntry_transition (runtime := runtime) who entry (initialLaw
-        setup) horizon scheduler
-        _ after joint records reached
+      obtain ⟨⟨trace⟩, records, emitted, sender, call, fixed, unintended, pending, settled⟩ := holds
+      have afterRecords := recordsEntry_transition (runtime := runtime) who entry (initialLaw setup)
+        horizon scheduler _ after joint records reached
       cases after with
       | none => exact afterRecords.elim
       | some next =>
@@ -232,127 +172,141 @@ theorem unintendedCommitmentInvariant_transition (profile : BehavioralProfile se
             .extend trace joint legal reached
           have kept := (keepsFixedCandidates_step runtime leaks).transition
             (initialLaw setup) horizon scheduler control next joint reached
-          have keptStore := (keepsStore_step runtime leaks).transition
-            (initialLaw setup) horizon scheduler control next joint reached
           have lookupEq := kept candidate fixed
           have owned : (graph setup).actor? event = some who := nodeView_bind_actor outputEq codeEq
+          have path := reactive_protocol_graph_steps runtime leaks (initialLaw setup) horizon
+            scheduler control next joint reached
           by_cases old : event ∈ control.execution.application.config.cut.completed
-          · have stillDone : event ∈ next.execution.application.config.cut.completed := by
-              rcases transition_configStep (initialLaw setup) horizon
-                scheduler control next joint
-                  reached with same | ⟨completed, ready, action, member⟩
-              · rw [same]
-                exact old
-              · rw [control.execution.application.config.step_cut completed ready action _ member,
-                  EventOrder.Cut.mem_complete]
-                exact Or.inr old
+          · have stillDone := EventGraph.Config.Step.path_completed_mono path old
             refine ⟨⟨nextTrace⟩, afterRecords, emitted, sender, call, by rw [lookupEq]; exact fixed,
               fun value act opened => unintended value act (by rw [← lookupEq]; exact opened),
               fun notDone => (notDone stillDone).elim, fun _ => ?_⟩
-            exact decodedHolds_transition (owesFailure_stepClosed who)
-              (initialLaw setup)
+            exact decodedHolds_transition (owesFailure_stepClosed who) (initialLaw setup)
               horizon scheduler (some control) (some next) joint (settled old) reached
           · have atStart := pending old
-            rcases transition_configStep (initialLaw setup) horizon scheduler
-              control next joint
-                reached with same | ⟨completed, ready, action, member⟩
-            · refine ⟨⟨nextTrace⟩, afterRecords, emitted, sender, call,
+            rcases path.cases_head with same | ⟨middle, moved, rest⟩
+            · have sameConfig := same.symm
+              refine ⟨⟨nextTrace⟩, afterRecords, emitted, sender, call,
                 by rw [lookupEq]; exact fixed,
                 fun value act opened => unintended value act (by rw [← lookupEq]; exact opened),
-                fun _ => same.trans atStart, fun done => ?_⟩
-              rw [same] at done
+                fun _ => sameConfig.trans atStart, fun done => ?_⟩
+              rw [sameConfig] at done
               exact (old done).elim
-            · have readyStart : start.cut.Ready completed := atStart ▸ ready
-              obtain ⟨rank, ordered, _⟩ := decodedPoint_isPrefix decoded
-              have eventEq : completed = event := Fin.ext
-                (((ready_iff_rank setup start rank ordered completed).mp readyStart).trans
-                  ((ready_iff_rank setup start rank ordered event).mp startReady).symm)
-              subst eventEq
-              have done : completed ∈ next.execution.application.config.cut.completed := by
-                rw [control.execution.application.config.step_cut completed ready action _ member,
+            · obtain ⟨completed, ready, action, member⟩ := moved
+              have readyEvent : control.execution.application.config.cut.Ready event :=
+                atStart.symm ▸ startReady
+              have eventEq : completed = event :=
+                setup.eventGraph.sequentialize_ready_unique _ ready readyEvent
+              subst completed
+              have middleDone : event ∈ middle.cut.completed := by
+                rw [control.execution.application.config.step_cut event ready action _ member,
                   EventOrder.Cut.mem_complete]
                 exact Or.inl rfl
+              have done := EventGraph.Config.Step.path_completed_mono rest middleDone
               refine ⟨⟨nextTrace⟩, afterRecords, emitted, sender, call,
                 by rw [lookupEq]; exact fixed,
                 fun value act opened => unintended value act (by rw [← lookupEq]; exact opened),
                 fun notDone => (notDone done).elim, fun _ => ?_⟩
-              have output := step_binding_output (outputEq := outputEq) (codeEq := codeEq) member
               have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
                   scheduler).Trace (some control) :=
                 (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
                   scheduler trace
               have nextRawTrace : ((application setup runtime leaks).protocol (initialLaw setup)
-                horizon
-                  scheduler).Trace (some next) :=
+                  horizon scheduler).Trace (some next) :=
                 (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
                   scheduler nextTrace
               have facts := legalFacts setup leaks horizon scheduler _ rawTrace
               have nextFacts := legalFacts setup leaks horizon scheduler _ nextRawTrace
-              have read : (⟨.inr completed, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
+              have active : who ∉ control.execution.application.config.defaulted :=
+                control.execution.application.active_of_ready_owned facts.quiescent ready owned
+              let choice : Option (PublicationResult (L.Val payload)) :=
+                cast (congrArg EventGraph.EventField.Action outputEq) action
+              have actionEq : action =
+                  cast (congrArg EventGraph.EventField.Action outputEq.symm) choice := by
+                simp only [choice, cast_cast, cast_eq]
+              have primaryEq : middle = control.execution.application.config.complete event ready
+                  action (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+                    (choice.getD .failure)) := by
+                have law := commit_step control.execution.application.config event ready outputEq
+                  codeEq choice
+                rw [← actionEq] at law
+                simp only [active, ite_false] at law
+                rw [law, PMF.mem_support_pure_iff] at member
+                exact member
+              have stored : middle.store (.inr event) = some
+                  (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+                    (choice.getD .failure)) := by
+                rw [primaryEq]
+                exact Function.update_self ..
+              have retained := store_value_of_path rest (.inr event) _ stored
+              have read : (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
                   (.binding who payload)).get? next.execution.application.config.store =
-                  some (cast (congrArg EventGraph.EventField.Action outputEq) action) := by
+                    some (choice.getD .failure) := by
                 simp only [EventGraph.FieldRef.get?]
-                change cast _ (next.execution.application.config.outputs completed) = _
-                rw [output, cast_some' (congrArg EventGraph.EventField.Value outputEq),
+                rw [retained, cast_some' (congrArg EventGraph.EventField.Value outputEq),
                   cast_cast_symm']
-              obtain ⟨residualRank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime)
-                profile
-                (bounds.onePacketMenu runtime leaks) horizon scheduler trace control rfl
-              obtain ⟨successor, reachedPoint⟩ := residual.step completed ready action _ member
+              obtain ⟨residualRank, ⟨residual⟩⟩ := SourceResidual.of_rawTrace profile horizon
+                scheduler rawTrace control rfl
+              obtain ⟨successor, reachedPoint⟩ := residual.step event ready action middle member
               have decodedBefore : decodedPoint setup control.execution.application.config =
                   some point := atStart ▸ decoded
-              have samePoint : residual.lift (ProtocolState.entry residual.program
-                  residual.source) = point :=
+              have samePoint : residual.lift
+                  (ProtocolState.entry residual.program residual.source) = point :=
                 Option.some.inj ((decodedPoint_eq residual).symm.trans decodedBefore)
               rw [samePoint] at reachedPoint
-              have ownedSource : eventOwner? setup.program ⟨completed.val, completed.isLt⟩ =
-                  some who := by
+              have ownedSource : eventOwner? setup.program ⟨event.val, event.isLt⟩ = some who := by
                 rw [eventOwner?_eq_actor]
                 exact owned
               have owes : ProtocolState.OwesFailure who setup.program
                   (successor.lift (ProtocolState.entry successor.program successor.source)) := by
-                cases result : (cast (congrArg EventGraph.EventField.Action outputEq) action :
-                    PublicationResult (L.Val payload)) with
+                cases result : choice.getD .failure with
                 | failure =>
-                    have actionEq : action = cast (congrArg EventGraph.EventField.Action
-                        outputEq.symm) (PublicationResult.failure :
-                          PublicationResult (L.Val payload)) := by
-                      rw [← result, cast_cast, cast_eq]
-                    have failing := decodeEventAction_failing_binding setup.program completed.val
-                      completed.isLt outputEq
+                    have failing := decodeEventAction_failing_binding setup.program event.val
+                      event.isLt outputEq choice result
                     rw [← actionEq] at failing
                     exact ProtocolState.owesFailure_of_decode_failing setup.program
-                      setup.namesNodup completed.val _ _ _ _ _ _ point completed.isLt who _ _
+                      setup.namesNodup event.val _ _ _ _ _ _ _ point event.isLt who _ _
                       (decodedPoint_decode ready decodedBefore) ownedSource failing reachedPoint
                 | success value =>
                     rw [result] at read
                     obtain ⟨installed, acceptedAt, _, meaning⟩ :=
                       nextFacts.binding.success_provenance _ value read
-                    have vacant : control.execution.application.accepted (.inr completed) =
-                        none := by
-                      cases present : control.execution.application.accepted (.inr completed) with
+                    have vacant : control.execution.application.accepted (.inr event) = none := by
+                      cases present : control.execution.application.accepted (.inr event) with
                       | none => rfl
                       | some found =>
                           exact (old (facts.binding.toAssociationInvariant.accepted_complete
-                            completed found present)).elim
+                            event found present)).elim
                     have sameCandidate := onePacket_accepted_new (runtime := runtime) bounds
-                      horizon scheduler trace
-                      records emitted sender call owned vacant joint reached installed acceptedAt
+                      horizon scheduler trace records emitted sender call owned vacant joint
+                      reached
+                      installed acceptedAt
                     subst sameCandidate
                     rw [lookupEq] at meaning
-                    have actionEq : action = cast (congrArg EventGraph.EventField.Action
-                        outputEq.symm) (PublicationResult.success value) := by
-                      rw [← result, cast_cast, cast_eq]
+                    have optionEq : choice = some (.success value) := by
+                      cases eq : choice with
+                      | none => simp only [eq, Option.getD_none] at result; cases result
+                      | some result' =>
+                          have resultEq : result' = .success value := by
+                            simpa only [eq, Option.getD_some] using result
+                          exact congrArg some resultEq
+                    have chosenAction : action =
+                        cast (congrArg EventGraph.EventField.Action outputEq.symm)
+                          (some (PublicationResult.success value)) :=
+                      actionEq.trans (congrArg _ optionEq)
                     exact ProtocolState.owesFailure_of_decode_not_intendedAvailable setup.program
-                      completed.val _ _ _ _ _ _ point completed.isLt who action _
+                      event.val _ _ _ _ _ _ _ point event.isLt who action _
                       (decodedPoint_decode ready decodedBefore) intendedFor ownedSource
                       reachedPoint fun act decodedAct => by
-                        rw [actionEq] at decodedAct
+                        rw [chosenAction] at decodedAct
                         exact unintended value act meaning decodedAct
-              refine ⟨residualRank + 1, ⟨successor⟩, fun state decodedState => ?_⟩
-              rw [successor.decode] at decodedState
-              obtain rfl := Option.some.inj decodedState
-              exact owes
+              have primaryHolds : DecodedHolds
+                  (ProtocolState.OwesFailure who setup.program) (residualRank + 1) middle := by
+                intro state decodedState
+                rw [successor.decode, Option.some.injEq] at decodedState
+                subst state
+                exact owes
+              exact successor.decodedHolds_path (owesFailure_stepClosed who) primaryHolds rest
 
 /-- **One-packet commitments are well formed.** A transmitting response of the
 one-packet menu that commits an event commits a binding event of the
