@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReactiveHiddenResponse
 import Vegas.Pending.EventPublicState
+import Vegas.Pending.EventCompletionObservation
 
 /-! # Inclusion steps that preserve a private binding repair
 
@@ -55,9 +56,10 @@ private theorem include_hidden_congr
     exact ⟨by rw [network], by rw [receipts], views, recall⟩
   have handler (state : State graph) :
       (runtime.reactiveApplication leaks).handle state ⟨id, packet⟩ =
-        handle runtime state ⟨id, packet.call⟩ :=
+        (handle runtime state ⟨id, packet.call⟩).map State.drain :=
     reactiveApplication_handle_of_tokenValid runtime leaks state ⟨id, packet⟩ valid
   simp only [handler]
+  simp only [Option.isSome_map]
   refine ⟨by rw [network], by rw [receipts, decision], ?_, recall⟩
   intro who different
   have same := handled who different
@@ -68,7 +70,7 @@ private theorem include_hidden_congr
   · exact views who different
   · cases same
   · cases same
-  · exact same
+  · exact State.drain_playerView_congr _ _ who same
 
 /-- Opaque inclusion preserves all nonowner inputs simultaneously, including
 whether the call was accepted. Hidden candidate meanings need not agree. -/

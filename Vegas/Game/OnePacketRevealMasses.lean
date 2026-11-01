@@ -1,7 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketStepGlue
-import Vegas.Game.SourcePrefixPublications
+import Vegas.Game.SourceServiceCompletion
+import Vegas.Game.OnePacketSourceTurn
+import Vegas.Game.OnePacketSlotChoiceMasses
+import Vegas.Game.OnePacketRetention
+import Vegas.Compile.EventGraphBacktranslation
 
 /-! # The as-if-honest and slot laws at a reveal
 
@@ -58,45 +62,35 @@ theorem onePacket_honest_discloses (assessment : setup.intendedModel.BehavioralA
         control.execution.observe (application setup runtime leaks) who))).support) :
     choice.bind (encodeEventAction? setup.program event) =
       some (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) := by
-  obtain ⟨rank, point, ordered, decoded⟩ :=
-    onePacket_decodes (runtime := runtime) (setup.intendedOpeningProfile assessment.strategy) trace
+  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+    horizon scheduler trace
+  obtain ⟨rank, ⟨residual⟩⟩ := SourceResidual.of_rawTrace
+    (setup.intendedOpeningProfile assessment.strategy) horizon scheduler rawTrace control rfl
+  let point := residual.lift (ProtocolState.entry residual.program residual.source)
+  have ordered := residual.checkpoint.ordered
+  have decoded : sourceServicePrefix? setup rank control.execution.application.config =
+      some point := residual.decode
+  have facts := legalFacts setup leaks horizon scheduler _ rawTrace
+  have ready := (control.execution.application.publicView_eventReady event).mp
+    (PublicView.ownTurn?_spec _ who event turn).1
+  have active := control.execution.application.active_of_ready_owned facts.quiescent ready
+    (PublicView.ownTurn?_spec _ who event turn).2
   have encodes := asIfHonestProfile_encodes (runtime := runtime) assessment who control.execution
-    rank ordered point
-    decoded _ event turn choice supported
+    rank ordered point decoded _ event turn active choice supported
   obtain ⟨action, encoded⟩ := Option.isSome_iff_exists.mp encodes
   rw [encoded]
   cases choice with
   | none => cases encoded
   | some source =>
-      have back := decodeEventAction_encodeEventAction?_eq_some setup.program event source action
-        encoded
-      obtain ⟨noFailure, noWithholding⟩ := asIfHonestProfile_success (runtime := runtime)
-        assessment who
-        control.execution rank ordered point decoded _ source supported
-      generalize hdisclose : (cast (congrArg EventGraph.EventField.Action outputEq) action :
-        Bool) = disclose
+      have noWithholding := (asIfHonestProfile_success (runtime := runtime) assessment who
+        control.execution rank ordered point decoded _ source supported).2
+      have disclose := encodeEventAction?_discloses setup.program event source noWithholding
+        action encoded payload outputEq
       have actionEq : action = cast (congrArg EventGraph.EventField.Action outputEq.symm)
-          disclose := by
-        rw [← hdisclose]
-        simp
-      cases disclose with
-      | true => rw [actionEq]
-      | false =>
-          exfalso
-          have failing : Failing (decodeEventAction setup.program event
-              (cast (congrArg EventGraph.EventField.Action outputEq.symm) false)) :=
-            decodeEventAction_failing_publication setup.program event.val (by exact event.isLt)
-              (by exact outputEq)
-          rw [← actionEq, back] at failing
-          cases source with
-          | commit sourceOwner name sourcePayload result =>
-              have failed := failing.1 sourceOwner name sourcePayload result rfl
-              subst failed
-              exact noFailure sourceOwner name sourcePayload rfl
-          | reveal sourceOwner name disclose =>
-              have withheld : disclose = false := failing.2
-              subst withheld
-              exact noWithholding sourceOwner name rfl
+          true := by
+        rw [← disclose]
+        simp only [cast_cast, cast_eq]
+      rw [actionEq]
 
 /-- **The as-if-honest law at a reveal** is the canonical decision of the
 disclosure. -/
@@ -212,6 +206,9 @@ theorem onePacket_disclosure_offered (covers : bounds.CoversOutputValues)
       (some control) :=
     (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
+  have activeView := runtime.canonicalServiceDecision_active leaks who
+    (control.execution.recall who) (control.execution.observe (application setup runtime leaks) who)
+    event (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) material sends
   have values := covers event
   rw [outputEq] at values
   have allowed : ∀ packet, reactiveResolutionPacket who event payload binding checks outputEq
@@ -232,13 +229,15 @@ theorem onePacket_disclosure_offered (covers : bounds.CoversOutputValues)
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
         (control.execution.observe (application setup runtime leaks) who).application with
     | none =>
-        simp only [EventGraphRuntime.canonicalReactiveDecision, node, sent, Option.map_none]
+        simp only [EventGraphRuntime.canonicalReactiveDecision, ite_eq_right activeView, node,
+          sent, Option.map_none]
         exact (ReactiveApplication.ResponseMenu.fromSubmissions_mem
           (app := runtime.reactiveApplication leaks)
           (fun _ past view => bounds.submissions
             (ReactiveApplication.ResponseMenu.knownPackets past view)) who _ _ _).mpr trivial
     | some packet =>
-        simp only [EventGraphRuntime.canonicalReactiveDecision, node, sent, Option.map_some]
+        simp only [EventGraphRuntime.canonicalReactiveDecision, ite_eq_right activeView, node,
+          sent, Option.map_some]
         apply (ReactiveApplication.ResponseMenu.fromSubmissions_mem
           (app := runtime.reactiveApplication leaks)
           (fun _ past view => bounds.submissions

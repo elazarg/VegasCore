@@ -2,9 +2,10 @@
 
 import Vegas.Game.OnePacketOwnerRecall
 import Vegas.Game.OnePacketFailureBridge
-import Vegas.Game.OnePacketOwnerGuard
-import Vegas.Game.ServiceBlockView
-import Vegas.Game.ServiceRevealDecode
+import Vegas.Game.OnePacketIntendedProjection
+import Vegas.Game.OnePacketCanonicalAcceptance
+import Vegas.Game.OnePacketCertificateField
+import Vegas.EventGraph.ResolutionProvenance
 
 /-! # A debt-free late owner is settled
 
@@ -17,8 +18,9 @@ application state is settled for `who` with the slots its own packets name
   owner owe a failure (`Vegas.failedBindingRecord_history`), and so does a
   failed initial binding, a pending obligation from the start
   (`Vegas.InputFailureRecord`, `Vegas.inputFailureRecord_of_trace`);
-* every completed reveal of `who` disclosed: a withheld reveal publishes a
-  failure, which is a failed reveal (`Vegas.revealRecord_history`);
+* every completed reveal of `who` retains a disclosure decision: every failed
+  publication incurs source debt, and a successful publication requires an
+  actual disclosure;
 * a named slot is openable: its commitment named an event that is now complete
   (on the sequential graph the only ready event is the one `who` has not sent
   for), whose binding holds a success, so the accepted handle, which only that
@@ -40,44 +42,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}
-
-section Reaches
-
-/-- **The configuration is reached from its initial configuration** along every
-history of the one-packet game. -/
-theorem configReaches_of_trace {state}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state) :
-    ∀ control : (application setup runtime leaks).Control, state = some control →
-      ConfigReaches setup
-        (EventGraph.Config.initial control.execution.application.config.inputs)
-        control.execution.application.config := by
-  induction trace with
-  | start => intro _ initialized; cases initialized
-  | @extend before after prior joint legal realized ih =>
-      intro control initialized
-      subst initialized
-      cases before with
-      | none =>
-          change some control ∈ ((application setup runtime leaks).transition (initialLaw setup)
-            horizon scheduler none joint).support at realized
-          rw [ReactiveApplication.transition, PMF.support_map] at realized
-          obtain ⟨drawn, drawnMember, drawnEq⟩ := realized
-          cases Option.some.inj drawnEq
-          have drawnSupport : drawn ∈ (initialLaw setup).support := drawnMember
-          rw [initialLaw, serviceInitialLaw, PMF.support_map] at drawnSupport
-          obtain ⟨initial, _, rfl⟩ := drawnSupport
-          exact Relation.ReflTransGen.refl
-      | some current =>
-          have previous := ih current rfl
-          have step := transition_configStep (initialLaw setup) horizon
-            scheduler current
-            control joint realized
-          have reach : ConfigReaches setup current.execution.application.config
-              control.execution.application.config := Relation.ReflTransGen.single step
-          rw [reach.inputs]
-          exact previous.tail step
-
-end Reaches
 
 section Inputs
 
@@ -151,26 +115,17 @@ theorem inputFailureRecord_serviceInvariant (who : Player)
     exact valid
   environment execution next command valid _ reached := by
     obtain ⟨rank, ⟨residual⟩, record⟩ := valid
-    have step := environmentStep_configStep setup leaks execution next command reached
-    have inputsEq : next.application.config.inputs = execution.application.config.inputs :=
-      ConfigReaches.inputs (Relation.ReflTransGen.single step)
-    rcases step with same | ⟨event, ready, action, member⟩
-    · refine ⟨rank, ?_, fun failed => ?_⟩
-      · rw [same]
-        exact ⟨residual⟩
-      · rw [same] at failed ⊢
-        exact record failed
-    · have rankEq : event.val = rank :=
-        (ready_iff_rank setup _ rank residual.checkpoint.ordered event).mp ready
-      obtain ⟨successor, _⟩ := residual.step event ready action _ member
-      have advanced : next.application.config.cut.IsPrefix (rank + 1) := by
-        rw [execution.application.config.step_cut event ready action _ member]
-        exact residual.checkpoint.ordered.complete_at event ready rankEq
-      refine ⟨rank + 1, ⟨successor⟩, fun failed => ?_⟩
-      rw [inputsEq] at failed
-      exact residual.decodedHolds_configStep (fun state joint target owing reached =>
-        ProtocolState.owesFailure_step who setup.program state joint target owing reached)
-        (record failed) (Or.inr ⟨event, ready, action, member⟩) advanced
+    have path := (runtime.reactiveApplication_graphSteps leaks).environmentStep execution next
+      command reached
+    have inputsEq := EventGraph.Config.Step.path_inputs_eq path
+    obtain ⟨nextRank, ⟨successor⟩⟩ := residual.path path
+    refine ⟨nextRank, ⟨successor⟩, fun failed => ?_⟩
+    rw [inputsEq] at failed
+    obtain ⟨found, ⟨matched⟩, retained⟩ := residual.decodedHolds_path
+      (owesFailure_stepClosed who) (record failed) path
+    have same := successor.checkpoint.ordered.unique matched.checkpoint.ordered
+    subst found
+    exact retained
 
 omit [Fintype Player] in
 /-- The input-failure record holds at every legal history of the default
@@ -227,23 +182,18 @@ private theorem privateTo_cases {who : Player} {field : (graph setup).Field}
       exact Or.inr ⟨payload, by rw [visible]⟩
 
 omit [Fintype Player] in
-/-- A withheld resolution publishes a failure. -/
-private theorem resolveOutput?_false_eq {owner : Player} {payload : L.Ty}
-    {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
-    {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
-    {store : EventGraph.Store (graph setup).layout} {result : PublicationResult (L.Val payload)}
-    (resolved : EventGraph.EventCode.resolveOutput? binding checks false store = some result) :
-    result = .failure := by
-  unfold EventGraph.EventCode.resolveOutput? at resolved
-  cases bound : binding.get? store with
-  | none => simp [bound] at resolved
-  | some value =>
-      cases accepted : EventGraph.GuardCheck.allAccepted? checks store .failure with
-      | none => simp [bound, accepted] at resolved
-      | some verdict =>
-          simp only [bound, accepted, Bool.false_eq_true, ↓reduceIte, Option.pure_def,
-            Option.bind_eq_bind, Option.bind_some, ite_self, Option.some.injEq] at resolved
-          exact resolved.symm
+private theorem reachable_of_trace
+    {control : (application setup runtime leaks).Control}
+    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some control)) :
+    ∃ inputs, control.execution.application.config.Reachable inputs := by
+  have native := trace
+  change ((runtime.reactiveApplication leaks).protocol (serviceInitialLaw setup .sequential)
+    horizon scheduler).Trace (some control) at native
+  rw [serviceInitialLaw_eq_inputs setup] at native
+  obtain ⟨inputs, _supported, valid⟩ := runtime.reactive_history_invariant leaks
+    (setup.initialLaw.map setup.eventInputs) horizon scheduler native
+  exact ⟨inputs, valid.reachable⟩
 
 /-- **No private field of a debt-free owner stores a failure.** -/
 theorem noFailure_of_debtFree {control : (application setup runtime leaks).Control}
@@ -291,7 +241,7 @@ theorem noFailure_of_debtFree {control : (application setup runtime leaks).Contr
       exact isFailure
     exact general _ layoutEq value failed
 
-/-- **Every completed reveal of a debt-free owner disclosed.** -/
+/-- Every completed reveal of a debt-free owner retains an actual disclosure. -/
 theorem disclosed_of_debtFree {control : (application setup runtime leaks).Control}
     (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     {who : Player}
@@ -300,55 +250,43 @@ theorem disclosed_of_debtFree {control : (application setup runtime leaks).Contr
     ∀ completion ∈ control.execution.application.config.history,
       (graph setup).actor? completion.event = some who → ∀ payload
       (outputEq : (graph setup).outputLayout completion.event = .publication payload),
-        cast (congrArg EventGraph.EventField.Action outputEq) completion.action = true := by
-  rintro ⟨event, action⟩ member own payload outputEq
-  change (graph setup).actor? event = some who at own
-  change cast _ action = true
+        completion.decision.map (cast (congrArg EventGraph.EventField.Action outputEq)) =
+          some true := by
+  intro record member owned payload outputEq
   have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
     horizon scheduler trace
-  cases view : nodeView (graph setup) event with
-  | bind _ _ bindEq _ => cases bindEq.symm.trans outputEq
-  | sample _ _ sampleEq _ => cases sampleEq.symm.trans outputEq
-  | resolve owner otherPayload binding checks otherEq codeEq =>
-      obtain rfl : otherPayload = payload :=
-        EventGraph.EventField.publication.inj (otherEq.symm.trans outputEq)
-      obtain rfl : owner = who :=
-        Option.some.inj ((nodeView_resolve_actor otherEq codeEq).symm.trans own)
-      by_contra withheld
-      have falseEq : cast (congrArg EventGraph.EventField.Action outputEq) action = false := by
-        simpa using withheld
-      have reach := configReaches_of_trace (runtime := runtime) trace control rfl
-      have done : event ∈ control.execution.application.config.cut.completed :=
-        (control.execution.application.config.history_exact event).mp
-          (List.mem_map_of_mem (f := EventGraph.Completion.event) member)
-      have output := ConfigReaches.resolve_output reach member
-        (by simp [EventGraph.Config.initial, EventOrder.Cut.empty]) (outputEq := otherEq)
-        (codeEq := codeEq)
-      rw [falseEq] at output
-      have present := (control.execution.application.config.output_available event).mpr done
-      cases resolved : EventGraph.EventCode.resolveOutput? binding checks false
-          control.execution.application.config.store with
-      | none =>
-          rw [resolved, Option.map_none] at output
-          rw [output] at present
-          cases present
-      | some result =>
-          have failedResult := resolveOutput?_false_eq resolved
-          subst failedResult
-          rw [resolved, Option.map_some] at output
-          have read := get?_of_some (⟨.inr event, otherEq⟩ : EventGraph.FieldRef
-            (graph setup).layout (.publication otherPayload))
-            (store := control.execution.application.config.store) output
-          simp only [cast_cast] at read
-          obtain ⟨rank, ⟨residual⟩, record⟩ := revealRecord_history (runtime := runtime)
-            (failureProfile setup.program)
-            rawTrace
-          rcases record event done owner otherPayload binding checks otherEq codeEq view .failure
-            read
-            with ⟨_, bad, _⟩ | failedReveal
-          · cases bad
-          · exact debtFree _ (decodedPoint_eq residual)
-              (Or.inl (ProtocolState.RevealFailed.indebted _ _ (failedReveal _ residual.decode)))
+  obtain ⟨inputs, reachable⟩ := reachable_of_trace (runtime := runtime) rawTrace
+  have completed := (control.execution.application.config.history_exact record.event).mp
+    (List.mem_map_of_mem (f := EventCompletion.event) member)
+  obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp
+    ((control.execution.application.config.output_available record.event).mpr completed)
+  let ref : EventGraph.FieldRef (graph setup).layout (.publication payload) :=
+    ⟨.inr record.event, outputEq⟩
+  have read := get?_of_some ref (store := control.execution.application.config.store) stored
+  cases typed : cast (congrArg EventGraph.EventField.Value outputEq) value with
+  | failure =>
+      have general : ∀ kind : EventGraph.EventField Player L,
+          ∀ same : kind = .publication payload, ∀ current : kind.Value,
+          cast (congrArg EventGraph.EventField.Value same) current = .failure →
+            kind.IsFailure current := by
+        rintro _ rfl current failed
+        exact failed
+      have failed : StoreEventFailed control.execution.application.config.store record.event :=
+        ⟨value, stored, general _ outputEq value typed⟩
+      obtain ⟨rank, ⟨residual⟩, recordFailure⟩ := SourceFailureRecord.history (runtime := runtime)
+        (failureProfile setup.program) horizon scheduler rawTrace
+      exact (debtFree _ (decodedPoint_eq residual)
+        (recordFailure record.event completed who owned failed _ residual.decode)).elim
+  | success published =>
+      rw [typed] at read
+      cases node : nodeView (graph setup) record.event with
+      | sample sampled law sampleEq codeEq => cases sampleEq.symm.trans outputEq
+      | bind owner bindingPayload bindingEq codeEq => cases bindingEq.symm.trans outputEq
+      | resolve owner resolved binding checks publicationEq codeEq =>
+          have same := EventGraph.EventField.publication.inj (publicationEq.symm.trans outputEq)
+          subst resolved
+          exact reachable.publication_decision_of_success record member owner payload binding checks
+            publicationEq codeEq published read
 
 /-- **One own packet per event.** Two packets a player recalls emitting that
 name one event are the same packet. -/
@@ -546,10 +484,11 @@ theorem ownerSettled_of_trace {control : (application setup runtime leaks).Contr
     OwnerSettled who (NamedSlot who ((application setup runtime leaks).outputs
       (control.execution.recall who))) control.execution.application where
   noFailure := noFailure_of_debtFree (runtime := runtime) trace debtFree
-  bindAction completion member owner payload outputEq codeEq :=
-    ConfigReaches.binding_output (configReaches_of_trace (runtime := runtime) trace control rfl)
-      member
-      (by simp [EventGraph.Config.initial]) outputEq codeEq
+  bindAction completion member owner payload outputEq codeEq := by
+    have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+      horizon scheduler trace
+    obtain ⟨inputs, reachable⟩ := reachable_of_trace (runtime := runtime) rawTrace
+    exact reachable.binding_output completion member owner payload outputEq codeEq
   disclosed := disclosed_of_debtFree (runtime := runtime) trace debtFree
   fresh := freshExact_of_trace (runtime := runtime) trace who
   openable := openable_of_pending (runtime := runtime) trace debtFree pending
