@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCommitmentCompletion
+import Vegas.Game.OnePacketForcedRegular
 
 /-! # Regular histories owe nothing
 
@@ -19,26 +19,15 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Protocol.InformationModel GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
-  [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
-  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-    scheduler).InfoState who)]
-  {Parameter : Type} (parameter : State L setup.context → Parameter)
-  (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-  (excludedPayoff : Player → ℝ)
+  [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+  {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {scheduler : (application setup runtime leaks).Scheduler}
 
 local notation "onePacketN" =>
   onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 
-variable {setup runtime leaks bounds horizon scheduler} in
-omit [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-    scheduler).InfoState who)] in
 /-- **Regular histories owe nothing.** For a well-formed setup, at a forced
 decision site of who, a regular history along which who's own completions decode
 to intended actions decodes to a point at which no player owes a failure. -/
@@ -68,8 +57,7 @@ theorem not_owesFailure_of_regular (wellFormed : setup.WellFormed)
       cases decodedState
   | some control =>
       rw [state] at forcedState decodedState
-      have record := publicRecord_of_forced (runtime := runtime) who history.1.trace control state
-        forcedState
+      have record := publicRecord_of_forced (runtime := runtime) who control forcedState
       obtain ⟨found, foundDecoded, intendedFound⟩ := intended_of_regular (runtime := runtime)
         wellFormed assessment who
         history.1.trace control state record regular ownIntended

@@ -1,19 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCounterpartImage
+import Vegas.Game.OnePacketForcedRegular
 
-/-! # Response bounds along swaps toward a forced witness
+/-! # Intended own prefixes and public records persist backward
 
-Along a history and its swap toward a forced witness
-(`Vegas.counterpart_of_witness`), the response masses of players acting at
-forced information are at most `K₁` times those of their images
-(`Vegas.SwapResponseBound`), and at most `ε` times at the first irregular
-response (`Vegas.SwapFirstBound`). With independent hidden initial cells, every
-player responding along the history acts at forced information
-(`Vegas.forcedAgent_of_splice`), and its pending reveals resolve
-(`Vegas.disclosureResolves_along`). Own completions are intended and the public
-record holds along every prefix of a history where they hold
-(`Vegas.ownCompletionsIntended_and_publicRecord_of_tracePrefix`).
+Own intended-completion invariants restrict to every earlier actual trace.
+Foreign activity persists backward because public defaults are monotone.
 -/
 
 noncomputable section
@@ -31,15 +23,7 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}
-  {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
-  {profiles : ℕ → ∀ player,
-    (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player}
 
-variable [DecidableEq (CellTy Player L)]
-  [Finite (onePacketProtocol setup runtime leaks bounds horizon scheduler).History]
-
-omit [DecidableEq (CellTy Player L)]
-  [Finite (onePacketProtocol setup runtime leaks bounds horizon scheduler).History] in
 /-- Own completions are intended and the public record holds along every prefix
 of a history where they hold. -/
 theorem ownCompletionsIntended_and_publicRecord_of_tracePrefix
@@ -66,6 +50,7 @@ theorem ownCompletionsIntended_and_publicRecord_of_tracePrefix
       obtain ⟨next, rfl, _⟩ := (application setup runtime leaks).transition_recall_prefix
         (initialLaw setup)
         horizon scheduler control target joint realized
-      exact publicRecord_of_transition (runtime := runtime) prior joint realized (record next rfl)
+      exact publicRecord_of_transition (runtime := runtime) (horizon := horizon)
+        joint realized (record next rfl)
 
 end Vegas
