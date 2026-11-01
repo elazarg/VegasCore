@@ -16,8 +16,9 @@ The first ready callback separates the source action mixture. Silent actions
 and transmitting actions have their chosen whole graph continuation, including
 automatic completion. Waiting before that callback preserves the configuration;
 the reaction contract places the callback inside its protected inclusion window.
-Composing these facts with the source residual law gives the full normalized
-source configuration law under the ordinary asynchronous service contract.
+The first-callback mixture and fixed-action continuation hold with arbitrary
+other player policies. Composing them with the source residual law gives the
+full normalized source configuration law under the asynchronous service contract.
 -/
 
 noncomputable section
@@ -287,15 +288,19 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-private theorem firstTurn_runUntil_mixture
+/-- An honest owner's first callback draws its fixed source action before
+stopped native play, with arbitrary other player policies. -/
+theorem sourceService_firstTurn_mixture
     {horizon turns : Nat} (scheduler : (application setup runtime leaks).Scheduler)
     (bound : (graph setup).EventId → Nat) (profile : BehavioralProfile setup.program)
     (owner : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner)
+    (background : Player → (application setup runtime leaks).Policy)
+    (follows : background owner = serviceTurnPolicy setup .sequential runtime.deadline leaks
+      bound turns (firstTurnTiming setup turns) profile owner)
     (execution : (application setup runtime leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler
-      (serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
-        (firstTurnTiming setup turns) profile) event.val execution)
+      background event.val execution)
     (bounded : execution.environmentRecall.length ≤ horizon)
     (law : PMF ((graph setup).Action event))
     (callback : ∀ current : (application setup runtime leaks).Execution,
@@ -306,10 +311,10 @@ private theorem firstTurn_runUntil_mixture
           (current.observe (application setup runtime leaks) owner) event action)) :
     let players := serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
       (firstTurnTiming setup turns) profile
-    ((application setup runtime leaks).runUntilHorizon scheduler players
+    ((application setup runtime leaks).runUntilHorizon scheduler background
       (fun final => event ∈ final.application.config.cut.completed) horizon execution) =
       law.bind (fun action => (application setup runtime leaks).runUntilHorizon scheduler
-        (Function.update players owner (fun past view =>
+        (Function.update background owner (fun past view =>
           if serviceTurn setup .sequential runtime.deadline leaks owner event past view = some 0
           then decidedOpportunity setup leaks bound owner event action past view
           else players owner past view))
@@ -375,7 +380,7 @@ private theorem firstTurn_runUntil_mixture
       (app.protocol (initialLaw setup) horizon scheduler).Trace
         (some ⟨remaining + 1, none, current⟩) →
       invariant current → ¬ stop current →
-      ∀ next ∈ (app.round scheduler (Function.update players owner (players owner))
+      ∀ next ∈ (app.round scheduler (Function.update background owner (players owner))
         current).support, invariant next := by
     intro remaining current _ valid unfinished next reached pending
     obtain ⟨command, _, middle, moved, cases⟩ := round_cases (setup := setup) leaks reached
@@ -393,7 +398,8 @@ private theorem firstTurn_runUntil_mixture
       (fun _ otherReady => setup.eventGraph.sequentialize_ready_unique _ otherReady readyCurrent)
       pending nextPath
     exact same.trans (valid unfinished)
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler
+    background
     execution.environmentRecall.length bounded execution boundary.supported
   have clean : ∀ before entry, before ++ [entry] <+: execution.recall owner →
       ¬ first before entry.beforeView := by
@@ -401,11 +407,17 @@ private theorem firstTurn_runUntil_mixture
     have memberEntry : entry ∈ execution.recall owner := prefixed.subset (by simp)
     exact boundary.untouched event le_rfl owner entry memberEntry
       (PublicView.ownTurn?_spec _ owner event (sourceServiceTurn_first earlier).1).1
-  have mixed := app.runUntil_mixture_at_first (initialLaw setup) horizon scheduler players owner
+  have mixed := app.runUntil_mixture_at_first (initialLaw setup) horizon scheduler background owner
     (players owner) law member first once (by intro action past view away; simp [member, away])
     stop invariant atFirst preserved (horizon - execution.environmentRecall.length) 0 execution
     (by simpa only [Nat.zero_add] using trace) (fun _ => rfl) clean
-  simpa only [ReactiveApplication.runUntilHorizon, Function.update_eq_self] using mixed
+  have restored : Function.update background owner (players owner) = background := by
+    funext player
+    by_cases same : player = owner
+    · subst player
+      exact (Function.update_self ..).trans follows.symm
+    · exact Function.update_of_ne same _ _
+  simpa only [ReactiveApplication.runUntilHorizon, restored] using mixed
 
 end ActionMixture
 
@@ -450,11 +462,13 @@ private theorem firstTurn_fixed_silent_runUntil_bind_runPlan
     (contract : AsyncContract runtime leaks (initialLaw setup) horizon scheduler delay bound)
     (owner : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner)
+    (background : Player → (application setup runtime leaks).Policy)
+    (follows : background owner = serviceTurnPolicy setup .sequential runtime.deadline leaks
+      bound turns (firstTurnTiming setup turns) source owner)
     (action : (graph setup).Action event) (silent : SilentAction event action)
     (execution : (application setup runtime leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler
-      (serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
-        (firstTurnTiming setup turns) source) event.val execution)
+      background event.val execution)
     (bounded : execution.environmentRecall.length ≤ horizon) :
     let players := serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
       (firstTurnTiming setup turns) source
@@ -463,7 +477,7 @@ private theorem firstTurn_fixed_silent_runUntil_bind_runPlan
         decidedOpportunity setup leaks bound owner event action past view
       else players owner past view
     (((application setup runtime leaks).runUntilHorizon scheduler
-        (Function.update players owner member)
+        (Function.update background owner member)
         (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
       fun stopped =>
         (graph setup).runPlan ((graph setup).policyPlan reference (graph setup).canonicalScheduler)
@@ -480,18 +494,22 @@ private theorem firstTurn_fixed_silent_runUntil_bind_runPlan
     if serviceTurn setup .sequential runtime.deadline leaks owner event past view = some 0 then
       decidedOpportunity setup leaks bound owner event action past view
     else players owner past view
-  have atTurn : SubmitsAtTurn setup leaks (players owner) owner :=
-    sourceServiceTurnPolicy_submitsAtTurn setup leaks bound turns (firstTurnTiming setup turns)
+  have atTurn : SubmitsAtTurn setup leaks (background owner) owner := by
+    rw [follows]
+    exact sourceServiceTurnPolicy_submitsAtTurn setup leaks bound turns (firstTurnTiming setup
+      turns)
       source owner
   have truthful : OwnSubmissionsAtTurn setup leaks execution owner :=
     atTurn.roundsFrom setup leaks (initialLaw setup) execution.environmentRecall.length execution
       boundary.supported
-  have safe := boundary.no_pending_of_ownSubmissions runtime leaks scheduler players event execution
+  have safe := boundary.no_pending_of_ownSubmissions runtime leaks scheduler background event
+    execution
     owner truthful
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler
+    background
     execution.environmentRecall.length bounded execution boundary.supported
   apply silent_runUntil_bind_runPlan runtime leaks reference scheduler
-    (Function.update players owner member) horizon contract.completes event owner owned action
+    (Function.update background owner member) horizon contract.completes event owner owned action
       silent execution (boundary.ordered.ready event.isLt) trace safe
   intro past view serving
   rw [Function.update_self]
@@ -515,6 +533,7 @@ private theorem firstTurn_fixed_accepted_runUntil_bind_runPlan
     (contract : AsyncContract runtime leaks (initialLaw setup) horizon scheduler delay bound)
     (owner : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner)
+    (background : Player → (application setup runtime leaks).Policy)
     (action : (graph setup).Action event)
     (execution : (application setup runtime leaks).Execution)
     (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
@@ -546,7 +565,7 @@ private theorem firstTurn_fixed_accepted_runUntil_bind_runPlan
       if serviceTurn setup .sequential runtime.deadline leaks owner event past view = some 0 then
         decidedOpportunity setup leaks bound owner event action past view
       else players owner past view
-    (((application setup runtime leaks).runUntil scheduler (Function.update players owner member)
+    (((application setup runtime leaks).runUntil scheduler (Function.update background owner member)
         (fun final => event ∈ final.application.config.cut.completed) remaining
         (execution.respond (application setup runtime leaks) owner response)).bind fun stopped =>
       (graph setup).runPlan ((graph setup).policyPlan reference (graph setup).canonicalScheduler)
@@ -638,7 +657,7 @@ private theorem firstTurn_fixed_accepted_runUntil_bind_runPlan
   obtain ⟨afterTrace⟩ := app.raw_trace_respond (initialLaw setup) horizon scheduler remaining
     execution owner canonical trace
   have noRepeat : ∀ past view response,
-      response ∈ ((Function.update players owner member) owner past view).support →
+      response ∈ ((Function.update background owner member) owner past view).support →
       runtime.eventRecorded leaks past event = true →
       runtime.submittedEvent? leaks response ≠ some event := by
     intro past view response supported recorded
@@ -646,7 +665,8 @@ private theorem firstTurn_fixed_accepted_runUntil_bind_runPlan
     exact fixedAction_noRepeatedEvent setup .sequential runtime.deadline leaks bound turns source
       owner event action past view response supported recorded
   have accepted := FreshCall.accepted_runPlan runtime leaks reference scheduler
-    (Function.update players owner member) bound contract.inclusion contract.completes event owner
+    (Function.update background owner member) bound contract.inclusion contract.completes
+      event owner
       owned after afterTrace (configEq.symm ▸ ready) action output entry message recorded call sole
         witnessAfter noRepeat
   have accounted : execution.environmentRecall.length + remaining = horizon :=
@@ -654,7 +674,7 @@ private theorem firstTurn_fixed_accepted_runUntil_bind_runPlan
   have countEq : horizon - after.environmentRecall.length = remaining := by
     rw [ReactiveApplication.respond_environmentRecall]
     omega
-  change (app.runUntil scheduler (Function.update players owner member)
+  change (app.runUntil scheduler (Function.update background owner member)
     (fun final => event ∈ final.application.config.cut.completed)
     (horizon - after.environmentRecall.length) after).bind _ = _ at accepted
   rw [countEq] at accepted
@@ -677,11 +697,13 @@ private theorem firstTurn_fixed_transmitting_runUntil_bind_runPlan
     (timely : AsyncTimely runtime delay bound)
     (owner : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner)
+    (background : Player → (application setup runtime leaks).Policy)
+    (follows : background owner = serviceTurnPolicy setup .sequential runtime.deadline leaks
+      bound turns (firstTurnTiming setup turns) source owner)
     (action : (graph setup).Action event)
     (execution : (application setup runtime leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler
-      (serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
-        (firstTurnTiming setup turns) source) event.val execution)
+      background event.val execution)
     (bounded : execution.environmentRecall.length ≤ horizon)
     (effective : EffectiveAction execution.application.config event action)
     (loud : ¬ SilentAction event action) :
@@ -692,7 +714,7 @@ private theorem firstTurn_fixed_transmitting_runUntil_bind_runPlan
         decidedOpportunity setup leaks bound owner event action past view
       else players owner past view
     (((application setup runtime leaks).runUntilHorizon scheduler
-        (Function.update players owner member)
+        (Function.update background owner member)
         (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
       fun stopped =>
         (graph setup).runPlan ((graph setup).policyPlan reference (graph setup).canonicalScheduler)
@@ -709,8 +731,10 @@ private theorem firstTurn_fixed_transmitting_runUntil_bind_runPlan
     if serviceTurn setup .sequential runtime.deadline leaks owner event past view = some 0 then
       decidedOpportunity setup leaks bound owner event action past view
     else players owner past view
-  have atTurn : SubmitsAtTurn setup leaks (players owner) owner :=
-    sourceServiceTurnPolicy_submitsAtTurn setup leaks bound turns (firstTurnTiming setup turns)
+  have atTurn : SubmitsAtTurn setup leaks (background owner) owner := by
+    rw [follows]
+    exact sourceServiceTurnPolicy_submitsAtTurn setup leaks bound turns (firstTurnTiming setup
+      turns)
       source owner
   have truthful : OwnSubmissionsAtTurn setup leaks execution owner :=
     atTurn.roundsFrom setup leaks (initialLaw setup) execution.environmentRecall.length execution
@@ -720,9 +744,10 @@ private theorem firstTurn_fixed_transmitting_runUntil_bind_runPlan
     intro entry remembered turn
     exact boundary.untouched event le_rfl owner entry remembered
       (entry.beforeView.application.publicView.ownTurn?_spec owner event turn).1
-  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players
+  obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler
+    background
     execution.environmentRecall.length bounded execution boundary.supported
-  apply first_callback_runUntil runtime leaks scheduler (Function.update players owner member)
+  apply first_callback_runUntil runtime leaks scheduler (Function.update background owner member)
     delay bound reference contract timely owner event owned action ?_
       (horizon - execution.environmentRecall.length) execution trace
       (boundary.ordered.ready event.isLt) truthful never
@@ -733,8 +758,55 @@ private theorem firstTurn_fixed_transmitting_runUntil_bind_runPlan
   obtain ⟨material, sends⟩ := canonicalServiceDecision_transmits_of_effective runtime _ currentTrace
     owner event turn action effective loud
   exact firstTurn_fixed_accepted_runUntil_bind_runPlan runtime leaks scheduler delay bound source
-    reference contract owner event owned action current currentTrace ready turn first fits truthful
+
+      reference contract owner event owned background
+        action current currentTrace ready turn first fits truthful
       never material sends response selected
+
+/-- Fixing one owner's first source choice preserves its full canonical
+continuation against arbitrary other players, including automatic completion. -/
+theorem sourceService_fixedAction_continuation
+    (runtime : EventGraphRuntime (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    {horizon turns : Nat} (scheduler : (application setup runtime leaks).Scheduler)
+    (delay bound : (graph setup).EventId → Nat)
+    (source : BehavioralProfile setup.program) (reference : (graph setup).BehavioralProfile)
+    (contract : AsyncContract runtime leaks (initialLaw setup) horizon scheduler delay bound)
+    (timely : AsyncTimely runtime delay bound)
+    (owner : Player) (event : (graph setup).EventId)
+    (owned : (graph setup).actor? event = some owner)
+    (background : Player → (application setup runtime leaks).Policy)
+    (follows : background owner = serviceTurnPolicy setup .sequential runtime.deadline leaks
+      bound turns (firstTurnTiming setup turns) source owner)
+    (action : (graph setup).Action event)
+    (execution : (application setup runtime leaks).Execution)
+    (boundary : CompletionBoundary setup leaks scheduler
+      background event.val execution)
+    (bounded : execution.environmentRecall.length ≤ horizon)
+    (effective : EffectiveAction execution.application.config event action) :
+    let players := serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
+      (firstTurnTiming setup turns) source
+    let member := fun past view =>
+      if serviceTurn setup .sequential runtime.deadline leaks owner event past view = some 0 then
+        decidedOpportunity setup leaks bound owner event action past view
+      else players owner past view
+    (((application setup runtime leaks).runUntilHorizon scheduler
+        (Function.update background owner member)
+        (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
+      fun stopped =>
+        (graph setup).runPlan ((graph setup).policyPlan reference (graph setup).canonicalScheduler)
+          stopped.application.config.remaining stopped.application.config) =
+      (execution.application.config.step event (boundary.ordered.ready event.isLt) action).bind
+        fun after => (graph setup).runPlan
+          ((graph setup).policyPlan reference (graph setup).canonicalScheduler) after.remaining
+            after := by
+  by_cases silent : SilentAction event action
+  · exact firstTurn_fixed_silent_runUntil_bind_runPlan runtime leaks scheduler delay bound
+      source reference contract owner event owned background follows action silent execution
+      boundary bounded
+  · exact firstTurn_fixed_transmitting_runUntil_bind_runPlan runtime leaks scheduler delay bound
+      source reference contract timely owner event owned background follows action execution
+      boundary bounded effective silent
 
 variable [Finite Player]
 
@@ -794,8 +866,9 @@ private theorem firstTurn_completion_law
       have sameRank := EventOrder.Cut.IsPrefix.unique residual.checkpoint.ordered boundary.ordered
       subst rank
       obtain ⟨law, head, callback, effective⟩ := residual.head_law runtime leaks event rfl ready
-      have mixture := firstTurn_runUntil_mixture runtime leaks scheduler bound source owner event
-        owned execution boundary bounded law (callback owner owned)
+      have mixture := sourceService_firstTurn_mixture runtime leaks scheduler bound source
+        owner event
+        owned players rfl execution boundary bounded law (callback owner owned)
       have headContinuation : (continuation execution.application.config).map read =
           law.bind (fun action => (execution.application.config.step event ready action).bind
             (fun after => (continuation after).map read)) := by
@@ -821,12 +894,9 @@ private theorem firstTurn_completion_law
             (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
               (fun final => continuation final.application.config) =
             (execution.application.config.step event ready action).bind continuation := by
-        by_cases silent : SilentAction event action
-        · exact firstTurn_fixed_silent_runUntil_bind_runPlan runtime leaks scheduler delay bound
-            source reference contract owner event owned action silent execution boundary bounded
-        · exact firstTurn_fixed_transmitting_runUntil_bind_runPlan runtime leaks scheduler delay
-            bound source reference contract timely owner event owned action execution boundary
-              bounded (effective authentic action member) silent
+        exact sourceService_fixedAction_continuation runtime leaks scheduler delay bound source
+          reference contract timely owner event owned players rfl action execution boundary bounded
+          (effective authentic action member)
       have projected := congrArg (PMF.map read) fixed
       simpa only [PMF.map_bind] using projected
 

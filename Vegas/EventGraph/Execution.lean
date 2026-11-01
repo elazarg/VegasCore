@@ -946,3 +946,47 @@ theorem completion_resolve_defaultEvent (config : graph.Config) (event : graph.E
       EventCode.causesDefault, inactive]
 
 end Vegas.EventGraph.Config
+
+namespace Vegas.EventGraph
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  {graph : Vegas.EventGraph Player L}
+
+/-- Every supported planned run follows a finite path of graph steps. -/
+theorem runPlan_graph_steps (plan : graph.EventPlan) (fuel : Nat)
+    (before after : graph.Config) (reached : after ∈ (graph.runPlan plan fuel before).support) :
+    Relation.ReflTransGen Config.Step before after := by
+  induction fuel generalizing before with
+  | zero =>
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      exact .refl
+  | succ fuel ih =>
+      by_cases terminal : before.cut.Terminal
+      · simp only [runPlan, terminal, ↓reduceDIte, PMF.mem_support_pure_iff] at reached
+        subst after
+        exact .refl
+      · rw [runPlan, dite_eq_right terminal, PMF.support_bind] at reached
+        obtain ⟨choice, _, remainder⟩ := Set.mem_iUnion₂.mp reached
+        obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ remainder)
+        exact (Relation.ReflTransGen.single ⟨choice.1.1, choice.1.2, choice.2, moved⟩).trans
+          (ih middle rest)
+
+/-- A planned continuation retains the recorded decision of every completed event. -/
+theorem runPlan_completed_record (plan : graph.EventPlan) (fuel : Nat)
+    (before after : graph.Config) (event : graph.EventId)
+    (completed : event ∈ before.cut.completed)
+    (reached : after ∈ (graph.runPlan plan fuel before).support) :
+    after.history.find? (fun record => decide (record.event = event)) =
+      before.history.find? (fun record => decide (record.event = event)) := by
+  obtain ⟨extra, history⟩ := Config.Step.path_history_prefix
+    (runPlan_graph_steps plan fuel before after reached)
+  rw [← history, List.find?_append]
+  cases selected : before.history.find? (fun record => decide (record.event = event)) with
+  | some record => rfl
+  | none =>
+      have present := (before.history_exact event).mpr completed
+      obtain ⟨record, member, equal⟩ := List.mem_map.mp present
+      have absent := List.find?_eq_none.mp selected record member
+      exact (absent (by simpa only [decide_eq_true_eq] using equal)).elim
+
+end Vegas.EventGraph

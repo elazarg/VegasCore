@@ -192,6 +192,17 @@ def AutomaticStep (before after : State graph) : Prop :=
   ∃ event, ∃ eligible : before.AutomaticReady event,
     after = before.completeAutomatic event eligible
 
+/-- Every finite automatic path consists of supported steps of the graph executor. -/
+theorem automatic_path_graph_steps {before after : State graph}
+    (path : Relation.ReflTransGen AutomaticStep before after) :
+    Relation.ReflTransGen EventGraph.Config.Step before.config after.config := by
+  apply Relation.ReflTransGen.lift (fun current : State graph => current.config) _
+    before after path
+  intro left right moved
+  obtain ⟨event, eligible, rfl⟩ := moved
+  obtain ⟨action, supported⟩ := left.completeAutomatic_step event eligible
+  exact ⟨event, eligible.1, action, supported⟩
+
 /-- An automatic path cannot advance from a state with no mechanical completion. -/
 theorem automatic_path_eq_of_quiescent {before after : State graph}
     (path : Relation.ReflTransGen AutomaticStep before after)
@@ -330,13 +341,8 @@ theorem drain_eq_of_empty (state : State graph) (empty : state.config.defaulted 
 
 /-- Draining native automatic completions follows a finite supported graph path. -/
 theorem drain_graph_steps (state : State graph) :
-    Relation.ReflTransGen EventGraph.Config.Step state.config state.drain.config := by
-  apply Relation.ReflTransGen.lift (fun current : State graph => current.config) _
-    state state.drain state.drain_trace
-  intro before after moved
-  obtain ⟨event, eligible, rfl⟩ := moved
-  obtain ⟨action, supported⟩ := before.completeAutomatic_step event eligible
-  exact ⟨event, eligible.1, action, supported⟩
+    Relation.ReflTransGen EventGraph.Config.Step state.config state.drain.config :=
+  automatic_path_graph_steps state.drain_trace
 
 end State
 end Vegas.EventGraphRuntime
