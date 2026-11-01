@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketOwnerSwap
+import Vegas.Game.OnePacketTrembles
+import Vegas.Pending.ReactiveValueSwap
 
 /-! # The owner swap between two settled states
 
@@ -152,11 +154,12 @@ structure OwnerSettled (named : Nat → Prop) (state : EventGraphRuntime.State (
     cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
         ((graph setup).nodes completion.event) = .bind owner payload →
       state.config.outputs completion.event = some (cast (congrArg EventGraph.EventField.Value
-        outputEq.symm) (cast (congrArg EventGraph.EventField.Action outputEq) completion.action))
+        outputEq.symm) ((completion.decision.bind fun action =>
+          cast (congrArg EventGraph.EventField.Action outputEq) action).getD .failure))
   disclosed : ∀ completion ∈ state.config.history,
     (graph setup).actor? completion.event = some who → ∀ payload
     (outputEq : (graph setup).outputLayout completion.event = .publication payload),
-      cast (congrArg EventGraph.EventField.Action outputEq) completion.action = true
+      completion.decision.map (cast (congrArg EventGraph.EventField.Action outputEq)) = some true
   fresh : ∀ serial, state.candidates.lookup (who, .prepared serial) = .fresh ↔ ¬ named serial
   openable : ∀ serial, named serial →
     ∃ raw, state.candidates.lookup (who, .prepared serial) = .openable raw
@@ -192,63 +195,96 @@ section Views
 
 variable (who : Player)
 
-omit [DecidableEq Player] [IExpr.ResultTypes L] in
-/-- A filter by a test of the key, mapped by a map that sends each tested entry
-of one list to the entry of the other with the same key, is the filter of the
-other. -/
-private theorem map_filter_of_keys {α β : Type} (map : α → α) (test : α → Bool)
-    (key : α → β) (testKey : ∀ left right, key left = key right → test left = test right) :
-    ∀ (left right : List α), left.map key = right.map key →
-      (∀ x ∈ left, ∀ y ∈ right, key x = key y → test x = true → map x = y) →
-      (left.filter test).map map = right.filter test
-  | [], [], _, _ => rfl
-  | [], _ :: _, keys, _ => by cases keys
-  | _ :: _, [], keys, _ => by cases keys
-  | x :: xs, y :: ys, keys, pointwise => by
-      simp only [List.map_cons, List.cons.injEq] at keys
-      have rest := map_filter_of_keys map test key testKey xs ys keys.2
-        (fun a member b other => pointwise a (List.mem_cons_of_mem _ member) b
-          (List.mem_cons_of_mem _ other))
-      have sameTest := testKey x y keys.1
-      by_cases tested : test x = true
-      · rw [List.filter_cons_of_pos tested, List.filter_cons_of_pos (sameTest ▸ tested),
-          List.map_cons, rest, pointwise x List.mem_cons_self y List.mem_cons_self keys.1 tested]
-      · have untested : ¬ test y = true := sameTest ▸ tested
-        rw [List.filter_cons_of_neg tested, List.filter_cons_of_neg untested, rest]
+private theorem binding_decision_of_settled {named : Nat → Prop}
+    {state : EventGraphRuntime.State (graph setup)} (settled : OwnerSettled who named state)
+    (record : (graph setup).Completion) (member : record ∈ state.config.history)
+    (payload : L.Ty) (outputEq : (graph setup).outputLayout record.event = .binding who payload)
+    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes record.event) = .bind who payload) :
+    ∃ value, record.decision = some (cast (congrArg EventGraph.EventField.Action outputEq.symm)
+      (some (.success value))) ∧ state.config.outputs record.event =
+        some (cast (congrArg EventGraph.EventField.Value outputEq.symm) (.success value)) := by
+  have output := settled.bindAction record member who payload outputEq codeEq
+  have noFailure := settled.noFailure (.inr record.event) (privateTo_of_binding outputEq) _ output
+  have general : ∀ kind : EventGraph.EventField Player L,
+      ∀ same : kind = .binding who payload, kind.IsFailure
+        (cast (congrArg EventGraph.EventField.Value same.symm) .failure) := by
+    rintro _ rfl
+    rfl
+  have notFailure : (record.decision.bind fun action =>
+      cast (congrArg EventGraph.EventField.Action outputEq) action).getD .failure ≠ .failure := by
+    intro failed
+    apply noFailure
+    rw [failed]
+    exact general _ outputEq
+  cases chosen : record.decision.bind (fun action =>
+      cast (congrArg EventGraph.EventField.Action outputEq) action) with
+  | none => exact (notFailure (by rw [chosen]; rfl)).elim
+  | some result =>
+      cases result with
+      | failure => exact (notFailure (by rw [chosen]; rfl)).elim
+      | success value =>
+          obtain ⟨action, selected, typed⟩ := Option.bind_eq_some_iff.mp chosen
+          refine ⟨value, ?_, ?_⟩
+          · rw [selected]
+            congr 1
+            rw [← typed]
+            simp
+          · simpa only [chosen, Option.getD_some] using output
 
-/-- **An own completion is sent to the completion of the same event** at the
-second settled state. -/
-theorem completion_ownerSwap_of_settled {named : Nat → Prop}
+private theorem own_decision_of_settled {named : Nat → Prop}
+    {state : EventGraphRuntime.State (graph setup)} (settled : OwnerSettled who named state)
+    (record : (graph setup).Completion) (member : record ∈ state.config.history)
+    (owned : (graph setup).actor? record.event = some who) : record.decision.isSome := by
+  cases view : nodeView (graph setup) record.event with
+  | sample payload law outputEq codeEq =>
+      rw [nodeView_sample_actor outputEq codeEq] at owned
+      cases owned
+  | bind owner payload outputEq codeEq =>
+      cases Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans owned)
+      obtain ⟨value, selected, _⟩ := binding_decision_of_settled who settled record member
+        payload outputEq codeEq
+      rw [selected]
+      rfl
+  | resolve owner payload binding checks outputEq codeEq =>
+      have selected := settled.disclosed record member owned payload outputEq
+      cases absent : record.decision with
+      | none => simp [absent] at selected
+      | some action => rfl
+
+/-- Equal public record keys and settled private values match actual own decisions. -/
+private theorem completion_ownerSwap_of_settled {named : Nat → Prop}
     {first second : EventGraphRuntime.State (graph setup)}
     (firstSettled : OwnerSettled who named first) (secondSettled : OwnerSettled who named second)
     {left right : (graph setup).Completion} (leftMember : left ∈ first.config.history)
-    (rightMember : right ∈ second.config.history) (same : left.event = right.event)
+    (rightMember : right ∈ second.config.history)
+    (same : left.publicEvent = right.publicEvent)
     (own : (graph setup).actor? left.event = some who) :
     (ownerSwap who (first.playerView who) (second.playerView who)).values.completion left =
       right := by
-  rcases left with ⟨event, leftAction⟩
-  rcases right with ⟨otherEvent, rightAction⟩
-  change event = otherEvent at same
-  subst same
+  rcases left with ⟨event, leftDecision, leftDefault⟩
+  rcases right with ⟨otherEvent, rightDecision, rightDefault⟩
+  have events := congrArg Prod.fst same
+  change event = otherEvent at events
+  subst otherEvent
+  have defaults := congrArg Prod.snd same
+  change leftDefault = rightDefault at defaults
+  subst rightDefault
   change (graph setup).actor? event = some who at own
-  suffices actionEq : (ownerSwap who (first.playerView who)
-      (second.playerView who)).values.action event leftAction = rightAction by
-    change (⟨event, _⟩ : (graph setup).Completion) = _
+  suffices actionEq : leftDecision.map ((ownerSwap who (first.playerView who)
+      (second.playerView who)).values.action event) = rightDecision by
+    change (⟨event, _, leftDefault⟩ : (graph setup).Completion) = _
     rw [actionEq]
   cases view : nodeView (graph setup) event with
   | bind owner payload outputEq codeEq =>
       obtain rfl : owner = who :=
         Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans own)
-      have leftOut := firstSettled.bindAction _ leftMember owner payload outputEq codeEq
-      have rightOut := secondSettled.bindAction _ rightMember owner payload outputEq codeEq
-      have privateTo : PrivateTo owner (.inr event) := by
-        refine ⟨?_, ?_⟩
-        · change ((graph setup).outputLayout event).VisibleTo owner
-          rw [outputEq]
-          rfl
-        · change ¬ ((graph setup).outputLayout event).IsPublic
-          rw [outputEq]
-          exact id
+      obtain ⟨leftValue, leftSelected, leftOut⟩ := binding_decision_of_settled owner firstSettled
+        _ leftMember payload outputEq codeEq
+      obtain ⟨rightValue, rightSelected, rightOut⟩ :=
+        binding_decision_of_settled owner secondSettled
+        _ rightMember payload outputEq codeEq
+      have privateTo : PrivateTo owner (.inr event) := privateTo_of_binding outputEq
       have swapped := value_ownerSwap owner (first.playerView owner) (second.playerView owner)
         privateTo
         (by
@@ -261,27 +297,47 @@ theorem completion_ownerSwap_of_settled {named : Nat → Prop}
           exact rightOut)
         (firstSettled.noFailure _ privateTo _ leftOut)
         (secondSettled.noFailure _ privateTo _ rightOut)
-      have actionEq := (ownerSwap owner (first.playerView owner)
-        (second.playerView owner)).values.action_binding event owner payload outputEq
-          (cast (congrArg EventGraph.EventField.Action outputEq) leftAction)
-      simp only [cast_cast, cast_eq] at actionEq
-      rw [actionEq]
-      simp only [cast_cast] at swapped
-      rw [swapped]
-      simp only [cast_cast, cast_eq]
+      change leftDecision = _ at leftSelected
+      change rightDecision = _ at rightSelected
+      rw [leftSelected, rightSelected, Option.map_some,
+        (ownerSwap owner (first.playerView owner) (second.playerView owner)).values.action_binding
+          event owner payload outputEq (some (.success leftValue)), Option.map_some, swapped]
+      simp
   | resolve owner payload binding checks outputEq codeEq =>
       rw [(ownerSwap who (first.playerView who) (second.playerView who)).values.action_publication
-        event payload outputEq]
+        event payload outputEq, Option.map_id]
       have leftTrue := firstSettled.disclosed _ leftMember own payload outputEq
       have rightTrue := secondSettled.disclosed _ rightMember own payload outputEq
-      exact (cast_inj _).mp (leftTrue.trans rightTrue.symm)
+      exact Option.map_injective (fun _ _ same => (cast_inj _).mp same)
+        (leftTrue.trans rightTrue.symm)
   | sample payload law outputEq codeEq =>
       rw [nodeView_sample_actor outputEq codeEq] at own
       cases own
 
-/-- **Own completions.** The owner swap sends the own completions of `who` at
-an earlier state of the first settled state to those at the matching earlier
-state of the second. -/
+omit [DecidableEq Player] [IExpr.ResultTypes L] in
+private theorem map_filter_of_keys {α β : Type} (map : α → α) (test : α → Bool)
+    (key : α → β) : ∀ (left right : List α), left.map key = right.map key →
+      (∀ x ∈ left, ∀ y ∈ right, key x = key y → test x = test y) →
+      (∀ x ∈ left, ∀ y ∈ right, key x = key y → test x = true → map x = y) →
+      (left.filter test).map map = right.filter test
+  | [], [], _, _, _ => rfl
+  | [], _ :: _, keys, _, _ => by cases keys
+  | _ :: _, [], keys, _, _ => by cases keys
+  | x :: xs, y :: ys, keys, testKey, pointwise => by
+      simp only [List.map_cons, List.cons.injEq] at keys
+      have rest := map_filter_of_keys map test key xs ys keys.2
+        (fun a member b other => testKey a (List.mem_cons_of_mem _ member) b
+          (List.mem_cons_of_mem _ other))
+        (fun a member b other => pointwise a (List.mem_cons_of_mem _ member) b
+          (List.mem_cons_of_mem _ other))
+      have sameTest := testKey x List.mem_cons_self y List.mem_cons_self keys.1
+      by_cases tested : test x = true
+      · rw [List.filter_cons_of_pos tested, List.filter_cons_of_pos (sameTest ▸ tested),
+          List.map_cons, rest, pointwise x List.mem_cons_self y List.mem_cons_self keys.1 tested]
+      · have untested : ¬ test y = true := sameTest ▸ tested
+        rw [List.filter_cons_of_neg tested, List.filter_cons_of_neg untested, rest]
+
+/-- The owner swap matches actual own completions at equal public frontiers. -/
 theorem ownActions_ownerSwap_of_settled {named named' : Nat → Prop}
     {first second before after : EventGraphRuntime.State (graph setup)}
     (firstSettled : OwnerSettled who named first) (secondSettled : OwnerSettled who named second)
@@ -293,15 +349,34 @@ theorem ownActions_ownerSwap_of_settled {named named' : Nat → Prop}
       (graph setup).ownCompletions who after.config.history := by
   have orders := congrArg (fun view : PublicView (graph setup) => view.observation.completionOrder)
     publicEq
-  change before.config.history.map EventGraph.Completion.event =
-    after.config.history.map EventGraph.Completion.event at orders
+  change before.config.history.map EventCompletion.event =
+    after.config.history.map EventCompletion.event at orders
+  have defaults := congrArg (fun view : PublicView (graph setup) =>
+    view.observation.defaults.events.reverse) publicEq
+  change (before.config.history.map EventCompletion.defaultEvent).reverse.reverse =
+    (after.config.history.map EventCompletion.defaultEvent).reverse.reverse at defaults
+  simp only [List.reverse_reverse] at defaults
+  have publicKeys : before.config.history.map EventCompletion.publicEvent =
+      after.config.history.map EventCompletion.publicEvent := by
+    change before.config.history.map (fun x => (x.event, x.defaultEvent)) =
+      after.config.history.map (fun x => (x.event, x.defaultEvent))
+    rw [← List.zip_map', ← List.zip_map', orders, defaults]
   unfold EventGraph.ownCompletions
-  apply map_filter_of_keys _ _ EventGraph.Completion.event
-    (fun left right same => by rw [same]) _ _ orders
-  intro left leftMember right rightMember same own
-  exact completion_ownerSwap_of_settled who firstSettled secondSettled
-    (firstEarlier.history.subset leftMember) (secondEarlier.history.subset rightMember) same
-    (of_decide_eq_true own)
+  apply map_filter_of_keys _ _ EventCompletion.publicEvent _ _ publicKeys
+  · intro left leftMember right rightMember same
+    have events := congrArg Prod.fst same
+    change left.event = right.event at events
+    by_cases owned : (graph setup).actor? left.event = some who
+    · have leftSome := own_decision_of_settled who firstSettled left
+        (firstEarlier.history.subset leftMember) owned
+      have rightSome := own_decision_of_settled who secondSettled right
+        (secondEarlier.history.subset rightMember) (events ▸ owned)
+      simp [owned, ← events, leftSome, rightSome]
+    · simp [owned, ← events]
+  · intro left leftMember right rightMember same own
+    exact completion_ownerSwap_of_settled who firstSettled secondSettled
+      (firstEarlier.history.subset leftMember) (secondEarlier.history.subset rightMember) same
+      (of_decide_eq_true own).1
 
 /-- **Stores.** The owner swap sends the store `who` sees at an earlier state of
 the first settled state to the store it sees at the matching earlier state of
@@ -335,8 +410,8 @@ theorem store_ownerSwap_of_settled {named named' : Nat → Prop}
         | inr event =>
             have orders := congrArg
               (fun view : PublicView (graph setup) => view.observation.completionOrder) publicEq
-            change before.config.history.map EventGraph.Completion.event =
-              after.config.history.map EventGraph.Completion.event at orders
+            change before.config.history.map EventCompletion.event =
+              after.config.history.map EventCompletion.event at orders
             change (before.config.outputs event).isSome = (after.config.outputs event).isSome
             rw [Bool.eq_iff_iff, before.config.output_available, after.config.output_available,
               ← before.config.history_exact, ← after.config.history_exact, orders]
@@ -429,21 +504,25 @@ theorem EventGraphRuntime.PlayerView.swap_ownerSwap_of_settled {named named' : N
         (before.playerView who) = after.playerView who := by
   have orders := congrArg (fun view : PublicView (graph setup) => view.observation.completionOrder)
     publicEq
-  change before.config.history.map EventGraph.Completion.event =
-    after.config.history.map EventGraph.Completion.event at orders
-  change (⟨who, before.publicView, ⟨before.config.history.map EventGraph.Completion.event,
+  change before.config.history.map EventCompletion.event =
+    after.config.history.map EventCompletion.event at orders
+  change (⟨who, before.publicView, ⟨before.config.history.map EventCompletion.event,
       (ownerSwap who (first.playerView who) (second.playerView who)).values.store
         ((graph setup).playerStore who before.config.store),
       ((graph setup).ownCompletions who before.config.history).map
-        (ownerSwap who (first.playerView who) (second.playerView who)).values.completion⟩,
+        (ownerSwap who (first.playerView who) (second.playerView who)).values.completion,
+      before.config.defaults⟩,
       fun slot => swapCandidate ((ownerSwap who (first.playerView who)
         (second.playerView who)).raw (who, slot)) (before.candidates.lookup (who, slot))⟩ :
       PlayerView (graph setup)) =
-    ⟨who, after.publicView, ⟨after.config.history.map EventGraph.Completion.event,
+    ⟨who, after.publicView, ⟨after.config.history.map EventCompletion.event,
       (graph setup).playerStore who after.config.store,
-      (graph setup).ownCompletions who after.config.history⟩,
+      (graph setup).ownCompletions who after.config.history, after.config.defaults⟩,
       fun slot => after.candidates.lookup (who, slot)⟩
-  rw [publicEq, orders,
+  have defaults := congrArg (fun view : PublicView (graph setup) => view.observation.defaults)
+    publicEq
+  change before.config.defaults = after.config.defaults at defaults
+  rw [publicEq, orders, defaults,
     store_ownerSwap_of_settled who firstSettled secondSettled firstEarlier secondEarlier publicEq,
     ownActions_ownerSwap_of_settled who firstSettled secondSettled firstEarlier secondEarlier
       publicEq]
