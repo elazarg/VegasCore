@@ -222,4 +222,53 @@ theorem runUntil_stop_congr (first second : app.Execution → Prop) [DecidablePr
         intro next reached
         exact ih next (preserved execution holds halt next reached)
 
+section RoundCongruence
+
+variable {β : Type*}
+
+/-- **Stopped runs from a round congruence.** Two profiles whose single rounds
+have equal laws of a readout `ψ` from executions with equal readouts, under
+per-side invariants that rounds keep and that determine when to stop, have
+equal laws of `ψ` after any number of stopped rounds. The invariants are indexed
+by the rounds still to run. -/
+theorem runUntil_map_congr_of_rounds (scheduler : app.Scheduler)
+    (first second : Principal → app.Policy) (stop : app.Execution → Prop) [DecidablePred stop]
+    (ψ : app.Execution → β) (leftHolds rightHolds : Nat → app.Execution → Prop)
+    (stops : ∀ n left right, leftHolds n left → rightHolds n right → ψ left = ψ right →
+      (stop left ↔ stop right))
+    (rounds : ∀ n left right, leftHolds (n + 1) left → rightHolds (n + 1) right →
+      ψ left = ψ right → ¬ stop left →
+      (app.round scheduler first left).map ψ = (app.round scheduler second right).map ψ)
+    (leftStep : ∀ n left, leftHolds (n + 1) left → ¬ stop left →
+      ∀ next ∈ (app.round scheduler first left).support, leftHolds n next)
+    (rightStep : ∀ n right, rightHolds (n + 1) right → ¬ stop right →
+      ∀ next ∈ (app.round scheduler second right).support, rightHolds n next) :
+    ∀ count left right, leftHolds count left → rightHolds count right → ψ left = ψ right →
+      (app.runUntil scheduler first stop count left).map ψ =
+        (app.runUntil scheduler second stop count right).map ψ := by
+  intro count
+  induction count with
+  | zero =>
+      intro left right _ _ same
+      simp only [ReactiveApplication.runUntil, PMF.pure_map]
+      exact congrArg PMF.pure same
+  | succ count ih =>
+      intro left right leftValid rightValid same
+      by_cases halted : stop left
+      · have rightHalted := (stops _ left right leftValid rightValid same).mp halted
+        rw [app.runUntil_of_stop scheduler first stop _ left halted,
+          app.runUntil_of_stop scheduler second stop _ right rightHalted, PMF.pure_map,
+          PMF.pure_map]
+        exact congrArg PMF.pure same
+      · have rightRunning : ¬ stop right := fun rightHalted =>
+          halted ((stops _ left right leftValid rightValid same).mpr rightHalted)
+        simp only [ReactiveApplication.runUntil, halted, rightRunning, ↓reduceIte, PMF.map_bind]
+        apply bind_eq_of_map_eq _ _ _ _ (rounds count left right leftValid rightValid same halted)
+        intro next nextReached other otherReached equal
+        exact ih next other (leftStep count left leftValid halted next nextReached)
+          (rightStep count right rightValid rightRunning other otherReached) equal
+
+
+end RoundCongruence
+
 end Interaction.ReactiveApplication

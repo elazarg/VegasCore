@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceFirstTurnMixture
+import Vegas.Game.AsyncDeviationForeign
 import Vegas.Game.ServiceDeviationTraffic
 import Interaction.ReactiveRoundCongruence
 import Vegas.Game.ServiceAssignedPolicy
@@ -18,7 +18,7 @@ fixed decisions: every commitment carries the same public envelope whatever
 private value it binds, and the owners' responses, turn counts and records at
 the block's events are the same on both sides (`Vegas.decidedBlock_readout_congr`).
 
-* `Vegas.runUntil_map_congr_of_rounds` turns a congruence of single rounds,
+* `Interaction.ReactiveApplication.runUntil_map_congr_of_rounds` lifts single-round congruence,
   under per-side invariants, into a congruence of whole stopped runs;
 * `Vegas.blockRound_readout_congr` is the congruence of one round of the
   block, for the deviator's traffic together with every other owner's turn
@@ -33,54 +33,7 @@ open SourceProgram
 
 open GameTheory.Math.Probability Interaction EventGraphRuntime
 
-section Simulation
 
-variable {Principal : Type} [DecidableEq Principal] {β : Type*}
-  (app : ReactiveApplication Principal)
-
-/-- **Stopped runs from a round congruence.** Two profiles whose single rounds
-have equal laws of a readout `ψ` from executions with equal readouts, under
-per-side invariants that rounds keep and that determine when to stop, have
-equal laws of `ψ` after any number of stopped rounds. The invariants are indexed
-by the rounds still to run. -/
-theorem runUntil_map_congr_of_rounds (scheduler : app.Scheduler)
-    (first second : Principal → app.Policy) (stop : app.Execution → Prop) [DecidablePred stop]
-    (ψ : app.Execution → β) (leftHolds rightHolds : Nat → app.Execution → Prop)
-    (stops : ∀ n left right, leftHolds n left → rightHolds n right → ψ left = ψ right →
-      (stop left ↔ stop right))
-    (rounds : ∀ n left right, leftHolds (n + 1) left → rightHolds (n + 1) right →
-      ψ left = ψ right → ¬ stop left →
-      (app.round scheduler first left).map ψ = (app.round scheduler second right).map ψ)
-    (leftStep : ∀ n left, leftHolds (n + 1) left → ¬ stop left →
-      ∀ next ∈ (app.round scheduler first left).support, leftHolds n next)
-    (rightStep : ∀ n right, rightHolds (n + 1) right → ¬ stop right →
-      ∀ next ∈ (app.round scheduler second right).support, rightHolds n next) :
-    ∀ count left right, leftHolds count left → rightHolds count right → ψ left = ψ right →
-      (app.runUntil scheduler first stop count left).map ψ =
-        (app.runUntil scheduler second stop count right).map ψ := by
-  intro count
-  induction count with
-  | zero =>
-      intro left right _ _ same
-      simp only [ReactiveApplication.runUntil, PMF.pure_map]
-      exact congrArg PMF.pure same
-  | succ count ih =>
-      intro left right leftValid rightValid same
-      by_cases halted : stop left
-      · have rightHalted := (stops _ left right leftValid rightValid same).mp halted
-        rw [app.runUntil_of_stop scheduler first stop _ left halted,
-          app.runUntil_of_stop scheduler second stop _ right rightHalted, PMF.pure_map,
-          PMF.pure_map]
-        exact congrArg PMF.pure same
-      · have rightRunning : ¬ stop right := fun rightHalted =>
-          halted ((stops _ left right leftValid rightValid same).mpr rightHalted)
-        simp only [ReactiveApplication.runUntil, halted, rightRunning, ↓reduceIte, PMF.map_bind]
-        apply bind_eq_of_map_eq _ _ _ _ (rounds count left right leftValid rightValid same halted)
-        intro next nextReached other otherReached equal
-        exact ih next other (leftStep count left leftValid halted next nextReached)
-          (rightStep count right rightValid rightRunning other otherReached) equal
-
-end Simulation
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
@@ -89,171 +42,6 @@ variable {Player : Type} [DecidableEq Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 section Decided
-
-/-- The owner's recorded turns at `event`. -/
-def ownerTurns (owner : Player) (event : (serviceGraph setup mode).EventId)
-    (execution : (serviceApplication setup mode deadline leaks).Execution) : Nat :=
-  (execution.recall owner).countP fun entry =>
-    decide (entry.beforeView.application.publicView.ownTurn? owner = some event)
-
-/-- While `event` is ready, an input of its owner is its turn there, counted
-by the owner's recorded turns. -/
-theorem serviceTurn_of_ready {owner : Player} {event : (serviceGraph setup mode).EventId}
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (ready : execution.application.config.cut.Ready event)
-    (owned : (serviceGraph setup mode).actor? event = some owner) :
-    serviceTurn setup mode deadline leaks owner event (execution.recall owner)
-        (execution.observe (serviceApplication setup mode deadline leaks) owner) =
-      some (ownerTurns owner event execution) := by
-  unfold serviceTurn ownerTurns
-  split
-  · rfl
-  · rename_i idle
-    exact (idle (serviceOwnTurn?_of_ready setup execution.application ready owned)).elim
-
-/-- Away from an unrecorded first turn that still fits the deadline, the
-decided policy is silent. -/
-theorem decidedTurnPolicy_closed {bound : (serviceGraph setup mode).EventId → Nat}
-    {owner : Player} {event : (serviceGraph setup mode).EventId}
-    (action : (serviceGraph setup mode).Action event)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (ready : execution.application.config.cut.Ready event)
-    (owned : (serviceGraph setup mode).actor? event = some owner)
-    (closed : ¬ (ownerTurns owner event execution = 0 ∧
-      (serviceRuntime setup mode deadline).eventRecorded leaks (execution.recall owner) event =
-        false ∧
-      execution.application.publicView.InclusionFitsDeadline (serviceRuntime setup mode deadline)
-        bound event)) :
-    decidedTurnPolicy setup leaks bound owner event action (execution.recall owner)
-        (execution.observe (serviceApplication setup mode deadline leaks) owner) =
-      PMF.pure ⟨none⟩ := by
-  have turn := serviceTurn_of_ready execution ready owned
-  unfold decidedTurnPolicy
-  by_cases first : ownerTurns owner event execution = 0
-  · rw [(serviceApplication setup mode deadline leaks).turnScheduledPolicy_selected _ (0 : Fin 1)
-      _ _ _ _ (by rw [turn, first]; rfl)]
-    unfold decidedOpportunity
-    by_cases recorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-        (execution.recall owner) event = true
-    · simp only [recorded, ↓reduceIte, ReactiveApplication.silentPolicy_apply]
-    · have unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-          (execution.recall owner) event = false := by simpa using recorded
-      have late : ¬ execution.application.publicView.InclusionFitsDeadline
-          (serviceRuntime setup mode deadline) bound event := fun fits =>
-        closed ⟨first, unrecorded, fits⟩
-      have lateView : ¬ (execution.observe (serviceApplication setup mode deadline leaks)
-          owner).application.publicView.InclusionFitsDeadline
-            (serviceRuntime setup mode deadline) bound event := late
-      simp only [unrecorded, Bool.false_eq_true, ↓reduceIte, lateView,
-        ReactiveApplication.silentPolicy_apply]
-  · rw [(serviceApplication setup mode deadline leaks).turnScheduledPolicy_unselected _ _ _ _ _ _
-      (by
-        intro slot chosen
-        rw [turn]
-        intro equal
-        exact first ((Option.some.inj equal).trans
-          ((Fin.val_eq_zero slot).trans (by rfl))))]
-    rfl
-
-/-- At an unrecorded first turn, the decided policy is its opportunity. -/
-theorem decidedTurnPolicy_open {bound : (serviceGraph setup mode).EventId → Nat}
-    {owner : Player} {event : (serviceGraph setup mode).EventId}
-    (action : (serviceGraph setup mode).Action event)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (ready : execution.application.config.cut.Ready event)
-    (owned : (serviceGraph setup mode).actor? event = some owner)
-    (first : ownerTurns owner event execution = 0) :
-    decidedTurnPolicy setup leaks bound owner event action (execution.recall owner)
-        (execution.observe (serviceApplication setup mode deadline leaks) owner) =
-      decidedOpportunity setup leaks bound owner event action (execution.recall owner)
-        (execution.observe (serviceApplication setup mode deadline leaks) owner) := by
-  have turn := serviceTurn_of_ready execution ready owned
-  unfold decidedTurnPolicy
-  rw [(serviceApplication setup mode deadline leaks).turnScheduledPolicy_selected _ (0 : Fin 1)
-    _ _ _ _ (by rw [turn, first]; rfl)]
-
-/-- An opportunity that transmits a given decision. -/
-theorem decidedOpportunity_transmits {bound : (serviceGraph setup mode).EventId → Nat}
-    {owner : Player} {event : (serviceGraph setup mode).EventId}
-    (action : (serviceGraph setup mode).Action event)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-      (execution.recall owner) event = false)
-    (fits : execution.application.publicView.InclusionFitsDeadline
-      (serviceRuntime setup mode deadline) bound event)
-    (material : (serviceApplication setup mode deadline leaks).Submission)
-    (decision : (serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner
-      (execution.recall owner) (execution.observe (serviceApplication setup mode deadline leaks)
-        owner) event action = ⟨some material⟩) :
-    decidedOpportunity setup leaks bound owner event action (execution.recall owner)
-        (execution.observe (serviceApplication setup mode deadline leaks) owner) =
-      PMF.pure ⟨some material⟩ := by
-  have fitsView : (execution.observe (serviceApplication setup mode deadline leaks)
-      owner).application.publicView.InclusionFitsDeadline (serviceRuntime setup mode deadline)
-        bound event := fits
-  unfold decidedOpportunity
-  simp only [unrecorded, Bool.false_eq_true, ↓reduceIte, fitsView, decision, reduceCtorEq]
-
-/-- Another player's response that transmits the same packet as its
-counterpart, or is silent with it, keeps equal deviator traffic. -/
-theorem bindingTraffic_respond_other {who actor : Player} (different : who ≠ actor)
-    {left right : (serviceApplication setup mode deadline leaks).Execution}
-    (same : (serviceRuntime setup mode deadline).bindingTraffic leaks who left =
-      (serviceRuntime setup mode deadline).bindingTraffic leaks who right)
-    (leftResponse rightResponse : (serviceApplication setup mode deadline leaks).Action)
-    (packets : (leftResponse.transmission = none ∧ rightResponse.transmission = none) ∨
-      ∃ leftMaterial rightMaterial, leftResponse = ⟨some leftMaterial⟩ ∧
-        rightResponse = ⟨some rightMaterial⟩ ∧
-        (serviceApplication setup mode deadline leaks).packet
-            ((serviceApplication setup mode deadline leaks).submit left.application actor
-              leftMaterial) actor (left.network.known actor) leftMaterial =
-          (serviceApplication setup mode deadline leaks).packet
-            ((serviceApplication setup mode deadline leaks).submit right.application actor
-              rightMaterial) actor (right.network.known actor) rightMaterial) :
-    (serviceRuntime setup mode deadline).bindingTraffic leaks who
-        (left.respond (serviceApplication setup mode deadline leaks) actor leftResponse) =
-      (serviceRuntime setup mode deadline).bindingTraffic leaks who
-        (right.respond (serviceApplication setup mode deadline leaks) actor rightResponse) := by
-  let app := serviceApplication setup mode deadline leaks
-  have networks : left.network = right.network := congrArg Prod.fst same
-  have receipts : left.receipts = right.receipts := congrArg (fun value => value.2.1) same
-  have environments : left.environmentRecall = right.environmentRecall :=
-    congrArg (fun value => value.2.2.1) same
-  have recalled : left.recall who = right.recall who := congrArg (fun value => value.2.2.2.1) same
-  have views : left.application.playerView who = right.application.playerView who :=
-    congrArg (fun value => value.2.2.2.2.1) same
-  have kept (execution : app.Execution) (response : app.Action) :
-      (execution.respond app actor response).application.playerView who =
-        execution.application.playerView who := by
-    rcases response with ⟨transmission⟩
-    cases transmission with
-    | none => rfl
-    | some material =>
-        exact (submitStep_playerView_other (material.call.register execution.application actor)
-          actor who different material.call.packet).trans
-            (material.call.register_other execution.application actor who different)
-  have afterViews : (left.respond app actor leftResponse).application.playerView who =
-      (right.respond app actor rightResponse).application.playerView who := by
-    rw [kept, kept, views]
-  have afterNetworks : (left.respond app actor leftResponse).network =
-      (right.respond app actor rightResponse).network := by
-    rcases packets with ⟨leftQuiet, rightQuiet⟩ | ⟨leftMaterial, rightMaterial, rfl, rfl, packet⟩
-    · rcases leftResponse with ⟨leftTransmission⟩
-      rcases rightResponse with ⟨rightTransmission⟩
-      change leftTransmission = none at leftQuiet
-      change rightTransmission = none at rightQuiet
-      subst leftQuiet rightQuiet
-      exact networks
-    · simp only [ReactiveApplication.Execution.respond]
-      rw [packet, networks]
-  refine Prod.ext afterNetworks (Prod.ext ?_ (Prod.ext ?_ (Prod.ext ?_
-    (Prod.ext afterViews (congrArg PlayerView.publicView afterViews)))))
-  · exact receipts
-  · exact environments
-  · change (left.respond app actor leftResponse).recall who =
-      (right.respond app actor rightResponse).recall who
-    rw [app.respond_recall_other left actor who different,
-      app.respond_recall_other right actor who different, recalled]
 
 /-- While every ready event is a binding, an opening addressed to any event is
 rejected. -/
@@ -843,7 +631,7 @@ theorem decidedBlock_readout_congr {low high : Nat} (sealed : BlockSealed setup 
         ((serviceApplication setup mode deadline leaks).runUntil scheduler
           (blockPlayers bound turns profile who deviation rightAssignment) (BlockDone high) count
           right).map (blockReadout who low high) := by
-  apply runUntil_map_congr_of_rounds _ scheduler _ _ _ _
+  apply ReactiveApplication.runUntil_map_congr_of_rounds _ scheduler _ _ _ _
     (fun count execution => DecidedBlock horizon scheduler who low high count execution)
     (fun count execution => DecidedBlock horizon scheduler who low high count execution)
   · intro n left right _ _ same

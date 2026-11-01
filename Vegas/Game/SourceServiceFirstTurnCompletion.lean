@@ -758,9 +758,8 @@ private theorem firstTurn_fixed_transmitting_runUntil_bind_runPlan
   obtain ⟨material, sends⟩ := canonicalServiceDecision_transmits_of_effective runtime _ currentTrace
     owner event turn action effective loud
   exact firstTurn_fixed_accepted_runUntil_bind_runPlan runtime leaks scheduler delay bound source
-
-      reference contract owner event owned background
-        action current currentTrace ready turn first fits truthful
+    reference contract owner event owned background action current currentTrace ready turn first
+    fits truthful
       never material sends response selected
 
 /-- Fixing one owner's first source choice preserves its full canonical
