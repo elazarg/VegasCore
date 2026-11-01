@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketCanonicalAcceptance
 import Vegas.Game.SourceServiceFacts
+import Vegas.Game.SourceServiceFreshCall
 import Vegas.Pending.ReactiveFirstOpportunity
 import Interaction.ReactiveDecisionPredecessor
 
@@ -35,25 +36,6 @@ variable (setup runtime leaks) in
 def ActivatedAt (who : Player) (event : (graph setup).EventId)
     (entry : (application setup runtime leaks).PlayerEntry) : Prop :=
   entry.beforeView.application.publicView.ownTurn? who = some event
-
-variable (setup runtime leaks) in
-/-- The envelope a response transmitting `material` emits. -/
-def sentEnvelope (execution : (application setup runtime leaks).Execution) (who : Player)
-    (material : (application setup runtime leaks).Submission) :
-    Message Player (WitnessedPacket (graph setup)) :=
-  ⟨(who, execution.network.nextSerial who),
-    (application setup runtime leaks).packet
-      ((application setup runtime leaks).submit execution.application who material) who
-      (execution.network.known who) material⟩
-
-variable (setup runtime leaks) in
-/-- The recall entry a response appends: the view it was made from, the
-response, and the envelope it emits. -/
-def respondEntry (execution : (application setup runtime leaks).Execution) (who : Player)
-    (response : (application setup runtime leaks).Action) : (application setup runtime
-      leaks).PlayerEntry :=
-  ⟨execution.observe (application setup runtime leaks) who, response,
-    response.transmission.map (sentEnvelope setup runtime leaks execution who)⟩
 
 variable (setup runtime leaks) in
 /-- The recall of `who` at the protocol state splits around `entry`. -/
@@ -99,24 +81,7 @@ theorem recordsEntry_transition (who : Player) (entry : (application setup runti
       simp only [List.append_assoc, List.cons_append]
 
 
-section OnePacket
 
-variable [Fintype Player] (bounds : MessageBounds (graph setup))
-
-omit [Fintype Player] in
-/-- The entry of a transmitting response records its envelope. -/
-theorem respondEntry_of_transmission (execution : (application setup runtime leaks).Execution)
-    (who : Player) (response : (application setup runtime leaks).Action)
-    (material : (application setup runtime leaks).Submission)
-    (submits : response.transmission = some material) :
-    respondEntry setup runtime leaks execution who response =
-      ⟨execution.observe (application setup runtime leaks) who, response,
-        some (sentEnvelope setup runtime leaks execution who material)⟩ := by
-  unfold respondEntry
-  rw [submits]
-  rfl
-
-end OnePacket
 
 section Opportunity
 

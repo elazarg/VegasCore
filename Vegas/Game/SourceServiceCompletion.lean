@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.SourceServicePrefix
+import Vegas.Game.SourceServiceReachedDecoding
 import Vegas.Game.SourceServiceFacts
 import Vegas.Source.SetupProtocolEvaluation
 import Vegas.Game.RevealServicePayoffs
@@ -349,5 +350,38 @@ theorem runUntil_completion_prefix (scheduler : (application setup runtime leaks
         exact ih middle middlePrefix middleSeen rest
 
 end Sequential
+
+
+variable {setup : Setup (Player := Player) (L := L)}
+  {runtime : EventGraphRuntime (graph setup)}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+
+/-- Every initialized raw native history has a residual of the same source evaluator. -/
+theorem SourceResidual.of_rawTrace (profile : BehavioralProfile setup.program)
+    (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler) :
+    ∀ {state} (_trace : ((application setup runtime leaks).protocol (initialLaw setup)
+      horizon scheduler).Trace state) (control : (application setup runtime leaks).Control),
+      state = some control →
+      ∃ rank,
+        Nonempty (SourceResidual setup profile rank control.execution.application.config) := by
+  intro state trace
+  induction trace with
+  | start => intro _ initialized; cases initialized
+  | @extend before after prior joint _ realized ih =>
+      intro control current
+      subst current
+      cases before with
+      | none =>
+          change some control ∈ ((initialLaw setup).map fun state =>
+            some ⟨horizon, none, ReactiveApplication.Execution.initial
+              (application setup runtime leaks) state⟩).support at realized
+          obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realized
+          cases Option.some.inj same
+          obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
+          exact ⟨0, ⟨SourceResidual.initial setup profile initial⟩⟩
+      | some previous =>
+          obtain ⟨rank, ⟨residual⟩⟩ := ih previous rfl
+          exact residual.path (reactive_protocol_graph_steps runtime leaks
+            (initialLaw setup) horizon scheduler previous control joint realized)
 
 end Vegas

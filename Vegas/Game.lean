@@ -442,6 +442,7 @@ import Vegas.Game.SourceServiceAsyncTimeliness
 import Vegas.Game.SourceServiceAudit
 import Vegas.Game.SourceServiceBindingMiss
 import Vegas.Game.SourceServiceBoundary
+import Vegas.Game.SourceServiceCanonicalAcceptance
 import Vegas.Game.SourceServiceCanonicalConformance
 import Vegas.Game.SourceServiceCanonicalPolicy
 import Vegas.Game.SourceServiceCanonicalSerial

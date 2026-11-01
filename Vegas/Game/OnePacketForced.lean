@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.SourceServiceDecodedDebt
+import Vegas.Game.SourceServiceCompletion
 import Vegas.Game.ServiceInformation
 import Vegas.Compile.EventGraphParameterReadout
 import Vegas.Source.FailedBindingDeviation
@@ -328,25 +329,9 @@ theorem protocol_sourceResidual (profile : BehavioralProfile setup.program)
       (control : (application setup runtime leaks).Control), state = some control →
       ∃ rank,
         Nonempty (SourceResidual setup profile rank control.execution.application.config) := by
-  intro state trace
-  induction trace with
-  | start => intro _ initialized; cases initialized
-  | @extend before after prior joint _ realized ih =>
-      intro control current
-      subst current
-      cases before with
-      | none =>
-          change some control ∈ ((initialLaw setup).map fun state =>
-            some ⟨horizon, none, ReactiveApplication.Execution.initial
-              (application setup runtime leaks) state⟩).support at realized
-          obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realized
-          cases Option.some.inj same
-          obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
-          exact ⟨0, ⟨SourceResidual.initial setup profile initial⟩⟩
-      | some previous =>
-          obtain ⟨rank, ⟨residual⟩⟩ := ih previous rfl
-          exact residual.path (reactive_protocol_graph_steps runtime leaks
-            (initialLaw setup) horizon scheduler previous control joint realized)
+  intro state trace control current
+  exact SourceResidual.of_rawTrace profile horizon scheduler
+    (menu.toRawTrace (initialLaw setup) horizon scheduler trace) control current
 
 /-- The source point decoded from an initialized native history retains
 publication-default provenance, including through automatic completion. -/

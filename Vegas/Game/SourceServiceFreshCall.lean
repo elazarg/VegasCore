@@ -19,7 +19,46 @@ namespace Vegas
 open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+
+section RecordedResponses
+variable (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+
+/-- The envelope a response transmitting `material` emits. -/
+def sentEnvelope (execution : (application setup runtime leaks).Execution) (who : Player)
+    (material : (application setup runtime leaks).Submission) :
+    Message Player (WitnessedPacket (graph setup)) :=
+  ⟨(who, execution.network.nextSerial who),
+    (application setup runtime leaks).packet
+      ((application setup runtime leaks).submit execution.application who material) who
+      (execution.network.known who) material⟩
+
+
+/-- The recall entry a response appends: the view it was made from, the
+response, and the envelope it emits. -/
+def respondEntry (execution : (application setup runtime leaks).Execution) (who : Player)
+    (response : (application setup runtime leaks).Action) : (application setup runtime
+      leaks).PlayerEntry :=
+  ⟨execution.observe (application setup runtime leaks) who, response,
+    response.transmission.map (sentEnvelope setup runtime leaks execution who)⟩
+
+variable {setup runtime leaks}
+
+/-- The entry of a transmitting response records its envelope. -/
+theorem respondEntry_of_transmission (execution : (application setup runtime leaks).Execution)
+    (who : Player) (response : (application setup runtime leaks).Action)
+    (material : (application setup runtime leaks).Submission)
+    (submits : response.transmission = some material) :
+    respondEntry setup runtime leaks execution who response =
+      ⟨execution.observe (application setup runtime leaks) who, response,
+        some (sentEnvelope setup runtime leaks execution who material)⟩ := by
+  unfold respondEntry
+  rw [submits]
+  rfl
+end RecordedResponses
+
+variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
   {deadline : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 

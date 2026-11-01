@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketFirstActivation
+import Vegas.Game.SourceServiceCanonicalAcceptance
 import Vegas.Pending.ReactiveAcceptedOutput
 import Vegas.Pending.ReactiveGraphSteps
 import Vegas.EventGraph.ObservationStep
@@ -29,106 +30,6 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
   {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-
-private theorem canonical_response_witness
-    (execution : (application setup runtime leaks).Execution) (who : Player)
-    (event : (graph setup).EventId)
-    (turn : execution.application.publicView.ownTurn? who = some event)
-    (action : (graph setup).Action event) (material : (application setup runtime leaks).Submission)
-    (submits : (runtime.canonicalServiceDecision leaks who (execution.recall who)
-      (execution.observe (application setup runtime leaks) who) event action).transmission =
-        some material) :
-    ∃ output, AcceptanceWitness event (sentEnvelope setup runtime leaks execution who material)
-      execution.application.config action output
-      ((application setup runtime leaks).submit execution.application who material) := by
-  have activeView := runtime.canonicalServiceDecision_active leaks who (execution.recall who)
-    (execution.observe (application setup runtime leaks) who) event action material submits
-  have owned := (PublicView.ownTurn?_spec _ who event turn).2
-  have ready := (execution.application.publicView_eventReady event).mp
-    (PublicView.ownTurn?_spec _ who event turn).1
-  cases node : nodeView (graph setup) event with
-  | sample payload law outputEq codeEq =>
-      have none := nodeView_sample_actor outputEq codeEq
-      rw [owned] at none
-      cases none
-  | bind actor payload outputEq codeEq =>
-      have actorEq : actor = who :=
-        Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans owned)
-      subst actorEq
-      obtain ⟨choice, rfl⟩ : ∃ choice : Option (PublicationResult (L.Val payload)),
-          action = cast (congrArg EventGraph.EventField.Action outputEq.symm) choice :=
-        ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
-      cases choice with
-      | none =>
-          rw [runtime.canonicalServiceDecision_binding_none leaks actor _ _ event actor payload
-            outputEq codeEq node] at submits
-          cases submits
-      | some choice =>
-          cases selected : canonicalFreshSlot actor
-              (execution.observe (application setup runtime leaks) actor).application with
-          | none =>
-              simp only [EventGraphRuntime.canonicalServiceDecision,
-                EventGraphRuntime.canonicalReactiveDecision, ite_eq_right activeView,
-                node, cast_cast, cast_eq, Option.bind_some, selected, Option.map_none,
-                ReactiveApplication.SubmissionNormalization.action] at submits
-              cases submits
-          | some serial =>
-              have fresh := canonicalFreshSlot_spec actor _ serial selected
-              rw [runtime.canonicalServiceDecision_binding leaks actor (execution.recall actor)
-                (execution.observe (application setup runtime leaks) actor) event payload
-                outputEq codeEq node activeView serial selected choice] at submits
-              cases Option.some.inj submits
-              have freshLookup : execution.application.candidates.lookup
-                  (actor, .prepared serial) = .fresh := fresh
-              have meaning := runtime.reactiveBinding_result leaks actor event payload choice
-                serial execution freshLookup
-              refine ⟨cast (congrArg EventGraph.EventField.Value outputEq.symm) choice,
-                Or.inl ⟨(actor, .prepared serial), actor, payload, outputEq, rfl, ?_, ?_, ?_⟩⟩
-              · exact submitStep_commitment_fixed _ actor event (.prepared serial)
-              · exact congrArg (fun result => cast
-                  (congrArg EventGraph.EventField.Action outputEq.symm) (some result)) meaning.symm
-              · exact congrArg (cast (congrArg EventGraph.EventField.Value outputEq.symm))
-                  meaning.symm
-  | resolve actor payload binding checks outputEq codeEq =>
-      have actorEq : actor = who :=
-        Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
-      subst actorEq
-      rw [runtime.canonicalServiceDecision_eq_of_not_bind leaks actor (execution.recall actor)
-        (execution.observe (application setup runtime leaks) actor) event action
-        (fun _ _ _ _ bind => by rw [node] at bind; cases bind)] at submits
-      unfold EventGraphRuntime.serviceDecision EventGraphRuntime.reactiveDecision at submits
-      simp only [ite_eq_right activeView, node] at submits
-      rcases reactiveResolutionPacket_shape actor event payload binding checks outputEq action
-          (execution.observe (application setup runtime leaks) actor).application with
-        ⟨candidate, raw, packet⟩ | packet
-      · obtain ⟨_, isTrue, _, value, _, _, _, rawEq⟩ :=
-          reactiveResolutionPacket_opening_spec actor event payload binding checks outputEq action
-            (execution.observe (application setup runtime leaks) actor).application event
-            candidate raw packet
-        subst rawEq
-        have defined := EventGraph.EventCode.resolveOutput?_isSome binding checks true
-          execution.application.config.store (fun field read =>
-            execution.application.config.read_available ready (by
-              rw [← EventGraph.EventCode.readFields_cast outputEq ((graph setup).nodes event),
-                codeEq]
-              exact read))
-        let result := (EventGraph.EventCode.resolveOutput? binding checks true
-          execution.application.config.store).get defined
-        have resolved : EventGraph.EventCode.resolveOutput? binding checks true
-            execution.application.config.store = some result := (Option.some_get defined).symm
-        have actionEq : action = cast (congrArg EventGraph.EventField.Action outputEq.symm)
-            true := by
-          rw [← isTrue, cast_cast, cast_eq]
-        rw [packet] at submits
-        simp only [Option.map_some, ReactiveApplication.SubmissionNormalization.action,
-          Option.some.injEq] at submits
-        refine ⟨cast (congrArg EventGraph.EventField.Value outputEq.symm) result,
-          Or.inr ⟨candidate, ⟨payload, value⟩, actor, payload, binding, checks, outputEq,
-            codeEq, result, ?_, node, resolved, actionEq, rfl⟩⟩
-        rw [← submits]
-        rfl
-      · rw [packet] at submits
-        cases submits
 
 section Invariant
 
