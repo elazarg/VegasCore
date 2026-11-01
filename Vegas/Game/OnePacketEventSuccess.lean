@@ -30,22 +30,6 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {runtime : EventGraphRuntime (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
-private theorem sequential_path_eq_of_pending
-    {before after : (graph setup).Config} (event : (graph setup).EventId)
-    (ready : before.cut.Ready event) (pending : event ∉ after.cut.completed)
-    (path : Relation.ReflTransGen EventGraph.Config.Step before after) : after = before := by
-  induction path using Relation.ReflTransGen.head_induction_on with
-  | refl => rfl
-  | @head before middle moved suffix _ =>
-      obtain ⟨other, otherReady, action, supported⟩ := moved
-      have same := setup.eventGraph.sequentialize_ready_unique before.cut ready otherReady
-      subst other
-      have completed : event ∈ middle.cut.completed := by
-        rw [before.step_cut event otherReady action middle supported]
-        exact Finset.mem_insert_self _ _
-      exact (pending (EventGraph.completed_subset_of_history_prefix middle _
-        (EventGraph.Config.Step.path_history_prefix suffix) completed)).elim
-
 private theorem canonical_response_witness
     (execution : (application setup runtime leaks).Execution) (who : Player)
     (event : (graph setup).EventId)
@@ -223,7 +207,9 @@ theorem acceptanceInvariant_transition (who : Player)
                 (EventGraph.completed_subset_of_history_prefix _ _ historyKept completed)
             have beforeSent := stable beforePending
             have ready := beforeSent.symm ▸ sentReady
-            exact (sequential_path_eq_of_pending event ready unfinished configPath).trans
+            exact (EventGraph.Config.Step.path_eq_of_ready_of_not_completed event
+              (fun _ otherReady => setup.eventGraph.sequentialize_ready_unique _ otherReady ready)
+              unfinished configPath).trans
               beforeSent
           · intro receipt
             -- Which transition added the receipt, if any.

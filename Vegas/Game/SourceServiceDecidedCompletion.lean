@@ -1,7 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import Vegas.Game.SourceServiceFirstTurnMixture
 import Vegas.Game.SourceServiceTurnSubmissions
+import Vegas.Pending.ReactiveSafety
 import Vegas.Game.SourceServiceFacts
+import Vegas.Game.SourceServiceFirstTurnOpportunity
 import Vegas.Pending.ReactiveBindingResources
 import Interaction.ReactiveRawRoundTrace
 import Vegas.Pending.ReactiveOpeningWindow
@@ -505,7 +508,8 @@ theorem canonicalServiceDecision_submits {horizon : Nat}
         rw [node]
         refine ⟨isTrue, handle, value, by rw [packetEq], handleOwner, associated, ?_, stored,
           ⟨_, resolved⟩⟩
-        rw [respond_candidate_fixed setup leaks middle actor _ handle (by rw [fixed]; simp)]
+        rw [(serviceRuntime setup mode deadline).reactive_respond_candidate_fixed leaks
+          middle actor _ handle (by rw [fixed]; simp)]
         exact fixed
 
 end FirstTurn
@@ -541,22 +545,6 @@ theorem split_snoc {α : Type} {old before after : List α} {entry last : α}
       simpa using split
     have := List.append_inj' joined rfl
     exact ⟨rest, by rw [List.singleton_inj.mp this.2, List.concat_eq_append], this.1⟩
-
-/-- At the first turn no earlier recorded response saw the event as the
-player's turn. -/
-theorem sourceServiceTurn_first {owner : Player} {event : (serviceGraph setup mode).EventId}
-    {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
-    {view : (serviceApplication setup mode deadline leaks).PlayerView}
-    (first : serviceTurn setup mode deadline leaks owner event past view = some 0) :
-    view.application.publicView.ownTurn? owner = some event ∧
-      ∀ entry ∈ past, entry.beforeView.application.publicView.ownTurn? owner ≠ some event := by
-  unfold serviceTurn at first
-  split at first
-  · rename_i turn
-    have counted := Option.some.inj first
-    rw [List.countP_eq_zero] at counted
-    exact ⟨turn, fun entry member equal => counted entry member (decide_eq_true equal)⟩
-  · cases first
 
 /-- The first entry of a recall that saw the event as its player's turn is at
 turn index zero. -/
@@ -628,32 +616,6 @@ theorem decidedTurnPolicy_submission {bound : (serviceGraph setup mode).EventId 
   · rw [silenced response chosen] at submitted
     cases submitted
 
-/-- A disclosure of `false` is compiled to silence. -/
-theorem canonicalServiceDecision_silent (who : Player)
-    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (view : (serviceApplication setup mode deadline leaks).PlayerView)
-    (event : (serviceGraph setup mode).EventId)
-    (action : (serviceGraph setup mode).Action event) (silent : SilentAction event action) :
-    ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view event
-        action).transmission =
-      none := by
-  revert silent
-  unfold SilentAction
-  cases node : nodeView (serviceGraph setup mode) event with
-  | resolve actor payload binding checks outputEq codeEq =>
-      intro withheld
-      obtain ⟨disclose, rfl⟩ : ∃ disclose : Bool,
-          action = cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose :=
-        ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
-      simp only [cast_cast, cast_eq] at withheld
-      subst withheld
-      simp only [EventGraphRuntime.canonicalServiceDecision,
-        EventGraphRuntime.canonicalReactiveDecision, node,
-        reactiveResolutionPacket, cast_cast, cast_eq, Bool.false_eq_true, ↓reduceIte,
-        Option.map_none]
-      rfl
-  | bind => exact False.elim
-  | sample => exact False.elim
 
 end Turns
 
@@ -743,33 +705,6 @@ theorem mem_start_of_short
   rw [← entryAt, List.getElem_append_left short]
   exact List.getElem_mem _
 
-/-- The opportunity requirement: an owner whose ready event's deadline is
-past its reaction bound has had a turn there. -/
-theorem opportunity_turn {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
-        (serviceInitialLaw setup mode) horizon scheduler delay bound) {remaining : Nat}
-    {execution : (serviceApplication setup mode deadline leaks).Execution}
-    (trace :
-        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
-        horizon scheduler).Trace (some ⟨remaining, none, execution⟩))
-    (answered : ActivationsAnswered setup leaks execution) {owner : Player}
-    {event : (serviceGraph setup mode).EventId}
-    (owned : (serviceGraph setup mode).actor? event = some owner)
-    (ready : execution.application.config.cut.Ready event) (entered : Nat)
-    (activated : execution.application.activatedAt event = some entered)
-    (late : entered + delay event < execution.application.clock) : ∃ entry ∈ execution.recall owner,
-      entry.beforeView.application.publicView.ownTurn? owner = some event := by
-  have facts := legalFacts setup leaks horizon scheduler _ trace
-  obtain ⟨scheduled, member, activate, _, seenReady⟩ := contract.opportunity _ trace event owner
-    entered owned ((execution.application.publicView_eventReady event).mpr ready) activated late
-  obtain ⟨answer, answerMember, viewEq⟩ := answered scheduled member owner activate
-  have seen : answer.beforeView.application.publicView.EventReady event := by
-    rw [viewEq]
-    exact seenReady
-  exact ⟨answer, answerMember, ownTurn?_of_entry_ready setup leaks execution facts.eventStable
-    owner answer answerMember event owned seen ready⟩
 
 end Phase
 

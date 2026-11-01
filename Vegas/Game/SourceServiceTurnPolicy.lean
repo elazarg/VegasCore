@@ -5,6 +5,7 @@ import Vegas.Game.RevealServicePayoffs
 import Interaction.ReactivePolicyMixture
 import Interaction.ReactiveRecovery
 import Interaction.ReactiveRoundReachability
+import Interaction.ScheduledOpening
 
 /-! # Turn-counted prescribed policy for every scheduler
 
@@ -160,6 +161,76 @@ theorem sourceServiceTurnPolicy_turn (bound : (serviceGraph setup mode).EventId 
         (serviceTurnFamily setup mode deadline leaks bound profile who event turns)).policy past
         view := by
   simp only [serviceTurnPolicy, serving, owned, ↓reduceDIte]
+
+section FirstTurn
+
+variable {setup leaks}
+
+/-- At the first turn no earlier recorded response saw the event as the
+player's turn. -/
+theorem sourceServiceTurn_first {owner : Player} {event : (serviceGraph setup mode).EventId}
+    {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
+    {view : (serviceApplication setup mode deadline leaks).PlayerView}
+    (first : serviceTurn setup mode deadline leaks owner event past view = some 0) :
+    view.application.publicView.ownTurn? owner = some event ∧
+      ∀ entry ∈ past, entry.beforeView.application.publicView.ownTurn? owner ≠ some event := by
+  unfold serviceTurn at first
+  split at first
+  · rename_i turn
+    have counted := Option.some.inj first
+    rw [List.countP_eq_zero] at counted
+    exact ⟨turn, fun entry member equal => counted entry member (decide_eq_true equal)⟩
+  · cases first
+
+/-- A pure first-turn timing retains its selection after every own transcript. -/
+theorem sourceServiceTurnPolicy_firstTurn {bound : (serviceGraph setup mode).EventId → Nat}
+    {turns : Nat} {profile : BehavioralProfile setup.program} {who : Player}
+    {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
+    {view : (serviceApplication setup mode deadline leaks).PlayerView}
+    {event : (serviceGraph setup mode).EventId}
+    (owned : (serviceGraph setup mode).actor? event = some who)
+    (first : serviceTurn setup mode deadline leaks who event past view = some 0) :
+    serviceTurnPolicy setup mode deadline leaks bound turns (firstTurnTiming setup turns mode)
+        profile who past view =
+      serviceCanonicalOpportunity setup mode deadline leaks bound profile who event past view := by
+  let app := serviceApplication setup mode deadline leaks
+  let family := serviceTurnFamily setup mode deadline leaks bound profile who event turns
+  have pin : (app.policyMixture (PMF.pure (0 : Fin (turns + 1))) family).posterior past =
+      PMF.pure 0 := by
+    simpa only [List.nil_append] using app.policyMixture_posterior_pure_append
+      (PMF.pure (0 : Fin (turns + 1))) family [] past 0 rfl
+  rw [sourceServiceTurnPolicy_turn setup leaks bound turns _ profile who past view event owned
+    (sourceServiceTurn_first first).1]
+  change (app.policyMixture (PMF.pure (0 : Fin (turns + 1))) family).policy past view = _
+  rw [app.policyMixture_policy, pin, PMF.pure_bind]
+  exact app.turnScheduledPolicy_selected _ (0 : Fin (turns + 1)) _ _ past view first
+
+
+/-- A pure first-turn client is silent at every later turn at the event. -/
+theorem sourceServiceTurnPolicy_laterTurn {bound : (serviceGraph setup mode).EventId → Nat}
+    {turns : Nat} {profile : BehavioralProfile setup.program} {who : Player}
+    {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
+    {view : (serviceApplication setup mode deadline leaks).PlayerView}
+    {event : (serviceGraph setup mode).EventId}
+    (owned : (serviceGraph setup mode).actor? event = some who)
+    (serving : view.application.publicView.ownTurn? who = some event)
+    (later : serviceTurn setup mode deadline leaks who event past view ≠ some 0) :
+    serviceTurnPolicy setup mode deadline leaks bound turns (firstTurnTiming setup turns mode)
+        profile who past view = PMF.pure ⟨none⟩ := by
+  let app := serviceApplication setup mode deadline leaks
+  let family := serviceTurnFamily setup mode deadline leaks bound profile who event turns
+  have pin : (app.policyMixture (PMF.pure (0 : Fin (turns + 1))) family).posterior past =
+      PMF.pure 0 := by
+    simpa only [List.nil_append] using app.policyMixture_posterior_pure_append
+      (PMF.pure (0 : Fin (turns + 1))) family [] past 0 rfl
+  rw [sourceServiceTurnPolicy_turn setup leaks bound turns _ profile who past view event owned
+    serving]
+  change (app.policyMixture (PMF.pure (0 : Fin (turns + 1))) family).policy past view = _
+  rw [app.policyMixture_policy, pin, PMF.pure_bind]
+  exact app.turnScheduledPolicy_unselected _ (some (0 : Fin (turns + 1))) _ _ past view
+    (fun slot selected => by cases selected; exact later)
+
+end FirstTurn
 
 theorem firstTurnTiming_deferral {mode : EventGraph.ExecutionMode} (turns : Nat)
     (event : (serviceGraph setup mode).EventId) :

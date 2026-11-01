@@ -691,6 +691,25 @@ theorem path_history_prefix {before after : graph.Config}
   | refl => exact ⟨[], by simp⟩
   | @head before middle moved _ ih => exact moved.history_prefix.trans ih
 
+/-- A path cannot advance past its unique ready event while that event remains unfinished. -/
+theorem path_eq_of_ready_of_not_completed {before after : graph.Config}
+    (event : graph.EventId)
+    (unique : ∀ other, before.cut.Ready other → other = event)
+    (pending : event ∉ after.cut.completed)
+    (path : Relation.ReflTransGen Step before after) : after = before := by
+  rcases path.cases_head with rfl | ⟨middle, moved, rest⟩
+  · rfl
+  · obtain ⟨other, otherReady, action, supported⟩ := moved
+    have same := unique other otherReady
+    subst other
+    have completed : event ∈ middle.cut.completed := by
+      rw [before.step_cut event otherReady action middle supported]
+      exact Finset.mem_insert_self _ _
+    have historyPrefix := (path_history_prefix rest).map Completion.event
+    exact (pending ((after.history_exact event).mp
+      (historyPrefix.subset ((middle.history_exact event).mpr completed)))).elim
+
+
 /-- Every actual completion appends a history entry, including automatic
 completion, so a finite path with no history growth leaves the configuration unchanged. -/
 theorem path_eq_of_history_length_le {before after : graph.Config}

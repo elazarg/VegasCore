@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import Vegas.Game.SourceServiceFirstTurnMixture
 import Vegas.Game.ServiceDeviationTraffic
 import Interaction.ReactiveRoundCongruence
 import Vegas.Game.ServiceAssignedPolicy
@@ -192,21 +193,6 @@ theorem decidedOpportunity_transmits {bound : (serviceGraph setup mode).EventId 
         bound event := fits
   unfold decidedOpportunity
   simp only [unrecorded, Bool.false_eq_true, ↓reduceIte, fitsView, decision, reduceCtorEq]
-
-/-- An opportunity whose decision is silent is silent. -/
-theorem decidedOpportunity_silent {bound : (serviceGraph setup mode).EventId → Nat}
-    {owner : Player} {event : (serviceGraph setup mode).EventId}
-    (action : (serviceGraph setup mode).Action event)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (quiet : ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner
-      (execution.recall owner) (execution.observe (serviceApplication setup mode deadline leaks)
-        owner) event action).transmission = none) :
-    decidedOpportunity setup leaks bound owner event action (execution.recall owner)
-        (execution.observe (serviceApplication setup mode deadline leaks) owner) =
-      PMF.pure ⟨none⟩ := by
-  unfold decidedOpportunity
-  simp only [quiet, ↓reduceIte, ReactiveApplication.silentPolicy_apply]
-  split_ifs <;> rfl
 
 /-- Another player's response that transmits the same packet as its
 counterpart, or is silent with it, keeps equal deviator traffic. -/

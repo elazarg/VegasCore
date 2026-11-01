@@ -38,20 +38,6 @@ variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.Executio
   {deadline : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
-/-- An activation leaves the application unchanged. -/
-theorem activation_application
-    (execution middle : (serviceApplication setup mode deadline leaks).Execution) (who : Player)
-    (moved : middle ∈
-        (execution.environmentStep (serviceApplication setup mode deadline leaks)
-        (.activate who)).support) :
-    middle.application = execution.application := by
-  unfold ReactiveApplication.Execution.environmentStep at moved
-  rw [PMF.support_map] at moved
-  obtain ⟨updated, supported, rfl⟩ := moved
-  rw [PMF.support_map] at supported
-  obtain ⟨_, _, rfl⟩ := supported
-  rfl
-
 variable {setup} {leaks}
 
 theorem deferral_nonneg {turns : Nat} (timing : TurnTiming setup turns mode)
@@ -173,10 +159,10 @@ theorem CompletionBoundary.stopped {scheduler : (application setup runtime leaks
 
 variable (setup leaks)
 
-/-- Local completion laws determine the complete native configuration law.
+/-- Local completion laws determine every terminal native readout.
 Automatic completion may cross several source instructions before the next boundary. -/
-theorem CompletionBoundary.runToHorizon_config_law
-    (profile : (graph setup).BehavioralProfile)
+theorem CompletionBoundary.runToHorizon_law {Outcome : Type*}
+    (profile : (graph setup).BehavioralProfile) (read : (graph setup).Config → Outcome)
     {scheduler : (application setup runtime leaks).Scheduler}
     {players : Player → (application setup runtime leaks).Policy} {horizon : Nat}
     (completes : runtime.CompletesPlay leaks (initialLaw setup) horizon scheduler)
@@ -186,20 +172,20 @@ theorem CompletionBoundary.runToHorizon_config_law
       execution.environmentRecall.length ≤ horizon →
       ((application setup runtime leaks).runUntilHorizon scheduler players
         (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
-          (fun final => (graph setup).runPlan
+          (fun final => ((graph setup).runPlan
             ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
-            final.application.config.remaining final.application.config) =
-        (graph setup).runPlan
+            final.application.config.remaining final.application.config).map read) =
+        ((graph setup).runPlan
           ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
-          execution.application.config.remaining execution.application.config)
+          execution.application.config.remaining execution.application.config).map read)
     {rank : Nat} (execution : (application setup runtime leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler players rank execution)
     (bounded : execution.environmentRecall.length ≤ horizon) :
     ((application setup runtime leaks).runToHorizon scheduler players horizon execution).map
-        (fun final => final.application.config) =
-      (graph setup).runPlan
+        (fun final => read final.application.config) =
+      ((graph setup).runPlan
         ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
-        execution.application.config.remaining execution.application.config := by
+        execution.application.config.remaining execution.application.config).map read := by
   classical
   let app := application setup runtime leaks
   let plan := (graph setup).policyPlan profile (graph setup).canonicalScheduler
@@ -212,12 +198,13 @@ theorem CompletionBoundary.runToHorizon_config_law
             (graph setup).order.eventCount := finished ▸ boundary.ordered
         have zero : execution.application.config.remaining = 0 :=
           execution.application.config.terminal_iff_remaining_zero.mp terminal.terminal
-        rw [zero, EventGraph.runPlan]
+        rw [zero, EventGraph.runPlan, PMF.pure_map]
         change (app.runRounds scheduler players _ execution).map _ = _
         rw [map_congr_on_support _
-          (g := fun _ => execution.application.config)
-          (fun next reached => runRounds_config_terminal (setup := setup) (leaks := leaks)
-            scheduler players _ execution next terminal reached), pmf_map_fun_const]
+          (g := fun _ => read execution.application.config)
+          (fun next reached => congrArg read (runRounds_config_terminal
+            (setup := setup) (leaks := leaks) scheduler players _ execution next terminal reached)),
+          pmf_map_fun_const]
       · have active : rank < (graph setup).order.eventCount := by
           have rankBound : rank ≤ (graph setup).order.eventCount := boundary.ordered.1
           omega
@@ -228,8 +215,8 @@ theorem CompletionBoundary.runToHorizon_config_law
           _ = (app.runUntilHorizon scheduler players
               (fun final => event ∈ final.application.config.cut.completed) horizon
               execution).bind (fun final =>
-                (graph setup).runPlan plan final.application.config.remaining
-                  final.application.config) := by
+                ((graph setup).runPlan plan final.application.config.remaining
+                  final.application.config).map read) := by
             apply bind_congr_on_support _
             intro stopped reached
             have stoppedDone : event ∈ stopped.application.config.cut.completed := by

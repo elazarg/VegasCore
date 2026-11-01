@@ -73,16 +73,20 @@ theorem firstTurnSourceLaw_of_completion_law
         (firstTurnTiming setup turns) profile
       let plan := (graph setup).policyPlan (compileEventProfile setup.program profile)
         (graph setup).canonicalScheduler
+      let read := fun config : (graph setup).Config => decodeConfig? setup.program setup.program
+        (ContextRefs.initial setup.context (outputLayout setup.program))
+        (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
+        config.history
       ∀ (event : (graph setup).EventId)
         (execution : (application setup runtime leaks).Execution),
         CompletionBoundary setup leaks scheduler players event.val execution →
         execution.environmentRecall.length ≤ horizon →
         ((application setup runtime leaks).runUntilHorizon scheduler players
           (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
-            (fun final => (graph setup).runPlan plan final.application.config.remaining
-              final.application.config) =
-          (graph setup).runPlan plan execution.application.config.remaining
-            execution.application.config) :
+            (fun final => ((graph setup).runPlan plan final.application.config.remaining
+              final.application.config).map read) =
+          ((graph setup).runPlan plan execution.application.config.remaining
+            execution.application.config).map read) :
     FirstTurnSourceLaw setup .sequential runtime.deadline leaks horizon scheduler bound turns
       profile := by
   classical
@@ -120,21 +124,19 @@ theorem firstTurnSourceLaw_of_completion_law
       exact Set.mem_iUnion₂.mpr ⟨_, supported, by simp [ReactiveApplication.runRounds, execution]⟩
     · intro event _ observer entry member
       cases member
-  have configLaw := CompletionBoundary.runToHorizon_config_law setup runtime leaks
-    (compileEventProfile setup.program profile) completes completionLaw execution boundary
+  have configLaw := CompletionBoundary.runToHorizon_law setup runtime leaks
+    (compileEventProfile setup.program profile) read completes completionLaw execution boundary
       (Nat.zero_le _)
   change (app.runRounds scheduler players horizon execution).map
-      (fun final => final.application.config) = _ at configLaw
+      (fun final => read final.application.config) = _ at configLaw
   calc
-    _ = ((app.runRounds scheduler players horizon execution).map
-        (fun final => final.application.config)).map read := by
-      rw [PMF.map_comp]
-      exact map_congr_on_support _ (fun final _ => readEq final)
+    _ = (app.runRounds scheduler players horizon execution).map
+        (fun final => read final.application.config) :=
+      map_congr_on_support _ (fun final _ => readEq final)
     _ = ((graph setup).runPlan
         ((graph setup).policyPlan (compileEventProfile setup.program profile)
           (graph setup).canonicalScheduler)
-        execution.application.config.remaining execution.application.config).map read :=
-      congrArg (PMF.map read) configLaw
+        execution.application.config.remaining execution.application.config).map read := configLaw
     _ = sourceContinuation setup profile 0 execution.application.config :=
       (SourceResidual.initial setup profile initial).runPlan_readout_law
 

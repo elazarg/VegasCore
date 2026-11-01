@@ -195,4 +195,34 @@ theorem settlesFreshCalls_respond (owner : Player) (event : (serviceGraph setup 
   · rw [app.respond_recall_other execution who owner (Ne.symm same) action] at split
     exact valid earlier entry later message split call sole
 
+/-- A recorded response that saw an owner's event ready, which is still
+ready, saw it as the owner's turn: every other event of the owner that the
+response saw ready is either still ready or has completed while ready together
+with this one, and an owner has at most one ready event. -/
+theorem ownTurn?_of_entry_ready
+    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (eventStable : EntryEventStable (serviceRuntime setup mode deadline) leaks execution)
+    (who : Player) (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (member : entry ∈ execution.recall who) (event : (serviceGraph setup mode).EventId)
+    (owned : (serviceGraph setup mode).actor? event = some who)
+    (seen : entry.beforeView.application.publicView.EventReady event)
+    (ready : execution.application.config.cut.Ready event) :
+    entry.beforeView.application.publicView.ownTurn? who = some event := by
+  have relaxed := serviceGraph_revealRelaxedOrdered setup mode
+  obtain ⟨extra, order, together, _, _⟩ := eventStable who entry member event seen ready.1
+  apply PublicView.ownTurn?_of_ownTurn
+  refine ⟨seen, owned, fun other otherSeen otherOwned => ?_⟩
+  by_cases done : other ∈ execution.application.config.cut.completed
+  · have inExtra : other ∈ extra := by
+      have inOrder : other ∈ execution.application.publicView.observation.completionOrder :=
+        (execution.application.config.history_exact other).mpr done
+      rw [order] at inOrder
+      rcases List.mem_append.mp inOrder with old | new
+      · exact (otherSeen.1 old).elim
+      · exact new
+    obtain ⟨cut, otherReady, eventReady⟩ := together other inExtra
+    exact relaxed.ready_actor_unique cut eventReady otherReady owned otherOwned
+  · exact relaxed.ready_actor_unique execution.application.config.cut ready
+      (ready_of_eventReady_extends order otherSeen done) owned otherOwned
+
 end Vegas

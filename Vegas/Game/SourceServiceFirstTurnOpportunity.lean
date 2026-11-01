@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceDecidedCompletion
+import Vegas.Game.SourceServiceCompletion
+import Vegas.Game.SourceServiceTurnPolicy
+import Vegas.Pending.ReactiveAsyncContract
 
 /-! # Protection of the owner's first ready turn
 
@@ -26,6 +28,34 @@ variable {Player : Type} [DecidableEq Player]
   {deadline : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
+/-- The opportunity requirement: an owner whose ready event's deadline is
+past its reaction bound has had a turn there. -/
+theorem opportunity_turn {horizon : Nat}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay bound : (serviceGraph setup mode).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler delay bound) {remaining : Nat}
+    {execution : (serviceApplication setup mode deadline leaks).Execution}
+    (trace :
+        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        horizon scheduler).Trace (some ⟨remaining, none, execution⟩))
+    (answered : ActivationsAnswered setup leaks execution) {owner : Player}
+    {event : (serviceGraph setup mode).EventId}
+    (owned : (serviceGraph setup mode).actor? event = some owner)
+    (ready : execution.application.config.cut.Ready event) (entered : Nat)
+    (activated : execution.application.activatedAt event = some entered)
+    (late : entered + delay event < execution.application.clock) : ∃ entry ∈ execution.recall owner,
+      entry.beforeView.application.publicView.ownTurn? owner = some event := by
+  have facts := legalFacts setup leaks horizon scheduler _ trace
+  obtain ⟨scheduled, member, activate, _, seenReady⟩ := contract.opportunity _ trace event owner
+    entered owned ((execution.application.publicView_eventReady event).mpr ready) activated late
+  obtain ⟨answer, answerMember, viewEq⟩ := answered scheduled member owner activate
+  have seen : answer.beforeView.application.publicView.EventReady event := by
+    rw [viewEq]
+    exact seenReady
+  exact ⟨answer, answerMember, ownTurn?_of_entry_ready setup leaks execution facts.eventStable
+    owner answer answerMember event owned seen ready⟩
+
 /-- The first ready own turn is protected under the reaction and inclusion
 budget. The view may be the freshly sampled activation view: only its first
 turn count is needed, while the clock and readiness come from the actual raw
@@ -49,7 +79,11 @@ theorem firstTurn_inclusionFits {horizon : Nat}
         some 0) :
     execution.application.publicView.InclusionFitsDeadline (serviceRuntime setup mode deadline)
         bound event := by
-  obtain ⟨inputs, invariant⟩ := (roster_trace_facts setup leaks horizon scheduler trace).1
+  have nativeTrace := trace
+  rw [serviceInitialLaw_eq_inputs setup] at nativeTrace
+  obtain ⟨inputs, _, invariant⟩ :=
+    (serviceRuntime setup mode deadline).reactive_history_invariant leaks
+      (setup.initialLaw.map setup.eventInputs) horizon scheduler nativeTrace
   obtain ⟨entered, activated⟩ := invariant.activatedAt_eq_some_of_ready_actor event ready
     (by rw [owned]; rfl)
   have early : execution.application.clock ≤ entered + delay event := by

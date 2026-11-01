@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import Vegas.Game.SourceServiceFirstTurnMixture
 import Vegas.Game.ServiceBlockCongruence
 import Interaction.ReactiveRoundCongruence
 import Vegas.Pending.EventActivationOrigin

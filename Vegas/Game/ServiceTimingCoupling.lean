@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceAsyncStep
 import Interaction.ReactiveMixtureRounds
+import Interaction.ScheduledOpening
 import GameTheoryExtensions.Math.Probability.Expectation
 import Mathlib.Algebra.BigOperators.Ring.Finset
 

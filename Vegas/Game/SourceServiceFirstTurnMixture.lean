@@ -3,6 +3,7 @@
 import Vegas.Game.SourceServiceReachedDecoding
 import Vegas.Game.SourceServiceTurnPolicy
 import Vegas.Source.DisclosureBehavioral
+import Vegas.Pending.ReactiveCanonicalResolution
 
 /-! # First-turn decisions of a fixed source action
 
@@ -83,7 +84,67 @@ def SilentAction (event : (serviceGraph setup mode).EventId)
       (cast (congrArg EventGraph.EventField.Action outputEq) action : Bool) = false
   | _ => False
 
+
 variable {leaks}
+
+/-- Public binding omission and false disclosure compile to silence at every view. -/
+theorem canonicalServiceDecision_silent (who : Player)
+    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (view : (serviceApplication setup mode deadline leaks).PlayerView)
+    (event : (serviceGraph setup mode).EventId)
+    (action : (serviceGraph setup mode).Action event) (silent : SilentAction event action) :
+    ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view event
+        action).transmission = none := by
+  cases node : nodeView (serviceGraph setup mode) event with
+  | sample payload law outputEq codeEq =>
+      simp only [SilentAction, node] at silent
+  | bind owner payload outputEq codeEq =>
+      have withheld : cast (congrArg EventGraph.EventField.Action outputEq) action = none := by
+        simpa only [SilentAction, node] using silent
+      have castBack :=
+        congrArg (cast (congrArg EventGraph.EventField.Action outputEq.symm)) withheld
+      simp only [cast_cast, cast_eq] at castBack
+      rw [castBack]
+      exact congrArg ReactiveApplication.Action.transmission
+        ((serviceRuntime setup mode deadline).canonicalServiceDecision_binding_none leaks who
+          past view event owner payload outputEq codeEq node)
+  | resolve owner payload binding checks outputEq codeEq =>
+      have withheld : cast (congrArg EventGraph.EventField.Action outputEq) action = false := by
+        simpa only [SilentAction, node] using silent
+      have castBack :=
+        congrArg (cast (congrArg EventGraph.EventField.Action outputEq.symm)) withheld
+      simp only [cast_cast, cast_eq] at castBack
+      rw [castBack]
+      exact congrArg ReactiveApplication.Action.transmission
+        ((serviceRuntime setup mode deadline).canonicalServiceDecision_resolution_false leaks who
+          past view event owner payload binding checks outputEq codeEq node)
+
+/-- An opportunity whose canonical response is silent is silent at the same input. -/
+theorem decidedOpportunity_silent {bound : (serviceGraph setup mode).EventId → Nat}
+    {owner : Player} {event : (serviceGraph setup mode).EventId}
+    (action : (serviceGraph setup mode).Action event)
+    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (view : (serviceApplication setup mode deadline leaks).PlayerView)
+    (quiet : ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner past
+      view event action).transmission = none) :
+    decidedOpportunity setup leaks bound owner event action past view = PMF.pure ⟨none⟩ := by
+  unfold decidedOpportunity
+  simp only [quiet, ↓reduceIte, ReactiveApplication.silentPolicy_apply]
+  split_ifs <;> rfl
+
+/-- A fixed silent source action stays silent at every input of its turn policy. -/
+theorem decidedTurnPolicy_silent {bound : (serviceGraph setup mode).EventId → Nat}
+    {owner : Player} {event : (serviceGraph setup mode).EventId}
+    (action : (serviceGraph setup mode).Action event) (silent : SilentAction event action)
+    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (view : (serviceApplication setup mode deadline leaks).PlayerView) :
+    decidedTurnPolicy setup leaks bound owner event action past view = PMF.pure ⟨none⟩ := by
+  unfold decidedTurnPolicy ReactiveApplication.turnScheduledPolicy
+  dsimp only
+  split
+  · exact decidedOpportunity_silent action past view
+      (canonicalServiceDecision_silent owner past view event action silent)
+  · rfl
 
 section Sequential
 

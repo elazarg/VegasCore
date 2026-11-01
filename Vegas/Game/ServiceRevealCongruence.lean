@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import Vegas.Game.SourceServiceFirstTurnMixture
 import Vegas.Game.ServiceRevealVirtual
 import Interaction.ReactiveRoundCongruence
 import Vegas.Game.ServiceRevealLaw

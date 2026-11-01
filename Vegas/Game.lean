@@ -446,6 +446,7 @@ import Vegas.Game.SourceServiceCanonicalConformance
 import Vegas.Game.SourceServiceCanonicalPolicy
 import Vegas.Game.SourceServiceCanonicalSerial
 import Vegas.Game.SourceServiceCanonicalSlots
+import Vegas.Game.SourceServiceChanceContinuation
 import Vegas.Game.SourceServiceCheckpoint
 import Vegas.Game.SourceServiceChoiceSupport
 import Vegas.Game.SourceServiceClientPolicy
@@ -478,6 +479,8 @@ import Vegas.Game.SourceServiceReachedDecoding
 import Vegas.Game.SourceServiceRetainedPolicy
 import Vegas.Game.SourceServiceRetainedSlots
 import Vegas.Game.SourceServiceSettledSound
+import Vegas.Game.SourceServiceAcceptedContinuation
+import Vegas.Game.SourceServiceSilentContinuation
 import Vegas.Game.SourceServiceSiteBridge
 import Vegas.Game.SourceServiceSpec
 import Vegas.Game.SourceServiceSequentialTimeliness

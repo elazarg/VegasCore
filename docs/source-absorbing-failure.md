@@ -652,9 +652,9 @@ The continuation kernel is the ordinary graph runner: from a configuration,
 run the compiled profile for its remaining instructions. It retains the full
 terminal graph configuration. Automatic completion preserves that kernel.
 
-`CompletionBoundary.runToHorizon_config_law` in
+`CompletionBoundary.runToHorizon_law` in
 [SourceServiceAsyncStep](../Vegas/Game/SourceServiceAsyncStep.lean) lifts a local
-completion identity to the full native terminal configuration law. It stops
+completion identity to every native terminal readout, including the full configuration. It stops
 when the current event completes, then recurses at the actual reached rank.
 Its hypotheses are complete play and the local identity saying that the stopped
 law followed by the graph continuation equals the starting continuation. The
@@ -684,6 +684,24 @@ Native receipt origins are handled by
 content has one equivalence along finite graph paths in
 [ReactiveSettledStability](../Vegas/Pending/ReactiveSettledStability.lean),
 independently of receipt changes.
+
+The concrete event cases retain that complete continuation.
+[SourceServiceSilentContinuation](../Vegas/Game/SourceServiceSilentContinuation.lean)
+handles omission and withholding from a raw initialized idle history. Pending
+call absence follows submission-at-turn discipline and an untouched boundary;
+the fixed member is silent whenever this event is its own turn. Complete play
+then forces expiry, with its entire automatic tail.
+[SourceServiceAcceptedContinuation](../Vegas/Game/SourceServiceAcceptedContinuation.lean)
+starts from a recorded protected call and its typed acceptance witness. Under
+protected inclusion and complete play, its stopped continuation is the exact
+requested graph action followed by the graph runner. Publication may fail.
+[SourceServiceChanceContinuation](../Vegas/Game/SourceServiceChanceContinuation.lean)
+handles every ready ownerless event for any native state, players and waiting
+count, without a complete-play or clear-default premise.
+
+The first-turn timing, submission discipline and inclusion window are checked
+in their own low service owners. Concrete-client composition must derive the
+local hypotheses above; that composition remains an acceptance obligation.
 
 ## Remaining compiler interfaces
 
