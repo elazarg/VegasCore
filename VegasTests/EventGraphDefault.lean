@@ -31,13 +31,13 @@ private def twoBindings : Vegas.EventGraph Unit simpleExpr where
   payoffs := []
 
 private def admitted : twoBindings.Completion :=
-  Completion.fromDecision ⟨0, by decide⟩ (some (some .failure)) .failure
+  EventGraph.completion twoBindings ⟨0, by decide⟩ (some (some .failure)) .failure
 
 private def omitted : twoBindings.Completion :=
-  Completion.fromDecision ⟨1, by decide⟩ (some none) .failure
+  EventGraph.completion twoBindings ⟨1, by decide⟩ (some none) .failure
 
 private def automatic : twoBindings.Completion :=
-  Completion.fromDecision ⟨1, by decide⟩ none .failure
+  EventGraph.completion twoBindings ⟨1, by decide⟩ none .failure
 
 /-- Original unusable admission and deliberate omission remain distinguishable. -/
 example : admitted.defaultEvent = none ∧ omitted.defaultEvent = some () ∧
@@ -48,10 +48,10 @@ example : admitted.defaultEvent = none ∧ omitted.defaultEvent = some () ∧
 example : automatic.decision = none ∧ automatic.defaultEvent = none := ⟨rfl, rfl⟩
 
 /-- The chronological record determines both public timing and the current default set. -/
-example : (Completion.defaults [admitted, omitted]).events = [some (), none] ∧
-    (Completion.defaults [admitted, omitted]).defaulted = {()} := by
-  exact ⟨rfl, by simp [Completion.defaults, DefaultHistory.defaulted, admitted, omitted,
-    Completion.fromDecision, EventCode.defaultEvent, EventCode.causesDefault, EventCode.actor,
+example : (EventCompletion.defaults [admitted, omitted]).events = [some (), none] ∧
+    (EventCompletion.defaults [admitted, omitted]).defaulted = {()} := by
+  exact ⟨rfl, by simp [EventCompletion.defaults, DefaultHistory.defaulted, admitted, omitted,
+    EventGraph.completion, EventCode.defaultEvent, EventCode.causesDefault, EventCode.actor,
     twoBindings]⟩
 
 end VegasTests

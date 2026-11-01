@@ -449,7 +449,7 @@ private theorem round_primary_or_stutter (runtime : EventGraphRuntime graph)
   rw [configEq]
   exact environment_primary_or_stutter runtime leaks before middle command quiescent moved
 
-/-- At a unique ready event with active owner, a completed stopped run is one
+/-- At a unique ready event of a quiescent state, a completed stopped run is one
 supported primary graph step followed by native automatic completion. Arbitrary
 earlier rounds may stutter without changing the starting graph configuration. -/
 theorem runUntil_completed_primary_drain (runtime : EventGraphRuntime graph)
@@ -460,8 +460,7 @@ theorem runUntil_completed_primary_drain (runtime : EventGraphRuntime graph)
     (before after : (runtime.reactiveApplication leaks).Execution)
     (ready : before.application.config.cut.Ready event)
     (unique : ∀ query, before.application.config.cut.Ready query → query = event)
-    (owner : Player) (owned : graph.actor? event = some owner)
-    (active : owner ∉ before.application.config.defaulted)
+    (quiescent : ∀ query, ¬ before.application.AutomaticReady query)
     (reached : after ∈ ((runtime.reactiveApplication leaks).runUntil scheduler players
       (fun current => event ∈ current.application.config.cut.completed) count before).support)
     (completed : event ∈ after.application.config.cut.completed) :
@@ -473,12 +472,6 @@ theorem runUntil_completed_primary_drain (runtime : EventGraphRuntime graph)
       cases (PMF.mem_support_pure_iff _ _).mp reached
       exact (ready.1 completed).elim
   | succ count ih =>
-      have quiescent : ∀ query, ¬ before.application.AutomaticReady query := by
-        intro query eligible
-        cases unique query eligible.1
-        obtain ⟨who, acting, inactive⟩ := eligible.owned
-        have same : who = owner := Option.some.inj (acting.symm.trans owned)
-        exact active (same ▸ inactive)
       simp only [ReactiveApplication.runUntil, ready.1, ite_false] at reached
       obtain ⟨middle, moved, rest⟩ := (PMF.mem_support_bind_iff _ _ _).mp reached
       by_cases done : event ∈ middle.application.config.cut.completed
@@ -493,7 +486,8 @@ theorem runUntil_completed_primary_drain (runtime : EventGraphRuntime graph)
       · have same := reactive_round_config_eq_of_pending runtime leaks scheduler players event
           before middle unique done moved
         obtain ⟨action, native, primary, drained⟩ := ih middle (same ▸ ready)
-          (by simpa only [same] using unique) (by simpa only [same] using active) rest
+          (by simpa only [same] using unique)
+          (by simpa only [State.AutomaticReady, same] using quiescent) rest
         refine ⟨action, native, ?_, drained⟩
         simpa only [same] using primary
 

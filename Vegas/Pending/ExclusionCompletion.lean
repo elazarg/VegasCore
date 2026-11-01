@@ -192,6 +192,29 @@ def AutomaticStep (before after : State graph) : Prop :=
   ∃ event, ∃ eligible : before.AutomaticReady event,
     after = before.completeAutomatic event eligible
 
+/-- An automatic path cannot advance from a state with no mechanical completion. -/
+theorem automatic_path_eq_of_quiescent {before after : State graph}
+    (path : Relation.ReflTransGen AutomaticStep before after)
+    (quiescent : ∀ event, ¬ before.AutomaticReady event) : after = before := by
+  rcases path.cases_head with same | ⟨middle, moved, _⟩
+  · exact same.symm
+  · obtain ⟨event, eligible, _⟩ := moved
+    exact (quiescent event eligible).elim
+
+/-- A quiescent endpoint must have consumed the unique ready automatic head.
+The remaining path starts at that exact native completion. -/
+theorem automatic_path_tail_of_quiescent {before after : State graph}
+    (path : Relation.ReflTransGen AutomaticStep before after)
+    (event : graph.EventId) (eligible : before.AutomaticReady event)
+    (unique : ∀ query, before.config.cut.Ready query → query = event)
+    (quiescent : ∀ query, ¬ after.AutomaticReady query) :
+    Relation.ReflTransGen AutomaticStep (before.completeAutomatic event eligible) after := by
+  rcases path.cases_head with same | ⟨middle, moved, tail⟩
+  · exact (quiescent event (same ▸ eligible)).elim
+  · obtain ⟨query, queryEligible, rfl⟩ := moved
+    cases unique query queryEligible.1
+    exact tail
+
 theorem drainFuel_trace (fuel : Nat) (state : State graph) :
     Relation.ReflTransGen AutomaticStep state (drainFuel fuel state) := by
   induction fuel generalizing state with

@@ -267,4 +267,108 @@ theorem chance_runUntil_bind_runPlan
                   event ready ownerless)
             _ = _ := PMF.bind_const _ _
 
+private theorem runPlan_store_law {compiled : Vegas.EventGraph Player L}
+    (plan : compiled.EventPlan) :
+    ∀ (fuel : Nat) (config : compiled.Config) (field : compiled.Field)
+      (value : (compiled.layout field).Value), config.store field = some value →
+      (compiled.runPlan plan fuel config).map (fun final => final.store field) =
+        PMF.pure (some value) := by
+  intro fuel
+  induction fuel with
+  | zero =>
+      intro config field value stored
+      simpa only [EventGraph.runPlan, PMF.pure_map] using congrArg PMF.pure stored
+  | succ fuel ih =>
+      intro config field value stored
+      rw [EventGraph.runPlan]
+      split
+      · simpa only [PMF.pure_map] using congrArg PMF.pure stored
+      · simp only [PMF.map_bind]
+        calc
+          _ = (plan config _).bind (fun _ => PMF.pure (some value)) := by
+            apply bind_congr_on_support _
+            intro choice _chosen
+            calc
+              _ = (config.step choice.1.1 choice.1.2 choice.2).bind
+                  (fun _ => PMF.pure (some value)) := by
+                apply bind_congr_on_support _
+                intro next supported
+                exact ih next field value
+                  (config.step_store_of_some next choice.1.1 choice.1.2 choice.2 supported
+                    field value stored)
+              _ = _ := PMF.bind_const _ _
+          _ = _ := PMF.bind_const _ _
+
+private theorem runPlan_output_law {compiled : Vegas.EventGraph Player L}
+    (plan : compiled.EventPlan) (fuel : Nat) (config : compiled.Config)
+    (event : compiled.EventId) (completed : event ∈ config.cut.completed) :
+    (compiled.runPlan plan fuel config).map (fun final => final.outputs event) =
+      PMF.pure (config.outputs event) := by
+  obtain ⟨value, stored⟩ :=
+    Option.isSome_iff_exists.mp ((config.output_available event).mpr completed)
+  change config.outputs event = some value at stored
+  change (compiled.runPlan plan fuel config).map (fun final => final.store (.inr event)) = _
+  rw [stored]
+  exact runPlan_store_law plan fuel config (.inr event) value stored
+
+/-- Once a ready chance event has completed, its stopped output has exactly
+its graph sampling law, including any automatic completions after the draw. -/
+theorem chance_completed_output_law
+    {setup : Setup (Player := Player) (L := L)} (runtime : EventGraphRuntime (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (profile : (graph setup).BehavioralProfile)
+    (scheduler : (application setup runtime leaks).Scheduler)
+    (players : Player → (application setup runtime leaks).Policy)
+    (event : (graph setup).EventId) (ownerless : (graph setup).actor? event = none)
+    (count : Nat) (execution : (application setup runtime leaks).Execution)
+    (ready : execution.application.config.cut.Ready event)
+    (completed : ∀ final ∈ ((application setup runtime leaks).runUntil scheduler players
+      (fun final => event ∈ final.application.config.cut.completed) count execution).support,
+      event ∈ final.application.config.cut.completed) :
+    ((application setup runtime leaks).runUntil scheduler players
+      (fun final => event ∈ final.application.config.cut.completed) count execution).map
+        (fun final => final.application.config.outputs event) =
+      (execution.application.config.step event ready
+        (EventCode.actionOfActorNone ((graph setup).nodes event) ownerless)).map
+          (fun final => final.outputs event) := by
+  let plan := (graph setup).policyPlan profile (graph setup).canonicalScheduler
+  have law := congrArg (PMF.map (fun final : (graph setup).Config => final.outputs event))
+    (chance_runUntil_bind_runPlan runtime leaks profile scheduler players event ownerless
+      count execution ready)
+  simp only [PMF.map_bind] at law
+  have left :
+      (((application setup runtime leaks).runUntil scheduler players
+        (fun final => event ∈ final.application.config.cut.completed) count execution).bind
+        fun final => ((graph setup).runPlan plan final.application.config.remaining
+          final.application.config).map (fun config => config.outputs event)) =
+      ((application setup runtime leaks).runUntil scheduler players
+        (fun final => event ∈ final.application.config.cut.completed) count execution).map
+          (fun final => final.application.config.outputs event) := by
+    rw [← PMF.bind_pure_comp]
+    apply bind_congr_on_support _
+    intro final supported
+    exact runPlan_output_law plan _ _ event (completed final supported)
+  change _ = ((graph setup).runPlan plan execution.application.config.remaining
+    execution.application.config).map (fun final => final.outputs event) at law
+  rw [left] at law
+  rw [law]
+  have nonzero : execution.application.config.remaining ≠ 0 := by
+    intro zero
+    have terminal := execution.application.config.terminal_iff_remaining_zero.mpr zero
+    exact ready.1 (terminal ▸ Finset.mem_univ event)
+  obtain ⟨fuel, fuelEq⟩ := Nat.exists_eq_succ_of_ne_zero nonzero
+  rw [fuelEq, (graph setup).runPlan_canonical_ownerless profile fuel
+    execution.application.config event ready
+    (fun _ pending => setup.eventGraph.sequentialize_ready_le_unfinished _ ready pending)
+    ownerless, PMF.map_bind]
+  rw [← PMF.bind_pure_comp]
+  apply bind_congr_on_support _
+  intro next supported
+  apply runPlan_output_law plan fuel next event
+  rw [execution.application.config.step_cut event ready _ next supported,
+    EventOrder.Cut.mem_complete]
+  exact Or.inl rfl
+
+
+
 end Vegas

@@ -15,8 +15,9 @@ import Interaction.ReactiveMixtureRounds
 A successor view retains the preceding full view and the owner's actual
 optional disclosure decision. An already defaulted owner records no new choice.
 At a sole ready event owned by the deviator or by chance, all other first-turn
-clients remain silent until the event completes. At the deviator's revelation, the joint
-source-successor and native-traffic law has a behavioral source kernel. The actual ledger
+clients remain silent until the event completes. At the deviator's owned instruction, the joint
+source-successor and native-traffic law has a behavioral source kernel. Binding choices
+retain the distinction between public omission and admitted unusability. The actual ledger
 endpoint is the typed source completion followed by deterministic automatic completion.
 -/
 
@@ -148,15 +149,16 @@ theorem runUntil_deviation_focal
     exact round_ready_of_pending alone (currentHolds running) reached
   · exact holds
 
-private def disclosedAt (setup : Setup (Player := Player) (L := L))
+private def actionAt (setup : Setup (Player := Player) (L := L))
     (mode : EventGraph.ExecutionMode)
     (event : (serviceGraph setup mode).EventId)
-    {observer : Player} (observed : (serviceGraph setup mode).PlayerObservation observer) : Bool :=
-  OwnAction.disclosure ((observed.ownActions.find?
+    {observer : Player} (observed : (serviceGraph setup mode).PlayerObservation observer) :
+    Option (OwnAction Player L) :=
+  (observed.ownActions.find?
     (fun record => decide (record.event = event))).bind
-    fun record => record.decision.bind (decodeEventAction setup.program record.event))
+    fun record => record.decision.bind (decodeEventAction setup.program record.event)
 
-private theorem disclosedAt_record (setup : Setup (Player := Player) (L := L))
+private theorem actionAt_record (setup : Setup (Player := Player) (L := L))
     (mode : EventGraph.ExecutionMode) (who : Player)
     (native : EventGraphRuntime.State (serviceGraph setup mode))
     (event : (serviceGraph setup mode).EventId)
@@ -165,8 +167,8 @@ private theorem disclosedAt_record (setup : Setup (Player := Player) (L := L))
     (value : ((serviceGraph setup mode).outputLayout event).Value)
     (present : EventGraph.completion (serviceGraph setup mode) event (some action) value
       ∈ native.config.history) :
-    disclosedAt setup mode event (native.playerView who).observation =
-      OwnAction.disclosure (decodeEventAction setup.program event action) := by
+    actionAt setup mode event (native.playerView who).observation =
+      decodeEventAction setup.program event action := by
   let record := EventGraph.completion (serviceGraph setup mode) event (some action) value
   have recalled : record ∈ (serviceGraph setup mode).ownCompletions who native.config.history :=
     (EventGraph.mem_ownCompletions who native.config.history record).2 ⟨present, owned, rfl⟩
@@ -186,11 +188,15 @@ private theorem disclosedAt_record (setup : Setup (Player := Player) (L := L))
         have equal : completion = record :=
           List.inj_on_of_nodup_map native.config.history_nodup retained present matching
         exact congrArg some equal
-  simp only [disclosedAt, EventGraphRuntime.State.playerView, EventGraph.playerObserve, found,
+  simp only [actionAt, EventGraphRuntime.State.playerView, EventGraph.playerObserve, found,
     Option.bind_some, record, EventGraph.completion]
-private theorem primary_reveal_joint {Seed : Type} {Γ : SourceCtx Player L} {name : VarId}
-    {who : Player} {payload : L.Ty} (published : VarId)
-    (binding : HasVar Γ name (.commitment who payload))
+private theorem primary_owned_joint {Seed Choice : Type} {Γ Δ : SourceCtx Player L}
+    (who : Player) (advance : Config Player L Γ → Choice → Config Player L Δ)
+    (rollback : DecisionView who Δ → DecisionView who Γ)
+    (decode : Option (OwnAction Player L) → Choice)
+    (backed : ∀ config choice, rollback ((advance config choice).view who) = config.view who)
+    (remembered : ∀ config, who ∉ config.defaulted → ∀ choice,
+      decode ((advance config choice).view who).history.getLast? = choice)
     (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
     {deadline : (serviceGraph setup mode).EventId → Nat}
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
@@ -210,20 +216,18 @@ private theorem primary_reveal_joint {Seed : Type} {Γ : SourceCtx Player L} {na
     (active : ∀ seed ∈ prior.support, who ∉ (source seed).defaulted)
     (ready : ∀ seed ∈ prior.support, event ∉ (execution seed).application.config.cut.completed →
       (execution seed).application.config.cut.Ready event) :
-    ∃ choice : DecisionView who Γ → PMF Bool,
-      ∃ nextNoise : DecisionView who ((published, .publication payload) :: Γ) → PMF _,
+    ∃ choice : DecisionView who Γ → PMF Choice,
+      ∃ nextNoise : DecisionView who Δ → PMF _,
       (prior.bind fun seed =>
         ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
           (focalPlayers setup leaks who deviation)
           (fun final => event ∈ final.application.config.cut.completed) horizon
           (execution seed)).map fun final =>
-            (revealSuccessor published binding (source seed)
-              (disclosedAt setup mode event
-                (final.application.playerView who).observation),
+            (advance (source seed)
+              (decode (actionAt setup mode event (final.application.playerView who).observation)),
               (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
       ((prior.map source).bind fun config =>
-        (choice (config.view who)).map (revealSuccessor published binding config)).bind
-          fun config =>
+        (choice (config.view who)).map (advance config)).bind fun config =>
           (nextNoise (config.view who)).map fun traffic => (config, traffic) := by
   let app := serviceApplication setup mode deadline leaks
   let read := fun seed => (serviceRuntime setup mode deadline).bindingTraffic leaks who
@@ -250,41 +254,30 @@ private theorem primary_reveal_joint {Seed : Type} {Γ : SourceCtx Player L} {na
   let pick := fun traffic : MessageNetwork Player app.Payload ×
       List (MessageId Player × Bool) × List app.EnvironmentEntry × List app.PlayerEntry ×
       PlayerView (serviceGraph setup mode) × PublicView (serviceGraph setup mode) =>
-      disclosedAt setup mode event traffic.2.2.2.2.1.observation
+      decode (actionAt setup mode event traffic.2.2.2.2.1.observation)
   let choice := fun view => (channel view).map pick
-  let nextNoise := fun view : DecisionView who ((published, .publication payload) :: Γ) =>
-    fiberPosterior (channel (view.back true)) pick (OwnAction.disclosure view.history.getLast?)
+  let nextNoise := fun view : DecisionView who Δ =>
+    fiberPosterior (channel (rollback view)) pick (decode view.history.getLast?)
   refine ⟨choice, nextNoise, ?_⟩
-  have remembered (config : Config Player L Γ) (isActive : who ∉ config.defaulted)
-      (disclose : Bool) :
-      OwnAction.disclosure
-        ((revealSuccessor published binding config disclose).view who).history.getLast?
-        = disclose := by
-    simp only [Config.view, revealSuccessor, isActive, ite_false, Function.update_self,
-      List.getLast?_append, List.getLast?_singleton, Option.some_or, OwnAction.disclosure]
   calc
     _ = (prior.bind fun seed => (phase seed).map fun traffic => (source seed, traffic)).map
-        (fun pair => (revealSuccessor published binding pair.1 (pick pair.2), pair.2)) := by
+        (fun pair => (advance pair.1 (pick pair.2), pair.2)) := by
       simp only [PMF.map_bind, PMF.map_comp, Function.comp_def, phase, pick,
         EventGraphRuntime.bindingTraffic, app]
     _ = ((prior.map source).bind fun config =>
         (channel (config.view who)).map fun traffic => (config, traffic)).map
-          (fun pair => (revealSuccessor published binding pair.1 (pick pair.2), pair.2)) := by
+          (fun pair => (advance pair.1 (pick pair.2), pair.2)) := by
       rw [joint]
     _ = _ := by
       simp only [PMF.map_bind, PMF.map_comp, Function.comp_def, PMF.bind_bind, PMF.bind_map]
       apply bind_congr_on_support _
       intro seed supported
       rw [map_readout_choice (channel ((source seed).view who)) pick
-        (fun disclose traffic =>
-          (revealSuccessor published binding (source seed) disclose, traffic))]
+        (fun chosen traffic =>
+          (advance (source seed) chosen, traffic))]
       apply bind_congr_on_support _
-      intro disclose _
-      have backed : ((revealSuccessor published binding (source seed) disclose).view who).back
-          true = (source seed).view who := by
-        simpa using back_reveal_view who published binding (source seed) disclose
+      intro chosen _
       simp only [nextNoise, backed, remembered _ (active seed supported)]
-
 
 /-- A deviator's genuine disclosure has an observation-local source kernel.
 The actual stopped ledger endpoint follows its typed source successor by automatic completion. -/
@@ -410,9 +403,15 @@ theorem sourceService_deviator_reveal_law
         (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed) := by
     exact runUntil_deviation_focal scheduler bound turns wholeProfile who deviation event
       (Or.inr owned) alone _ (execution seed) (fun _ => readyAt seed supported)
-  obtain ⟨kernel, nextNoise, law⟩ := primary_reveal_joint published binding setup leaks scheduler
-    deviation event owned alone horizon prior source execution noise factor sourceActive
-      (fun seed supported _ => readyAt seed supported)
+  obtain ⟨kernel, nextNoise, law⟩ := primary_owned_joint who
+    (revealSuccessor published binding) (fun view => view.back true) OwnAction.disclosure
+    (fun config disclose => by
+      simpa using back_reveal_view who published binding config disclose)
+    (fun config active disclose => by
+      simp only [Config.view, revealSuccessor, active, ite_false, Function.update_self,
+        List.getLast?_append, List.getLast?_singleton, Option.some_or, OwnAction.disclosure])
+    setup leaks scheduler deviation event owned alone horizon prior source execution noise factor
+      sourceActive (fun seed supported _ => readyAt seed supported)
   refine ⟨kernel, nextNoise, ?_, ?_⟩
   · calc
       _ = prior.bind (fun seed =>
@@ -450,8 +449,10 @@ theorem sourceService_deviator_reveal_law
     obtain ⟨action, native, primary, drained⟩ := runUntil_completed_primary_drain
       (serviceRuntime setup mode deadline) leaks scheduler players event
       (horizon - (execution seed).environmentRecall.length) (execution seed) final ready
-      (fun other otherReady => alone _ other ready otherReady) who owned
-      (nativeActive seed supported) reached completed
+      (fun other otherReady => alone _ other ready otherReady)
+      (by
+        obtain ⟨trace⟩ := traceAt seed supported
+        exact (legalFacts setup leaks horizon scheduler _ trace).quiescent) reached completed
     let disclose : Bool := cast (congrArg EventGraph.EventField.Action outputEq) action
     have actionEq : action =
         cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose := by
@@ -494,8 +495,229 @@ theorem sourceService_deviator_reveal_law
         final.application.config.history := by
       rw [drained, ← retained, recorded]
       exact List.mem_append_left _ (List.mem_append_right _ (List.mem_singleton_self _))
-    have chosen := disclosedAt_record setup mode who final.application event owned action value
-      present
-    simpa only [disclosedAt, readChoice, actionEq, decodedAction, OwnAction.disclosure] using chosen
+    have chosen := congrArg OwnAction.disclosure
+      (actionAt_record setup mode who final.application event owned action value present)
+    simpa only [actionAt, readChoice, actionEq, decodedAction, OwnAction.disclosure] using chosen
+
+/-- A deviator's genuine binding has an observation-local source kernel.
+Omission publicly defaults its owner; admitted unusability remains opaque.
+The typed successor precedes the actual endpoint's automatic completion. -/
+theorem sourceService_deviator_commit_law
+    {Seed : Type} {horizon : Nat}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (complete : CompletesPlay (serviceRuntime setup mode deadline) leaks
+      (serviceInitialLaw setup mode) horizon scheduler)
+    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (wholeProfile : BehavioralProfile setup.program) (who : Player)
+    (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    {name : VarId} {payload : L.Ty}
+    (fresh : name ∉ Γ.map Prod.fst) (guard : SourceGuard L Γ who name payload)
+    (next : SourceProgram Player L ((name, .commitment who payload) :: Γ)
+      (insert name openNames))
+    (profile : BehavioralProfile (.commit name who fresh guard next))
+    (refs : ContextRefs (graphLayout setup.program) Γ)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      (.commit name who fresh guard next))
+    (refsBefore : ContextRefsBefore refs embedding) (rank : Nat)
+    (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other,
+      cut.Ready (embedding.event ⟨0, by simp [eventCount]⟩) → cut.Ready other →
+        other = embedding.event ⟨0, by simp [eventCount]⟩)
+    (prior : PMF Seed) (source : Seed → Config Player L Γ)
+    (execution : Seed → (serviceApplication setup mode deadline leaks).Execution)
+    (aligned : ∀ seed, CompiledPolicySuffix setup.program wholeProfile
+      (.commit name who fresh guard next) profile refs
+      (source seed).revelations (source seed).registry embedding refsBefore rank)
+    (checkpoint : ∀ seed, SourceCheckpoint setup (source seed) refs rank
+      (execution seed).application.config)
+    (boundary : ∀ seed ∈ prior.support, CompletionBoundary setup leaks scheduler
+      (Function.update (serviceTurnPolicy setup mode deadline leaks bound turns
+        (firstTurnTiming setup turns mode) wholeProfile) who deviation) rank (execution seed))
+    (bounded : ∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon)
+    (noise : DecisionView who Γ → PMF _)
+    (factor : prior.map (fun seed => (source seed,
+        (serviceRuntime setup mode deadline).bindingTraffic leaks who (execution seed))) =
+      (prior.map source).bind fun config =>
+        (noise (config.view who)).map fun traffic => (config, traffic)) :
+    let index : Fin (eventCount (.commit name who fresh guard next)) :=
+      ⟨0, by simp [eventCount]⟩
+    let event : (serviceGraph setup mode).EventId := embedding.event index
+    let bindingRef : EventGraph.FieldRef (graphLayout setup.program) (.binding who payload) :=
+      by simpa [index, outputLayout, eventCount] using embedding.ref index
+    let players := Function.update (serviceTurnPolicy setup mode deadline leaks bound turns
+      (firstTurnTiming setup turns mode) wholeProfile) who deviation
+    let readChoice := fun final : (serviceApplication setup mode deadline leaks).Execution =>
+      OwnAction.binding who name payload
+        (((final.application.playerView who).observation.ownActions.find?
+          (fun record => decide (record.event = event))).bind fun record =>
+            record.decision.bind (decodeEventAction setup.program record.event))
+    ∃ kernel : DecisionView who Γ → PMF (Option (PublicationResult (L.Val payload))),
+      ∃ nextNoise : DecisionView who ((name, .commitment who payload) :: Γ) → PMF _,
+      (prior.bind fun seed =>
+        ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+          (fun final => event ∈ final.application.config.cut.completed) horizon
+          (execution seed)).map fun final =>
+            (commitSuccessor name guard (source seed) (readChoice final),
+              (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
+        (((prior.map source).bind fun config =>
+          (kernel (config.view who)).map (commitSuccessor name guard config)).bind
+            fun config => (nextNoise (config.view who)).map fun traffic => (config, traffic)) ∧
+      ∀ seed ∈ prior.support, ∀ final ∈
+          ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+            (fun current => event ∈ current.application.config.cut.completed) horizon
+            (execution seed)).support,
+        ∃ (choice : Option (PublicationResult (L.Val payload)))
+          (native : EventGraphRuntime.State (serviceGraph setup mode)),
+          SourceCheckpoint setup (commitSuccessor name guard (source seed) choice)
+            (refs.cons (name := name) bindingRef) (rank + 1) native.config ∧
+          final.application.config = native.drain.config ∧ readChoice final = choice := by
+  intro index event bindingRef players readChoice
+  let app := serviceApplication setup mode deadline leaks
+  have eventRank : event.val = rank := by
+    simpa only [event, index, Fin.val_zero, Nat.add_zero] using
+      (aligned prior.support_nonempty.choose).graphSuffix.rankEq index
+  have owned : (serviceGraph setup mode).actor? event = some who := by
+    change (toEventGraph setup.program).actor? event = some who
+    simpa [event, index, eventOwner?, eventCount] using
+      (aligned prior.support_nonempty.choose).actorEq index
+  have outputEq : (serviceGraph setup mode).outputLayout event = .binding who payload :=
+    bindingRef.layout_eq
+  have codeEq (seed : Seed) :
+      cast (congrArg (EventGraph.EventCode (serviceGraph setup mode).layout) outputEq)
+        ((serviceGraph setup mode).nodes event) = .bind who payload := by
+    change cast (congrArg (EventGraph.EventCode (graphLayout setup.program)) outputEq)
+      ((toEventGraph setup.program).nodes event) = _
+    simpa [event, index, compileRankedNodes] using (aligned seed).graphSuffix.nodeEq index
+  have decodedAction (choice : Option (PublicationResult (L.Val payload))) :
+      decodeEventAction setup.program event
+      (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice) =
+        some (.commit who name payload choice) := by
+    have lookup := (aligned prior.support_nonempty.choose).actionEq index
+      (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
+    simpa [event, index, outputEq, decodeEventAction] using lookup
+  have readyAt (seed : Seed) (supported : seed ∈ prior.support) :
+      (execution seed).application.config.cut.Ready event := by
+    have ordered := (boundary seed supported).ordered
+    rw [← eventRank] at ordered
+    exact ordered.ready event.isLt
+  have traceAt (seed : Seed) (supported : seed ∈ prior.support) :
+      Nonempty ((app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+        (some ⟨horizon - (execution seed).environmentRecall.length, none, execution seed⟩)) :=
+    app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon scheduler players _
+      (bounded seed supported) _ (boundary seed supported).supported
+  have nativeActive (seed : Seed) (supported : seed ∈ prior.support) :
+      who ∉ (execution seed).application.config.defaulted := by
+    obtain ⟨trace⟩ := traceAt seed supported
+    exact (execution seed).application.active_of_ready_owned
+      (legalFacts setup leaks horizon scheduler _ trace).quiescent (readyAt seed supported) owned
+  have sourceActive (seed : Seed) (supported : seed ∈ prior.support) :
+      who ∉ (source seed).defaulted := by
+    have defaults : (execution seed).application.config.defaulted = (source seed).defaulted :=
+      congrArg DefaultHistory.defaulted (checkpoint seed).defaults
+    rw [← defaults]
+    exact nativeActive seed supported
+  have phaseEq (seed : Seed) (supported : seed ∈ prior.support) :
+      app.runUntilHorizon scheduler players
+        (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed) =
+      app.runUntilHorizon scheduler (focalPlayers setup leaks who deviation)
+        (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed) := by
+    exact runUntil_deviation_focal scheduler bound turns wholeProfile who deviation event
+      (Or.inr owned) alone _ (execution seed) (fun _ => readyAt seed supported)
+  obtain ⟨kernel, nextNoise, law⟩ := primary_owned_joint who
+    (commitSuccessor name guard) (fun view => view.back true) (OwnAction.binding who name payload)
+    (fun config choice => by
+      simpa using back_commit_view who name guard config choice)
+    (fun config active choice => by
+      simp only [Config.view, commitSuccessor, active, ite_false, Function.update_self,
+        List.getLast?_append, List.getLast?_singleton, Option.some_or, OwnAction.binding_commit])
+    setup leaks scheduler deviation event owned alone horizon prior source execution noise factor
+      sourceActive (fun seed supported _ => readyAt seed supported)
+  refine ⟨kernel, nextNoise, ?_, ?_⟩
+  · calc
+      _ = prior.bind (fun seed =>
+          (app.runUntilHorizon scheduler (focalPlayers setup leaks who deviation)
+            (fun final => event ∈ final.application.config.cut.completed) horizon
+            (execution seed)).map fun final =>
+              (commitSuccessor name guard (source seed) (readChoice final),
+                (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) := by
+        apply bind_congr_on_support _
+        intro seed supported
+        rw [phaseEq seed supported]
+      _ = _ := law
+  · intro seed supported final reached
+    have ready := readyAt seed supported
+    have completed : event ∈ final.application.config.cut.completed := by
+      obtain ⟨trace⟩ := traceAt seed supported
+      let remaining := horizon - (execution seed).environmentRecall.length
+      change final ∈ (app.runUntil scheduler players
+        (fun current => event ∈ current.application.config.cut.completed) remaining
+        (execution seed)).support at reached
+      rcases app.runUntil_stopped scheduler players _ remaining (execution seed) final reached
+          with done | spent
+      · exact done
+      · obtain ⟨used, enough, rounds, lengthEq⟩ := app.runUntil_runRounds scheduler players _
+          remaining (execution seed) final reached
+        obtain ⟨finalTrace⟩ := app.raw_trace_runRounds (serviceInitialLaw setup mode) horizon
+          scheduler players (remaining - used) used (execution seed) final
+          (by simpa only [Nat.sub_add_cancel enough] using trace) rounds
+        have terminal := complete _ finalTrace (by
+          change remaining - used = 0 ∧ _
+          exact ⟨by dsimp only [remaining] at *; omega, rfl⟩)
+        change final.application.config.cut.completed = Finset.univ at terminal
+        rw [terminal]
+        exact Finset.mem_univ _
+    obtain ⟨action, native, primary, drained⟩ := runUntil_completed_primary_drain
+      (serviceRuntime setup mode deadline) leaks scheduler players event
+      (horizon - (execution seed).environmentRecall.length) (execution seed) final ready
+      (fun other otherReady => alone _ other ready otherReady)
+      (by
+        obtain ⟨trace⟩ := traceAt seed supported
+        exact (legalFacts setup leaks horizon scheduler _ trace).quiescent) reached completed
+    let choice : Option (PublicationResult (L.Val payload)) :=
+      cast (congrArg EventGraph.EventField.Action outputEq) action
+    have actionEq : action =
+        cast (congrArg EventGraph.EventField.Action outputEq.symm) choice := by
+      simp only [choice, cast_cast, cast_eq]
+    have status : (execution seed).application.config.defaulted = (source seed).defaulted :=
+      congrArg DefaultHistory.defaulted (checkpoint seed).defaults
+    have stepLaw := commit_step (execution seed).application.config event ready outputEq
+      (codeEq seed) choice
+    have stepLaw' : (execution seed).application.config.step event ready
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice) =
+        PMF.pure ((execution seed).application.config.complete event ready
+          (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
+          (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+            ((commitSuccessor name guard (source seed) choice).state.get .here))) := by
+      simpa only [status, commitSuccessor, Env.get, Env.cons] using stepLaw
+    have configEq : native.config = (execution seed).application.config.complete event ready
+        (cast (congrArg EventGraph.EventField.Action outputEq.symm) choice)
+        (cast (congrArg EventGraph.EventField.Value outputEq.symm)
+          ((commitSuccessor name guard (source seed) choice).state.get .here)) := by
+      rw [actionEq, stepLaw', PMF.mem_support_pure_iff] at primary
+      exact primary
+    have nextCheckpoint := (checkpoint seed).commit name guard event eventRank ready
+      outputEq (fun ref => refsBefore ref index) choice (decodedAction choice)
+    change SourceCheckpoint setup _ _ (rank + 1)
+      ((execution seed).application.config.complete event ready _ _) at nextCheckpoint
+    have refEq : bindingRef = ⟨.inr event, outputEq⟩ := by
+      rfl
+    have typed : SourceCheckpoint setup (commitSuccessor name guard (source seed) choice)
+        (refs.cons (name := name) bindingRef) (rank + 1) native.config := by
+      rw [configEq, refEq]
+      exact nextCheckpoint
+    refine ⟨choice, native, typed, drained, ?_⟩
+    obtain ⟨value, _, recorded⟩ := (execution seed).application.config.step_completion event ready
+      action native.config primary
+    rw [(execution seed).application.config.actualDecision_of_active event who owned
+      (nativeActive seed supported) action] at recorded
+    obtain ⟨extra, retained⟩ := EventGraph.Config.Step.path_history_prefix native.drain_graph_steps
+    have present : EventGraph.completion (serviceGraph setup mode) event (some action) value ∈
+        final.application.config.history := by
+      rw [drained, ← retained, recorded]
+      exact List.mem_append_left _ (List.mem_append_right _ (List.mem_singleton_self _))
+    have chosen := congrArg (OwnAction.binding who name payload)
+      (actionAt_record setup mode who final.application event owned action value present)
+    simpa only [actionAt, readChoice, actionEq, decodedAction, OwnAction.binding_commit]
+      using chosen
 
 end Vegas

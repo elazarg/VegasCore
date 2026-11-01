@@ -59,7 +59,7 @@ private theorem step_first :
     (PMF.pure (PublicationResult.success false)) (by rfl)]
   exact PMF.pure_map _ _
 
-example : completedFirst.history.map Vegas.EventGraph.Completion.event = [first] := rfl
+example : completedFirst.history.map Vegas.EventCompletion.event = [first] := rfl
 example : completedFirst.cut.Ready second := by decide
 example : completedFirst.defaults = ⟨[none]⟩ := rfl
 
