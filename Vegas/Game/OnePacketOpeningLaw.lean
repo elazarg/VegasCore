@@ -61,9 +61,6 @@ theorem reactiveResolutionPacket_congr {first second : (application setup runtim
         (second.execution.observe (application setup runtime leaks) owner).application := by
   have bindings := SameOperational.binding (runtime := runtime) same ready view
   have publics := SameOperational.publicView same
-  have stores : (graph setup).publicStore first.execution.application.config.store =
-      (graph setup).publicStore second.execution.application.config.store :=
-    congrArg (fun view : PublicView (graph setup) => view.observation.store) publics
   have own : ∀ store : EventGraph.Store (graph setup).layout,
       binding.get? ((graph setup).playerStore owner store) = binding.get? store := by
     intro store
@@ -73,20 +70,6 @@ theorem reactiveResolutionPacket_congr {first second : (application setup runtim
     change ((graph setup).layout field).VisibleTo owner
     rw [layoutEq]
     rfl
-  have resolved : EventGraph.EventCode.resolveOutput? binding checks true
-      ((graph setup).playerStore owner first.execution.application.config.store) =
-      EventGraph.EventCode.resolveOutput? binding checks true
-        ((graph setup).playerStore owner second.execution.application.config.store) := by
-    unfold EventGraph.EventCode.resolveOutput?
-    rw [own, own, bindings]
-    simp only [Option.bind_eq_bind]
-    congr 1
-    funext bound
-    rw [← EventGraph.GuardCheck.allAccepted?_publicStore checks
-        ((graph setup).playerStore owner first.execution.application.config.store),
-      ← EventGraph.GuardCheck.allAccepted?_publicStore checks
-        ((graph setup).playerStore owner second.execution.application.config.store),
-      publicStore_playerStore, publicStore_playerStore, stores]
   have firstStore : (first.execution.observe (application setup runtime leaks)
       owner).application.observation.store =
       (graph setup).playerStore owner first.execution.application.config.store := rfl
@@ -99,7 +82,7 @@ theorem reactiveResolutionPacket_congr {first second : (application setup runtim
       owner).application.publicView = second.execution.application.publicView := rfl
   unfold reactiveResolutionPacket
   rw [firstStore, secondStore, firstPublic, secondPublic]
-  rw [resolved, publics]
+  simp only [own, bindings, publics]
 
 /-- The canonical disclosure transmits exactly when the resolution packet
 exists. -/
@@ -118,15 +101,19 @@ theorem disclosure_transmission_isSome (who : Player)
         action).transmission.isSome =
       (reactiveResolutionPacket who event payload binding checks outputEq action
         view.application).isSome := by
-  unfold EventGraphRuntime.canonicalServiceDecision
-  cases packet : reactiveResolutionPacket who event payload binding checks outputEq action
-      view.application with
-  | none =>
-      simp only [EventGraphRuntime.canonicalReactiveDecision, node, packet, Option.map_none,
-        ReactiveApplication.SubmissionNormalization.action, Option.isSome_none]
-  | some sent =>
-      simp only [EventGraphRuntime.canonicalReactiveDecision, node, packet, Option.map_some,
-        ReactiveApplication.SubmissionNormalization.action, Option.isSome_some]
+  by_cases active : who ∉ view.application.publicView.observation.defaulted
+  · unfold EventGraphRuntime.canonicalServiceDecision
+    cases packet : reactiveResolutionPacket who event payload binding checks outputEq action
+        view.application with
+    | none =>
+        simp only [EventGraphRuntime.canonicalReactiveDecision, ite_eq_right active, node, packet,
+          Option.map_none, ReactiveApplication.SubmissionNormalization.action, Option.isSome_none]
+    | some sent =>
+        simp only [EventGraphRuntime.canonicalReactiveDecision, ite_eq_right active, node, packet,
+          Option.map_some, ReactiveApplication.SubmissionNormalization.action, Option.isSome_some]
+  · have inactive : who ∈ view.application.publicView.observation.defaulted := not_not.mp active
+    rw [runtime.canonicalServiceDecision_defaulted leaks who past view event action inactive]
+    simp only [reactiveResolutionPacket, ite_eq_left inactive, Option.isSome_none]
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}

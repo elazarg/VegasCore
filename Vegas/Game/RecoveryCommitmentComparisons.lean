@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryIntendedCommitmentValue
+import Vegas.Game.OnePacketIntendedCommitmentComparison
 import Vegas.Game.OnePacketCommitmentSourcePolicy
 import Vegas.Game.OnePacketValueTransport
 
@@ -190,7 +190,7 @@ theorem nativeComparison_intendedCommitment_history_comparisons_of_counted_servi
         := by
     rw [projection, replayState]
     exact (decodedPoint_eq_of_isPrefix ordered).trans decoded
-  exact nativeComparison_firstActivation_commitment_gain_le_of_counted_service setup runtime leaks
+  exact OnePacketComparison.assembled_firstActivation_commitment_gain_le setup runtime leaks
     bounds
     horizon scheduler
     wellFormed covers capacity sequence scale positive le_one weights n opportunity inclusion timely

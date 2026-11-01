@@ -1,54 +1,44 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketLocalPhaseValue
-import Vegas.Game.RecoveryCompletionPotential
+import Vegas.Game.OnePacketCompletionPotential
+import Vegas.Game.OnePacketEventPhaseLaw
 
-/-! # Continuation transport through a local source-event response -/
+/-! # Physical completion values for native local responses -/
 
 noncomputable section
 
-namespace Vegas.RecoveryOnePacket
+namespace Vegas.OnePacketComparison
 
 open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Protocol.InformationModel GameTheory.Math.Probability Interaction EventGraphRuntime
-  RecoveryProjection
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
   (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (recoveryApplication runtime leaks).Scheduler)
+  (scheduler : (application setup runtime leaks).Scheduler)
 
-local notation "Initial" => PMF.map
-  (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
-local notation "NativeScheduler" => nativeScheduler runtime leaks scheduler
-local notation "R" => model setup runtime leaks bounds Initial horizon scheduler
-local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-  (NativeScheduler)
-local notation "RP" => ReactiveApplication.ResponseMenu.protocol
-  (Recovery.onePacketMenu runtime leaks bounds) Initial horizon scheduler
+local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon (NativeScheduler)
+  (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
-    native ∅))
+  (app := application setup runtime leaks)
+    (fun native : EventGraphRuntime.State (graph setup) =>
+      EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 open Classical in
-/-- The common future value is approximated by the physical completion value,
-with exceptional mass expressed by the current-event bad-stop observable. -/
-theorem nativeComparison_local_completion_value_sub_le_of_boundary_values [Fintype (RP).History]
-    [(application setup runtime leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
-    [∀ who, DecidableEq ((R).InfoState who)] [∀ who, DecidableEq ((N).InfoState who)]
-    (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
-    (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
-    {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (Part setup runtime leaks bounds Initial horizon scheduler slots p))
-      (n : ℕ)
+/-- Native local continuation values approximate physical completion values,
+with exceptional mass measured by the actual bad-stop observable. -/
+theorem local_completion_value_sub_le_of_boundary_values
+    [∀ player, DecidableEq ((N).InfoState player)]
+    (source : setup.intendedModel.BehavioralAssessment)
+    (common : ∀ player, (N).BehavioralPolicy player)
     (terminalCompletes : ∀ (final : (application setup runtime leaks).Control),
       ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
-        (NativeScheduler)).Trace (some final) →
-      ExclusionEvidence 0 ∅ (⟨final.execution.application, ∅⟩ : RecoveryState (graph setup)) →
+        scheduler).Trace (some final) →
+      final.execution.application.config.defaulted = ∅ →
       (application setup runtime leaks).terminal (some final) →
       final.execution.application.config.cut.Terminal)
     (certificate : (NP).WellFoundedHistories) (who : Player) (info : (N).InfoState who)
@@ -73,30 +63,24 @@ theorem nativeComparison_local_completion_value_sub_le_of_boundary_values [Finty
     (boundaryValues : ∀ (nextRank : Nat) (start : (NP).History)
       (anchor : (application setup runtime leaks).Execution),
       start.state = some ⟨horizon - anchor.environmentRecall.length, none, anchor⟩ →
-      ReachedBoundary setup runtime leaks horizon (NativeScheduler) nextRank anchor →
+      ReachedBoundary setup runtime leaks horizon scheduler nextRank anchor →
       ∀ point : ProtocolState setup.program,
       sourceServicePrefix? setup nextRank anchor.application.config = some point →
       ProtocolState.Intended setup.program point →
       let stopped := fun final : (NP).History => ¬ Clear final.state ∨
         DecodedState setup runtime leaks (failureProfile setup.program)
           (ProtocolState.OwesFailure who setup.program) final.state
-      |expect ((N).runBehavioralUntil certificate
-          (nativeComparisonStrategy setup runtime leaks bounds horizon scheduler sequence scale
-            positive
-            le_one weights n) stopped start)
+      |expect ((N).runBehavioralUntil certificate common stopped start)
           (fun final => if stopped final then excludedPayoff who else
             exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who) -
         sourcePointValue setup parameter utility excludedPayoff
-          (setup.intendedOpeningProfile (sequence n).strategy) who point| ≤
+          (setup.intendedOpeningProfile source.strategy) who point| ≤
         boundaryError *
           (application setup runtime leaks).rank horizon start.state) :
-    let common := nativeComparisonStrategy setup runtime leaks bounds horizon scheduler sequence
-      scale
-      positive le_one weights n
     let installed := Profile.update (sig := (N).behavioralSignature) common who
       ((common who).withLaw info law)
     let phase := fun final : (NP).History =>
-      LateStopped setup runtime leaks bounds horizon (NativeScheduler) rank final ∨ ¬ Clear
+      LateStopped setup runtime leaks bounds horizon scheduler rank final ∨ ¬ Clear
         final.state
     let stopped := fun final : (NP).History => ¬ Clear final.state ∨
       DecodedState setup runtime leaks (failureProfile setup.program)
@@ -107,59 +91,80 @@ theorem nativeComparison_local_completion_value_sub_le_of_boundary_values [Finty
     |expect ((N).runBehavioralUntil certificate installed stopped history)
         (fun final => if stopped final then excludedPayoff who else
           exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who) -
-      expect phaseLaw (completionValue setup runtime leaks bounds horizon (NativeScheduler)
-        parameter
-        utility excludedPayoff (setup.intendedOpeningProfile (sequence n).strategy) rank fresh who
+      expect phaseLaw (completionValue setup runtime leaks bounds horizon scheduler parameter
+        utility excludedPayoff (setup.intendedOpeningProfile source.strategy) rank fresh who
         (fun _ => excludedPayoff who))| ≤
       boundaryError *
         (2 * horizon + 1) +
       2 * payoffBound * expect phaseLaw
-        (lateBadStop setup runtime leaks bounds horizon (NativeScheduler) rank fresh event) := by
-  intro common installed phase stopped fresh phaseLaw
-  have clear : ExclusionEvidence 0 ∅ (RecoveryState.mk execution.application ∅) :=
-    exclusionEvidence_of_decodedIntended (runtime := runtime)
-      ((bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
-        (NativeScheduler) (current ▸ history.trace))
+        (lateBadStop setup runtime leaks bounds horizon scheduler rank fresh event) := by
+  intro installed phase stopped fresh phaseLaw
+  have clear : execution.application.config.defaulted = ∅ :=
+    defaulted_eq_empty_of_decodedIntended
       ((decodedPoint_eq_of_isPrefix ordered).trans decoded) intended
-  have evaluated := pending_completionValue_eq_potential (runtime := runtime) terminalCompletes
-    certificate installed
-    history current ordered clear event
-    ready (setup.intendedOpeningProfile (sequence n).strategy) parameter utility excludedPayoff who
-    fresh (fun _ => excludedPayoff who)
-  have badMass := pending_badMass_eq_lateBadStop (runtime := runtime) terminalCompletes
-    certificate installed history
-    current ordered clear event
-    ready key decided fresh
-  have comparison := OnePacketComparison.local_phase_value_sub_le_of_boundary_values setup runtime
-    leaks bounds horizon (NativeScheduler) (sequence n) common terminalCompletes certificate
-    who info law history current observed event ready owned key decided ordered point decoded
-    intended parameter utility excludedPayoff boundNonneg readoutBounded excludedBounded
-    boundaryError boundaryErrorNonneg
+  have phaseEq := pending_until_eq_clearUntil (runtime := runtime) certificate installed history
+    current ordered clear event ready
+  have completed : ∀ final ∈ phaseLaw.support,
+      ∃ control : (application setup runtime leaks).Control, final.state = some control ∧
+        event ∈ control.execution.application.config.cut.completed := by
+    intro final supported
+    have lateMember : final ∈ ((N).runBehavioralUntil certificate installed
+        (LateStopped setup runtime leaks bounds horizon scheduler rank) history).support := by
+      rw [phaseEq]
+      exact supported
+    obtain ⟨anchor, state, action, primary, sampled, drained⟩ :=
+      lateStop_primary_drain (runtime := runtime) certificate installed ordered ready
+        (fun last trace ended same => by
+          have lastClear : last.execution.application.config.defaulted = ∅ := by
+            rw [same]
+            exact clear
+          rw [terminalCompletes last trace lastClear ended]
+          exact Finset.mem_univ _) history current rfl final lateMember
+    refine ⟨anchor, state, ?_⟩
+    rw [drained]
+    apply EventGraph.Config.Step.path_completed_mono primary.drain_graph_steps
+    rw [execution.application.config.step_cut event ready action primary.config sampled]
+    exact (EventOrder.Cut.mem_complete _ event ready event).mpr (Or.inl rfl)
+  have badMass := completionPoint_badMass_eq_lateBadStop phaseLaw rank key event decided fresh
+    completed
+  have comparison := local_phase_value_sub_le_of_boundary_values setup runtime leaks bounds
+    horizon scheduler source common terminalCompletes certificate who info law history current
+    observed event ready owned key decided ordered point decoded intended parameter utility
+    excludedPayoff boundNonneg readoutBounded excludedBounded boundaryError boundaryErrorNonneg
     boundaryValues
-  rw [evaluated]
   dsimp only at comparison
   rw [badMass] at comparison
   exact comparison
 
 
 open Classical in
-/-- The common future value is approximated by the physical completion value,
-with exceptional mass expressed by the current-event bad-stop observable. -/
-theorem nativeComparison_local_completion_value_sub_le [Fintype (RP).History]
-    [(application setup runtime leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
-    [∀ who, DecidableEq ((R).InfoState who)] [∀ who, DecidableEq ((N).InfoState who)]
+/-- The same assembled native assessment transports local stopped values to
+physical completion values, with only the actual exceptional stop mass. -/
+theorem assembled_local_completion_value_sub_le
+    [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+    [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (Part setup runtime leaks bounds Initial horizon scheduler slots p))
-      (n : ℕ)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler slots p))
+    (targetSequence : ℕ → (N).BehavioralAssessment)
+    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+      positive le_one weights targetSequence) (n : ℕ)
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : Recovery.Opportunity runtime leaks Initial horizon scheduler delay)
-    (inclusion : Recovery.ProtectedInclusion runtime leaks Initial horizon scheduler bound)
+    (opportunity : ∀ control : (application setup runtime leaks).Control,
+      (NP).Trace (some control) → control.execution.application.config.defaulted = ∅ →
+        OpportunityAt runtime leaks control.execution delay)
+    (inclusion : ∀ control : (application setup runtime leaks).Control,
+      (NP).Trace (some control) → control.execution.application.config.defaulted = ∅ →
+        ProtectedInclusionAt runtime leaks control.execution bound)
     (timely : runtime.AsyncTimely delay bound)
-    (completes : Recovery.CompletesPlay runtime leaks Initial horizon scheduler)
+    (completes : ∀ control : (application setup runtime leaks).Control,
+      (NP).Trace (some control) → control.execution.application.config.defaulted = ∅ →
+        (application setup runtime leaks).terminal (some control) →
+          control.execution.application.config.cut.Terminal)
     (certificate : (NP).WellFoundedHistories) (who : Player) (info : (N).InfoState who)
     (law : PMF ((N).Choice who info)) (history : (NP).History)
     {remaining : Nat} {execution : (application setup runtime leaks).Execution}
@@ -178,14 +183,11 @@ theorem nativeComparison_local_completion_value_sub_le [Fintype (RP).History]
     (readoutBounded : ∀ readout,
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
     (excludedBounded : |excludedPayoff who| ≤ payoffBound) :
-    let common := nativeComparisonStrategy setup runtime leaks bounds horizon scheduler sequence
-      scale
-      positive le_one weights n
+    let common := (targetSequence n).strategy
     let installed := Profile.update (sig := (N).behavioralSignature) common who
       ((common who).withLaw info law)
     let phase := fun final : (NP).History =>
-      LateStopped setup runtime leaks bounds horizon (NativeScheduler) rank final ∨ ¬ Clear
-        final.state
+      LateStopped setup runtime leaks bounds horizon scheduler rank final ∨ ¬ Clear final.state
     let stopped := fun final : (NP).History => ¬ Clear final.state ∨
       DecodedState setup runtime leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure who setup.program) final.state
@@ -195,29 +197,34 @@ theorem nativeComparison_local_completion_value_sub_le [Fintype (RP).History]
     |expect ((N).runBehavioralUntil certificate installed stopped history)
         (fun final => if stopped final then excludedPayoff who else
           exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who) -
-      expect phaseLaw (completionValue setup runtime leaks bounds horizon (NativeScheduler)
-        parameter
+      expect phaseLaw (completionValue setup runtime leaks bounds horizon scheduler parameter
         utility excludedPayoff (setup.intendedOpeningProfile (sequence n).strategy) rank fresh who
         (fun _ => excludedPayoff who))| ≤
-      (2 * payoffBound * (1 - slotRetention (scale n))) *
-        (2 * horizon + 1) +
+      (2 * payoffBound * (1 - slotRetention (scale n))) * (2 * horizon + 1) +
       2 * payoffBound * expect phaseLaw
-        (lateBadStop setup runtime leaks bounds horizon (NativeScheduler) rank fresh event) := by
-  apply nativeComparison_local_completion_value_sub_le_of_boundary_values setup runtime leaks
-    bounds horizon
-    scheduler sequence scale positive le_one weights n
-    (Recovery.CompletesPlay.clear_counted_native (runtime := runtime) bounds
-      (initialLaw_initialized setup)
-      (initialLaw_native setup) completes)
-    certificate who info law history current observed event ready owned key decided ordered point
-    decoded intended parameter utility excludedPayoff boundNonneg readoutBounded excludedBounded
+        (lateBadStop setup runtime leaks bounds horizon scheduler rank fresh event) := by
+  apply local_completion_value_sub_le_of_boundary_values setup runtime leaks bounds horizon
+    scheduler
+    (sequence n) (targetSequence n).strategy completes certificate who info law history current
+    observed event ready owned key decided ordered point decoded intended parameter utility
+    excludedPayoff boundNonneg readoutBounded excludedBounded
     (2 * payoffBound * (1 - slotRetention (scale n))) (by
       have retention := slotRetention_le_one (positive n).le (le_one n)
       positivity)
   intro nextRank start anchor state boundary target atRank targetIntended
-  exact nativeComparison_stopped_boundary_value_sub_le setup runtime leaks bounds horizon scheduler
-    wellFormed covers capacity sequence scale positive le_one weights n opportunity inclusion timely
-    completes certificate nextRank start anchor state boundary target atRank targetIntended
-    parameter utility excludedPayoff who boundNonneg readoutBounded excludedBounded
+  exact assembled_stopped_boundary_value_sub_le setup runtime leaks bounds horizon scheduler
+    wellFormed covers capacity sequence scale positive le_one weights targetSequence assembled n
+    opportunity inclusion timely completes certificate nextRank start anchor state boundary target
+    atRank targetIntended parameter utility excludedPayoff who boundNonneg
+    (fun final => by
+      cases final.state with
+      | none => simpa only [exclusionBase, abs_zero] using boundNonneg
+      | some control =>
+          change |if who ∈ control.execution.application.config.defaulted then excludedPayoff who
+            else exclusionReadoutUtility setup parameter utility excludedPayoff
+              (sourceReadout setup runtime leaks (some control)) who| ≤ payoffBound
+          split
+          · exact excludedBounded
+          · exact readoutBounded _) excludedBounded
 
-end Vegas.RecoveryOnePacket
+end Vegas.OnePacketComparison

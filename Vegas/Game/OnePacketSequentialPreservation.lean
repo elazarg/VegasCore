@@ -51,13 +51,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExp
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
 
-/-- The utility of an observation of readout and payoffs: its payoff component. -/
-abbrev payoffComponent
-    (outcome : Option (Config Player L setup.program.terminalCtx) × (Player → ℝ))
-    (who : Player) : ℝ :=
-  outcome.2 who
-
-
 local notation "Initial" => initialLaw setup
 
 section Certificate

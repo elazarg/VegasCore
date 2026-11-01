@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryKeyedFailure
+import Vegas.Game.OnePacketKeyedFailure
 import Vegas.Game.RecoveryPendingValueAffine
 import Vegas.Game.RecoveryLocalValueComparison
 import GameTheoryExtensions.Math.Probability.AffineDecorrelation
@@ -491,11 +491,11 @@ theorem nativeComparison_keyed_value_bounds_of_pending [Fintype (RP).History]
     (fun n => nativeComparisonWeights setup runtime leaks bounds horizon scheduler (weights n))
     target assembled mixed bayes
   obtain ⟨score, scoreError, scoreLimit, scoreUnit, scoreNear⟩ :=
-    nativeComparison_keyed_failure_bounds setup runtime leaks bounds horizon scheduler wellFormed
-      independent observable
-      sequence sourceMixed inputs.scale positive le_one (fun _ => rfl) covers
-        coversInputs capacity
-      slots_pos weights
+    keyed_failure_bounds_of_assembled setup runtime leaks bounds horizon (NativeScheduler)
+      wellFormed independent observable sequence sourceMixed inputs.scale positive le_one
+      (fun _ => rfl) covers coversInputs capacity slots_pos
+      (fun n => nativeComparisonWeights setup runtime leaks bounds horizon scheduler (weights n))
+      target assembled mixed bayes
   let depth : ℝ := 2 * horizon + 1
   let path := fun n => depth * (inputs.scale n ^ 3 + inputs.scale n ^ 3)
   let row := fun n =>

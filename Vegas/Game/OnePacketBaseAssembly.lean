@@ -308,6 +308,119 @@ def OnePacketBaseInputs.ofCounterparts (wellFormed : setup.WellFormed)
       coversInputs capacity assembled notFree notOwing atSite rfl turn
   slots_pos := slots_pos
 
+section LateBounds
+
+variable (setup runtime leaks bounds horizon scheduler)
+
+omit [Fintype Player] [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+  [Finite setup.intendedProtocol.History]
+  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+/-- A late delivery is a decision input showing the player's own turn. -/
+theorem lateDelivery_input {who : Player} {info : (application setup runtime leaks).Info}
+    (late : LateDelivery setup runtime leaks who info) :
+    ∃ input : List (application setup runtime leaks).PlayerEntry × (application setup runtime
+      leaks).PlayerView,
+      info = some input ∧ ∃ event, input.2.application.publicView.ownTurn? who = some event := by
+  obtain ⟨past, view, event, atSite, pending, _⟩ := late
+  rw [atSite] at pending
+  exact ⟨(past, view), atSite, event, (pendingEvent_spec (runtime := runtime) (setup := setup)
+    pending).1⟩
+
+omit [Finite setup.intendedProtocol.History] in
+open Classical in
+/-- **Histories outside the forced region vanish at late deliveries.** For a
+well-formed setup, along every fully mixed Bayes sequence of assembled profiles,
+the belief mass outside the forced region at late deliveries of agents that are
+not free and owe no failure vanishes uniformly: such a site is forced, debt free and at the
+owner's turn, where the honest counterparts and the intended own completions
+make it vanish (`Vegas.onePacket_unforcedVanishes`). -/
+theorem OnePacketBaseInputs.lateUnforced {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
+    {slots : Nat}
+    (inputs : OnePacketBaseInputs setup runtime leaks bounds horizon scheduler sequence slots)
+    (wellFormed : setup.WellFormed)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler slots p))
+    (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
+    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence
+      inputs.scale
+      inputs.scale_pos inputs.scale_le_one weights
+        targetSequence)
+    (mixed : ∀ n, (targetSequence n).IsFullyMixed)
+    (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
+      ((bounds.onePacketMenu runtime leaks).decisionRecall
+        (initialLaw setup) horizon scheduler).decisionInformationAntichain) :
+    ∃ unforcedDrift : ℕ → ℝ, Tendsto unforcedDrift atTop (nhds 0) ∧
+      ∀ n who (site : (onePacketN).InformationSite who),
+        ¬ FreeAgent setup runtime leaks bounds (initialLaw setup)
+          horizon scheduler ((onePacketN).agentAt site) →
+        ¬ OwingAgent setup runtime leaks bounds (initialLaw setup)
+          horizon scheduler ((onePacketN).agentAt site) →
+        ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
+          (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
+          ((onePacketN).agentAt site) →
+        expect ((targetSequence n).belief who site) (fun history =>
+          if ForcedState setup runtime leaks who history.1.state then (0 : ℝ) else 1) ≤
+          unforcedDrift n := by
+  let LateSite := fun {who : Player} (site : (onePacketN).InformationSite who) =>
+    ¬ FreeAgent setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler ((onePacketN).agentAt site) ∧
+      ¬ OwingAgent setup runtime leaks bounds (initialLaw setup)
+        horizon scheduler ((onePacketN).agentAt site) ∧
+      ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
+        (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
+        ((onePacketN).agentAt site)
+  let mass := fun (n : ℕ) {who : Player} (site : (onePacketN).InformationSite who) =>
+    expect ((targetSequence n).belief who site) (fun history =>
+      if ForcedState setup runtime leaks who history.1.state then (0 : ℝ) else 1)
+  let agentMass := fun (n : ℕ)
+      (agent : (onePacketN).InformationAgent (onePacketN).playedInformation) =>
+    if present : ∃ decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1,
+        LateSite (⟨agent.2.1, decision⟩ : (onePacketN).InformationSite agent.1) then
+      mass n ⟨agent.2.1, present.1⟩ else 0
+  have massNonneg : ∀ n agent, 0 ≤ agentMass n agent := fun n agent => by
+    simp only [agentMass]
+    split
+    · exact expect_nonneg _ _ fun history _ => by split <;> norm_num
+    · exact le_rfl
+  refine ⟨fun n => ∑ agent, agentMass n agent, ?_,
+    fun n who site notFree notOwing keyed => ?_⟩
+  · rw [show (0 : ℝ) = ∑ _agent : (onePacketN).InformationAgent (onePacketN).playedInformation,
+      (0 : ℝ) by simp]
+    refine tendsto_finsetSum _ fun agent _ => ?_
+    by_cases present : ∃ decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1,
+        LateSite (⟨agent.2.1, decision⟩ : (onePacketN).InformationSite agent.1)
+    · simp only [agentMass, present, ↓reduceDIte]
+      obtain ⟨input, atSite, event, turn⟩ := lateDelivery_input setup runtime leaks present.2.2.2.1
+      have notFree := present.2.1
+      have notOwing := present.2.2.1
+      have forced := forcedAgent_of_not_free setup runtime leaks bounds (initialLaw setup)
+        horizon scheduler notFree
+      have debtFree := siteDebtFree_of_not_owing setup runtime leaks bounds horizon scheduler
+        notOwing
+      have decision := projectedDecision_of_forcedAgent (runtime := runtime) wellFormed forced
+        atSite turn debtFree
+      exact onePacket_unforcedVanishes setup runtime leaks bounds horizon scheduler wellFormed
+        mixed bayes
+        atSite forced
+        (inputs.counterpartInputs weights targetSequence assembled mixed
+          bayes agent.1
+          ⟨agent.2.1, present.1⟩ notFree notOwing atSite turn)
+        (inputs.ownInputs weights targetSequence assembled mixed bayes agent.1
+          ⟨agent.2.1, present.1⟩ notFree notOwing atSite turn decision).ownIntended
+    · simp only [agentMass, present, ↓reduceDIte]
+      exact tendsto_const_nhds
+  · have single := Finset.single_le_sum (fun agent _ => massNonneg n agent)
+      (Finset.mem_univ ((onePacketN).agentAt site))
+    refine le_trans (le_of_eq ?_) single
+    have present : ∃ decision : (onePacketN).IsDecisionInfo who site.1,
+        LateSite (⟨site.1, decision⟩ : (onePacketN).InformationSite who) :=
+      ⟨site.2, notFree, notOwing, keyed⟩
+    simp only [agentMass, present, ↓reduceDIte]
+    rfl
+
+end LateBounds
+
 section SetupAssembly
 
 variable (setup runtime leaks bounds horizon scheduler)

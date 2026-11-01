@@ -2,6 +2,9 @@
 
 import Vegas.Game.OnePacketPrescribedCompletion
 import Vegas.Game.AsyncDeviationForeign
+import Vegas.Game.OnePacketExclusionPayoff
+import Vegas.Game.IntendedAuthenticOpening
+import GameTheoryExtensions.Analysis.Protocol.SourceGainTransport
 
 /-! # The gain of a commitment in the intended game
 
@@ -109,7 +112,9 @@ theorem intendedCommit_historyGain (wellFormed : setup.WellFormed)
   have hactive : E.active current.state who := by
     rw [state]
     exact acts
-  have actsOnce := (setup.intendedModel_decisionRecall).actsOnceWhereItMatters
+  have decisionMemory := setup.intendedModel.decisionRecall_of_perfectRecall
+    ((setup.informationModel _).restrictMenu_perfectRecall _ _ (setup.protocol_perfectRecall _))
+  have actsOnce := decisionMemory.actsOnceWhereItMatters
   have enough : setup.protocolRemaining current.state ≤ fuel + 1 := by
     rw [state]
     exact (remaining_le_instructionCount setup point who).trans (Nat.le_succ _)

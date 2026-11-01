@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketOwnerKeyedLate
-import Vegas.Game.OnePacketLateUniform
+import Vegas.Game.OnePacketBaseAssembly
+import GameTheoryExtensions.Math.Probability.ApproximateLumping
 
 /-! # Record laws at late deliveries with a common key
 
@@ -308,20 +309,16 @@ variable [(application setup runtime leaks).FiniteNature (initialLaw setup) sche
     scheduler).InfoState who)]
 
 open Classical in
-/-- **Late records.** For a well-formed setup with hidden initial cells independent
-given a public initial signal, along every fully mixed Bayes
-sequence of assembled profiles, at late deliveries of agents that are neither
-free nor owing, the beliefs' laws of operational records give the certificate's
-lumped failure within a vanishing drift of its expectation under one record law
-at each late-delivery key: the law at a fixed site with that key
-(`Vegas.keyedRecord_near`). -/
+/-- At debt-free forced late deliveries, one law of operational records at each key
+approximates every record payoff in `[0, 1]`, with the same uniformly vanishing error. -/
 theorem OnePacketBaseInputs.lateRecords_of_keyed
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {slots : Nat}
     (inputs : OnePacketBaseInputs setup runtime leaks bounds horizon scheduler sequence slots)
     (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence
       inputs.scale
@@ -335,35 +332,26 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
       ∀ n who, ∃ recordLaw : LateKey setup runtime leaks →
           PMF (List (Option (OperationalState setup runtime leaks))),
         ∀ (site : (onePacketN).InformationSite who),
-          ¬ FreeAgent setup runtime leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-          ¬ OwingAgent setup runtime leaks bounds horizon scheduler ((onePacketN).agentAt site) →
-          ownedKeyed (FreeAgent setup runtime leaks bounds horizon scheduler)
+          ¬ FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+            ((onePacketN).agentAt site) →
+          ¬ OwingAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+            ((onePacketN).agentAt site) →
+          ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
             (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
             ((onePacketN).agentAt site) →
-          ∀ key, lateKey setup runtime leaks who site.1 = some key → ∀ option,
-          |expect (((targetSequence n).belief who site).map fun history =>
-              operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace)
-              (lumpedFailure setup runtime leaks bounds horizon scheduler
-                (certificateLumping setup runtime leaks bounds horizon scheduler sequence
-                  inputs.scale
-                  inputs.scale_pos inputs.scale_le_one
-                    inputs.covers
-                  (inputs.one_le_candidateCount setup runtime leaks bounds horizon scheduler who)
-                  inputs.slotsLe weights targetSequence assembled n who)
-                (2 * horizon + 1) key option) -
-            expect (recordLaw key)
-              (lumpedFailure setup runtime leaks bounds horizon scheduler
-                (certificateLumping setup runtime leaks bounds horizon scheduler sequence
-                  inputs.scale
-                  inputs.scale_pos inputs.scale_le_one
-                    inputs.covers
-                  (inputs.one_le_candidateCount setup runtime leaks bounds horizon scheduler who)
-                  inputs.slotsLe weights targetSequence assembled n who)
-                (2 * horizon + 1) key option)| ≤ beliefDrift n := by
+          ∀ key, lateKey setup runtime leaks who site.1 = some key →
+          ∀ payoff : List (Option (OperationalState setup runtime leaks)) → ℝ,
+            (∀ record, 0 ≤ payoff record ∧ payoff record ≤ 1) →
+            |expect (((targetSequence n).belief who site).map fun history =>
+                operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace)
+                payoff - expect (recordLaw key) payoff| ≤ beliefDrift n := by
   let LateSite := fun {who : Player} (site : (onePacketN).InformationSite who) =>
-    ¬ FreeAgent setup runtime leaks bounds horizon scheduler ((onePacketN).agentAt site) ∧
-      ¬ OwingAgent setup runtime leaks bounds horizon scheduler ((onePacketN).agentAt site) ∧
-      ownedKeyed (FreeAgent setup runtime leaks bounds horizon scheduler)
+    ¬ FreeAgent setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler ((onePacketN).agentAt site) ∧
+      ¬ OwingAgent setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler ((onePacketN).agentAt site) ∧
+      ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler)
         (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
         ((onePacketN).agentAt site)
   -- One site of each key.
@@ -373,51 +361,22 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
       ((targetSequence n).belief who found.choose).map fun history =>
         operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace
     else PMF.pure []
-  let lumping := fun n who => certificateLumping setup runtime leaks bounds horizon scheduler
-    sequence
-    inputs.scale inputs.scale_pos inputs.scale_le_one inputs.covers
-    (inputs.one_le_candidateCount setup runtime leaks bounds horizon scheduler who)
-    inputs.slotsLe weights targetSequence assembled n who
-  have lumpedUnit : ∀ n who key option record, 0 ≤ lumpedFailure setup runtime leaks bounds horizon
-      scheduler (lumping n who) (2 * horizon + 1) key option record ∧ lumpedFailure setup runtime
-        leaks
-        bounds horizon scheduler (lumping n who) (2 * horizon + 1) key option record ≤ 1 := by
-    intro n who key option record
-    unfold lumpedFailure
-    exact ⟨expect_nonneg _ _ fun image _ => ((lumping n who).failure_unit key
-      image).1,
-      expect_le_const _ _ (payoffIntegrable_of_bounded _ _ (C := 1) fun image => by
-          have := (lumping n who).failure_unit key image
-          rw [abs_le]
-          constructor <;> linarith) 1
-        fun image _ => ((lumping n who).failure_unit key image).2⟩
-  have unitExpect : ∀ n who key option (law : PMF (List (Option (OperationalState setup runtime
-    leaks)))),
-      0 ≤ expect law (lumpedFailure setup runtime leaks bounds horizon scheduler (lumping n who)
-        (2 * horizon + 1) key option) ∧ expect law (lumpedFailure setup runtime leaks bounds horizon
-          scheduler (lumping n who) (2 * horizon + 1) key option) ≤ 1 := by
-    intro n who key option law
-    exact ⟨expect_nonneg _ _ fun record _ => (lumpedUnit n who key option record).1,
-      expect_le_const _ _ (payoffIntegrable_of_bounded _ _ (C := 1) fun record => by
-          have := lumpedUnit n who key option record
-          rw [abs_le]
-          constructor <;> linarith) 1
-        fun record _ => (lumpedUnit n who key option record).2⟩
   obtain ⟨beliefDrift, limit, holds⟩ := exists_uniform_of_sites setup runtime leaks bounds horizon
     scheduler
-    (fun n who site error => ∀ key, lateKey setup runtime leaks who site.1 = some key → ∀ option,
-      |expect (((targetSequence n).belief who site).map fun history =>
-          operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace)
-          (lumpedFailure setup runtime leaks bounds horizon scheduler (lumping n who)
-            (2 * horizon + 1) key option) -
-        expect (recordLaw n who key) (lumpedFailure setup runtime leaks bounds horizon scheduler
-          (lumping n who) (2 * horizon + 1) key option)| ≤ error)
-    (fun _ _ _ _ _ le bound key siteKey option => (bound key siteKey option).trans le)
+    (fun n who site error => ∀ key, lateKey setup runtime leaks who site.1 = some key →
+      ∀ payoff : List (Option (OperationalState setup runtime leaks)) → ℝ,
+        (∀ record, 0 ≤ payoff record ∧ payoff record ≤ 1) →
+        |expect (((targetSequence n).belief who site).map fun history =>
+            operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) payoff -
+          expect (recordLaw n who key) payoff| ≤ error)
+    (fun _ _ _ _ _ le bound key siteKey payoff unit =>
+      (bound key siteKey payoff unit).trans le)
     (fun who site => LateSite site)
     (fun who site late => by
       obtain ⟨notFree, notOwing, keyed⟩ := late
       obtain ⟨⟨past, view⟩, atSite, event, turn⟩ := lateDelivery_input setup runtime leaks keyed.1
-      have forced := forcedAgent_of_not_free setup runtime leaks bounds horizon scheduler notFree
+      have forced := forcedAgent_of_not_free setup runtime leaks bounds (initialLaw setup)
+        horizon scheduler notFree
       have debtFree := siteDebtFree_of_not_owing setup runtime leaks bounds horizon scheduler
         notOwing
       have decision := projectedDecision_of_forcedAgent (runtime := runtime) wellFormed forced
@@ -459,7 +418,7 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
         simpa using contamination.add quotient
       have small : ∀ᶠ n in atTop, ε n < 1 :=
         εLimit.eventually (gt_mem_nhds (show (0 : ℝ) < 1 by norm_num))
-      refine ⟨fun n => if ε n < 1 then formula n else 1, ?_, fun n key' siteKey' option => ?_⟩
+      refine ⟨fun n => if ε n < 1 then formula n else 1, ?_, fun n key' siteKey' payoff unit => ?_⟩
       · refine formulaLimit.congr' ?_
         filter_upwards [small] with n smallAt
         simp only [smallAt, ↓reduceIte]
@@ -477,15 +436,14 @@ theorem OnePacketBaseInputs.lateRecords_of_keyed
             (bayes n) atSite atSite' (siteKey.trans foundKey.symm) debtFree
             (siteDebtFree_of_not_owing setup runtime leaks bounds horizon scheduler notOwing')
               keyed.1
-            keyed'.1 own.steps first second smallAt _ (lumpedUnit n who key
-              option)
+            keyed'.1 own.steps first second smallAt payoff unit
         · simp only [smallAt, ↓reduceIte]
-          have := unitExpect n who key option (((targetSequence n).belief who site).map
+          have := expect_mem_unit (((targetSequence n).belief who site).map
             fun history => operationalRecord setup runtime leaks bounds horizon scheduler
-              history.1.trace)
-          have := unitExpect n who key option (((targetSequence n).belief who
+              history.1.trace) payoff unit
+          have := expect_mem_unit (((targetSequence n).belief who
             found.choose).map fun history => operationalRecord setup runtime leaks bounds horizon
-              scheduler history.1.trace)
+              scheduler history.1.trace) payoff unit
           rw [abs_le]
           constructor <;> linarith)
   exact ⟨beliefDrift, limit, fun n who => ⟨recordLaw n who, fun site notFree notOwing keyed =>

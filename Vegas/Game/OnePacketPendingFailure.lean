@@ -1,8 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryPendingCompletion
+import Vegas.Game.OnePacketLateLumping
+import Vegas.Game.OnePacketLateSuccess
+import Vegas.Game.OnePacketEventPhaseLaw
+import Vegas.Pending.ReactiveAcceptedOutput
 
-/-! # Primitive failure at the current recovery completion boundary -/
+/-! # Primitive failure at the current native completion stop -/
 
 noncomputable section
 
@@ -54,13 +57,8 @@ theorem completed_decisionFailure_terminal_expect
       (initialLaw setup)
       horizon scheduler next after joint reached
     refine ⟨last, rfl, ?_⟩
-    rcases transition_configStep (initialLaw setup) horizon scheduler next
-      last joint reached with
-      same | ⟨completedEvent, ready, action, sampled⟩
-    · rw [same]
-      exact present
-    · exact next.execution.application.config.step_store_of_some last.execution.application.config
-        completedEvent ready action sampled (.inr event) value present
+    exact (keepsStore_step runtime leaks).transition (initialLaw setup) horizon scheduler
+      next last joint reached (.inr event) value present
   have remains := (N).runBehavioralTerminalFrom_support_closed certificate players property closed
     start ⟨control, current, stored⟩
   calc _ = expect ((N).runBehavioralTerminalFrom certificate players start)
@@ -86,8 +84,9 @@ theorem completed_decisionFailure_terminal_expect
     _ = _ := expect_constant _ _
 
 local notation "ClearState" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
-    native ∅))
+  (app := application setup runtime leaks)
+    (fun native : EventGraphRuntime.State (graph setup) =>
+      EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 open Classical in
 /-- Under counted clear terminal completeness, the pending event's terminal
@@ -95,7 +94,7 @@ failure probability is its probability at the first completion or public failure
 theorem pending_failure_terminal_eq_stopped [Finite (E).History]
     (terminalCompletes : ∀ (final : (application setup runtime leaks).Control),
       ((menu).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
-      ExclusionEvidence 0 ∅ (⟨final.execution.application, ∅⟩ : RecoveryState (graph setup)) →
+      final.execution.application.config.defaulted = ∅ →
       (application setup runtime leaks).terminal (some final) →
       final.execution.application.config.cut.Terminal)
     (certificate : (E).WellFoundedHistories)
@@ -103,7 +102,7 @@ theorem pending_failure_terminal_eq_stopped [Finite (E).History]
     (start : (E).History) {control : (application setup runtime leaks).Control}
     (current : start.state = some control) {rank : Nat}
     (ordered : control.execution.application.config.cut.IsPrefix rank)
-    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅))
+    (clear : control.execution.application.config.defaulted = ∅)
     (key : LateKey setup runtime leaks) (event : (graph setup).EventId)
     (ready : control.execution.application.config.cut.Ready event)
     (decided : decidedEvent (runtime := runtime) key = some event) :
@@ -119,61 +118,60 @@ theorem pending_failure_terminal_eq_stopped [Finite (E).History]
       ¬ ClearState stop.state) start, expect_bind_of_finite]
   apply expect_congr_on_support
   intro final supported
-  obtain ⟨anchor, state, completed, _ordered, _seen⟩ := pending_stop_completed (runtime :=
-    runtime) terminalCompletes
-    true certificate players start current ordered clear event ready final supported
+  have phaseEq := pending_until_eq_clearUntil (runtime := runtime) certificate players start
+    current ordered clear event ready
+  have lateMember : final ∈ ((N).runBehavioralUntil certificate players
+      (LateStopped setup runtime leaks bounds horizon scheduler rank) start).support := by
+    rw [phaseEq]
+    exact supported
+  obtain ⟨anchor, state, action, primary, sampled, drained⟩ := lateStop_primary_drain
+    certificate players ordered ready
+      (fun last trace ended same => by
+        have lastClear : last.execution.application.config.defaulted = ∅ := by
+          rw [same]
+          exact clear
+        rw [terminalCompletes last trace lastClear ended]
+        exact Finset.mem_univ _) start current rfl final lateMember
+  have completed : event ∈ anchor.execution.application.config.cut.completed := by
+    rw [drained]
+    apply EventGraph.Config.Step.path_completed_mono primary.drain_graph_steps
+    rw [control.execution.application.config.step_cut event ready action primary.config sampled]
+    exact (EventOrder.Cut.mem_complete _ event ready event).mpr (Or.inl rfl)
   exact completed_decisionFailure_terminal_expect (runtime := runtime) certificate players final
     state key event decided
     completed
 
-section Recovery
 
-variable {initial : PMF (RecoveryState (graph setup))}
-  (initialized : ∀ state ∈ initial.support, ∃ inputs,
-    state = (RecoveryState.mk (State.initial inputs) ∅ : RecoveryState (graph setup)))
-  (nativeLaw : initial.map RecoveryState.native = initialLaw setup)
-  {recoveryScheduler : (recoveryApplication runtime leaks).Scheduler}
-  (completes : Recovery.CompletesPlay runtime leaks initial horizon recoveryScheduler)
-
-local notation "nativeScheduler" => RecoveryProjection.nativeScheduler runtime leaks
-  recoveryScheduler
-local notation "Native" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-  nativeScheduler
-local notation "Protocol" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup)
-  horizon nativeScheduler
-local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
-    native ∅))
-
-include initialized nativeLaw completes in
 open Classical in
-/-- The primitive failure probability of the pending event can be evaluated at
-its next completion boundary instead of at the end of native play. The only
-completion premise concerns the actual recovery runtime. -/
-theorem recovery_pending_failure_terminal_eq_stopped [Finite (Protocol).History]
-    (certificate : (Protocol).WellFoundedHistories)
-    (players : ∀ player, (Native).BehavioralPolicy player)
-    (start : (Protocol).History) {control : (application setup runtime leaks).Control}
+/-- A completed event's persistent failure flag can be measured at
+its first completion under counted clear terminal completeness. -/
+theorem pending_failure_run_eq_phase [Finite (E).History]
+    (terminalCompletes : ∀ (final : (application setup runtime leaks).Control),
+      ((menu).protocol (initialLaw setup) horizon scheduler).Trace (some final) →
+      final.execution.application.config.defaulted = ∅ →
+      (application setup runtime leaks).terminal (some final) →
+      final.execution.application.config.cut.Terminal)
+    (certificate : (E).WellFoundedHistories)
+    (players : ∀ player, (N).BehavioralPolicy player)
+    (start : (E).History) {control : (application setup runtime leaks).Control}
     (current : start.state = some control) {rank : Nat}
     (ordered : control.execution.application.config.cut.IsPrefix rank)
-    (clear : ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅))
+    (clear : control.execution.application.config.defaulted = ∅)
     (key : LateKey setup runtime leaks) (event : (graph setup).EventId)
     (ready : control.execution.application.config.cut.Ready event)
     (decided : decidedEvent (runtime := runtime) key = some event) :
-    expect ((Native).runBehavioralTerminalFrom certificate players start)
-      (fun final => if DecisionFailed (runtime := runtime) key final.state then (1 : ℝ) else 0) =
-      expect ((Native).runBehavioralUntil certificate players
-        (fun stop => LateStopped setup runtime leaks bounds horizon nativeScheduler rank stop ∨
-          ¬ Clear stop.state) start)
+    expect ((N).runBehavioralFrom players (2 * horizon + 1) start)
+        (fun final => if DecisionFailed (runtime := runtime) key final.state then (1 : ℝ) else 0) =
+      expect ((N).runBehavioralUntil certificate players
+        (LateStopped setup runtime leaks bounds horizon scheduler rank) start)
         (fun final => if DecisionFailed (runtime := runtime) key final.state then (1 : ℝ) else 0)
           := by
-  apply pending_failure_terminal_eq_stopped (runtime := runtime) ?_ certificate players start
-    current ordered clear key
-    event ready decided
-  exact Recovery.CompletesPlay.clear_counted_native (runtime := runtime) bounds initialized
-    nativeLaw completes
+  rw [← (N).runBehavioralTerminalFrom_eq_runBehavioralFrom_of_bounded certificate
+    ((bounds.onePacketMenu runtime leaks).bounded (initialLaw setup) horizon scheduler),
+    pending_failure_terminal_eq_stopped (runtime := runtime) terminalCompletes certificate
+      players start current ordered clear key event ready decided,
+    ← pending_until_eq_clearUntil (runtime := runtime) certificate
+      players start current ordered clear event ready]
 
-
-end Recovery
 
 end Vegas

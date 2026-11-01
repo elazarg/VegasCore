@@ -1,9 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryCommittedContinuationValue
+import Vegas.Game.OnePacketCommittedContinuationValue
 import Vegas.Game.OnePacketCommitDecisionFailure
 import Vegas.Game.OnePacketLateCommitments
-import Vegas.Game.RecoveryKeyedFailure
+import Vegas.Game.OnePacketKeyedFailure
 import GameTheoryExtensions.Math.Probability.AffineDecorrelation
 
 /-! # Keyed payoff factors under the actual common posterior -/
@@ -292,7 +292,7 @@ theorem nativeComparison_committed_value_sub_le_of_counted_service [Fintype (RP)
         have decided := decidedEvent_eq_of_pending setup runtime leaks horizon (NativeScheduler)
           pendingAt
           rawTrace rfl (by simpa only [recallEq, observeEq, atSite] using siteKey)
-        have near := nativeComparison_commitment_value_affine_of_counted_service setup runtime leaks
+        have near := OnePacketComparison.assembled_commitment_value_affine setup runtime leaks
           bounds horizon scheduler
           wellFormed covers capacity sequence scale positive le_one weights n opportunity inclusion
           timely completes site choice response selected history current actualAt member material

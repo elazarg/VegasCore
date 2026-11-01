@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryLocalCompletionValue
-import Vegas.Game.RecoveryPhaseValueBlind
+import Vegas.Game.OnePacketLocalCompletionValue
+import Vegas.Game.OnePacketPendingPhaseValue
 import Vegas.Game.OnePacketFirstActivationValue
 import Vegas.Game.OnePacketValueTransport
 
@@ -201,7 +201,7 @@ theorem nativeComparison_silence_history_comparison_of_counted_service [Fintype 
     apply expect_nonneg
     intro final _
     split <;> norm_num
-  have phaseEq := pending_until_eq_clearUntil (runtime := runtime) completes certificate installed
+  have phaseEq := pending_until_eq_clearUntil (runtime := runtime) certificate installed
     history.1 current
     ordered clear event
     ready

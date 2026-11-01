@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketOwnerSettled
+import Vegas.Game.OnePacketPrescribedSupport
+import Vegas.Game.OnePacketOperationalReads
 import Vegas.Game.OnePacketSwapInfo
 
 /-! # The two sites' information states differ exactly by the owner swap

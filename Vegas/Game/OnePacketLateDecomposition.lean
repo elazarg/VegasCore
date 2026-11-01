@@ -1,8 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketLateSuccess
+import Vegas.Game.OnePacketValueTransport
 import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Game.OnePacketCertificateDischarge
 
 /-! # Site values at forced sites
 
@@ -50,6 +50,15 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
 
 local notation "onePacketN" =>
   onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+
+/-- **The failure set of an agent of the one-packet game**: the event-level
+failed histories of its pending event, and none without one. -/
+def onePacketFailed (agent : (onePacketN).InformationAgent (onePacketN).playedInformation) :
+    Set ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).History :=
+  match pendingEvent setup runtime leaks agent.1 agent.2.1 with
+  | none => ∅
+  | some event => EventFailedHistory setup leaks runtime bounds horizon scheduler agent.1 event
 
 section Values
 
@@ -150,52 +159,6 @@ private theorem expect_mem_Icc {α : Type*} (law : PMF α) (payoff : α → ℝ)
     (fun point _ => (within point).1) (payoffIntegrable_constant law low) integrable
   rwa [expect_constant] at lower
 
-omit [Fintype Player] in
-/-- **The source continuation value is between the exclusion payoff and the
-upper utility.** If the exclusion payoff of `who` is at most its utility at
-every terminal state the continuation of `profile` from a point of the intended
-game reaches, and the utility is at most `upper`, the source continuation value
-of `profile` at every point of the intended game lies in
-`[excludedPayoff who, max (excludedPayoff who) upper]`. -/
-theorem sourcePointValue_mem_Icc (profile : BehavioralProfile setup.program) (who : Player)
-    (upper : ℝ) (le_upper : ∀ outcome, utility outcome who ≤ upper)
-    (below : ∀ point, IntendedReached setup point →
-      ∀ terminal ∈ (ProtocolState.continuationLaw setup.program profile point).support,
-        excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
-    (point : ProtocolState setup.program)
-    (reachedPoint : IntendedReached setup point) :
-    excludedPayoff who ≤ sourcePointValue setup parameter utility excludedPayoff profile who point ∧
-      sourcePointValue setup parameter utility excludedPayoff profile who point ≤
-        max (excludedPayoff who) upper := by
-  classical
-  unfold sourcePointValue
-  rw [expect_map]
-  have within : ∀ terminal ∈ (ProtocolState.continuationLaw setup.program profile point).support,
-      excludedPayoff who ≤ exclusionReadoutUtility setup parameter utility excludedPayoff
-        (some terminal) who ∧
-      exclusionReadoutUtility setup parameter utility excludedPayoff (some terminal) who ≤
-        max (excludedPayoff who) upper := by
-    intro terminal member
-    change excludedPayoff who ≤ exclusionUtility setup.program excludedPayoff utility
-        (setup.parameterOutcome parameter terminal) who ∧
-      exclusionUtility setup.program excludedPayoff utility
-        (setup.parameterOutcome parameter terminal) who ≤ max (excludedPayoff who) upper
-    unfold exclusionUtility
-    split
-    · exact ⟨below point reachedPoint terminal member,
-        (le_upper _).trans (le_max_right _ _)⟩
-    · exact ⟨le_rfl, le_max_left _ _⟩
-  rw [expect_congr_on_support (g := fun terminal =>
-    if terminal ∈ (ProtocolState.continuationLaw setup.program profile point).support then
-      exclusionReadoutUtility setup parameter utility excludedPayoff (some terminal) who
-    else excludedPayoff who) (fun terminal member => by rw [ite_eq_left member ..]; rfl)]
-  apply expect_mem_Icc
-  intro terminal
-  split
-  · rename_i member
-    exact within terminal member
-  · exact ⟨le_rfl, le_max_left _ _⟩
-
 omit [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
   [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
@@ -227,36 +190,6 @@ theorem siteValue_mem_Icc (assessment : (onePacketN).BehavioralAssessment)
           le_upper below _ reachedPoint
       · exact ⟨le_rfl, le_max_left _ _⟩
 
-omit [Fintype Player] [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-    scheduler).InfoState who)] in
-/-- **Exclusion is a punishment on reached continuations.** If the exclusion
-payoff of every player is at most its utility at every terminal readout of the
-intended game, it is at most its utility at every terminal state the
-continuation of the intended effective opening of an intended profile reaches
-from a point the intended game reaches. -/
-theorem excludedPayoff_le_of_reached [Finite Player] (wellFormed : setup.WellFormed)
-    (below : ∀ (final : setup.intendedProtocol.History) terminal,
-      setup.protocolReadout final.state = some terminal →
-        ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
-    (intended : ∀ who, setup.intendedModel.BehavioralPolicy who)
-    (point : ProtocolState setup.program) (reachedPoint : IntendedReached setup point)
-    (who : Player) :
-    ∀ terminal ∈ (ProtocolState.continuationLaw setup.program
-        (setup.intendedOpeningProfile intended) point).support,
-      excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who := by
-  have := Fintype.ofFinite Player
-  obtain ⟨history, state⟩ := reachedPoint
-  intro terminal member
-  have law := setup.intendedOpeningProfile_runFrom wellFormed intended
-    (setup.protocolRemaining history.state) history le_rfl
-  have readout : some terminal ∈ ((setup.continuationLaw (setup.intendedOpeningProfile intended)
-      history.state).map some).support := by
-    rw [state]
-    exact (PMF.mem_support_map_iff _ _ _).mpr ⟨terminal, member, rfl⟩
-  rw [← law] at readout
-  obtain ⟨final, _, read⟩ := (PMF.mem_support_map_iff _ _ _).mp readout
-  exact below final terminal read who
 
 end Bounds
 

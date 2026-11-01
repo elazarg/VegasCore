@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketForcedRegular
+import Vegas.Game.OnePacketProjectedDecision
+import Vegas.Game.OnePacketLateSuccess
 import Vegas.Game.OnePacketSequentialPreservation
 import Vegas.Game.OnePacketSlotLawForced
 
@@ -386,6 +388,62 @@ theorem exists_uniform_of_sites
     exact mono n who site _ _ ((le_abs_self _).trans (atSite ▸ single)) spec
 
 end BeliefInputs
+
+omit [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+  [Finite setup.intendedProtocol.History]
+  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+    scheduler).InfoState who)] in
+/-- A forced history whose observer owes no failure decodes to a point reached
+by the intended source game. -/
+theorem intendedReached_of_forced_debtFree (wellFormed : setup.WellFormed) {who : Player}
+    (site : (onePacketN).InformationSite who)
+    (debtFree : SiteDebtFree setup runtime leaks bounds horizon scheduler site)
+    (history : (onePacketN).InformationHistory who site.1)
+    {remaining : Nat} {execution : (application setup runtime leaks).Execution}
+    (current : history.1.state = some ⟨remaining, some who, execution⟩)
+    (ordered : execution.application.config.cut.IsPrefix (siteRank (runtime := runtime) site.1))
+    (forced : ForcedState setup runtime leaks who history.1.state) :
+    ∃ point, sourceServicePrefix? setup (siteRank (runtime := runtime) site.1)
+      execution.application.config =
+      some point ∧ ProtocolState.Intended setup.program point ∧ IntendedReached setup point := by
+  classical
+  let menu := bounds.onePacketMenu runtime leaks
+  have trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace
+      (some ⟨remaining, some who, execution⟩) := current ▸ history.1.trace
+  obtain ⟨decodedRank, ⟨residual⟩, holds⟩ := decodedState_intended_or_owes (runtime := runtime)
+    wellFormed
+    (failureProfile setup.program) menu horizon scheduler trace _ rfl
+  have sameRank := EventOrder.Cut.IsPrefix.unique residual.checkpoint.ordered ordered
+  subst sameRank
+  have decoded := residual.decode
+  generalize residual.lift (ProtocolState.entry residual.program residual.source) = point
+    at decoded
+  have pointDecoded : decodedPoint setup execution.application.config = some point :=
+    (decodedPoint_eq_of_isPrefix ordered).trans decoded
+  have forcedHere := forced
+  rw [current] at forcedHere
+  obtain ⟨forcedFound, forcedDecoded, forcedHolds⟩ :=
+    (forcedState_iff_decodedPoint (runtime := runtime) _).mp forcedHere
+  rw [pointDecoded, Option.some.injEq] at forcedDecoded
+  subst forcedDecoded
+  have free : ∀ found, decodedPoint setup execution.application.config = some found →
+      ∀ player, ¬ ProtocolState.OwesFailure player setup.program found := by
+    intro found foundDecoded player
+    rw [pointDecoded, Option.some.injEq] at foundDecoded
+    subst foundDecoded
+    by_cases same : player = who
+    · subst same
+      exact debtFree history point (by rw [current]; exact pointDecoded)
+    · exact (forcedHolds.2 player same).2
+  have intendedPoint : ProtocolState.Intended setup.program point := by
+    rcases holds point decoded with intendedHere | ⟨player, owed⟩
+    · exact intendedHere
+    · exact (free point pointDecoded player owed).elim
+  obtain ⟨replay, replayed⟩ := intendedHistory?_isSome_of_debtFree (runtime := runtime) wellFormed
+    trace _ rfl free
+  have reachedPoint : IntendedReached setup point :=
+    ⟨replay, (intendedHistory?_state (runtime := runtime) trace replayed).trans pointDecoded⟩
+  exact ⟨point, decoded, intendedPoint, reachedPoint⟩
 
 /-- **Operational steps of assembled profiles.** For a well-formed setup, at
 the tremble scale over the combined floor of a source sequence to a depth, the

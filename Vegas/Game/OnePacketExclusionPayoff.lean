@@ -86,6 +86,13 @@ theorem expect_sourcePointValue_behavioralStateStep (profile : BehavioralProfile
     parameter utility excludedPayoff readout who) ∘ some) (fun terminal => readoutBounded
       (some terminal)), ProtocolState.behavioralStateStep_continuation]
 
+/-- The utility of an observation of readout and payoffs: its payoff component. -/
+abbrev payoffComponent
+    (outcome : Option (Config Player L setup.program.terminalCtx) × (Player → ℝ))
+    (who : Player) : ℝ :=
+  outcome.2 who
+
+
 /-- An intended history's full source configuration and fixed-exit payoff. -/
 def intendedReadoutExclusion (final : setup.intendedProtocol.History) :
     Option (Config Player L setup.program.terminalCtx) × (Player → ℝ) :=

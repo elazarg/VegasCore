@@ -1,7 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryLocalCompletionValue
-import Vegas.Game.RecoveryPhaseValueBlind
+import Vegas.Game.OnePacketLocalCompletionValue
+import Vegas.Game.OnePacketPendingPhaseValue
+import Vegas.Game.OnePacketPendingFailure
 
 /-! # A single source deviation for all histories of a nonlate commitment -/
 
@@ -150,12 +151,12 @@ theorem nativeComparison_pending_value_affine_of_boundary_values [Fintype (RP).H
   have pointDecoded := (decodedPoint_eq_of_isPrefix ordered).trans decoded
   have clear := exclusionEvidence_of_decodedIntended (runtime := runtime) rawTrace pointDecoded
     intendedPoint
-  have phaseEq := pending_until_eq_clearUntil (runtime := runtime) terminalCompletes certificate
+  have phaseEq := pending_until_eq_clearUntil (runtime := runtime) certificate
     installed history.1
     current ordered clear event
     ready
-  have tail := nativeComparison_local_completion_value_sub_le_of_boundary_values setup runtime leaks
-    bounds horizon scheduler sequence scale positive le_one weights n terminalCompletes certificate
+  have tail := OnePacketComparison.local_completion_value_sub_le_of_boundary_values setup runtime
+    leaks bounds horizon (NativeScheduler) (sequence n) common terminalCompletes certificate
     who site.1 law history.1 current history.2 event ready owned key decided ordered point decoded
     intendedPoint parameter utility excludedPayoff boundNonneg readoutBounded excludedBounded
     boundaryError boundaryErrorNonneg

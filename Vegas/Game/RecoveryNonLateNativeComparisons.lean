@@ -2,8 +2,8 @@
 
 import Vegas.Game.RecoveryCommitmentGainBounds
 import Vegas.Game.RecoverySilenceComparison
-import Vegas.Game.RecoveryDisclosureComparison
-import Vegas.Game.RecoveryUnintendedComparison
+import Vegas.Game.OnePacketDisclosureComparison
+import Vegas.Game.OnePacketUnintendedComparison
 import Vegas.Game.RecoveryNonLateChoices
 
 /-! # Uniform source incentive bounds for nonlate commitments -/
@@ -230,7 +230,7 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
           raw packet).elim
         | commitment named candidate =>
             have near :=
-              nativeComparison_unintendedCommitment_history_comparison_of_counted_service setup
+              OnePacketComparison.assembled_unintendedCommitment_history_comparison setup
                 runtime
               leaks
               bounds horizon scheduler wellFormed covers capacity sequence scale positive le_one
@@ -296,7 +296,7 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
                 (current ▸ history.1.trace)) rfl
               (lateKey_some (runtime := runtime) who (execution.recall who)
                 (execution.observe (application setup runtime leaks) who))
-            have near := nativeComparison_firstActivation_disclosure_gain_le_of_counted_service
+            have near := OnePacketComparison.assembled_firstActivation_disclosure_gain_le
               (runtime := runtime)
               setup leaks bounds
               horizon scheduler wellFormed covers capacity sequence scale positive le_one weights n

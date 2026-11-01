@@ -3,7 +3,7 @@
 import Vegas.Game.RecoveryPooledMemberGains
 import Vegas.Game.RecoveryKeyedCommitmentComparisons
 import Vegas.Game.RecoveryLatePureChoices
-import Vegas.Game.RecoveryUnintendedValue
+import Vegas.Game.OnePacketUnintendedValue
 import Vegas.Game.RecoveryNonLateChoices
 import GameTheoryExtensions.Analysis.Protocol.GainComparison
 
@@ -435,9 +435,11 @@ theorem recovery_keyed_local_comparisons [Fintype (RP).History]
             have rare := irregular n who nativeSite nativeNotFree nativeNotOwing nativeAt
               (pendingEvent_spec (runtime := runtime) pendingHere).1
             exact averaged.trans (rare.trans (le_abs_self _))
-          have bad := recovery_unintendedCommitment_value_sub_le setup runtime leaks bounds horizon
-            scheduler
-            wellFormed completes target nativeSite nativeChoice nativeNotOwing atTurn intendedChoice
+          have bad := OnePacketComparison.unintendedCommitment_value_sub_le setup runtime leaks
+            bounds horizon (NativeScheduler) wellFormed
+            (Recovery.CompletesPlay.clear_counted_native (runtime := runtime) bounds
+              (initialLaw_initialized setup) (initialLaw_native setup) completes)
+            target nativeSite nativeChoice nativeNotOwing atTurn intendedChoice
             nativeAt response selected material sends named candidate packet parameter utility
             excludedPayoff (readoutBounded who) (excludedBounded who) unforcedMass
           change |nativeValue (PMF.pure nativeChoice) - excludedPayoff who| ≤

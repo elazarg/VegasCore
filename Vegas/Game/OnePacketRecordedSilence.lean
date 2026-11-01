@@ -57,10 +57,51 @@ theorem slotResponse_silentOrNames (who : Player)
   split
   · exact Or.inl rfl
   · split
-    · right
-      rfl
+    · split
+      · exact Or.inl rfl
+      · exact Or.inr rfl
     · exact canonical_silentOrNames (runtime := runtime) who past view event _
     · exact canonical_silentOrNames (runtime := runtime) who past view event _
+
+section Recall
+
+variable (setup runtime leaks) (horizon : Nat)
+  (scheduler : (application setup runtime leaks).Scheduler)
+
+/-- Along a history, the owner has sent nothing for an event exactly when its
+recall has not recorded the event. -/
+theorem unsentFor_iff_unrecorded {who : Player}
+    {past : List (application setup runtime leaks).PlayerEntry}
+    {view : (application setup runtime leaks).PlayerView} {control : (application setup runtime
+      leaks).Control}
+    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+      (some control))
+    (recallEq : control.execution.recall who = past) {key : LateKey setup runtime leaks}
+    (siteKey : lateKey setup runtime leaks who (some (past, view)) = some key)
+    (event : (graph setup).EventId) :
+    UnsentFor (runtime := runtime) key event ↔ runtime.eventRecorded leaks past event = false := by
+  simp only [lateKey, Option.some.injEq] at siteKey
+  subst siteKey
+  constructor
+  · intro unsent
+    apply Bool.eq_false_of_not_eq_true
+    intro recorded
+    rw [← recallEq] at recorded
+    obtain ⟨message, member, named⟩ := (history_eventRecorded_iff (runtime := runtime) trace who
+      event).mp recorded
+    rw [recallEq] at member
+    obtain ⟨entry, entryMember, emitted⟩ := List.mem_filterMap.mp member
+    exact unsent _ (List.mem_map_of_mem entryMember) message emitted named
+  · intro unrecorded recalledEntry member message emitted named
+    obtain ⟨entry, entryMember, rfl⟩ := List.mem_map.mp member
+    have recorded := (history_eventRecorded_iff (runtime := runtime) trace who event).mpr
+      ⟨message, by
+        rw [recallEq]
+        exact List.mem_filterMap.mpr ⟨entry, entryMember, emitted⟩, named⟩
+    rw [recallEq, unrecorded] at recorded
+    cases recorded
+
+end Recall
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}

@@ -82,6 +82,32 @@ structure PendingLumpingOn (assessment : (onePacketInformation setup runtime lea
   failure_eq : ∀ site, relevant site → ∀ key, ∀ state ∈ keep site key,
     (if failedState key state then (1 : ℝ) else 0) = failure key (image key state)
 
+section Failure
+
+variable (setup runtime leaks bounds horizon scheduler)
+
+local notation "onePacketN" =>
+  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+
+/-- The failure expectation of `fuel` steps of a lumping's image kernel from the
+image read off an operational record. -/
+def lumpedFailure {assessment : (onePacketN).BehavioralAssessment} {who : Player}
+    {LateOption : Type}
+    {profileOf : (onePacketN).InformationSite who → LateOption → ∀ player,
+      (onePacketN).BehavioralPolicy player}
+    {failedState : LateKey setup runtime leaks → (application setup runtime leaks).ProtocolState →
+      Prop}
+    {relevant : (onePacketN).InformationSite who → Prop}
+    {δ : ℝ} {Y : Type}
+    (lumping : PendingLumpingOn (runtime := runtime) assessment who relevant profileOf failedState
+      δ Y)
+    (fuel : Nat) (key : LateKey setup runtime leaks) (option : LateOption)
+    (record : List (Option (OperationalState setup runtime leaks))) : ℝ :=
+  expect ((fun law => law.bind (lumping.kernel key option))^[fuel]
+    (PMF.pure (lumping.start key record))) (lumping.failure key)
+
+end Failure
+
 open Classical in
 /-- **Failure from lumping at a kept history.** Under one-step lumping at
 relevant sites, the failure probability of an option's profile over `fuel`
