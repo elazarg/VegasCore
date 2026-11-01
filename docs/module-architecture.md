@@ -45,8 +45,11 @@ The [physical deviation law](../Vegas/Game/AsyncDeviationReadout.lean)
 backtranslates every raw unilateral policy against first-turn clients to one
 behavioral source policy with the same typed-state/public-default law. Its
 structural source induction carries typed checkpoints and automatic paths;
-defaulted instructions require no callback. Higher native Nash,
-sequential-equilibrium and client-compiler ports remain acceptance obligations.
+defaulted instructions require no callback. Native Nash correspondence and its
+program-payment specialization use this same observation and actual-history
+settlement ranges (`AsyncServiceSpec.SettlementRange`). The concrete monetary
+runtime retains the joint typed-state/default-history/cash law. Higher native
+sequential-equilibrium and client-compiler proofs remain acceptance obligations.
 
 Start with [recovery preservation](../Vegas/Game/RecoverySequentialCompilation.lean),
 [monetary preservation](../Vegas/Game/RecoveryPaymentPreservation.lean) and

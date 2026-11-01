@@ -29,8 +29,10 @@ theorem all_permitted (bonus : Int) (who : Player)
     (candidate : BehavioralPolicy who (program bonus)) :
     candidate.Admitted (program bonus) (admission bonus) := by
   constructor
-  · intro _ _ selected _
-    cases selected <;> trivial
+  · intro _ _ _ selected _
+    cases selected with
+    | none => trivial
+    | some result => cases result <;> trivial
   · trivial
 
 theorem profile_permitted (bonus : Int) (choice : Bool) (who : Player) :
@@ -89,18 +91,25 @@ def sourceGame (bonus : Int) : UtilityGame Player where
     (fun terminal => (program bonus).paymentUtility (valuation bonus)
       ((program bonus).publicOutcome terminal) who)
 
-/-- Bounds include every terminal state, unfinished readout and audit verdict,
-including those arising after arbitrary legal raw responses. -/
-theorem realized_payoff_bounds (bonus : Int) (who : Player)
-    (output : Option (State simpleExpr (program bonus).terminalCtx)) (charged : Bool) :
-    -|(bonus : ℝ) - 1| - 1 ≤ output.elim 0 (fun terminal =>
+/-- Every supported monetary settlement at an initialized raw history satisfies
+the same numerical interval, including unfinished readouts and actual charges. -/
+theorem realized_payoff_bounds (bonus : Int) :
+    (service bonus).SettlementRange (parameter bonus)
+      ((program bonus).parameterPaymentUtility (runtimeValuation bonus)) (auditSample bonus)
+      deposit (fun _ => -|(bonus : ℝ) - 1| - 1) (fun _ => 2 * |(bonus : ℝ) - 1| + 1) := by
+  intro control _trace payoffs supported who
+  rw [Enforcement.TerminalAudit.settlement, PMF.support_map] at supported
+  obtain ⟨verdict, _, rfl⟩ := supported
+  let output := serviceSourceReadout (setup bonus) .sequential (service bonus).deadline
+    (leaks bonus) (some control)
+  change -|(bonus : ℝ) - 1| - 1 ≤ output.elim 0 (fun terminal =>
       (program bonus).parameterPaymentUtility (runtimeValuation bonus)
         ((setup bonus).parameterOutcome (parameter bonus) terminal) who) -
-          (if charged then deposit who else 0) ∧
+          (if verdict who then deposit who else 0) ∧
     output.elim 0 (fun terminal => (program bonus).parameterPaymentUtility
       (runtimeValuation bonus) ((setup bonus).parameterOutcome (parameter bonus) terminal) who) -
-      (if charged then deposit who else 0) ≤
-        (-|(bonus : ℝ) - 1| - 1) + (2 * |(bonus : ℝ) - 1| + 1) := by
+      (if verdict who then deposit who else 0) ≤
+        (-|(bonus : ℝ) - 1| - 1) + (2 * |(bonus : ℝ) - 1| + 1)
   have nonnegative := abs_nonneg ((bonus : ℝ) - 1)
   have baseBounds : -|(bonus : ℝ) - 1| ≤ output.elim 0 (fun terminal =>
       (program bonus).parameterPaymentUtility (runtimeValuation bonus)
@@ -114,7 +123,7 @@ theorem realized_payoff_bounds (bonus : Int) (who : Player)
         cases who
         exact abs_le.mp (utility_abs_le bonus ((program bonus).publicOutcome terminal))
   obtain ⟨lower, upper⟩ := baseBounds
-  cases charged <;> simp only [Bool.false_eq_true, ↓reduceIte, deposit] <;>
+  cases verdict who <;> simp only [Bool.false_eq_true, ↓reduceIte, deposit] <;>
     constructor <;> linarith
 
 /-- Exact Nash correspondence for this checked runtime and its actual audit,
@@ -177,22 +186,24 @@ theorem run_sourceProfile (bonus : Int) (choice : Bool) :
     (fun initial => (program bonus).run (profile bonus choice) initial) = _
   rw [PMF.pure_bind, run_profile]
 
-/-- Prescribed native clients preserve the complete typed state and actual cash
-jointly. The law is proved for both choices and every integer bonus. -/
+/-- Prescribed native clients preserve typed cells, public default history
+and actual cash jointly. The law is proved for both choices and every integer bonus. -/
 theorem settlement_law (bonus : Int) (choice : Bool) :
     (((model bonus).runBehavioral (clients bonus choice) (fuel bonus)).bind fun history =>
       ((service bonus).paymentSettlement (auditSample bonus) deposit history.state).map
         fun receipts =>
-          (serviceSourceReadout (setup bonus) .sequential (service bonus).deadline
-            (leaks bonus) history.state, receipts)) =
-      PMF.pure (some (final bonus choice),
+          ((serviceSourceReadout (setup bonus) .sequential (service bonus).deadline
+            (leaks bonus) history.state).map (fun config => (config.state, config.defaults)),
+            receipts)) =
+      PMF.pure (some ((final bonus choice).state, (final bonus choice).defaults),
         fun _ : Player => ((if choice then bonus else 0 : Int) : ℝ)) := by
   have law := (service bonus).payment_firstTurnClientProfile_settlement_law
     (admission bonus) (setup bonus).eventGraph.sequentialize_barrierOrdered
     (auditSample bonus) (audit_authentic bonus) deposit 1 (sourceProfile bonus choice)
   change _ = ((setup bonus).run ((setup bonus).decodeBehavioralProfile (admission bonus)
     (sourceProfile bonus choice))).map (fun terminal =>
-      (some terminal, fun who => (transferAmount ((program bonus).evaluatePayoffs terminal)
+      (some (terminal.state, terminal.defaults), fun who =>
+        (transferAmount ((program bonus).evaluatePayoffs terminal.state)
         who : ℝ))) at law
   rw [decode_sourceProfile, run_sourceProfile, PMF.pure_map, evaluatePayoffs_final] at law
   have receipts : (fun who : Player =>
