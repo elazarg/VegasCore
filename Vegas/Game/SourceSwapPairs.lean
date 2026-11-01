@@ -504,15 +504,13 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- **Swapped completions decode to swapped action lists.** -/
 theorem decodeHistory_betweenPairs (completions : List (graph setup).Completion) :
-    decodeHistory setup.program ((completions.map
-        (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).completion).map
-          (setup.eventGraph.fromModeCompletion .sequential)) =
+    decodeHistory setup.program (completions.map
+        (EventGraph.ValueSwap.ofPairs (betweenPairs publicAgree succeed)).completion) =
       (CellSwap.between setup.program first second).history
-        (decodeHistory setup.program
-          (completions.map (setup.eventGraph.fromModeCompletion .sequential))) := by
+        (decodeHistory setup.program completions) := by
   funext who
   simp only [decodeHistory, CellSwap.history, decodeCompletions, EventGraph.ownCompletions,
-    List.map_map, List.filter_map, List.filterMap_map, List.map_filterMap]
+    List.filter_map, List.filterMap_map, List.map_filterMap]
   congr 1
   · funext completion
     cases completion with

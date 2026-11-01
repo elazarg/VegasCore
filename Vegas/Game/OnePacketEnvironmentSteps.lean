@@ -1,14 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketFactorization
-import Vegas.Game.OnePacketPendingPool
-import Vegas.Game.ServiceSettledEvidence
+import Vegas.Pending.ExclusionInvariant
+import Vegas.Pending.ReactiveGraphSteps
 import Interaction.ReactiveResponseAccounting
 
 /-! # Scheduler rounds factor through the operational record
 
 The mass of a scheduler round of the one-packet game is the chance mass of the
-event it completes, times a function of the operational states before and after
+first event it completes, times a function of the operational states before and after
 the round (`Vegas.environment_stepProb`). That function reads the command from
 the scheduler's recall after the round, takes its mass under the scheduler at
 the recall and view before it, and at an activation multiplies by the mass the
@@ -16,6 +16,7 @@ observation rule gives the leaked packets (`Vegas.environmentMass`). The network
 is recorded whole in the operational state (`Vegas.OperationalState.network`),
 so no hypothesis on the scheduler or the observation rule is needed for this.
 
+Automatic completions retain the primary output and contribute no extra mass.
 So the operational steps of the factorization reduce to their component part:
 any response mass satisfying the component bound at regular responses of other
 players gives operational steps, with the round mass at scheduler rounds
@@ -70,11 +71,50 @@ def environmentMass :
 
 variable {setup runtime leaks scheduler}
 
+/-- No new graph record contributes no chance mass. -/
 theorem completionMass_of_config_eq {before after : EventGraphRuntime.State (graph setup)}
     (same : after.config = before.config) : completionMass setup before after = 1 := by
   unfold completionMass
   rw [same, List.drop_length]
 
+/-- The completion mass of a completion with the given event and action is the
+graph step's mass for a chance event. -/
+theorem completionMass_of_chance (before after : EventGraphRuntime.State (graph setup))
+    {event : (graph setup).EventId} (ready : before.config.cut.Ready event)
+    {action : (graph setup).Action event}
+    (member : after.config ∈ (before.config.step event ready action).support)
+    (chance : (graph setup).actor? event = none) :
+    completionMass setup before after =
+      ((before.config.step event ready action) after.config).toReal := by
+  let available := EventGraph.EventCode.eval?_isSome_of_reads ((graph setup).nodes event)
+    (before.config.effectiveAction event action) before.config.store
+    (fun _ read => before.config.read_available ready read)
+  let law := (((graph setup).nodes event).eval?
+    (before.config.effectiveAction event action) before.config.store).get available
+  have evaluate : ((graph setup).nodes event).eval?
+      (EventGraph.EventCode.actionOfActorNone _ chance) before.config.store = some law := by
+    rw [← EventGraph.EventCode.action_eq_of_actor_none ((graph setup).nodes event) chance
+      (before.config.effectiveAction event action)
+      (EventGraph.EventCode.actionOfActorNone _ chance)]
+    exact (Option.some_get available).symm
+  change after.config ∈ (law.map (before.config.complete event ready action)).support at member
+  obtain ⟨value, _supported, reached⟩ := PMF.support_map .. ▸ member
+  have injective : Function.Injective (before.config.complete event ready action) := by
+    intro first second equal
+    have outputs := congrArg (fun config : (graph setup).Config => config.outputs event) equal
+    simp only [EventGraph.Config.complete_output_same] at outputs
+    exact Option.some.inj outputs
+  unfold completionMass
+  rw [← reached]
+  simp only [EventGraph.Config.complete_history, List.drop_left,
+    EventGraph.completion, chance, ↓reduceDIte,
+    EventGraph.Config.complete_output_same, evaluate]
+  change (law value).toReal =
+    ((law.map (before.config.complete event ready action))
+      (before.config.complete event ready action value)).toReal
+  rw [pmf_map_apply_of_injective _ injective]
+
+/-- A primary graph step contributes its chance atom mass, or one for an owned event. -/
 theorem completionMass_of_step {before after : EventGraphRuntime.State (graph setup)}
     {event : (graph setup).EventId} {ready : before.config.cut.Ready event}
     {action : (graph setup).Action event}
@@ -83,50 +123,60 @@ theorem completionMass_of_step {before after : EventGraphRuntime.State (graph se
       match (graph setup).actor? event with
       | none => (before.config.step event ready action after.config).toReal
       | some _ => 1 := by
+  cases acting : (graph setup).actor? event with
+  | none => exact completionMass_of_chance before after ready member acting
+  | some owner =>
+      obtain ⟨value, _output, history⟩ := before.config.step_completion event ready action
+        after.config member
+      unfold completionMass
+      rw [history, List.drop_left]
+      simp only [EventGraph.completion, acting, reduceCtorEq, ↓reduceDIte]
+
+private theorem completionMass_of_step_path
+    {before middle after : EventGraphRuntime.State (graph setup)}
+    {event : (graph setup).EventId} {ready : before.config.cut.Ready event}
+    {action : (graph setup).Action event}
+    (member : middle.config ∈ (before.config.step event ready action).support)
+    (path : Relation.ReflTransGen EventGraph.Config.Step middle.config after.config) :
+    completionMass setup before after = completionMass setup before middle := by
+  obtain ⟨value, stored, history⟩ := before.config.step_completion event ready action
+    middle.config member
+  have retained : after.config.outputs event = some value := by
+    change after.config.store (.inr event) = some value
+    have retain {first last : (graph setup).Config}
+        (steps : Relation.ReflTransGen EventGraph.Config.Step first last)
+        (present : first.store (.inr event) = some value) :
+        last.store (.inr event) = some value := by
+      induction steps using Relation.ReflTransGen.head_induction_on with
+      | refl => exact present
+      | @head current next moved _ ih =>
+          obtain ⟨query, available, choice, supported⟩ := moved
+          exact ih (current.step_store_of_some next query available choice supported
+            (.inr event) value present)
+    exact retain path stored
+  obtain ⟨extra, extension⟩ := EventGraph.Config.Step.path_history_prefix path
   unfold completionMass
-  rw [before.config.step_history event ready action _ member, List.drop_left]
-  rcases acting : (graph setup).actor? event with _ | actor <;>
-    simp only [acting, dite_eq_left ready]
+  rw [← extension, history, List.append_assoc]
+  simp only [List.drop_left, List.singleton_append, EventGraph.completion]
+  rw [retained, stored]
+
+private theorem completionMass_of_automatic_path
+    {before after : EventGraphRuntime.State (graph setup)}
+    (path : Relation.ReflTransGen EventGraphRuntime.State.AutomaticStep before after) :
+    completionMass setup before after = 1 := by
+  rcases path.cases_head with same | ⟨middle, moved, tail⟩
+  · exact completionMass_of_config_eq (congrArg EventGraphRuntime.State.config same.symm)
+  · obtain ⟨event, eligible, rfl⟩ := moved
+    obtain ⟨action, supported⟩ := before.completeAutomatic_step event eligible
+    obtain ⟨owner, acting, _inactive⟩ := eligible.owned
+    rw [completionMass_of_step_path supported (State.automatic_path_graph_steps tail),
+      completionMass_of_step supported]
+    simp only [acting]
 
 /-- A point mass at a reached point has mass one there. -/
 private theorem pure_apply_of_mem {α : Type*} {point reached : α}
     (member : reached ∈ (PMF.pure point).support) : (PMF.pure point reached).toReal = 1 := by
   rw [(PMF.mem_support_pure_iff _ _).mp member, PMF.pure_apply_self, ENNReal.toReal_one]
-
-/-- An included packet that completes an event completes one with an actor. -/
-theorem include_completion_actor (execution : (application setup runtime leaks).Execution)
-    (id : MessageId Player) {event : (graph setup).EventId}
-    {ready : execution.application.config.cut.Ready event} {action : (graph setup).Action event}
-    (member : (execution.includePending (application setup runtime leaks) id).application.config ∈
-      (execution.application.config.step event ready action).support) :
-    ∃ actor, (graph setup).actor? event = some actor := by
-  cases found : execution.network.lookup id with
-  | none =>
-      exact (config_ne_of_step member (by
-        simp only [ReactiveApplication.Execution.includePending,
-          MessageNetwork.includePending, found])).elim
-  | some message =>
-      cases accepted : (application setup runtime leaks).handle execution.application message with
-      | none =>
-          exact (config_ne_of_step member (by
-            simp only [ReactiveApplication.Execution.includePending,
-              MessageNetwork.includePending, found, accepted, Option.getD_none])).elim
-      | some after =>
-          have applicationEq :
-              (execution.includePending (application setup runtime leaks) id).application = after
-                := by
-            simp only [ReactiveApplication.Execution.includePending,
-              MessageNetwork.includePending, found, accepted, Option.getD_some]
-          obtain ⟨_, namedEvent, named, _, _, actor⟩ :=
-            accepted_inclusion execution.application after message accepted
-          obtain ⟨other, otherNamed, _, _, otherMember⟩ :=
-            handle_config_mem_step runtime execution.application after _
-              (reactiveHandle_call accepted)
-          have sameNamed : other = namedEvent := Option.some.inj (otherNamed.symm.trans named)
-          subst sameNamed
-          rw [applicationEq] at member
-          cases step_event_unique otherMember member
-          exact ⟨_, actor⟩
 
 /-- An expiry that completes an event completes one with an actor. -/
 theorem expire_completion_actor (state next : EventGraphRuntime.State (graph setup))
@@ -163,59 +213,182 @@ theorem expire_completion_actor (state next : EventGraphRuntime.State (graph set
                 activated due, PMF.mem_support_pure_iff] at changed
               exact changed
 
-/-- The contract part of a scheduler command: its mass at a reached state is the
-chance mass of the completed event. -/
+
+/-- The native operation includes its deterministic automatic tail. -/
 theorem applicationStep_mass (state next : EventGraphRuntime.State (graph setup))
     (command : EnvironmentCommand (graph setup))
-    (changed : next ∈ (EventGraphRuntime.environmentStep runtime state command).support) :
-    (EventGraphRuntime.environmentStep runtime state command next).toReal =
+    (changed : next ∈ ((application setup runtime leaks).environment state command).support) :
+    ((application setup runtime leaks).environment state command next).toReal =
       completionMass setup state next := by
+  let app := application setup runtime leaks
+  have pureCase (native : EventGraphRuntime.State (graph setup))
+      (law : EventGraphRuntime.environmentStep runtime state command = PMF.pure native)
+      (mass : completionMass setup state native.drain = 1) :
+      (app.environment state command next).toReal = completionMass setup state next := by
+    change ENNReal.toReal
+      (((EventGraphRuntime.environmentStep runtime state command).map State.drain) next) = _
+    change next ∈ ((EventGraphRuntime.environmentStep runtime state command).map
+      State.drain).support at changed
+    rw [law, PMF.pure_map] at changed ⊢
+    rw [pure_apply_of_mem changed]
+    cases (PMF.mem_support_pure_iff _ _).mp changed
+    exact mass.symm
   cases command with
   | advanceClock =>
-      have reached := changed
-      simp only [EventGraphRuntime.environmentStep, PMF.mem_support_pure_iff] at reached
-      rw [show EventGraphRuntime.environmentStep runtime state .advanceClock =
-        PMF.pure { state with clock := state.clock + 1 } from rfl, pure_apply_of_mem changed,
-        completionMass_of_config_eq (by rw [reached])]
+      apply pureCase { state with clock := state.clock + 1 } rfl
+      simpa only [completionMass] using completionMass_of_automatic_path
+        (State.drain_trace { state with clock := state.clock + 1 })
   | expire expired =>
-      rw [show EventGraphRuntime.environmentStep runtime state (.expire expired) =
-        PMF.pure _ from rfl] at changed ⊢
-      rw [pure_apply_of_mem changed]
-      obtain ⟨_, effect⟩ := environmentStep_expire_config_activated runtime state next
-        expired changed
-      rcases effect with ⟨configEq, _⟩ | ⟨ready, action, member, _⟩
-      · rw [completionMass_of_config_eq configEq]
-      · obtain ⟨actor, acts⟩ := expire_completion_actor state next expired
-          changed member
-        rw [completionMass_of_step member, acts]
-  | executeSample sampled =>
-      by_cases ready : state.config.cut.Ready sampled
-      · cases view : nodeView (graph setup) sampled with
-        | sample payload law outputEq codeEq =>
-            have lawEq := environmentStep_executeSample_eq runtime state sampled ready
-              payload law outputEq codeEq view
-            rw [lawEq, PMF.support_map] at changed
-            obtain ⟨config, configMember, rfl⟩ := changed
-            rw [lawEq, pmf_map_apply_of_injective _ (fun first second same => by
-              have := congrArg EventGraphRuntime.State.config same
-              exact this) config,
-              completionMass_of_step configMember, nodeView_sample_actor outputEq codeEq]
+      obtain ⟨native, nativeLaw⟩ : ∃ native,
+          EventGraphRuntime.environmentStep runtime state (.expire expired) = PMF.pure native :=
+        ⟨_, rfl⟩
+      have member : native ∈ (EventGraphRuntime.environmentStep runtime state
+          (.expire expired)).support := by
+        rw [nativeLaw]
+        exact (PMF.mem_support_pure_iff _ _).mpr rfl
+      apply pureCase native nativeLaw
+      obtain ⟨_, effect⟩ :=
+        environmentStep_expire_config_activated runtime state native expired member
+      rcases effect with ⟨same, _⟩ | ⟨ready, action, supported, _⟩
+      · simpa only [completionMass, same] using
+          (completionMass_of_automatic_path native.drain_trace)
+      · obtain ⟨owner, acting⟩ := expire_completion_actor state native expired member supported
+        rw [completionMass_of_step_path supported native.drain_graph_steps,
+          completionMass_of_step supported]
+        simp only [acting]
+  | executeSample event =>
+      by_cases ready : state.config.cut.Ready event
+      · cases view : nodeView (graph setup) event with
+        | sample payload distribution outputEq codeEq =>
+            let action := cast (congrArg EventGraph.EventField.Action outputEq.symm) PUnit.unit
+            let available := EventGraph.EventCode.eval?_isSome_of_reads ((graph setup).nodes event)
+              (state.config.effectiveAction event action) state.config.store
+              (fun _ read => state.config.read_available ready read)
+            let draw := (((graph setup).nodes event).eval?
+              (state.config.effectiveAction event action) state.config.store).get available
+            have evaluates : ((graph setup).nodes event).eval?
+                (state.config.effectiveAction event action) state.config.store = some draw :=
+              (Option.some_get available).symm
+            have graphLaw := state.config.step_eq_map_of_eval event ready action draw evaluates
+            let native := fun value => state.complete event ready action value
+            have law : app.environment state (.executeSample event) =
+                draw.map (fun value => (native value).drain) := by
+              change (EventGraphRuntime.environmentStep runtime state (.executeSample event)).map
+                State.drain = _
+              rw [environmentStep_executeSample_eq runtime state event ready payload distribution
+                outputEq codeEq view, graphLaw, PMF.map_comp, PMF.map_comp]
+              rfl
+            have retained (value : ((graph setup).outputLayout event).Value) :
+                (native value).drain.config.outputs event = some value :=
+              (native value).drain_store_of_some (.inr event) value
+                (state.config.complete_output_same event ready action value)
+            have injective : Function.Injective (fun value => (native value).drain) := by
+              intro first second same
+              have values := congrArg (fun result : EventGraphRuntime.State (graph setup) =>
+                result.config.outputs event) same
+              rw [retained first, retained second] at values
+              exact Option.some.inj values
+            rw [law] at changed ⊢
+            obtain ⟨value, chosen, rfl⟩ := PMF.support_map .. ▸ changed
+            have member : (native value).config ∈
+                (state.config.step event ready action).support := by
+              rw [graphLaw, PMF.support_map]
+              exact ⟨value, chosen, rfl⟩
+            have graphInjective : Function.Injective
+                (state.config.complete event ready action) := by
+              intro first second same
+              have outputs := congrArg (fun config : (graph setup).Config =>
+                config.outputs event) same
+              simp only [EventGraph.Config.complete_output_same] at outputs
+              exact Option.some.inj outputs
+            change ((draw.map (fun output => (native output).drain))
+              (native value).drain).toReal = completionMass setup state (native value).drain
+            rw [pmf_map_apply_of_injective draw injective,
+              completionMass_of_step_path member (native value).drain_graph_steps,
+              completionMass_of_chance _ _ ready member (nodeView_sample_actor outputEq codeEq),
+              graphLaw]
+            exact (congrArg ENNReal.toReal
+              (pmf_map_apply_of_injective draw graphInjective value)).symm
         | bind owner payload outputEq codeEq =>
-            have lawEq := environmentStep_executeSample_of_nonsample runtime state sampled
-              ready (fun _ _ _ _ sampled => by rw [view] at sampled; cases sampled)
-            rw [lawEq] at changed ⊢
-            rw [pure_apply_of_mem changed, completionMass_of_config_eq (by
-              rw [(PMF.mem_support_pure_iff _ _).mp changed])]
+            apply pureCase state (environmentStep_executeSample_of_nonsample runtime state event
+              ready (fun _ _ _ _ sampled => by rw [view] at sampled; cases sampled))
+            exact completionMass_of_automatic_path state.drain_trace
         | resolve owner payload binding checks outputEq codeEq =>
-            have lawEq := environmentStep_executeSample_of_nonsample runtime state sampled
-              ready (fun _ _ _ _ sampled => by rw [view] at sampled; cases sampled)
-            rw [lawEq] at changed ⊢
-            rw [pure_apply_of_mem changed, completionMass_of_config_eq (by
-              rw [(PMF.mem_support_pure_iff _ _).mp changed])]
-      · have lawEq := environmentStep_executeSample_of_not_ready runtime state sampled ready
-        rw [lawEq] at changed ⊢
-        rw [pure_apply_of_mem changed, completionMass_of_config_eq (by
-          rw [(PMF.mem_support_pure_iff _ _).mp changed])]
+            apply pureCase state (environmentStep_executeSample_of_nonsample runtime state event
+              ready (fun _ _ _ _ sampled => by rw [view] at sampled; cases sampled))
+            exact completionMass_of_automatic_path state.drain_trace
+      · apply pureCase state (environmentStep_executeSample_of_not_ready runtime state event ready)
+        exact completionMass_of_automatic_path state.drain_trace
+
+
+private theorem include_primary
+    (execution : (application setup runtime leaks).Execution) (id : MessageId Player) :
+    (execution.includePending (application setup runtime leaks) id).application.config =
+        execution.application.config ∨
+      ∃ (event : (graph setup).EventId) (ready : execution.application.config.cut.Ready event)
+        (action : (graph setup).Action event) (native : EventGraphRuntime.State (graph setup))
+        (owner : Player),
+        native.config ∈ (execution.application.config.step event ready action).support ∧
+        (graph setup).actor? event = some owner ∧
+        (execution.includePending (application setup runtime leaks) id).application.config =
+          native.drain.config := by
+  cases found : execution.network.lookup id with
+  | none =>
+      left
+      simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending, found]
+  | some message =>
+      cases accepted :
+          (application setup runtime leaks).handle execution.application message with
+      | none =>
+          left
+          simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+            found, accepted, Option.getD_none]
+      | some next =>
+          obtain ⟨native, handled, drained⟩ := reactiveHandle_call accepted
+          obtain ⟨event, named, ready, action, member⟩ :=
+            handle_config_mem_step runtime execution.application native _ handled
+          refine Or.inr ⟨event, ready, action, native, message.sender, member,
+            handle_sender_actor runtime execution.application native _ handled event named, ?_⟩
+          simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+            found, accepted, Option.getD_some]
+          rw [drained]
+
+/-- An included packet whose complete endpoint is one graph step has an owned primary event. -/
+theorem include_completion_actor (execution : (application setup runtime leaks).Execution)
+    (id : MessageId Player) {event : (graph setup).EventId}
+    {ready : execution.application.config.cut.Ready event} {action : (graph setup).Action event}
+    (member : (execution.includePending (application setup runtime leaks) id).application.config ∈
+      (execution.application.config.step event ready action).support) :
+    ∃ actor, (graph setup).actor? event = some actor := by
+  rcases include_primary execution id with same | ⟨primary, primaryReady, chosen, native, owner,
+      moved, acting, drained⟩
+  · exact (config_ne_of_step member same).elim
+  · have completed : primary ∈ native.config.cut.completed := by
+      rw [execution.application.config.step_cut primary primaryReady chosen native.config moved]
+      exact Finset.mem_insert_self _ _
+    have finalDone := EventGraph.Config.Step.path_completed_mono native.drain_graph_steps completed
+    rw [← drained, execution.application.config.step_cut event ready action _ member] at finalDone
+    rcases Finset.mem_insert.mp finalDone with same | old
+    · subst primary
+      exact ⟨owner, acting⟩
+    · exact (primaryReady.1 old).elim
+
+private theorem include_completionMass
+    (execution : (application setup runtime leaks).Execution) (id : MessageId Player) :
+    completionMass setup execution.application
+      (execution.includePending (application setup runtime leaks) id).application = 1 := by
+  rcases include_primary execution id with same | ⟨event, ready, action, native, owner,
+      moved, acting, drained⟩
+  · exact completionMass_of_config_eq same
+  · calc
+      _ = completionMass setup execution.application native.drain := by
+        unfold completionMass
+        rw [drained]
+      _ = completionMass setup execution.application native :=
+        completionMass_of_step_path moved native.drain_graph_steps
+      _ = 1 := by
+        rw [completionMass_of_step moved]
+        simp only [acting]
 
 /-- **The mass of one command.** The environment step of a command gives a
 reached execution the chance mass of its completed event times the mass of the
@@ -273,35 +446,31 @@ theorem environmentStep_mass (execution reached : (application setup runtime lea
           PMF.pure { execution.includePending app id with environmentRecall := record } := by
         unfold ReactiveApplication.Execution.environmentStep
         rw [PMF.pure_map]
-      have step := environmentStep_configStep setup leaks execution reached _ member
       rw [lawEq] at member ⊢
       rw [pure_apply_of_mem member]
       have applicationEq : reached.application = (execution.includePending app id).application := by
         rw [(PMF.mem_support_pure_iff _ _).mp member]
-      rcases step with same | ⟨event, ready, action, configMember⟩
-      · rw [completionMass_of_config_eq same]
-        simp [commandMass]
-      · rw [completionMass_of_step configMember]
-        rw [applicationEq] at configMember
-        obtain ⟨actor, acts⟩ := include_completion_actor execution id
-          configMember
-        rw [acts]
-        simp [commandMass]
+      have mass : completionMass setup execution.application reached.application = 1 := by
+        rw [applicationEq]
+        exact include_completionMass execution id
+      rw [mass]
+      simp only [commandMass, mul_one]
   | application command =>
       let place : EventGraphRuntime.State (graph setup) → app.Execution := fun state =>
         { execution with application := state, environmentRecall := record }
       have lawEq : execution.environmentStep app (.application command) =
-          (EventGraphRuntime.environmentStep runtime execution.application command).map
-            place := by
+          (app.environment execution.application command).map place := by
         unfold ReactiveApplication.Execution.environmentStep
         rw [PMF.map_comp]
         rfl
       rw [lawEq] at member ⊢
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ member
       rw [pmf_map_apply_of_injective _ (fun first second same =>
-        congrArg ReactiveApplication.Execution.application same) state,
-        applicationStep_mass (runtime := runtime) execution.application state command changed]
-      exact (mul_one _).symm
+        congrArg ReactiveApplication.Execution.application same) state]
+      change ((application setup runtime leaks).environment execution.application command
+        state).toReal = completionMass setup execution.application state * 1
+      exact (applicationStep_mass (runtime := runtime) (leaks := leaks)
+        execution.application state command changed).trans (mul_one _).symm
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
 

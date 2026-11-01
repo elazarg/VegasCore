@@ -281,7 +281,6 @@ import Vegas.Game.ProgramPaymentNash
 import Vegas.Game.ProgramPayoffs
 import Vegas.Game.RecoveryBeliefContinuation
 import Vegas.Game.RecoveryCanonicalSafety
-import Vegas.Game.RecoveryChanceStoppedLaw
 import Vegas.Game.RecoveryClearDecisionSites
 import Vegas.Game.RecoveryClearForced
 import Vegas.Game.RecoveryClientCompiler

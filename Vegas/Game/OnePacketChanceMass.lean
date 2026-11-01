@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketReplaySteps
+import Vegas.Game.OnePacketEnvironmentSteps
 
 /-! # Chance completions and the source chance law
 
@@ -54,42 +55,6 @@ theorem SourceResidual.chanceMass {rank : Nat} {before : (graph setup).Config}
   rw [decodedPoint_eq next, pmf_map_apply_of_injective _ (Option.some_injective _), ← decoded]
   exact congrArg ENNReal.toReal mass
 
-/-- The completion mass of a completion with the given event and action is the
-graph step's mass for a chance event. -/
-theorem completionMass_of_chance (before after : EventGraphRuntime.State (graph setup))
-    {event : (graph setup).EventId} (ready : before.config.cut.Ready event)
-    {action : (graph setup).Action event}
-    (member : after.config ∈ (before.config.step event ready action).support)
-    (chance : (graph setup).actor? event = none) :
-    completionMass setup before after =
-      ((before.config.step event ready action) after.config).toReal := by
-  let available := EventGraph.EventCode.eval?_isSome_of_reads ((graph setup).nodes event)
-    (before.config.effectiveAction event action) before.config.store
-    (fun _ read => before.config.read_available ready read)
-  let law := (((graph setup).nodes event).eval?
-    (before.config.effectiveAction event action) before.config.store).get available
-  have evaluate : ((graph setup).nodes event).eval?
-      (EventGraph.EventCode.actionOfActorNone _ chance) before.config.store = some law := by
-    rw [← EventGraph.EventCode.action_eq_of_actor_none ((graph setup).nodes event) chance
-      (before.config.effectiveAction event action)
-      (EventGraph.EventCode.actionOfActorNone _ chance)]
-    exact (Option.some_get available).symm
-  change after.config ∈ (law.map (before.config.complete event ready action)).support at member
-  obtain ⟨value, _supported, reached⟩ := PMF.support_map .. ▸ member
-  have injective : Function.Injective (before.config.complete event ready action) := by
-    intro first second equal
-    have outputs := congrArg (fun config : (graph setup).Config => config.outputs event) equal
-    simp only [EventGraph.Config.complete_output_same] at outputs
-    exact Option.some.inj outputs
-  unfold completionMass
-  rw [← reached]
-  simp only [EventGraph.Config.complete_history, List.drop_left,
-    EventGraph.completion, chance, ↓reduceDIte,
-    EventGraph.Config.complete_output_same, evaluate]
-  change (law value).toReal =
-    ((law.map (before.config.complete event ready action))
-      (before.config.complete event ready action value)).toReal
-  rw [pmf_map_apply_of_injective _ injective]
 
 variable [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}

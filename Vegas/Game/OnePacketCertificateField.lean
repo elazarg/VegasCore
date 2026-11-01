@@ -94,7 +94,7 @@ theorem ownedRequestsEmitted_environment
   have path := (runtime.reactiveApplication_graphSteps leaks).environmentStep
     execution next command reached
   have historyPrefix := (EventGraph.Config.Step.path_history_prefix path).map
-    EventGraph.Completion.event
+    EventCompletion.event
   intro who recalled member submission sent
   rw [(application setup runtime leaks).environmentStep_recall
     execution next command reached] at member

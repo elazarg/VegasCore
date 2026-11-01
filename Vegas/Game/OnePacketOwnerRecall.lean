@@ -1,6 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketOwnerInfo
+import Vegas.Game.OnePacketFactorization
+import Vegas.Game.OnePacketCanonicalPermits
+import Vegas.Game.OnePacketFreshSlots
+import Vegas.Game.ServiceSettledEvidence
+import Vegas.Pending.ReactiveGraphSteps
 import Vegas.Pending.ReactiveRuntime
 
 /-! # What a player's recall records along one-packet histories
@@ -208,7 +213,8 @@ theorem environment_lookup_initial (execution next : (application setup runtime 
                 simp only [ReactiveApplication.Execution.includePending,
                   MessageNetwork.includePending, found, accepted, Option.getD_some]
               rw [applicationEq]
-              have call := reactiveHandle_call accepted
+              obtain ⟨native, call, drained⟩ := reactiveHandle_call accepted
+              rw [← drained, native.drain_tables.2.1]
               cases packet : message.payload.call with
               | malformed raw =>
                   rw [packet] at call
@@ -259,16 +265,9 @@ theorem initialCandidates_of_trace {state}
           have previous := ih current rfl
           have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace
             (initialLaw setup) horizon scheduler prior
-          have step := transition_configStep (initialLaw setup) horizon
-            scheduler current
-            control joint realized
-          have sameInputs : control.execution.application.config.inputs =
-              current.execution.application.config.inputs := by
-            rcases step with same | ⟨other, ready, action, completed⟩
-            · rw [same]
-            · rw [EventGraph.Config.step, PMF.support_map] at completed
-              obtain ⟨_, _, completedEq⟩ := completed
-              exact (congrArg EventGraph.Config.inputs completedEq).symm
+          have path := runtime.reactive_protocol_graph_steps leaks (initialLaw setup)
+            horizon scheduler current control joint realized
+          have sameInputs := EventGraph.Config.Step.path_inputs_eq path
           intro player input
           rw [sameInputs, ← previous player input]
           rcases onePacket_transition_cases (runtime := runtime) legal realized with
@@ -320,12 +319,9 @@ theorem stateGrows_transition {current next : (application setup runtime leaks).
       current next joint reached,
     (keepsFixedCandidates_step runtime leaks).transition (initialLaw setup) horizon
       scheduler current next joint reached, ?_⟩
-  rcases transition_configStep (initialLaw setup) horizon scheduler current
-    next joint reached with
-    same | ⟨event, ready, action, member⟩
-  · rw [same]
-  · rw [EventGraph.Config.step_history _ _ _ _ _ member]
-    exact List.prefix_append _ _
+  exact EventGraph.Config.Step.path_history_prefix
+    (runtime.reactive_protocol_graph_steps leaks (initialLaw setup) horizon scheduler
+      current next joint reached)
 
 omit [Fintype Player] in
 /-- A grown state is later than the state it grew from. -/
