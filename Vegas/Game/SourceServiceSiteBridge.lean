@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceAsyncStep
 import Vegas.Game.SourceServiceContinuation
+import Vegas.Source.DisclosureBehavioral
 
 /-! # Ready sites and the initialized source law
 
@@ -56,6 +57,37 @@ theorem initialLaw_bind_sourceContinuation (profile : BehavioralProfile setup.pr
 variable {setup leaks} [Fintype Player]
 
 end Initialized
+
+/-- The complete clients preserve every observation of the original source's
+typed state and public defaults once their first-turn source law holds. -/
+theorem sourceServiceClientPolicy_outcome_law_of_firstTurn
+    {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+    {deadline : (serviceGraph setup mode).EventId → Nat}
+    {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
+    {horizon turns : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {bound : (serviceGraph setup mode).EventId → Nat}
+    (original : BehavioralProfile setup.program)
+    (terminal : FirstTurnSourceLaw setup mode deadline leaks horizon scheduler bound turns
+      (normalizeDisclosureProfile setup.program original))
+    {Outcome : Type*}
+    (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome) :
+    ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+      scheduler (serviceClientPolicy setup mode deadline leaks bound turns
+        (firstTurnTiming setup turns mode) (normalizeDisclosureProfile setup.program original))
+      horizon).map (fun execution =>
+        (serviceSourceReadout setup mode deadline leaks
+          ((serviceApplication setup mode deadline leaks).finished execution)).map
+          (fun final => read (final.state, final.defaults))) =
+      (setup.run original).map (fun final => some (read (final.state, final.defaults))) := by
+  rw [sourceServiceClientPolicy_roundsFrom]
+  have projected := congrArg
+    (PMF.map (Option.map (fun final : Config Player L setup.program.terminalCtx =>
+      read (final.state, final.defaults)))) terminal
+  have normalized := congrArg (PMF.map (fun output => some (read output)))
+    (setup.run_normalizeDisclosures_eq original)
+  simp only [PMF.map_comp, Function.comp_def, Option.map_some]
+    at projected normalized
+  exact projected.trans normalized
 
 variable [Finite Player]
   (setup : Setup (Player := Player) (L := L))
