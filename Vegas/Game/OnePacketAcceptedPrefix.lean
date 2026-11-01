@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketCompletedBindings
+import Vegas.Game.OnePacketAcceptedTable
 
 /-! # Accepted handles are fixed after completion
 

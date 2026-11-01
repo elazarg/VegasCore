@@ -4,6 +4,11 @@ import Vegas.Source.ValueBinding
 import Vegas.Source.PublicObservation
 import Vegas.Source.ObservationRecall
 import GameTheory.Math.Probability.Support
+import Vegas.Source.Purification
+import Vegas.Source.InitialState
+import Vegas.Source.FiniteSupport
+import GameTheory.Math.Probability.ExpectationAlgebra
+import GameTheory.Math.Probability.ExpectationBind
 
 /-! # Normalizing accepted unusable bindings
 
@@ -875,5 +880,66 @@ by
     PMF.map (fun final : Config Player L program.terminalCtx =>
       (⟨sourcePublicEnv final.state, final.defaults⟩ : PublicOutcome program)) _
   simpa only [PMF.map_comp, Function.comp_def] using mapped
+
+
+namespace Setup
+
+/-- **Failure buys a deviator nothing.** For every policy of one player, some
+value-binding policy of that player has at least the same expected value of the
+initial parameter and public result, against unchanged opponents. Finite actual
+run support supplies integrability for every real-valued utility. -/
+theorem exists_valueBinding_parameter_expect_ge {Parameter : Type}
+    (setup : Setup (Player := Player) (L := L)) (finite : setup.program.FiniteBindingTypes)
+    [setup.FiniteInitialLaw] (parameter : State L setup.context → Parameter)
+    (value : Parameter × PublicOutcome setup.program → ℝ)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (policy : BehavioralPolicy who setup.program) :
+    ∃ alternative : BehavioralPolicy who setup.program,
+      ValueBinding setup.program alternative ∧
+      expect (setup.run (Function.update profile who policy))
+          (fun state => value (setup.parameterOutcome parameter state)) ≤
+        expect (setup.run (Function.update profile who alternative))
+          (fun state => value (setup.parameterOutcome parameter state)) := by
+  have integrable (chosen : BehavioralProfile setup.program) :
+      PayoffIntegrable (setup.run chosen)
+        (fun state => value (setup.parameterOutcome parameter state)) :=
+    payoffIntegrable_of_finite_support _ _ (setup.run_support_finite chosen
+      (FiniteBindingTypes.profileFiniteSupport setup.program finite chosen))
+  obtain ⟨mixture, mixtureFinite, mixtureLaw⟩ := exists_pureMixture_run setup profile policy
+    (fun player => BehavioralPolicy.hasFiniteSupport_of_finiteBindingTypes _ finite _)
+    (BehavioralPolicy.hasFiniteSupport_of_finiteBindingTypes _ finite _)
+  let score := fun choice : PurePolicy who setup.program =>
+    expect (setup.run (Function.update profile who
+      (PurePolicy.toBehavioral setup.program choice)))
+      (fun state => value (setup.parameterOutcome parameter state))
+  have tower : expect (setup.run (Function.update profile who policy))
+      (fun state => value (setup.parameterOutcome parameter state)) = expect mixture score := by
+    rw [mixtureLaw]
+    exact expect_bind_tower _ _ _ (by rw [← mixtureLaw]; exact integrable _)
+  obtain ⟨choice, _, best⟩ := exists_mem_support_expect_le mixture score
+    (payoffIntegrable_of_finite_support _ _ mixtureFinite)
+  refine ⟨PurePolicy.toBehavioral setup.program (PurePolicy.bindValues setup.program choice),
+    valueBinding_bindValues setup.program choice, ?_⟩
+  have laws : (setup.run (Function.update profile who (PurePolicy.toBehavioral setup.program
+      (PurePolicy.bindValues setup.program choice)))).map (setup.parameterOutcome parameter) =
+      (setup.run (Function.update profile who
+        (PurePolicy.toBehavioral setup.program choice))).map
+          (setup.parameterOutcome parameter) := by
+    rw [run_map_parameterOutcome, run_map_parameterOutcome]
+    unfold parameterRun
+    apply bind_congr_on_support _
+    intro initial _
+    have outcomes := bindValues_run_publicOutcome_eq setup.program profile choice initial
+    have mapped := congrArg (PMF.map fun outcome => (parameter initial, outcome)) outcomes
+    simpa only [PMF.map_comp, Function.comp_def] using mapped
+  have same : expect (setup.run (Function.update profile who (PurePolicy.toBehavioral
+      setup.program (PurePolicy.bindValues setup.program choice))))
+      (fun state => value (setup.parameterOutcome parameter state)) = score choice := by
+    have valued := congrArg (fun law => expect law value) laws
+    simpa only [expect_map, Function.comp_def] using valued
+  rw [same, tower]
+  exact best
+
+end Setup
 
 end Vegas.SourceProgram

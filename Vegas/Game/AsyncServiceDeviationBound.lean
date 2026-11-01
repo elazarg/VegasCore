@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.IntendedAsyncNash
-import Vegas.Source.Purification
 import Vegas.Source.ValueBindingAdmission
 import Vegas.Source.BindingNormalization
 
@@ -43,64 +42,7 @@ open GameTheory.Math.Probability GameTheory.Enforcement Interaction EventGraphRu
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-namespace SourceProgram.Setup
 
-/-- **Failure buys a deviator nothing.** For every policy of one player, some
-value-binding policy of that player has at least the same expected value of the
-initial parameter and public result, against unchanged opponents. -/
-theorem exists_valueBinding_parameter_expect_ge {Parameter : Type}
-    (setup : Setup (Player := Player) (L := L)) (finite : setup.program.FiniteBindingTypes)
-    [setup.FiniteInitialLaw] (parameter : State L setup.context → Parameter)
-    (value : Parameter × PublicOutcome setup.program → ℝ)
-    (bounded : ∃ bound, ∀ state, |value (setup.parameterOutcome parameter state)| ≤ bound)
-    (profile : BehavioralProfile setup.program) (who : Player)
-    (policy : BehavioralPolicy who setup.program) :
-    ∃ alternative : BehavioralPolicy who setup.program,
-      ValueBinding setup.program alternative ∧
-      expect (setup.run (Function.update profile who policy))
-          (fun state => value (setup.parameterOutcome parameter state)) ≤
-        expect (setup.run (Function.update profile who alternative))
-          (fun state => value (setup.parameterOutcome parameter state)) := by
-  obtain ⟨bound, valueBound⟩ := bounded
-  have integrable (law : PMF (State L setup.program.terminalCtx)) :
-      PayoffIntegrable law (fun state => value (setup.parameterOutcome parameter state)) :=
-    payoffIntegrable_of_bounded _ _ (C := bound) fun state => valueBound state
-  obtain ⟨mixture, mixtureFinite, mixtureLaw⟩ := exists_pureMixture_run setup profile policy
-    (fun player => BehavioralPolicy.hasFiniteSupport_of_finiteBindingTypes _ finite _)
-    (BehavioralPolicy.hasFiniteSupport_of_finiteBindingTypes _ finite _)
-  let score := fun choice : PurePolicy who setup.program =>
-    expect (setup.run (Function.update profile who
-      (PurePolicy.toBehavioral setup.program choice)))
-      (fun state => value (setup.parameterOutcome parameter state))
-  have tower : expect (setup.run (Function.update profile who policy))
-      (fun state => value (setup.parameterOutcome parameter state)) = expect mixture score := by
-    rw [mixtureLaw]
-    exact expect_bind_tower _ _ _ (by rw [← mixtureLaw]; exact integrable _)
-  obtain ⟨choice, _, best⟩ := exists_mem_support_expect_le mixture score
-    (payoffIntegrable_of_finite_support _ _ mixtureFinite)
-  refine ⟨PurePolicy.toBehavioral setup.program (PurePolicy.bindValues setup.program choice),
-    valueBinding_bindValues setup.program choice, ?_⟩
-  have laws : (setup.run (Function.update profile who (PurePolicy.toBehavioral setup.program
-      (PurePolicy.bindValues setup.program choice)))).map (setup.parameterOutcome parameter) =
-      (setup.run (Function.update profile who
-        (PurePolicy.toBehavioral setup.program choice))).map
-          (setup.parameterOutcome parameter) := by
-    rw [run_map_parameterOutcome, run_map_parameterOutcome]
-    unfold parameterRun
-    apply bind_congr_on_support _
-    intro initial _
-    have outcomes := bindValues_run_publicOutcome_eq setup.program profile choice initial
-    have mapped := congrArg (PMF.map fun outcome => (parameter initial, outcome)) outcomes
-    simpa only [PMF.map_comp, Function.comp_def] using mapped
-  have same : expect (setup.run (Function.update profile who (PurePolicy.toBehavioral
-      setup.program (PurePolicy.bindValues setup.program choice))))
-      (fun state => value (setup.parameterOutcome parameter state)) = score choice := by
-    have valued := congrArg (fun law => expect law value) laws
-    simpa only [expect_map, Function.comp_def] using valued
-  rw [same, tower]
-  exact best
-
-end SourceProgram.Setup
 
 namespace AsyncServiceSpec
 
@@ -220,7 +162,7 @@ theorem firstTurn_deviation_bound {Parameter : Type}
   obtain ⟨better, valueBinding, improved⟩ :=
     service.setup.exists_valueBinding_parameter_expect_ge
       (sourceService_finiteBindingTypes service.setup service.bounds service.values) parameter
-      (fun outcome => utility outcome who) ⟨bound, valueBound⟩ decoded who policy
+      (fun outcome => utility outcome who) decoded who policy
   have allowed : better.Admitted service.setup.program admission :=
     BehavioralPolicy.admitted_of_valueBinding service.setup.program better valueBinding admission
   refine ⟨(service.setup.behavioralPolicyEquiv admission who) ⟨better, allowed⟩, ?_⟩

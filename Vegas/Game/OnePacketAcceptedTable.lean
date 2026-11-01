@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketReplayExists
+import Vegas.Game.OnePacketFactorization
+import Vegas.Pending.ReactiveAssociationEvidence
+import Vegas.Pending.ReactiveGraphSteps
 
 /-! # The public table of accepted binding handles
 
@@ -45,28 +47,31 @@ theorem acceptedKept_step :
       material.call.packet).accepted (.inr event) = _
     rw [submitStep_accepted, Submission.register_accepted])
   handle state message next accepted event := by
-    have call := reactiveHandle_call accepted
+    obtain ⟨native, call, rfl⟩ := reactiveHandle_call accepted
+    rw [native.drain_tables.1]
     cases packet : message.payload.call with
     | malformed raw =>
         rw [packet] at call
         simp [handle] at call
     | opening named candidate raw =>
         rw [packet] at call
-        have tables := handle_resolution_tables runtime state next _
+        have tables := handle_resolution_tables runtime state native _
           (fun _ _ same => by cases same) call
         exact Or.inl (by rw [tables.1])
     | commitment named candidate =>
         rw [packet] at call
         obtain ⟨ready, vacant, table, completed⟩ :=
-          handle_commitment_accepted runtime state next message.id named candidate call
+          handle_commitment_accepted runtime state native message.id named candidate call
         by_cases same : event = named
         · subst same
-          exact Or.inr ⟨ready, vacant, completed⟩
+          exact Or.inr ⟨ready, vacant,
+            EventGraph.Config.Step.path_completed_mono native.drain_graph_steps completed⟩
         · refine Or.inl ?_
           rw [table, Function.update_of_ne]
           exact fun equal => same (Sum.inr.inj equal)
   environment state command next reached event :=
-    Or.inl (by rw [(environmentStep_tables runtime state next command reached).1])
+    Or.inl (by rw [(runtime.reactiveApplication_environment_tables leaks state next
+      command reached).1])
 
 /-- Every transition of the supplied runtime keeps accepted handles except at the
 completed event. -/
@@ -92,51 +97,29 @@ theorem completed_transition {before after : (application setup runtime leaks).C
       scheduler (some before) joint).support) {event : (graph setup).EventId}
     (completed : event ∈ before.execution.application.config.cut.completed) :
     event ∈ after.execution.application.config.cut.completed := by
-  rcases transition_configStep (initialLaw setup) horizon scheduler before
-    after joint reached with
-    same | ⟨other, ready, action, member⟩
-  · rw [same]
-    exact completed
-  · rw [before.execution.application.config.step_cut other ready action _ member,
-      EventOrder.Cut.mem_complete]
-    exact Or.inr completed
+  exact EventGraph.Config.Step.path_completed_mono
+    (runtime.reactive_protocol_graph_steps leaks (initialLaw setup) horizon scheduler before
+      after joint reached) completed
 
 /-- **Accepted events have completed** along every history of the one-packet
 game. -/
-theorem accepted_completed : ∀ {state}
-    (_ : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
-    (control : (application setup runtime leaks).Control), state = some control →
-    ∀ event, control.execution.application.accepted (.inr event) ≠ none →
-      event ∈ control.execution.application.config.cut.completed
-  | _, .start, _, current, _, _ => by cases current
-  | _, .extend (source := before) prior joint _ realized, control, current, event, present => by
-      have recursive := fun next same => accepted_completed prior next same
-      subst current
-      change some control ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
-        scheduler before joint).support at realized
-      cases before with
-      | none =>
-          change some control ∈ ((initialLaw setup).map fun state => some
-            (⟨horizon, none, ReactiveApplication.Execution.initial (application setup runtime leaks)
-              state⟩ : (application setup runtime leaks).Control)).support at realized
-          obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realized
-          cases Option.some.inj same
-          obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
-          exfalso
-          apply present
-          cases found : (EventGraphRuntime.State.initial (graph := graph setup)
-              (setup.eventInputs initial)).accepted (.inr event) with
-          | none => rfl
-          | some handle =>
-              obtain ⟨_, _, _, impossible, _⟩ := State.initial_accepted_eq_some _ _ handle found
-              cases impossible
-      | some current =>
-          rcases acceptedKept_transition (runtime := runtime) leaks (initialLaw setup) horizon
-            scheduler current control
-              joint realized event with same | ⟨_, _, completed⟩
-          · rw [same] at present
-            exact completed_transition (runtime := runtime) leaks joint realized (recursive
-              current rfl event present)
-          · exact completed
+theorem accepted_completed {state}
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
+    (control : (application setup runtime leaks).Control) (current : state = some control)
+    (event : (graph setup).EventId)
+    (present : control.execution.application.accepted (.inr event) ≠ none) :
+    event ∈ control.execution.application.config.cut.completed := by
+  subst current
+  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace
+    (initialLaw setup) horizon scheduler trace
+  have valid : control.execution.application.BindingInvariant :=
+    (runtime.reactiveBindingInvariant leaks).history (initialLaw setup) horizon
+      scheduler (fun state member => by
+        obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ member
+        exact State.initial_bindingInvariant _) rawTrace
+  cases accepted : control.execution.application.accepted (.inr event) with
+  | none => exact (present accepted).elim
+  | some candidate =>
+      exact valid.toAssociationInvariant.accepted_complete event candidate accepted
 
 end Vegas
