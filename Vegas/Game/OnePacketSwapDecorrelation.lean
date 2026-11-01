@@ -122,7 +122,8 @@ theorem fiber_sum_record_eq_between
           ownIntended mixed
           secondState firstState covered turn } _ _
       (fun history => congrArg weight
-        (operationalRecord_mapTrace (runtime := runtime) _ _ _ history.1.1.trace _).symm)
+        (operationalRecord_mapTrace (runtime := runtime) _ _ _
+          (EventGraph.ValueSwap.ofPairs_expiryFixed _) history.1.1.trace _).symm)
   by_cases firstMember : Nonempty (ReplayClass (runtime := runtime) (sequence := sequence) (n :=
     n) decision
       projected x)

@@ -5,48 +5,42 @@ import Vegas.Game.OnePacketSilenceComparison
 import Vegas.Game.OnePacketDisclosureComparison
 import Vegas.Game.OnePacketUnintendedComparison
 import Vegas.Game.RecoveryNonLateChoices
+import Vegas.Game.OnePacketStoppedValueComparison
 
-/-! # Uniform source incentive bounds for nonlate commitments -/
+/-! # Uniform source incentive bounds at nonlate native inputs -/
 
 noncomputable section
 
-namespace Vegas.RecoveryOnePacket
+namespace Vegas.OnePacketComparison
 
 open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Protocol.InformationModel GameTheory.Math.Probability Interaction EventGraphRuntime
-  RecoveryProjection Filter
+  Filter
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
   (runtime : EventGraphRuntime (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (recoveryApplication runtime leaks).Scheduler)
+  (scheduler : (application setup runtime leaks).Scheduler)
+  {Public : Type*} {signal : State L setup.context → Public}
 
-variable {Public : Type*} {signal : State L setup.context → Public}
-
-local notation "Initial" => PMF.map
-  (fun native => (RecoveryState.mk native ∅ : RecoveryState (graph setup))) (initialLaw setup)
-local notation "NativeScheduler" => nativeScheduler runtime leaks scheduler
-local notation "R" => model setup runtime leaks bounds Initial horizon scheduler
-local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-  (NativeScheduler)
-local notation "RP" => ReactiveApplication.ResponseMenu.protocol
-  (Recovery.onePacketMenu runtime leaks bounds) Initial horizon scheduler
+local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon (NativeScheduler)
+  (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon scheduler
 local notation "Menu" => bounds.onePacketMenu runtime leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks) (fun native => ExclusionEvidence 0 ∅ (RecoveryState.mk
-    native ∅))
+  (app := application setup runtime leaks)
+    (fun native : EventGraphRuntime.State (graph setup) =>
+      EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
 open Classical in
-/-- All pure nonlate pending responses compare with exclusion or an original
-source deviation, with one error vanishing uniformly over information sites. -/
-theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype (RP).History]
-    [(application setup runtime leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
+/-- All pure nonlate pending responses have vanishing gain or compare with one
+original source deviation under the same assembled native assessment sequence. -/
+theorem assembled_nonlate_pending_comparisons
+    [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
     [Finite setup.intendedProtocol.History]
-    [∀ who, DecidableEq ((R).InfoState who)] [∀ who, DecidableEq ((N).InfoState who)]
+    [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
@@ -57,26 +51,34 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
       setup.intended_decision_antichain)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     (scaleEq : ∀ n, scale n = trembleScale
-      (combinedFloor setup runtime leaks bounds horizon (NativeScheduler) (sequence n))
+      (combinedFloor setup runtime leaks bounds horizon scheduler (sequence n))
       (2 * horizon + 2) n)
     (weights : ℕ → ∀ p,
-      PMF (Part setup runtime leaks bounds Initial horizon scheduler bounds.candidateCount p))
+      PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup) horizon scheduler
+        bounds.candidateCount p))
+    (targetSequence : ℕ → (N).BehavioralAssessment)
+    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+      positive le_one weights targetSequence)
+    (mixed : ∀ n, (targetSequence n).IsFullyMixed)
+    (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (N) (targetSequence n)
+      ((bounds.onePacketMenu runtime leaks).decisionRecall
+        (initialLaw setup) horizon scheduler).decisionInformationAntichain)
     {delay bound : (graph setup).EventId → Nat}
     (opportunity : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).Trace (some
+      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
         control) →
-      ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+      control.execution.application.config.defaulted = ∅ →
       OpportunityAt runtime leaks control.execution delay)
     (inclusion : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).Trace (some
+      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
         control) →
-      ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+      control.execution.application.config.defaulted = ∅ →
       ProtectedInclusionAt runtime leaks control.execution bound)
     (timely : runtime.AsyncTimely delay bound)
     (completes : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon (NativeScheduler)).Trace (some
+      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
         control) →
-      ExclusionEvidence 0 ∅ (RecoveryState.mk control.execution.application ∅) →
+      control.execution.application.config.defaulted = ∅ →
       (application setup runtime leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
@@ -92,24 +94,22 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
     (excludedBounded : ∀ who, |excludedPayoff who| ≤ payoffBound) :
     ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧
       ∀ n who (site : (N).InformationSite who) (choice : (N).Choice who site.1),
-        ¬ Vegas.FreeAgent setup runtime leaks bounds horizon (NativeScheduler) ((N).agentAt site) →
-        ¬ Vegas.OwingAgent setup runtime leaks bounds horizon (NativeScheduler) ((N).agentAt site) →
+        ¬ Vegas.FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+          ((N).agentAt site) →
+        ¬ Vegas.OwingAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+          ((N).agentAt site) →
         ¬ LateDelivery setup runtime leaks who site.1 →
         ∀ {event : (graph setup).EventId}, pendingEvent setup runtime leaks who site.1 = some
           event →
-        let common := nativeComparisonStrategy setup runtime leaks bounds horizon scheduler
-          sequence scale
-          positive le_one weights n
+        let common := (targetSequence n).strategy
         let certificate := ((Menu).bounded (initialLaw setup) horizon
-          (NativeScheduler)).wellFoundedHistories
+          scheduler).wellFoundedHistories
         let stopped := fun final : (NP).History => ¬ Clear final.state ∨
           DecodedState setup runtime leaks (failureProfile setup.program)
             (ProtocolState.OwesFailure who setup.program) final.state
         let payoff := fun final : (NP).History => if stopped final then excludedPayoff who else
           exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who
-        let gain := expect ((nativeComparisonSequence setup runtime leaks bounds horizon scheduler
-          sequence
-          scale positive le_one weights n).belief who site) (fun history =>
+        let gain := expect ((targetSequence n).belief who site) (fun history =>
             expect ((N).runBehavioralUntil certificate
                 (Profile.update (sig := (N).behavioralSignature) common who
                   ((common who).withLaw site.1 (PMF.pure choice))) stopped history.1) payoff -
@@ -123,13 +123,14 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
       scheduler
       wellFormed independent observable covers coversInputs capacity sequence sourceMixed
       sourceBayes scale
-      positive le_one scaleEq weights opportunity inclusion timely completes parameter utility
+      positive le_one scaleEq weights targetSequence assembled mixed bayes opportunity inclusion
+      timely completes parameter utility
       excludedPayoff below upper le_upper boundNonneg readoutBounded excludedBounded
-  obtain ⟨drift, driftLimit, irregular⟩ := nativeComparison_irregular_bounds setup runtime leaks
+  obtain ⟨drift, driftLimit, irregular⟩ := irregular_belief_bounds_of_assembled setup runtime leaks
     bounds
     horizon scheduler wellFormed independent observable sequence sourceMixed scale positive
     le_one scaleEq
-    covers coversInputs capacity weights
+    covers coversInputs capacity weights targetSequence assembled mixed bayes
   let rowError := fun n =>
     2 * ((2 * payoffBound * (1 - slotRetention (scale n))) *
       (2 * horizon + 1)) + 2 * payoffBound * (1 - slotRetention (scale n)) +
@@ -139,12 +140,12 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
   let error := fun n => |commitError n| + rowError n + 2 * payoffBound * |drift n|
   have scaleLimit : Tendsto scale atTop (nhds 0) := by
     have identity : scale = fun n => trembleScale
-        (combinedFloor setup runtime leaks bounds horizon (NativeScheduler) (sequence n))
+        (combinedFloor setup runtime leaks bounds horizon scheduler (sequence n))
         (2 * horizon + 2) n := funext scaleEq
     rw [identity]
     exact tendsto_trembleScale _
-      (fun n => combinedFloor_pos setup runtime leaks bounds horizon (NativeScheduler) (sequence n))
-      (fun n => combinedFloor_le_one setup runtime leaks bounds horizon (NativeScheduler)
+      (fun n => combinedFloor_pos setup runtime leaks bounds horizon scheduler (sequence n))
+      (fun n => combinedFloor_le_one setup runtime leaks bounds horizon scheduler
         (sequence n))
   have retentionLimit : Tendsto (fun n => 1 - slotRetention (scale n)) atTop (nhds 0) := by
     simpa only [sub_self] using
@@ -176,7 +177,7 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
     have : 0 ≤ 2 * payoffBound * |drift n| := by positivity
     linarith [le_abs_self (commitError n)]
   by_cases intendedChoice : IntendedCommitment setup runtime leaks bounds horizon
-    (NativeScheduler) site
+    scheduler site
       choice
   · right
     obtain ⟨past, view, response, material, named, serial, payload, outputEq, value,
@@ -196,9 +197,9 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
     | none => rw [observed] at pending; cases pending
     | some pair => exact ⟨pair.1, pair.2, rfl⟩
   obtain ⟨response, selected, member⟩ := choice_response setup runtime leaks bounds horizon
-    (NativeScheduler) site atSite choice
+    scheduler site atSite choice
   have regularRows : ∀ history : (N).InformationHistory who site.1,
-      RegularTrace setup runtime leaks bounds horizon (NativeScheduler) (sequence n) who
+      RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
         history.1.trace →
       expect ((N).runBehavioralUntil certificate
           (Profile.update (sig := (N).behavioralSignature) common who
@@ -216,7 +217,8 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
         exact OnePacketComparison.assembled_silence_history_comparison setup runtime leaks
           bounds
           horizon scheduler
-          wellFormed covers capacity sequence scale positive le_one weights n opportunity inclusion
+          wellFormed covers capacity sequence scale positive le_one weights targetSequence assembled
+          n opportunity inclusion
           timely completes site choice notFree notOwing nonlate event pending silent atSite
           parameter utility excludedPayoff below (upper who) (fun outcome => le_upper outcome who)
           boundNonneg (readoutBounded who) (excludedBounded who) history regular
@@ -234,7 +236,8 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
                 runtime
               leaks
               bounds horizon scheduler wellFormed covers capacity sequence scale positive le_one
-              weights n opportunity inclusion timely completes site choice notFree notOwing nonlate
+              weights targetSequence assembled n opportunity inclusion timely completes site choice
+              notFree notOwing nonlate
               atTurn intendedChoice atSite response selected material sends named candidate packet
               parameter utility excludedPayoff below (upper who)
               (fun outcome => le_upper outcome who) boundNonneg (readoutBounded who)
@@ -252,11 +255,11 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
                 positivity
               linarith)
         | opening named handle raw =>
-            have forced := forcedAgent_of_not_free setup runtime leaks bounds horizon
-              (NativeScheduler)
+            have forced := forcedAgent_of_not_free setup runtime leaks bounds (initialLaw setup)
+              horizon scheduler
               notFree
             have debtFree := siteDebtFree_of_not_owing setup runtime leaks bounds horizon
-              (NativeScheduler)
+              scheduler
               notOwing
             have ownIntended := ownCompletionsIntended_of_siteNotOwes (runtime := runtime)
               wellFormed debtFree history
@@ -268,22 +271,22 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
               history regular ownIntended
             obtain ⟨remaining, execution, point, current, actualAt, never, ordered, decoded,
               intended, reached⟩ := firstActivation_history_facts setup runtime leaks bounds horizon
-                (NativeScheduler)
+                scheduler
                 wellFormed site pending nonlate history stateForced allDebtFree
             have namedEq : named = event := by
               have fromPacket : runtime.submittedEvent? leaks response = some named := by
                 unfold EventGraphRuntime.submittedEvent?
                 simp only [sends, packet, Payload.event?]
-              have pendingNamed := pendingEvent_of_turnSubmission setup runtime leaks bounds horizon
-                (NativeScheduler) site atSite (by
-                  obtain ⟨p, v, r, e, seen, chosen, submittedAt, turn⟩ := atTurn
-                  obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj (atSite.symm.trans seen))
-                  have rEq := Option.some.inj (selected.symm.trans chosen)
-                  subst r
-                  have eEq := Option.some.inj (fromPacket.symm.trans submittedAt)
-                  subst e
-                  exact turn) choice selected fromPacket
-              exact Option.some.inj (pendingNamed.symm.trans pending)
+              obtain ⟨p, v, r, e, seen, chosen, submittedAt, turn⟩ := atTurn
+              obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj (atSite.symm.trans seen))
+              have rEq := Option.some.inj (selected.symm.trans chosen)
+              subst r
+              have eEq := Option.some.inj (fromPacket.symm.trans submittedAt)
+              subst e
+              have pendingAt := pending
+              rw [atSite] at pendingAt
+              exact Option.some.inj
+                (turn.symm.trans (pendingEvent_spec (runtime := runtime) pendingAt).1)
             subst named
             obtain ⟨payload, binding, checks, outputEq, codeEq, _node⟩ :=
               onePacket_opening_node (runtime := runtime) member sends packet
@@ -291,15 +294,16 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
               (execution.observe (application setup runtime leaks) who)
             have pendingHere := pending
             rw [actualAt] at pendingHere
-            have decided := decidedEvent_eq_of_pending setup runtime leaks horizon (NativeScheduler)
-              pendingHere ((Menu).toRawTrace (initialLaw setup) horizon (NativeScheduler)
+            have decided := decidedEvent_eq_of_pending setup runtime leaks horizon scheduler
+              pendingHere ((Menu).toRawTrace (initialLaw setup) horizon scheduler
                 (current ▸ history.1.trace)) rfl
               (lateKey_some (runtime := runtime) who (execution.recall who)
                 (execution.observe (application setup runtime leaks) who))
             have near := OnePacketComparison.assembled_firstActivation_disclosure_gain_le
               (runtime := runtime)
               setup leaks bounds
-              horizon scheduler wellFormed covers capacity sequence scale positive le_one weights n
+              horizon scheduler wellFormed covers capacity sequence scale positive le_one weights
+              targetSequence assembled n
               opportunity inclusion timely completes site (PMF.pure choice) history current actualAt
               event pending never key decided outputEq codeEq ordered decoded intended reached
               parameter utility excludedPayoff below (upper who)
@@ -313,27 +317,33 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
                     (2 * horizon + 1) + scale n ^ 3 * (2 * horizon + 1)) * (2 * payoffBound) := by
                 positivity
               linarith)
-  let belief := (nativeComparisonSequence setup runtime leaks bounds horizon scheduler sequence
-    scale
-    positive le_one weights n).belief who site
+  let belief := (targetSequence n).belief who site
   let native := fun history : (N).InformationHistory who site.1 =>
     expect ((N).runBehavioralUntil certificate
         (Profile.update (sig := (N).behavioralSignature) common who
           ((common who).withLaw site.1 (PMF.pure choice))) stopped history.1) payoff -
       expect ((N).runBehavioralUntil certificate common stopped history.1) payoff
   let bad := fun history : (N).InformationHistory who site.1 =>
-    if RegularTrace setup runtime leaks bounds horizon (NativeScheduler) (sequence n) who
+    if RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
       history.1.trace then (0 : ℝ) else 1
   have payoffBounded : ∀ final, |payoff final| ≤ payoffBound := by
     intro final
     dsimp only [payoff]
     split
     · exact excludedBounded who
-    · rw [exclusionBase_eq_readout]
-      exact readoutBounded who _
+    · cases final.state with
+      | none =>
+          simpa only [exclusionBase, abs_zero] using (abs_nonneg _).trans (excludedBounded who)
+      | some control =>
+          change |if who ∈ control.execution.application.config.defaulted then excludedPayoff who
+            else exclusionReadoutUtility setup parameter utility excludedPayoff
+              (sourceReadout setup runtime leaks (some control)) who| ≤ payoffBound
+          split
+          · exact excludedBounded who
+          · exact readoutBounded who _
   have rows : ∀ history, native history ≤ rowError n + 2 * payoffBound * bad history := by
     intro history
-    by_cases regular : RegularTrace setup runtime leaks bounds horizon (NativeScheduler) (sequence
+    by_cases regular : RegularTrace setup runtime leaks bounds horizon scheduler (sequence
       n) who
         history.1.trace
     · simpa only [bad, regular, ↓reduceIte, mul_zero, add_zero] using regularRows history regular
@@ -364,11 +374,16 @@ theorem nativeComparison_nonlate_pending_comparisons_of_counted_service [Fintype
   dsimp only [error]
   linarith only [complete, abs_nonneg (commitError n)]
 
+
+
+
 open Classical in
-theorem nativeComparison_nonlate_pending_comparisons [Fintype (RP).History]
-    [(application setup runtime leaks).FiniteNature (initialLaw setup) (NativeScheduler)]
+/-- Every pure nonlate local deviation on the supplied native assessments has
+vanishing gain or is bounded by a source deviation under the same beliefs. -/
+theorem assembled_nonlate_local_comparisons
+    [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
     [Finite setup.intendedProtocol.History]
-    [∀ who, DecidableEq ((R).InfoState who)] [∀ who, DecidableEq ((N).InfoState who)]
+    [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
@@ -379,15 +394,23 @@ theorem nativeComparison_nonlate_pending_comparisons [Fintype (RP).History]
       setup.intended_decision_antichain)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     (scaleEq : ∀ n, scale n = trembleScale
-      (combinedFloor setup runtime leaks bounds horizon (NativeScheduler) (sequence n))
+      (combinedFloor setup runtime leaks bounds horizon scheduler (sequence n))
       (2 * horizon + 2) n)
     (weights : ℕ → ∀ p,
-      PMF (Part setup runtime leaks bounds Initial horizon scheduler bounds.candidateCount p))
+      PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup) horizon scheduler
+        bounds.candidateCount p))
+    (targetSequence : ℕ → (N).BehavioralAssessment)
+    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+      positive le_one weights targetSequence)
+    (mixed : ∀ n, (targetSequence n).IsFullyMixed)
+    (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (N) (targetSequence n)
+      ((bounds.onePacketMenu runtime leaks).decisionRecall
+        (initialLaw setup) horizon scheduler).decisionInformationAntichain)
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : Recovery.Opportunity runtime leaks Initial horizon scheduler delay)
-    (inclusion : Recovery.ProtectedInclusion runtime leaks Initial horizon scheduler bound)
+    (opportunity : Opportunity runtime leaks (initialLaw setup) horizon scheduler delay)
+    (inclusion : ProtectedInclusion runtime leaks (initialLaw setup) horizon scheduler bound)
     (timely : runtime.AsyncTimely delay bound)
-    (completes : Recovery.CompletesPlay runtime leaks Initial horizon scheduler)
+    (completes : CompletesPlay runtime leaks (initialLaw setup) horizon scheduler)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ)
@@ -398,46 +421,99 @@ theorem nativeComparison_nonlate_pending_comparisons [Fintype (RP).History]
     {payoffBound : ℝ} (boundNonneg : 0 ≤ payoffBound)
     (readoutBounded : ∀ who readout,
       |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤ payoffBound)
-    (excludedBounded : ∀ who, |excludedPayoff who| ≤ payoffBound) :
+    (excludedBounded : ∀ who, |excludedPayoff who| ≤ payoffBound)
+    (payoffBounded : ∀ who (final : (NP).History),
+      |exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who| ≤
+        payoffBound) :
     ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧
-      ∀ n who (site : (N).InformationSite who) (choice : (N).Choice who site.1),
-        ¬ Vegas.FreeAgent setup runtime leaks bounds horizon (NativeScheduler) ((N).agentAt site) →
-        ¬ Vegas.OwingAgent setup runtime leaks bounds horizon (NativeScheduler) ((N).agentAt site) →
-        ¬ LateDelivery setup runtime leaks who site.1 →
-        ∀ {event : (graph setup).EventId}, pendingEvent setup runtime leaks who site.1 = some
-          event →
-        let common := nativeComparisonStrategy setup runtime leaks bounds horizon scheduler
-          sequence scale
-          positive le_one weights n
-        let certificate := ((Menu).bounded (initialLaw setup) horizon
-          (NativeScheduler)).wellFoundedHistories
-        let stopped := fun final : (NP).History => ¬ Clear final.state ∨
-          DecodedState setup runtime leaks (failureProfile setup.program)
-            (ProtocolState.OwesFailure who setup.program) final.state
-        let payoff := fun final : (NP).History => if stopped final then excludedPayoff who else
-          exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who
-        let gain := expect ((nativeComparisonSequence setup runtime leaks bounds horizon scheduler
-          sequence
-          scale positive le_one weights n).belief who site) (fun history =>
-            expect ((N).runBehavioralUntil certificate
-                (Profile.update (sig := (N).behavioralSignature) common who
-                  ((common who).withLaw site.1 (PMF.pure choice))) stopped history.1) payoff -
-              expect ((N).runBehavioralUntil certificate common stopped history.1) payoff)
-        gain ≤ error n ∨ ∃ sourceDeviation : setup.intendedModel.AssessmentDeviation who,
-          gain ≤ intendedSiteGain setup parameter utility excludedPayoff (sequence n)
-            sourceDeviation + error n := by
-  exact nativeComparison_nonlate_pending_comparisons_of_counted_service setup runtime leaks bounds
-    horizon scheduler wellFormed independent observable covers coversInputs capacity sequence
-    sourceMixed sourceBayes scale positive le_one scaleEq weights
-    (Recovery.Opportunity.clear_counted_native (runtime := runtime) bounds (initialLaw_initialized
-      setup)
-      (initialLaw_native setup) opportunity)
-    (Recovery.ProtectedInclusion.clear_counted_native (runtime := runtime) bounds
-      (initialLaw_initialized setup)
-      (initialLaw_native setup) inclusion) timely
-    (Recovery.CompletesPlay.clear_counted_native (runtime := runtime) bounds
-      (initialLaw_initialized setup)
-      (initialLaw_native setup) completes) parameter utility excludedPayoff below upper
-    le_upper boundNonneg readoutBounded excludedBounded
+      ∀ n who (site : (N).InformationSite who),
+        ¬ Vegas.FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+          ((N).agentAt site) →
+        ¬ Vegas.OwingAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+          ((N).agentAt site) →
+        ¬ ownedKeyed
+          (Vegas.FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
+          (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
+          ((N).agentAt site) →
+        ∀ choice : (N).Choice who site.1,
+          localGain (2 * horizon + 1) (fun final => final.state)
+              (exclusionBase setup runtime parameter utility excludedPayoff leaks)
+                (targetSequence n) site (PMF.pure choice) ≤ error n ∨
+          ∃ mixture : PMF (setup.intendedModel.AssessmentDeviation who),
+            localGain (2 * horizon + 1) (fun final => final.state)
+                (exclusionBase setup runtime parameter utility excludedPayoff leaks)
+                  (targetSequence n) site (PMF.pure choice) ≤
+              expect mixture
+                (intendedSiteGain setup parameter utility excludedPayoff (sequence n)) +
+                error n := by
+  obtain ⟨nativeError, nativeLimit, nativeComparisons⟩ :=
+    assembled_nonlate_pending_comparisons setup runtime leaks bounds horizon scheduler
+      wellFormed independent observable covers coversInputs capacity sequence sourceMixed
+      sourceBayes scale positive le_one scaleEq weights targetSequence assembled mixed bayes
+      (fun control trace _ => opportunity control
+        ((Menu).toRawTrace (initialLaw setup) horizon scheduler trace))
+      (fun control trace _ => inclusion control
+        ((Menu).toRawTrace (initialLaw setup) horizon scheduler trace)) timely
+      (fun control trace _ ended => completes control
+        ((Menu).toRawTrace (initialLaw setup) horizon scheduler trace) ended)
+      parameter utility excludedPayoff below upper le_upper boundNonneg readoutBounded
+      excludedBounded
+  obtain ⟨valueError, valueLimit, comparisonValues⟩ :=
+    assembled_terminal_stopped_comparison_bounds setup runtime leaks bounds horizon scheduler
+      parameter utility excludedPayoff wellFormed independent observable sequence sourceMixed
+      scale positive le_one scaleEq covers coversInputs capacity weights targetSequence assembled
+      mixed bayes opportunity inclusion timely completes boundNonneg payoffBounded excludedBounded
+  let error := fun n => |nativeError n| + 2 * |valueError n|
+  have limit : Tendsto error atTop (nhds 0) := by
+    simpa only [abs_zero, zero_mul, mul_zero, add_zero] using
+      nativeLimit.abs.add (valueLimit.abs.const_mul 2)
+  refine ⟨error, limit, ?_⟩
+  intro n who site notFree notOwing notKeyed choice
+  have nonlate : ¬ LateDelivery setup runtime leaks who site.1 :=
+    fun late => notKeyed ⟨late, notFree⟩
+  obtain ⟨past, view, atSite⟩ : ∃ past view, site.1 = some (past, view) := by
+    obtain ⟨history, _running, _choice, _legal⟩ := site.2
+    have active := InformationSite.active (N) site history
+    obtain ⟨control, state, actor⟩ := (application setup runtime leaks).control_of_active
+      (initialLaw setup) horizon scheduler
+      ((Menu).toRawHistory (initialLaw setup) horizon scheduler history.1) who active
+    change history.1.state = some control at state
+    have observed := ((Menu).info (initialLaw setup) horizon scheduler who
+      history.1.trace).symm.trans history.2
+    rw [state] at observed
+    simp only [ReactiveApplication.observe, actor, ↓reduceIte] at observed
+    exact ⟨control.execution.recall who,
+      control.execution.observe (application setup runtime leaks) who, observed.symm⟩
+  cases pending : pendingEvent setup runtime leaks who site.1 with
+  | none =>
+      left
+      rw [localGain]
+      have zero := withLaw_eq_self_of_unpending_notOwing (runtime := runtime) wellFormed
+        site notOwing atSite pending ((targetSequence n).strategy who) (PMF.pure choice)
+      rw [zero]
+      simp only [assessmentComparisonWith, sub_self]
+      dsimp only [error]
+      positivity
+  | some event =>
+      have pendingAt := pending
+      rw [atSite] at pendingAt
+      have turn := (pendingEvent_spec (runtime := runtime) pendingAt).1
+      have near := (comparisonValues n who site notFree notOwing atSite turn).2 (PMF.pure choice)
+      dsimp only at near
+      have upper := (abs_le.mp near).2
+      have coversError : nativeError n + 2 * valueError n ≤ error n := by
+        dsimp only [error]
+        linarith [le_abs_self (nativeError n), le_abs_self (valueError n)]
+      rcases nativeComparisons n who site choice notFree notOwing nonlate pending with
+        bounded | ⟨deviation, bounded⟩
+      · left
+        dsimp only at bounded
+        linarith only [upper, bounded, coversError]
+      · right
+        refine ⟨PMF.pure deviation, ?_⟩
+        rw [expect_pure]
+        dsimp only at bounded
+        linarith only [upper, bounded, coversError]
 
-end Vegas.RecoveryOnePacket
+
+end Vegas.OnePacketComparison

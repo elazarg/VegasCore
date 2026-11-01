@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketLateDecomposition
-import GameTheoryExtensions.Math.FiniteIntervalBounds
+import Vegas.Game.OnePacketExclusionPayoff
 
 /-! # Value-blindness inputs of the one-packet certificate
 
@@ -98,35 +98,5 @@ structure OnePacketBlindInputs (upperUtility : Player → ℝ)
             siteValue setup runtime leaks bounds horizon scheduler parameter utility excludedPayoff
               (targetSequence n) (setup.intendedOpeningProfile (sequence n).strategy) site| ≤
             blindError n
-
-omit [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-    scheduler).InfoState who)] in
-/-- **The exclusion payoffs are bounded** by the sum over players of the spread
-between the exclusion payoff, zero and the utility bounds. -/
-theorem exclusionPayoffs_bounded (lowerUtility upperUtility : Player → ℝ)
-    (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
-    (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who) :
-    let budget := ∑ player, (max 0 (max (excludedPayoff player) (upperUtility player)) -
-      min 0 (min (excludedPayoff player) (lowerUtility player)))
-    0 ≤ budget ∧
-      (∀ who readout, |exclusionReadoutUtility setup parameter utility excludedPayoff readout who| ≤
-        budget) ∧ ∀ who, |excludedPayoff who| ≤ budget := by
-  intro budget
-  let lower := fun who => min 0 (min (excludedPayoff who) (lowerUtility who))
-  let upper := fun who => max 0 (max (excludedPayoff who) (upperUtility who))
-  have lowerNonpos : ∀ who, lower who ≤ 0 := fun _ => min_le_left _ _
-  have upperNonneg : ∀ who, 0 ≤ upper who := fun _ => le_max_left _ _
-  refine ⟨Finset.sum_nonneg (fun who _ => sub_nonneg.mpr
-    ((lowerNonpos who).trans (upperNonneg who))), ?_, ?_⟩
-  · intro who readout
-    exact GameTheory.Math.abs_le_sum_interval_width lower upper lowerNonpos upperNonneg who
-      (exclusionReadoutUtility_mem_Icc setup parameter utility excludedPayoff lowerUtility
-        upperUtility readout (fun _ _ who => lower_le _ who)
-        (fun _ _ who => le_upper _ who) who)
-  · intro who
-    apply GameTheory.Math.abs_le_sum_interval_width lower upper lowerNonpos upperNonneg who
-    exact ⟨(min_le_right _ _).trans (min_le_left _ _),
-      (le_max_left _ _).trans (le_max_right _ _)⟩
 
 end Vegas

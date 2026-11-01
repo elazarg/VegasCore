@@ -3,33 +3,18 @@
 import Vegas.Game.IntendedCommitGain
 import Vegas.Game.OnePacketDecodedActor
 import Vegas.Game.OnePacketCompletionPotential
+import Vegas.Game.OnePacketLateDecomposition
+import Vegas.Game.OnePacketProjectedDecision
+import Vegas.Game.OnePacketReplayInputs
+import Vegas.Game.OnePacketBeliefWiring
+import Vegas.Game.OnePacketForcedPrefix
+import Vegas.Game.IntendedChoiceReach
 
-/-! # Late commitments of intended values
+/-! # Source gains of committed values
 
-**The value of committing a choice at a site.** The belief average, over the
-histories of a site, of the source continuation value after the source step of
-a choice at the decoded point of the site's rank (`Vegas.siteCommitValue`).
-
-**Value-blind late commitments.** At a forced late delivery at which the player
-owes no failure, a choice committing an intended value at a prepared slot fails
-as the late option sending at that slot does, and its completion value is its
-success probability times the value of committing that value at the site, up to
-an error (`Vegas.LateCommitBlind`). This is the value blindness of late success
-for a single committed value: the success of a late packet depends neither on
-the committed value nor, under the belief, on the hidden values the
-continuation depends on.
-
-**Committing at a forced history is a source gain.** At a history in a forced
-state of a debt-free own-turn site, the value of committing a source choice less
-the value at the decoded point is the intended history gain of committing it at
-the history's replay (`Vegas.decodedCommitValue_sub_eq_historyGain`). So at the
-site the difference is the intended gain at the projected site, up to the
-distance of the projected belief from the intended one and the belief mass
-outside the forced region (`Vegas.abs_siteCommitValue_sub_le`).
-
-**Bounded slots.** A transmitting response of the one-packet menu committing
-an event to a prepared slot commits to one of the first `candidateCount` slots
-(`Vegas.onePacket_commitment_serial_lt`).
+A committed source choice has the intended history gain at the replay of a
+forced debt-free history. Averaging gives a source gain with posterior and
+unforced-history errors. One-packet commitments use the bounded prepared slots.
 -/
 
 noncomputable section
@@ -144,7 +129,7 @@ theorem decodedCommitValue_sub_eq_historyGain (wellFormed : setup.WellFormed)
   obtain ⟨rank, ordered, _⟩ := pendingAt_history (runtime := runtime) rawTrace
   have rankEq : siteRank (runtime := runtime) site.1 = rank := by
     rw [atSite]
-    change (execution.application.config.history.map EventGraph.Completion.event).length = rank
+    change (execution.application.config.history.map EventCompletion.event).length = rank
     rw [List.length_map]
     exact history_length_of_isPrefix _ ordered
   have prefixEq : sourceServicePrefix? setup (siteRank (runtime := runtime) site.1)

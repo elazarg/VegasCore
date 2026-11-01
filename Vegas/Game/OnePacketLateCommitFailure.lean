@@ -180,7 +180,8 @@ theorem certificate_lateCommit_siteDecisionFailure
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler slots p))
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
     (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
       scale_pos
@@ -293,7 +294,7 @@ theorem certificate_lateCommit_siteDecisionFailure
     obtain ⟨slotMaterial, transmits, envelope⟩ := slotResponse_transmission setup runtime leaks who
       (execution.recall who) (execution.observe (application setup runtime leaks) who) event node
         serial
-      source action encoded
+      source action encoded (by simp [successful])
     have call : slotMaterial.call.packet = .commitment event (who, .prepared serial) :=
       congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
         message.payload.call) envelope
@@ -308,7 +309,7 @@ theorem certificate_lateCommit_siteDecisionFailure
         (execution.observe (application setup runtime leaks) who) event node serial source action
           encoded
       have boundTransmits := transmits
-      rw [bound] at boundTransmits
+      rw [bound, successful] at boundTransmits
       have materialEq := Option.some.inj boundTransmits.symm
       have submitted : (application setup runtime leaks).submit execution.application who
         slotMaterial =
@@ -316,18 +317,11 @@ theorem certificate_lateCommit_siteDecisionFailure
             ⟨some ⟨⟨.commitment event (who, .prepared serial), some ⟨payload, committedValue⟩⟩,
               .none⟩⟩).application := by
         rw [materialEq]
-        change (application setup runtime leaks).submit execution.application who
-          ((runtime.reactiveNormalization leaks).normalize who
-            ((application setup runtime leaks).observePlayer execution.application who)
-            (ReactiveApplication.ResponseMenu.knownPackets (execution.recall who)
-              (execution.observe (application setup runtime leaks) who))
-            ⟨⟨.commitment event (who, .prepared serial), match (cast (congrArg
-              EventGraph.EventField.Action outputEq) action : PublicationResult (L.Val payload))
-              with
-              | .failure => none
-              | .success value => some ⟨payload, value⟩⟩, .none⟩) = _
-        rw [(runtime.reactiveNormalization leaks).submit, successful]
-        rfl
+        exact (runtime.reactiveNormalization leaks).submit execution.application who
+          (ReactiveApplication.ResponseMenu.knownPackets (execution.recall who)
+            (execution.observe (application setup runtime leaks) who))
+          (⟨⟨.commitment event (who, .prepared serial), some ⟨payload, committedValue⟩⟩, .none⟩ :
+            (runtime.reactiveApplication leaks).Submission)
       have result := submitted_bindingResult runtime leaks execution who event payload
         serial (some ⟨payload, committedValue⟩) fresh'
       unfold candidateSucceeds

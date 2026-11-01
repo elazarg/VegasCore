@@ -53,32 +53,4 @@ theorem operationalRecord_headD {state : (application setup runtime leaks).Proto
   | .start => rfl
   | .extend _ _ _ _ => rfl
 
-omit [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-    scheduler).InfoState who)] in
-open Filter in
-/-- **Uniform decorrelation.** If at every site satisfying a condition the
-beliefs decorrelate the operational records and the decoded points up to a
-vanishing error, one vanishing error serves every such site. -/
-theorem exists_uniform_decorrelation
-    (targetSequence : ℕ → (onePacketN).BehavioralAssessment)
-    (condition : ∀ who, (onePacketN).InformationSite who → Prop)
-    (perSite : ∀ who (site : (onePacketN).InformationSite who), condition who site →
-      ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧ ∀ n,
-        BeliefDecorrelated ((targetSequence n).belief who site)
-          (fun history => operationalRecord setup runtime leaks bounds horizon scheduler
-            history.1.trace)
-          (fun history => nativeDecodedState setup runtime leaks history.1.state) (error n)) :
-    ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧
-      ∀ n who (site : (onePacketN).InformationSite who), condition who site →
-        BeliefDecorrelated ((targetSequence n).belief who site)
-          (fun history => operationalRecord setup runtime leaks bounds horizon scheduler
-            history.1.trace)
-          (fun history => nativeDecodedState setup runtime leaks history.1.state) (error n) :=
-  exists_uniform_of_sites setup runtime leaks bounds horizon scheduler
-    (fun n who site error => BeliefDecorrelated ((targetSequence n).belief who site)
-      (fun history => operationalRecord setup runtime leaks bounds horizon scheduler
-        history.1.trace)
-      (fun history => nativeDecodedState setup runtime leaks history.1.state) error)
-    (fun _ _ _ _ _ le decorrelated => decorrelated.mono le) condition perSite
-
 end Vegas

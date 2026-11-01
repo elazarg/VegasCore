@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryNonLateComparisons
-import Vegas.Game.RecoveryKeyedComparisons
+import Vegas.Game.OnePacketNonLateComparisons
+import Vegas.Game.OnePacketKeyedComparisons
 import GameTheoryExtensions.Analysis.Protocol.GainComparison
 
 /-! # All local comparisons under the original recovery completion -/
@@ -138,7 +138,8 @@ theorem recovery_local_comparisons [Fintype (RP).History]
     horizon NativeScheduler).wellFoundedHistories
   let recoveryCertificate := ((RApp).bounded Initial horizon scheduler).wellFoundedHistories
   let menuCertificate := ((RMenu).bounded Initial horizon scheduler).wellFoundedHistories
-  obtain ⟨nonlateError, nonlateLimit, nonlateBound⟩ := recovery_nonlate_local_comparisons setup
+  obtain ⟨nonlateError, nonlateLimit, nonlateBound⟩ :=
+    OnePacketComparison.assembled_nonlate_local_comparisons setup
     runtime
     leaks
     bounds horizon scheduler wellFormed independent observable sequence sourceMixed sourceBayes
@@ -147,7 +148,8 @@ theorem recovery_local_comparisons [Fintype (RP).History]
     opportunity inclusion timely rawCertificate parameter utility excludedPayoff payoffBound
     nonnegative recoveryCertificate menuCertificate completes payoffBounded excludedBounded below
     upper le_upper readoutBounded
-  obtain ⟨keyedError, keyedLimit, keyedBound⟩ := recovery_keyed_local_comparisons setup runtime
+  obtain ⟨keyedError, keyedLimit, keyedBound⟩ :=
+    OnePacketComparison.assembled_keyed_local_comparisons setup runtime
     leaks bounds
     horizon scheduler wellFormed independent observable sequence sourceMixed sourceBayes scale
     positive le_one
