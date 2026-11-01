@@ -353,7 +353,7 @@ def playerView (state : State graph) (who : Player) : PlayerView graph where
 theorem playerView_observation_eq (left right : State graph) (who : Player)
     (views : left.playerView who = right.playerView who) :
     graph.playerObserve who left.config = graph.playerObserve who right.config := by
-  apply PlayerObservation.ext graph
+  apply EventPlayerObservation.ext
   · exact congrArg (fun view : PlayerView graph => view.observation.completionOrder) views
   · exact congrArg (fun view : PlayerView graph => view.observation.store) views
   · exact congrArg (fun view : PlayerView graph => view.observation.ownActions) views

@@ -383,7 +383,7 @@ theorem runFrom_option_law
   | ret payoffs =>
       intro profile refs source embedding refsBefore offset aligned config ordered
         refsAgree historyAgree defaultsAgree
-      change EventGraph.Completion.defaults config.history = source.defaults at defaultsAgree
+      change EventCompletion.defaults config.history = source.defaults at defaultsAgree
       simp only [eventCount, EventGraph.runPlan, PMF.pure_map, decodeConfig?,
         terminalRefsWith, finalRegistry, finalRevelations, runFrom]
       rw [decodeState?_eq_some refs source.state config.store refsAgree]
@@ -446,7 +446,7 @@ theorem runFrom_option_law
       have nextDefaults : nextConfig.defaults = sourceAfter.defaults := by
         change (config.complete event ready action stored).defaults = source.defaults.record none
         rw [EventGraph.Config.complete_defaults, noDecision]
-        simpa only [EventGraph.Completion.fromDecision, Option.bind_none] using
+        simpa only [EventGraph.completion, Option.bind_none] using
           congrArg (fun previous => previous.record none) defaultsAgree
       have tailAligned := aligned.sampleTail (whole := whole)
         (wholeProfile := wholeProfile) (_openNames := ∅) fresh law next profile refs

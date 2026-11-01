@@ -115,6 +115,32 @@ theorem drainFuel_completed_subset (fuel : Nat) (state : State graph) :
       prior.trans (before.completeAutomatic_completed_subset event eligible))
     fuel state (Finset.Subset.refl _)
 
+/-- Automatic service cannot complete an active owner's instruction. -/
+theorem drain_completed_iff_of_active (state : State graph)
+    (event : graph.EventId) (owner : Player) (owned : graph.actor? event = some owner)
+    (active : owner ∉ state.config.defaulted) :
+    event ∈ state.drain.config.cut.completed ↔ event ∈ state.config.cut.completed := by
+  have preserved := drainFuel_induction
+    (fun current => owner ∉ current.config.defaulted ∧
+      (event ∈ current.config.cut.completed ↔ event ∈ state.config.cut.completed))
+    (fun before query eligible prior => by
+      refine ⟨?_, ?_⟩
+      · rw [before.completeAutomatic_defaulted query eligible]
+        exact prior.1
+      · obtain ⟨actor, acting, inactive⟩ := eligible.owned
+        have different : event ≠ query := by
+          intro same
+          subst query
+          have equal := Option.some.inj (owned.symm.trans acting)
+          subst actor
+          exact prior.1 inactive
+        obtain ⟨action, supported⟩ := before.completeAutomatic_step query eligible
+        rw [before.config.step_cut query eligible.1 action _ supported,
+          EventOrder.Cut.mem_complete]
+        simpa only [different, false_or] using prior.2)
+    state.config.remaining state ⟨active, Iff.rfl⟩
+  exact preserved.2
+
 /-- A whole automatic drain retains an existing deadline for an unfinished event. -/
 theorem Invariant.drainFuel_activatedAt_of_not_completed
     {inputs : graph.Inputs} {state : State graph} (invariant : state.Invariant inputs)

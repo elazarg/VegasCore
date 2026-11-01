@@ -251,7 +251,7 @@ def decodeConfig?
     Option (SourceProgram.Config Player L program.terminalCtx) :=
   (decodeState? (terminalRefsWith program refs embedding.ref) store).map fun state =>
     ⟨state, finalRegistry program registry, finalRevelations program revelations,
-      decodeHistory whole history, Vegas.EventGraph.Completion.defaults history⟩
+      decodeHistory whole history, Vegas.EventCompletion.defaults history⟩
 
 /-- Read the complete terminal source configuration without inventing missing
 values. Terminality supplies availability of every referenced typed field. -/

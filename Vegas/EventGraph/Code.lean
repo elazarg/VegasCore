@@ -691,7 +691,7 @@ theorem actor_cast {Field : Type} [DecidableEq Field]
 
 /-- The prescribed semantic action at a node. Chance nodes have no strategic
 action; their randomness is entirely in the retained distribution code. -/
-def Action {Field : Type} [DecidableEq Field]
+abbrev Action {Field : Type} [DecidableEq Field]
     {layout : Field → EventField Player L} {output : EventField Player L} :
     EventCode layout output → Type := fun _ => EventField.Action output
 

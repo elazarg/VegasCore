@@ -138,7 +138,7 @@ theorem resolveOutput?_eq_of_playerObserve_eq {owner : Player} {payload : L.Ty}
     (disclose : Bool) :
     resolveOutput? binding checks disclose left.store =
       resolveOutput? binding checks disclose right.store := by
-  have stores := congrArg PlayerObservation.store observations
+  have stores := congrArg EventPlayerObservation.store observations
   change graph.playerStore owner left.store = graph.playerStore owner right.store at stores
   rw [← resolveOutput?_playerStore binding checks left.store disclose,
     ← resolveOutput?_playerStore binding checks right.store disclose, stores]

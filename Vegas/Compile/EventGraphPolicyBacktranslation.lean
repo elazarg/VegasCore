@@ -122,7 +122,7 @@ private theorem compiled_history_pairwise
     {Γ : SourceCtx Player L} {O : Finset VarId} (program : SourceProgram Player L Γ O)
     {inputs : (toEventGraph program).Inputs} {config : (toEventGraph program).Config}
     (reachable : config.Reachable inputs) :
-    (config.history.map Vegas.EventGraph.Completion.event).Pairwise
+    (config.history.map Vegas.EventCompletion.event).Pairwise
       (fun left right => left.val < right.val) := by
   induction reachable with
   | initial => simp [Vegas.EventGraph.Config.initial]
@@ -145,7 +145,7 @@ private theorem compiled_history_eq_prefix
     {inputs : (toEventGraph program).Inputs} {config : (toEventGraph program).Config}
     (reachable : config.Reachable inputs) (offset : Nat) (ordered : config.cut.IsPrefix offset)
     (event : Fin (eventCount program)) (rank : event.val = offset) :
-    config.history.map Vegas.EventGraph.Completion.event =
+    config.history.map Vegas.EventCompletion.event =
       (List.finRange (eventCount program)).filter (fun prior => prior.val < event.val) := by
   apply (compiled_history_pairwise program reachable).eq_of_mem_iff
     ((List.sortedLT_finRange (eventCount program)).pairwise.filter _)
@@ -176,7 +176,7 @@ theorem encodeDecisionView?_decodeActual_eq
       some ((toEventGraph whole).playerObserve who config) := by
   let graph := toEventGraph whole
   let own := graph.ownCompletions who config.history
-  have ownIds : own.map Vegas.EventGraph.Completion.event =
+  have ownIds : own.map Vegas.EventCompletion.event =
       graph.prefixSchema.ownHistory event :=
     (toEventGraph_barrierOrdered whole).informationDiscipline.ready_ownEventIds
       reachable ready actor active
@@ -213,7 +213,7 @@ theorem encodeDecisionView?_decodeActual_eq
   unfold encodeDecisionView?
   rw [historyEncoded]
   apply congrArg some
-  apply Vegas.EventGraph.PlayerObservation.ext graph
+  apply Vegas.EventPlayerObservation.ext
   · exact (compiled_history_eq_prefix whole reachable offset ordered event rank).symm
   · exact storeEq
   · rfl

@@ -23,7 +23,7 @@ variable {graph : Vegas.EventGraph Player L}
 def RankPrefix (config : graph.Config) : Prop :=
   (∀ done ∈ config.cut.completed, ∀ missing, missing ∉ config.cut.completed →
     done.val < missing.val) ∧
-  (config.history.map Completion.event).Pairwise fun left right => left.val < right.val
+  (config.history.map EventCompletion.event).Pairwise fun left right => left.val < right.val
 
 omit [DecidableEq Player] in
 theorem rankPrefix_initial (inputs : graph.Inputs) :
@@ -118,7 +118,7 @@ and initial values. The actions and terminal values remain policy-dependent. -/
 theorem runPolicies_canonical_history (profile : graph.BehavioralProfile)
     (inputs : graph.Inputs) (next : graph.Config)
     (member : next ∈ (graph.runPolicies graph.canonicalScheduler profile inputs).support) :
-    next.history.map Completion.event = List.finRange graph.order.eventCount := by
+    next.history.map EventCompletion.event = List.finRange graph.order.eventCount := by
   have ordered : RankPrefix next :=
     runPlan_rankPrefix (graph.policyPlan profile graph.canonicalScheduler)
       (canonical_policyPlan_least profile) graph.order.eventCount (Config.initial inputs)

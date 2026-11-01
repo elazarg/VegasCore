@@ -20,7 +20,7 @@ variable {graph : Vegas.EventGraph Player L} {schema : graph.LogicalSchema}
 /-- Event identities in one player's chronological completion history. -/
 def ownEventIds (graph : Vegas.EventGraph Player L) (who : Player)
     (history : List graph.Completion) : List graph.EventId :=
-  (graph.ownCompletions who history).map Completion.event
+  (graph.ownCompletions who history).map EventCompletion.event
 
 /-- Active owners have a genuine decision at every completed owned event. -/
 theorem Config.Reachable.owned_decision_isSome_of_active
@@ -39,7 +39,7 @@ theorem Config.Reachable.owned_decision_isSome_of_active
       intro completion member owned
       rcases List.mem_append.mp member with old | new
       · exact ih priorActive completion old owned
-      · have same : completion = Completion.fromDecision event
+      · have same : completion = EventGraph.completion graph event
             (prior.actualDecision event action) value := by simpa using new
         subst completion
         change graph.actor? event = some who at owned
@@ -62,7 +62,7 @@ theorem Config.Reachable.defaultEvent_actor
       intro completion member who defaulted
       rcases List.mem_append.mp member with old | new
       · exact ih completion old who defaulted
-      · have same : completion = Completion.fromDecision event
+      · have same : completion = EventGraph.completion graph event
             (prior.actualDecision event action) value := by simpa using new
         subst completion
         change ((prior.actualDecision event action).bind fun chosen =>
@@ -89,7 +89,7 @@ theorem Config.Reachable.owned_defaultEvent_eq_none_of_active
         ((reachable.defaultEvent_actor completion member owner flag).symm.trans owned)
       subst owner
       apply (active ?_).elim
-      change who ∈ ((config.history.map Completion.defaultEvent).reverse.filterMap id).toFinset
+      change who ∈ ((config.history.map EventCompletion.defaultEvent).reverse.filterMap id).toFinset
       simp only [List.mem_toFinset, List.mem_filterMap, List.mem_reverse, List.mem_map]
       exact ⟨some who, ⟨completion, member, flag⟩, rfl⟩
 

@@ -85,7 +85,7 @@ theorem decodeHistory_step {Γ : SourceCtx Player L} {openNames : Finset VarId}
   rw [history]
   exact decodeHistory_append_completion program config.history event
     (config.actualDecision event action)
-    ((Vegas.EventGraph.Completion.fromDecision (graph := toEventGraph program) event
+    ((EventGraph.completion (toEventGraph program) event
       (config.actualDecision event action) value).defaultEvent)
 
 /-- A step without an actual source decision leaves decoded own history unchanged. -/

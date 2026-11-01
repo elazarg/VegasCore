@@ -52,10 +52,10 @@ def withMode (graph : Vegas.EventGraph Player L)
   inputCount := graph.inputCount
   order := {
     eventCount := graph.order.eventCount
-    predecessors := fun event => match mode with
-      | .concurrent => graph.order.predecessors event
-      | .sequential => (EventOrder.sequential graph.order.eventCount).predecessors event
-      | .concurrentReveals => graph.revealRelaxedPredecessors event
+    predecessors := match mode with
+      | .concurrent => graph.order.predecessors
+      | .sequential => (EventOrder.sequential graph.order.eventCount).predecessors
+      | .concurrentReveals => graph.revealRelaxedPredecessors
     predecessor_lt := by
       intro event predecessor member
       cases mode with

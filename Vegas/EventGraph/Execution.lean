@@ -31,8 +31,8 @@ structure Config (graph : Vegas.EventGraph Player L) where
   outputs : (event : graph.EventId) → Option (graph.outputLayout event).Value
   output_available : ∀ event, (outputs event).isSome ↔ event ∈ cut.completed
   history : List graph.Completion
-  history_nodup : (history.map Completion.event).Nodup
-  history_exact : ∀ event, event ∈ history.map Completion.event ↔ event ∈ cut.completed
+  history_nodup : (history.map EventCompletion.event).Nodup
+  history_exact : ∀ event, event ∈ history.map EventCompletion.event ↔ event ∈ cut.completed
 
 namespace Config
 
@@ -40,7 +40,7 @@ variable {graph : Vegas.EventGraph Player L}
 
 /-- Public default events are derived from the one chronological completion history. -/
 def defaults (config : graph.Config) : DefaultHistory Player :=
-  Completion.defaults config.history
+  EventCompletion.defaults config.history
 
 /-- The current public default set has no independent stored copy. -/
 def defaulted [DecidableEq Player] (config : graph.Config) : Finset Player :=
@@ -134,14 +134,14 @@ def complete (config : graph.Config) (event : graph.EventId)
     · simp only [Function.update, same]
       simpa [EventOrder.Cut.mem_complete, same] using config.output_available query
   history := config.history ++
-    [Completion.fromDecision event (config.actualDecision event action) value]
+    [EventGraph.completion graph event (config.actualDecision event action) value]
   history_nodup := by
     rw [List.map_append]
     simp only [List.map_cons, List.map_nil, List.nodup_append]
     refine ⟨config.history_nodup, by simp, ?_⟩
     intro prior priorMem appended appendedMem
     have appendedEq : appended = event := by
-      simpa [Completion.fromDecision] using appendedMem
+      simpa [EventGraph.completion] using appendedMem
     subst appended
     intro priorEq
     subst prior
@@ -150,7 +150,7 @@ def complete (config : graph.Config) (event : graph.EventId)
     intro query
     simp only [List.map_append, List.map_cons, List.map_nil,
       List.mem_append, List.mem_singleton, EventOrder.Cut.mem_complete,
-      Completion.fromDecision]
+      EventGraph.completion]
     rw [config.history_exact]
     tauto
 
@@ -164,7 +164,7 @@ def complete (config : graph.Config) (event : graph.EventId)
     (value : (graph.outputLayout event).Value) :
     (config.complete event ready action value).history =
       config.history ++
-        [Completion.fromDecision event (config.actualDecision event action) value] := rfl
+        [EventGraph.completion graph event (config.actualDecision event action) value] := rfl
 
 /-- The completed event stores precisely the evaluator output supplied to
 `complete`; in particular, bind results retain their original value. -/
@@ -244,7 +244,7 @@ theorem step_completion (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event)
     (next : graph.Config) (member : next ∈ (config.step event ready action).support) :
     ∃ value, next.outputs event = some value ∧ next.history = config.history ++
-      [Completion.fromDecision event (config.actualDecision event action) value] := by
+      [EventGraph.completion graph event (config.actualDecision event action) value] := by
   rw [step, PMF.support_map] at member
   obtain ⟨value, _, rfl⟩ := member
   exact ⟨value, config.complete_output_same event ready action value, rfl⟩
@@ -253,7 +253,8 @@ theorem step_completion (config : graph.Config) (event : graph.EventId)
 @[simp] theorem step_history_events (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event) (action : graph.Action event)
     (next : graph.Config) (member : next ∈ (config.step event ready action).support) :
-    next.history.map Completion.event = config.history.map Completion.event ++ [event] := by
+    next.history.map EventCompletion.event =
+      config.history.map EventCompletion.event ++ [event] := by
   obtain ⟨value, _, history⟩ := config.step_completion event ready action next member
   rw [history, List.map_append]
   rfl
@@ -302,8 +303,8 @@ theorem Reachable.predecessor_idxOf_lt {inputs : graph.Inputs} {config : graph.C
     (reachable : Reachable inputs config) (event : graph.EventId)
     (completed : event ∈ config.cut.completed) (predecessor : graph.EventId)
     (isPredecessor : predecessor ∈ graph.order.predecessors event) :
-    (config.history.map Completion.event).idxOf predecessor <
-      (config.history.map Completion.event).idxOf event := by
+    (config.history.map EventCompletion.event).idxOf predecessor <
+      (config.history.map EventCompletion.event).idxOf event := by
   induction reachable with
   | initial =>
       change event ∈ (∅ : Finset graph.EventId) at completed
@@ -318,10 +319,10 @@ theorem Reachable.predecessor_idxOf_lt {inputs : graph.Inputs} {config : graph.C
       · have predecessorBefore : predecessor ∈
             priorConfig.cut.completed := ready.2 isPredecessor
         have predecessorMem : predecessor ∈
-            priorConfig.history.map Completion.event :=
+            priorConfig.history.map EventCompletion.event :=
           (priorConfig.history_exact predecessor).2 predecessorBefore
         have eventNotMem : event ∉
-            priorConfig.history.map Completion.event := by
+            priorConfig.history.map EventCompletion.event := by
           intro member
           exact ready.1 ((priorConfig.history_exact event).1 member)
         rw [List.idxOf_append_of_mem predecessorMem,
@@ -330,10 +331,10 @@ theorem Reachable.predecessor_idxOf_lt {inputs : graph.Inputs} {config : graph.C
         simpa using List.idxOf_lt_length_of_mem predecessorMem
       · have predecessorCompleted :=
           priorConfig.cut.predecessor_closed completedBefore isPredecessor
-        have eventMem : event ∈ priorConfig.history.map Completion.event :=
+        have eventMem : event ∈ priorConfig.history.map EventCompletion.event :=
           (priorConfig.history_exact event).2 completedBefore
         have predecessorMem : predecessor ∈
-            priorConfig.history.map Completion.event :=
+            priorConfig.history.map EventCompletion.event :=
           (priorConfig.history_exact predecessor).2 predecessorCompleted
         rw [List.idxOf_append_of_mem predecessorMem, List.idxOf_append_of_mem eventMem]
         exact ih completedBefore
@@ -535,8 +536,9 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
     (ready : config.cut.Ready event) (action : graph.Action event)
     (value : (graph.outputLayout event).Value) :
     (config.complete event ready action value).defaults = config.defaults.record
-      (Completion.fromDecision event (config.actualDecision event action) value).defaultEvent := by
-  exact Completion.defaults_append config.history _
+      (EventGraph.completion graph event (config.actualDecision event action) value).defaultEvent :=
+  by
+  exact EventCompletion.defaults_append config.history _
 
 /-- Every event completion preserves all already public defaults. -/
 theorem complete_defaulted_mono (config : graph.Config) (event : graph.EventId)
@@ -556,6 +558,40 @@ theorem defaulted_step (config : graph.Config) (event : graph.EventId)
   rw [step, PMF.support_map] at supported
   obtain ⟨value, _, rfl⟩ := supported
   exact config.complete_defaulted_mono event ready action value
+
+/-- A supported step can introduce a default only for its own actor. -/
+theorem step_new_default_actor (before after : graph.Config)
+    (event : graph.EventId) (ready : before.cut.Ready event) (action : graph.Action event)
+    (supported : after ∈ (before.step event ready action).support)
+    (owner : Player) (active : owner ∉ before.defaulted) (introduced : owner ∈ after.defaulted) :
+    (graph.nodes event).actor = some owner := by
+  rw [Config.step, PMF.support_map] at supported
+  obtain ⟨value, _, rfl⟩ := supported
+  change owner ∈ (before.complete event ready action value).defaults.defaulted at introduced
+  rw [Config.complete_defaults] at introduced
+  change owner ∈ (before.defaults.record
+    ((before.actualDecision event action).bind fun chosen =>
+      (graph.nodes event).defaultEvent chosen value)).defaulted at introduced
+  cases actor : (graph.nodes event).actor with
+  | none =>
+      simp only [Config.actualDecision, EventCode.actualDecision, actor, Option.bind_none,
+        DefaultHistory.defaulted_record_none] at introduced
+      exact (active introduced).elim
+  | some who =>
+      by_cases inactive : who ∈ before.defaulted
+      · simp only [Config.actualDecision, EventCode.actualDecision, actor, ite_eq_left inactive,
+          Option.bind_none, DefaultHistory.defaulted_record_none] at introduced
+        exact (active introduced).elim
+      · simp only [Config.actualDecision, EventCode.actualDecision, actor, ite_eq_right inactive,
+          Option.bind_some, EventCode.defaultEvent] at introduced
+        split at introduced
+        · rw [DefaultHistory.defaulted_record_some] at introduced
+          rcases Finset.mem_insert.mp introduced with equal | previous
+          · subst owner
+            rfl
+          · exact (active previous).elim
+        · rw [DefaultHistory.defaulted_record_none] at introduced
+          exact (active introduced).elim
 
 /-- An ownerless source step preserves the public default set exactly. -/
 theorem step_defaulted_of_actor_none (before after : graph.Config)
@@ -709,7 +745,8 @@ theorem history_prefix {before after : graph.Config} (moved : Step before after)
     before.history.IsPrefix after.history := by
   obtain ⟨event, ready, action, supported⟩ := moved
   obtain ⟨value, _, history⟩ := before.step_completion event ready action after supported
-  exact ⟨[Completion.fromDecision event (before.actualDecision event action) value], history.symm⟩
+  exact ⟨[EventGraph.completion graph event (before.actualDecision event action) value],
+    history.symm⟩
 
 /-- A finite supported execution path retains every recorded decision and default entry. -/
 theorem path_history_prefix {before after : graph.Config}
@@ -733,7 +770,7 @@ theorem path_eq_of_ready_of_not_completed {before after : graph.Config}
     have completed : event ∈ middle.cut.completed := by
       rw [before.step_cut event otherReady action middle supported]
       exact Finset.mem_insert_self _ _
-    have historyPrefix := (path_history_prefix rest).map Completion.event
+    have historyPrefix := (path_history_prefix rest).map EventCompletion.event
     exact (pending ((after.history_exact event).mp
       (historyPrefix.subset ((middle.history_exact event).mpr completed)))).elim
 
@@ -779,7 +816,7 @@ theorem path_singleton {before after : graph.Config}
       have same := path_eq_of_history_length_le rest (by omega)
       subst after
       rw [history, List.drop_left] at delta
-      have eventEq := congrArg Completion.event (List.singleton_injective delta)
+      have eventEq := congrArg EventCompletion.event (List.singleton_injective delta)
       change event = completion.event at eventEq
       subst event
       exact ⟨ready, action, supported⟩
@@ -817,7 +854,7 @@ theorem completion_defaultEvent_of_code (config : graph.Config) (event : graph.E
     (code : EventCode graph.layout output)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) = code)
     (action : output.Action) (value : output.Value) :
-    (Completion.fromDecision event
+    (EventGraph.completion graph event
       (config.actualDecision event (cast (congrArg EventField.Action outputEq.symm) action))
       (cast (congrArg EventField.Value outputEq.symm) value)).defaultEvent =
       (code.actualDecision config.defaulted action).bind
@@ -833,7 +870,7 @@ theorem completion_bind_some_defaultEvent (config : graph.Config) (event : graph
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind owner payload)
     (choice value : PublicationResult (L.Val payload)) :
-    (Completion.fromDecision event
+    (EventGraph.completion graph event
       (config.actualDecision event
         (cast (congrArg EventField.Action outputEq.symm) (some choice)))
       (cast (congrArg EventField.Value outputEq.symm) value)).defaultEvent = none := by
@@ -850,7 +887,7 @@ theorem completion_bind_none_defaultEvent (config : graph.Config) (event : graph
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .bind owner payload)
     (value : PublicationResult (L.Val payload)) :
-    (Completion.fromDecision event
+    (EventGraph.completion graph event
       (config.actualDecision event
         (cast (congrArg EventField.Action outputEq.symm)
           (none : Option (PublicationResult (L.Val payload)))))
@@ -871,7 +908,7 @@ theorem completion_resolve_defaultEvent (config : graph.Config) (event : graph.E
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .resolve owner payload binding checks)
     (disclose : Bool) (value : PublicationResult (L.Val payload)) :
-    (Completion.fromDecision event
+    (EventGraph.completion graph event
       (config.actualDecision event (cast (congrArg EventField.Action outputEq.symm) disclose))
       (cast (congrArg EventField.Value outputEq.symm) value)).defaultEvent =
       if owner ∈ config.defaulted then none else if value.isFailure then some owner else none := by

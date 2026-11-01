@@ -16,7 +16,7 @@ omit [DecidableEq Player] in
 /-- Completion metadata determines the current cut, independently of all
 stored values and supplied private actions. -/
 theorem cut_eq_of_completionOrder_eq (left right : graph.Config)
-    (order : left.history.map Completion.event = right.history.map Completion.event) :
+    (order : left.history.map EventCompletion.event = right.history.map EventCompletion.event) :
     left.cut = right.cut := by
   apply EventOrder.Cut.ext
   apply Finset.ext
@@ -30,7 +30,7 @@ theorem completed_subset_of_history_prefix (before after : graph.Config)
     before.cut.completed ⊆ after.cut.completed := by
   intro event completed
   rw [← after.history_exact]
-  exact (histories.map Completion.event).subset ((before.history_exact event).mpr completed)
+  exact (histories.map EventCompletion.event).subset ((before.history_exact event).mpr completed)
 
 /-- Equal player observations identify all fields visible to that player. -/
 theorem store_eq_of_playerObserve_eq (who : Player) (left right : graph.Config)
@@ -45,15 +45,15 @@ theorem store_eq_of_playerObserve_eq (who : Player) (left right : graph.Config)
 theorem publicObserve_eq_of_playerObserve_eq (who : Player) (left right : graph.Config)
     (observations : graph.playerObserve who left = graph.playerObserve who right) :
     graph.publicObserve left = graph.publicObserve right := by
-  apply PublicObservation.ext graph
-  · exact congrArg PlayerObservation.completionOrder observations
+  apply EventPublicObservation.ext
+  · exact congrArg EventPlayerObservation.completionOrder observations
   · apply graph.publicStore_congr
     intro field isPublic
     apply store_eq_of_playerObserve_eq who left right observations field
     change (graph.layout field).VisibleTo who
     cases kind : graph.layout field <;>
       simp_all [fieldPublic, EventField.IsPublic, EventField.VisibleTo]
-  · exact congrArg PlayerObservation.defaults observations
+  · exact congrArg EventPlayerObservation.defaults observations
 
 /-- Equal visible values, own choices and new public default entries preserve
 equal observations. Foreign private binding values and action choices need
@@ -66,21 +66,21 @@ theorem playerObserve_complete_congr (who : Player) (left right : graph.Config)
     (values : graph.fieldVisibleTo who (.inr event) → leftValue = rightValue)
     (actions : graph.actor? event = some who → leftAction = rightAction)
     (publicEffect :
-      (Completion.fromDecision event
+      (EventGraph.completion graph event
         (left.actualDecision event leftAction) leftValue).defaultEvent =
-        (Completion.fromDecision event
+        (EventGraph.completion graph event
           (right.actualDecision event rightAction) rightValue).defaultEvent) :
     graph.playerObserve who (left.complete event leftReady leftAction leftValue) =
       graph.playerObserve who (right.complete event rightReady rightAction rightValue) := by
-  have order := congrArg PlayerObservation.completionOrder observations
-  have recall := congrArg PlayerObservation.ownActions observations
+  have order := congrArg EventPlayerObservation.completionOrder observations
+  have recall := congrArg EventPlayerObservation.ownActions observations
   have defaults : left.defaults = right.defaults :=
-    congrArg PlayerObservation.defaults observations
+    congrArg EventPlayerObservation.defaults observations
   have status : left.defaulted = right.defaulted :=
     congrArg DefaultHistory.defaulted defaults
-  apply PlayerObservation.ext graph
+  apply EventPlayerObservation.ext
   · simpa only [playerObserve, Config.complete_history, List.map_append,
-      List.map_cons, List.map_nil, Completion.fromDecision] using
+      List.map_cons, List.map_nil, EventGraph.completion] using
         congrArg (fun prior => prior ++ [event]) order
   · apply graph.playerStore_congr
     intro field visible
@@ -104,15 +104,15 @@ theorem playerObserve_complete_congr (who : Player) (left right : graph.Config)
           right.actualDecision event rightAction := by
         unfold Config.actualDecision
         rw [status, actions owned]
-      have completion : Completion.fromDecision event
+      have completion : EventGraph.completion graph event
           (left.actualDecision event leftAction) leftValue =
-            Completion.fromDecision event (right.actualDecision event rightAction) rightValue :=
+            EventGraph.completion graph event (right.actualDecision event rightAction) rightValue :=
         congrArg₂ (fun choice defaultEvent =>
           (⟨event, choice, defaultEvent⟩ : graph.Completion)) decision publicEffect
       change graph.ownCompletions who (left.history ++
-          [Completion.fromDecision event (left.actualDecision event leftAction) leftValue]) =
+          [EventGraph.completion graph event (left.actualDecision event leftAction) leftValue]) =
         graph.ownCompletions who (right.history ++
-          [Completion.fromDecision event (right.actualDecision event rightAction) rightValue])
+          [EventGraph.completion graph event (right.actualDecision event rightAction) rightValue])
       simp only [ownCompletions, List.filter_append] at recall ⊢
       rw [recall, completion]
     · exact (graph.ownCompletions_complete_of_not_actor who left event

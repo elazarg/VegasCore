@@ -169,7 +169,7 @@ end Cut
 end EventOrder
 
 /-- The total source-ranked dependency order on a fixed finite event set. -/
-def EventOrder.sequential (eventCount : Nat) : EventOrder where
+abbrev EventOrder.sequential (eventCount : Nat) : EventOrder where
   eventCount := eventCount
   predecessors event := Finset.univ.filter fun prior => prior.val < event.val
   predecessor_lt := by
