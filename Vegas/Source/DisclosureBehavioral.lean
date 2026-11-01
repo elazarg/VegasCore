@@ -1,13 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Source.Setup
+import Vegas.Source.DisclosureAliases
 import Vegas.Source.ProtocolBehavioralPolicy
 import GameTheory.Math.Probability.Support
 
-/-! # Normalizing unopenable disclosure intentions
+/-! # Normalizing ineffective disclosure intentions
 
-The compiler suppresses only requests to open an unopenable own binding.
-Authentic attempts remain unchanged when deferred guards reject publication.
+The compiler withholds precisely the requests whose publication would fail.
+The owner computes this choice from its view and the static guard obligations.
 The joint terminal typed state and full public default record are preserved.
 The private action history of an owner that defaults may differ, since that
 owner has no later strategic callback.
@@ -96,61 +97,99 @@ private theorem runFrom_active_histories_eq
         exact active_history_update_eq defaults _ (defaults.defaulted_mono _) left right agree
           owner (.reveal owner name disclose)
 
-/-- Suppress only a disclosure whose own binding is unopenable. Authentic
-attempts remain unchanged even when their deferred guards reject publication. -/
-def BehavioralPolicy.normalizeDisclosures {who : Player} :
+/-- Normalize disclosures using the static guard registry and publication positions
+at this source instruction. Every callback reads only its owner's actual view. -/
+def BehavioralPolicy.normalizeDisclosuresFrom {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → BehavioralPolicy who program →
-      BehavioralPolicy who program
-  | _, _, .ret _, _ => PUnit.unit
-  | _, _, .sample _ _ _ next, policy => normalizeDisclosures next policy
-  | _, _, .commit _ _ _ _ next, policy => (policy.1, normalizeDisclosures next policy.2)
-  | _, _, .reveal _ _ _ _ selected _ next, policy =>
+    (program : SourceProgram Player L Γ O) → Registry Γ → Revelations Γ →
+    BehavioralPolicy who program → BehavioralPolicy who program
+  | _, _, .ret _, _, _, _ => PUnit.unit
+  | _, _, .sample _ _ _ next, registry, revelations, policy =>
+      normalizeDisclosuresFrom next registry.weaken revelations.weaken policy
+  | _, _, .commit (payload := payload) name owner _ guard next, registry, revelations, policy =>
+      (policy.1, normalizeDisclosuresFrom next
+        ({ owner := owner, subject := name, payload := payload, source := .here,
+            guard := guard.weaken } :: registry.weaken) revelations.weaken policy.2)
+  | _, _, .reveal published _ _ _ selected _ next, registry, revelations, policy =>
       (fun own view active => (policy.1 own view active).map fun disclose =>
-        disclose && ((view.observation.cells.get (own ▸ selected)).getD .failure).isSuccess,
-        normalizeDisclosures next policy.2)
+        effectiveDisclosureView published (own ▸ selected) registry revelations view disclose,
+        normalizeDisclosuresFrom next registry.weaken
+          (revelations.reveal (published := published) selected) policy.2)
 
-/-- Normalize every player's unopenable disclosure decisions pointwise. -/
+/-- Normalize a policy from the source initializer's empty guard registry. -/
+def BehavioralPolicy.normalizeDisclosures {who : Player} {Γ : SourceCtx Player L}
+    {O : Finset VarId} (program : SourceProgram Player L Γ O)
+    (policy : BehavioralPolicy who program) : BehavioralPolicy who program :=
+  policy.normalizeDisclosuresFrom program [] (Revelations.initial Γ)
+
+/-- Normalize all players from the static metadata at the source instruction. -/
+def normalizeDisclosureProfileFrom {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (registry : Registry Γ)
+    (revelations : Revelations Γ) (profile : BehavioralProfile program) :
+    BehavioralProfile program :=
+  fun who => (profile who).normalizeDisclosuresFrom program registry revelations
+
+/-- Normalize every player's ineffective disclosures from source initialization. -/
 def normalizeDisclosureProfile {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program) :
     BehavioralProfile program :=
-  fun who => (profile who).normalizeDisclosures program
+  normalizeDisclosureProfileFrom program [] (Revelations.initial Γ) profile
 
-/-- Disclosure normalization leaves the support of every commitment callback
-unchanged, so it preserves every commitment admission interface exactly. -/
-theorem BehavioralPolicy.normalizeDisclosures_admitted_iff {who : Player} :
+/-- Disclosure normalization leaves every commitment callback unchanged. -/
+theorem BehavioralPolicy.normalizeDisclosuresFrom_admitted_iff {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → (admission : CommitmentInterface program) →
+    (program : SourceProgram Player L Γ O) → (registry : Registry Γ) →
+    (revelations : Revelations Γ) → (admission : CommitmentInterface program) →
     (policy : BehavioralPolicy who program) →
-    (policy.normalizeDisclosures program).Admitted program admission ↔
+    (policy.normalizeDisclosuresFrom program registry revelations).Admitted program admission ↔
       policy.Admitted program admission
-  | _, _, .ret _, _, _ => Iff.rfl
-  | _, _, .sample _ _ _ next, admission, policy =>
-      normalizeDisclosures_admitted_iff next admission policy
-  | _, _, .commit _ _ _ _ next, admission, policy =>
+  | _, _, .ret _, _, _, _, _ => Iff.rfl
+  | _, _, .sample _ _ _ next, _, _, admission, policy =>
+      normalizeDisclosuresFrom_admitted_iff next _ _ admission policy
+  | _, _, .commit _ _ _ _ next, _, _, admission, policy =>
       and_congr Iff.rfl
-        (normalizeDisclosures_admitted_iff next (fun site => admission (some site)) policy.2)
-  | _, _, .reveal _ _ _ _ _ _ next, admission, policy =>
-      normalizeDisclosures_admitted_iff next admission policy.2
+        (normalizeDisclosuresFrom_admitted_iff next _ _
+          (fun site => admission (some site)) policy.2)
+  | _, _, .reveal _ _ _ _ _ _ next, _, _, admission, policy =>
+      normalizeDisclosuresFrom_admitted_iff next _ _ admission policy.2
 
-/-- Suppressing unopenable disclosure choices twice changes nothing further. -/
-theorem BehavioralPolicy.normalizeDisclosures_idempotent {who : Player} :
+/-- Initialized normalization preserves every commitment admission interface. -/
+theorem BehavioralPolicy.normalizeDisclosures_admitted_iff {who : Player}
+    {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (admission : CommitmentInterface program)
+    (policy : BehavioralPolicy who program) :
+    (policy.normalizeDisclosures program).Admitted program admission ↔
+      policy.Admitted program admission :=
+  normalizeDisclosuresFrom_admitted_iff program _ _ admission policy
+
+/-- Suppressing ineffective disclosures twice changes nothing further. -/
+theorem BehavioralPolicy.normalizeDisclosuresFrom_idempotent {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → (policy : BehavioralPolicy who program) →
-    (policy.normalizeDisclosures program).normalizeDisclosures program =
-      policy.normalizeDisclosures program
-  | _, _, .ret _, _ => rfl
-  | _, _, .sample _ _ _ next, policy => normalizeDisclosures_idempotent next policy
-  | _, _, .commit _ _ _ _ next, policy =>
-      Prod.ext rfl (normalizeDisclosures_idempotent next policy.2)
-  | _, _, .reveal _ _ _ _ _ _ next, policy => by
-      refine Prod.ext ?_ (normalizeDisclosures_idempotent next policy.2)
+    (program : SourceProgram Player L Γ O) → (registry : Registry Γ) →
+    (revelations : Revelations Γ) → (policy : BehavioralPolicy who program) →
+    (policy.normalizeDisclosuresFrom program registry revelations).normalizeDisclosuresFrom
+        program registry revelations = policy.normalizeDisclosuresFrom program registry revelations
+  | _, _, .ret _, _, _, _ => rfl
+  | _, _, .sample _ _ _ next, _, _, policy =>
+      normalizeDisclosuresFrom_idempotent next _ _ policy
+  | _, _, .commit _ _ _ _ next, _, _, policy =>
+      Prod.ext rfl (normalizeDisclosuresFrom_idempotent next _ _ policy.2)
+  | _, _, .reveal _ _ _ _ _ _ next, _, _, policy => by
+      refine Prod.ext ?_ (normalizeDisclosuresFrom_idempotent next _ _ policy.2)
       funext own view active
       change ((policy.1 own view active).map _).map _ = (policy.1 own view active).map _
       rw [PMF.map_comp]
       congr 1
       funext disclose
-      simp only [Function.comp_apply, Bool.and_assoc, Bool.and_self]
+      exact effectiveDisclosureView_idempotent ..
+
+/-- Initialized normalization is idempotent. -/
+theorem BehavioralPolicy.normalizeDisclosures_idempotent {who : Player}
+    {Γ : SourceCtx Player L} {O : Finset VarId} (program : SourceProgram Player L Γ O)
+    (policy : BehavioralPolicy who program) :
+    (policy.normalizeDisclosures program).normalizeDisclosures program =
+      policy.normalizeDisclosures program :=
+  normalizeDisclosuresFrom_idempotent program _ _ policy
 
 /-- Every supported reveal choice is fixed by suppressing unopenable bindings. -/
 def BehavioralPolicy.AuthenticDisclosures {who : Player} :
@@ -165,40 +204,112 @@ def BehavioralPolicy.AuthenticDisclosures {who : Player} :
           disclose) ∧
       AuthenticDisclosures next policy.2
 
-/-- Normalized policies suppress only unopenable intentions, at every active view. -/
-theorem BehavioralPolicy.normalizeDisclosures_authentic {who : Player} :
+/-- A supported true disclosure publishes successfully, using the static
+obligations and the owner's view rather than hidden foreign cells. -/
+def BehavioralPolicy.EffectiveDisclosures {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → (policy : BehavioralPolicy who program) →
-    (policy.normalizeDisclosures program).AuthenticDisclosures program
-  | _, _, .ret _, _ => trivial
-  | _, _, .sample _ _ _ next, policy => normalizeDisclosures_authentic next policy
-  | _, _, .commit _ _ _ _ next, policy => normalizeDisclosures_authentic next policy.2
-  | _, _, .reveal _ _ _ _ selected _ next, policy => by
-      refine ⟨?_, normalizeDisclosures_authentic next policy.2⟩
+    (program : SourceProgram Player L Γ O) → Registry Γ → Revelations Γ →
+    BehavioralPolicy who program → Prop
+  | _, _, .ret _, _, _, _ => True
+  | _, _, .sample _ _ _ next, registry, revelations, policy =>
+      EffectiveDisclosures next registry.weaken revelations.weaken policy
+  | _, _, .commit (payload := payload) name owner _ guard next, registry, revelations, policy =>
+      EffectiveDisclosures next
+        ({ owner := owner, subject := name, payload := payload, source := .here,
+            guard := guard.weaken } :: registry.weaken) revelations.weaken policy.2
+  | _, _, .reveal published _ _ _ selected _ next, registry, revelations, policy =>
+      (∀ own view active disclose, disclose ∈ (policy.1 own view active).support →
+        effectiveDisclosureView published (own ▸ selected) registry revelations view disclose =
+          disclose) ∧
+      EffectiveDisclosures next registry.weaken
+        (revelations.reveal (published := published) selected) policy.2
+
+/-- Every normalized choice is an effective representative. -/
+theorem BehavioralPolicy.normalizeDisclosuresFrom_effective {who : Player} :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (registry : Registry Γ) →
+    (revelations : Revelations Γ) → (policy : BehavioralPolicy who program) →
+    EffectiveDisclosures program registry revelations
+      (policy.normalizeDisclosuresFrom program registry revelations)
+  | _, _, .ret _, _, _, _ => trivial
+  | _, _, .sample _ _ _ next, _, _, policy =>
+      normalizeDisclosuresFrom_effective next _ _ policy
+  | _, _, .commit _ _ _ _ next, _, _, policy =>
+      normalizeDisclosuresFrom_effective next _ _ policy.2
+  | _, _, .reveal _ _ _ _ _ _ next, _, _, policy => by
+      refine ⟨?_, normalizeDisclosuresFrom_effective next _ _ policy.2⟩
       intro own view active disclose supported
       obtain ⟨intended, _, rfl⟩ := PMF.support_map .. ▸ supported
-      simp only [Bool.and_assoc, Bool.and_self]
+      exact effectiveDisclosureView_idempotent ..
 
-private theorem revealKernel_normalizeDisclosures
+/-- Initialized normalized policies never send a rejected opening. -/
+theorem BehavioralPolicy.normalizeDisclosures_effective {who : Player}
+    {Γ : SourceCtx Player L} {O : Finset VarId} (program : SourceProgram Player L Γ O)
+    (policy : BehavioralPolicy who program) :
+    EffectiveDisclosures program [] (Revelations.initial Γ)
+      (policy.normalizeDisclosures program) :=
+  normalizeDisclosuresFrom_effective program _ _ policy
+
+/-- Effective choices are authentic choices. -/
+theorem BehavioralPolicy.EffectiveDisclosures.authentic {who : Player}
+    {Γ : SourceCtx Player L} {O : Finset VarId} (program : SourceProgram Player L Γ O) :
+    ∀ (registry : Registry Γ) (revelations : Revelations Γ)
+      (policy : BehavioralPolicy who program),
+      EffectiveDisclosures program registry revelations policy →
+        AuthenticDisclosures program policy := by
+  induction program with
+  | ret payoffs => intro registry revelations policy effective; trivial
+  | sample name fresh law next ih =>
+      intro registry revelations policy effective
+      exact ih registry.weaken revelations.weaken policy effective
+  | commit name owner fresh guard next ih =>
+      intro registry revelations policy effective
+      exact ih _ _ policy.2 effective
+  | reveal published owner name fresh selected unresolved next ih =>
+      intro registry revelations policy effective
+      refine ⟨?_, ih _ _ policy.2 effective.2⟩
+      intro own view active disclose supported
+      cases own
+      have fixed := effective.1 rfl view active disclose supported
+      calc
+        (disclose && ((view.observation.cells.get selected).getD .failure).isSuccess) =
+            (effectiveDisclosureView published selected registry revelations view disclose &&
+              ((view.observation.cells.get selected).getD .failure).isSuccess) :=
+          congrArg (fun choice => choice &&
+            ((view.observation.cells.get selected).getD .failure).isSuccess) fixed.symm
+        _ = effectiveDisclosureView published selected registry revelations view disclose :=
+          effectiveDisclosureView_authentic published selected registry revelations view disclose
+        _ = disclose := fixed
+
+/-- Every normalized policy remains authentic at every active view. -/
+theorem BehavioralPolicy.normalizeDisclosures_authentic {who : Player}
+    {Γ : SourceCtx Player L} {O : Finset VarId} (program : SourceProgram Player L Γ O)
+    (policy : BehavioralPolicy who program) :
+    (policy.normalizeDisclosures program).AuthenticDisclosures program :=
+  (normalizeDisclosures_effective program policy).authentic program _ _ _
+
+private theorem revealKernel_normalizeDisclosuresFrom
     {Γ : SourceCtx Player L} {O : Finset VarId} {published name : VarId}
     {owner : Player} {payload : L.Ty} {fresh : published ∉ Γ.map Prod.fst}
     {selected : HasVar Γ name (.commitment owner payload)} {unresolved : name ∈ O}
     {next : SourceProgram Player L ((published, .publication payload) :: Γ) (O.erase name)}
     (profile : BehavioralProfile (.reveal published owner name fresh selected unresolved next))
     (config : Config Player L Γ) (active : owner ∉ config.defaulted) :
-    revealKernel (normalizeDisclosureProfile _ profile) (config.view owner) active =
+    revealKernel (normalizeDisclosureProfileFrom _ config.registry config.revelations profile)
+        (config.view owner) active =
       (revealKernel profile (config.view owner) active).map fun disclose =>
-        disclose && (config.state.get selected).isSuccess := by
-  simp [revealKernel, normalizeDisclosureProfile, BehavioralPolicy.normalizeDisclosures,
-    Config.view, sourceObserve, Env.get]
+        effectiveDisclosure published selected config disclose := by
+  simp only [revealKernel, normalizeDisclosureProfileFrom,
+    BehavioralPolicy.normalizeDisclosuresFrom, effectiveDisclosureView_observe]
 
-/-- Pointwise disclosure normalization preserves the joint law of every typed
+/-- Normalization from actual static metadata preserves the joint law of every
 cell and the complete public default record under the sole source evaluator. -/
 theorem runFrom_normalizeDisclosures_eq
     {Γ : SourceCtx Player L} {O : Finset VarId} (program : SourceProgram Player L Γ O) :
     ∀ (profile : BehavioralProfile program) (config : Config Player L Γ),
-      (runFrom program (normalizeDisclosureProfile program profile) config).map
-          (fun final => (final.state, final.defaults)) =
+      (runFrom program
+        (normalizeDisclosureProfileFrom program config.registry config.revelations profile)
+          config).map (fun final => (final.state, final.defaults)) =
         (runFrom program profile config).map (fun final => (final.state, final.defaults)) := by
   induction program with
   | ret payoffs =>
@@ -214,7 +325,9 @@ theorem runFrom_normalizeDisclosures_eq
       intro profile config
       change ((if inactive : owner ∈ config.defaulted then PMF.pure none
           else commitKernel profile (config.view owner) inactive).bind fun choice =>
-        runFrom next (normalizeDisclosureProfile next (afterCommit profile))
+        runFrom next (normalizeDisclosureProfileFrom next
+          (commitSuccessor name guard config choice).registry
+          (commitSuccessor name guard config choice).revelations (afterCommit profile))
           (commitSuccessor name guard config choice)).map _ = _
       rw [runFrom, PMF.map_bind, PMF.map_bind]
       apply bind_congr_on_support _
@@ -226,25 +339,37 @@ theorem runFrom_normalizeDisclosures_eq
       · simp only [runFrom, inactive, dite_true, PMF.pure_bind]
         exact ih (afterReveal profile) (revealSuccessor published selected config false)
       · rw [runFrom, runFrom, dite_eq_right inactive, dite_eq_right inactive,
-          revealKernel_normalizeDisclosures profile config inactive]
+          revealKernel_normalizeDisclosuresFrom profile config inactive]
         simp only [PMF.bind_map, PMF.map_bind]
         apply bind_congr_on_support _
         intro disclose _
-        change (runFrom next (normalizeDisclosureProfile next (afterReveal profile))
+        change (runFrom next (normalizeDisclosureProfileFrom next
           (revealSuccessor published selected config
-            (disclose && (config.state.get selected).isSuccess))).map
+            (effectiveDisclosure published selected config disclose)).registry
+          (revealSuccessor published selected config
+            (effectiveDisclosure published selected config disclose)).revelations
+          (afterReveal profile)) (revealSuccessor published selected config
+            (effectiveDisclosure published selected config disclose))).map
               (fun final => (final.state, final.defaults)) = _
-        have tail := ih (afterReveal profile)
-          (revealSuccessor published selected config
-            (disclose && (config.state.get selected).isSuccess))
-        rw [tail]
-        cases binding : config.state.get selected with
-        | success value =>
-            simp only [PublicationResult.isSuccess, Bool.and_true]
-        | failure =>
-            simp only [binding, PublicationResult.isSuccess, Bool.and_false,
-              revealSuccessor, inactive, ite_false, Bool.false_eq_true, ite_self,
-              PublicationResult.isFailure]
+        rw [ih]
+        cases disclose with
+        | false => rw [effectiveDisclosure_false]
+        | true =>
+          cases result : disclosureResult published selected config true with
+          | success value => simp only [effectiveDisclosure, result]
+          | failure =>
+            simp only [effectiveDisclosure, result]
+            have expand (choice : Bool) : revealSuccessor published selected config choice =
+                ⟨Env.cons (disclosureResult published selected config choice) config.state,
+                  config.registry.weaken, Revelations.reveal config.revelations selected,
+                  Function.update config.history owner
+                    (config.history owner ++ [.reveal owner name choice]),
+                  config.defaults.record (if
+                    (disclosureResult published selected config choice).isFailure then
+                      some owner else none)⟩ := by
+              simp only [disclosureResult, revealSuccessor, inactive, ite_false, Env.cons_get_here]
+            rw [expand false, expand true, disclosureResult_false, result]
+            simp only [PublicationResult.isFailure, ite_true]
             apply runFrom_active_histories_eq
             intro who active
             have different : who ≠ owner := by
@@ -290,9 +415,9 @@ theorem Setup.run_update_normalizeDisclosures_eq
     funext player
     by_cases same : player = who
     · subst player
-      simp only [normalizeDisclosureProfile, Function.update_self]
-    · simp only [normalizeDisclosureProfile, Function.update_of_ne same,
-        BehavioralPolicy.normalizeDisclosures_idempotent]
+      simp only [normalizeDisclosureProfile, normalizeDisclosureProfileFrom, Function.update_self]
+    · simp only [normalizeDisclosureProfile, normalizeDisclosureProfileFrom,
+        Function.update_of_ne same, BehavioralPolicy.normalizeDisclosuresFrom_idempotent]
   rw [← setup.run_normalizeDisclosures_eq, normalized, setup.run_normalizeDisclosures_eq]
 
 /-- Every public terminal observable has the same law after disclosure normalization. -/

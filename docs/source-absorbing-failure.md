@@ -43,16 +43,20 @@ failure. It queries no policy callback and appends no invented own action.
 Automatic openings still resolve their binding and retain guard bookkeeping.
 Public samples follow their declared laws and execution continues.
 
-[DisclosureBehavioral](../Vegas/Source/DisclosureBehavioral.lean) normalizes
-only unopenable disclosure attempts. Authentic attempts remain unchanged even
-when deferred guards reject publication. Its uniform profile transformation
-preserves the joint law of every typed cell and the full default history for
-arbitrary profiles, prior configurations and initial laws, without a
-finite-player or posterior-reconstruction premise. Defaulted owners' private
-intention lists can differ; full configuration equality is not asserted.
-[DisclosureOpening](../Vegas/Source/DisclosureOpening.lean) and
-[DisclosureSupport](../Vegas/Source/DisclosureSupport.lean) use the same
-authentic-binding criterion.
+[DisclosureBehavioral](../Vegas/Source/DisclosureBehavioral.lean) suppresses
+unopenable disclosures and disclosures whose retained guards reject publication.
+The owner computes this verdict from its observation and the registry and
+publication status fixed at the instruction. Withholding such an opening avoids
+revealing its value in ledger traffic while retaining the failed publication.
+The uniform transformation preserves the joint law of every typed cell and the
+full default history for arbitrary profiles and initial laws. Its continuation
+form takes the registry and publication status of the prior configuration.
+No finite-player or posterior-reconstruction premise is needed. Defaulted
+owners' private intention lists can differ; full configuration equality is not
+asserted. [DisclosureOpening](../Vegas/Source/DisclosureOpening.lean) applies
+the same guarded decision to an always-disclosing profile.
+[DisclosureSupport](../Vegas/Source/DisclosureSupport.lean) records the separate
+full-support class of authentic choices.
 
 [ValueBinding](../Vegas/Source/ValueBinding.lean) excludes accepted unusable
 bindings while retaining public omission. [Honest](../Vegas/Source/Honest.lean)

@@ -15,6 +15,34 @@ assert that an arbitrary strategy can discard its private action history.
 
 noncomputable section
 
+namespace Vegas
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr}
+
+/-- Complete an observation to evaluate guards. Hidden cells receive arbitrary
+values; the completed state is never supplied to a strategic callback. -/
+def SourceObservation.guardState {who : Player} {Γ : SourceCtx Player L}
+    (view : SourceObservation L who Γ) : State L Γ := fun _ cell selected =>
+  match cell with
+  | .publicData _ | .publication _ => view.cells.get selected
+  | .commitment _ _ => (view.cells.get selected).getD .failure
+  | .privateInput _ payload => (view.cells.get selected).getD (L.someValue payload)
+
+theorem SourceObservation.observe_guardState {who : Player} {Γ : SourceCtx Player L}
+    (state : State L Γ) :
+    sourceObserve who (sourceObserve who state).guardState = sourceObserve who state := by
+  apply sourceObserve_congr
+  · intro name payload selected
+    rfl
+  · intro name payload selected
+    rfl
+  · intro name payload selected
+    simp only [guardState, Env.get, sourceObserve, ↓reduceIte, Option.getD_some]
+  · intro name payload selected
+    simp only [guardState, Env.get, sourceObserve, ↓reduceIte, Option.getD_some]
+
+end Vegas
+
 namespace Vegas.SourceProgram
 
 open GameTheory.Math.Probability
@@ -125,5 +153,66 @@ theorem effectiveDisclosure_idempotent (published : VarId)
   exact congrArg (fun result : PublicationResult (L.Val payload) =>
       match result with | .failure => false | .success _ => true)
     (disclosureResult_effectiveDisclosure published source config disclose)
+
+/-- The owner computes the effective choice from its actual view and the static
+guard registry and publication positions at this instruction. -/
+def effectiveDisclosureView (published : VarId)
+    (source : HasVar Γ name (.commitment owner payload))
+    (registry : Registry Γ) (revelations : Revelations Γ)
+    (view : DecisionView owner Γ) (disclose : Bool) : Bool :=
+  effectiveDisclosure published source
+    ⟨view.observation.guardState, registry, revelations, fun _ => view.history, view.defaults⟩
+    disclose
+
+theorem effectiveDisclosureView_observe (published : VarId)
+    (source : HasVar Γ name (.commitment owner payload))
+    (config : Config Player L Γ) (disclose : Bool) :
+    effectiveDisclosureView published source config.registry config.revelations
+        (config.view owner) disclose =
+      effectiveDisclosure published source config disclose := by
+  unfold effectiveDisclosureView
+  have sameView := congrArg (fun observed =>
+      (⟨observed, config.defaults, config.history owner⟩ : DecisionView owner Γ))
+    (SourceObservation.observe_guardState config.state)
+  exact effectiveDisclosure_observation_congr published source
+    ⟨(sourceObserve owner config.state).guardState, config.registry,
+      config.revelations, fun _ => config.history owner, config.defaults⟩ config rfl rfl
+    sameView disclose
+
+@[simp] theorem effectiveDisclosureView_false (published : VarId)
+    (source : HasVar Γ name (.commitment owner payload))
+    (registry : Registry Γ) (revelations : Revelations Γ)
+    (view : DecisionView owner Γ) :
+    effectiveDisclosureView published source registry revelations view false = false :=
+  effectiveDisclosure_false ..
+
+theorem effectiveDisclosureView_idempotent (published : VarId)
+    (source : HasVar Γ name (.commitment owner payload))
+    (registry : Registry Γ) (revelations : Revelations Γ)
+    (view : DecisionView owner Γ) (disclose : Bool) :
+    effectiveDisclosureView published source registry revelations view
+        (effectiveDisclosureView published source registry revelations view disclose) =
+      effectiveDisclosureView published source registry revelations view disclose :=
+  effectiveDisclosure_idempotent ..
+
+/-- An effective true choice contains an authentic binding value. -/
+theorem effectiveDisclosureView_authentic (published : VarId)
+    (source : HasVar Γ name (.commitment owner payload))
+    (registry : Registry Γ) (revelations : Revelations Γ)
+    (view : DecisionView owner Γ) (disclose : Bool) :
+    (effectiveDisclosureView published source registry revelations view disclose &&
+        ((view.observation.cells.get source).getD .failure).isSuccess) =
+      effectiveDisclosureView published source registry revelations view disclose := by
+  cases binding : (view.observation.cells.get source).getD .failure with
+  | success value => simp only [PublicationResult.isSuccess, Bool.and_true]
+  | failure =>
+      let config : Config Player L Γ :=
+        ⟨view.observation.guardState, registry, revelations, fun _ => view.history, view.defaults⟩
+      have unopenable : config.state.get source = .failure := binding
+      have rejected : disclosureResult published source config disclose = .failure := by
+        simp only [disclosureResult, revealSuccessor, Env.cons_get_here, unopenable, ite_self]
+      change (effectiveDisclosure published source config disclose &&
+        PublicationResult.failure.isSuccess) = effectiveDisclosure published source config disclose
+      simp only [effectiveDisclosure, rejected, PublicationResult.isSuccess, Bool.and_false]
 
 end Vegas.SourceProgram

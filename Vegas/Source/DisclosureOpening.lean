@@ -3,11 +3,10 @@
 import Vegas.Source.DisclosureBehavioral
 import Vegas.Source.Disclosure
 
-/-! # Opening every authentic binding
+/-! # Opening every effective binding
 
-An authentic opening discloses exactly when the owner's immutable binding
-contains a value. Deferred guard rejection does not suppress the attempt.
-The opening profile normalizes the profile that always requests disclosure.
+An opening discloses exactly when its guarded publication would contain a
+value. The opening profile normalizes an always-disclosing source profile.
 -/
 
 noncomputable section
@@ -18,48 +17,58 @@ open GameTheory GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-/-- At every active own reveal, open precisely the bindings that contain a value. -/
-def BehavioralPolicy.OpensAuthentically {who : Player} :
+/-- At every active reveal, disclose exactly when the owner-local guarded
+publication succeeds, using the static metadata at the instruction. -/
+def BehavioralPolicy.OpensEffectively {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → BehavioralPolicy who program → Prop
-  | _, _, .ret _, _ => True
-  | _, _, .sample _ _ _ next, policy => OpensAuthentically next policy
-  | _, _, .commit _ _ _ _ next, policy => OpensAuthentically next policy.2
-  | _, _, .reveal _ _ _ _ selected _ next, policy =>
+    (program : SourceProgram Player L Γ O) → Registry Γ → Revelations Γ →
+    BehavioralPolicy who program → Prop
+  | _, _, .ret _, _, _, _ => True
+  | _, _, .sample _ _ _ next, registry, revelations, policy =>
+      OpensEffectively next registry.weaken revelations.weaken policy
+  | _, _, .commit (payload := payload) name owner _ guard next, registry, revelations, policy =>
+      OpensEffectively next
+        ({ owner := owner, subject := name, payload := payload, source := .here,
+            guard := guard.weaken } :: registry.weaken) revelations.weaken policy.2
+  | _, _, .reveal published _ _ _ selected _ next, registry, revelations, policy =>
       (∀ own view active, policy.1 own view active = PMF.pure
-        ((view.observation.cells.get (own ▸ selected)).getD .failure).isSuccess) ∧
-      OpensAuthentically next policy.2
+        (effectiveDisclosureView published (own ▸ selected) registry revelations view true)) ∧
+      OpensEffectively next registry.weaken
+        (revelations.reveal (published := published) selected) policy.2
 
-/-- Normalizing a policy that always requests disclosure opens every authentic binding. -/
-theorem BehavioralPolicy.opensAuthentically_forceDisclose {who : Player} :
+/-- Normalizing an always-disclosing policy chooses every effective opening. -/
+theorem BehavioralPolicy.opensEffectively_forceDisclose {who : Player} :
     {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → (policy : BehavioralPolicy who program) →
-    ((policy.forceDisclose program).normalizeDisclosures program).OpensAuthentically program
-  | _, _, .ret _, _ => trivial
-  | _, _, .sample _ _ _ next, policy => opensAuthentically_forceDisclose next policy
-  | _, _, .commit _ _ _ _ next, policy => opensAuthentically_forceDisclose next policy.2
-  | _, _, .reveal _ _ _ _ _ _ next, policy => by
-      refine ⟨?_, opensAuthentically_forceDisclose next policy.2⟩
+    (program : SourceProgram Player L Γ O) → (registry : Registry Γ) →
+    (revelations : Revelations Γ) → (policy : BehavioralPolicy who program) →
+    OpensEffectively program registry revelations
+      ((policy.forceDisclose program).normalizeDisclosuresFrom program registry revelations)
+  | _, _, .ret _, _, _, _ => trivial
+  | _, _, .sample _ _ _ next, _, _, policy => opensEffectively_forceDisclose next _ _ policy
+  | _, _, .commit _ _ _ _ next, _, _, policy => opensEffectively_forceDisclose next _ _ policy.2
+  | _, _, .reveal _ _ _ _ _ _ next, _, _, policy => by
+      refine ⟨?_, opensEffectively_forceDisclose next _ _ policy.2⟩
       intro own view active
-      simp only [normalizeDisclosures, forceDisclose, PMF.pure_map, Bool.true_and]
+      simp only [normalizeDisclosuresFrom, forceDisclose, PMF.pure_map]
 
-/-- Retain binding kernels and disclose every authentic own binding. -/
+/-- Retain binding kernels and attempt every opening that would publish a value. -/
 def BehavioralPolicy.authenticOpening {who : Player} {Γ : SourceCtx Player L}
     {O : Finset VarId} (program : SourceProgram Player L Γ O)
     (policy : BehavioralPolicy who program) : BehavioralPolicy who program :=
   (policy.forceDisclose program).normalizeDisclosures program
 
-/-- Every player opens each authentic binding, retaining the original binding policies. -/
+/-- Every player attempts every effective opening, retaining its binding kernels. -/
 def openingProfile {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program) :
     BehavioralProfile program :=
   fun player => (profile player).authenticOpening program
 
-/-- Every player of the opening profile opens exactly its authentic bindings. -/
-theorem openingProfile_opensAuthentically {Γ : SourceCtx Player L} {O : Finset VarId}
+/-- Every player of the opening profile chooses exactly the effective openings. -/
+theorem openingProfile_opensEffectively {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program) (who : Player) :
-    (openingProfile program profile who).OpensAuthentically program :=
-  BehavioralPolicy.opensAuthentically_forceDisclose program (profile who)
+    BehavioralPolicy.OpensEffectively program [] (Revelations.initial Γ)
+      (openingProfile program profile who) :=
+  BehavioralPolicy.opensEffectively_forceDisclose program _ _ (profile who)
 
 /-- A law on decisions that never refuses discloses surely. -/
 theorem eq_pure_true_of_false_not_mem {law : PMF Bool} (never : false ∉ law.support) :
