@@ -619,7 +619,7 @@ source profile through `normalizeDisclosureProfile` directly. The source
 normalizer preserves every commitment admission interface, including omission
 and admitted unopenable bindings. Its joint typed-cell/default-history law is
 the observation boundary for arbitrary source profiles and unilateral
-deviations. The higher physical readout and payoff compositions remain
+deviations. The bounded-menu and payoff compositions remain
 acceptance obligations; equality of the original private intention histories
 is not their target.
 
@@ -658,19 +658,24 @@ completion identity to every native terminal readout, including the full configu
 when the current event completes, then recurses at the actual reached rank.
 Its hypotheses are complete play and the local identity saying that the stopped
 law followed by the graph continuation equals the starting continuation. The
-compiler's concrete client proof must still discharge that local identity.
+concrete first-turn compiler proof discharges that local identity.
 The induction uses neither phase ends nor an exact successor boundary.
 The initialized adapter in
 [SourceServiceSiteBridge](../Vegas/Game/SourceServiceSiteBridge.lean) then
 derives the full first-turn source configuration law from that same local
 identity, applying source readout once.
+The same owner composes client recovery with disclosure normalization: once
+the normalized profile has this first-turn law, the actual clients preserve
+every total observation of the original profile's typed state and full public
+default record, without a response-menu or settlement premise.
 
 [RevealService](../Vegas/Game/RevealService.lean) proves
 `serviceGraph_eq_sequential`: under the supplied public-barrier certificate,
 every compiler dependency mode equals the sequential graph. The compiler's
 source order is total; removing an independent reveal dependency would violate
-that certificate. This reduces the admitted modes to one proof without adding
-a mode restriction to the compiler theorem.
+that certificate. This equality retains the original set of admitted modes.
+The source-law theorem still requires transport of the mode-indexed clients,
+observations and readout; that adapter remains an acceptance obligation.
 
 The first-turn source-law specification is owned by
 [SourceServiceTurnPolicy](../Vegas/Game/SourceServiceTurnPolicy.lean), alongside
@@ -700,12 +705,23 @@ handles every ready ownerless event for any native state, players and waiting
 count, without a complete-play or clear-default premise.
 
 The first-turn timing, submission discipline and inclusion window are checked
-in their own low service owners. Concrete-client composition must derive the
-local hypotheses above; that composition remains an acceptance obligation.
+in their own low service owners.
+[SourceServiceFirstTurnCompletion](../Vegas/Game/SourceServiceFirstTurnCompletion.lean)
+derives the local hypotheses, freezes the first action through the policy-mixture
+law, and composes the three cases. `firstTurnSourceLaw_of_async` gives the full
+configuration law for authentic source profiles. Disclosure normalization
+supplies that property inside the compiler. For every original source profile,
+`sourceServiceClientPolicy_outcome_law` gives the actual physical clients' exact
+joint typed-state/default law, under the asynchronous contract and its strict
+timing margin. `sourceServiceClientPolicy_graph_law` compares those clients
+with canonical execution of the original compiled graph through the same reader.
+These direct physical laws require neither a finite wire catalogue nor an
+equilibrium or audit premise.
 
 ## Remaining compiler interfaces
 
-The ordinary and sequential compiler capstones remain acceptance obligations.
+The mode-general and bounded-menu ordinary interfaces, and the sequential
+equilibrium compiler capstones, remain acceptance obligations.
 Their service consumers must compose the native command's complete source
 continuation. A command can finish a block and automatically complete later
 instructions; a sealed unfinished block alone does not bound the command's

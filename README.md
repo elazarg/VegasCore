@@ -47,14 +47,18 @@ See [source semantics](docs/source-semantics.md).
 The compiler lowers source instructions to a typed event graph. Its checked
 source law, scheduler correspondence and Nash results remain in the core,
 including the concurrent event-graph Nash theorem: that result is about public
-graph scheduling, not concurrent raw-ledger SE preservation. The plain and
-forced-exit implementations remain where the retained theorems use them.
+graph scheduling, not concurrent raw-ledger SE preservation. Source execution
+and the native runtime share absorbing public defaults; the runtime mechanically
+completes instructions of owners who have defaulted.
 There is no API compatibility requirement.
 
-The [ordinary compiler capstones](Vegas/Game/CompilerCorrectness.lean) preserve
-the exact law of every total typed-terminal-store reader on the actual bounded
-ledger clients, including failures, without an equilibrium or audit premise.
-They compare those same clients with canonical execution of the compiled graph.
+The [direct physical compiler laws](Vegas/Game/SourceServiceFirstTurnCompletion.lean)
+preserve every total observation of the joint typed terminal state and public
+default history under actual sequential clients, for every source profile.
+They compare those clients with canonical execution of the compiled graph,
+under the asynchronous service and timing premises. No finite wire catalogue,
+equilibrium or audit premise is required. The bounded-menu and mode-general
+ordinary interfaces remain acceptance obligations.
 [Operational refinement](Vegas/Pending/GraphRefinement.lean) separately covers
 arbitrary raw responses. The [completion guide](docs/compiler-correctness-plan.md)
 records their hypotheses and the optional stronger graph-policy interface.
@@ -68,6 +72,7 @@ finite strategy support over an unbounded bid type is insufficient. Ordinary
 clients support arbitrary specified pending observations; ledger clients have
 the same run when no pending data is delivered. The completion backend is
 nonconstructive; numerical synthesis and client code generation are separate work.
+Its composition with the absorbing native semantics remains an acceptance obligation.
 
 Checked late-leak examples delimit preservation and show sufficient payoff
 conditions in their stated finite games. Their impossibility conclusions do

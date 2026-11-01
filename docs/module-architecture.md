@@ -33,8 +33,12 @@ initialized histories retain reachability, cells, deadlines and quiescence.
 The roster scheduler has an all-history service proof through automatic
 completion, and completed native configurations freeze readout and fixed-exit
 payoff. Sequential completion geometry uses finite paths and actual prefix ranks.
-The probabilistic client and strategic ports remain acceptance obligations for
-replacing the complete tower.
+The direct sequential physical-client laws compose the source continuation
+with silent expiry, typed acceptance and chance sampling in
+[SourceServiceFirstTurnCompletion](../Vegas/Game/SourceServiceFirstTurnCompletion.lean).
+They preserve the joint typed-state/public-default law of every source profile.
+Mode transport, bounded-menu consumers and strategic ports remain acceptance
+obligations for replacing the complete tower.
 
 Start with [recovery preservation](../Vegas/Game/RecoverySequentialCompilation.lean),
 [monetary preservation](../Vegas/Game/RecoveryPaymentPreservation.lean) and

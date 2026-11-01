@@ -464,6 +464,7 @@ import Vegas.Game.SourceDebtContinuation
 import Vegas.Game.SourceDebtObservation
 import Vegas.Game.SourceServiceFacts
 import Vegas.Game.SourceServiceFirstTurnBinding
+import Vegas.Game.SourceServiceFirstTurnCompletion
 import Vegas.Game.SourceServiceFirstTurnMixture
 import Vegas.Game.SourceServiceFirstTurnOpportunity
 import Vegas.Game.SourceServiceFirstTurnRisk

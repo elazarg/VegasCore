@@ -6,13 +6,16 @@ their stated public graph schedulers. Concurrent event-graph scheduling is
 distinct from partially observed concurrent raw-ledger SE preservation.
 
 The compiled graph is instantiated as an Interaction application, and actual
-ledger clients use its translated policies. The checked source-client laws
-already preserve the exact source outcome distribution on that bounded target.
-The [ordinary compiler capstones](../Vegas/Game/CompilerCorrectness.lean)
-expose both passes and the end-to-end law for every total typed-store reader.
-They need no equilibrium, audit, utility bound or independent-prior premise.
+ledger clients use its translated policies. The
+[direct sequential compiler laws](../Vegas/Game/SourceServiceFirstTurnCompletion.lean)
+preserve every total observation of the source profile's joint typed terminal
+state and public defaults under the actual physical clients. They compare the
+same clients with canonical execution of the compiled graph, using the
+asynchronous service and timing premises. They need no finite wire catalogue,
+equilibrium, audit, utility bound or independent-prior premise. Mode-general
+and bounded-menu compositions remain acceptance obligations.
 The [operational capstone](../Vegas/Pending/GraphRefinement.lean) exposes
-stuttering graph refinement of arbitrary raw protocol transitions and
+finite-path graph refinement of arbitrary raw protocol transitions and
 initialized histories. These results and their scope are listed in the
 [compiler correctness plan](compiler-correctness-plan.md).
 A standalone compiler for arbitrary graph policies is a separate generalization.
