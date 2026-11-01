@@ -269,9 +269,10 @@ theorem disclosureResolves_of_forced (wellFormed : setup.WellFormed)
       have nextDecoded := next.decode
       unfold sourceServicePrefix? serviceSourcePrefix? at nextDecoded
       have failedNext := ProtocolState.revealFailed_of_decode_failure setup.program event.val
-        (ContextRefs.initial setup.context (outputLayout setup.program)) []
-        (Revelations.initial setup.context) (outputRef setup.program) _ _ _ _ event.isLt owner
-        payload outputEq nextDecoded ((eventOwner?_eq_actor setup.program event).trans owned)
+        (event.val + 1) (ContextRefs.initial setup.context (outputLayout setup.program)) []
+        (Revelations.initial setup.context) (outputRef setup.program) _ _ _ _ event.isLt
+        (Nat.lt_succ_self _) owner payload outputEq nextDecoded
+        ((eventOwner?_eq_actor setup.program event).trans owned)
         (by
           change (control.execution.application.config.complete event ready _ _).outputs
             event = _

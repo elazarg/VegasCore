@@ -6,6 +6,8 @@ import Vegas.Game.RevealServiceCalendarState
 import Vegas.Game.OnePacketLawApproximation
 import Vegas.Game.OnePacketIntendedProjection
 import Vegas.Game.OnePacketCompletion
+import Vegas.Game.OnePacketPrescribedSupport
+import Vegas.Game.OnePacketEventFailure
 
 /-! # The successful part of a late delivery
 
@@ -13,6 +15,11 @@ import Vegas.Game.OnePacketCompletion
 step keeps the completed prefix and the recorded views below the event, or
 completes the event at scheduler control, with the recorded views unchanged
 (`Vegas.pendingTransition`).
+
+The public completion order determines a site's rank, and the pending event
+determines its freshness. At its first completion stop, every supported native
+continuation consists of one primary graph step and automatic completion
+(`Vegas.lateStop_primary_drain`).
 -/
 
 noncomputable section
@@ -149,6 +156,110 @@ theorem pendingAt_history {horizon : Nat} {scheduler : (application setup runtim
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨0, EventOrder.Cut.empty_isPrefix _, fun _ entry member =>
         by simp [ReactiveApplication.Execution.initial] at member⟩) trace
+
+/-- **The rank of a site**: the number of events its public completion order
+records. -/
+def siteRank : (application setup runtime leaks).Info → Nat
+  | none => 0
+  | some (_, view) => view.application.publicView.observation.completionOrder.length
+
+/-- The site's pending event, if any, has not failed. -/
+def siteFresh (who : Player) (info : (application setup runtime leaks).Info)
+    (control : (application setup runtime leaks).Control) : Prop :=
+  match pendingEvent setup runtime leaks who info with
+  | some event => ¬ StoreEventFailed control.execution.application.config.store event
+  | none => True
+
+section CompletionStops
+
+variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
+  {scheduler : (application setup runtime leaks).Scheduler}
+
+/-- At the first completion stop, the ready event has one primary graph step
+followed by the native automatic completion. -/
+theorem lateStop_primary_drain
+    (certificate : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+      horizon scheduler).WellFoundedHistories)
+    (players : ∀ player, ((bounds.onePacketMenu runtime leaks).information
+      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
+    {sent : (graph setup).Config} {rank : Nat} (ordered : sent.cut.IsPrefix rank)
+    {event : (graph setup).EventId} (ready : sent.cut.Ready event)
+    (terminalCompleted : ∀ (final : (application setup runtime leaks).Control),
+      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+        scheduler).Trace (some final) →
+      (application setup runtime leaks).terminal (some final) →
+      final.execution.application.config = sent →
+      event ∈ final.execution.application.config.cut.completed)
+    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      scheduler).History) {control : (application setup runtime leaks).Control}
+    (current : start.state = some control)
+    (atSent : control.execution.application.config = sent) :
+    ∀ stop ∈ (((bounds.onePacketMenu runtime leaks).information (initialLaw setup)
+        horizon scheduler).runBehavioralUntil certificate players
+        (LateStopped setup runtime leaks bounds horizon scheduler rank) start).support,
+      ∃ final, stop.state = some final ∧
+        ∃ (action : (graph setup).Action event) (primary : EventGraphRuntime.State (graph setup)),
+          primary.config ∈ (sent.step event ready action).support ∧
+            final.execution.application.config = primary.drain.config := by
+  intro stop member
+  let menu := bounds.onePacketMenu runtime leaks
+  let model := menu.information (initialLaw setup) horizon scheduler
+  have rankEq := (ready_iff_rank setup sent rank ordered event).mp ready
+  let held := fun reachedState : (application setup runtime leaks).ProtocolState =>
+    ∃ reachedControl, reachedState = some reachedControl ∧
+      (reachedControl.execution.application.config = sent ∨
+        ∃ (action : (graph setup).Action event) (primary : EventGraphRuntime.State (graph setup)),
+          primary.config ∈ (sent.step event ready action).support ∧
+            reachedControl.execution.application.config = primary.drain.config)
+  have closed := model.runBehavioralUntil_support_closed certificate players
+    (LateStopped setup runtime leaks bounds horizon scheduler rank) held
+    (fun history going _ joint legal target holds reached => by
+      obtain ⟨before, beforeState, atBefore⟩ := holds
+      have reached' : target ∈ ((application setup runtime leaks).transition (initialLaw setup)
+        horizon scheduler history.state joint).support := reached
+      rw [beforeState] at reached'
+      obtain ⟨next, rfl, _⟩ := (application setup runtime leaks).transition_recall_prefix
+        (initialLaw setup) horizon scheduler before target joint reached'
+      refine ⟨next, rfl, ?_⟩
+      rcases atBefore with same | ⟨action, primary, inStep, drained⟩
+      · have rawTrace := menu.toRawTrace (initialLaw setup) horizon scheduler
+          (beforeState ▸ history.trace)
+        have facts := legalFacts setup leaks horizon scheduler before rawTrace
+        rcases reactive_protocol_primary_or_stutter runtime leaks (initialLaw setup) horizon
+          scheduler before next joint facts.quiescent reached' with
+          stays | ⟨completed, completedReady, found, primary, inStep, drained⟩
+        · exact Or.inl (stays.trans same)
+        · have sameEvent : completed = event :=
+            setup.eventGraph.sequentialize_ready_unique _ completedReady (same.symm ▸ ready)
+          subst completed
+          exact Or.inr ⟨found, primary, by simpa only [same] using inStep, drained⟩
+      · have primaryDone : event ∈ primary.config.cut.completed := by
+          rw [sent.step_cut event ready action _ inStep, EventOrder.Cut.mem_complete]
+          exact Or.inl rfl
+        have done : event ∈ before.execution.application.config.cut.completed := by
+          rw [drained]
+          exact EventGraph.Config.Step.path_completed_mono primary.drain_graph_steps primaryDone
+        exact (going ⟨before, beforeState, event, done, rankEq⟩).elim)
+    start ⟨control, current, Or.inl atSent⟩ stop member
+  have ends := model.mem_support_runBehavioralUntil certificate players _ start stop member
+  obtain ⟨final, finalState, atFinal⟩ := closed
+  refine ⟨final, finalState, ?_⟩
+  rcases atFinal with same | stepped
+  · exfalso
+    rcases ends with ⟨other, otherState, completed, done, sameRank⟩ | ended
+    · rw [finalState] at otherState
+      cases Option.some.inj otherState
+      have sameEvent : completed = event := Fin.ext (sameRank.trans rankEq.symm)
+      subst completed
+      rw [same] at done
+      exact ready.1 done
+    · rw [finalState] at ended
+      exact ready.1 (by
+        rw [← same]
+        exact terminalCompleted final (finalState ▸ stop.trace) ended same)
+  · exact stepped
+
+end CompletionStops
 
 section Success
 

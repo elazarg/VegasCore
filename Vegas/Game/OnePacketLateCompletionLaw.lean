@@ -1,10 +1,11 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketLateCompletion
+import Vegas.Game.OnePacketCompletionLaw
+import Vegas.Game.OnePacketDecodedActor
 import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
 import Interaction.ReactiveStoppedState
 import Vegas.Game.OnePacketLateSending
-import Vegas.Game.AsyncDeviationForeign
 
 /-! # The completion-point law at a late binding
 
@@ -62,8 +63,11 @@ theorem completionPoint_eq_none_of_isPrefix {rank : Nat}
   unfold completionPoint
   rw [state]
   dsimp only
-  rw [ite_eq_right_iff.mpr fun prefixed =>
-    (Nat.succ_ne_self rank (EventOrder.Cut.IsPrefix.unique prefixed ordered)).elim]
+  rw [ite_eq_right_iff.mpr fun ⟨other, otherState, event, completed, rankEq⟩ => by
+    rw [state] at otherState
+    cases Option.some.inj otherState
+    have earlier := (ordered.2 event).mp completed
+    omega]
 
 open Classical in
 /-- A history whose control is not fresh has no completion point. -/
@@ -245,7 +249,7 @@ theorem lateBinding_exitBound
     (failedZero : ∀ (stop : ((bounds.onePacketMenu runtime leaks).protocol
         (initialLaw setup) horizon scheduler).History)
         (control : (application setup runtime leaks).Control),
-      stop.state = some control → control.execution.application.config.cut.IsPrefix (rank + 1) →
+      stop.state = some control → event ∈ control.execution.application.config.cut.completed →
       StoreEventFailed control.execution.application.config.store event → payoff stop = 0)
     (centered : Option (OwnAction Player L) → ℝ)
     (centeredBounded : ∀ choice, |centered choice| ≤ bound) (ε_nonneg : 0 ≤ ε)
@@ -444,7 +448,10 @@ theorem lateBinding_exitBound
         rw [expect_congr_on_support (g := readOff ∘ History.state)
           (fun next member => (readOffEq next member).symm), ← expect_map]
         change expect ((model.runBehavioralFrom installed 1 history).map History.state) readOff = _
-        rw [stepStates, expect_map, decodeProfile_eq_map, expect_map]
+        rw [stepStates, expect_map]
+        unfold ReactiveApplication.ResponseMenu.decodeProfile ReactiveApplication.decodePolicy
+          ReactiveApplication.ResponseMenu.embedPolicy
+        rw [PMF.map_comp, expect_map]
         rfl
       -- A choice the owner can draw reaches a successor.
       have drawn : ∀ choice ∈ (installed who info).support, ∃ next ∈ step.support,
@@ -453,7 +460,10 @@ theorem lateBinding_exitBound
         have inStates : respondState (choiceResponse (runtime := runtime) choice) ∈
             (step.map History.state).support := by
           change _ ∈ ((model.runBehavioralFrom installed 1 history).map History.state).support
-          rw [stepStates, decodeProfile_eq_map, PMF.map_comp, PMF.mem_support_map_iff]
+          rw [stepStates]
+          unfold ReactiveApplication.ResponseMenu.decodeProfile ReactiveApplication.decodePolicy
+            ReactiveApplication.ResponseMenu.embedPolicy
+          rw [PMF.map_comp, PMF.map_comp, PMF.mem_support_map_iff]
           exact ⟨choice, member, rfl⟩
         obtain ⟨next, nextMember, nextState⟩ := (PMF.mem_support_map_iff _ _ _).mp inStates
         exact ⟨next, nextMember, nextState⟩
@@ -584,12 +594,13 @@ theorem lateBinding_exitBound
                 choice))
             rw [responded] at nextState
             rw [responded, ← nextState, readOffEq next nextMember]
-            obtain ⟨action, encoded, _⟩ := covered
+            obtain ⟨action, encoded, values⟩ := covered
+            obtain ⟨value, successful, _⟩ := values who payload outputEq codeEq node
             obtain ⟨material, transmits, envelope⟩ := slotResponse_transmission setup runtime
               leaks who
               (reached.recall who) (reached.observe (application setup runtime leaks) who) event
                 node
-              slot choice action encoded
+              slot choice action encoded (by rw [successful]; rfl)
             have named : runtime.submittedEvent? leaks (slotResponse setup runtime leaks who
                 (reached.recall who) (reached.observe (application setup runtime leaks) who) event
                   slot
@@ -661,9 +672,9 @@ theorem lateBinding_exitBound
           setup)
             horizon scheduler history.state joint).support := realized
         rw [state] at realized'
-        rcases lateUnsent_transition_other (runtime := runtime) ordered readySent outputEq
+        rcases lateUnsent_transition_other (runtime := runtime) readySent outputEq
             ⟨later, actor, reached⟩ ⟨atSent, extends_, unrecordedHere⟩ owner joint realized'
-            (rawAfter next) with unsent | ⟨after, afterState, prefixed, failed⟩
+            (rawAfter next) with unsent | ⟨after, afterState, completed, failed⟩
         · have throughNext : through next.state := by
             intro nextControl nextEq
             have recallEq := recall_eq_of_transition (runtime := runtime) (initial := initialLaw
@@ -681,10 +692,12 @@ theorem lateBinding_exitBound
           simp only [show inside next from ⟨unsent, throughNext⟩, ↓reduceIte]
         · split
           · rfl
-          · have halted : stopped next := ⟨after, afterState, prefixed⟩
+          · have halted : stopped next :=
+              ⟨after, afterState, event, completed,
+                (ready_iff_rank setup execution.application.config rank ordered event).mp readySent⟩
             simp only [later', model.runBehavioralUntil_of_stopped certificate installed halted,
               expect_pure]
-            exact failedZero next after afterState prefixed failed
+            exact failedZero next after afterState completed failed
       rw [expect_congr_on_support (g := fun _ => 0) zero, expect_constant, abs_zero]
       exact κNonneg
   have startInside : inside start := by
@@ -836,7 +849,10 @@ theorem lateBinding_completionPointLaw
       (by simpa only [state] using holds)
     have stepLaw := asIfHonest_bind_step_eq_behavioralStateStep (runtime := runtime) assessment
       who reached
-      orderedHere decodedHere intendedPoint turnHere (reached.recall who)
+      orderedHere decodedHere intendedPoint turnHere (by
+        rw [defaulted_eq_empty_of_decodedIntended
+          ((decodedPoint_eq_of_isPrefix orderedHere).trans decodedHere) intendedPoint]
+        exact Finset.notMem_empty _) (reached.recall who)
     have firstIntegrable : PayoffIntegrable (asIfHonestProfile setup runtime leaks assessment who
         (some (reached.recall who, reached.observe (application setup runtime leaks) who)))
         (fun choice => expect (ProtocolState.step setup.program point
@@ -893,7 +909,8 @@ theorem lateBinding_completionPointLaw
       (nextState ▸ next.trace)
     obtain ⟨found, ⟨residualFound⟩⟩ := protocol_sourceResidual (runtime := runtime)
       (failureProfile setup.program) menu horizon scheduler traceHere _ rfl
-    have foundEq : found = rank := EventOrder.Cut.IsPrefix.unique residualFound.checkpoint.ordered orderedHere
+    have foundEq : found = rank :=
+      EventOrder.Cut.IsPrefix.unique residualFound.checkpoint.ordered orderedHere
     have residual := foundEq ▸ residualFound
     cases choice with
     | none => simp at encoded
@@ -903,8 +920,10 @@ theorem lateBinding_completionPointLaw
       action encodedSource
     have owned : (graph setup).actor? event = some who := nodeView_bind_actor outputEq codeEq
     have pointDecoded : decodedPoint setup reached.application.config = some point :=
-      (decodedPoint_eq_of_isPrefix orderedHere).trans decodedHere
-    have acts := (decodedPoint_actor who readyHere pointDecoded).trans owned
+      (decodedPoint_eq residual).trans (residual.decode.symm.trans decodedHere)
+    have acts := (decodedPoint_actor_of_history who
+      (menu.toRawTrace (initialLaw setup) horizon scheduler traceHere) readyHere pointDecoded).trans
+        owned
     obtain ⟨target, stepEq⟩ := ProtocolState.step_eq_pure_of_actor who who setup.program point
       (fun _ => some source) acts
     have stepEq' : ProtocolState.step setup.program point

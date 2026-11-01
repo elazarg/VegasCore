@@ -25,7 +25,7 @@ it does not reproduce their state updates in another interpreter.
 
 The [absorbing-default port](source-absorbing-failure.md) checks that this source
 executor and the graph executor preserve full configurations under compilation.
-The first pass generates sequential dependencies to retain public default timing;
+The compiler generates sequential dependencies to retain public default timing;
 its scheduling proof uses the unique ready event. The sole ledger application
 derives default control from the graph configuration and performs bounded
 automatic completion. Its raw transitions refine finite supported graph paths;

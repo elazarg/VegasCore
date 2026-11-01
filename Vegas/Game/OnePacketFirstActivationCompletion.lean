@@ -22,39 +22,7 @@ successful output, provided the packet settles on that stopped law
 
 noncomputable section
 
-namespace Vegas.SourceProgram.ProtocolState
 
-variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-
-/-- **A step with an actor is deterministic.** At a source point where some
-player acts, every joint choice steps to a single point. -/
-theorem step_eq_pure_of_actor (who owner : Player) : {Γ : SourceCtx Player L} →
-    {O : Finset VarId} → (program : SourceProgram Player L Γ O) →
-    (state : ProtocolState program) → (joint : Player → Option (OwnAction Player L)) →
-    ProtocolView.actor who program (observe who program state) = some owner →
-    ∃ target, step program state joint = PMF.pure target
-  | _, _, .ret _, _, _, acts => by
-      simp [ProtocolView.actor] at acts
-  | _, _, .sample _ _ _ next, state, joint, acts => by
-      cases state with
-      | inl config => simp [observe, ProtocolView.actor] at acts
-      | inr rest =>
-          obtain ⟨target, stepEq⟩ := step_eq_pure_of_actor who owner next rest joint acts
-          exact ⟨Sum.inr target, by simp only [step, Sum.elim_inr, stepEq, PMF.pure_map]⟩
-  | _, _, .commit _ _ _ _ next, state, joint, acts => by
-      cases state with
-      | inl config => exact ⟨_, rfl⟩
-      | inr rest =>
-          obtain ⟨target, stepEq⟩ := step_eq_pure_of_actor who owner next rest joint acts
-          exact ⟨Sum.inr target, by simp only [step, Sum.elim_inr, stepEq, PMF.pure_map]⟩
-  | _, _, .reveal _ _ _ _ _ _ next, state, joint, acts => by
-      cases state with
-      | inl config => exact ⟨_, rfl⟩
-      | inr rest =>
-          obtain ⟨target, stepEq⟩ := step_eq_pure_of_actor who owner next rest joint acts
-          exact ⟨Sum.inr target, by simp only [step, Sum.elim_inr, stepEq, PMF.pure_map]⟩
-
-end Vegas.SourceProgram.ProtocolState
 
 namespace Vegas
 
@@ -69,16 +37,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}
-
-omit [Fintype Player] in
-/-- At a completed prefix, the decoded point is the readout at that prefix. -/
-theorem decodedPoint_eq_of_isPrefix {config : (graph setup).Config} {rank : Nat}
-    (ordered : config.cut.IsPrefix rank) :
-    decodedPoint setup config = sourceServicePrefix? setup rank config := by
-  have exists_ordered : ∃ rank, config.cut.IsPrefix rank := ⟨rank, ordered⟩
-  unfold decodedPoint
-  rw [dite_eq_left_of_eq_true (eq_true exists_ordered), show exists_ordered.choose = rank from
-    EventOrder.Cut.IsPrefix.unique exists_ordered.choose_spec ordered]
 
 omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
 /-- A binding output read at its own type is not a failure exactly when its

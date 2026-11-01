@@ -1,20 +1,18 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateBadMass
-import Vegas.Game.ServiceRevealDecode
-import Vegas.Game.ServiceWithheldForfeit
-import Vegas.Game.SourcePrefixPublications
+import Vegas.Game.OnePacketLateSuccessFree
+import Vegas.Game.OnePacketSourceTurn
+import Vegas.Game.OnePacketDecodedActor
+import Vegas.EventGraph.ResolutionProvenance
 
 /-! # Completions of a late reveal
 
-From a history at which the event of the site's rank is ready, the configuration
-stays put until the event completes, so every stop of play until it completes is
-one step of the event from the history's configuration
-(`Vegas.lateStop_mem_step`). At a reveal, the step publishes the resolution of
-the disclosure the action chooses, and a refusal publishes a failure
-(`Vegas.resolve_step_output`). So disclosing completes the source reveal at its
-unique intended successor, and every runtime completion reaches that successor
-or records a failed publication (`Vegas.disclosure_sourceKernel`).
+A native completion consists of the ready event's primary graph step followed
+by automatic completion. When the source step reaches an intended target,
+that target has no defaults, so the automatic tail is empty. Withholding instead
+stores a public failure that persists through automatic completion. Thus every
+late-reveal completion reaches the intended authentic-opening successor or
+records a failed publication (`Vegas.disclosure_sourceKernel`).
 -/
 
 noncomputable section
@@ -22,7 +20,6 @@ noncomputable section
 namespace Vegas
 
 open SourceProgram
-
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Protocol.InformationModel GameTheory.Math.Probability Interaction EventGraphRuntime
 
@@ -34,113 +31,42 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {scheduler : (application setup runtime leaks).Scheduler}
 
 omit [Fintype Player] in
-/-- A configuration step of a reveal stores the resolution of the disclosure its
-action chooses. -/
-theorem resolve_step_output {config next : (graph setup).Config}
-    {event : (graph setup).EventId} {ready : config.cut.Ready event}
-    {action : (graph setup).Action event} {owner : Player} {payload : L.Ty}
+private theorem withheld_primary_drain_failed
+    {sent : (graph setup).Config} {event : (graph setup).EventId}
+    (ready : sent.cut.Ready event) {owner : Player} {payload : L.Ty}
     {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
     {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
     {outputEq : (graph setup).outputLayout event = .publication payload}
-    {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
-      ((graph setup).nodes event) = .resolve owner payload binding checks}
-    (member : next ∈ (config.step event ready action).support) :
-    next.outputs event =
-      (EventGraph.EventCode.resolveOutput? binding checks
-        (cast (congrArg EventGraph.EventField.Action outputEq) action) next.store).map
-          (cast (congrArg EventGraph.EventField.Value outputEq.symm)) := by
-  have reach : ConfigReaches setup config next :=
-    Relation.ReflTransGen.single (Or.inr ⟨event, ready, action, member⟩)
-  exact ConfigReaches.resolve_output reach (by
-    rw [config.step_history event ready action next member]
-    exact List.mem_append_right _ (List.mem_singleton_self _)) ready.1 (outputEq := outputEq)
-    (codeEq := codeEq)
-
-/-- **Every stop is one step of the event.** Under a scheduler completing play,
-from a history whose configuration `sent` is a prefix of `rank` events with
-`event` ready, every stop of play of any profile until the event completes is
-one step of the event from `sent`. -/
-theorem lateStop_mem_step
-    (certificate : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
-      horizon scheduler).WellFoundedHistories)
-    (players : ∀ player, ((bounds.onePacketMenu runtime leaks).information
-      (initialLaw setup) horizon scheduler).BehavioralPolicy player)
-    {sent : (graph setup).Config} {rank : Nat} (ordered : sent.cut.IsPrefix rank)
-    {event : (graph setup).EventId} (ready : sent.cut.Ready event)
-    (terminalCompleted : ∀ (final : (application setup runtime leaks).Control),
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
-        scheduler).Trace (some final) →
-      (application setup runtime leaks).terminal (some final) →
-      final.execution.application.config = sent →
-      event ∈ final.execution.application.config.cut.completed)
-    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
-      scheduler).History) {control : (application setup runtime leaks).Control}
-    (current : start.state = some control)
-    (atSent : control.execution.application.config = sent) :
-    ∀ stop ∈ (((bounds.onePacketMenu runtime leaks).information (initialLaw setup)
-        horizon scheduler).runBehavioralUntil certificate players
-        (LateStopped setup runtime leaks bounds horizon scheduler rank) start).support,
-      ∃ final, stop.state = some final ∧
-        ∃ action, final.execution.application.config ∈ (sent.step event ready action).support := by
-  intro stop member
-  let menu := bounds.onePacketMenu runtime leaks
-  let model := menu.information (initialLaw setup) horizon scheduler
-  let held := fun reachedState : (application setup runtime leaks).ProtocolState =>
-    ∃ reachedControl, reachedState = some reachedControl ∧
-      (reachedControl.execution.application.config = sent ∨
-        ∃ action, reachedControl.execution.application.config ∈
-          (sent.step event ready action).support)
-  have closed := model.runBehavioralUntil_support_closed certificate players
-    (LateStopped setup runtime leaks bounds horizon scheduler rank) held
-    (fun history going _ joint legal target holds reached => by
-      obtain ⟨before, beforeState, atBefore⟩ := holds
-      have reached' : target ∈ ((application setup runtime leaks).transition (initialLaw setup)
-        horizon
-          scheduler history.state joint).support := reached
-      rw [beforeState] at reached'
-      clear reached
-      have reached := reached'
-      obtain ⟨next, rfl, _⟩ := (application setup runtime leaks).transition_recall_prefix
-        (initialLaw setup) horizon scheduler before target joint reached
-      refine ⟨next, rfl, ?_⟩
-      rcases atBefore with same | ⟨action, inStep⟩
-      · rcases transition_configStep (initialLaw setup) horizon scheduler
-          before next joint
-            reached with stays | ⟨completed, completedReady, action, inStep⟩
-        · exact Or.inl (stays.trans same)
-        · right
-          revert completedReady inStep
-          rw [same]
-          intro completedReady inStep
-          have eventEq : completed = event := setup.eventGraph.sequentialize_ready_unique _ completedReady ready
-          subst eventEq
-          exact ⟨action, inStep⟩
-      · exact (going ⟨before, beforeState, isPrefix_succ_of_mem_step ordered ready inStep⟩).elim)
-    start ⟨control, current, Or.inl atSent⟩ stop member
-  have ends := model.mem_support_runBehavioralUntil certificate players _ start stop member
-  obtain ⟨final, finalState, atFinal⟩ := closed
-  refine ⟨final, finalState, ?_⟩
-  rcases atFinal with same | stepped
-  · exfalso
-    rcases ends with ⟨other, otherState, prefixed⟩ | ended
-    · rw [finalState] at otherState
-      cases Option.some.inj otherState
-      rw [same] at prefixed
-      exact Nat.succ_ne_self rank (EventOrder.Cut.IsPrefix.unique prefixed ordered)
-    · rw [finalState] at ended
-      exact ready.1 (by
-        rw [← same]
-        exact terminalCompleted final (finalState ▸ stop.trace) ended same)
-  · exact stepped
-
-omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
-/-- A publication failure read at its own type is a failure. -/
-theorem isFailure_cast_publication_failure {kind : EventGraph.EventField Player L}
-    {payload : L.Ty} (kindEq : kind = .publication payload) :
-    kind.IsFailure (cast (congrArg EventGraph.EventField.Value kindEq.symm)
-      (PublicationResult.failure : PublicationResult (L.Val payload))) := by
-  subst kindEq
-  rfl
+    (codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks)
+    (primary : EventGraphRuntime.State (graph setup))
+    (member : primary.config ∈ (sent.step event ready
+      (cast (congrArg EventGraph.EventField.Action outputEq.symm) false)).support) :
+    StoreEventFailed primary.drain.config.store event := by
+  have resolved := EventGraph.Config.resolution_step_output event owner payload binding checks
+    outputEq codeEq sent primary.config ready _ member
+  simp only [cast_cast, cast_eq, ite_self] at resolved
+  have available : ∀ field ∈ insert binding.field (EventGraph.GuardCheck.listReadFields checks),
+      (sent.store field).isSome = true := by
+    intro field present
+    apply sent.read_available ready
+    rw [← EventGraph.EventCode.readFields_cast outputEq ((graph setup).nodes event), codeEq]
+    exact present
+  rw [EventGraph.EventCode.resolveOutput?_false_eq_failure binding checks sent.store available]
+    at resolved
+  have done : event ∈ primary.config.cut.completed := by
+    rw [sent.step_cut event ready _ _ member, EventOrder.Cut.mem_complete]
+    exact Or.inl rfl
+  obtain ⟨stored, storedEq⟩ := Option.isSome_iff_exists.mp
+    ((primary.config.output_available event).mpr done)
+  have storedPrimary : primary.config.store (.inr event) = some stored := by
+    rw [EventGraph.Config.store_output, storedEq]
+  have storedFinal := primary.drain_store_of_some (.inr event) stored storedPrimary
+  apply storeEventFailed_of_ref _ event ⟨.inr event, outputEq⟩ rfl _ rfl
+  simp only [EventGraph.FieldRef.get?]
+  rw [storedFinal]
+  rw [storedEq] at resolved
+  exact resolved.symm
 
 /-- Disclosing completes the source reveal at its unique intended successor; every
 runtime completion reaches that successor or records a failed publication. -/
@@ -224,9 +150,15 @@ theorem disclosure_sourceKernel
   have owned : (graph setup).actor? event = some who := nodeView_resolve_actor outputEq codeEq
   have pointDecoded : decodedPoint setup execution.application.config = some point :=
     (decodedPoint_eq_of_isPrefix ordered).trans decoded
+  have clear := defaulted_eq_empty_of_decodedIntended pointDecoded intendedPoint
+  have active : who ∉ execution.application.config.defaulted := by
+    rw [clear]
+    exact Finset.notMem_empty who
   have acts : ∀ player, ProtocolView.actor player setup.program
-      (ProtocolState.observe player setup.program point) = some who := fun player =>
-    (decodedPoint_actor player ready pointDecoded).trans owned
+      (ProtocolState.observe player setup.program point) = some who := by
+    intro player
+    rw [decodedPoint_actor player ready pointDecoded, owned]
+    simp [active]
   obtain ⟨target, stepEq⟩ := ProtocolState.step_eq_pure_of_actor who who setup.program point
     (fun _ => decodeEventAction setup.program event disclose) (acts who)
   -- Every as-if-honest choice at the reveal is the disclosing one.
@@ -237,7 +169,7 @@ theorem disclosure_sourceKernel
     intro choice member
     have encodes := asIfHonestProfile_encodes (runtime := runtime) source who execution rank
       ordered point decoded
-      (execution.recall who) event turn choice member
+      (execution.recall who) event turn active choice member
     obtain ⟨action, encoded⟩ := Option.isSome_iff_exists.mp encodes
     cases choice with
     | none => cases encoded
@@ -263,15 +195,16 @@ theorem disclosure_sourceKernel
         cases sourceAction with
         | commit sourceOwner name sourcePayload result =>
             have failed := failing.1 sourceOwner name sourcePayload result rfl
-            subst failed
-            exact noFailure sourceOwner name sourcePayload rfl
+            obtain ⟨value, valueEq⟩ := noFailure
+            rw [valueEq] at failed
+            cases failed
         | reveal sourceOwner name withheld =>
             have withheldEq : withheld = false := failing.2
             subst withheldEq
             exact noWithholding sourceOwner name rfl
   have stepLaw := asIfHonest_bind_step_eq_behavioralStateStep (runtime := runtime) source who
     execution ordered
-    decoded intendedPoint turn (execution.recall who)
+    decoded intendedPoint turn active (execution.recall who)
   have stepPure : ProtocolState.behavioralStateStep setup.program profile point =
       PMF.pure target := by
     rw [← stepLaw, ← stepEq]
@@ -312,19 +245,18 @@ theorem disclosure_sourceKernel
   obtain ⟨found, ⟨residualFound⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
     setup.program)
     menu horizon scheduler traceHere _ rfl
-  have foundEq : found = rank := EventOrder.Cut.IsPrefix.unique residualFound.checkpoint.ordered ordered
+  have foundEq : found = rank :=
+    EventOrder.Cut.IsPrefix.unique residualFound.checkpoint.ordered ordered
   have residual := foundEq ▸ residualFound
   have stops : ∀ stop ∈ untilLaw.support, ∃ final, stop.state = some final ∧
       (completionPoint setup runtime leaks bounds horizon scheduler rank fresh stop = some target ∨
         (completionPoint setup runtime leaks bounds horizon scheduler rank fresh stop = none ∧
           StoreEventFailed final.execution.application.config.store event)) := by
     intro stop member
-    obtain ⟨final, finalState, action, inStep⟩ := lateStop_mem_step (runtime := runtime) certificate
+    obtain ⟨final, finalState, action, primary, inStep, drained⟩ :=
+      lateStop_primary_drain (runtime := runtime) certificate
       installed ordered ready terminalCompleted history.1 current rfl stop member
     refine ⟨final, finalState, ?_⟩
-    have done : event ∈ final.execution.application.config.cut.completed := by
-      rw [execution.application.config.step_cut event ready action _ inStep]
-      exact Finset.mem_insert_self _ _
     generalize resultEq : (cast (congrArg EventGraph.EventField.Action outputEq) action :
       Bool) = result
     have actionEq : action = cast (congrArg EventGraph.EventField.Action outputEq.symm) result := by
@@ -333,9 +265,15 @@ theorem disclosure_sourceKernel
     cases result with
     | true =>
         rw [actionEq] at inStep
+        have primaryClear := defaulted_eq_empty_of_intended_source_step residual decoded ready
+          stepEq targetIntended primary inStep
+        have actualStep : final.execution.application.config ∈
+            (execution.application.config.step event ready disclose).support := by
+          rw [drained, primary.drain_eq_of_empty primaryClear]
+          exact inStep
         have pointEq := completionPoint_of_mem_step (runtime := runtime) (fresh := fresh) residual
           decoded ready stepEq
-          finalState inStep
+          finalState actualStep
         by_cases freshHere : fresh final
         · left
           rw [pointEq, ite_eq_left ⟨targetIntended, freshHere⟩ ..]
@@ -344,28 +282,12 @@ theorem disclosure_sourceKernel
             not_not.mp ((not_congr (freshIff final)).mp freshHere)⟩
     | false =>
         right
-        have output := resolve_step_output (outputEq := outputEq) (codeEq := codeEq) inStep
-        rw [actionEq, cast_cast, cast_eq] at output
-        obtain ⟨stored, storedEq⟩ := Option.isSome_iff_exists.mp
-          ((final.execution.application.config.output_available event).mpr done)
-        rw [storedEq] at output
-        cases resolved : EventGraph.EventCode.resolveOutput? binding checks false
-            final.execution.application.config.store with
-        | none =>
-            rw [resolved] at output
-            cases output
-        | some result =>
-            rw [resolved] at output
-            have failedResult := resolveOutput?_false binding checks _ resolved
-            subst failedResult
-            have failedHere : StoreEventFailed final.execution.application.config.store event :=
-              ⟨stored, by rw [EventGraph.Config.store_output, storedEq], by
-                rw [Option.map_some, Option.some.injEq] at output
-                first | rw [← output] | rw [output]
-                exact isFailure_cast_publication_failure outputEq⟩
-            exact ⟨completionPoint_eq_none_of_not_fresh (runtime := runtime) finalState fun
-              freshHere =>
-              (freshIff final).mp freshHere failedHere, failedHere⟩
+        rw [actionEq] at inStep
+        have failedHere : StoreEventFailed final.execution.application.config.store event := by
+          rw [drained]
+          exact withheld_primary_drain_failed ready (outputEq := outputEq) codeEq primary inStep
+        exact ⟨completionPoint_eq_none_of_not_fresh (runtime := runtime) finalState
+          (fun freshHere => (freshIff final).mp freshHere failedHere), failedHere⟩
   exact ⟨target, stepPure, targetIntended, stops⟩
 
 end Vegas

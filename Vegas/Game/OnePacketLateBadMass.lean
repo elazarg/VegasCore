@@ -1,7 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketLateSuccessFree
-import Vegas.Game.AsyncDeviationForeign
 
 /-! # Unfailed completions without a completion point at a late binding
 
@@ -143,7 +142,8 @@ theorem lateBinding_badMass
       (nextState ▸ next.trace)
     obtain ⟨found, ⟨residualFound⟩⟩ := protocol_sourceResidual (runtime := runtime)
       (failureProfile setup.program) menu horizon scheduler traceHere _ rfl
-    have foundEq : found = rank := EventOrder.Cut.IsPrefix.unique residualFound.checkpoint.ordered orderedHere
+    have foundEq : found = rank :=
+      EventOrder.Cut.IsPrefix.unique residualFound.checkpoint.ordered orderedHere
     have residual := foundEq ▸ residualFound
     cases choice with
     | none => simp at encoded
@@ -156,7 +156,9 @@ theorem lateBinding_badMass
       (decodedPoint_eq_of_isPrefix orderedHere).trans decodedHere
     have acts : ∀ player, ProtocolView.actor player setup.program
         (ProtocolState.observe player setup.program point) = some who := fun player =>
-      (decodedPoint_actor player readyHere pointDecoded).trans owned
+      (decodedPoint_actor_of_history player
+        (menu.toRawTrace (initialLaw setup) horizon scheduler traceHere) readyHere
+          pointDecoded).trans owned
     obtain ⟨stepTarget, stepEq⟩ := ProtocolState.step_eq_pure_of_actor who who setup.program
       point (fun _ => some source) (acts who)
     have stepEq' : ProtocolState.step setup.program point
@@ -196,16 +198,20 @@ theorem lateBinding_badMass
       rintro ⟨⟨control, controlState, _, notFailed⟩, pointNone⟩
       rw [finalState] at controlState
       cases Option.some.inj controlState
-      rcases stepped with inStep | ⟨failing, failed, inStep⟩
-      · have pointEq := completionPoint_of_mem_step (runtime := runtime) (fresh := fresh) residual
-          decodedHere
-          readyHere stepEq' finalState inStep
+      rcases stepped with failed | ⟨primary, primaryStep, drained⟩
+      · exact (notFailed failed).elim
+      · have clear := defaulted_eq_empty_of_intended_source_step residual decodedHere readyHere
+          stepEq' targetIntended primary primaryStep
+        have same : final.execution.application.config = primary.config := by
+          rw [drained, primary.drain_eq_of_empty clear]
+        have inStep : final.execution.application.config ∈
+            (reached.application.config.step event readyHere action).support :=
+          same.symm ▸ primaryStep
+        have pointEq := completionPoint_of_mem_step (runtime := runtime) (fresh := fresh) residual
+          decodedHere readyHere stepEq' finalState inStep
         rw [ite_eq_left ⟨targetIntended, (freshIff final).mpr notFailed⟩ ..] at pointEq
         rw [pointEq] at pointNone
         cases pointNone
-      · have output := step_binding_output (outputEq := outputEq) (codeEq := codeEq) inStep
-        exact (notFailed ⟨_, by rw [EventGraph.Config.store_output, output],
-          (isFailure_cast_binding_iff outputEq _).mpr failed⟩).elim
     rw [expect_congr_on_support (g := fun _ => 0) zero, expect_constant]
     simp
   have main := lateBinding_exitBound (runtime := runtime) covers capacity assessment positive

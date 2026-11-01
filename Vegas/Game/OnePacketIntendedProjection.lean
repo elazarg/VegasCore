@@ -87,6 +87,15 @@ def decodedPoint (config : (graph setup).Config) : setup.ProtocolState :=
 
 variable {setup runtime}
 
+/-- At a completed prefix, the decoded point is the readout at that prefix. -/
+theorem decodedPoint_eq_of_isPrefix {config : (graph setup).Config} {rank : Nat}
+    (ordered : config.cut.IsPrefix rank) :
+    decodedPoint setup config = sourceServicePrefix? setup rank config := by
+  have exists_ordered : ∃ rank, config.cut.IsPrefix rank := ⟨rank, ordered⟩
+  unfold decodedPoint
+  rw [dite_eq_left_of_eq_true (eq_true exists_ordered), show exists_ordered.choose = rank from
+    EventOrder.Cut.IsPrefix.unique exists_ordered.choose_spec ordered]
+
 /-- A native endpoint's decoded source point has exactly its public defaults. -/
 theorem decodedPoint_defaults {setup : Setup (Player := Player) (L := L)}
     {config : (graph setup).Config} {point : ProtocolState setup.program}

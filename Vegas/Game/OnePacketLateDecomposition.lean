@@ -50,13 +50,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
 local notation "onePacketN" =>
   onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
 
-variable {setup runtime leaks} in
-/-- **The rank of a site**: the number of events its public completion order
-records. -/
-def siteRank : (application setup runtime leaks).Info → Nat
-  | none => 0
-  | some (_, view) => view.application.publicView.observation.completionOrder.length
-
 /-- A source point at which some history of the intended game ends. -/
 def IntendedReached (point : ProtocolState setup.program) : Prop :=
   ∃ history : setup.intendedProtocol.History, history.state = some point
@@ -93,14 +86,6 @@ def siteValue (assessment : (onePacketN).BehavioralAssessment)
   expect (assessment.belief who site) fun history =>
     decodedPointValue setup runtime leaks bounds horizon scheduler parameter utility excludedPayoff
       profile who (siteRank (runtime := runtime) site.1) history.1
-
-variable {setup runtime leaks} in
-/-- The site's pending event, if any, has not failed. -/
-def siteFresh (who : Player) (info : (application setup runtime leaks).Info)
-    (control : (application setup runtime leaks).Control) : Prop :=
-  match pendingEvent setup runtime leaks who info with
-  | some event => ¬ StoreEventFailed control.execution.application.config.store event
-  | none => True
 
 open Classical in
 /-- **The completion value from a history.** The expected completion value under

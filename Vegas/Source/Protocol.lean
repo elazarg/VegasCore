@@ -208,6 +208,35 @@ theorem progress : {Γ : SourceCtx Player L} → {O : Finset VarId} →
             · simp [ProtocolView.menu, ProtocolView.actor, observe, inactive, own]
       | inr rest => exact progress next admission rest
 
+/-- **A step with an actor is deterministic.** At a source point where some
+player acts, every joint choice steps to a single point. -/
+theorem step_eq_pure_of_actor (who owner : Player) : {Γ : SourceCtx Player L} →
+    {O : Finset VarId} → (program : SourceProgram Player L Γ O) →
+    (state : ProtocolState program) → (joint : Player → Option (OwnAction Player L)) →
+    ProtocolView.actor who program (observe who program state) = some owner →
+    ∃ target, step program state joint = PMF.pure target
+  | _, _, .ret _, _, _, acts => by
+      simp [ProtocolView.actor] at acts
+  | _, _, .sample _ _ _ next, state, joint, acts => by
+      cases state with
+      | inl config => simp [observe, ProtocolView.actor] at acts
+      | inr rest =>
+          obtain ⟨target, stepEq⟩ := step_eq_pure_of_actor who owner next rest joint acts
+          exact ⟨Sum.inr target, by simp only [step, Sum.elim_inr, stepEq, PMF.pure_map]⟩
+  | _, _, .commit _ _ _ _ next, state, joint, acts => by
+      cases state with
+      | inl config => exact ⟨_, rfl⟩
+      | inr rest =>
+          obtain ⟨target, stepEq⟩ := step_eq_pure_of_actor who owner next rest joint acts
+          exact ⟨Sum.inr target, by simp only [step, Sum.elim_inr, stepEq, PMF.pure_map]⟩
+  | _, _, .reveal _ _ _ _ _ _ next, state, joint, acts => by
+      cases state with
+      | inl config => exact ⟨_, rfl⟩
+      | inr rest =>
+          obtain ⟨target, stepEq⟩ := step_eq_pure_of_actor who owner next rest joint acts
+          exact ⟨Sum.inr target, by simp only [step, Sum.elim_inr, stepEq, PMF.pure_map]⟩
+
+
 end ProtocolState
 
 /-- The actual players are strategic coordinates. Public chance is carried by
