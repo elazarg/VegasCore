@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.ReactiveService
+import Vegas.Pending.EventCompletionObservation
 
 /-! # Actual communication likelihood during an opaque binding window
 
@@ -27,5 +28,21 @@ def bindingTraffic (runtime : EventGraphRuntime graph)
     (focal : Player) (execution : (runtime.reactiveApplication leaks).Execution) :=
   (execution.network, execution.receipts, execution.environmentRecall, execution.recall focal,
     execution.application.playerView focal, execution.application.publicView)
+
+/-- Automatic completion preserves equality of the existing native traffic readout. -/
+theorem bindingTraffic_drain (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (left right : (runtime.reactiveApplication leaks).Execution) (focal : Player)
+    (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right) :
+    runtime.bindingTraffic leaks focal {left with application := left.application.drain} =
+      runtime.bindingTraffic leaks focal {right with application := right.application.drain} := by
+  have networks := congrArg Prod.fst same
+  have receipts := congrArg (fun value => value.2.1) same
+  have environments := congrArg (fun value => value.2.2.1) same
+  have recalled := congrArg (fun value => value.2.2.2.1) same
+  have views := congrArg (fun value => value.2.2.2.2.1) same
+  have drained := State.drain_playerView_congr left.application right.application focal views
+  exact Prod.ext networks (Prod.ext receipts (Prod.ext environments (Prod.ext recalled
+    (Prod.ext drained (congrArg PlayerView.publicView drained)))))
 
 end Vegas.EventGraphRuntime

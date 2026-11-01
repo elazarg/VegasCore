@@ -1,19 +1,16 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveOpeningLikelihood
-import GameTheory.Math.Probability.ConditionalObservation
+import Vegas.Pending.ReactiveBindingLikelihood
 import Vegas.Game.SourceServiceCheckpoint
 import Vegas.Game.ServiceObservation
-import GameTheory.Math.Probability.ExpectationConditioning
+import GameTheory.Math.Probability.Support
 import Vegas.Pending.EventInitialObservation
 
-/-! # Source memory and actual service-channel factorization
+/-! # Initial source and native traffic factorization
 
-The proof law retains both the effective source configuration and its original
-private intentions. Only the former is decoded from the native execution.
-Binding timing, passive sampling, silence, and inclusion use the existing
-runtime evaluator. Their conditional likelihood is derived from those actual
-operations, rather than supplied as an independent channel hypothesis.
+The actual native initial traffic is determined by the focal player's source
+view, even when initial private inputs are correlated. The joint law retains
+one source configuration with its complete public default record.
 -/
 
 noncomputable section
@@ -71,24 +68,22 @@ theorem source_initial_traffic_eq
   dsimp only [ReactiveApplication.Execution.initial]
   rw [views, publics]
 
-/-- The induction starts from the actual supplied initial law. There is no
-independence assumption on private types, and original and effective histories
-are paired only at initialization, before any intention can be erased. -/
-theorem source_initial_memory_factorization
+/-- Initial native traffic factors through the focal source view for the
+supplied initial law, without an independence assumption on private types. -/
+theorem source_initial_traffic_factorization
     (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
     {deadline : (serviceGraph setup mode).EventId → Nat}
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     (focal : Player) :
     ∃ noise : DecisionView focal setup.context → PMF _,
       setup.initialLaw.map (fun initial =>
-        ((Config.initial initial, Config.initial initial),
+        (Config.initial initial,
           (serviceRuntime setup mode deadline).bindingTraffic leaks focal
             (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks)
               (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
                 (setup.eventInputs initial))))) =
-      (setup.initialLaw.map fun initial =>
-        (Config.initial initial, Config.initial initial)).bind fun pair =>
-          (noise (pair.1.view focal)).map fun extra => (pair, extra) := by
+      (setup.initialLaw.map Config.initial).bind fun source =>
+        (noise (source.view focal)).map fun extra => (source, extra) := by
   classical
   let read := fun initial : State L setup.context =>
     (serviceRuntime setup mode deadline).bindingTraffic leaks focal
@@ -103,7 +98,7 @@ theorem source_initial_memory_factorization
   refine ⟨noise, ?_⟩
   rw [PMF.bind_map]
   change setup.initialLaw.bind (fun initial => PMF.pure
-      ((Config.initial initial, Config.initial initial), read initial)) = _
+      (Config.initial initial, read initial)) = _
   apply bind_congr_on_support _
   intro initial supported
   have present : ∃ other ∈ setup.initialLaw.support,

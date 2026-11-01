@@ -4,6 +4,7 @@ import Vegas.Game.SourceServiceReachedDecoding
 import Vegas.Pending.ReactiveOwnerWindow
 import Vegas.Pending.ReactiveSampleLikelihood
 import Vegas.Game.ServiceSettledEvidence
+import Vegas.Pending.ReactiveGraphSteps
 import Vegas.Pending.ReactiveOpeningLikelihood
 
 /-! # One deviating player's traffic, round by round, in every dependency mode
@@ -19,8 +20,6 @@ traffic round by round, for every dependency mode and deadline:
   the public view, and public chance reads public data;
 * while every ready event belongs to the deviator or to chance, a packet of any
   other player is rejected (`Vegas.handle_foreign_sender_none`);
-* a completion run of an event ready alone ends with exactly one source step
-  of it (`Vegas.runUntil_completion_step`);
 * in the phase of an event ready alone that belongs to the deviator or to
   chance, the deviator's traffic at the end of the phase has a law that
   depends on the execution only through its traffic at the start
@@ -49,49 +48,6 @@ theorem cut_eq_of_publicView_eq {left right : EventGraphRuntime.State (serviceGr
   apply EventGraph.cut_eq_of_completionOrder_eq
   exact congrArg
       (fun view : PublicView (serviceGraph setup mode) => view.observation.completionOrder) same
-
-variable (setup leaks)
-
-/-- **A completion run makes one source step.** From an execution whose
-configuration has `event` as its only ready event, any players under any
-scheduler stop, once `event` has completed, at a configuration reached from the
-starting one by one source step of `event`. -/
-theorem runUntil_completion_step
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy)
-    (event : (serviceGraph setup mode).EventId) (config : (serviceGraph setup mode).Config)
-    (ready : config.cut.Ready event) (alone : ∀ other, config.cut.Ready other → other = event) : ∀
-    (count : Nat) (execution stopped : (serviceApplication setup mode deadline leaks).Execution),
-    execution.application.config = config → stopped ∈
-    ((serviceApplication setup mode deadline leaks).runUntil scheduler players
-        (fun final => event ∈ final.application.config.cut.completed) count execution).support →
-    event ∈ stopped.application.config.cut.completed →
-      ∃ action, stopped.application.config ∈ (config.step event ready action).support := by
-  intro count
-  induction count with
-  | zero =>
-      intro execution stopped same reached finished
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      rw [same] at finished
-      exact (ready.1 finished).elim
-  | succ count ih =>
-      intro execution stopped same reached finished
-      subst same
-      have running : event ∉ execution.application.config.cut.completed := ready.1
-      simp only [ReactiveApplication.runUntil, running, ↓reduceIte] at reached
-      obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      rcases round_configStep setup leaks scheduler players execution middle moved with
-        unchanged | ⟨other, otherReady, action, member⟩
-      · exact ih middle stopped unchanged rest finished
-      · have otherIs : other = event := alone other otherReady
-        subst otherIs
-        have done : other ∈ middle.application.config.cut.completed := by
-          rw [execution.application.config.step_cut other otherReady action _ member,
-            EventOrder.Cut.mem_complete]
-          exact Or.inl rfl
-        rw [ReactiveApplication.runUntil_of_stop _ _ _ _ _ middle done] at rest
-        cases (PMF.mem_support_pure_iff _ _).mp rest
-        exact ⟨action, member⟩
 
 end Steps
 
@@ -174,20 +130,22 @@ theorem bindingTraffic_record (who : Player)
   rw [environments, observeEnvironment_eq_of_bindingTraffic who same]
   exact bindingTraffic_with_environmentRecall who same _
 
-/-- An application command that leaves the application state in place only
-records itself. -/
+/-- An application command with no primary state change performs automatic
+completion and records the command's original environment observation. -/
 theorem environmentStep_application_of_pure
     (execution : (serviceApplication setup mode deadline leaks).Execution)
     (command : EnvironmentCommand (serviceGraph setup mode))
     (unchanged : environmentStep (serviceRuntime setup mode deadline) execution.application
         command = PMF.pure execution.application) : execution.environmentStep
     (serviceApplication setup mode deadline leaks) (.application command) = PMF.pure
-    { execution with environmentRecall := execution.environmentRecall ++
-        [⟨execution.observeEnvironment (serviceApplication setup mode deadline leaks), .application
-            command⟩] } := by
-  change ((environmentStep (serviceRuntime setup mode deadline) execution.application command).map
-      fun state => { execution with application := state }).map _ = _
-  rw [unchanged, PMF.pure_map, PMF.pure_map]
+    { execution with
+        application := execution.application.drain
+        environmentRecall := execution.environmentRecall ++
+          [⟨execution.observeEnvironment (serviceApplication setup mode deadline leaks),
+            .application command⟩] } := by
+  change (((environmentStep (serviceRuntime setup mode deadline) execution.application command).map
+      State.drain).map fun state => { execution with application := state }).map _ = _
+  rw [unchanged, PMF.pure_map, PMF.pure_map, PMF.pure_map]
 
 /-- While every ready event belongs to `who` or to chance, a packet authored by
 any other player is rejected. -/
@@ -251,7 +209,24 @@ theorem include_bindingTraffic_of_handled {who : Player}
           who same id message found
       simp only [reactiveApplication_handle]
       split
-      · exact handled message found
+      · have beforeDrain := handled message found
+        cases first : handle (serviceRuntime setup mode deadline) left.application
+            ⟨message.id, message.payload.call⟩ with
+        | none =>
+            cases second : handle (serviceRuntime setup mode deadline) right.application
+                ⟨message.id, message.payload.call⟩ with
+            | none => rfl
+            | some state => simp only [first, second, Option.map_none, Option.map_some,
+                reduceCtorEq] at beforeDrain
+        | some state =>
+            cases second : handle (serviceRuntime setup mode deadline) right.application
+                ⟨message.id, message.payload.call⟩ with
+            | none => simp only [first, second, Option.map_none, Option.map_some,
+                reduceCtorEq] at beforeDrain
+            | some next =>
+                have views : state.playerView who = next.playerView who := by
+                  simpa only [first, second, Option.map_some, Option.some.injEq] using beforeDrain
+                exact congrArg some (State.drain_playerView_congr state next who views)
       · rfl
 
 /-- Including any pending packet keeps equal deviator traffic when every ready
@@ -308,7 +283,9 @@ theorem application_environmentStep_traffic_congr
     rw [environmentStep_application_of_pure left command leftPure,
       environmentStep_application_of_pure right command rightPure, PMF.pure_map,
       PMF.pure_map]
-    exact congrArg PMF.pure (bindingTraffic_record (leaks := leaks) who same _)
+    exact congrArg PMF.pure
+      (bindingTraffic_drain (serviceRuntime setup mode deadline) leaks _ _ who
+        (bindingTraffic_record (leaks := leaks) who same _))
   cases command with
   | advanceClock =>
       exact bindingTraffic_maintenance (serviceRuntime setup mode deadline) leaks left right who
@@ -436,55 +413,6 @@ theorem focalRound_traffic_congr
         ReactiveApplication.Execution.environmentStep, PMF.pure_map, PMF.pure_bind]
       exact congrArg PMF.pure (bindingTraffic_record (leaks := leaks) who same .wait)
 
-/-- The phase invariant of a completion run: the ready event is pending at the
-completed prefix below it, or it has completed. -/
-def PhaseOpen (event : (serviceGraph setup mode).EventId)
-    (execution : (serviceApplication setup mode deadline leaks).Execution) : Prop :=
-    (execution.application.config.cut.IsPrefix event.val ∧ execution.application.config.cut.Ready
-        event) ∨ execution.application.config.cut.IsPrefix (event.val + 1)
-
-/-- A round of a running phase keeps the phase invariant, for an event that is
-ready alone. -/
-theorem PhaseOpen.round {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
-    {event : (serviceGraph setup mode).EventId}
-    (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
-      cut.Ready other → other = event)
-    {execution next : (serviceApplication setup mode deadline leaks).Execution}
-    (holds : PhaseOpen event execution)
-    (running : event ∉ execution.application.config.cut.completed)
-    (reached : next ∈
-        ((serviceApplication setup mode deadline leaks).round scheduler players
-        execution).support) :
-    PhaseOpen event next := by
-  have step := round_configStep setup leaks scheduler players execution next reached
-  have current : execution.application.config.cut.IsPrefix event.val ∧
-      execution.application.config.cut.Ready event := by
-    rcases holds with current | advanced
-    · exact current
-    · exact (running ((advanced.2 event).mpr (Nat.lt_succ_self _))).elim
-  rcases step with same | ⟨other, otherReady, action, member⟩
-  · left
-    rw [same]
-    exact current
-  · have otherIs : other = event := alone _ other current.2 otherReady
-    subst otherIs
-    right
-    rw [execution.application.config.step_cut other otherReady action _ member]
-    exact current.1.complete_at other otherReady rfl
-
-/-- An open phase that has not stopped is at the completed prefix below its
-ready event. -/
-theorem PhaseOpen.running {event : (serviceGraph setup mode).EventId}
-    {execution : (serviceApplication setup mode deadline leaks).Execution}
-    (holds : PhaseOpen event execution)
-    (running : event ∉ execution.application.config.cut.completed) :
-    execution.application.config.cut.IsPrefix event.val ∧
-      execution.application.config.cut.Ready event := by
-  rcases holds with current | advanced
-  · exact current
-  · exact (running ((advanced.2 event).mpr (Nat.lt_succ_self _))).elim
-
 /-- **The focal phase.** While an event ready alone belongs to the deviator or
 to chance, the deviator against silence, under any scheduler, gives equal
 deviator traffic laws at the end of a completion run from equal deviator
@@ -498,7 +426,8 @@ theorem focalPhase_traffic_congr
     (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
       cut.Ready other → other = event) :
     ∀ (count : Nat) (left right : (serviceApplication setup mode deadline leaks).Execution),
-      PhaseOpen event left → PhaseOpen event right →
+      (event ∉ left.application.config.cut.completed → left.application.config.cut.Ready event) →
+      (event ∉ right.application.config.cut.completed → right.application.config.cut.Ready event) →
       (serviceRuntime setup mode deadline).bindingTraffic leaks who left =
         (serviceRuntime setup mode deadline).bindingTraffic leaks who right →
       ((serviceApplication setup mode deadline leaks).runUntil scheduler
@@ -535,12 +464,29 @@ theorem focalPhase_traffic_congr
           PMF.map_bind]
         apply bind_eq_of_map_eq _ _ _ _
           (focalRound_traffic_congr scheduler who deviation
-            (fun other ready => alone _ other (leftOpen.running stopped).2 ready ▸ focal)
-            (fun other ready => alone _ other (rightOpen.running rightRunning).2 ready ▸ focal)
+            (fun other ready => alone _ other (leftOpen stopped) ready ▸ focal)
+            (fun other ready => alone _ other (rightOpen rightRunning) ready ▸ focal)
             same)
         intro next nextReached other otherReached equal
-        exact ih next other (leftOpen.round alone stopped nextReached)
-          (rightOpen.round alone rightRunning otherReached) equal
+        have nextReady : event ∉ next.application.config.cut.completed →
+            next.application.config.cut.Ready event := by
+          intro unfinished
+          have unchanged := EventGraph.Config.Step.path_eq_of_ready_of_not_completed event
+            (fun query ready => alone _ query (leftOpen stopped) ready) unfinished
+            (reactive_round_graph_steps (serviceRuntime setup mode deadline) leaks scheduler
+              (focalPlayers setup leaks who deviation) left next nextReached)
+          rw [unchanged]
+          exact leftOpen stopped
+        have otherReady : event ∉ other.application.config.cut.completed →
+            other.application.config.cut.Ready event := by
+          intro unfinished
+          have unchanged := EventGraph.Config.Step.path_eq_of_ready_of_not_completed event
+            (fun query ready => alone _ query (rightOpen rightRunning) ready) unfinished
+            (reactive_round_graph_steps (serviceRuntime setup mode deadline) leaks scheduler
+              (focalPlayers setup leaks who deviation) right other otherReached)
+          rw [unchanged]
+          exact rightOpen rightRunning
+        exact ih next other nextReady otherReady equal
 
 end Focal
 end Vegas

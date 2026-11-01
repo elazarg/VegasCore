@@ -37,8 +37,11 @@ The direct sequential physical-client laws compose the source continuation
 with silent expiry, typed acceptance and chance sampling in
 [SourceServiceFirstTurnCompletion](../Vegas/Game/SourceServiceFirstTurnCompletion.lean).
 They preserve the joint typed-state/public-default law of every source profile.
-Mode transport, bounded-menu consumers and strategic ports remain acceptance
-obligations for replacing the complete tower.
+The public-barrier certificate transports this law to every certified execution
+mode in [ServiceHonestLaw](../Vegas/Game/ServiceHonestLaw.lean), and
+[CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean) realizes it with
+bounded-menu clients under the supplied value-coverage and capacity interfaces.
+Strategic deviation and sequential-equilibrium ports remain acceptance obligations.
 
 Start with [recovery preservation](../Vegas/Game/RecoverySequentialCompilation.lean),
 [monetary preservation](../Vegas/Game/RecoveryPaymentPreservation.lean) and

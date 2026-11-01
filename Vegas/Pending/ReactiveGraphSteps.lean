@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Interaction.ReactiveInvariant
+import Interaction.ReactiveStopping
 import Vegas.Pending.ReactiveRuntime
 
 /-! # Finite graph paths for raw ledger transitions
@@ -81,6 +82,74 @@ theorem reactiveApplication_graphSteps (runtime : EventGraphRuntime graph)
     obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ supported
     exact (environmentStep_graph_steps runtime state native command moved).trans
       native.drain_graph_steps
+
+/-- A scheduler round follows a finite path of the graph executor, including
+all automatic completions triggered by its command. -/
+theorem reactive_round_graph_steps (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (before after : (runtime.reactiveApplication leaks).Execution)
+    (reached : after ∈ ((runtime.reactiveApplication leaks).round scheduler players
+      before).support) :
+    Relation.ReflTransGen Config.Step before.application.config after.application.config := by
+  let app := runtime.reactiveApplication leaks
+  obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+  obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
+  have path := (runtime.reactiveApplication_graphSteps leaks).environmentStep
+    before middle command moved
+  cases actor : command.actor? app with
+  | none =>
+      change after ∈ (app.resume players (command.actor? app) middle).support at resumed
+      simp only [actor, ReactiveApplication.resume, PMF.mem_support_pure_iff] at resumed
+      subst after
+      exact path
+  | some who =>
+      change after ∈ (app.resume players (command.actor? app) middle).support at resumed
+      rw [actor] at resumed
+      obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ resumed
+      exact path.trans
+        ((runtime.reactiveApplication_graphSteps leaks).respond middle who response)
+
+/-- A round cannot change the graph configuration before its unique ready
+event completes, even when the command may perform automatic completion. -/
+theorem reactive_round_config_eq_of_pending (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (event : graph.EventId) (before after : (runtime.reactiveApplication leaks).Execution)
+    (unique : ∀ other, before.application.config.cut.Ready other → other = event)
+    (pending : event ∉ after.application.config.cut.completed)
+    (reached : after ∈ ((runtime.reactiveApplication leaks).round scheduler players
+      before).support) : after.application.config = before.application.config :=
+  Config.Step.path_eq_of_ready_of_not_completed event unique pending
+    (reactive_round_graph_steps runtime leaks scheduler players before after reached)
+
+/-- Every stopped native execution follows a finite supported graph path.
+The path may contain several automatic completions in one scheduler round. -/
+theorem reactive_runUntil_graph_steps (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (stop : (runtime.reactiveApplication leaks).Execution → Prop) [DecidablePred stop]
+    (count : Nat) (before after : (runtime.reactiveApplication leaks).Execution)
+    (reached : after ∈ ((runtime.reactiveApplication leaks).runUntil scheduler players
+      stop count before).support) :
+    Relation.ReflTransGen Config.Step before.application.config after.application.config := by
+  induction count generalizing before with
+  | zero =>
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      exact .refl
+  | succ count ih =>
+      by_cases stopped : stop before
+      · simp only [ReactiveApplication.runUntil, stopped, ↓reduceIte,
+          PMF.mem_support_pure_iff] at reached
+        subst after
+        exact .refl
+      · simp only [ReactiveApplication.runUntil, stopped, ↓reduceIte] at reached
+        obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
+        exact (reactive_round_graph_steps runtime leaks scheduler players before middle moved).trans
+          (ih middle rest)
 
 /-- A native command ending before any public default stutters or performs
 one supported graph step. Automatic tails are empty in this internally clear region. -/

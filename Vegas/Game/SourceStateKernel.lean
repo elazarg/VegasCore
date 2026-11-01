@@ -31,6 +31,64 @@ def behavioralStateStep {Γ : SourceCtx Player L} {O : Finset VarId}
     (independentProduct fun who => (profile who).protocolAction program
       (observe who program state)).bind (step program state)
 
+omit [Fintype Player] in
+/-- When the public actor is absent, player choices do not affect the source
+transition. Public chance retains its ordinary distribution. -/
+theorem step_eq_of_actor_none (who : Player) :
+    {Γ : SourceCtx Player L} → {O : Finset VarId} →
+    (program : SourceProgram Player L Γ O) → (state : ProtocolState program) →
+    (joint : Player → Option (OwnAction Player L)) →
+    ProtocolView.actor who program (observe who program state) = none →
+    step program state joint = step program state (fun _ => none)
+  | _, _, .ret _, _, _, _ => rfl
+  | _, _, .sample _ _ _ next, state, joint, noActor => by
+      cases state with
+      | inl config => rfl
+      | inr rest =>
+          simp only [step, Sum.elim_inr]
+          rw [step_eq_of_actor_none who next rest joint noActor]
+  | _, _, .commit _ owner _ _ next, state, joint, noActor => by
+      cases state with
+      | inl config =>
+          have inactive : owner ∈ config.defaulted := by
+            by_contra active
+            simp [ProtocolView.actor, observe, Config.view_defaulted, active] at noActor
+          simp [step, commitSuccessor, inactive]
+      | inr rest =>
+          simp only [step, Sum.elim_inr]
+          rw [step_eq_of_actor_none who next rest joint noActor]
+  | _, _, .reveal _ owner _ _ _ _ next, state, joint, noActor => by
+      cases state with
+      | inl config =>
+          have inactive : owner ∈ config.defaulted := by
+            by_contra active
+            simp [ProtocolView.actor, observe, Config.view_defaulted, active] at noActor
+          simp [step, revealSuccessor, inactive]
+      | inr rest =>
+          simp only [step, Sum.elim_inr]
+          rw [step_eq_of_actor_none who next rest joint noActor]
+
+/-- With no active owner, the behavioral source kernel is exactly the ordinary
+transition with no submitted player action. -/
+theorem behavioralStateStep_of_actor_none {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (profile : BehavioralProfile program)
+    (state : ProtocolState program) (who : Player)
+    (noActor : ProtocolView.actor who program (observe who program state) = none) :
+    behavioralStateStep program profile state = step program state (fun _ => none) := by
+  classical
+  unfold behavioralStateStep
+  split
+  · rename_i terminal
+    exact (step_of_terminal program state terminal _).symm
+  · calc
+      _ = (GameTheory.Math.Probability.independentProduct fun player =>
+          (profile player).protocolAction program (observe player program state)).bind
+          (fun _ => step program state (fun _ => none)) := by
+            apply bind_congr_on_support _
+            intro joint _
+            exact step_eq_of_actor_none who program state joint noActor
+      _ = _ := PMF.bind_const _ _
+
 section Sample
 
 variable {Γ : SourceCtx Player L} {O : Finset VarId} {name : VarId} {payload : L.Ty}

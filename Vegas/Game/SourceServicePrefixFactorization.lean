@@ -2,17 +2,14 @@
 
 import Vegas.Game.SourceServiceFactorization
 import Vegas.Compile.EventGraphParameterReadout
-import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 import GameTheory.Math.Probability.ConditionalObservation
 import GameTheory.Math.Probability.ExpectationConditioning
-import GameTheory.Protocol.TremblingPlans
 
 /-! # Joint source-state and traffic laws of service prefixes
 
-The factorization uses the existing source protocol observation and the actual
-native execution. Original failed disclosure intentions are restored by the
-source assessment comparison; they are not inferred from the effective state
-read by the native decoder.
+The typed decoder reconstructs the actual source configuration, including its
+own action history and full public default record. Its joint law with native
+traffic transfers the source marginal and observation-local traffic kernel.
 -/
 
 noncomputable section
@@ -43,8 +40,8 @@ theorem reconstruct_service_marginal
     (decodeEq : ∀ seed execution, decode seed execution =
       (decodeState? refs execution.application.config.store).map fun state =>
         encoded ⟨state, registry seed, revelations seed,
-          decodeHistory setup.program (execution.application.config.history.map
-            (setup.eventGraph.fromModeCompletion mode)), execution.application.config.defaults⟩)
+          decodeHistory setup.program execution.application.config.history,
+          execution.application.config.defaults⟩)
     (ordered : ∀ point ∈ joint.support, point.2.application.config.cut.IsPrefix rank)
     (marginal : PMF (Config Player L Γ))
     (law : joint.map (fun point => decode point.1 point.2) =
@@ -71,8 +68,8 @@ theorem reconstruct_service_marginal
     | some state => exact ⟨state, rfl⟩
   let source := fun point : Point =>
     (⟨(available point).choose, registry point.val.1, revelations point.val.1,
-      decodeHistory setup.program (point.val.2.application.config.history.map
-        (setup.eventGraph.fromModeCompletion mode)), point.val.2.application.config.defaults⟩ :
+      decodeHistory setup.program point.val.2.application.config.history,
+      point.val.2.application.config.defaults⟩ :
         Config Player L Γ)
   have decoded (point : Point) : decode point.val.1 point.val.2 =
       some (encoded (source point)) := by
@@ -110,8 +107,8 @@ theorem reconstruct_service_phase
     (decodeEq : ∀ seed execution, decode seed execution =
       (decodeState? refs execution.application.config.store).map fun state =>
         encoded ⟨state, registry seed, revelations seed,
-          decodeHistory setup.program (execution.application.config.history.map
-            (setup.eventGraph.fromModeCompletion mode)), execution.application.config.defaults⟩)
+          decodeHistory setup.program execution.application.config.history,
+          execution.application.config.defaults⟩)
     (ordered : ∀ point ∈ joint.support, point.2.application.config.cut.IsPrefix rank)
     (marginal : PMF (Config Player L Γ))
     (noise : DecisionView focal Γ → PMF _)

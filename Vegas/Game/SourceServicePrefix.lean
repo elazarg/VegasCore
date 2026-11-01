@@ -2,6 +2,7 @@
 
 import Vegas.Game.SourceServiceCheckpoint
 import Vegas.Compile.EventGraphReadout
+import Vegas.Compile.EventGraphPolicy
 import Vegas.Source.SetupProtocolEvaluation
 import Vegas.Source.DefaultControl
 
@@ -61,6 +62,54 @@ def decodeSourcePrefix? {Field : Type} [DecidableEq Field]
         (revelations.reveal selected) (fun tail => outputs tail.succ)
         count store history defaults).map
           Sum.inr
+
+/-- The decoded actor is the instruction owner unless that owner has publicly defaulted. -/
+theorem decodeSourcePrefix?_actor (who : Player) {Field : Type} [DecidableEq Field]
+    {layout : Field → EventGraph.EventField Player L} : ∀ (count : Nat)
+    {Γ : SourceCtx Player L} {O : Finset VarId} (program : SourceProgram Player L Γ O)
+    (refs : ContextRefs layout Γ) (registry : Registry Γ) (revelations : Revelations Γ)
+    (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
+    (store : EventGraph.Store layout) (history : History Player L)
+    (defaults : DefaultHistory Player) (state : ProtocolState program),
+    decodeSourcePrefix? program refs registry revelations outputs count store history defaults =
+      some state →
+    (inside : count < eventCount program) →
+      ProtocolView.actor who program (ProtocolState.observe who program state) =
+        (eventOwner? program ⟨count, inside⟩).filter
+          (fun owner => decide (owner ∉ defaults.defaulted))
+  | 0, _, _, program, refs, registry, revelations, outputs, store, history, defaults, state,
+      decoded, inside => by
+      cases program with
+      | ret _ => simp [eventCount] at inside
+      | sample _ _ _ next =>
+          obtain ⟨_, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
+          rfl
+      | commit name owner fresh guard next =>
+          obtain ⟨_, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
+          by_cases inactive : owner ∈ defaults.defaulted <;>
+            simp [ProtocolView.actor, ProtocolState.observe, ProtocolState.entry, eventOwner?,
+              Config.view, DecisionView.defaulted, Option.filter_some, inactive]
+      | reveal published owner name fresh source unresolved next =>
+          obtain ⟨_, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
+          by_cases inactive : owner ∈ defaults.defaulted <;>
+            simp [ProtocolView.actor, ProtocolState.observe, ProtocolState.entry, eventOwner?,
+              Config.view, DecisionView.defaulted, Option.filter_some, inactive]
+  | count + 1, _, _, program, refs, registry, revelations, outputs, store, history, defaults,
+      state, decoded, inside => by
+      cases program with
+      | ret _ => cases decoded
+      | sample _ _ _ next =>
+          obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
+          exact decodeSourcePrefix?_actor who count next _ _ _ _ store history defaults rest
+            restDecoded (by simpa [eventCount] using inside)
+      | commit _ _ _ _ next =>
+          obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
+          exact decodeSourcePrefix?_actor who count next _ _ _ _ store history defaults rest
+            restDecoded (by simpa [eventCount] using inside)
+      | reveal _ _ _ _ _ _ next =>
+          obtain ⟨rest, restDecoded, rfl⟩ := Option.map_eq_some_iff.mp decoded
+          exact decodeSourcePrefix?_actor who count next _ _ _ _ store history defaults rest
+            restDecoded (by simpa [eventCount] using inside)
 
 /-- Current typed agreement reconstructs the whole source configuration,
 including its nonempty deferred-guard registry and original own histories. -/

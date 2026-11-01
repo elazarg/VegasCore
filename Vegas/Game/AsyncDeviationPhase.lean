@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ServiceDeviationTraffic
+import Vegas.Game.SourceServiceDeviationChoice
 import Vegas.Game.ServiceAssignedPolicy
 import Vegas.Game.ServiceTimingCoupling
 
@@ -32,80 +32,6 @@ variable {Player : Type} [DecidableEq Player]
 
 section Phases
 
-/-- While an event is ready alone, no player but its actor has a turn. -/
-theorem ownTurn?_none_of_alone {event : (serviceGraph setup mode).EventId}
-    (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
-      cut.Ready other → other = event)
-    (state : EventGraphRuntime.State (serviceGraph setup mode))
-    (ready : state.config.cut.Ready event) (player : Player)
-    (other : (serviceGraph setup mode).actor? event ≠ some player) :
-    state.publicView.ownTurn? player = none := by
-  cases turn : state.publicView.ownTurn? player with
-  | none => rfl
-  | some current =>
-      obtain ⟨seen, owned⟩ := PublicView.ownTurn?_spec _ player current turn
-      have same := alone _ current ready ((state.publicView_eventReady current).mp seen)
-      subst same
-      exact (other owned).elim
-
-/-- A running phase of an event ready alone is at the event's prefix with the
-event ready. -/
-private theorem phase_running {event : (serviceGraph setup mode).EventId}
-    {execution : (serviceApplication setup mode deadline leaks).Execution}
-    (holds : PhaseOpen event execution)
-    (running : event ∉ execution.application.config.cut.completed) :
-    execution.application.config.cut.Ready event := (holds.running running).2
-
-/-- **A phase without another owner.** While an event ready alone, of the
-deviator or of chance, has not completed, the deviated first-turn profile runs
-as the deviator against silence. -/
-theorem runUntil_deviation_focal
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (profile : BehavioralProfile setup.program) (who : Player)
-    (deviation : (serviceApplication setup mode deadline leaks).Policy)
-    (event : (serviceGraph setup mode).EventId)
-    (focal : (serviceGraph setup mode).actor? event = none ∨ (serviceGraph setup mode).actor?
-        event = some who)
-    (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event → cut.Ready
-        other → other = event) (count : Nat)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (holds : PhaseOpen event execution) : (serviceApplication setup mode deadline leaks).runUntil
-    scheduler
-    (deviatedTurnProfile bound turns (firstTurnTiming setup turns mode) profile who deviation)
-    (fun final => event ∈ final.application.config.cut.completed) count execution =
-    (serviceApplication setup mode deadline leaks).runUntil scheduler
-    (focalPlayers setup leaks who deviation)
-        (fun final => event ∈ final.application.config.cut.completed) count execution := by
-  let app := serviceApplication setup mode deadline leaks
-  apply app.runUntil_congr_of_agree scheduler _ _ _ (PhaseOpen event)
-  · intro current currentHolds running command _ middle moved player active
-    by_cases same : player = who
-    · subst same
-      simp only [deviatedTurnProfile, focalPlayers, Function.update_self]
-    · simp only [deviatedTurnProfile, focalPlayers, Function.update_of_ne same]
-      have activateIs : command = .activate player := by
-        cases command with
-        | activate actor => cases active; rfl
-        | «include» => cases active
-        | application => cases active
-        | wait => cases active
-      subst activateIs
-      have sameApp := activation_application setup leaks current middle player moved
-      have idle : (middle.observe app player).application.publicView.ownTurn? player = none := by
-        change middle.application.publicView.ownTurn? player = none
-        rw [sameApp]
-        apply ownTurn?_none_of_alone alone _ (phase_running currentHolds running) player
-        rcases focal with actorless | owned
-        · rw [actorless]
-          exact fun impossible => by cases impossible
-        · rw [owned]
-          exact fun equal => same (Option.some.inj equal).symm
-      simp only [serviceTurnPolicy, idle]
-  · intro current currentHolds running next reached
-    exact currentHolds.round alone running reached
-  · exact holds
-
 /-- **A phase of another owner.** While an event ready alone of another owner
 has not completed, from a legal raw history at its prefix where the owner has
 had no turn at it, if that owner's source decision at the configuration is
@@ -125,7 +51,8 @@ theorem runUntil_deviation_decided {horizon : Nat}
     (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
       cut.Ready other → other = event)
     (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (holds : PhaseOpen event execution)
+    (holds : event ∉ execution.application.config.cut.completed →
+      execution.application.config.cut.Ready event)
     (clean : ∀ entry ∈ execution.recall owner,
       entry.beforeView.application.publicView.ownTurn? owner ≠ some event)
     (law : PMF ((serviceGraph setup mode).Action event))
@@ -155,7 +82,8 @@ theorem runUntil_deviation_decided {horizon : Nat}
       stop count execution =
       app.runUntil scheduler (Function.update (focalPlayers setup leaks who deviation) owner
         (assignedTurnPolicy bound turns profile owner (fun _ => none))) stop count execution := by
-    apply app.runUntil_congr_of_agree scheduler _ _ _ (PhaseOpen event)
+    apply app.runUntil_congr_of_agree scheduler _ _ _ (fun current => event ∉ current.application.config.cut.completed →
+    current.application.config.cut.Ready event)
     · intro current currentHolds running command _ middle moved player active
       by_cases isOwner : player = owner
       · subst isOwner
@@ -178,16 +106,17 @@ theorem runUntil_deviation_decided {horizon : Nat}
               none := by
             change middle.application.publicView.ownTurn? player = none
             rw [sameApp]
-            apply ownTurn?_none_of_alone alone _ (phase_running currentHolds running) player
+            apply ownTurn?_none_of_alone alone _ (currentHolds running) player
             rw [owned]
             exact fun equal => isOwner (Option.some.inj equal).symm
           simp only [serviceTurnPolicy, idle]
     · intro current currentHolds running next reached
-      exact currentHolds.round alone running reached
+      exact round_ready_of_pending alone (currentHolds running) reached
     · exact holds
   -- The owner's client is the mixture of its decided clients.
   let invariant := fun current : app.Execution =>
-    PhaseOpen event current ∧
+    (event ∉ current.application.config.cut.completed →
+      current.application.config.cut.Ready event) ∧
       (event ∉ current.application.config.cut.completed →
         current.application.config = execution.application.config)
   have mixture := assignedTurnPolicy_runUntil_mixture (serviceInitialLaw setup mode) horizon
@@ -204,25 +133,19 @@ theorem runUntil_deviation_decided {horizon : Nat}
       have sameApp := activation_application setup leaks current middle owner moved
       exact policy middle (by rw [sameApp]; exact currentHolds.2 running))
     (fun rest current _ currentHolds running next reached => by
-      refine ⟨currentHolds.1.round alone running reached, fun nextRunning => ?_⟩
-      rcases round_configStep setup leaks scheduler _ current next reached with
-        same | ⟨other, otherReady, action, member⟩
-      · rw [same]
-        exact currentHolds.2 running
-      · have otherIs : other = event := alone _ other (phase_running currentHolds.1 running)
-          otherReady
-        subst otherIs
-        exfalso
-        apply nextRunning
-        rw [current.application.config.step_cut other otherReady action _ member,
-          EventOrder.Cut.mem_complete]
-        exact Or.inl rfl)
+      refine ⟨round_ready_of_pending alone (currentHolds.1 running) reached,
+        fun nextRunning => ?_⟩
+      rw [reactive_round_config_eq_of_pending (serviceRuntime setup mode deadline) leaks
+        scheduler _ event current next
+        (fun other ready => alone _ other (currentHolds.1 running) ready) nextRunning reached]
+      exact currentHolds.2 running)
     count remaining execution trace ⟨holds, fun _ => rfl⟩ clean
   rw [others, mixture]
   apply bind_congr_on_support _
   intro action _
   -- A client deciding one action at the event is the decided policy while it is ready.
-  apply app.runUntil_congr_of_agree scheduler _ _ _ (PhaseOpen event)
+  apply app.runUntil_congr_of_agree scheduler _ _ _ (fun current => event ∉ current.application.config.cut.completed →
+    current.application.config.cut.Ready event)
   · intro current currentHolds running command _ middle moved player active
     by_cases isOwner : player = owner
     · subst isOwner
@@ -237,13 +160,13 @@ theorem runUntil_deviation_decided {horizon : Nat}
       have sameApp := activation_application setup leaks current middle player moved
       have ready : middle.application.config.cut.Ready event := by
         rw [sameApp]
-        exact phase_running currentHolds running
+        exact currentHolds running
       have turn : (middle.observe app player).application.publicView.ownTurn? player =
           some event := serviceOwnTurn?_of_ready setup middle.application ready owned
       rw [assignedTurnPolicy_assigned turn (Function.update_self ..)]
     · simp only [Function.update_of_ne isOwner]
   · intro current currentHolds running next reached
-    exact currentHolds.round alone running reached
+    exact round_ready_of_pending alone (currentHolds running) reached
   · exact holds
 
 end Phases
