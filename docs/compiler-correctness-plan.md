@@ -20,9 +20,10 @@ The owners are [graph compilation](../Vegas/Compile/EventGraphScheduling.lean),
 [operational refinement](../Vegas/Pending/GraphRefinement.lean) and
 [direct physical compiler correctness](../Vegas/Game/SourceServiceFirstTurnCompletion.lean).
 The mode-general bounded-menu interfaces in
-[CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean), their manuscript
-composition and the corresponding [Paper.lean](../Paper.lean) pins remain
-acceptance obligations. Paper-facing acceptance must pin exactly the stated
+[CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean) are checked under
+the same public-barrier certificate. Their manuscript composition, corresponding
+[Paper.lean](../Paper.lean) pins and full regression acceptance remain open.
+Paper-facing acceptance must pin exactly the stated
 capstones; normalization, packet, observation and induction helpers stay in
 their owning modules.
 

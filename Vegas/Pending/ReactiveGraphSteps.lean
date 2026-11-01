@@ -4,6 +4,7 @@ import Interaction.ReactiveInvariant
 import Interaction.ReactiveEnvironmentStep
 import Interaction.ReactiveStopping
 import Vegas.Pending.ReactiveRuntime
+import Vegas.EventGraph.OwnedStep
 
 /-! # Finite graph paths for raw ledger transitions
 
@@ -490,5 +491,129 @@ theorem runUntil_completed_primary_drain (runtime : EventGraphRuntime graph)
           (by simpa only [State.AutomaticReady, same] using quiescent) rest
         refine ⟨action, native, ?_, drained⟩
         simpa only [same] using primary
+
+/-- A fixed whole-continuation law determines the actual primary decision of
+every completed stopped run; automatic completion may extend its endpoint. -/
+theorem runUntil_fixed_primary_drain
+    (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (event : graph.EventId) (count : Nat)
+    (before : (runtime.reactiveApplication leaks).Execution)
+    (ready : before.application.config.cut.Ready event)
+    (unique : ∀ query, before.application.config.cut.Ready query → query = event)
+    (owner : Player) (owned : graph.actor? event = some owner)
+    (active : owner ∉ before.application.config.defaulted)
+    (quiescent : ∀ query, ¬before.application.AutomaticReady query)
+    (action : graph.Action event) (plan : graph.EventPlan)
+    (law : ((runtime.reactiveApplication leaks).runUntil scheduler players
+      (fun final => event ∈ final.application.config.cut.completed) count before).bind
+        (fun final => graph.runPlan plan final.application.config.remaining
+          final.application.config) =
+      (before.application.config.step event ready action).bind
+        (fun config => graph.runPlan plan config.remaining config))
+    (completed : ∀ final ∈ ((runtime.reactiveApplication leaks).runUntil scheduler players
+      (fun final => event ∈ final.application.config.cut.completed) count before).support,
+      event ∈ final.application.config.cut.completed) :
+    ∀ final ∈ ((runtime.reactiveApplication leaks).runUntil scheduler players
+      (fun final => event ∈ final.application.config.cut.completed) count before).support,
+      ∃ native : State graph,
+        native.config ∈ (before.application.config.step event ready action).support ∧
+          final.application.config = native.drain.config := by
+  let app := runtime.reactiveApplication leaks
+  let read := fun config : graph.Config =>
+    config.history.find? (fun record => decide (record.event = event))
+  let phase := app.runUntil scheduler players
+    (fun final => event ∈ final.application.config.cut.completed) count before
+  have findBefore : read before.application.config = none := by
+    cases selected : before.application.config.history.find?
+        (fun record => decide (record.event = event)) with
+    | none => exact selected
+    | some record =>
+        have member := List.mem_of_find?_eq_some selected
+        have matching : record.event = event := by
+          simpa only [decide_eq_true_eq] using List.find?_some selected
+        have present : event ∈ before.application.config.history.map EventCompletion.event :=
+          List.mem_map.mpr ⟨record, member, matching⟩
+        exact (ready.1 ((before.application.config.history_exact event).mp present)).elim
+  have kernel (config : graph.Config) (done : event ∈ config.cut.completed) :
+      (graph.runPlan plan config.remaining config).map read = PMF.pure (read config) := by
+    calc
+      _ = (graph.runPlan plan config.remaining config).map (fun _ => read config) := by
+        apply map_congr_on_support _
+        intro after reached
+        exact runPlan_completed_record plan config.remaining config after event done reached
+      _ = _ := pmf_map_fun_const _ _
+  obtain ⟨target, targetLaw⟩ := before.application.config.step_eq_pure_of_actor event ready action
+    owner owned
+  have targetSupport : target ∈ (before.application.config.step event ready action).support := by
+    rw [targetLaw]
+    exact (PMF.mem_support_pure_iff _ _).mpr rfl
+  obtain ⟨output, _outputEq, history⟩ := before.application.config.step_completion event ready
+    action target targetSupport
+  rw [before.application.config.actualDecision_of_active event owner owned active action] at history
+  let expected := EventGraph.completion graph event (some action) output
+  have targetFind : read target = some expected := by
+    dsimp only [read]
+    rw [history, List.find?_append]
+    have absent := findBefore
+    dsimp only [read] at absent
+    rw [absent]
+    simp [expected, EventGraph.completion]
+  have targetDone : event ∈ target.cut.completed := by
+    rw [before.application.config.step_cut event ready action target targetSupport,
+      EventOrder.Cut.mem_complete]
+    exact Or.inl rfl
+  have project : phase.bind (fun final =>
+      (graph.runPlan plan final.application.config.remaining final.application.config).map read) =
+      phase.map (fun final => read final.application.config) := by
+    rw [← PMF.bind_pure_comp]
+    apply bind_congr_on_support _
+    intro final reached
+    exact kernel _ (completed final reached)
+  have mapped := congrArg (PMF.map read) law
+  simp only [PMF.map_bind] at mapped
+  rw [targetLaw, PMF.pure_bind] at mapped
+  change phase.bind (fun final =>
+      (graph.runPlan plan final.application.config.remaining final.application.config).map read) =
+    (graph.runPlan plan target.remaining target).map read at mapped
+  rw [project, kernel target targetDone, targetFind] at mapped
+  intro final reached
+  have seen : read final.application.config ∈
+      (phase.map (fun final => read final.application.config)).support :=
+    (PMF.mem_support_map_iff _ _ _).mpr ⟨final, reached, rfl⟩
+  rw [mapped, PMF.mem_support_pure_iff] at seen
+  obtain ⟨actualAction, native, primary, drained⟩ := runUntil_completed_primary_drain runtime
+    leaks scheduler players event count before final ready unique quiescent reached
+      (completed final reached)
+  obtain ⟨actualValue, _actualOutput, nativeHistory⟩ := before.application.config.step_completion
+    event ready actualAction native.config primary
+  have nativeFind : read native.config = some (EventGraph.completion graph event
+      (before.application.config.actualDecision event actualAction) actualValue) := by
+    dsimp only [read]
+    have absent := findBefore
+    dsimp only [read] at absent
+    rw [nativeHistory, List.find?_append, absent]
+    simp [EventGraph.completion]
+  obtain ⟨extra, historyGrowth⟩ := Config.Step.path_history_prefix native.drain_graph_steps
+  have finalFind : read final.application.config = some (EventGraph.completion graph event
+      (before.application.config.actualDecision event actualAction) actualValue) := by
+    dsimp only [read]
+    rw [drained, ← historyGrowth, List.find?_append]
+    have found := nativeFind
+    dsimp only [read] at found
+    rw [found]
+    rfl
+  have recordEq := Option.some.inj (finalFind.symm.trans seen)
+  have packed := congrArg (fun record : graph.Completion =>
+    (⟨record.event, record.decision⟩ : Σ event, Option (graph.Action event))) recordEq
+  have decisionEq := eq_of_heq (Sigma.mk.inj packed).2
+  change before.application.config.actualDecision event actualAction = some action at decisionEq
+  rw [before.application.config.actualDecision_of_active event owner owned active actualAction]
+    at decisionEq
+  have sameAction := Option.some.inj decisionEq
+  rw [sameAction] at primary
+  exact ⟨native, primary, drained⟩
 
 end Vegas.EventGraphRuntime
