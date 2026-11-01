@@ -15,6 +15,7 @@ not assume equilibrium.
 | Raw Interaction to graph | `Vegas.EventGraphRuntime.reactive_protocol_graph_refinement` | Every transition between initialized controls follows a finite supported graph path, including automatic completion. Every initialized raw history has a graph-reachable configuration; service completion makes all terminal fields available. |
 | Compiled graph to ledger | `Vegas.sourceServiceClientPolicy_graph_law` | Actual sequential first-opportunity clients and canonical execution of the compiled graph and policy have the same law through every total reader of typed state and public defaults. |
 | Source to ledger | `Vegas.sourceServiceClientPolicy_outcome_law` | Those same physical clients preserve that joint source law for every source profile, without a finite wire catalogue, equilibrium, audit, utility-bound or independent-prior premise. |
+| Raw unilateral deviation to source | `Vegas.asyncDeviation_readout_law` | Every physical policy against first-turn clients has one behavioral source deviation with the same typed-state/full-default-history law in each certified dependency mode. No finite-player or wire-value catalogue premise. |
 
 The owners are [graph compilation](../Vegas/Compile/EventGraphScheduling.lean),
 [operational refinement](../Vegas/Pending/GraphRefinement.lean) and
@@ -65,12 +66,14 @@ definitions and add no compiler-specification premise.
 
 ## Hypotheses and observations
 
-The direct physical laws use finitely many players, the sequential compiled
+The direct forward physical laws use finitely many players, the sequential compiled
 graph, a supplied runtime with relative deadlines, and first-opportunity timing.
 The asynchronous contract supplies all-history opportunity, protected inclusion
 and completion; `AsyncTimely` requires the reaction and inclusion bounds to sum
 to strictly less than each owned event's deadline. Source profiles are arbitrary.
-Pending observation and correlated initial inputs remain allowed. Finite nature,
+The unilateral deviation law needs no finite-player premise and covers arbitrary
+physical policies against the compiled opponents. Pending observation and
+correlated initial inputs remain allowed. Finite nature,
 wire-value coverage and candidate capacity are obligations of the bounded-menu
 interfaces rather than premises of these direct physical laws.
 

@@ -1,883 +1,1180 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ServicePhaseBoundary
-import Vegas.Game.ServiceBlockLaw
-import Vegas.Game.ServiceCommitTail
+import Vegas.Game.AsyncDeviationChoice
+import Vegas.Game.SourceServiceAsyncStep
+import Vegas.Game.SourceServiceDeviationChoice
+import Vegas.Game.SourceServiceFactorization
 
-/-! # The law of one deviation, phase by phase, on barrier-ordered graphs
+/-! # Source realization of a physical deviation
 
-Against the first-turn clients of a source profile, under a scheduler
-satisfying the asynchronous contract, one player follows an arbitrary native
-policy. On a barrier-ordered graph the run splits into phases
-(`Vegas.PhaseEnds`): a maximal run of commitments is one phase, completed by
-`Vegas.asyncDeviation_block_factorization`, and every public event is a phase
-of its own, completed by the public-event factorizations. Phase by phase, the
-decoded source state has the law of the source protocol in which the deviator
-follows one source behavioral policy and every other player keeps its source
-policy; jointly, the deviator's traffic depends on the source state only
-through the deviator's source view
-(`Vegas.asyncDeviation_deviationLaw`).
+Structural induction on source instructions carries one typed source checkpoint
+and an automatic-completion path to the actual ledger configuration. Joint
+successor/traffic laws retain the source information boundary; terminal source
+configurations are frozen under all remaining physical rounds.
 -/
 
 noncomputable section
-
 namespace Vegas
+open SourceProgram EventGraphRuntime Interaction GameTheory.Math.Probability
 
-open SourceProgram
-
-open GameTheory.Math.Probability Interaction EventGraphRuntime
-open GameTheory.Protocol.ExecutionProtocol
-
-variable {Player : Type} [DecidableEq Player]
-  {L : IExpr} [IExpr.ResultTypes L]
-
-section Phases
-
-variable {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
-
-/-- The runs of a list of phases in turn, each until its end is done, each
-within the horizon. -/
-def deviationPhases (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (horizon : Nat) :
-    List Nat → (serviceApplication setup mode deadline leaks).Execution →
-      PMF (serviceApplication setup mode deadline leaks).Execution
-  | [], execution => PMF.pure execution
-  | high :: rest, execution =>
-      ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
-        (BlockDone high) horizon execution).bind (deviationPhases scheduler players horizon rest)
-
-end Phases
-
-/-- The number of leading commitments of a program. -/
-def leadingCommits : {Γ : SourceCtx Player L} → {names : Finset VarId} →
-    SourceProgram Player L Γ names → Nat
-  | _, _, .commit _ _ _ _ next => leadingCommits next + 1
-  | _, _, .ret _ => 0
-  | _, _, .sample _ _ _ _ => 0
-  | _, _, .reveal _ _ _ _ _ _ _ => 0
-
-/-- A program's leading commitments are commitments. -/
-theorem leadingCommits_prefix : ∀ {Γ : SourceCtx Player L} {names : Finset VarId}
-    (program : SourceProgram Player L Γ names), CommitPrefix program (leadingCommits program)
-  | _, _, .commit _ _ _ _ next => leadingCommits_prefix next
-  | _, _, .ret _ => trivial
-  | _, _, .sample _ _ _ _ => trivial
-  | _, _, .reveal _ _ _ _ _ _ _ => trivial
-
-/-- After all its leading commitments, a program has none left. -/
-theorem leadingCommits_commitTail : ∀ {Γ : SourceCtx Player L} {names : Finset VarId}
-    (program : SourceProgram Player L Γ names),
-    leadingCommits (commitTail (leadingCommits program) program
-      (leadingCommits_prefix program)).tail = 0
-  | _, _, .commit _ _ _ _ next => leadingCommits_commitTail next
-  | _, _, .ret _ => rfl
-  | _, _, .sample _ _ _ _ => rfl
-  | _, _, .reveal _ _ _ _ _ _ _ => rfl
-
-/-- Leading commitments are events counted by the program. -/
-theorem eventCount_commitTail : ∀ (count : Nat) {Γ : SourceCtx Player L}
-    {names : Finset VarId} (program : SourceProgram Player L Γ names)
-    (prefixed : CommitPrefix program count),
-    count + eventCount (commitTail count program prefixed).tail = eventCount program := by
-  intro count
-  induction count with
-  | zero => intro Γ names program prefixed; simp [commitTail]
-  | succ count ih =>
-      intro Γ names program prefixed
-      cases program with
-      | ret _ => exact prefixed.elim
-      | sample _ _ _ _ => exact prefixed.elim
-      | reveal _ _ _ _ _ _ _ => exact prefixed.elim
-      | commit _ _ _ _ next =>
-          have := ih next prefixed
-          simp only [commitTail, eventCount] at this ⊢
-          omega
-
-/-- **The phases of a program from a rank.** A maximal run of commitments is one
-phase; every other operation is a phase of its own. Each phase is named by the
-rank its end leaves completed. -/
-inductive PhaseEnds : {Γ : SourceCtx Player L} → {names : Finset VarId} →
-    SourceProgram Player L Γ names → Nat → List Nat → Prop
-  | ret {Γ : SourceCtx Player L} (payoffs) (offset : Nat) :
-      PhaseEnds (.ret (Γ := Γ) payoffs) offset []
-  | sample {Γ : SourceCtx Player L} {names : Finset VarId} {name : VarId} {payload : L.Ty}
-      {fresh : name ∉ Γ.map Prod.fst} {law : L.DistExpr (SourcePublicCtx L Γ) payload}
-      {next : SourceProgram Player L ((name, .publicData payload) :: Γ) names}
-      {offset : Nat} {rest : List Nat} :
-      PhaseEnds next (offset + 1) rest →
-      PhaseEnds (.sample name fresh law next) offset ((offset + 1) :: rest)
-  | reveal {Γ : SourceCtx Player L} {names : Finset VarId} {published name : VarId}
-      {owner : Player} {payload : L.Ty} {fresh : published ∉ Γ.map Prod.fst}
-      {selected : HasVar Γ name (.commitment owner payload)} {unresolved : name ∈ names}
-      {next : SourceProgram Player L ((published, .publication payload) :: Γ) (names.erase name)}
-      {offset : Nat} {rest : List Nat} :
-      PhaseEnds next (offset + 1) rest →
-      PhaseEnds (.reveal published owner name fresh selected unresolved next) offset
-        ((offset + 1) :: rest)
-  | block {Γ : SourceCtx Player L} {names : Finset VarId}
-      {program : SourceProgram Player L Γ names} {offset : Nat} {rest : List Nat}
-      (count : Nat) (prefixed : CommitPrefix program count) (positive : 0 < count)
-      (maximal : leadingCommits (commitTail count program prefixed).tail = 0) :
-      PhaseEnds (commitTail count program prefixed).tail (offset + count) rest →
-      PhaseEnds program offset ((offset + count) :: rest)
-
-/-- Every program has its phases from every rank. -/
-theorem PhaseEnds.exists : ∀ (size : Nat) {Γ : SourceCtx Player L} {names : Finset VarId}
-    (program : SourceProgram Player L Γ names), eventCount program = size →
-    ∀ offset, ∃ ends, PhaseEnds program offset ends := by
-  intro size
-  induction size using Nat.strong_induction_on with
-  | _ size ih =>
-      intro Γ names program sized offset
-      by_cases leading : leadingCommits program = 0
-      · cases program with
-        | ret payoffs => exact ⟨[], .ret payoffs offset⟩
-        | sample name fresh law next =>
-            obtain ⟨rest, ends⟩ := ih (eventCount next) (by simp [eventCount] at sized; omega)
-              next rfl (offset + 1)
-            exact ⟨_, .sample ends⟩
-        | reveal published owner name fresh selected unresolved next =>
-            obtain ⟨rest, ends⟩ := ih (eventCount next) (by simp [eventCount] at sized; omega)
-              next rfl (offset + 1)
-            exact ⟨_, .reveal ends⟩
-        | commit => simp [leadingCommits] at leading
-      · have counted := eventCount_commitTail (leadingCommits program) program
-          (leadingCommits_prefix program)
-        obtain ⟨rest, ends⟩ := ih (eventCount (commitTail (leadingCommits program) program
-          (leadingCommits_prefix program)).tail) (by omega) _ rfl
-          (offset + leadingCommits program)
-        exact ⟨_, .block (leadingCommits program) (leadingCommits_prefix program)
-          (Nat.pos_of_ne_zero leading) (leadingCommits_commitTail program) ends⟩
-
-section Law
-
-variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-  (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-  (players : Player → (serviceApplication setup mode deadline leaks).Policy)
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+  (setup : Setup (Player := Player) (L := L))
+  (runtime : EventGraphRuntime (graph setup))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
+  (players : Player → (application setup runtime leaks).Policy)
   (wholeProfile : BehavioralProfile setup.program) (who : Player)
 
-/-- **The deviation law of a residual program.** From completion boundaries at
-rank `offset` that the source configurations of a seed law check, whenever the
-deviator's traffic factors through its source view, the phases `ends` give
-the decoded state of the residual program jointly with the deviator's traffic
-the law of a source run in which the deviator follows one source policy, with
-the traffic factoring through the deviator's source observation. -/
-def DeviationLaw [Fintype Player] {Γ : SourceCtx Player L} {names : Finset VarId}
+/-- Every coupled physical continuation of a source suffix has the terminal law
+of one source behavioral deviation. The simulation retains typed checkpoints,
+automatic completion paths and traffic conditional on the player's source view. -/
+private def SourceDeviationLaw {Γ : SourceCtx Player L} {names : Finset VarId}
     (program : SourceProgram Player L Γ names) (profile : BehavioralProfile program)
     (refs : ContextRefs (graphLayout setup.program) Γ)
     (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) program)
-    (refsBefore : ContextRefsBefore refs embedding) (offset : Nat) (ends : List Nat) : Prop :=
+    (refsBefore : ContextRefsBefore refs embedding) (rank : Nat) : Prop :=
   ∀ {Seed : Type} (prior : PMF Seed) (source : Seed → Config Player L Γ)
-    (execution : Seed → (serviceApplication setup mode deadline leaks).Execution),
+    (ghost : Seed → EventGraphRuntime.State (graph setup))
+    (execution : Seed → (application setup runtime leaks).Execution),
     (∀ seed, CompiledPolicySuffix setup.program wholeProfile program profile refs
-      (source seed).revelations (source seed).registry embedding refsBefore offset) →
-    (∀ seed, SourceCheckpoint setup (source seed) refs offset
-      (execution seed).application.config) →
-    (∀ seed ∈ prior.support, CompletionBoundary setup leaks scheduler players offset
-      (execution seed)) →
+      (source seed).revelations (source seed).registry embedding refsBefore rank) →
+    (∀ seed, SourceCheckpoint setup (source seed) refs rank (ghost seed).config) →
+    (∀ seed, ∃ reached : EventGraphRuntime.State (graph setup),
+      Relation.ReflTransGen EventGraphRuntime.State.AutomaticStep (ghost seed) reached ∧
+        reached.config = (execution seed).application.config) →
+    (∀ seed ∈ prior.support, ∃ actualRank,
+      CompletionBoundary setup leaks scheduler players actualRank (execution seed)) →
     (∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon) →
-    (∀ seed player, (profile player).EffectiveDisclosures program (source seed).registry
-      (source seed).revelations) →
-    ∀ (noise : DecisionView who Γ → PMF _),
-    prior.map (fun seed => (source seed,
-        (serviceRuntime setup mode deadline).bindingTraffic leaks who (execution seed))) =
+    (∀ seed player, (profile player).EffectiveDisclosures program
+      (source seed).registry (source seed).revelations) →
+    ∀ noise : DecisionView who Γ → PMF _,
+    prior.map (fun seed => (source seed, runtime.bindingTraffic leaks who (execution seed))) =
       (prior.map source).bind (fun config =>
-        (noise (config.view who)).map fun extra => (config, extra)) →
+        (noise (config.view who)).map fun traffic => (config, traffic)) →
     ∃ policy : BehavioralPolicy who program,
-      ∃ nextNoise : Option (ProtocolView who program) → PMF _,
-        (prior.bind fun seed =>
-          (deviationPhases scheduler players horizon ends (execution seed)).map fun final =>
-            (decodeSourcePrefix? program refs (source seed).registry (source seed).revelations
-              embedding.ref (eventCount program) final.application.config.store
-              (decodeHistory setup.program (final.application.config.history.map
-                (setup.eventGraph.fromModeCompletion mode))),
-              (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
-          (prior.bind fun seed =>
-            ((fun law => law.bind (ProtocolState.behavioralStateStep program
-              (Function.update profile who policy)))^[eventCount program]
-              (PMF.pure (ProtocolState.entry program (source seed)))).map some).bind
-            fun state => (nextNoise (state.map (ProtocolState.observe who program))).map
-              fun extra => (state, extra)
+      (prior.bind fun seed =>
+        ((application setup runtime leaks).runToHorizon scheduler players horizon
+          (execution seed)).map fun final =>
+            decodeConfig? setup.program program refs (source seed).revelations
+              (source seed).registry embedding final.application.config.store
+              final.application.config.history) =
+        (prior.bind fun seed => SourceProgram.runFrom program
+          (Function.update profile who policy) (source seed)).map some
 
-/-- **Finishing a phase.** If the first phase of a program, ending at `high`,
-reconstructs a residual configuration for every reached point, with the source
-law of the phase given by a source step kernel, and the residual program has the
-deviation law over the remaining phases, then the program has it over all of
-its phases. -/
-theorem DeviationLaw.finish [Fintype Player] {Γ : SourceCtx Player L} {names : Finset VarId}
+/-- Terminal source configurations are frozen by subsequent physical rounds. -/
+private theorem SourceDeviationLaw.terminal {Γ : SourceCtx Player L}
+    (payoffs : List (Player × L.Expr (SourcePublicCtx L Γ) L.int))
+    (profile : BehavioralProfile (.ret payoffs))
+    (refs : ContextRefs (graphLayout setup.program) Γ)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      (.ret payoffs))
+    (refsBefore : ContextRefsBefore refs embedding) (rank : Nat) :
+    SourceDeviationLaw setup runtime leaks horizon scheduler players wholeProfile who
+      (.ret payoffs) profile refs embedding refsBefore rank := by
+  intro Seed prior source ghost execution aligned checkpoint lag _boundary _bounded _effective
+    _noise _factor
+  refine ⟨PUnit.unit, ?_⟩
+  have full : rank = (graph setup).order.eventCount := by
+    change rank = eventCount setup.program
+    have counted := (aligned prior.support_nonempty.choose).graphSuffix.countEq
+    simpa only [eventCount, Nat.add_zero] using counted
+  have equal (seed : Seed) : (execution seed).application.config = (ghost seed).config := by
+    obtain ⟨reached, path, ending⟩ := lag seed
+    have noAuto : ∀ event, ¬ (ghost seed).AutomaticReady event := by
+      intro event eligible
+      have terminal : (ghost seed).config.cut.Terminal := by
+        have ordered := (checkpoint seed).ordered
+        rw [full] at ordered
+        exact ordered.terminal
+      apply eligible.1.1
+      rw [terminal]
+      exact Finset.mem_univ _
+    have same := EventGraphRuntime.State.automatic_path_eq_of_quiescent path noAuto
+    rw [same] at ending
+    exact ending.symm
+  rw [PMF.map_bind]
+  apply bind_congr_on_support _
+  intro seed _supported
+  have terminal : (execution seed).application.config.cut.IsPrefix
+      (graph setup).order.eventCount := by
+    rw [equal seed, ← full]
+    exact (checkpoint seed).ordered
+  have decoded (final : (application setup runtime leaks).Execution)
+      (reached : final ∈ ((application setup runtime leaks).runToHorizon scheduler players
+        horizon (execution seed)).support) :
+      decodeConfig? setup.program (.ret payoffs) refs (source seed).revelations
+        (source seed).registry embedding final.application.config.store
+        final.application.config.history = some (source seed) := by
+    have unchanged := runRounds_config_terminal scheduler players _ (execution seed) final
+      terminal reached
+    rw [unchanged, equal seed]
+    unfold decodeConfig?
+    change (decodeState? refs (ghost seed).config.store).map _ = _
+    rw [decodeState?_eq_some refs (source seed).state (ghost seed).config.store
+      (checkpoint seed).agrees]
+    simp only [Option.map_some, finalRegistry, finalRevelations,
+      (checkpoint seed).history]
+    change some {source seed with defaults := (ghost seed).config.defaults} = some (source seed)
+    rw [(checkpoint seed).defaults]
+  rw [map_congr_on_support _ (g := fun _ => some (source seed)) decoded,
+    pmf_map_fun_const]
+  simp only [SourceProgram.runFrom, PMF.pure_map]
+
+private theorem automatic_stopped_boundary
+    (event : (graph setup).EventId)
+    (ghost caught : EventGraphRuntime.State (graph setup))
+    (before after : (application setup runtime leaks).Execution)
+    (ready : ghost.config.cut.Ready event)
+    (lag : Relation.ReflTransGen EventGraphRuntime.State.AutomaticStep ghost caught)
+    (ending : caught.config = before.application.config)
+    (physical : ∃ actualRank,
+      CompletionBoundary setup leaks scheduler players actualRank before)
+    (bounded : before.environmentRecall.length ≤ horizon)
+    (reached : after ∈ ((application setup runtime leaks).runUntilHorizon scheduler players
+      (fun current => event ∈ current.application.config.cut.completed) horizon before).support)
+    (completed : event ∈ after.application.config.cut.completed) :
+    after.environmentRecall.length ≤ horizon ∧ ∃ actualRank,
+      CompletionBoundary setup leaks scheduler players actualRank after := by
+  by_cases already : event ∈ before.application.config.cut.completed
+  · unfold ReactiveApplication.runUntilHorizon at reached
+    rw [(application setup runtime leaks).runUntil_of_stop scheduler players _ _ before already,
+      PMF.mem_support_pure_iff] at reached
+    subst after
+    exact ⟨bounded, physical⟩
+  · have same := EventGraph.Config.Step.path_eq_of_ready_of_not_completed event
+      (fun query queryReady =>
+        setup.eventGraph.sequentialize_ready_unique _ queryReady ready)
+      (ending ▸ already) (EventGraphRuntime.State.automatic_path_graph_steps lag)
+    have equal : before.application.config = ghost.config := ending.symm.trans same
+    have compiledPrefix : before.application.config.cut.IsPrefix event.val := by
+      rw [equal]
+      exact ⟨event.isLt.le, fun query =>
+        setup.eventGraph.sequentialize_mem_completed_iff_lt_of_ready _ ready⟩
+    obtain ⟨actualRank, boundary⟩ := physical
+    have ranks : actualRank = event.val := boundary.ordered.unique compiledPrefix
+    subst actualRank
+    obtain ⟨boundedAfter, nextRank, _later, nextBoundary⟩ :=
+      boundary.stopped runtime event before bounded after reached completed
+    exact ⟨boundedAfter, nextRank, nextBoundary⟩
+
+/-- A coupled successor distribution composes with its suffix's deviation law. -/
+private theorem SourceDeviationLaw.finish
+    {Γ Δ : SourceCtx Player L} {names tailNames : Finset VarId}
     (program : SourceProgram Player L Γ names) (profile : BehavioralProfile program)
     (refs : ContextRefs (graphLayout setup.program) Γ)
     (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) program)
-    {Δ : SourceCtx Player L} {tailNames : Finset VarId}
     (tail : SourceProgram Player L Δ tailNames) (tailProfile : BehavioralProfile tail)
     (tailRefs : ContextRefs (graphLayout setup.program) Δ)
-    (tailEmbedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
-      tail)
-    (tailBefore : ContextRefsBefore tailRefs tailEmbedding) (high : Nat) (rest : List Nat)
-    (tailLaw : DeviationLaw setup leaks horizon scheduler players wholeProfile who tail
-      tailProfile tailRefs tailEmbedding tailBefore high rest)
+    (tailEmbedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) tail)
+    (tailBefore : ContextRefsBefore tailRefs tailEmbedding) (nextRank : Nat)
+    (tailLaw : SourceDeviationLaw setup runtime leaks horizon scheduler players wholeProfile who
+      tail tailProfile tailRefs tailEmbedding tailBefore nextRank)
     {Seed : Type} (prior : PMF Seed) (source : Seed → Config Player L Γ)
-    (execution : Seed → (serviceApplication setup mode deadline leaks).Execution)
-    (nextSource : PhasePoint setup leaks horizon scheduler players high prior execution →
-      Config Player L Δ)
-    (nextAligned : ∀ point :
-      PhasePoint setup leaks horizon scheduler players high prior execution,
-      CompiledPolicySuffix setup.program wholeProfile tail tailProfile
-      tailRefs (nextSource point).revelations (nextSource point).registry tailEmbedding tailBefore
-      high)
-    (nextCheckpoint : ∀ point :
-      PhasePoint setup leaks horizon scheduler players high prior execution,
-      SourceCheckpoint setup (nextSource point) tailRefs high
-      point.val.2.application.config)
-    (nextBoundary : ∀ point :
-      PhasePoint setup leaks horizon scheduler players high prior execution,
-      CompletionBoundary setup leaks scheduler players high point.val.2)
-    (nextBounded : ∀ point :
-      PhasePoint setup leaks horizon scheduler players high prior execution,
+    (execution : Seed → (application setup runtime leaks).Execution)
+    (staged : PMF (Seed × (application setup runtime leaks).Execution))
+    (nextSource : {point // point ∈ staged.support} → Config Player L Δ)
+    (nextGhost : {point // point ∈ staged.support} → EventGraphRuntime.State (graph setup))
+    (nextAligned : ∀ point, CompiledPolicySuffix setup.program wholeProfile tail tailProfile
+      tailRefs (nextSource point).revelations (nextSource point).registry tailEmbedding
+      tailBefore nextRank)
+    (nextCheckpoint : ∀ point, SourceCheckpoint setup (nextSource point) tailRefs nextRank
+      (nextGhost point).config)
+    (nextLag : ∀ point : {point // point ∈ staged.support},
+      ∃ reached : EventGraphRuntime.State (graph setup),
+        Relation.ReflTransGen EventGraphRuntime.State.AutomaticStep (nextGhost point) reached ∧
+          reached.config = point.val.2.application.config)
+    (nextBoundary : ∀ point : {point // point ∈ staged.support}, ∃ actualRank,
+      CompletionBoundary setup leaks scheduler players actualRank point.val.2)
+    (nextBounded : ∀ point : {point // point ∈ staged.support},
       point.val.2.environmentRecall.length ≤ horizon)
-    (nextEffective : ∀ (point :
-      PhasePoint setup leaks horizon scheduler players high prior execution) player,
-      (tailProfile player).EffectiveDisclosures tail
+    (nextEffective : ∀ point player, (tailProfile player).EffectiveDisclosures tail
       (nextSource point).registry (nextSource point).revelations)
     (nextNoise : DecisionView who Δ → PMF _)
-    (nextFactor : (pmfToSubtype
-        (phaseJoint setup leaks horizon scheduler players high prior execution)
-        (fun _ member => member)).map (fun point => (nextSource point,
-          (serviceRuntime setup mode deadline).bindingTraffic leaks who point.val.2)) =
-      ((pmfToSubtype
-        (phaseJoint setup leaks horizon scheduler players high prior execution)
-        (fun _ member => member)).map nextSource).bind fun config =>
-        (nextNoise (config.view who)).map fun extra => (config, extra))
+    (nextFactor :
+      (pmfToSubtype staged (fun _ member => member)).map (fun point =>
+        (nextSource point, runtime.bindingTraffic leaks who point.val.2)) =
+      ((pmfToSubtype staged (fun _ member => member)).map nextSource).bind fun config =>
+        (nextNoise (config.view who)).map fun traffic => (config, traffic))
     (stepSource : Config Player L Γ → PMF (Config Player L Δ))
-    (nextMarginal : (pmfToSubtype
-        (phaseJoint setup leaks horizon scheduler players high prior execution)
-        (fun _ member => member)).map nextSource = (prior.map source).bind stepSource)
-    (lift : ProtocolState tail → ProtocolState program)
-    (recover : Option (ProtocolView who program) → Option (ProtocolView who tail))
-    (recovers : ∀ state : Option (ProtocolState tail),
-      recover ((state.map lift).map (ProtocolState.observe who program)) =
-        state.map (ProtocolState.observe who tail))
-    (decodeLater : ∀ (point : PhasePoint setup leaks horizon scheduler players high prior
-        execution)
-      (final : (serviceApplication setup mode deadline leaks).Execution),
-      decodeSourcePrefix? program refs (source point.val.1).registry
-        (source point.val.1).revelations embedding.ref (eventCount program)
-          final.application.config.store (decodeHistory setup.program
-            (final.application.config.history.map (setup.eventGraph.fromModeCompletion mode))) =
-      (decodeSourcePrefix? tail tailRefs (nextSource point).registry
-        (nextSource point).revelations tailEmbedding.ref (eventCount tail)
-          final.application.config.store (decodeHistory setup.program
-            (final.application.config.history.map
-              (setup.eventGraph.fromModeCompletion mode)))).map lift)
+    (nextMarginal : (pmfToSubtype staged (fun _ member => member)).map nextSource =
+      (prior.map source).bind stepSource)
+    (readResult : Config Player L tail.terminalCtx → Config Player L program.terminalCtx)
+    (decodeLater : ∀ (point : {point // point ∈ staged.support})
+      (final : (application setup runtime leaks).Execution),
+      decodeConfig? setup.program program refs (source point.val.1).revelations
+        (source point.val.1).registry embedding final.application.config.store
+          final.application.config.history =
+      (decodeConfig? setup.program tail tailRefs (nextSource point).revelations
+        (nextSource point).registry tailEmbedding final.application.config.store
+          final.application.config.history).map readResult)
     (build : BehavioralPolicy who tail → BehavioralPolicy who program)
-    (kernel : ∀ policy config,
-      ((fun law => law.bind (ProtocolState.behavioralStateStep program
-        (Function.update profile who (build policy))))^[eventCount program]
-        (PMF.pure (ProtocolState.entry program config))) =
-      ((stepSource config).bind fun next =>
-        ((fun law => law.bind (ProtocolState.behavioralStateStep tail
-          (Function.update tailProfile who policy)))^[eventCount tail]
-          (PMF.pure (ProtocolState.entry tail next)))).map lift) :
+    (sourceStep : ∀ policy config,
+      SourceProgram.runFrom program (Function.update profile who (build policy)) config =
+      ((stepSource config).bind fun next => SourceProgram.runFrom tail
+        (Function.update tailProfile who policy) next).map readResult)
+    (nativeStep :
+      (prior.bind fun seed =>
+        ((application setup runtime leaks).runToHorizon scheduler players horizon
+          (execution seed)).map fun final => decodeConfig? setup.program program refs
+            (source seed).revelations (source seed).registry embedding
+            final.application.config.store final.application.config.history) =
+      staged.bind fun point =>
+        ((application setup runtime leaks).runToHorizon scheduler players horizon point.2).map
+          fun final => decodeConfig? setup.program program refs (source point.1).revelations
+            (source point.1).registry embedding final.application.config.store
+            final.application.config.history) :
     ∃ policy : BehavioralPolicy who program,
-      ∃ nextNoise : Option (ProtocolView who program) → PMF _,
-        (prior.bind fun seed =>
-          (deviationPhases scheduler players horizon (high :: rest) (execution seed)).map
-            fun final =>
-            (decodeSourcePrefix? program refs (source seed).registry (source seed).revelations
-              embedding.ref (eventCount program) final.application.config.store
-              (decodeHistory setup.program (final.application.config.history.map
-                (setup.eventGraph.fromModeCompletion mode))),
-              (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
-          (prior.bind fun seed =>
-            ((fun law => law.bind (ProtocolState.behavioralStateStep program
-              (Function.update profile who policy)))^[eventCount program]
-              (PMF.pure (ProtocolState.entry program (source seed)))).map some).bind
-            fun state => (nextNoise (state.map (ProtocolState.observe who program))).map
-              fun extra => (state, extra) := by
-  let app := serviceApplication setup mode deadline leaks
-  let advanced := prior.bind fun seed =>
-    (app.runUntilHorizon scheduler players (BlockDone high) horizon (execution seed)).map
-      fun final => (seed, final)
-  let NextSeed := {point // point ∈ advanced.support}
-  let nextPrior : PMF NextSeed := pmfToSubtype advanced (fun _ member => member)
-  let nextExecution := fun point : NextSeed => point.val.2
-  obtain ⟨tailPolicy, tailNoise, law⟩ := tailLaw nextPrior nextSource nextExecution nextAligned
-    nextCheckpoint (fun point _ => nextBoundary point) (fun point _ => nextBounded point)
-    nextEffective nextNoise nextFactor
-  refine ⟨build tailPolicy, ?_⟩
-  let tailJoint := nextPrior.bind fun point =>
-    (deviationPhases scheduler players horizon rest (nextExecution point)).map fun final =>
-      (decodeSourcePrefix? tail tailRefs (nextSource point).registry
-        (nextSource point).revelations tailEmbedding.ref (eventCount tail)
-          final.application.config.store
-          (decodeHistory setup.program (final.application.config.history.map
-            (setup.eventGraph.fromModeCompletion mode))),
-        (serviceRuntime setup mode deadline).bindingTraffic leaks who final)
-  let tailSource := nextPrior.bind fun point =>
-    ((fun law => law.bind (ProtocolState.behavioralStateStep tail
-      (Function.update tailProfile who tailPolicy)))^[eventCount tail]
-      (PMF.pure (ProtocolState.entry tail (nextSource point)))).map some
-  have tailMarginal : tailJoint.map Prod.fst = tailSource := by
-    have projected := congrArg (PMF.map Prod.fst) law
-    simp only [← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind,
-      PMF.bind_const] at projected
-    simpa only [tailJoint, tailSource, ← PMF.bind_pure_comp, Function.comp_def,
-      PMF.bind_bind, PMF.pure_bind, PMF.bind_pure] using projected
-  have tailFactor : tailJoint = (tailJoint.map Prod.fst).bind fun state =>
-      (tailNoise (state.map (ProtocolState.observe who tail))).map fun extra =>
-        (state, extra) := by
-    rw [tailMarginal]
-    exact law
-  have lifted := map_observation_factor tailJoint
-    (Option.map (ProtocolState.observe who tail)) tailNoise tailFactor
-    (Option.map lift) (Option.map (ProtocolState.observe who program)) recover recovers
-  refine ⟨fun view => tailNoise (recover view), ?_⟩
-  have nativeEq : (prior.bind fun seed =>
-      (deviationPhases scheduler players horizon (high :: rest) (execution seed)).map
-        fun final =>
-          (decodeSourcePrefix? program refs (source seed).registry
-            (source seed).revelations embedding.ref (eventCount program)
-              final.application.config.store (decodeHistory setup.program
-                (final.application.config.history.map
-                  (setup.eventGraph.fromModeCompletion mode))),
-            (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
-      tailJoint.map (fun pair => (pair.1.map lift, pair.2)) := by
-    let continuePoint := fun point : Seed × app.Execution =>
-      (deviationPhases scheduler players horizon rest point.2).map
-        fun final =>
-          (decodeSourcePrefix? program refs (source point.1).registry
-            (source point.1).revelations embedding.ref (eventCount program)
-              final.application.config.store (decodeHistory setup.program
-                (final.application.config.history.map
-                  (setup.eventGraph.fromModeCompletion mode))),
-            (serviceRuntime setup mode deadline).bindingTraffic leaks who final)
-    calc
-      _ = advanced.bind continuePoint := by
-        simp only [advanced, continuePoint, PMF.bind_bind, PMF.bind_map,
-          deviationPhases, PMF.map_bind, Function.comp_def]
-        rfl
-      _ = nextPrior.bind (fun point => continuePoint point.val) := by
-        rw [show (nextPrior.bind fun point => continuePoint point.val) =
-            (nextPrior.map Subtype.val).bind continuePoint from
-          (PMF.bind_map nextPrior Subtype.val continuePoint).symm, map_val_pmfToSubtype]
-      _ = _ := by
-        simp only [tailJoint, PMF.map_bind, PMF.map_comp, Function.comp_def]
-        apply bind_congr_on_support _
-        intro point _
-        apply map_congr_on_support _
-        intro final _
-        exact Prod.ext (decodeLater point final) rfl
-  have sourceEq : tailSource.map (Option.map lift) =
-      prior.bind fun seed =>
-        ((fun law => law.bind (ProtocolState.behavioralStateStep program
-          (Function.update profile who (build tailPolicy))))^[eventCount program]
-          (PMF.pure (ProtocolState.entry program (source seed)))).map some := by
-    simp only [tailSource, PMF.map_bind, PMF.map_comp, Option.map_some, Function.comp_def]
-    let continuation := fun config : Config Player L Δ =>
-      ((fun law => law.bind (ProtocolState.behavioralStateStep tail
-        (Function.update tailProfile who tailPolicy)))^[eventCount tail]
-        (PMF.pure (ProtocolState.entry tail config))).map fun state => some (lift state)
-    change nextPrior.bind (fun point => continuation (nextSource point)) = _
-    rw [show (nextPrior.bind fun point => continuation (nextSource point)) =
-        (nextPrior.map nextSource).bind continuation from
-      (PMF.bind_map nextPrior nextSource continuation).symm, nextMarginal,
-      PMF.bind_bind, PMF.bind_map]
+      (prior.bind fun seed =>
+        ((application setup runtime leaks).runToHorizon scheduler players horizon
+          (execution seed)).map fun final => decodeConfig? setup.program program refs
+            (source seed).revelations (source seed).registry embedding
+            final.application.config.store final.application.config.history) =
+        (prior.bind fun seed => SourceProgram.runFrom program
+          (Function.update profile who policy) (source seed)).map some := by
+  let nextPrior := pmfToSubtype staged (fun _ member => member)
+  obtain ⟨policy, tailResult⟩ := tailLaw nextPrior nextSource nextGhost (fun point => point.val.2)
+    nextAligned nextCheckpoint nextLag (fun point _ => nextBoundary point)
+    (fun point _ => nextBounded point) nextEffective nextNoise nextFactor
+  refine ⟨build policy, ?_⟩
+  have nextNative : (staged.bind fun point =>
+      ((application setup runtime leaks).runToHorizon scheduler players horizon point.2).map
+        fun final => decodeConfig? setup.program program refs (source point.1).revelations
+          (source point.1).registry embedding final.application.config.store
+          final.application.config.history) =
+      ((nextPrior.bind fun point =>
+        ((application setup runtime leaks).runToHorizon scheduler players horizon point.val.2).map
+          fun final => decodeConfig? setup.program tail tailRefs (nextSource point).revelations
+            (nextSource point).registry tailEmbedding final.application.config.store
+              final.application.config.history)).map (Option.map readResult) := by
+    have recover := map_val_pmfToSubtype staged (fun _ member => member)
+    conv_lhs => rw [← recover]
+    rw [PMF.bind_map, PMF.map_bind]
     apply bind_congr_on_support _
-    intro seed _
-    rw [kernel, PMF.map_comp, PMF.map_bind]
-    rfl
-  have marginalEq : (tailJoint.map (fun pair => (pair.1.map lift, pair.2))).map
-      Prod.fst = prior.bind (fun seed =>
-        ((fun law => law.bind (ProtocolState.behavioralStateStep program
-          (Function.update profile who (build tailPolicy))))^[eventCount program]
-          (PMF.pure (ProtocolState.entry program (source seed)))).map some) := by
+    intro point _
     rw [PMF.map_comp]
-    change tailJoint.map (Option.map lift ∘ Prod.fst) = _
-    rw [← PMF.map_comp, tailMarginal]
-    exact sourceEq
-  rw [nativeEq]
-  simpa only [marginalEq] using lifted
+    apply map_congr_on_support _
+    intro final _
+    exact decodeLater point final
+  rw [nativeStep, nextNative, tailResult, PMF.map_comp]
+  have pushed : (nextPrior.bind fun point => SourceProgram.runFrom tail
+      (Function.update tailProfile who policy) (nextSource point)) =
+      prior.bind fun seed => (stepSource (source seed)).bind fun config =>
+        SourceProgram.runFrom tail (Function.update tailProfile who policy) config := by
+    calc
+      _ = (nextPrior.map nextSource).bind (SourceProgram.runFrom tail
+          (Function.update tailProfile who policy)) := (PMF.bind_map _ _ _).symm
+      _ = _ := by
+        rw [nextMarginal, PMF.bind_bind, PMF.bind_map]
+        rfl
+  rw [pushed]
+  simp only [PMF.map_bind, Option.map_some, Function.comp_def]
+  apply bind_congr_on_support _
+  intro seed _
+  rw [sourceStep, PMF.map_comp, PMF.map_bind]
+  rfl
 
-/-- **One phase, decoded.** If the run of the first phase, ending at `high`,
-decodes through an injective embedding of residual entry states with the
-source law of a source step kernel jointly with the deviator's traffic, factoring through
-the deviator's residual view, and stops at completion boundaries within the
-horizon, then the residual deviation law gives the program's over all of its
-phases. -/
-theorem DeviationLaw.phase [Fintype Player] {Γ : SourceCtx Player L} {names : Finset VarId}
+/-- An instruction's joint successor and traffic law supplies the coupled prior
+for the remaining source program. -/
+private theorem SourceDeviationLaw.of_head
+    {Γ Δ : SourceCtx Player L} {names tailNames : Finset VarId}
     (program : SourceProgram Player L Γ names) (profile : BehavioralProfile program)
     (refs : ContextRefs (graphLayout setup.program) Γ)
     (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) program)
-    {Δ : SourceCtx Player L} {tailNames : Finset VarId}
     (tail : SourceProgram Player L Δ tailNames) (tailProfile : BehavioralProfile tail)
     (tailRefs : ContextRefs (graphLayout setup.program) Δ)
-    (tailEmbedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
-      tail)
-    (tailBefore : ContextRefsBefore tailRefs tailEmbedding) (high : Nat) (rest : List Nat)
-    (tailLaw : DeviationLaw setup leaks horizon scheduler players wholeProfile who tail
-      tailProfile tailRefs tailEmbedding tailBefore high rest)
+    (tailEmbedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) tail)
+    (tailBefore : ContextRefsBefore tailRefs tailEmbedding) (nextRank : Nat)
+    (tailLaw : SourceDeviationLaw setup runtime leaks horizon scheduler players wholeProfile who
+      tail tailProfile tailRefs tailEmbedding tailBefore nextRank)
     {Seed : Type} (prior : PMF Seed) (source : Seed → Config Player L Γ)
-    (execution : Seed → (serviceApplication setup mode deadline leaks).Execution)
-    (lift : ProtocolState tail → ProtocolState program)
-    (injective : Function.Injective fun config : Config Player L Δ =>
-      lift (ProtocolState.entry tail config))
-    (nextRegistry : Seed → Registry Δ) (nextRevelations : Seed → Revelations Δ)
-    (decode : Seed → (serviceApplication setup mode deadline leaks).Execution →
-      Option (ProtocolState program))
-    (decodeEq : ∀ seed final, decode seed final =
-      (decodeState? tailRefs final.application.config.store).map fun state =>
-        lift (ProtocolState.entry tail ⟨state, nextRegistry seed, nextRevelations seed,
-          decodeHistory setup.program (final.application.config.history.map
-            (setup.eventGraph.fromModeCompletion mode))⟩))
+    (execution : Seed → (application setup runtime leaks).Execution)
+    (phase : Seed → PMF (application setup runtime leaks).Execution)
+    (advance : Seed → (application setup runtime leaks).Execution → Config Player L Δ)
     (stepSource : Config Player L Γ → PMF (Config Player L Δ))
-    (configNoise : DecisionView who Δ → PMF _)
-    (law : (phaseJoint setup leaks horizon scheduler players high prior execution).map
-        (fun point => (decode point.1 point.2,
-          (serviceRuntime setup mode deadline).bindingTraffic leaks who point.2)) =
+    (nextNoise : DecisionView who Δ → PMF _)
+    (joint : (prior.bind fun seed => (phase seed).map fun final =>
+        (advance seed final, runtime.bindingTraffic leaks who final)) =
       ((prior.map source).bind stepSource).bind fun config =>
-        (configNoise (config.view who)).map fun extra =>
-          (some (lift (ProtocolState.entry tail config)), extra))
-    (nextBoundary : ∀ point :
-      PhasePoint setup leaks horizon scheduler players high prior execution,
-      CompletionBoundary setup leaks scheduler players high point.val.2)
-    (nextBounded : ∀ point :
-      PhasePoint setup leaks horizon scheduler players high prior execution,
-      point.val.2.environmentRecall.length ≤ horizon)
-    (nextAligned : ∀ seed, CompiledPolicySuffix setup.program wholeProfile tail tailProfile
-      tailRefs (nextRevelations seed) (nextRegistry seed) tailEmbedding tailBefore high)
-    (nextEffective : ∀ seed player, (tailProfile player).EffectiveDisclosures tail
-      (nextRegistry seed) (nextRevelations seed))
-    (recover : Option (ProtocolView who program) → Option (ProtocolView who tail))
-    (recovers : ∀ state : Option (ProtocolState tail),
-      recover ((state.map lift).map (ProtocolState.observe who program)) =
-        state.map (ProtocolState.observe who tail))
-    (decodeLater : ∀ seed (final : (serviceApplication setup mode deadline leaks).Execution),
-      decodeSourcePrefix? program refs (source seed).registry
-        (source seed).revelations embedding.ref (eventCount program)
-          final.application.config.store (decodeHistory setup.program
-            (final.application.config.history.map (setup.eventGraph.fromModeCompletion mode))) =
-      (decodeSourcePrefix? tail tailRefs (nextRegistry seed) (nextRevelations seed)
-        tailEmbedding.ref (eventCount tail) final.application.config.store
-          (decodeHistory setup.program (final.application.config.history.map
-            (setup.eventGraph.fromModeCompletion mode)))).map lift)
+        (nextNoise (config.view who)).map fun traffic => (config, traffic))
+    (aligned : ∀ seed final, CompiledPolicySuffix setup.program wholeProfile tail tailProfile
+      tailRefs (advance seed final).revelations (advance seed final).registry
+      tailEmbedding tailBefore nextRank)
+    (effective : ∀ seed final player, (tailProfile player).EffectiveDisclosures tail
+      (advance seed final).registry (advance seed final).revelations)
+    (endpoint : ∀ seed ∈ prior.support, ∀ final ∈ (phase seed).support,
+      ∃ native : EventGraphRuntime.State (graph setup),
+        SourceCheckpoint setup (advance seed final) tailRefs nextRank native.config ∧
+        (∃ caught : EventGraphRuntime.State (graph setup),
+          Relation.ReflTransGen EventGraphRuntime.State.AutomaticStep native caught ∧
+            caught.config = final.application.config) ∧
+        (∃ actualRank, CompletionBoundary setup leaks scheduler players actualRank final) ∧
+        final.environmentRecall.length ≤ horizon)
+    (readResult : Config Player L tail.terminalCtx → Config Player L program.terminalCtx)
+    (decodeLater : ∀ (seed : Seed)
+      (stopped final : (application setup runtime leaks).Execution),
+      decodeConfig? setup.program program refs (source seed).revelations
+        (source seed).registry embedding final.application.config.store
+          final.application.config.history =
+      (decodeConfig? setup.program tail tailRefs (advance seed stopped).revelations
+        (advance seed stopped).registry tailEmbedding final.application.config.store
+          final.application.config.history).map readResult)
     (build : BehavioralPolicy who tail → BehavioralPolicy who program)
-    (kernel : ∀ policy config,
-      ((fun law => law.bind (ProtocolState.behavioralStateStep program
-        (Function.update profile who (build policy))))^[eventCount program]
-        (PMF.pure (ProtocolState.entry program config))) =
-      ((stepSource config).bind fun next =>
-        ((fun law => law.bind (ProtocolState.behavioralStateStep tail
-          (Function.update tailProfile who policy)))^[eventCount tail]
-          (PMF.pure (ProtocolState.entry tail next)))).map lift) :
+    (sourceStep : ∀ policy config,
+      SourceProgram.runFrom program (Function.update profile who (build policy)) config =
+      ((stepSource config).bind fun next => SourceProgram.runFrom tail
+        (Function.update tailProfile who policy) next).map readResult)
+    (markov : ∀ seed,
+      (application setup runtime leaks).runToHorizon scheduler players horizon (execution seed) =
+      (phase seed).bind
+        ((application setup runtime leaks).runToHorizon scheduler players horizon)) :
     ∃ policy : BehavioralPolicy who program,
-      ∃ nextNoise : Option (ProtocolView who program) → PMF _,
-        (prior.bind fun seed =>
-          (deviationPhases scheduler players horizon (high :: rest) (execution seed)).map
-            fun final =>
-            (decodeSourcePrefix? program refs (source seed).registry (source seed).revelations
-              embedding.ref (eventCount program) final.application.config.store
-              (decodeHistory setup.program (final.application.config.history.map
-                (setup.eventGraph.fromModeCompletion mode))),
-              (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
-          (prior.bind fun seed =>
-            ((fun law => law.bind (ProtocolState.behavioralStateStep program
-              (Function.update profile who policy)))^[eventCount program]
-              (PMF.pure (ProtocolState.entry program (source seed)))).map some).bind
-            fun state => (nextNoise (state.map (ProtocolState.observe who program))).map
-              fun extra => (state, extra) := by
-  obtain ⟨nextSource, nextCheckpoint, nextRegistryEq, nextRevelationsEq, _nextRead,
-    nextMarginal, nextFactor⟩ := reconstruct_service_phase setup leaks who tailRefs high
-      nextRegistry nextRevelations
-      (phaseJoint setup leaks horizon scheduler players high prior execution)
-      (fun config => lift (ProtocolState.entry tail config)) injective decode decodeEq
-      (fun point member => (nextBoundary ⟨point, member⟩).ordered)
-      ((prior.map source).bind stepSource) configNoise law
-  refine DeviationLaw.finish setup leaks horizon scheduler players wholeProfile who program
-    profile refs embedding tail tailProfile tailRefs tailEmbedding tailBefore high rest tailLaw
-    prior source execution nextSource ?_ nextCheckpoint nextBoundary nextBounded ?_ configNoise
-    nextFactor stepSource nextMarginal lift recover recovers ?_ build kernel
-  · intro point
-    rw [nextRegistryEq, nextRevelationsEq]
-    exact nextAligned point.val.1
-  · intro point player
-    rw [nextRegistryEq, nextRevelationsEq]
-    exact nextEffective point.val.1 player
-  · intro point final
-    rw [nextRegistryEq, nextRevelationsEq]
-    exact decodeLater point.val.1 final
+      (prior.bind fun seed =>
+        ((application setup runtime leaks).runToHorizon scheduler players horizon
+          (execution seed)).map fun final => decodeConfig? setup.program program refs
+            (source seed).revelations (source seed).registry embedding
+            final.application.config.store final.application.config.history) =
+      (prior.bind fun seed => SourceProgram.runFrom program
+        (Function.update profile who policy) (source seed)).map some := by
+  let staged := prior.bind fun seed => (phase seed).map fun final => (seed, final)
+  let Point := {point // point ∈ staged.support}
+  let nextPrior := pmfToSubtype staged (fun _ member => member)
+  let nextSource : Point → Config Player L Δ := fun point => advance point.val.1 point.val.2
+  have supported (point : Point) : point.val.1 ∈ prior.support ∧
+      point.val.2 ∈ (phase point.val.1).support := by
+    have member := point.property
+    change point.val ∈ (prior.bind fun seed =>
+      (phase seed).map fun final => (seed, final)).support at member
+    simp only [PMF.support_bind] at member
+    obtain ⟨seed, present, later⟩ := Set.mem_iUnion₂.mp member
+    obtain ⟨final, reached, equal⟩ := (PMF.mem_support_map_iff ..).mp later
+    have parentEq : seed = point.val.1 := congrArg Prod.fst equal
+    have finalEq : final = point.val.2 := congrArg Prod.snd equal
+    rw [← parentEq, ← finalEq]
+    exact ⟨present, reached⟩
+  have witnesses (point : Point) := endpoint point.val.1 (supported point).1
+    point.val.2 (supported point).2
+  let nextGhost : Point → EventGraphRuntime.State (graph setup) :=
+    fun point => (witnesses point).choose
+  have nextJoint : nextPrior.map (fun point =>
+      (nextSource point, runtime.bindingTraffic leaks who point.val.2)) =
+      ((prior.map source).bind stepSource).bind fun config =>
+        (nextNoise (config.view who)).map fun traffic => (config, traffic) := by
+    have reduced := map_pmfToSubtype staged (fun _ member => member)
+      (fun point => (advance point.1 point.2, runtime.bindingTraffic leaks who point.2))
+    change _ = _ at reduced
+    rw [reduced]
+    simpa only [staged, PMF.map_bind, PMF.map_comp, Function.comp_def] using joint
+  have nextMarginal : nextPrior.map nextSource = (prior.map source).bind stepSource := by
+    have projected := congrArg (PMF.map Prod.fst) nextJoint
+    simpa only [PMF.map_bind, PMF.map_comp, Function.comp_def, pmf_map_fun_const,
+      PMF.bind_pure] using projected
+  have nextFactor : nextPrior.map (fun point =>
+      (nextSource point, runtime.bindingTraffic leaks who point.val.2)) =
+      (nextPrior.map nextSource).bind fun config =>
+        (nextNoise (config.view who)).map fun traffic => (config, traffic) := by
+    rw [nextMarginal]
+    exact nextJoint
+  apply SourceDeviationLaw.finish setup runtime leaks horizon scheduler players wholeProfile who
+    program profile refs embedding tail tailProfile tailRefs tailEmbedding tailBefore nextRank
+    tailLaw prior source execution staged nextSource nextGhost
+    (fun point => aligned point.val.1 point.val.2)
+    (fun point => (witnesses point).choose_spec.1)
+    (fun point => (witnesses point).choose_spec.2.1)
+    (fun point => (witnesses point).choose_spec.2.2.1)
+    (fun point => (witnesses point).choose_spec.2.2.2)
+    (fun point => effective point.val.1 point.val.2) nextNoise nextFactor
+    stepSource nextMarginal readResult
+    (fun point => decodeLater point.val.1 point.val.2) build sourceStep
+  simp only [staged, PMF.bind_bind, PMF.bind_map,
+    Function.comp_def]
+  apply bind_congr_on_support _
+  intro seed _
+  rw [markov seed, PMF.map_bind]
 
-end Law
+end Vegas
 
-/-- A residual program with no leading commitment, compiled at rank `high`,
-starts with a public event, or ends the graph there: a block ends at `high`. -/
-theorem CompiledSuffix.blockEnd {setup : Setup (Player := Player) (L := L)}
-    {mode : EventGraph.ExecutionMode} {Δ : SourceCtx Player L} {names : Finset VarId}
-    {tail : SourceProgram Player L Δ names} (maximal : leadingCommits tail = 0)
-    {refs : ContextRefs (graphLayout setup.program) Δ} {revelations : Revelations Δ}
-    {registry : Registry Δ}
-    {embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) tail}
-    {refsBefore : ContextRefsBefore refs embedding} {high : Nat}
-    (suffix : CompiledSuffix setup.program tail refs revelations registry embedding refsBefore
-      high) : BlockEnd setup mode high := by
-  have counted := suffix.countEq
-  refine ⟨?_, ?_⟩
-  · change high ≤ eventCount setup.program
-    omega
-  · intro event rank
-    have below : event.val < eventCount setup.program := event.isLt
-    cases tail with
-    | ret _ =>
-        simp only [eventCount] at counted
-        omega
-    | commit => simp [leadingCommits] at maximal
-    | @sample _ _ name payload fresh law next =>
-        have same : event = embedding.event ⟨0, by simp [eventCount]⟩ := by
-          apply Fin.ext
-          rw [suffix.rankEq]
-          simpa using rank
-        have outputEq : (serviceGraph setup mode).outputLayout
-            (embedding.event ⟨0, by simp [eventCount]⟩) = .publicData payload := by
-          change outputLayout setup.program _ = _
-          simpa [outputLayout, eventCount] using embedding.layout_eq ⟨0, by simp [eventCount]⟩
-        rw [same, outputEq]
-        trivial
-    | @reveal _ _ published owner name payload fresh selected unresolved next =>
-        have same : event = embedding.event ⟨0, by simp [eventCount]⟩ := by
-          apply Fin.ext
-          rw [suffix.rankEq]
-          simpa using rank
-        have outputEq : (serviceGraph setup mode).outputLayout
-            (embedding.event ⟨0, by simp [eventCount]⟩) = .publication payload := by
-          change outputLayout setup.program _ = _
-          simpa [outputLayout, eventCount] using embedding.layout_eq ⟨0, by simp [eventCount]⟩
-        rw [same, outputEq]
-        trivial
 
-/-- **The deviation law over every phase.** On a barrier-ordered graph, under
-the asynchronous contract with timely delays, against the first-turn clients
-of a source profile one player follows an arbitrary native policy. Over the
-phases of any residual program, the decoded source state has, jointly with the
-deviator's traffic, the law of a source run in which the deviator follows one
-source behavioral policy and every other player keeps its source policy, the
-traffic factoring through the deviator's source observation. -/
-theorem asyncDeviation_deviationLaw [Fintype Player]
-    (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-    {deadline : (serviceGraph setup mode).EventId → Nat}
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (ordered : (serviceGraph setup mode).BarrierOrdered)
-    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
-      (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound) (turns : Nat)
+namespace Vegas
+open SourceProgram EventGraphRuntime Interaction GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+private theorem SourceDeviationLaw.sample
+    (setup : Setup (Player := Player) (L := L))
+    (runtime : EventGraphRuntime (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
+    (complete : CompletesPlay runtime leaks (initialLaw setup) horizon scheduler)
+    (bound : (graph setup).EventId → Nat) (turns : Nat)
     (wholeProfile : BehavioralProfile setup.program) (who : Player)
-    (deviation : (serviceApplication setup mode deadline leaks).Policy)
-    {Γ : SourceCtx Player L} {names : Finset VarId} {program : SourceProgram Player L Γ names}
-    {offset : Nat} {ends : List Nat} (phases : PhaseEnds program offset ends) :
-    ∀ (profile : BehavioralProfile program) (refs : ContextRefs (graphLayout setup.program) Γ)
-      (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
-        program) (refsBefore : ContextRefsBefore refs embedding),
-      DeviationLaw setup leaks horizon scheduler
-        (deviatedTurnProfile bound turns (firstTurnTiming setup turns mode) wholeProfile who
-          deviation) wholeProfile who program profile refs embedding refsBefore offset ends := by
-  let app := serviceApplication setup mode deadline leaks
-  let players := deviatedTurnProfile bound turns (firstTurnTiming setup turns mode) wholeProfile
-    who deviation
-  induction phases with
-  | ret payoffs offset =>
-      intro profile refs embedding refsBefore Seed prior source execution _aligned checkpoint
-        _boundary _bounded _effective noise factor
-      obtain ⟨nextNoise, nextFactor⟩ := ProtocolView.entry_noise_factor (.ret payoffs) who prior
-        source (fun seed => (serviceRuntime setup mode deadline).bindingTraffic leaks who
-          (execution seed)) noise factor
-      refine ⟨profile who, nextNoise, ?_⟩
-      dsimp only at nextFactor
-      simp only [deviationPhases, eventCount, Function.iterate_zero, id_eq,
-        ← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind]
-      simp only [← PMF.bind_pure_comp, Function.comp_def, PMF.bind_bind, PMF.pure_bind]
-        at nextFactor
-      refine Eq.trans (bind_congr_on_support _ fun seed _ => ?_) nextFactor
-      rw [(checkpoint seed).decode (.ret payoffs) embedding.ref]
-  | @sample Γ names name payload fresh distribution next offset rest _ ih =>
-      intro profile refs embedding refsBefore Seed prior source execution aligned checkpoint
-        boundary bounded effective noise factor
-      let index : Fin (eventCount (.sample name fresh distribution next)) :=
-        ⟨0, by simp [eventCount]⟩
-      let event : (serviceGraph setup mode).EventId := embedding.event index
-      have eventRank : event.val = offset := by
-        simpa only [event, index, Fin.val_zero, Nat.add_zero] using
-          (aligned prior.support_nonempty.choose).graphSuffix.rankEq index
-      have outputEq : (serviceGraph setup mode).outputLayout event = .publicData payload := by
-        change outputLayout setup.program event = _
-        simpa [event, index, outputLayout, eventCount] using embedding.layout_eq index
-      have alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
-          cut.Ready other → other = event := fun cut other ready otherReady =>
-        ordered.ready_public_unique cut (by rw [outputEq]; trivial) ready otherReady
-      obtain ⟨stopEq, nextFacts⟩ := event_phase_stop_boundary setup leaks horizon
-        scheduler players contract.completes event eventRank alone prior execution boundary bounded
-      obtain ⟨configNoise, law⟩ := asyncDeviation_sample_factorization contract turns
-        wholeProfile who deviation fresh distribution next profile refs embedding refsBefore
-        offset alone prior source execution aligned checkpoint boundary bounded noise factor
-      let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
-      let tailRefs : ContextRefs (graphLayout setup.program)
-          ((name, .publicData payload) :: Γ) := refs.cons ⟨.inr event, outputEq⟩
-      have tailBefore : ContextRefsBefore tailRefs tailEmbedding := by
-        intro readName cell ref rest
-        cases ref with
-        | here =>
-            change (embedding.event index).val < (embedding.event rest.succ).val
-            exact embedding.strictMono (Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _))
-        | there ref => exact refsBefore ref rest.succ
-      let stepSource := fun config : Config Player L Γ =>
-        (L.evalDist distribution (sourcePublicEnv config.state)).map (sampleSuccessor name config)
-      refine DeviationLaw.phase setup leaks horizon scheduler players wholeProfile who
-        (.sample name fresh distribution next) profile refs embedding next (afterSample profile)
-        tailRefs tailEmbedding tailBefore (offset + 1) rest
-        (ih (afterSample profile) tailRefs tailEmbedding tailBefore) prior source execution
-        Sum.inr (Sum.inr_injective.comp (ProtocolState.entry_injective next))
-        (fun seed => (source seed).registry.weaken)
-        (fun seed => Revelations.weaken (source seed).revelations)
-        (fun seed final => decodeSourcePrefix? (.sample name fresh distribution next) refs
-          (source seed).registry (source seed).revelations embedding.ref 1
-          final.application.config.store (decodeHistory setup.program
-            (final.application.config.history.map (setup.eventGraph.fromModeCompletion mode))))
-        ?_ stepSource configNoise ?_ (fun point => (nextFacts point).1)
-        (fun point => (nextFacts point).2) ?_ (fun seed player => effective seed player)
-        (fun view => view.bind (Sum.elim (fun _ => none) some)) ?_ ?_ (fun policy => policy) ?_
-      · intro seed final
-        simp only [decodeSourcePrefix?, Option.map_map, Function.comp_def]
-        rfl
-      · refine Eq.trans ?_ law
-        simp only [phaseJoint, PMF.map_bind, PMF.map_comp, Function.comp_def]
-        apply bind_congr_on_support _
-        intro seed supported
-        rw [← stopEq seed supported]
-      · intro seed
-        simpa only [sampleSuccessor, tailRefs, tailEmbedding, OutputEmbedding.ref] using
-          (aligned seed).sampleTail setup.program wholeProfile (_openNames := names)
-            fresh distribution next profile refs (source seed).revelations
-              (source seed).registry embedding refsBefore offset
-      · intro state
-        cases state <;> rfl
-      · intro seed final
-        rfl
-      · intro policy config
-        change (fun law => law.bind (ProtocolState.behavioralStateStep _
-          (Function.update profile who policy)))^[eventCount next + 1]
-            (PMF.pure (ProtocolState.entry _ config)) = _
-        rw [ProtocolState.behavioralStatePrefix_sample, afterSample_update]
-        simp only [stepSource, PMF.bind_map, PMF.map_bind, Function.comp_def]
-  | @reveal Γ names published name owner payload fresh binding unresolved next offset rest _
-      ih =>
-      intro profile refs embedding refsBefore Seed prior source execution aligned checkpoint
-        boundary bounded effective noise factor
-      let index : Fin (eventCount (.reveal published owner name fresh binding unresolved next)) :=
-        ⟨0, by simp [eventCount]⟩
-      let event : (serviceGraph setup mode).EventId := embedding.event index
-      have eventRank : event.val = offset := by
-        simpa only [event, index, Fin.val_zero, Nat.add_zero] using
-          (aligned prior.support_nonempty.choose).graphSuffix.rankEq index
-      have outputEq : (serviceGraph setup mode).outputLayout event = .publication payload := by
-        change outputLayout setup.program event = _
-        simpa [event, index, outputLayout, eventCount] using embedding.layout_eq index
-      have alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
-          cut.Ready other → other = event := fun cut other ready otherReady =>
-        ordered.ready_public_unique cut (by rw [outputEq]; trivial) ready otherReady
-      obtain ⟨stopEq, nextFacts⟩ := event_phase_stop_boundary setup leaks horizon
-        scheduler players contract.completes event eventRank alone prior execution boundary bounded
-      let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
-      let tailRefs : ContextRefs (graphLayout setup.program)
-          ((published, .publication payload) :: Γ) := refs.cons ⟨.inr event, outputEq⟩
-      have tailBefore : ContextRefsBefore tailRefs tailEmbedding := by
-        intro readName cell ref rest
-        cases ref with
-        | here =>
-            change (embedding.event index).val < (embedding.event rest.succ).val
-            exact embedding.strictMono (Fin.mk_lt_mk.mpr (Nat.zero_lt_succ _))
-        | there ref => exact refsBefore ref rest.succ
-      have nextAligned (seed : Seed) : CompiledPolicySuffix setup.program wholeProfile next
-          (afterReveal profile) tailRefs
-          (Revelations.reveal (published := published) (source seed).revelations binding)
-          (source seed).registry.weaken tailEmbedding tailBefore (offset + 1) := by
-        simpa only [revealSuccessor, tailRefs, tailEmbedding, OutputEmbedding.ref] using
-          (aligned seed).revealTail (whole := setup.program) (wholeProfile := wholeProfile)
-            fresh binding unresolved next profile refs (source seed).revelations
-              (source seed).registry embedding refsBefore offset
-      have convert {stepSource : Config Player L Γ → PMF (Config Player L
-            ((published, .publication payload) :: Γ))}
-          {configNoise : DecisionView who ((published, .publication payload) :: Γ) → PMF _}
-          (law : (prior.bind fun seed =>
-            (app.runUntilHorizon scheduler players
-              (fun final => event ∈ final.application.config.cut.completed) horizon
-              (execution seed)).map fun final =>
-                (decodeSourcePrefix? (.reveal published owner name fresh binding unresolved next)
-                  refs (source seed).registry (source seed).revelations embedding.ref 1
-                  final.application.config.store (decodeHistory setup.program
-                    (final.application.config.history.map
-                      (setup.eventGraph.fromModeCompletion mode))),
-                  (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
-            ((prior.map source).bind stepSource).bind fun config =>
-              (configNoise (config.view who)).map fun extra =>
-                ((some (Sum.inr (ProtocolState.entry next config)) :
-                  Option (ProtocolState (.reveal published owner name fresh binding unresolved
-                    next))), extra)) :
-          (phaseJoint setup leaks horizon scheduler players (offset + 1) prior execution).map
-            (fun point => (decodeSourcePrefix?
-              (.reveal published owner name fresh binding unresolved next)
-                refs (source point.1).registry (source point.1).revelations embedding.ref 1
-                point.2.application.config.store (decodeHistory setup.program
-                  (point.2.application.config.history.map
-                    (setup.eventGraph.fromModeCompletion mode))),
-              (serviceRuntime setup mode deadline).bindingTraffic leaks who point.2)) =
-            ((prior.map source).bind stepSource).bind fun config =>
-              (configNoise (config.view who)).map fun extra =>
-                (some (Sum.inr (ProtocolState.entry next config)), extra) := by
-        refine Eq.trans ?_ law
-        simp only [phaseJoint, PMF.map_bind, PMF.map_comp, Function.comp_def]
-        apply bind_congr_on_support _
-        intro seed supported
-        rw [← stopEq seed supported]
-      by_cases own : owner = who
-      · subst owner
-        obtain ⟨choice, configNoise, law⟩ := asyncDeviator_reveal_factorization contract turns
-          wholeProfile who deviation fresh binding unresolved next profile refs embedding
-          refsBefore offset alone prior source execution aligned checkpoint boundary bounded
-          noise factor
-        let stepSource := fun config : Config Player L Γ =>
-          (choice (config.view who)).map (revealSuccessor published binding config)
-        refine DeviationLaw.phase setup leaks horizon scheduler players wholeProfile who
-          (.reveal published who name fresh binding unresolved next) profile refs embedding next
-          (afterReveal profile) tailRefs tailEmbedding tailBefore (offset + 1) rest
-          (ih (afterReveal profile) tailRefs tailEmbedding tailBefore) prior source execution
-          Sum.inr (Sum.inr_injective.comp (ProtocolState.entry_injective next))
-          (fun seed => (source seed).registry.weaken)
-          (fun seed => Revelations.reveal (published := published) (source seed).revelations
-            binding)
-          (fun seed final => decodeSourcePrefix?
-            (.reveal published who name fresh binding unresolved next) refs
-            (source seed).registry (source seed).revelations embedding.ref 1
-            final.application.config.store (decodeHistory setup.program
-              (final.application.config.history.map (setup.eventGraph.fromModeCompletion mode))))
-          ?_ stepSource configNoise (convert law) (fun point => (nextFacts point).1)
-          (fun point => (nextFacts point).2) nextAligned
-          (fun seed player => (effective seed player).2)
-          (fun view => view.bind (Sum.elim (fun _ => none) some)) ?_ ?_
-          (fun policy => (fun _ view => choice view, policy)) ?_
-        · intro seed final
-          simp only [decodeSourcePrefix?, Option.map_map, Function.comp_def]
-          rfl
-        · intro state
-          cases state <;> rfl
-        · intro seed final
-          rfl
-        · intro policy config
-          rw [show eventCount (SourceProgram.reveal published who name fresh binding unresolved
-              next) = eventCount next + 1 from rfl, ProtocolState.behavioralStatePrefix_reveal,
-            afterReveal_update]
-          simp only [stepSource, revealKernel, Function.update_self, PMF.bind_map,
-            PMF.map_bind, Function.comp_def]
-      · obtain ⟨configNoise, law⟩ := asyncDeviation_reveal_factorization contract timely turns
-          wholeProfile who deviation own fresh binding unresolved next profile refs embedding
-          refsBefore offset alone prior source execution aligned checkpoint boundary bounded
-          (fun seed _ => effective seed owner) noise factor
-        let stepSource := fun config : Config Player L Γ =>
-          (revealKernel profile (config.view owner)).map
-            (revealSuccessor published binding config)
-        refine DeviationLaw.phase setup leaks horizon scheduler players wholeProfile who
-          (.reveal published owner name fresh binding unresolved next) profile refs embedding
-          next (afterReveal profile) tailRefs tailEmbedding tailBefore (offset + 1) rest
-          (ih (afterReveal profile) tailRefs tailEmbedding tailBefore) prior source execution
-          Sum.inr (Sum.inr_injective.comp (ProtocolState.entry_injective next))
-          (fun seed => (source seed).registry.weaken)
-          (fun seed => Revelations.reveal (published := published) (source seed).revelations
-            binding)
-          (fun seed final => decodeSourcePrefix?
-            (.reveal published owner name fresh binding unresolved next) refs
-            (source seed).registry (source seed).revelations embedding.ref 1
-            final.application.config.store (decodeHistory setup.program
-              (final.application.config.history.map (setup.eventGraph.fromModeCompletion mode))))
-          ?_ stepSource configNoise (convert law) (fun point => (nextFacts point).1)
-          (fun point => (nextFacts point).2) nextAligned
-          (fun seed player => (effective seed player).2)
-          (fun view => view.bind (Sum.elim (fun _ => none) some)) ?_ ?_
-          (fun policy => ((profile who).1, policy)) ?_
-        · intro seed final
-          simp only [decodeSourcePrefix?, Option.map_map, Function.comp_def]
-          rfl
-        · intro state
-          cases state <;> rfl
-        · intro seed final
-          rfl
-        · intro policy config
-          rw [show eventCount (SourceProgram.reveal published owner name fresh binding unresolved
-              next) = eventCount next + 1 from rfl, ProtocolState.behavioralStatePrefix_reveal,
-            afterReveal_update]
-          simp only [stepSource, revealKernel, Function.update_of_ne own, PMF.bind_map,
-            PMF.map_bind, Function.comp_def]
-  | @block Γ names program offset rest count prefixed _ maximal _ ih =>
-      intro profile refs embedding refsBefore Seed prior source execution aligned checkpoint
-        boundary bounded effective noise factor
-      let tailRefs := commitTailRefs setup count program prefixed refs embedding
-      let tailEmbedding := commitTailEmbedding setup count program prefixed embedding
-      have tailBefore : ContextRefsBefore tailRefs tailEmbedding :=
-        commitTailRefsBefore count program prefixed refs embedding refsBefore
-      have tailAligned (seed : Seed) := CompiledPolicySuffix.commitTailMany wholeProfile count
-        program prefixed profile refs (source seed).revelations (source seed).registry embedding
-        refsBefore offset (aligned seed)
-      have wall : BlockEnd setup mode (offset + count) :=
-        CompiledSuffix.blockEnd maximal (tailAligned prior.support_nonempty.choose).graphSuffix
-      have bindings := CompiledSuffix.commitPrefix_bind_interval (setup := setup)
-        (mode := mode) prefixed (aligned prior.support_nonempty.choose).graphSuffix
-      have nextFacts := block_phase_boundary setup leaks horizon scheduler players
-        contract.completes (Nat.le_add_right _ _)
-        (BlockEnd.sealed ordered wall) wall.1 prior execution boundary bounded
-      obtain ⟨policy, configNoise, law⟩ := asyncDeviation_block_factorization
-        ordered.revealRelaxedOrdered wall contract timely turns wholeProfile who deviation bindings
-        program profile count prefixed refs embedding refsBefore rfl prior source execution
-        aligned checkpoint boundary bounded
-        noise factor
-      refine DeviationLaw.phase setup leaks horizon scheduler players wholeProfile who program
-        profile refs embedding (commitTail count program prefixed).tail
-        (commitTailProfile count program prefixed profile) tailRefs tailEmbedding tailBefore
-        (offset + count) rest (ih _ tailRefs tailEmbedding tailBefore) prior source execution
-        (commitTail count program prefixed).lift
-        ((commitTail_lift_injective count program prefixed).comp
-          (ProtocolState.entry_injective _))
-        (fun seed => commitTailRegistry count program prefixed (source seed).registry)
-        (fun seed => commitTailRevelations count program prefixed (source seed).revelations)
-        (fun seed final => decodeSourcePrefix? program refs (source seed).registry
-          (source seed).revelations embedding.ref count final.application.config.store
-          (decodeHistory setup.program (final.application.config.history.map
-            (setup.eventGraph.fromModeCompletion mode))))
-        (fun seed final => decodeSourcePrefix?_commitTail_entry count program prefixed refs _ _
-          embedding _ _)
-        (kernelChain who count program profile policy prefixed) configNoise ?_
-        (fun point => (nextFacts point).1) (fun point => (nextFacts point).2) tailAligned
-        (fun seed player => effective_commitTail (who := player) count program prefixed profile
-          _ _ (effective seed player))
-        (commitTailRecover who count program prefixed)
-        (commitTailRecover_spec who count program prefixed) ?_
-        (graftPolicy who count program prefixed policy) ?_
-      · simp only [phaseJoint, PMF.map_bind, PMF.map_comp, Function.comp_def]
-        exact law
-      · intro seed final
-        have through := decodeSourcePrefix?_commitTail count program prefixed refs
-          (source seed).registry (source seed).revelations embedding
-          (eventCount (commitTail count program prefixed).tail) final.application.config.store
-          (decodeHistory setup.program (final.application.config.history.map
-            (setup.eventGraph.fromModeCompletion mode)))
-        rw [eventCount_commitTail] at through
-        exact through
-      · intro rest config
-        have grafted := iterate_graftPolicy who count program profile prefixed policy rest
-          (eventCount (commitTail count program prefixed).tail) config
-        rw [eventCount_commitTail] at grafted
-        rw [PMF.map_bind]
-        exact grafted
+    (deviation : (application setup runtime leaks).Policy)
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    {name : VarId} {payload : L.Ty} (fresh : name ∉ Γ.map Prod.fst)
+    (distribution : L.DistExpr (SourcePublicCtx L Γ) payload)
+    (next : SourceProgram Player L ((name, .publicData payload) :: Γ) openNames)
+    (profile : BehavioralProfile (.sample name fresh distribution next))
+    (refs : ContextRefs (graphLayout setup.program) Γ)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      (.sample name fresh distribution next))
+    (refsBefore : ContextRefsBefore refs embedding) (rank : Nat) :
+    let index : Fin (eventCount (.sample name fresh distribution next)) :=
+      ⟨0, by simp [eventCount]⟩
+    let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
+    let tailRefs := refs.cons (embedding.ref index)
+    let tailBefore : ContextRefsBefore tailRefs tailEmbedding :=
+      refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
+    let players := Function.update
+      (serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
+        (firstTurnTiming setup turns) wholeProfile) who deviation
+    SourceDeviationLaw setup runtime leaks horizon scheduler players wholeProfile who
+      next (afterSample profile) tailRefs tailEmbedding tailBefore (rank + 1) →
+    SourceDeviationLaw setup runtime leaks horizon scheduler players wholeProfile who
+      (.sample name fresh distribution next) profile refs embedding refsBefore rank := by
+  intro index tailEmbedding tailRefs tailBefore players tailLaw Seed prior source ghost execution
+    aligned checkpoint lag boundary bounded effective noise factor
+  let event := embedding.event index
+  have eventRank : event.val = rank := by
+    simpa only [event, index, Fin.val_zero, Nat.add_zero] using
+      (aligned prior.support_nonempty.choose).graphSuffix.rankEq index
+  have ownerless : (graph setup).actor? event = none := by
+    change (toEventGraph setup.program).actor? event = none
+    simpa [event, index, eventOwner?, eventCount] using
+      (aligned prior.support_nonempty.choose).actorEq index
+  have ready (seed : Seed) : (ghost seed).config.cut.Ready event := by
+    have ordered := (checkpoint seed).ordered
+    rw [← eventRank] at ordered
+    exact ordered.ready event.isLt
+  have actualEq (seed : Seed) : (execution seed).application.config = (ghost seed).config := by
+    obtain ⟨caught, path, ending⟩ := lag seed
+    have quiescent : ∀ query, ¬ (ghost seed).AutomaticReady query := by
+      intro query eligible
+      cases setup.eventGraph.sequentialize_ready_unique _ eligible.1 (ready seed)
+      obtain ⟨owner, acting, _⟩ := eligible.owned
+      rw [ownerless] at acting
+      cases acting
+    exact ending.symm.trans (congrArg EventGraphRuntime.State.config
+      (EventGraphRuntime.State.automatic_path_eq_of_quiescent path quiescent))
+  have actualCheckpoint (seed : Seed) :
+      SourceCheckpoint setup (source seed) refs rank (execution seed).application.config := by
+    rw [actualEq seed]
+    exact checkpoint seed
+  have actualBoundary (seed : Seed) (supported : seed ∈ prior.support) :
+      CompletionBoundary setup leaks scheduler players rank (execution seed) := by
+    obtain ⟨physicalRank, physical⟩ := boundary seed supported
+    have same : physicalRank = rank := physical.ordered.unique (actualCheckpoint seed).ordered
+    subst physicalRank
+    exact physical
+  obtain ⟨nextNoise, joint, endpoints⟩ := sourceService_chance_law runtime leaks complete bound
+    turns wholeProfile who deviation fresh distribution next profile refs embedding refsBefore
+    rank prior source execution aligned actualCheckpoint actualBoundary bounded noise factor
+  let outputEq : (graph setup).outputLayout event = .publicData payload := by
+    change outputLayout setup.program (embedding.event index) = _
+    simpa [index, outputLayout, eventCount] using embedding.layout_eq index
+  let pick := fun final : (application setup runtime leaks).Execution =>
+    ((final.application.config.outputs event).map
+      (cast (congrArg EventGraph.EventField.Value outputEq))).getD (L.someValue payload)
+  let phase := fun seed => (application setup runtime leaks).runUntilHorizon scheduler players
+    (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed)
+  let advance := fun seed final => sampleSuccessor name (source seed) (pick final)
+  let stepSource := fun config : Config Player L Γ =>
+    (L.evalDist distribution (sourcePublicEnv config.state)).map (sampleSuccessor name config)
+  apply SourceDeviationLaw.of_head setup runtime leaks horizon scheduler players wholeProfile who
+    (.sample name fresh distribution next) profile refs embedding next (afterSample profile)
+    tailRefs tailEmbedding tailBefore (rank + 1) tailLaw prior source execution phase advance
+    stepSource nextNoise joint (readResult := id) (build := id)
+  · intro seed final
+    exact CompiledPolicySuffix.sampleTail setup.program wholeProfile (_openNames := openNames)
+      fresh distribution next
+      profile refs (source seed).revelations (source seed).registry embedding refsBefore rank
+      (aligned seed)
+  · intro seed final player
+    exact effective seed player
+  · intro seed supported final reached
+    obtain ⟨value, native, typed, drained, picked⟩ := endpoints seed supported final reached
+    have completeAfter : event ∈ final.application.config.cut.completed := by
+      rw [drained]
+      apply EventGraph.Config.Step.path_completed_mono native.drain_graph_steps
+      exact (typed.ordered.2 event).mpr (by omega)
+    obtain ⟨caught, path, ending⟩ := lag seed
+    obtain ⟨boundAfter, physicalAfter⟩ := automatic_stopped_boundary setup runtime leaks
+      horizon scheduler players event (ghost seed) caught (execution seed) final (ready seed)
+      path ending (boundary seed supported) (bounded seed supported) reached completeAfter
+    refine ⟨native, ?_, ⟨native.drain, native.drain_trace, drained.symm⟩,
+      physicalAfter, boundAfter⟩
+    have pickEq : pick final = value := picked
+    change SourceCheckpoint setup (sampleSuccessor name (source seed) (pick final))
+      tailRefs (rank + 1) native.config
+    rw [pickEq]
+    simpa only [tailRefs, OutputEmbedding.ref, event, index] using typed
+  · intro seed stopped final
+    simp only [decodeConfig?, terminalRefsWith, finalRegistry, finalRevelations,
+      advance, sampleSuccessor, Option.map_id]
+    rfl
+  · intro policy config
+    simp only [stepSource, PMF.map_id, PMF.bind_map, SourceProgram.runFrom]
+    rfl
+  · intro seed
+    exact (application setup runtime leaks).runToHorizon_eq_runUntilHorizon_bind scheduler
+      players _ horizon (execution seed)
 
+end Vegas
+
+
+namespace Vegas
+open SourceProgram EventGraphRuntime Interaction GameTheory.Math.Probability
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+private theorem SourceDeviationLaw.commit_owned
+    (setup : Setup (Player := Player) (L := L))
+    (runtime : EventGraphRuntime (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
+    (complete : CompletesPlay runtime leaks (initialLaw setup) horizon scheduler)
+    (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (wholeProfile : BehavioralProfile setup.program) (who : Player)
+    (deviation : (application setup runtime leaks).Policy)
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    {name : VarId} {payload : L.Ty} (fresh : name ∉ Γ.map Prod.fst)
+    (guard : SourceGuard L Γ who name payload)
+    (next : SourceProgram Player L ((name, .commitment who payload) :: Γ) (insert name openNames))
+    (profile : BehavioralProfile (.commit name who fresh guard next))
+    (refs : ContextRefs (graphLayout setup.program) Γ)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      (.commit name who fresh guard next))
+    (refsBefore : ContextRefsBefore refs embedding) (rank : Nat) :
+    let index : Fin (eventCount (.commit name who fresh guard next)) :=
+      ⟨0, by simp [eventCount]⟩
+    let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
+    let tailRefs := refs.cons (embedding.ref index)
+    let tailBefore : ContextRefsBefore tailRefs tailEmbedding :=
+      refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
+    let players := Function.update
+      (serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
+        (firstTurnTiming setup turns) wholeProfile) who deviation
+    SourceDeviationLaw setup runtime leaks horizon scheduler players wholeProfile who
+      next (afterCommit profile) tailRefs tailEmbedding tailBefore (rank + 1) →
+    SourceDeviationLaw setup runtime leaks horizon scheduler players wholeProfile who
+      (.commit name who fresh guard next) profile refs embedding refsBefore rank := by
+  intro index tailEmbedding tailRefs tailBefore players tailLaw Seed prior source ghost execution
+    aligned checkpoint lag boundary bounded effective noise factor
+  let event := embedding.event index
+  have eventRank : event.val = rank := by
+    simpa only [event, index, Fin.val_zero, Nat.add_zero] using
+      (aligned prior.support_nonempty.choose).graphSuffix.rankEq index
+  have ready (seed : Seed) : (ghost seed).config.cut.Ready event := by
+    have ordered := (checkpoint seed).ordered
+    rw [← eventRank] at ordered
+    exact ordered.ready event.isLt
+  have alone : ∀ (cut : (graph setup).order.Cut) other,
+      cut.Ready event → cut.Ready other → other = event := by
+    intro cut other first second
+    exact setup.eventGraph.sequentialize_ready_unique cut second first
+  obtain ⟨kernel, nextNoise, joint, endpoints⟩ := sourceService_deviator_commit_law
+    (setup := setup) (mode := .sequential) (deadline := runtime.deadline) complete bound turns
+    wholeProfile who deviation fresh guard next profile refs embedding refsBefore rank alone
+    prior source execution ghost aligned checkpoint (fun seed _ => lag seed) boundary bounded
+    noise factor
+  let pick := fun final : (application setup runtime leaks).Execution =>
+    OwnAction.binding who name payload
+      (((final.application.playerView who).observation.ownActions.find?
+        (fun record => decide (record.event = event))).bind fun record =>
+          record.decision.bind (decodeEventAction setup.program record.event))
+  let phase := fun seed => (application setup runtime leaks).runUntilHorizon scheduler players
+    (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed)
+  let advance := fun seed final => commitSuccessor name guard (source seed) (pick final)
+  let stepSource := fun config : Config Player L Γ =>
+    (kernel (config.view who)).map (commitSuccessor name guard config)
+  let build : BehavioralPolicy who next →
+      BehavioralPolicy who (.commit name who fresh guard next) :=
+    fun policy => (fun _ view _ => kernel view, policy)
+  apply SourceDeviationLaw.of_head setup runtime leaks horizon scheduler players wholeProfile who
+    (.commit name who fresh guard next) profile refs embedding next (afterCommit profile)
+    tailRefs tailEmbedding tailBefore (rank + 1) tailLaw prior source execution phase advance
+    stepSource nextNoise joint (readResult := id) (build := build)
+  · intro seed final
+    exact CompiledPolicySuffix.commitTail setup.program wholeProfile
+      (openNames := openNames) fresh guard next profile refs (source seed).revelations
+      (source seed).registry embedding refsBefore rank (aligned seed)
+  · intro seed final player
+    exact effective seed player
+  · intro seed supported final reached
+    obtain ⟨choice, native, typed, nextLag, _active, picked⟩ :=
+      endpoints seed supported final reached
+    have completeAfter : event ∈ final.application.config.cut.completed := by
+      obtain ⟨caught, path, ending⟩ := nextLag
+      rw [← ending]
+      apply EventGraph.Config.Step.path_completed_mono
+        (EventGraphRuntime.State.automatic_path_graph_steps path)
+      exact (typed.ordered.2 event).mpr (by omega)
+    obtain ⟨caught, path, ending⟩ := lag seed
+    obtain ⟨boundAfter, physicalAfter⟩ := automatic_stopped_boundary setup runtime leaks
+      horizon scheduler players event (ghost seed) caught (execution seed) final (ready seed)
+      path ending (boundary seed supported) (bounded seed supported) reached completeAfter
+    refine ⟨native, ?_, nextLag, physicalAfter, boundAfter⟩
+    have pickEq : pick final = choice := picked
+    change SourceCheckpoint setup (commitSuccessor name guard (source seed) (pick final))
+      tailRefs (rank + 1) native.config
+    rw [pickEq]
+    simpa only [tailRefs, OutputEmbedding.ref, event, index] using typed
+  · intro seed stopped final
+    simp only [decodeConfig?, terminalRefsWith, finalRegistry, finalRevelations,
+      advance, commitSuccessor, Option.map_id]
+    rfl
+  · intro policy config
+    simp only [stepSource, PMF.map_id, PMF.bind_map, Function.comp_def, SourceProgram.runFrom,
+      afterCommit_update, build, commitKernel, Function.update_self]
+    by_cases inactive : who ∈ config.defaulted
+    · simp only [inactive, dite_true, PMF.pure_bind]
+      have ignored : ∀ choice : Option (PublicationResult (L.Val payload)),
+          commitSuccessor name guard config choice = commitSuccessor name guard config none := by
+        intro choice
+        simp only [commitSuccessor, inactive, ite_true]
+      simp_rw [ignored]
+      exact (PMF.bind_const _ _).symm
+    · simp only [inactive, dite_false]
+  · intro seed
+    exact (application setup runtime leaks).runToHorizon_eq_runUntilHorizon_bind scheduler
+      players _ horizon (execution seed)
+
+private theorem SourceDeviationLaw.reveal_owned
+    (setup : Setup (Player := Player) (L := L))
+    (runtime : EventGraphRuntime (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
+    (complete : CompletesPlay runtime leaks (initialLaw setup) horizon scheduler)
+    (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (wholeProfile : BehavioralProfile setup.program) (who : Player)
+    (deviation : (application setup runtime leaks).Policy)
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    {published name : VarId} {payload : L.Ty} (fresh : published ∉ Γ.map Prod.fst)
+    (binding : HasVar Γ name (.commitment who payload)) (unresolved : name ∈ openNames)
+    (next : SourceProgram Player L ((published, .publication payload) :: Γ) (openNames.erase name))
+    (profile : BehavioralProfile (.reveal published who name fresh binding unresolved next))
+    (refs : ContextRefs (graphLayout setup.program) Γ)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      (.reveal published who name fresh binding unresolved next))
+    (refsBefore : ContextRefsBefore refs embedding) (rank : Nat) :
+    let index : Fin (eventCount (.reveal published who name fresh binding unresolved next)) :=
+      ⟨0, by simp [eventCount]⟩
+    let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
+    let tailRefs := refs.cons (embedding.ref index)
+    let tailBefore : ContextRefsBefore tailRefs tailEmbedding :=
+      refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
+    let players := Function.update
+      (serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
+        (firstTurnTiming setup turns) wholeProfile) who deviation
+    SourceDeviationLaw setup runtime leaks horizon scheduler players wholeProfile who
+      next (afterReveal profile) tailRefs tailEmbedding tailBefore (rank + 1) →
+    SourceDeviationLaw setup runtime leaks horizon scheduler players wholeProfile who
+      (.reveal published who name fresh binding unresolved next) profile refs embedding refsBefore
+        rank := by
+  intro index tailEmbedding tailRefs tailBefore players tailLaw Seed prior source ghost execution
+    aligned checkpoint lag boundary bounded effective noise factor
+  let event := embedding.event index
+  have eventRank : event.val = rank := by
+    simpa only [event, index, Fin.val_zero, Nat.add_zero] using
+      (aligned prior.support_nonempty.choose).graphSuffix.rankEq index
+  have ready (seed : Seed) : (ghost seed).config.cut.Ready event := by
+    have ordered := (checkpoint seed).ordered
+    rw [← eventRank] at ordered
+    exact ordered.ready event.isLt
+  have alone : ∀ (cut : (graph setup).order.Cut) other,
+      cut.Ready event → cut.Ready other → other = event := by
+    intro cut other first second
+    exact setup.eventGraph.sequentialize_ready_unique cut second first
+  obtain ⟨kernel, nextNoise, joint, endpoints⟩ := sourceService_deviator_reveal_law
+    (setup := setup) (mode := .sequential) (deadline := runtime.deadline) complete bound turns
+    wholeProfile who deviation fresh binding unresolved next profile refs embedding refsBefore rank
+    alone
+    prior source execution ghost aligned checkpoint (fun seed _ => lag seed) boundary bounded
+    noise factor
+  let pick := fun final : (application setup runtime leaks).Execution =>
+    OwnAction.disclosure
+      (((final.application.playerView who).observation.ownActions.find?
+        (fun record => decide (record.event = event))).bind fun record =>
+          record.decision.bind (decodeEventAction setup.program record.event))
+  let phase := fun seed => (application setup runtime leaks).runUntilHorizon scheduler players
+    (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed)
+  let advance := fun seed final => revealSuccessor published binding (source seed) (pick final)
+  let stepSource := fun config : Config Player L Γ =>
+    (kernel (config.view who)).map (revealSuccessor published binding config)
+  let build : BehavioralPolicy who next →
+      BehavioralPolicy who (.reveal published who name fresh binding unresolved next) :=
+    fun policy => (fun _ view _ => kernel view, policy)
+  apply SourceDeviationLaw.of_head setup runtime leaks horizon scheduler players wholeProfile who
+    (.reveal published who name fresh binding unresolved next) profile refs embedding next
+    (afterReveal profile)
+    tailRefs tailEmbedding tailBefore (rank + 1) tailLaw prior source execution phase advance
+    stepSource nextNoise joint (readResult := id) (build := build)
+  · intro seed final
+    exact CompiledPolicySuffix.revealTail setup.program wholeProfile
+      (openNames := openNames) fresh binding unresolved next profile refs (source seed).revelations
+      (source seed).registry embedding refsBefore rank (aligned seed)
+  · intro seed final player
+    exact (effective seed player).2
+  · intro seed supported final reached
+    obtain ⟨choice, native, typed, nextLag, _active, picked⟩ :=
+      endpoints seed supported final reached
+    have completeAfter : event ∈ final.application.config.cut.completed := by
+      obtain ⟨caught, path, ending⟩ := nextLag
+      rw [← ending]
+      apply EventGraph.Config.Step.path_completed_mono
+        (EventGraphRuntime.State.automatic_path_graph_steps path)
+      exact (typed.ordered.2 event).mpr (by omega)
+    obtain ⟨caught, path, ending⟩ := lag seed
+    obtain ⟨boundAfter, physicalAfter⟩ := automatic_stopped_boundary setup runtime leaks
+      horizon scheduler players event (ghost seed) caught (execution seed) final (ready seed)
+      path ending (boundary seed supported) (bounded seed supported) reached completeAfter
+    refine ⟨native, ?_, nextLag, physicalAfter, boundAfter⟩
+    have pickEq : pick final = choice := picked
+    change SourceCheckpoint setup (revealSuccessor published binding (source seed) (pick final))
+      tailRefs (rank + 1) native.config
+    rw [pickEq]
+    simpa only [tailRefs, OutputEmbedding.ref, event, index] using typed
+  · intro seed stopped final
+    simp only [decodeConfig?, terminalRefsWith, finalRegistry, finalRevelations,
+      advance, revealSuccessor, Option.map_id]
+    rfl
+  · intro policy config
+    simp only [stepSource, PMF.map_id, PMF.bind_map, Function.comp_def, SourceProgram.runFrom,
+      afterReveal_update, build, revealKernel, Function.update_self]
+    by_cases inactive : who ∈ config.defaulted
+    · simp only [inactive, dite_true, PMF.pure_bind]
+      have ignored : ∀ choice : Bool,
+          revealSuccessor published binding config choice =
+            revealSuccessor published binding config false := by
+        intro choice
+        simp only [revealSuccessor, inactive, ite_true]
+      simp_rw [ignored]
+      exact (PMF.bind_const _ _).symm
+    · simp only [inactive, dite_false]
+  · intro seed
+    exact (application setup runtime leaks).runToHorizon_eq_runUntilHorizon_bind scheduler
+      players _ horizon (execution seed)
+
+end Vegas
+
+
+namespace Vegas
+open SourceProgram GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+private theorem runFrom_commit_update_other
+    {Γ : SourceCtx Player L} {names : Finset VarId}
+    {name : VarId} {payload : L.Ty} {owner focal : Player}
+    (different : owner ≠ focal) (fresh : name ∉ Γ.map Prod.fst)
+    (guard : SourceGuard L Γ owner name payload)
+    (next : SourceProgram Player L ((name, .commitment owner payload) :: Γ) (insert name names))
+    (profile : BehavioralProfile (.commit name owner fresh guard next))
+    (policy : BehavioralPolicy focal next) (config : Config Player L Γ) :
+    SourceProgram.runFrom (.commit name owner fresh guard next)
+      (Function.update profile focal ((profile focal).1, policy)) config =
+    (((if inactive : owner ∈ config.defaulted then PMF.pure none
+      else commitKernel profile (config.view owner) inactive).map
+        (commitSuccessor name guard config)).bind fun after =>
+          SourceProgram.runFrom next (Function.update (afterCommit profile) focal policy)
+            after) := by
+  have tails : afterCommit (Function.update profile focal ((profile focal).1, policy)) =
+      Function.update (afterCommit profile) focal policy := by
+    funext player
+    by_cases same : player = focal
+    · subst player
+      simp only [afterCommit, Function.update_self]
+    · simp only [afterCommit, Function.update_of_ne same]
+  rw [SourceProgram.runFrom, tails, PMF.bind_map]
+  by_cases inactive : owner ∈ config.defaulted
+  · simp only [inactive, dite_true, Function.comp_def]
+  · simp only [inactive, dite_false, commitKernel, Function.update_of_ne different,
+      Function.comp_def]
+
+private theorem runFrom_reveal_update_other
+    {Γ : SourceCtx Player L} {names : Finset VarId}
+    {name published : VarId} {payload : L.Ty} {owner focal : Player}
+    (different : owner ≠ focal) (fresh : published ∉ Γ.map Prod.fst)
+    (selected : HasVar Γ name (.commitment owner payload)) (unresolved : name ∈ names)
+    (next : SourceProgram Player L ((published, .publication payload) :: Γ) (names.erase name))
+    (profile : BehavioralProfile (.reveal published owner name fresh selected unresolved next))
+    (policy : BehavioralPolicy focal next) (config : Config Player L Γ) :
+    SourceProgram.runFrom (.reveal published owner name fresh selected unresolved next)
+      (Function.update profile focal ((profile focal).1, policy)) config =
+    (((if inactive : owner ∈ config.defaulted then PMF.pure false
+      else revealKernel profile (config.view owner) inactive).map
+        (revealSuccessor published selected config)).bind fun after =>
+          SourceProgram.runFrom next (Function.update (afterReveal profile) focal policy)
+            after) := by
+  have tails : afterReveal (Function.update profile focal ((profile focal).1, policy)) =
+      Function.update (afterReveal profile) focal policy := by
+    funext player
+    by_cases same : player = focal
+    · subst player
+      simp only [afterReveal, Function.update_self]
+    · simp only [afterReveal, Function.update_of_ne same]
+  rw [SourceProgram.runFrom, tails, PMF.bind_map]
+  by_cases inactive : owner ∈ config.defaulted
+  · simp only [inactive, dite_true, Function.comp_def]
+  · simp only [inactive, dite_false, revealKernel, Function.update_of_ne different,
+      Function.comp_def]
+
+end Vegas
+
+
+namespace Vegas
+open SourceProgram EventGraphRuntime Interaction GameTheory.Math.Probability
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+private theorem SourceDeviationLaw.commit_foreign
+    (setup : Setup (Player := Player) (L := L))
+    (runtime : EventGraphRuntime (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
+    (delay bound : (graph setup).EventId → Nat) (turns : Nat)
+    (contract : AsyncContract runtime leaks (initialLaw setup) horizon scheduler delay bound)
+    (timely : AsyncTimely runtime delay bound)
+    (wholeProfile : BehavioralProfile setup.program) (focal owner : Player)
+    (deviation : (application setup runtime leaks).Policy) (foreign : owner ≠ focal)
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    {name : VarId} {payload : L.Ty} (fresh : name ∉ Γ.map Prod.fst)
+    (guard : SourceGuard L Γ owner name payload)
+    (next : SourceProgram Player L ((name, .commitment owner payload) :: Γ) (insert name openNames))
+    (profile : BehavioralProfile (.commit name owner fresh guard next))
+    (refs : ContextRefs (graphLayout setup.program) Γ)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      (.commit name owner fresh guard next))
+    (refsBefore : ContextRefsBefore refs embedding) (rank : Nat) :
+    let index : Fin (eventCount (.commit name owner fresh guard next)) :=
+      ⟨0, by simp [eventCount]⟩
+    let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
+    let tailRefs := refs.cons (embedding.ref index)
+    let tailBefore : ContextRefsBefore tailRefs tailEmbedding :=
+      refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
+    let players := Function.update
+      (serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
+        (firstTurnTiming setup turns) wholeProfile) focal deviation
+    SourceDeviationLaw setup runtime leaks horizon scheduler players wholeProfile focal
+      next (afterCommit profile) tailRefs tailEmbedding tailBefore (rank + 1) →
+    SourceDeviationLaw setup runtime leaks horizon scheduler players wholeProfile focal
+      (.commit name owner fresh guard next) profile refs embedding refsBefore rank := by
+  intro index tailEmbedding tailRefs tailBefore players tailLaw Seed prior source ghost execution
+    aligned checkpoint lag boundary bounded effective noise factor
+  let event := embedding.event index
+  have eventRank : event.val = rank := by
+    simpa only [event, index, Fin.val_zero, Nat.add_zero] using
+      (aligned prior.support_nonempty.choose).graphSuffix.rankEq index
+  have ready (seed : Seed) : (ghost seed).config.cut.Ready event := by
+    have ordered := (checkpoint seed).ordered
+    rw [← eventRank] at ordered
+    exact ordered.ready event.isLt
+  obtain ⟨nextNoise, joint, endpoints⟩ := sourceService_foreign_commit_law runtime leaks
+    delay bound turns contract timely wholeProfile focal owner deviation foreign fresh guard next
+    profile refs embedding refsBefore rank prior source execution ghost aligned checkpoint
+    (fun seed _ => lag seed) boundary bounded noise factor
+  let pick := fun final : (application setup runtime leaks).Execution =>
+    OwnAction.binding owner name payload
+      ((final.application.config.history.find? (fun record => decide (record.event = event))).bind
+        fun record => record.decision.bind (decodeEventAction setup.program record.event))
+  let phase := fun seed => (application setup runtime leaks).runUntilHorizon scheduler players
+    (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed)
+  let advance := fun seed final => commitSuccessor name guard (source seed) (pick final)
+  let stepSource := fun config : Config Player L Γ =>
+    (if inactive : owner ∈ config.defaulted then PMF.pure none
+      else commitKernel profile (config.view owner) inactive).map
+        (commitSuccessor name guard config)
+  let build : BehavioralPolicy focal next →
+      BehavioralPolicy focal (.commit name owner fresh guard next) :=
+    fun policy => ((profile focal).1, policy)
+  apply SourceDeviationLaw.of_head setup runtime leaks horizon scheduler players wholeProfile focal
+    (.commit name owner fresh guard next) profile refs embedding next (afterCommit profile)
+    tailRefs tailEmbedding tailBefore (rank + 1) tailLaw prior source execution phase advance
+    stepSource nextNoise joint (readResult := id) (build := build)
+  · intro seed final
+    exact CompiledPolicySuffix.commitTail setup.program wholeProfile
+      (openNames := openNames) fresh guard next profile refs (source seed).revelations
+      (source seed).registry embedding refsBefore rank (aligned seed)
+  · intro seed final player
+    exact effective seed player
+  · intro seed supported final reached
+    obtain ⟨choice, native, typed, nextLag, _active, picked⟩ :=
+      endpoints seed supported final reached
+    have completeAfter : event ∈ final.application.config.cut.completed := by
+      obtain ⟨caught, path, ending⟩ := nextLag
+      rw [← ending]
+      apply EventGraph.Config.Step.path_completed_mono
+        (EventGraphRuntime.State.automatic_path_graph_steps path)
+      exact (typed.ordered.2 event).mpr (by omega)
+    obtain ⟨caught, path, ending⟩ := lag seed
+    obtain ⟨boundAfter, physicalAfter⟩ := automatic_stopped_boundary setup runtime leaks
+      horizon scheduler players event (ghost seed) caught (execution seed) final (ready seed)
+      path ending (boundary seed supported) (bounded seed supported) reached completeAfter
+    refine ⟨native, ?_, nextLag, physicalAfter, boundAfter⟩
+    have pickEq : pick final = choice := picked
+    change SourceCheckpoint setup (commitSuccessor name guard (source seed) (pick final))
+      tailRefs (rank + 1) native.config
+    rw [pickEq]
+    simpa only [tailRefs, OutputEmbedding.ref, event, index] using typed
+  · intro seed stopped final
+    simp only [decodeConfig?, terminalRefsWith, finalRegistry, finalRevelations,
+      advance, commitSuccessor, Option.map_id]
+    rfl
+  · intro policy config
+    simpa only [stepSource, build, PMF.map_id] using
+      runFrom_commit_update_other foreign fresh guard next profile policy config
+  · intro seed
+    exact (application setup runtime leaks).runToHorizon_eq_runUntilHorizon_bind scheduler
+      players _ horizon (execution seed)
+
+private theorem SourceDeviationLaw.reveal_foreign
+    (setup : Setup (Player := Player) (L := L))
+    (runtime : EventGraphRuntime (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
+    (delay bound : (graph setup).EventId → Nat) (turns : Nat)
+    (contract : AsyncContract runtime leaks (initialLaw setup) horizon scheduler delay bound)
+    (timely : AsyncTimely runtime delay bound)
+    (wholeProfile : BehavioralProfile setup.program) (focal owner : Player)
+    (deviation : (application setup runtime leaks).Policy) (foreign : owner ≠ focal)
+    {Γ : SourceCtx Player L} {openNames : Finset VarId}
+    {published name : VarId} {payload : L.Ty} (fresh : published ∉ Γ.map Prod.fst)
+    (binding : HasVar Γ name (.commitment owner payload)) (unresolved : name ∈ openNames)
+    (next : SourceProgram Player L ((published, .publication payload) :: Γ) (openNames.erase name))
+    (profile : BehavioralProfile (.reveal published owner name fresh binding unresolved next))
+    (refs : ContextRefs (graphLayout setup.program) Γ)
+    (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
+      (.reveal published owner name fresh binding unresolved next))
+    (refsBefore : ContextRefsBefore refs embedding) (rank : Nat) :
+    let index : Fin (eventCount (.reveal published owner name fresh binding unresolved next)) :=
+      ⟨0, by simp [eventCount]⟩
+    let tailEmbedding := embedding.tail next (by simp [eventCount]) (fun _ => rfl)
+    let tailRefs := refs.cons (embedding.ref index)
+    let tailBefore : ContextRefsBefore tailRefs tailEmbedding :=
+      refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl
+    let players := Function.update
+      (serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
+        (firstTurnTiming setup turns) wholeProfile) focal deviation
+    SourceDeviationLaw setup runtime leaks horizon scheduler players wholeProfile focal
+      next (afterReveal profile) tailRefs tailEmbedding tailBefore (rank + 1) →
+    SourceDeviationLaw setup runtime leaks horizon scheduler players wholeProfile focal
+      (.reveal published owner name fresh binding unresolved next) profile refs embedding refsBefore
+        rank := by
+  intro index tailEmbedding tailRefs tailBefore players tailLaw Seed prior source ghost execution
+    aligned checkpoint lag boundary bounded effective noise factor
+  let event := embedding.event index
+  have eventRank : event.val = rank := by
+    simpa only [event, index, Fin.val_zero, Nat.add_zero] using
+      (aligned prior.support_nonempty.choose).graphSuffix.rankEq index
+  have ready (seed : Seed) : (ghost seed).config.cut.Ready event := by
+    have ordered := (checkpoint seed).ordered
+    rw [← eventRank] at ordered
+    exact ordered.ready event.isLt
+  obtain ⟨nextNoise, joint, endpoints⟩ := sourceService_foreign_reveal_law runtime leaks
+    delay bound turns contract timely wholeProfile focal owner deviation foreign fresh binding
+    unresolved next profile refs embedding refsBefore rank prior source execution ghost aligned
+    checkpoint (fun seed _ => lag seed) boundary bounded (fun seed _ => effective seed owner)
+    noise factor
+  let pick := fun final : (application setup runtime leaks).Execution =>
+    OwnAction.disclosure
+      ((final.application.config.history.find? (fun record => decide (record.event = event))).bind
+        fun record => record.decision.bind (decodeEventAction setup.program record.event))
+  let phase := fun seed => (application setup runtime leaks).runUntilHorizon scheduler players
+    (fun final => event ∈ final.application.config.cut.completed) horizon (execution seed)
+  let advance := fun seed final => revealSuccessor published binding (source seed) (pick final)
+  let stepSource := fun config : Config Player L Γ =>
+    (if inactive : owner ∈ config.defaulted then PMF.pure false
+      else revealKernel profile (config.view owner) inactive).map
+        (revealSuccessor published binding config)
+  let build : BehavioralPolicy focal next →
+      BehavioralPolicy focal (.reveal published owner name fresh binding unresolved next) :=
+    fun policy => ((profile focal).1, policy)
+  apply SourceDeviationLaw.of_head setup runtime leaks horizon scheduler players wholeProfile focal
+    (.reveal published owner name fresh binding unresolved next) profile refs embedding next
+    (afterReveal profile)
+    tailRefs tailEmbedding tailBefore (rank + 1) tailLaw prior source execution phase advance
+    stepSource nextNoise joint (readResult := id) (build := build)
+  · intro seed final
+    exact CompiledPolicySuffix.revealTail setup.program wholeProfile
+      (openNames := openNames) fresh binding unresolved next profile refs (source seed).revelations
+      (source seed).registry embedding refsBefore rank (aligned seed)
+  · intro seed final player
+    exact (effective seed player).2
+  · intro seed supported final reached
+    obtain ⟨choice, native, typed, nextLag, _active, picked⟩ :=
+      endpoints seed supported final reached
+    have completeAfter : event ∈ final.application.config.cut.completed := by
+      obtain ⟨caught, path, ending⟩ := nextLag
+      rw [← ending]
+      apply EventGraph.Config.Step.path_completed_mono
+        (EventGraphRuntime.State.automatic_path_graph_steps path)
+      exact (typed.ordered.2 event).mpr (by omega)
+    obtain ⟨caught, path, ending⟩ := lag seed
+    obtain ⟨boundAfter, physicalAfter⟩ := automatic_stopped_boundary setup runtime leaks
+      horizon scheduler players event (ghost seed) caught (execution seed) final (ready seed)
+      path ending (boundary seed supported) (bounded seed supported) reached completeAfter
+    refine ⟨native, ?_, nextLag, physicalAfter, boundAfter⟩
+    have pickEq : pick final = choice := picked
+    change SourceCheckpoint setup (revealSuccessor published binding (source seed) (pick final))
+      tailRefs (rank + 1) native.config
+    rw [pickEq]
+    simpa only [tailRefs, OutputEmbedding.ref, event, index] using typed
+  · intro seed stopped final
+    simp only [decodeConfig?, terminalRefsWith, finalRegistry, finalRevelations,
+      advance, revealSuccessor, Option.map_id]
+    rfl
+  · intro policy config
+    simpa only [stepSource, build, PMF.map_id] using
+      runFrom_reveal_update_other foreign fresh binding unresolved next profile policy config
+  · intro seed
+    exact (application setup runtime leaks).runToHorizon_eq_runUntilHorizon_bind scheduler
+      players _ horizon (execution seed)
+
+end Vegas
+
+
+namespace Vegas
+open SourceProgram EventGraphRuntime Interaction GameTheory.Math.Probability
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+private theorem SourceDeviationLaw.initialized
+    (setup : Setup (Player := Player) (L := L))
+    (runtime : EventGraphRuntime (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
+    (players : Player → (application setup runtime leaks).Policy)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (effective : ∀ player, (profile player).EffectiveDisclosures setup.program []
+      (Revelations.initial setup.context))
+    (law : SourceDeviationLaw setup runtime leaks horizon scheduler players profile who
+      setup.program profile (ContextRefs.initial setup.context (outputLayout setup.program))
+      (outputEmbedding setup.program) (initialRefsBefore setup.program) 0) :
+    ∃ policy : BehavioralPolicy who setup.program,
+      ((application setup runtime leaks).roundsFrom (initialLaw setup) scheduler players
+        horizon).map (fun final => sourceReadout setup runtime leaks
+          ((application setup runtime leaks).finished final)) =
+        (setup.run (Function.update profile who policy)).map some := by
+  let app := application setup runtime leaks
+  let ghost := fun initial => EventGraphRuntime.State.initial (graph := graph setup)
+    (setup.eventInputs initial)
+  let execution := fun initial => ReactiveApplication.Execution.initial app (ghost initial)
+  obtain ⟨noise, factor⟩ := source_initial_traffic_factorization setup
+    (deadline := runtime.deadline) leaks who
+  have boundary (initial : State L setup.context) (supported : initial ∈ setup.initialLaw.support) :
+      CompletionBoundary setup leaks scheduler players 0 (execution initial) := by
+    refine ⟨?_, EventOrder.Cut.empty_isPrefix _, ?_⟩
+    · change execution initial ∈ (app.roundsFrom (initialLaw setup) scheduler players 0).support
+      unfold ReactiveApplication.roundsFrom
+      simp only [ReactiveApplication.runRounds, initialLaw, serviceInitialLaw]
+      exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨ghost initial,
+        (PMF.mem_support_map_iff _ _ _).mpr ⟨initial, supported, rfl⟩,
+        (PMF.mem_support_pure_iff _ _).mpr rfl⟩
+    · intro event _ observer entry member
+      cases member
+  obtain ⟨policy, result⟩ := law setup.initialLaw Config.initial ghost execution
+    (fun _ => CompiledPolicySuffix.whole setup.program profile)
+    (fun initial => SourceCheckpoint.initial setup initial)
+    (fun initial => ⟨ghost initial, .refl, rfl⟩)
+    (fun initial supported => ⟨0, boundary initial supported⟩)
+    (fun _ _ => Nat.zero_le _) (fun _ player => effective player) noise factor
+  refine ⟨policy, ?_⟩
+  simpa only [ReactiveApplication.roundsFrom, initialLaw, serviceInitialLaw, PMF.bind_map,
+    PMF.map_bind, ReactiveApplication.runToHorizon, ReactiveApplication.Execution.initial,
+    List.length_nil, Nat.sub_zero, Setup.run, SourceProgram.run, execution, ghost, app,
+    Config.initial, Function.comp_def, sourceReadout, ReactiveApplication.finished,
+    serviceSourceReadout_eq_decode setup .sequential runtime.deadline leaks, List.map_id]
+    using result
+
+end Vegas
+
+
+namespace Vegas
+open SourceProgram EventGraphRuntime Interaction GameTheory.Math.Probability
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+private theorem sourceService_deviation_law
+    (setup : Setup (Player := Player) (L := L))
+    (runtime : EventGraphRuntime (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
+    (delay bound : (graph setup).EventId → Nat) (turns : Nat)
+    (contract : AsyncContract runtime leaks (initialLaw setup) horizon scheduler delay bound)
+    (timely : AsyncTimely runtime delay bound)
+    (wholeProfile : BehavioralProfile setup.program) (who : Player)
+    (deviation : (application setup runtime leaks).Policy) :
+    ∀ {Γ : SourceCtx Player L} {names : Finset VarId}
+      (program : SourceProgram Player L Γ names) (profile : BehavioralProfile program)
+      (refs : ContextRefs (graphLayout setup.program) Γ)
+      (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) program)
+      (refsBefore : ContextRefsBefore refs embedding) (rank : Nat),
+      SourceDeviationLaw setup runtime leaks horizon scheduler
+        (Function.update (serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
+          (firstTurnTiming setup turns) wholeProfile) who deviation)
+        wholeProfile who program profile refs embedding refsBefore rank := by
+  intro Γ names program
+  induction program with
+  | ret payoffs =>
+      intro profile refs embedding refsBefore rank
+      exact SourceDeviationLaw.terminal setup runtime leaks horizon scheduler _ wholeProfile who
+        payoffs profile refs embedding refsBefore rank
+  | sample name fresh distribution next ih =>
+      intro profile refs embedding refsBefore rank
+      apply SourceDeviationLaw.sample setup runtime leaks horizon scheduler contract.completes
+        bound turns wholeProfile who deviation fresh distribution next profile refs embedding
+        refsBefore rank
+      exact ih _ _ _
+        (refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl) (rank + 1)
+  | commit name owner fresh guard next ih =>
+      intro profile refs embedding refsBefore rank
+      by_cases same : owner = who
+      · subst owner
+        apply SourceDeviationLaw.commit_owned setup runtime leaks horizon scheduler
+          contract.completes bound turns wholeProfile who deviation fresh guard next profile
+          refs embedding refsBefore rank
+        exact ih _ _ _
+          (refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl) (rank + 1)
+      · apply SourceDeviationLaw.commit_foreign setup runtime leaks horizon scheduler delay bound
+          turns contract timely wholeProfile who owner deviation same fresh guard next profile
+          refs embedding refsBefore rank
+        exact ih _ _ _
+          (refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl) (rank + 1)
+  | reveal published owner name fresh binding unresolved next ih =>
+      intro profile refs embedding refsBefore rank
+      by_cases same : owner = who
+      · subst owner
+        apply SourceDeviationLaw.reveal_owned setup runtime leaks horizon scheduler
+          contract.completes bound turns wholeProfile who deviation fresh binding unresolved
+          next profile refs embedding refsBefore rank
+        exact ih _ _ _
+          (refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl) (rank + 1)
+      · apply SourceDeviationLaw.reveal_foreign setup runtime leaks horizon scheduler delay bound
+          turns contract timely wholeProfile who owner deviation same fresh binding unresolved
+          next profile refs embedding refsBefore rank
+        exact ih _ _ _
+          (refsBefore.tail_cons next (by simp [eventCount]) (fun _ => rfl) _ rfl) (rank + 1)
+
+/-- Against first-turn clients, every physical policy of one player has exactly
+the terminal source-configuration law of one behavioral source deviation. -/
+theorem sourceService_deviation_readout_law
+    (setup : Setup (Player := Player) (L := L))
+    (runtime : EventGraphRuntime (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
+    (delay bound : (graph setup).EventId → Nat) (turns : Nat)
+    (contract : AsyncContract runtime leaks (initialLaw setup) horizon scheduler delay bound)
+    (timely : AsyncTimely runtime delay bound)
+    (profile : BehavioralProfile setup.program)
+    (effective : ∀ player, (profile player).EffectiveDisclosures setup.program []
+      (Revelations.initial setup.context))
+    (who : Player) (deviation : (application setup runtime leaks).Policy) :
+    ∃ policy : BehavioralPolicy who setup.program,
+      ((application setup runtime leaks).roundsFrom (initialLaw setup) scheduler
+        (Function.update (serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
+          (firstTurnTiming setup turns) profile) who deviation) horizon).map
+          (fun final => sourceReadout setup runtime leaks
+            ((application setup runtime leaks).finished final)) =
+        (setup.run (Function.update profile who policy)).map some := by
+  apply SourceDeviationLaw.initialized setup runtime leaks horizon scheduler _ profile who effective
+  exact sourceService_deviation_law setup runtime leaks horizon scheduler delay bound turns
+    contract timely profile who deviation setup.program profile
+    (ContextRefs.initial setup.context (outputLayout setup.program))
+    (outputEmbedding setup.program) (initialRefsBefore setup.program) 0
 
 end Vegas

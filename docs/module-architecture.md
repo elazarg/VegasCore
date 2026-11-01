@@ -41,7 +41,12 @@ The public-barrier certificate transports this law to every certified execution
 mode in [ServiceHonestLaw](../Vegas/Game/ServiceHonestLaw.lean), and
 [CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean) realizes it with
 bounded-menu clients under the supplied value-coverage and capacity interfaces.
-Strategic deviation and sequential-equilibrium ports remain acceptance obligations.
+The [physical deviation law](../Vegas/Game/AsyncDeviationReadout.lean)
+backtranslates every raw unilateral policy against first-turn clients to one
+behavioral source policy with the same typed-state/public-default law. Its
+structural source induction carries typed checkpoints and automatic paths;
+defaulted instructions require no callback. Higher native Nash,
+sequential-equilibrium and client-compiler ports remain acceptance obligations.
 
 Start with [recovery preservation](../Vegas/Game/RecoverySequentialCompilation.lean),
 [monetary preservation](../Vegas/Game/RecoveryPaymentPreservation.lean) and

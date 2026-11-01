@@ -2,203 +2,44 @@
 
 import Vegas.Game.AsyncDeviationLaw
 import Vegas.Source.DisclosureBehavioral
-import Vegas.Game.RevealServicePayoffs
-import Vegas.Game.SourcePrefixKernel
+import Mathlib.Tactic.Convert
 
-/-! # Typed outcome of one deviation under an arbitrary scheduler
+/-! # Typed outcome of arbitrary physical unilateral deviations
 
-On a barrier-ordered graph, against the first-turn clients of a source profile,
-under a scheduler satisfying the asynchronous contract, every native policy of
-one player has the typed terminal-state law of the source run in which that
-player follows one source behavioral policy (`Vegas.asyncDeviation_readout_law`). The policy may
-bind failure, which the source represents as an unopenable commitment; the
-forfeiture interface admits every such policy.
+The asynchronous contract and timely deadlines preserve each source successor
+jointly with the deviating player's actual traffic. The public-barrier
+certificate transports this law to the certified dependency modes. Guarded
+source disclosure normalization preserves the complete typed-state/default law
+against an unchanged deviation, yielding the original source game's outcome.
 -/
 
+
 noncomputable section
-
 namespace Vegas
+open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-open SourceProgram
-
-open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
-open GameTheory.Math.Probability Interaction EventGraphRuntime
-
-variable {Player : Type} [DecidableEq Player]
-  {L : IExpr} [IExpr.ResultTypes L]
-
-namespace SourceProgram
-
-/-- An interface that admits forfeiture at every commitment admits every
-policy. -/
-theorem BehavioralPolicy.admitted_of_forfeiture {who : Player} :
-    {Γ : SourceCtx Player L} → {O : Finset VarId} → (program : SourceProgram Player L Γ O) →
-    (admission : CommitmentInterface program) →
-    (∀ site, admission site = .forfeiture) → (policy : BehavioralPolicy who program) →
-    policy.Admitted program admission
-  | _, _, .ret _, _, _, _ => trivial
-  | _, _, .sample _ _ _ next, admission, all, policy =>
-      BehavioralPolicy.admitted_of_forfeiture next admission all policy
-  | _, _, .commit _ _ _ _ next, admission, all, policy =>
-      ⟨fun _ _ choice _ => by
-        cases choice with
-        | success value => exact CommitmentAdmission.admits_success _ value
-        | failure => exact (CommitmentAdmission.admits_failure _).mpr (all none),
-        BehavioralPolicy.admitted_of_forfeiture next (fun site => admission (some site))
-          (fun site => all (some site)) policy.2⟩
-  | _, _, .reveal _ _ _ _ _ _ next, admission, all, policy =>
-      BehavioralPolicy.admitted_of_forfeiture next admission all policy.2
-
-/-- The forfeiture interface admits every policy. -/
-theorem BehavioralPolicy.admitted_forfeiture {who : Player} {Γ : SourceCtx Player L}
-    {O : Finset VarId} (program : SourceProgram Player L Γ O)
-    (policy : BehavioralPolicy who program) :
-    policy.Admitted program (CommitmentInterface.forfeiture program) :=
-  BehavioralPolicy.admitted_of_forfeiture program _ (fun _ => rfl) policy
-
-end SourceProgram
-
-
-section Phases
-
-variable {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
-
-/-- Running to the horizon is running a list of phases, then on to the
-horizon. -/
-theorem runToHorizon_eq_deviationPhases_bind
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (horizon : Nat) :
-    ∀ (ends : List Nat) (execution : (serviceApplication setup mode deadline leaks).Execution),
-      (serviceApplication setup mode deadline leaks).runToHorizon scheduler players horizon
-          execution =
-        (deviationPhases scheduler players horizon ends execution).bind
-          ((serviceApplication setup mode deadline leaks).runToHorizon scheduler players horizon)
-  | [], execution => by simp only [deviationPhases, PMF.pure_bind]
-  | high :: rest, execution => by
-      rw [(serviceApplication setup mode deadline leaks).runToHorizon_eq_runUntilHorizon_bind
-        scheduler players (BlockDone high) horizon execution]
-      simp only [deviationPhases, PMF.bind_bind]
-      apply bind_congr_on_support _
-      intro middle _
-      exact runToHorizon_eq_deviationPhases_bind scheduler players horizon rest middle
-
-/-- **The phases of a program end at the end of the graph.** On a
-barrier-ordered graph, under a scheduler that completes play, the phases of a
-compiled residual program, from a completion boundary at its rank within the
-horizon, stop at completion boundaries of the whole graph within the horizon. -/
-theorem PhaseEnds.boundary (ordered : (serviceGraph setup mode).BarrierOrdered) {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    (complete : CompletesPlay (serviceRuntime setup mode deadline) leaks
-      (serviceInitialLaw setup mode) horizon scheduler)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy)
-    (wholeProfile : BehavioralProfile setup.program) {Γ : SourceCtx Player L}
-    {names : Finset VarId} {program : SourceProgram Player L Γ names} {offset : Nat}
-    {ends : List Nat} (phases : PhaseEnds program offset ends) :
-    ∀ (profile : BehavioralProfile program) (refs : ContextRefs (graphLayout setup.program) Γ)
-      (revelations : Revelations Γ) (registry : Registry Γ)
-      (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program)
-        program) (refsBefore : ContextRefsBefore refs embedding),
-      CompiledPolicySuffix setup.program wholeProfile program profile refs revelations registry
-        embedding refsBefore offset →
-      ∀ execution : (serviceApplication setup mode deadline leaks).Execution,
-      CompletionBoundary setup leaks scheduler players offset execution →
-      execution.environmentRecall.length ≤ horizon →
-      ∀ final ∈ (deviationPhases scheduler players horizon ends execution).support,
-        CompletionBoundary setup leaks scheduler players (eventCount setup.program) final ∧
-          final.environmentRecall.length ≤ horizon := by
-  induction phases with
-  | ret payoffs offset =>
-      intro profile refs revelations registry embedding refsBefore aligned execution boundary
-        bounded final reached
-      cases (PMF.mem_support_pure_iff _ _).mp reached
-      have counted := aligned.graphSuffix.countEq
-      simp only [eventCount, Nat.add_zero] at counted
-      rw [← counted]
-      exact ⟨boundary, bounded⟩
-  | @sample Γ names name payload fresh distribution next offset rest _ ih =>
-      intro profile refs revelations registry embedding refsBefore aligned execution boundary
-        bounded final reached
-      let index : Fin (eventCount (.sample name fresh distribution next)) :=
-        ⟨0, by simp [eventCount]⟩
-      let event : (serviceGraph setup mode).EventId := embedding.event index
-      have eventRank : event.val = offset := by
-        simpa only [event, index, Fin.val_zero, Nat.add_zero] using
-          aligned.graphSuffix.rankEq index
-      have outputEq : (serviceGraph setup mode).outputLayout event = .publicData payload := by
-        change outputLayout setup.program event = _
-        simpa [event, index, outputLayout, eventCount] using embedding.layout_eq index
-      have sealed : BlockSealed setup mode offset (offset + 1) := by
-        have alone := sealed_of_alone (event := event) fun cut other ready otherReady =>
-          ordered.ready_public_unique cut (by rw [outputEq]; trivial) ready otherReady
-        rwa [eventRank] at alone
-      have counted := aligned.graphSuffix.countEq
-      simp only [eventCount] at counted
-      simp only [deviationPhases] at reached
-      obtain ⟨middle, moved, later⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      have done := blockRun_completes complete (offset + 1) execution boundary bounded middle
-        moved
-      obtain ⟨middleBounded, middleBoundary⟩ := blockRun_boundary (Nat.le_succ _) sealed
-        (by change offset + 1 ≤ eventCount setup.program; omega) execution boundary bounded
-        middle moved done
-      exact ih _ _ _ _ _ _ (aligned.sampleTail setup.program wholeProfile (_openNames := names)
-        fresh distribution next profile refs revelations registry embedding refsBefore offset)
-        middle middleBoundary middleBounded final later
-  | @reveal Γ names published name owner payload fresh binding unresolved next offset rest _
-      ih =>
-      intro profile refs revelations registry embedding refsBefore aligned execution boundary
-        bounded final reached
-      let index : Fin (eventCount (.reveal published owner name fresh binding unresolved next)) :=
-        ⟨0, by simp [eventCount]⟩
-      let event : (serviceGraph setup mode).EventId := embedding.event index
-      have eventRank : event.val = offset := by
-        simpa only [event, index, Fin.val_zero, Nat.add_zero] using
-          aligned.graphSuffix.rankEq index
-      have outputEq : (serviceGraph setup mode).outputLayout event = .publication payload := by
-        change outputLayout setup.program event = _
-        simpa [event, index, outputLayout, eventCount] using embedding.layout_eq index
-      have sealed : BlockSealed setup mode offset (offset + 1) := by
-        have alone := sealed_of_alone (event := event) fun cut other ready otherReady =>
-          ordered.ready_public_unique cut (by rw [outputEq]; trivial) ready otherReady
-        rwa [eventRank] at alone
-      have counted := aligned.graphSuffix.countEq
-      simp only [eventCount] at counted
-      simp only [deviationPhases] at reached
-      obtain ⟨middle, moved, later⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      have done := blockRun_completes complete (offset + 1) execution boundary bounded middle
-        moved
-      obtain ⟨middleBounded, middleBoundary⟩ := blockRun_boundary (Nat.le_succ _) sealed
-        (by change offset + 1 ≤ eventCount setup.program; omega) execution boundary bounded
-        middle moved done
-      exact ih _ _ _ _ _ _ (aligned.revealTail (whole := setup.program)
-        (wholeProfile := wholeProfile) fresh binding unresolved next profile refs revelations
-        registry embedding refsBefore offset) middle middleBoundary middleBounded final later
-  | @block Γ names program offset rest count prefixed _ maximal _ ih =>
-      intro profile refs revelations registry embedding refsBefore aligned execution boundary
-        bounded final reached
-      have tailAligned := CompiledPolicySuffix.commitTailMany wholeProfile count program prefixed
-        profile refs revelations registry embedding refsBefore offset aligned
-      have wall : BlockEnd setup mode (offset + count) :=
-        CompiledSuffix.blockEnd maximal tailAligned.graphSuffix
-      simp only [deviationPhases] at reached
-      obtain ⟨middle, moved, later⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      have done := blockRun_completes complete (offset + count) execution boundary bounded middle
-        moved
-      obtain ⟨middleBounded, middleBoundary⟩ := blockRun_boundary (Nat.le_add_right _ _)
-        (BlockEnd.sealed ordered wall) wall.1 execution boundary bounded middle moved done
-      exact ih _ _ _ _ _ _ tailAligned middle middleBoundary middleBounded final later
-
-end Phases
-
-variable [Fintype Player]
-
-/-- **One deviation, initialized, phase by phase.** On a barrier-ordered graph,
-the phases of the whole program, from the initial law, have the state law of a
-source deviation jointly with the deviator's traffic, which depends on the
-source state only through the deviator's source observation. -/
-theorem asyncDeviation_initialized_factorization
-    (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+private theorem native_deviation_mode_transport
+    (setup : Setup (Player := Player) (L := L))
+    (sequential : ∀ (deadline : (graph setup).EventId → Nat)
+      (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+      (horizon : Nat) (scheduler : (application setup ⟨deadline⟩ leaks).Scheduler)
+      (delay bound : (graph setup).EventId → Nat) (turns : Nat)
+      (profile : BehavioralProfile setup.program),
+      AsyncContract (⟨deadline⟩ : EventGraphRuntime (graph setup)) leaks
+        (initialLaw setup) horizon scheduler delay bound →
+      AsyncTimely (⟨deadline⟩ : EventGraphRuntime (graph setup)) delay bound →
+      (∀ who, (profile who).EffectiveDisclosures setup.program []
+        (Revelations.initial setup.context)) →
+      ∀ (who : Player) (deviation : (application setup ⟨deadline⟩ leaks).Policy),
+      ∃ policy : BehavioralPolicy who setup.program,
+        ((application setup ⟨deadline⟩ leaks).roundsFrom (initialLaw setup) scheduler
+          (Function.update (serviceTurnPolicy setup .sequential deadline leaks bound turns
+            (firstTurnTiming setup turns) profile) who deviation) horizon).map
+          (fun final => sourceReadout setup ⟨deadline⟩ leaks
+            ((application setup ⟨deadline⟩ leaks).finished final)) =
+          (setup.run (Function.update profile who policy)).map some)
+    {mode : EventGraph.ExecutionMode}
     {deadline : (serviceGraph setup mode).EventId → Nat}
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     (ordered : (serviceGraph setup mode).BarrierOrdered)
@@ -208,109 +49,183 @@ theorem asyncDeviation_initialized_factorization
       (serviceInitialLaw setup mode) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound) (turns : Nat)
     (profile : BehavioralProfile setup.program)
-    (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)
-    (effective : ∀ player, (profile player).AuthenticDisclosures setup.program)
-    {ends : List Nat} (phases : PhaseEnds setup.program 0 ends) :
-    let players := deviatedTurnProfile bound turns (firstTurnTiming setup turns mode) profile who
-      deviation
+    (effective : ∀ who, (profile who).EffectiveDisclosures setup.program []
+      (Revelations.initial setup.context))
+    (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy) :
     ∃ policy : BehavioralPolicy who setup.program,
-      ∃ noise : setup.ProtocolView who → PMF _,
-        (((serviceInitialLaw setup mode).bind fun state =>
-          deviationPhases scheduler players horizon ends
-            (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks)
-              state)).map fun final =>
-            (serviceSourcePrefix? setup mode (eventCount setup.program)
-              final.application.config,
-              (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
-          (setup.initialLaw.bind fun initial =>
-            ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program
-              (Function.update profile who policy)))^[eventCount setup.program]
-              (PMF.pure (ProtocolState.entry setup.program (Config.initial initial)))).map
-                some).bind fun state =>
-              (noise (setup.protocolObserve who state)).map fun extra => (state, extra) := by
-  intro players
-  let app := serviceApplication setup mode deadline leaks
-  let Seed := {initial // initial ∈ setup.initialLaw.support}
-  let prior : PMF Seed := pmfToSubtype setup.initialLaw (fun _ member => member)
-  let source := fun seed : Seed => Config.initial seed.val
-  let execution := fun seed : Seed => ReactiveApplication.Execution.initial app
-    (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
-      (setup.eventInputs seed.val))
-  obtain ⟨initialNoise, initialFactor⟩ := source_initial_memory_factorization setup
-    (deadline := deadline) leaks who
-  have factor : prior.map (fun seed => (source seed,
-      (serviceRuntime setup mode deadline).bindingTraffic leaks who (execution seed))) =
-      (prior.map source).bind fun config =>
-        (initialNoise (config.view who)).map fun extra => (config, extra) := by
-    have projected := congrArg (PMF.map fun pair => (pair.1.1, pair.2)) initialFactor
-    dsimp only [prior, source, execution]
-    rw [map_pmfToSubtype setup.initialLaw (fun _ member => member)
-      (fun initial => (Config.initial initial,
-        (serviceRuntime setup mode deadline).bindingTraffic leaks who
-          (ReactiveApplication.Execution.initial app
-            (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
-              (setup.eventInputs initial))))),
-      map_pmfToSubtype setup.initialLaw (fun _ member => member) Config.initial]
-    simpa only [PMF.map_comp, PMF.map_bind, PMF.bind_map, Function.comp_def]
-      using projected
-  have initialBoundary (seed : Seed) : CompletionBoundary setup leaks scheduler players 0
-      (execution seed) := by
-    refine ⟨?_, EventOrder.Cut.empty_isPrefix _, ?_⟩
-    · change execution seed ∈ (app.roundsFrom (serviceInitialLaw setup mode) scheduler
-        players 0).support
-      unfold ReactiveApplication.roundsFrom
-      simp only [ReactiveApplication.runRounds, serviceInitialLaw]
-      exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨_, (PMF.mem_support_map_iff _ _ _).mpr
-        ⟨seed.val, seed.property, rfl⟩, (PMF.mem_support_pure_iff _ _).mpr rfl⟩
-    · intro event _ observer entry member
-      cases member
-  obtain ⟨policy, noise, law⟩ := asyncDeviation_deviationLaw setup leaks ordered contract
-    timely turns profile who deviation phases profile
-      (ContextRefs.initial setup.context (outputLayout setup.program))
-      (outputEmbedding setup.program) (initialRefsBefore setup.program) prior source execution
-      (fun _ => CompiledPolicySuffix.whole setup.program profile)
-      (fun seed => SourceCheckpoint.initial setup seed.val)
-      (fun seed _ => initialBoundary seed) (fun _ _ => Nat.zero_le _)
-      (fun _ player => effective player) initialNoise factor
-  refine ⟨policy, noise, ?_⟩
-  let combined := fun initial : State L setup.context =>
-    (deviationPhases scheduler players horizon ends
-      (ReactiveApplication.Execution.initial app
-        (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
-          (setup.eventInputs initial)))).map
-      fun final => (serviceSourcePrefix? setup mode (eventCount setup.program)
-        final.application.config,
-        (serviceRuntime setup mode deadline).bindingTraffic leaks who final)
-  let sourcePrefix := fun initial : State L setup.context =>
-    ((fun law => law.bind (ProtocolState.behavioralStateStep setup.program
-      (Function.update profile who policy)))^[eventCount setup.program]
-      (PMF.pure (ProtocolState.entry setup.program (Config.initial initial)))).map some
-  have nativeLaw : prior.bind (fun seed => combined seed.val) =
-      setup.initialLaw.bind combined := by
-    refine (PMF.bind_map prior Subtype.val combined).symm.trans ?_
-    exact congrArg (fun law => law.bind combined) (map_val_pmfToSubtype _ _)
-  have sourceLaw : prior.bind (fun seed => sourcePrefix seed.val) =
-      setup.initialLaw.bind sourcePrefix := by
-    refine (PMF.bind_map prior Subtype.val sourcePrefix).symm.trans ?_
-    exact congrArg (fun law => law.bind sourcePrefix) (map_val_pmfToSubtype _ _)
-  change (prior.bind fun seed => combined seed.val) =
-    (prior.bind fun seed => sourcePrefix seed.val).bind fun state =>
-      (noise (setup.protocolObserve who state)).map fun extra => (state, extra) at law
-  rw [nativeLaw, sourceLaw] at law
-  rw [serviceInitialLaw, PMF.bind_map, PMF.map_bind]
-  exact law
+      ((serviceApplication setup mode deadline leaks).roundsFrom
+        (serviceInitialLaw setup mode) scheduler
+        (Function.update (serviceTurnPolicy setup mode deadline leaks bound turns
+          (firstTurnTiming setup turns mode) profile) who deviation) horizon).map
+          (fun final => serviceSourceReadout setup mode deadline leaks
+            ((serviceApplication setup mode deadline leaks).finished final)) =
+        (setup.run (Function.update profile who policy)).map some := by
+  let statement := fun mode : EventGraph.ExecutionMode =>
+    ∀ (deadline : (serviceGraph setup mode).EventId → Nat)
+      (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+      (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+      (delay bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+      (profile : BehavioralProfile setup.program),
+      AsyncContract (serviceRuntime setup mode deadline) leaks (serviceInitialLaw setup mode)
+        horizon scheduler delay bound →
+      AsyncTimely (serviceRuntime setup mode deadline) delay bound →
+      (∀ who, (profile who).EffectiveDisclosures setup.program []
+        (Revelations.initial setup.context)) →
+      ∀ (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy),
+      ∃ policy : BehavioralPolicy who setup.program,
+        ((serviceApplication setup mode deadline leaks).roundsFrom
+          (serviceInitialLaw setup mode) scheduler
+          (Function.update (serviceTurnPolicy setup mode deadline leaks bound turns
+            (firstTurnTiming setup turns mode) profile) who deviation) horizon).map
+            (fun final => serviceSourceReadout setup mode deadline leaks
+              ((serviceApplication setup mode deadline leaks).finished final)) =
+          (setup.run (Function.update profile who policy)).map some
+  let evaluate := fun
+      (predecessors : Fin setup.eventGraph.order.eventCount →
+        Finset (Fin setup.eventGraph.order.eventCount)) =>
+    ∀ (lower : ∀ {event prior : Fin setup.eventGraph.order.eventCount},
+          prior ∈ predecessors event → prior.val < event.val)
+      (reads : ∀ event field, field ∈ (setup.eventGraph.nodes event).readFields →
+        match field with
+        | .inl _ => True
+        | .inr producer => producer ∈ predecessors event),
+      let compiled : EventGraph Player L := {
+        inputCount := setup.eventGraph.inputCount
+        order := { eventCount := setup.eventGraph.order.eventCount
+                   predecessors := predecessors
+                   predecessor_lt := lower }
+        inputLayout := setup.eventGraph.inputLayout
+        outputLayout := setup.eventGraph.outputLayout
+        nodes := setup.eventGraph.nodes
+        reads_available := by
+          intro event field member
+          cases field with
+          | inl _ => trivial
+          | inr producer => exact reads event (.inr producer) member
+        payoffs := setup.eventGraph.payoffs }
+      ∀ (deadline : compiled.EventId → Nat)
+        (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket compiled))
+        (horizon : Nat),
+        let runtime : EventGraphRuntime compiled := ⟨deadline⟩
+        let app := runtime.reactiveApplication leaks
+        ∀ (scheduler : app.Scheduler) (delay bound : compiled.EventId → Nat)
+          (turns : Nat) (profile : BehavioralProfile setup.program),
+          let initial : PMF (EventGraphRuntime.State compiled) :=
+            setup.initialLaw.map fun initial => EventGraphRuntime.State.initial
+              (setup.eventInputs initial)
+          let canonical : Player → app.Policy := fun who past view =>
+            if identity : view.application.who = who then
+              match view.application.publicView.ownTurn? who with
+              | none => PMF.pure ⟨none⟩
+              | some event =>
+                  if owned : compiled.actor? event = some who then
+                    let observed := id (identity ▸ view.application.observation)
+                    if inactive : who ∈ observed.defaulted then PMF.pure ⟨none⟩ else
+                      ((compileEventProfile setup.program profile) who event owned observed
+                        inactive).map
+                          (runtime.canonicalServiceDecision leaks who past view event)
+                  else PMF.pure ⟨none⟩
+            else PMF.pure ⟨none⟩
+          let opportunity : Player → compiled.EventId → app.Policy :=
+            fun who event past view =>
+              if runtime.eventRecorded leaks past event then app.silentPolicy past view else
+              if view.application.publicView.InclusionFitsDeadline runtime bound event then
+                (canonical who past view).bind fun response =>
+                  if response.transmission = none then app.silentPolicy past view
+                  else PMF.pure response
+              else app.silentPolicy past view
+          let players : Player → app.Policy := fun who past view =>
+            match view.application.publicView.ownTurn? who with
+            | none => app.silentPolicy past view
+            | some event =>
+                if owned : compiled.actor? event = some who then
+                  ((app.policyMixture (PMF.pure (0 : Fin (turns + 1)))) fun slot =>
+                    app.turnScheduledPolicy
+                      (fun past view =>
+                        if view.application.publicView.ownTurn? who = some event then
+                          some (past.countP fun entry => decide
+                            (entry.beforeView.application.publicView.ownTurn? who = some event))
+                        else none)
+                      (some slot) (opportunity who event) app.silentPolicy).policy past view
+                else app.silentPolicy past view
+          let read : app.ProtocolState → Option (Config Player L setup.program.terminalCtx) :=
+            fun state => state.bind fun control =>
+              let config := control.execution.application.config
+              if config.cut.Terminal then
+                decodeConfig? setup.program setup.program
+                  (ContextRefs.initial setup.context (outputLayout setup.program))
+                  (Revelations.initial setup.context) [] (outputEmbedding setup.program)
+                    config.store (config.history.map id)
+              else none
+          AsyncContract runtime leaks initial horizon scheduler delay bound →
+          AsyncTimely runtime delay bound →
+          (∀ who, (profile who).EffectiveDisclosures setup.program []
+            (Revelations.initial setup.context)) →
+          ∀ (who : Player) (deviation : app.Policy),
+          ∃ policy : BehavioralPolicy who setup.program,
+            (app.roundsFrom initial scheduler (Function.update players who deviation)
+              horizon).map (fun execution => read (app.finished execution)) =
+              (setup.run (Function.update profile who policy)).map some
+  have representation (selectedMode : EventGraph.ExecutionMode) :
+      statement selectedMode ↔
+        evaluate (serviceGraph setup selectedMode).order.predecessors := by
+    have sourceReads : ∀ event field, field ∈ (setup.eventGraph.nodes event).readFields →
+        match field with
+        | .inl _ => True
+        | .inr producer =>
+            producer ∈ (serviceGraph setup selectedMode).order.predecessors event := by
+      intro event field member
+      cases field with
+      | inl _ => trivial
+      | inr producer =>
+          exact (serviceGraph setup selectedMode).reads_available event (.inr producer)
+            (by simpa only [serviceGraph, EventGraph.withMode_nodes] using member)
+    dsimp only [statement, evaluate]
+    delta serviceTurnPolicy firstTurnTiming serviceTurnFamily serviceTurn
+    delta serviceCanonicalOpportunity serviceCanonicalPolicy serviceSourceReadout
+    delta serviceApplication serviceRuntime serviceInitialLaw
+    delta serviceGraph graph EventGraph.sequentialize EventGraph.withMode
+    dsimp (config := { instances := true }) only
+    constructor
+    · intro law lower reads
+      convert law using 1
+      congr!
+      all_goals
+        funext motive value onNone onSome
+        cases value <;> rfl
+    · intro law
+      have specialized := law (serviceGraph setup selectedMode).order.predecessor_lt sourceReads
+      convert specialized using 1
+      congr!
+      all_goals
+        funext motive value onNone onSome
+        cases value <;> rfl
+  have statementEq : statement mode = statement .sequential := by
+    calc
+      statement mode = evaluate (serviceGraph setup mode).order.predecessors :=
+        propext (representation mode)
+      _ = evaluate (serviceGraph setup .sequential).order.predecessors :=
+        congrArg evaluate (by
+          have graphEq := serviceGraph_eq_sequential setup mode ordered
+          have same : HEq (serviceGraph setup mode).order.predecessors
+              (graph setup).order.predecessors := by rw [graphEq]
+          exact eq_of_heq same)
+      _ = statement .sequential := (propext (representation .sequential)).symm
+  have general : statement mode := statementEq.symm ▸ sequential
+  exact general deadline leaks horizon scheduler delay bound turns profile contract timely
+    effective who deviation
 
-omit [Fintype Player] in
-/-- **One deviation has the typed outcome law of a source deviation.** On a
-barrier-ordered graph, against the first-turn clients of a source profile,
-under a scheduler satisfying the asynchronous contract with timely delays,
-every native policy of one player has exactly the typed terminal-state law of
-the source run in which that player follows one source behavioral policy,
-possibly binding failure, and every other player keeps its source policy. The
-reader retains all typed cells and the complete public default record; private
-intentions after an unopenable disclosure are outside this observation. -/
-theorem asyncDeviation_readout_law [Finite Player]
-    (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+end Vegas
+
+namespace Vegas
+open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+/-- Every raw physical unilateral deviation against compiled first-turn clients
+has the typed-state/public-default law of a behavioral source deviation. -/
+theorem asyncDeviation_readout_law
+    (setup : Setup (Player := Player) (L := L))
+    {mode : EventGraph.ExecutionMode}
     {deadline : (serviceGraph setup mode).EventId → Nat}
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     (ordered : (serviceGraph setup mode).BarrierOrdered)
@@ -322,95 +237,29 @@ theorem asyncDeviation_readout_law [Finite Player]
     (original : BehavioralProfile setup.program)
     (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy) :
     ∃ policy : BehavioralPolicy who setup.program,
-      ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
-        scheduler (deviatedTurnProfile bound turns (firstTurnTiming setup turns mode)
-          (normalizeDisclosureProfile setup.program original) who deviation) horizon).map
-          (fun execution => (serviceSourceReadout setup mode deadline leaks
-            ((serviceApplication setup mode deadline leaks).finished execution)).map
-              (fun final => (final.state, final.defaults))) =
+      ((serviceApplication setup mode deadline leaks).roundsFrom
+        (serviceInitialLaw setup mode) scheduler
+        (Function.update (serviceTurnPolicy setup mode deadline leaks bound turns
+          (firstTurnTiming setup turns mode) (normalizeDisclosureProfile setup.program original))
+          who deviation) horizon).map (fun execution =>
+            (serviceSourceReadout setup mode deadline leaks
+              ((serviceApplication setup mode deadline leaks).finished execution)).map
+                (fun final => (final.state, final.defaults))) =
         (setup.run (Function.update original who policy)).map
           (fun final => some (final.state, final.defaults)) := by
-  classical
-  have := Fintype.ofFinite Player
-  let app := serviceApplication setup mode deadline leaks
-  let normalized := normalizeDisclosureProfile setup.program original
-  let players := deviatedTurnProfile bound turns (firstTurnTiming setup turns mode) normalized
+  obtain ⟨policy, physical⟩ := native_deviation_mode_transport setup
+    (fun deadline leaks horizon scheduler delay bound turns profile contract timely effective who
+        deviation => sourceService_deviation_readout_law setup ⟨deadline⟩ leaks horizon scheduler
+          delay bound turns contract timely profile effective who deviation) leaks ordered
+    contract timely turns (normalizeDisclosureProfile setup.program original)
+    (fun player => BehavioralPolicy.normalizeDisclosures_effective setup.program (original player))
     who deviation
-  obtain ⟨ends, phases⟩ := PhaseEnds.exists (eventCount setup.program) setup.program rfl 0
-  obtain ⟨policy, noise, joint⟩ := asyncDeviation_initialized_factorization setup leaks ordered
-    contract timely turns normalized who deviation
-    (fun player => BehavioralPolicy.normalizeDisclosures_authentic setup.program (original player))
-    phases
   refine ⟨policy, ?_⟩
-  -- The run to the horizon passes through every phase and then keeps the readout.
-  have physical : (app.roundsFrom (serviceInitialLaw setup mode) scheduler players horizon).map
-      (fun execution => serviceSourceReadout setup mode deadline leaks (app.finished execution)) =
-      ((serviceInitialLaw setup mode).bind fun state => deviationPhases scheduler players
-        horizon ends (ReactiveApplication.Execution.initial app state)).map
-          (fun final => serviceSourceReadout setup mode deadline leaks (app.finished final)) := by
-    unfold ReactiveApplication.roundsFrom
-    rw [PMF.map_bind, PMF.map_bind]
-    apply bind_congr_on_support _
-    intro state stateSupport
-    have toHorizon : app.runRounds scheduler players horizon
-        (ReactiveApplication.Execution.initial app state) =
-        app.runToHorizon scheduler players horizon
-          (ReactiveApplication.Execution.initial app state) := rfl
-    rw [toHorizon, runToHorizon_eq_deviationPhases_bind scheduler players horizon ends,
-      PMF.map_bind]
-    rw [← PMF.bind_pure_comp]
-    apply bind_congr_on_support _
-    intro final reached
-    have initialBoundary : CompletionBoundary setup leaks scheduler players 0
-        (ReactiveApplication.Execution.initial app state) := by
-      refine ⟨?_, ?_, ?_⟩
-      · change ReactiveApplication.Execution.initial app state ∈
-          (app.roundsFrom (serviceInitialLaw setup mode) scheduler players 0).support
-        unfold ReactiveApplication.roundsFrom
-        exact (PMF.mem_support_bind_iff _ _ _).mpr ⟨state, stateSupport,
-          (PMF.mem_support_pure_iff _ _).mpr rfl⟩
-      · obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ stateSupport
-        exact EventOrder.Cut.empty_isPrefix _
-      · intro event _ observer entry member
-        cases member
-    obtain ⟨finalBoundary, _⟩ := PhaseEnds.boundary ordered contract.completes players normalized
-      phases normalized _ _ _ (outputEmbedding setup.program) (initialRefsBefore setup.program)
-      (CompiledPolicySuffix.whole setup.program normalized) _ initialBoundary (Nat.zero_le _)
-      final reached
-    have terminal : final.application.config.cut.IsPrefix
-        (serviceGraph setup mode).order.eventCount := finalBoundary.ordered
-    unfold ReactiveApplication.runToHorizon
-    rw [map_congr_on_support _
-      (g := fun _ => serviceSourceReadout setup mode deadline leaks (app.finished final))
-      (fun next moved => by
-        have same := runRounds_config_terminal scheduler players _ final next terminal
-          moved
-        change serviceSourceReadout setup mode deadline leaks (some ⟨0, none, next⟩) =
-          serviceSourceReadout setup mode deadline leaks (some ⟨0, none, final⟩)
-        simp only [serviceSourceReadout, Option.bind_some, same]), pmf_map_fun_const]
-    rfl
-  have projected := congrArg (PMF.map (fun pair => setup.protocolReadout pair.1)) joint
-  simp only [PMF.map_comp, Function.comp_def, PMF.map_bind, pmf_map_fun_const,
-    pmf_bind_pure_eq_map] at projected
-  simp only [serviceSourcePrefix?_terminal_readout] at projected
-  have admitted (player : Player) :
-      (Function.update normalized who policy player).Admitted setup.program
-        (CommitmentInterface.forfeiture setup.program) :=
-    BehavioralPolicy.admitted_forfeiture setup.program _
-  have encodedState := setup.encoded_prefix_state (CommitmentInterface.forfeiture setup.program)
-    (Function.update normalized who policy) admitted (eventCount setup.program)
-  have sourceLaw := setup.protocol_runBehavioral_eq (CommitmentInterface.forfeiture setup.program)
-    (Function.update normalized who policy) admitted
-  rw [InformationModel.runSingleMoverBehavioralFrom_eq_runBehavioralFrom] at sourceLaw
-  have encodedReadout := congrArg (PMF.map setup.protocolReadout) encodedState
-  simp only [PMF.map_comp, Function.comp_def, PMF.map_bind] at encodedReadout
-  have terminal := physical.trans (projected.trans (encodedReadout.symm.trans (by
-    simpa only [eventCount_eq_instructionCount, InformationModel.runBehavioral] using sourceLaw)))
-  have observed := congrArg
-    (PMF.map (Option.map (fun final => (final.state, final.defaults)))) terminal
-  have normalizedLaw := congrArg (PMF.map some)
+  have projected := congrArg (PMF.map (Option.map (fun final => (final.state, final.defaults))))
+    physical
+  have normalized := congrArg (PMF.map some)
     (setup.run_update_normalizeDisclosures_eq original who policy)
-  simp only [PMF.map_comp, Function.comp_def, Option.map_some] at observed normalizedLaw
-  exact observed.trans normalizedLaw
+  simp only [PMF.map_comp, Function.comp_def, Option.map_some] at projected normalized
+  exact projected.trans normalized
 
 end Vegas
