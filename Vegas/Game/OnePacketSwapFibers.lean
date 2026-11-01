@@ -15,27 +15,6 @@ namespace Vegas.EventGraph
 
 variable {Player : Type} {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-theorem pairSwap_comm {α : Type*} (left right : α) :
-    pairSwap (some (left, right)) = pairSwap (some (right, left)) := by
-  classical
-  funext value
-  exact congrFun (congrArg DFunLike.coe (Equiv.swap_comm left right)) value
-
-/-- Value swaps of pairs with the same transpositions are equal. -/
-theorem ValueSwap.ofPairs_congr {first second : graph.SwapPairs}
-    (same : ∀ field, pairSwap (first.pair field) = pairSwap (second.pair field)) :
-    ValueSwap.ofPairs first = ValueSwap.ofPairs second := by
-  have values : (fun field => pairSwap (first.pair field)) =
-      (fun field => pairSwap (second.pair field)) := funext same
-  have actions : first.action = second.action := by
-    funext event
-    unfold SwapPairs.action
-    cases EventGraphRuntime.nodeView graph event with
-    | bind owner payload outputEq codeEq => simp only [same]
-    | resolve | sample => rfl
-  unfold ValueSwap.ofPairs
-  congr 1
-
 end Vegas.EventGraph
 
 namespace Vegas

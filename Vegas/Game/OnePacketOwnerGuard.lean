@@ -45,17 +45,6 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 section Pairs
 
-/-- A binding field of `who` is private to `who`. -/
-theorem privateTo_of_binding {who : Player} {field : (graph setup).Field} {payload : L.Ty}
-    (layoutEq : (graph setup).layout field = .binding who payload) : PrivateTo who field := by
-  refine ⟨?_, ?_⟩
-  · unfold EventGraph.fieldVisibleTo
-    rw [layoutEq]
-    rfl
-  · unfold EventGraph.fieldPublic
-    rw [layoutEq]
-    exact id
-
 omit [IExpr.ResultTypes L] in
 open Classical in
 private theorem pairs_of_candidateOfValue (who : Player) (payload : L.Ty) :

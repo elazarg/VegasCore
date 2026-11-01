@@ -121,13 +121,13 @@ theorem defaultEvent_eq (event : graph.EventId) (action : graph.Action event)
 /-- Completion swapping keeps the generated public default entry unchanged. -/
 theorem completion_fromDecision (event : graph.EventId)
     (decision : Option (graph.Action event)) (value : (graph.outputLayout event).Value) :
-    swap.completion (Completion.fromDecision event decision value) =
-      Completion.fromDecision event (decision.map (swap.action event))
+    swap.completion (EventGraph.completion graph event decision value) =
+      EventGraph.completion graph event (decision.map (swap.action event))
         (swap.value (.inr event) value) := by
   cases decision with
   | none => rfl
   | some action =>
-      simp only [completion, Completion.fromDecision, Option.map_some, Option.bind_some,
+      simp only [completion, EventGraph.completion, Option.map_some, Option.bind_some,
         swap.defaultEvent_eq]
 
 /-- A swapped store agrees with the original on every public field. -/
@@ -176,7 +176,8 @@ variable (swap : graph.ValueSwap)
     (config.swap swap).history = config.history.map swap.completion := rfl
 
 theorem swap_history_events (config : graph.Config) :
-    (config.swap swap).history.map Completion.event = config.history.map Completion.event := by
+    (config.swap swap).history.map EventCompletion.event =
+      config.history.map EventCompletion.event := by
   rw [swap_history, List.map_map]
   rfl
 
@@ -187,7 +188,7 @@ theorem swap_history_events (config : graph.Config) :
 
 @[simp] theorem swap_defaults (config : graph.Config) :
     (config.swap swap).defaults = config.defaults := by
-  unfold defaults Completion.defaults
+  unfold defaults EventCompletion.defaults
   rw [swap_history, List.map_map]
   rfl
 
@@ -257,7 +258,7 @@ end Config
 /-- **The public observation ignores the swap.** -/
 theorem publicObserve_swap (swap : graph.ValueSwap) (config : graph.Config) :
     graph.publicObserve (config.swap swap) = graph.publicObserve config := by
-  apply PublicObservation.ext graph
+  apply EventPublicObservation.ext
   · exact Config.swap_history_events swap config
   · funext field
     simp only [publicObserve, Config.swap_store, publicStore]
@@ -488,7 +489,7 @@ def PlayerObservation.swap {who : Player} (swap : graph.ValueSwap)
 theorem playerObserve_swap (swap : graph.ValueSwap) (who : Player) (config : graph.Config) :
     graph.playerObserve who (config.swap swap) =
       (graph.playerObserve who config).swap swap := by
-  apply PlayerObservation.ext graph
+  apply EventPlayerObservation.ext
   · exact Config.swap_history_events swap config
   · funext field
     simp only [playerObserve, PlayerObservation.swap, Config.swap_store, playerStore,
@@ -505,7 +506,7 @@ theorem PlayerObservation.swap_eq_self {who : Player} (swap : graph.ValueSwap)
     (fixedActions : ∀ event, graph.actor? event = some who → swap.action event = id)
     (config : graph.Config) :
     (graph.playerObserve who config).swap swap = graph.playerObserve who config := by
-  apply PlayerObservation.ext graph
+  apply EventPlayerObservation.ext
   · rfl
   · funext field
     simp only [PlayerObservation.swap, playerObserve, ValueSwap.store, playerStore]
@@ -584,6 +585,14 @@ structure HiddenSwap where
 namespace HiddenSwap
 
 variable (swap : HiddenSwap graph)
+
+/-- The swap **fixes a player** when it fixes every field visible to the player,
+every action at the player's events and the value at every handle of the
+player. -/
+def Fixes (who : Player) : Prop :=
+  (∀ field, graph.fieldVisibleTo who field → swap.values.value field = id) ∧
+    (∀ event, graph.actor? event = some who → swap.values.action event = id) ∧
+    ∀ slot, swap.raw (who, slot) = id
 
 /-- The swap of a candidate catalogue, handle by handle. -/
 def candidates (catalogue : CommitmentCandidates Player (CandidateSlot graph) (Raw L)) :
@@ -735,7 +744,7 @@ theorem PlayerView.swap_involutive [DecidableEq Player] (swap : HiddenSwap graph
   unfold PlayerView.swap
   simp only [PlayerView.mk.injEq, true_and]
   refine ⟨heq_of_eq ?_, ?_⟩
-  · apply PlayerObservation.ext graph
+  · apply EventPlayerObservation.ext
     · rfl
     · exact swap.values.store_involutive observation.store
     · change (observation.ownActions.map swap.values.completion).map swap.values.completion = _

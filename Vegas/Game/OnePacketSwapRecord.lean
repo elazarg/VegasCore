@@ -139,14 +139,6 @@ namespace EventGraphRuntime.HiddenSwap
 
 variable (swap : HiddenSwap (graph setup))
 
-/-- The swap **fixes a player** when it fixes every field visible to the player,
-every action at the player's events and the value at every handle of the
-player. -/
-def Fixes (who : Player) : Prop :=
-  (∀ field, (graph setup).fieldVisibleTo who field → swap.values.value field = id) ∧
-    (∀ event, (graph setup).actor? event = some who → swap.values.action event = id) ∧
-    ∀ slot, swap.raw (who, slot) = id
-
 omit [Fintype Player] in
 /-- A swap fixing a player fixes that player's view. -/
 theorem view_observe_of_fixes {who : Player} (fixes : swap.Fixes who)

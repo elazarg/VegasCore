@@ -1,6 +1,8 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapExchange
+import Vegas.Game.RevealService
+import Vegas.Pending.ValueSwapPairs
+import Vegas.Pending.ReactiveAcceptedOutput
 
 /-! # The swap between two views of one owner
 
@@ -32,6 +34,17 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- A field is private to `who`: `who` sees it and it is not public. -/
 def PrivateTo (who : Player) (field : (graph setup).Field) : Prop :=
   (graph setup).fieldVisibleTo who field ∧ ¬ (graph setup).fieldPublic field
+
+/-- A binding field of `who` is private to `who`. -/
+theorem privateTo_of_binding {who : Player} {field : (graph setup).Field} {payload : L.Ty}
+    (layoutEq : (graph setup).layout field = .binding who payload) : PrivateTo who field := by
+  refine ⟨?_, ?_⟩
+  · unfold EventGraph.fieldVisibleTo
+    rw [layoutEq]
+    rfl
+  · unfold EventGraph.fieldPublic
+    rw [layoutEq]
+    exact id
 
 section Pairs
 
