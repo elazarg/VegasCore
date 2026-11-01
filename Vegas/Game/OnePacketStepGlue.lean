@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOperationalFactors
+import Vegas.Game.OnePacketFactorization
 
 /-! # Response steps of the one-packet game
 

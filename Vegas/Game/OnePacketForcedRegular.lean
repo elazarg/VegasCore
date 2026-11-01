@@ -1,39 +1,25 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketCompletionCases
+import Vegas.Game.OnePacketReplayExists
 import Vegas.Game.OnePacketOwnSubmissions
+import Vegas.Game.OnePacketIntendedProjection
+import Vegas.Game.SourceServiceDecodedDebt
+import Vegas.Pending.ExclusionEvidence
 import Vegas.Game.SourcePrefixPublications
 
-/-! # Regular histories of a forced site are forced
+/-! # Regular histories with public default evidence
 
-**Intended points are forced.** At a point of the intended game nobody owes a
-failure or is excluded, so it is forced for every player
-(`Vegas.forcedPoint_of_intended`).
+A public record says every foreign owner remains active. This public property
+reaches back along native transitions. On initialized histories it entails
+accepted handles at completed foreign bindings and absence of failed foreign
+source publications.
 
-**Withheld reveals fail.** Stepping a decoded point at a reveal with a
-failing decision makes the revealing player's reveal fail
-(`Vegas.SourceProgram.ProtocolState.revealFailed_of_decode_failing`).
-
-**The public record.** At a native state, a *public record* for `who` says that
-every completed binding event of another player has an accepted handle, and
-that no other player's reveal has failed at the decoded point
-(`Vegas.PublicRecord`). Both are read from `who`'s view: the table of accepted
-handles is part of the public contract view, and failed reveals are public. A
-public record reaches back along every transition (`Vegas.publicRecord_of_transition`)
-and holds at every history ending in a forced state of `who`
-(`Vegas.publicRecord_of_forced`).
-
-**Forced regular histories.** For a well-formed setup, along a regular history
-ending at a public record for `who`, along which `who`'s own completions are
-intended, the decoded point stays a point of the intended game: chance and own
-completions are intended steps; a completion of another player's event cannot
-be an expiry, which would leave a binding without an accepted handle or fail a
-reveal, so it includes the player's single packet for the event, whose content
-has positive intended mass (`Vegas.intended_of_regular`). So every regular
-history of a forced site, along which `who`'s own completions are intended,
-ends in a forced state of `who` (`Vegas.forcedState_of_regular`), and the
-source weights of forced beliefs at an own-turn site need only intended own
-completions (`Vegas.ForcedBeliefInputs.ofRegularHistories`).
+Intended focal prefixes supply the focal owner's activity. Together with the
+public record this places a regular endpoint in the clear region, where the
+native finite-path executor stutters or performs one primitive completion.
+Actual owned records and positive intended content then preserve the source
+intended predicate. No general restriction to one native completion is assumed.
 -/
 
 noncomputable section
@@ -44,44 +30,6 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 namespace ProtocolState
 
-/-- A point of the intended game excludes nobody. -/
-theorem Intended.not_excluded (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → (state : ProtocolState program) →
-    Intended program state → ¬ Excluded who program state
-  | _, _, .ret _, _, intended => fun ⟨_, _, cell, failure⟩ => by
-      obtain ⟨value, success⟩ := intended.bound cell
-      rw [success] at failure
-      cases failure
-  | _, _, .sample _ _ _ next, state, intended => by
-      cases state with
-      | inl _ =>
-          rintro ⟨_, _, cell, failure⟩
-          obtain ⟨value, success⟩ := intended.1.bound cell
-          rw [success] at failure
-          cases failure
-      | inr rest => exact Intended.not_excluded who next rest intended
-  | _, _, .commit _ _ _ _ next, state, intended => by
-      cases state with
-      | inl _ =>
-          rintro ⟨_, _, cell, failure⟩
-          obtain ⟨value, success⟩ := intended.1.bound cell
-          rw [success] at failure
-          cases failure
-      | inr rest => exact Intended.not_excluded who next rest intended
-  | _, _, .reveal _ _ _ _ _ _ next, state, intended => by
-      cases state with
-      | inl _ =>
-          rintro ⟨_, _, cell, failure⟩
-          obtain ⟨value, success⟩ := intended.1.bound cell
-          rw [success] at failure
-          cases failure
-      | inr rest =>
-          rintro (⟨_, failure⟩ | excluded)
-          · obtain ⟨value, success⟩ := intended.1
-            rw [success] at failure
-            cases failure
-          · exact Intended.not_excluded who next rest intended.2 excluded
-
 /-- **Withheld reveals fail.** At a decoded state at a reveal of `who`, a step
 with a failing decision makes `who`'s reveal fail. -/
 theorem revealFailed_of_decode_failing {Field : Type} [DecidableEq Field]
@@ -91,9 +39,10 @@ theorem revealFailed_of_decode_failing {Field : Type} [DecidableEq Field]
       (registry : Registry Γ) (revelations : Revelations Γ)
       (outputs : ∀ event, EventGraph.FieldRef layout (outputLayout program event))
       (store : EventGraph.Store layout) (history : History Player L)
-      (state : ProtocolState program) (bound : count < eventCount program) (who : Player)
+      (defaults : DefaultHistory Player) (state : ProtocolState program) (bound : count <
+        eventCount program) (who : Player)
       (payload : L.Ty) (choice : Option (OwnAction Player L)) (target : ProtocolState program),
-      decodeSourcePrefix? program refs registry revelations outputs count store history =
+      decodeSourcePrefix? program refs registry revelations outputs count store history defaults =
           some state →
       eventOwner? program ⟨count, bound⟩ = some who →
       outputLayout program ⟨count, bound⟩ = .publication payload → Failing choice →
@@ -101,10 +50,11 @@ theorem revealFailed_of_decode_failing {Field : Type} [DecidableEq Field]
       RevealFailed who program target := by
   induction program with
   | ret _ =>
-      intro count _ _ _ _ _ _ _ bound
+      intro count _ _ _ _ _ _ _ _ bound
       simp [eventCount] at bound
   | sample _ fresh _ next ih =>
-      intro count refs registry revelations outputs store history state bound who payload choice
+      intro count refs registry revelations outputs store history defaults state bound who
+        payload choice
         target decoded owned layout failing reached
       cases count with
       | zero => cases owned
@@ -113,10 +63,12 @@ theorem revealFailed_of_decode_failing {Field : Type} [DecidableEq Field]
           obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
           simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
           obtain ⟨after, supported, rfl⟩ := reached
-          exact ih count _ _ _ _ store history rest (Nat.lt_of_succ_lt_succ bound) who payload
+          exact ih count _ _ _ _ store history defaults rest (Nat.lt_of_succ_lt_succ bound) who
+            payload
             choice after read owned layout failing supported
   | commit name owner fresh guard next ih =>
-      intro count refs registry revelations outputs store history state bound who payload choice
+      intro count refs registry revelations outputs store history defaults state bound who
+        payload choice
         target decoded owned layout failing reached
       cases count with
       | zero => cases layout
@@ -125,10 +77,12 @@ theorem revealFailed_of_decode_failing {Field : Type} [DecidableEq Field]
           obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
           simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
           obtain ⟨after, supported, rfl⟩ := reached
-          exact ih count _ _ _ _ store history rest (Nat.lt_of_succ_lt_succ bound) who payload
+          exact ih count _ _ _ _ store history defaults rest (Nat.lt_of_succ_lt_succ bound) who
+            payload
             choice after read owned layout failing supported
   | reveal published owner name fresh source unresolved next ih =>
-      intro count refs registry revelations outputs store history state bound who payload choice
+      intro count refs registry revelations outputs store history defaults state bound who
+        payload choice
         target decoded owned layout failing reached
       cases count with
       | zero =>
@@ -136,7 +90,7 @@ theorem revealFailed_of_decode_failing {Field : Type} [DecidableEq Field]
           simp only [decodeSourcePrefix?] at decoded
           obtain ⟨cells, _, rfl⟩ := Option.map_eq_some_iff.mp decoded
           have same : target = Sum.inr (entry next (revealSuccessor published source
-              ⟨cells, registry, revelations, history⟩ (OwnAction.disclosure choice))) :=
+              ⟨cells, registry, revelations, history, defaults⟩ (OwnAction.disclosure choice))) :=
             (PMF.mem_support_pure_iff _ _).mp reached
           subst same
           refine Or.inl ⟨rfl, ?_⟩
@@ -147,7 +101,8 @@ theorem revealFailed_of_decode_failing {Field : Type} [DecidableEq Field]
           obtain ⟨rest, read, rfl⟩ := Option.map_eq_some_iff.mp decoded
           simp only [ProtocolState.step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
           obtain ⟨after, supported, rfl⟩ := reached
-          exact Or.inr (ih count _ _ _ _ store history rest (Nat.lt_of_succ_lt_succ bound) who
+          exact Or.inr (ih count _ _ _ _ store history defaults rest (Nat.lt_of_succ_lt_succ
+            bound) who
             payload choice after read owned layout failing supported)
 
 end ProtocolState
@@ -170,7 +125,7 @@ theorem forcedPoint_of_intended (who : Player) {point : ProtocolState setup.prog
     (intended : ProtocolState.Intended setup.program point) : ForcedPoint setup who point :=
   ⟨fun failed => ProtocolState.Intended.not_owesFailure who setup.program point intended
       (Or.inl (ProtocolState.RevealFailed.indebted setup.program point failed)),
-    fun other _ => ⟨ProtocolState.Intended.not_excluded other setup.program point intended,
+    fun other _ => ⟨ProtocolState.not_excluded_of_intended other setup.program point intended,
       ProtocolState.Intended.not_owesFailure other setup.program point intended⟩⟩
 
 /-- A binding event's graph actor is its owner. -/
@@ -191,149 +146,87 @@ theorem actor_of_binding {event : (graph setup).EventId} {owner : Player} {paylo
       cases layout
 
 variable (setup runtime) in
-/-- **The public record** of an observer `who` at a native control state: every
-completed binding event of another player has an accepted handle, and no other
-player's reveal has failed at the decoded point. -/
+/-- Every foreign owner's authoritative public default status is clear. -/
 def PublicRecord {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
     (who : Player) (control : (application setup runtime leaks).Control) : Prop :=
-  (∀ event owner payload, (graph setup).outputLayout event = .binding owner payload →
-    owner ≠ who → event ∈ control.execution.application.config.cut.completed →
-      control.execution.application.accepted (.inr event) ≠ none) ∧
-  ∀ other, other ≠ who → ∀ point,
-    decodedPoint setup control.execution.application.config = some point →
-      ¬ ProtocolState.RevealFailed other setup.program point
+  ∀ other, other ≠ who → other ∉ control.execution.application.config.defaulted
 
 variable [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}
 
-/-- **The public record reaches back** along every transition. -/
-theorem publicRecord_of_transition {who : Player} {current next : (application setup runtime
-  leaks).Control}
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some current))
+omit [Fintype Player] in
+/-- Public defaults are permanent, so a later public record holds earlier. -/
+theorem publicRecord_of_transition {who : Player}
+    {current next : (application setup runtime leaks).Control}
     (joint : Player → Option (application setup runtime leaks).Action)
     (realized : some next ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
       scheduler (some current) joint).support)
     (record : PublicRecord setup runtime who next) : PublicRecord setup runtime who current := by
-  refine ⟨fun event owner payload layout other completed => ?_,
-    fun player other point decoded failed => ?_⟩
-  · have later := record.1 event owner payload layout other
-      (completed_transition (runtime := runtime) leaks joint realized completed)
-    rcases acceptedKept_transition (runtime := runtime) leaks (initialLaw setup) horizon scheduler
-      current next joint
-        realized event with same | ⟨ready, _, _⟩
-    · rw [← same]
-      exact later
-    · exact (ready.1 completed).elim
-  · obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
-      setup.program)
-      (bounds.onePacketMenu runtime leaks) horizon scheduler prior current rfl
-    rcases transition_configStep (initialLaw setup) horizon scheduler current
-      next joint realized
-        with same | ⟨event, ready, action, member⟩
-    · exact record.2 player other point (by rw [same]; exact decoded) failed
-    · obtain ⟨before, target, beforeEq, afterEq, reached⟩ :=
-        decodedPoint_step residual event ready action _ member
-      rw [decoded, Option.some.injEq] at beforeEq
-      subst beforeEq
-      exact record.2 player other target afterEq
-        (ProtocolState.revealFailed_step player setup.program point _ target failed reached)
+  intro other different excluded
+  exact record other different (runtime.reactive_protocol_defaulted_mono leaks (initialLaw setup)
+    horizon scheduler current next joint realized excluded)
 
-/-- **Forced states have a public record.** Along a history ending in a forced
-state of `who`, every completed binding event of another player was completed
-by an accepted commitment, since an expiry would leave that player owing a
-failure. -/
-theorem publicRecord_of_forced (who : Player) : ∀ {state}
-    (_ : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
-    (control : (application setup runtime leaks).Control), state = some control →
-    ForcedState setup runtime leaks who (some control) → PublicRecord setup runtime who control
-  | _, .start, _, current, _ => by cases current
-  | _, .extend (source := before) prior joint _ realized, control, current, forced => by
-      have recursive := fun next same forcedNext =>
-        publicRecord_of_forced who prior next same forcedNext
-      subst current
-      change some control ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
-        scheduler before joint).support at realized
-      obtain ⟨found, foundDecoded, foundForced⟩ := (forcedState_iff_decodedPoint (runtime :=
-        runtime) control).mp forced
-      refine ⟨fun event owner payload layout other completed => ?_,
-        fun player other point decoded failed => ?_⟩
-      · cases before with
-        | none =>
-            change some control ∈ ((initialLaw setup).map fun state => some
-              (⟨horizon, none, ReactiveApplication.Execution.initial (application setup runtime
-                leaks)
-                state⟩ : (application setup runtime leaks).Control)).support at realized
-            obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realized
-            cases Option.some.inj same
-            obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
-            have ordered := (SourceResidual.initial setup (failureProfile setup.program)
-              initial).checkpoint.ordered
-            exact absurd ((ordered.2 event).mp completed) (Nat.not_lt_zero _)
-        | some current =>
-            have forcedCurrent := forcedState_of_transition (runtime := runtime) prior joint
-              realized forced
-            have earlier := recursive current rfl forcedCurrent
-            by_cases before_ : event ∈ current.execution.application.config.cut.completed
-            · have kept := earlier.1 event owner payload layout other before_
-              rcases acceptedKept_transition (runtime := runtime) leaks (initialLaw setup) horizon
-                scheduler current
-                  control joint realized event with same | ⟨ready, _, _⟩
-              · rw [same]
-                exact kept
-              · exact (ready.1 before_).elim
-            · rcases transition_configStep (initialLaw setup) horizon
-                scheduler current control
-                  joint realized with same | ⟨completedEvent, ready, action, member⟩
-              · rw [same] at completed
-                exact (before_ completed).elim
-              · have which : event = completedEvent := by
-                  rw [current.execution.application.config.step_cut completedEvent ready action _
-                    member, EventOrder.Cut.mem_complete] at completed
-                  exact completed.resolve_right before_
-                subst which
-                have idle : current.actor = none := by
-                  cases acting : current.actor with
-                  | none => rfl
-                  | some actor =>
-                      exfalso
-                      rw [transition_respond (runtime := runtime) current acting joint,
-                        PMF.mem_support_pure_iff]
-                        at realized
-                      cases Option.some.inj realized
-                      exact config_ne_of_step member
-                        (runtime.reactive_respond_application leaks current.execution
-                          actor _).1
-                rcases transition_idle_cases (runtime := runtime) (initialLaw setup) horizon
-                  scheduler current idle
-                    joint realized with sameExecution | ⟨command, moved⟩
-                · exact (config_ne_of_step member (by rw [sameExecution])).elim
-                · rcases completion_cases (runtime := runtime) current.execution control.execution
-                    command moved ready
-                      action member (actor_of_binding layout) with
-                    ⟨_, _, _, _, _, _, table⟩ | ⟨_, failing⟩
-                  · exact table owner payload layout
-                  · exfalso
-                    obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime)
-                      (failureProfile setup.program) (bounds.onePacketMenu runtime leaks)
-                      horizon scheduler prior current rfl
-                    obtain ⟨point, target, decodedCurrent, decodedNext, reached⟩ :=
-                      decodedPoint_step residual event ready action _ member
-                    have owned : eventOwner? setup.program ⟨event.val, event.isLt⟩ =
-                        some owner := by
-                      rw [eventOwner?_eq_actor]
-                      exact actor_of_binding layout
-                    have owes := ProtocolState.owesFailure_of_decode_failing setup.program
-                      setup.namesNodup event.val _ _ _ _ _ _ point event.isLt owner _ target
-                      (decodedPoint_decode ready decodedCurrent) owned failing reached
-                    rw [decodedNext, Option.some.injEq] at foundDecoded
-                    subst foundDecoded
-                    exact (foundForced.2 owner other).2 owes
-      · rw [foundDecoded, Option.some.injEq] at decoded
-        subst decoded
-        exact (foundForced.2 player other).1
-          (ProtocolState.RevealFailed.excluded setup.program _ failed)
+omit [Fintype Player] in
+/-- A forced source decoding has no publicly defaulted foreign owner. -/
+theorem publicRecord_of_forced (who : Player)
+    (control : (application setup runtime leaks).Control)
+    (forced : ForcedState setup runtime leaks who (some control)) :
+    PublicRecord setup runtime who control := by
+  obtain ⟨point, decoded, forcedPoint⟩ :=
+    (forcedState_iff_decodedPoint (runtime := runtime) control).mp forced
+  intro other different excluded
+  apply (forcedPoint.2 other different).1
+  change other ∈ ProtocolState.defaulted setup.program point
+  rw [ProtocolState.defaulted_eq_defaults, decodedPoint_defaults decoded]
+  exact excluded
+
+/-- A completed foreign binding has an accepted handle at an initialized public record. -/
+theorem PublicRecord.bindingAccepted {who : Player}
+    {control : (application setup runtime leaks).Control}
+    (record : PublicRecord setup runtime who control)
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    (event : (graph setup).EventId) (owner : Player) (payload : L.Ty)
+    (layout : (graph setup).outputLayout event = .binding owner payload)
+    (different : owner ≠ who) (completed : event ∈
+      control.execution.application.config.cut.completed) :
+    control.execution.application.accepted (.inr event) ≠ none := by
+  intro missing
+  have raw := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+    horizon scheduler trace
+  change ((runtime.reactiveApplication leaks).protocol (serviceInitialLaw setup .sequential)
+    horizon scheduler).Trace (some control) at raw
+  rw [serviceInitialLaw_eq_inputs setup] at raw
+  have valid := ExclusionEvidence.history runtime leaks
+    (setup.initialLaw.map setup.eventInputs) horizon scheduler raw
+  apply record owner different
+  exact (valid.defaulted_zero owner).mpr ⟨event, actor_of_binding layout,
+    Or.inl ((control.execution.application.publicView_missedBinding event owner payload layout).mpr
+      ⟨completed, missing⟩)⟩
+
+/-- An initialized public record rules out every failed foreign source publication. -/
+theorem PublicRecord.not_revealFailed {who other : Player}
+    {control : (application setup runtime leaks).Control}
+    (record : PublicRecord setup runtime who control)
+    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    (different : other ≠ who) {point : ProtocolState setup.program}
+    (decoded : decodedPoint setup control.execution.application.config = some point) :
+    ¬ ProtocolState.RevealFailed other setup.program point := by
+  intro failed
+  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime)
+    (failureProfile setup.program) (bounds.onePacketMenu runtime leaks) horizon scheduler trace
+      control rfl
+  have same := Option.some.inj ((decodedPoint_eq residual).symm.trans decoded)
+  have valid := publicationsDefaulted_of_decode
+    (⟨some control, trace⟩ : (onePacketProtocol setup runtime leaks bounds horizon
+      scheduler).History)
+    control rfl residual.checkpoint.ordered residual.decode
+  have excluded := ProtocolState.RevealFailed.excluded setup.program point (same ▸ valid) failed
+  apply record other different
+  change other ∈ ProtocolState.defaulted setup.program point at excluded
+  rw [ProtocolState.defaulted_eq_defaults, decodedPoint_defaults decoded] at excluded
+  exact excluded
 
 /-- **Regular histories stay intended.** For a well-formed setup, along a
 regular history ending at a public record for `who`, along which `who`'s own
@@ -353,16 +246,14 @@ theorem intended_of_regular (wellFormed : setup.WellFormed)
   | _, .start, _, current, _, _, _ => by cases current
   | _, .extend (source := before) prior joint legal realized, control, current, record, regular,
       ownIntended => by
-      obtain ⟨regularPrior, _⟩ := regular
-      obtain ⟨ownPrior, ownStep⟩ := ownIntended
+      have regularPrior := regular.1
+      have ownPrior := ownIntended.1
       have recursive := fun next same recordNext =>
-        intended_of_regular wellFormed assessment who prior next same
-          recordNext regularPrior
+        intended_of_regular wellFormed assessment who prior next same recordNext regularPrior
           ownPrior
       subst current
-      have realizedRaw : some control ∈ ((application setup runtime leaks).transition (initialLaw
-        setup)
-          horizon scheduler before joint).support := realized
+      have realizedRaw : some control ∈ ((application setup runtime leaks).transition
+        (initialLaw setup) horizon scheduler before joint).support := realized
       cases before with
       | none =>
           change some control ∈ ((initialLaw setup).map fun state => some
@@ -372,35 +263,54 @@ theorem intended_of_regular (wellFormed : setup.WellFormed)
           cases Option.some.inj same
           obtain ⟨initial, initialMem, rfl⟩ := PMF.support_map .. ▸ supported
           exact ⟨_, decodedPoint_initial initial, ProtocolState.intended_entry setup.program _
-            (Config.initial_intended wellFormed initialMem)
+            (setup.initialConfig_intended wellFormed initialMem)
             (wellFormed.guardsSatisfiable initial initialMem)⟩
       | some current =>
-          have recordCurrent := publicRecord_of_transition (runtime := runtime) prior joint
-            realizedRaw record
+          have recordCurrent := publicRecord_of_transition joint realizedRaw record
           obtain ⟨point, decodedCurrent, intended⟩ := recursive current rfl recordCurrent
           have forcedCurrent : ForcedState setup runtime leaks who (some current) :=
             (forcedState_iff_decodedPoint (runtime := runtime) current).mpr
               ⟨point, decodedCurrent, forcedPoint_of_intended who intended⟩
+          obtain ⟨rank, ⟨afterResidual⟩⟩ := protocol_sourceResidual (runtime := runtime)
+            (failureProfile setup.program) (bounds.onePacketMenu runtime leaks) horizon scheduler
+              (prior.extend joint legal realized) control rfl
+          have decodedAfter := decodedPoint_eq afterResidual
+          have focalActive := ProtocolState.not_excluded_of_intendedFor who setup.program _
+            (ownIntended.current control rfl _ decodedAfter)
+          have clear : control.execution.application.config.defaulted = ∅ := by
+            apply Finset.eq_empty_iff_forall_notMem.mpr
+            intro player excluded
+            by_cases same : player = who
+            · subst player
+              apply focalActive
+              rw [ProtocolState.defaulted_eq_defaults, decodedPoint_defaults decodedAfter]
+              exact excluded
+            · exact record player same excluded
+          have priorClear : current.execution.application.config.defaulted = ∅ := by
+            apply Finset.eq_empty_iff_forall_notMem.mpr
+            intro player excluded
+            have later := runtime.reactive_protocol_defaulted_mono leaks (initialLaw setup)
+              horizon scheduler current control joint realizedRaw excluded
+            rw [clear] at later
+            exact Finset.notMem_empty player later
           cases acting : current.actor with
           | some actor =>
               rw [transition_respond (runtime := runtime) current acting joint,
-                PMF.mem_support_pure_iff]
-                at realizedRaw
+                PMF.mem_support_pure_iff] at realizedRaw
               cases Option.some.inj realizedRaw
               refine ⟨point, ?_, intended⟩
-              change decodedPoint setup (current.execution.respond (application setup runtime
-                leaks) actor
-                ((joint actor).getD ⟨none⟩)).application.config = _
+              change decodedPoint setup (current.execution.respond (application setup runtime leaks)
+                actor ((joint actor).getD ⟨none⟩)).application.config = _
               rw [(runtime.reactive_respond_application leaks current.execution actor
                 ((joint actor).getD ⟨none⟩)).1]
               exact decodedCurrent
           | none =>
               obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime)
-                (failureProfile setup.program)
-                (bounds.onePacketMenu runtime leaks) horizon scheduler prior current rfl
-              rcases transition_configStep (initialLaw setup) horizon
-                scheduler current control
-                  joint realizedRaw with same | ⟨event, ready, action, member⟩
+                (failureProfile setup.program) (bounds.onePacketMenu runtime leaks)
+                  horizon scheduler prior current rfl
+              rcases runtime.reactive_protocol_config_eq_or_step_of_clear leaks (initialLaw setup)
+                  horizon scheduler current control joint realizedRaw clear with
+                    same | ⟨event, ready, action, member⟩
               · exact ⟨point, by rw [same]; exact decodedCurrent, intended⟩
               obtain ⟨before', target, beforeEq, afterEq, reached⟩ :=
                 decodedPoint_step residual event ready action _ member
@@ -408,79 +318,121 @@ theorem intended_of_regular (wellFormed : setup.WellFormed)
               subst beforeEq
               refine ⟨target, afterEq, ProtocolState.intended_step_of_actors setup.program
                 point _ target intended (fun player acts => ?_) reached⟩
-              rw [decodedPoint_actor player ready decodedCurrent] at acts
+              have rawPrior := (bounds.onePacketMenu runtime leaks).toRawTrace
+                (initialLaw setup) horizon scheduler prior
+              rw [decodedPoint_actor_of_history player rawPrior ready decodedCurrent] at acts
               by_cases own : player = who
-              · subst own
-                exact ownStep current control rfl rfl acting event ready action member acts
-                  point decodedCurrent
+              · subst player
+                exact ProtocolState.intendedAvailable_of_decode_intendedFor setup.program
+                  event.val _ _ _ _ _ _ _ point event.isLt who action target
+                  (decodedPoint_decode ready decodedCurrent)
+                  (ownPrior.current current rfl point decodedCurrent)
+                  ((eventOwner?_eq_actor setup.program event).trans acts) reached
+                  (ownIntended.current control rfl target afterEq)
               rcases transition_idle_cases (runtime := runtime) (initialLaw setup) horizon
-                scheduler current acting
-                  joint realizedRaw with sameExecution | ⟨command, moved⟩
+                  scheduler current acting joint realizedRaw with sameExecution | ⟨command, moved⟩
               · exact (config_ne_of_step member (by rw [sameExecution])).elim
+              have active : player ∉ current.execution.application.config.defaulted := by
+                rw [priorClear]
+                exact Finset.notMem_empty _
+              obtain ⟨value, _output, recorded⟩ :=
+                current.execution.application.config.step_completion event ready action _ member
+              let completion := EventGraph.completion (graph setup) event
+                (current.execution.application.config.actualDecision event action) value
+              have fresh : completion ∉ current.execution.application.config.history := by
+                intro present
+                exact ready.1 ((current.execution.application.config.history_exact event).mp
+                  (List.mem_map.mpr ⟨completion, present, rfl⟩))
+              have present : completion ∈ control.execution.application.config.history := by
+                rw [recorded]
+                exact List.mem_append_right _ (List.mem_singleton_self completion)
+              have chosen : completion.decision.bind
+                  (decodeEventAction setup.program completion.event) =
+                    decodeEventAction setup.program event action := by
+                change (current.execution.application.config.actualDecision event action).bind _ = _
+                rw [current.execution.application.config.actualDecision_of_active event player acts
+                  active action, Option.bind_some]
+                rfl
               rcases completion_cases (runtime := runtime) current.execution control.execution
-                command moved ready
-                  action member acts with
-                ⟨message, onLedger, sender, named, content, owned, _⟩ | ⟨tables, failing⟩
-              · have invariant := periodInvariant (runtime := runtime) assessment who prior
+                command
+                  moved completion fresh present acts with accepted | expired | automatic
+              · obtain ⟨message, onLedger, sender, named, content, owned, _accepted⟩ := accepted
+                rw [chosen] at content
+                have invariant := periodInvariant (runtime := runtime) assessment who prior
                   current rfl forcedCurrent
                 have positive := unsettledContent_pos (runtime := runtime) assessment who prior
                   regularPrior
                 have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace
                   (initialLaw setup) horizon scheduler (prior.extend joint legal realized)
-                have facts := settledFacts_history (initialLaw setup) horizon scheduler rawTrace
+                have facts := legalFacts setup leaks horizon scheduler control rawTrace
                 have inputsEq := transition_idle_inputs (runtime := runtime) (initialLaw setup)
-                  horizon scheduler
-                  current acting joint realizedRaw
-                have present : message ∈ current.execution.network.inputs := by
+                  horizon scheduler current acting joint realizedRaw
+                have carried : message ∈ current.execution.network.inputs := by
                   rw [← inputsEq]
-                  exact facts.carried.ledger message onLedger
-                rcases invariant.settled event ready player acts own with ⟨_,
-                  nothing⟩ |
+                  obtain ⟨entry, entryPresent, material, _transmission, emitted, _packet⟩ :=
+                    facts.provenance.ledger message onLedger
+                  have recalled : message ∈ (application setup runtime leaks).outputs
+                      (control.execution.recall message.sender) :=
+                    List.mem_filterMap.mpr ⟨entry, entryPresent, emitted⟩
+                  rw [← facts.inputs message.sender] at recalled
+                  exact (List.mem_filter.mp recalled).1
+                rcases invariant.settled event ready player acts own with ⟨_, nothing⟩ |
                     ⟨recorded, recordedPresent, recordedSender, recordedNamed, sent, keep, fixed,
                       eq⟩
-                · exact (nothing message present sender named).elim
-                · have sameMessage := invariant.unique recorded
-                    recordedPresent message present
-                    (recordedSender ▸ own) (recordedSender.trans sender.symm) event
-                    recordedNamed named
+                · exact (nothing message carried sender named).elim
+                · have sameMessage := invariant.unique recorded recordedPresent message carried
+                    (recordedSender ▸ own) (recordedSender.trans sender.symm) event recordedNamed
+                    named
                   subst sameMessage
                   rw [eq, ← callContent_keep keep _ fun named' handle call =>
                     fixed named' handle call (owned named' handle call), ← content,
                     decodedCurrent] at positive
                   refine intendedAvailable_of_pos assessment
-                    ((decodedPoint_actor player ready decodedCurrent).trans acts) ?_
+                    ((decodedPoint_actor_of_history player rawPrior ready decodedCurrent).trans
+                      acts) ?_
                   intro zero
                   rw [zero, ENNReal.toReal_zero] at positive
                   exact lt_irrefl 0 positive
-              · exfalso
-                have owned : eventOwner? setup.program ⟨event.val, event.isLt⟩ = some player := by
-                  rw [eventOwner?_eq_actor]
-                  exact acts
+              · obtain ⟨tables, failing⟩ := expired
+                rw [chosen] at failing
+                exfalso
+                have owned : eventOwner? setup.program ⟨event.val, event.isLt⟩ = some player :=
+                  (eventOwner?_eq_actor setup.program event).trans acts
                 cases view : nodeView (graph setup) event with
                 | bind owner payload outputEq codeEq =>
                     have sameOwner : owner = player :=
                       Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans acts)
-                    subst sameOwner
+                    subst owner
                     have vacant : current.execution.application.accepted (.inr event) = none := by
-                      by_contra present
-                      exact ready.1 (accepted_completed (runtime := runtime) leaks prior current
-                        rfl event present)
-                    have completedNow :
-                        event ∈ control.execution.application.config.cut.completed := by
-                      rw [current.execution.application.config.step_cut event ready action _
-                        member]
-                      exact (EventOrder.Cut.mem_complete _ _ ready _).mpr (Or.inl rfl)
-                    apply record.1 event owner payload outputEq own completedNow
+                      cases accepted : current.execution.application.accepted (.inr event) with
+                      | none => rfl
+                      | some candidate =>
+                          have valid := (legalFacts setup leaks horizon scheduler current
+                            rawPrior).binding.toAssociationInvariant
+                          exact (ready.1 (valid.accepted_complete event candidate accepted)).elim
+                    have completedNow : event ∈
+                      control.execution.application.config.cut.completed :=
+                      (control.execution.application.config.history_exact event).mp
+                        (List.mem_map.mpr ⟨completion, present, rfl⟩)
+                    apply record.bindingAccepted (prior.extend joint legal realized)
+                      event player payload outputEq own completedNow
                     rw [tables]
                     exact vacant
                 | resolve owner payload binding checks outputEq codeEq =>
-                    exact record.2 player own target afterEq
+                    exact record.not_revealFailed (prior.extend joint legal realized) own afterEq
                       (ProtocolState.revealFailed_of_decode_failing setup.program event.val _ _ _
-                        _ _ _ point event.isLt player payload _ target
+                        _ _ _ _ point event.isLt player payload _ target
                         (decodedPoint_decode ready decodedCurrent) owned outputEq failing reached)
                 | sample _ _ outputEq codeEq =>
                     rw [nodeView_sample_actor outputEq codeEq] at acts
                     cases acts
+              · obtain ⟨_failing, native, drained, _fresh, _origin, _silent, _default, excluded⟩ :=
+                  automatic
+                have later : player ∈ control.execution.application.config.defaulted := by
+                  rw [← drained, native.drain_defaulted]
+                  exact excluded
+                rw [clear] at later
+                exact (Finset.notMem_empty player later).elim
 
 /-- **Regular histories of a forced site are forced.** For a well-formed setup,
 every regular history of a forced decision site of `who`, along which `who`'s own
@@ -514,8 +466,7 @@ theorem forcedState_of_regular (wellFormed : setup.WellFormed)
   obtain ⟨witnessState, witnessTrace⟩ := witness
   change witnessState = some witnessControl at witnessStateEq
   subst witnessStateEq
-  have witnessRecord := publicRecord_of_forced (runtime := runtime) who witnessTrace
-    witnessControl rfl witnessForced
+  have witnessRecord := publicRecord_of_forced (runtime := runtime) who witnessControl witnessForced
   have sameView : control.execution.observe (application setup runtime leaks) who =
       witnessControl.execution.observe (application setup runtime leaks) who :=
     viewEq.trans witnessViewEq.symm
@@ -523,34 +474,13 @@ theorem forcedState_of_regular (wellFormed : setup.WellFormed)
       witnessControl.execution.application.publicView :=
     congrArg (fun observed : (application setup runtime leaks).PlayerView =>
       observed.application.publicView) sameView
-  have sameAccepted : control.execution.application.accepted =
-      witnessControl.execution.application.accepted :=
-    congrArg PublicView.accepted samePublic
-  have sameOrder : control.execution.application.config.history.map EventGraph.Completion.event =
-      witnessControl.execution.application.config.history.map EventGraph.Completion.event :=
-    congrArg (fun publicView : PublicView (graph setup) =>
-      publicView.observation.completionOrder) samePublic
-  have sameSource := (sourceViewOf_eq_decodedPoint (runtime := runtime) who trace).symm.trans
-    ((congrArg (sourceViewOf setup runtime leaks who) sameView).trans
-      (sourceViewOf_eq_decodedPoint (runtime := runtime) who witnessTrace))
+  have sameDefaulted : control.execution.application.config.defaulted =
+      witnessControl.execution.application.config.defaulted :=
+    congrArg (fun publicView : PublicView (graph setup) => publicView.observation.defaulted)
+      samePublic
   have record : PublicRecord setup runtime who control := by
-    refine ⟨fun event owner payload layout other completed => ?_,
-      fun player other point decoded failed => ?_⟩
-    · rw [sameAccepted]
-      refine witnessRecord.1 event owner payload layout other ?_
-      apply (witnessControl.execution.application.config.history_exact event).mp
-      rw [← sameOrder]
-      exact (control.execution.application.config.history_exact event).mpr completed
-    · obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
-        setup.program)
-        (bounds.onePacketMenu runtime leaks) horizon scheduler witnessTrace
-        witnessControl rfl
-      have witnessDecoded := decodedPoint_eq residual
-      rw [decoded, witnessDecoded] at sameSource
-      have observed := Option.some.inj sameSource
-      exact witnessRecord.2 player other _ witnessDecoded
-        ((ProtocolState.revealFailed_iff_of_observe_eq player who setup.program _ _
-          observed).mp failed)
+    intro player different excluded
+    exact witnessRecord player different (sameDefaulted ▸ excluded)
   obtain ⟨point, decoded, intended⟩ := intended_of_regular (runtime := runtime) wellFormed
     assessment who trace
     control rfl record regular ownIntended

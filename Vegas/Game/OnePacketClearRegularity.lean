@@ -2,6 +2,7 @@
 
 import Vegas.Game.OnePacketClearRecord
 import Vegas.Game.OnePacketMainContent
+import Vegas.Game.OnePacketStepGlue
 import Vegas.Game.OnePacketOwnIntended
 
 /-! # Regularity before public exclusion and focal source debt -/
@@ -27,15 +28,14 @@ theorem intended_of_clear_regular_notOwes (wellFormed : setup.WellFormed)
     (source : setup.intendedModel.BehavioralAssessment) (focal : Player)
     {control : (application setup runtime leaks).Control}
     (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
-    (clear : ExclusionEvidence 0 ∅
-      (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
+    (clear : control.execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup runtime leaks bounds horizon scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point) :
     ∃ point, decodedPoint setup control.execution.application.config = some point ∧
       ProtocolState.Intended setup.program point :=
   intended_of_regular (runtime := runtime) wellFormed source focal trace control rfl
-    (publicRecord_of_exclusionEvidence (runtime := runtime) trace clear focal) regular
+    (publicRecord_of_clear (runtime := runtime) clear) regular
     (ownCompletionsIntended_of_notOwes (runtime := runtime) wellFormed focal trace control rfl
       notOwed)
 
@@ -45,8 +45,7 @@ theorem forcedState_of_clear_regular_notOwes (wellFormed : setup.WellFormed)
     (source : setup.intendedModel.BehavioralAssessment) (focal : Player)
     {control : (application setup runtime leaks).Control}
     (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
-    (clear : ExclusionEvidence 0 ∅
-      (⟨control.execution.application, ∅⟩ : RecoveryState (graph setup)))
+    (clear : control.execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup runtime leaks bounds horizon scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point)
@@ -61,11 +60,10 @@ theorem forcedState_of_clear_regular_notOwes (wellFormed : setup.WellFormed)
 clause inside the clear region before focal source debt. -/
 theorem regularStep_of_clear_regular_main (wellFormed : setup.WellFormed)
     (source : setup.intendedModel.BehavioralAssessment) (focal actor : Player)
-    (covers : bounds.CoversOutputValues) (capacity : 1 ≤ bounds.candidateCount)
     {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
       (some ⟨remaining, some actor, execution⟩))
-    (clear : ExclusionEvidence 0 ∅ (⟨execution.application, ∅⟩ : RecoveryState (graph setup)))
+    (clear : execution.application.config.defaulted = ∅)
     (regular : RegularTrace setup runtime leaks bounds horizon scheduler source focal prior)
     (notOwed : ∀ point, decodedPoint setup execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point)
@@ -92,21 +90,14 @@ theorem regularStep_of_clear_regular_main (wellFormed : setup.WellFormed)
       ⟨point, decoded, forcedPoint_of_intended player intended⟩
   obtain ⟨response, chosen, member, nextEq, _infoEq⟩ :=
     onePacket_response_step (runtime := runtime) prior joint legal realized _ next rfl rfl rfl
-  have actorNotOwed : ∀ found, decodedPoint setup execution.application.config = some found →
-      ¬ ProtocolState.OwesFailure actor setup.program found := by
-    intro found foundDecoded
-    have same := Option.some.inj (decoded.symm.trans foundDecoded)
-    subst found
-    exact ProtocolState.Intended.not_owesFailure actor setup.program point intended
   have selected : (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
     actor
       (some (execution.recall actor, execution.observe (application setup runtime leaks) actor))
       response).1 = some response := by
     simp only [responseChoice, member, ↓reduceDIte]
   rw [chosen, Option.getD_some] at main
-  have positive := contentFactor_pos_of_honestChoice (runtime := runtime) source covers capacity
-    prior actorNotOwed
-    response member _ selected main
+  have positive := contentFactor_pos_of_honestChoice (runtime := runtime) source actor execution
+    response _ selected main
   intro responder acting _other
   cases Option.some.inj acting
   have informationForced := forcedAgent_of_history (runtime := runtime)

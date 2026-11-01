@@ -1,13 +1,12 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCounterpartGuard
+import Vegas.Game.OnePacketForcedRegular
 
-/-! # Failed bindings remain hidden at a forced decision
+/-! # Public default evidence at forced information sets
 
-A binding read by a ready or completed reveal agrees with the corresponding
-binding of an intended witness. That witness holds a value. Consequently an
-unusable hidden binding cannot have reached such a reveal, which is the
-visibility guard needed for directed repair of its private preparation.
+The source decoder retains authoritative public defaults. A forced witness has
+no foreign default, and equal public views carry that record to every history
+of the same information set, independently of private binding regularity.
 -/
 
 noncomputable section
@@ -23,7 +22,6 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}
-  {p q : ProtocolState setup.program}
 
 /-- The public record of a forced information set holds at every history in
 that set, including histories whose hidden bindings are irregular. -/
@@ -52,38 +50,17 @@ theorem publicRecord_of_forced_information {who : Player}
   obtain ⟨witnessState, witnessTrace⟩ := witness
   change witnessState = some witnessControl at witnessStateEq
   subst witnessStateEq
-  have record := publicRecord_of_forced (runtime := runtime) who witnessTrace witnessControl rfl
-    witnessForced
+  have record := publicRecord_of_forced (runtime := runtime) who witnessControl witnessForced
   have sameView := viewEq.trans witnessViewEq.symm
   have samePublic : control.execution.application.publicView =
       witnessControl.execution.application.publicView := congrArg
     (fun observed : (application setup runtime leaks).PlayerView => observed.application.publicView)
     sameView
-  have sameAccepted : control.execution.application.accepted =
-      witnessControl.execution.application.accepted := congrArg PublicView.accepted samePublic
-  have sameOrder : control.execution.application.config.history.map EventGraph.Completion.event =
-      witnessControl.execution.application.config.history.map EventGraph.Completion.event :=
-    congrArg (fun publicView : PublicView (graph setup) =>
-      publicView.observation.completionOrder) samePublic
-  have sameSource := (sourceViewOf_eq_decodedPoint (runtime := runtime) who trace).symm.trans
-    ((congrArg (sourceViewOf setup runtime leaks who) sameView).trans
-      (sourceViewOf_eq_decodedPoint (runtime := runtime) who witnessTrace))
-  refine ⟨fun event owner payload layout other completed => ?_,
-    fun player other point decoded failed => ?_⟩
-  · rw [sameAccepted]
-    apply record.1 event owner payload layout other
-    apply (witnessControl.execution.application.config.history_exact event).mp
-    rw [← sameOrder]
-    exact (control.execution.application.config.history_exact event).mpr completed
-  · obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
-      setup.program)
-      (bounds.onePacketMenu runtime leaks) horizon scheduler witnessTrace
-      witnessControl rfl
-    have witnessDecoded := decodedPoint_eq residual
-    rw [decoded, witnessDecoded] at sameSource
-    have observed := Option.some.inj sameSource
-    exact record.2 player other _ witnessDecoded
-      ((ProtocolState.revealFailed_iff_of_observe_eq player who setup.program _ _
-        observed).mp failed)
+  have sameDefaulted : control.execution.application.config.defaulted =
+      witnessControl.execution.application.config.defaulted :=
+    congrArg (fun publicView : PublicView (graph setup) => publicView.observation.defaulted)
+      samePublic
+  intro other different excluded
+  exact record other different (sameDefaulted ▸ excluded)
 
 end Vegas
