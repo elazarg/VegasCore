@@ -16,8 +16,8 @@ it, with its content checked against the record:
 
 * a commitment carries no opening evidence and names the author's next prepared
   handle, counted from the author's bindings settled before the event;
-* an opening carries its exact certificate, and the event's guards accept the
-  opened value on the settled public store.
+* an opening carries its exact authentic certificate. Guard rejection is a
+  source outcome and retains its declared payoff.
 
 Every malformed packet is forbidden. Equivocation needs no separate rule: of
 two packets of one author for one event the contract accepts at most one, and
@@ -77,9 +77,7 @@ def SettledContent (record : SettledRecord graph)
       message.payload.evidence = none ∧
         candidate =
           (message.sender, .prepared (record.view.bindingCountBefore message.sender event))
-  | .opening _ _ _ =>
-      certifiedOpening message.payload = true ∧
-        record.view.openingGuardsAccepted message.payload = true
+  | .opening _ _ _ => certifiedOpening message.payload = true
   | .malformed _ => False
 
 /-- **The settled verdict.** A packet for an unsettled event is permitted; a

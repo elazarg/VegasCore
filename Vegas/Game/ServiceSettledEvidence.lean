@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ServiceRosterAsync
+import Vegas.Game.RevealService
 import Vegas.Pending.ReactiveSettledStability
 import Vegas.Pending.ReactiveGraphSteps
 import Interaction.ReactiveReceipts
@@ -27,126 +27,6 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime EventGraph
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
-section ContractStep
-
-variable {graph : Vegas.EventGraph Player L}
-
-/-- One scheduler command completes at most one event; otherwise it changes no
-completion, accepted handle or activation time, and the clock only advances. -/
-def ContractStep (before after : EventGraphRuntime.State graph) : Prop :=
-  (after.config = before.config ∧ after.accepted = before.accepted ∧
-      after.activatedAt = before.activatedAt ∧ before.clock ≤ after.clock) ∨
-    ∃ event, ∃ (ready : before.config.cut.Ready event) (action : graph.Action event),
-      after.config ∈ (before.config.step event ready action).support
-
-omit [DecidableEq Player] in
-theorem ContractStep.refl (state : EventGraphRuntime.State graph) : ContractStep state state :=
-  Or.inl ⟨rfl, rfl, rfl, le_refl _⟩
-
-theorem contractStep_environment (runtime : EventGraphRuntime graph)
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (command : (runtime.reactiveApplication leaks).Command)
-    (reached : next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
-      command).support) :
-    ContractStep execution.application next.application := by
-  unfold ReactiveApplication.Execution.environmentStep at reached
-  rw [PMF.support_map] at reached
-  obtain ⟨updated, supported, rfl⟩ := reached
-  cases command with
-  | activate who =>
-      rw [PMF.support_map] at supported
-      obtain ⟨_, _, rfl⟩ := supported
-      exact ContractStep.refl _
-  | wait =>
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      exact ContractStep.refl _
-  | «include» id =>
-      cases (PMF.mem_support_pure_iff _ _).mp supported
-      change ContractStep execution.application
-        (execution.includePending (runtime.reactiveApplication leaks) id).application
-      unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
-      cases found : execution.network.lookup id with
-      | none => exact ContractStep.refl _
-      | some message =>
-          change ContractStep execution.application
-            (((runtime.reactiveApplication leaks).handle execution.application message).getD
-              execution.application)
-          cases accepted : (runtime.reactiveApplication leaks).handle execution.application
-              message with
-          | none => exact ContractStep.refl _
-          | some after =>
-              obtain ⟨event, _, ready, action, member⟩ := handle_config_mem_step runtime
-                execution.application after _ (reactiveHandle_call accepted)
-              exact Or.inr ⟨event, ready, action, member⟩
-  | application command =>
-      rw [PMF.support_map] at supported
-      obtain ⟨state, member, rfl⟩ := supported
-      replace member : state ∈ (EventGraphRuntime.environmentStep runtime
-        (execution.application : EventGraphRuntime.State graph) command).support := member
-      change ContractStep (execution.application : EventGraphRuntime.State graph) state
-      have acceptedEq := (environmentStep_tables runtime execution.application state command
-        member).1
-      cases command with
-      | advanceClock =>
-          simp only [EventGraphRuntime.environmentStep, PMF.mem_support_pure_iff] at member
-          subst state
-          exact Or.inl ⟨rfl, rfl, rfl, Nat.le_succ _⟩
-      | executeSample event =>
-          obtain ⟨clockEq, effect⟩ := environmentStep_executeSample_config_activated runtime
-            execution.application state event member
-          rcases effect with ⟨configEq, activatedEq⟩ | ⟨ready, action, configMem, _⟩
-          · exact Or.inl ⟨configEq, acceptedEq, activatedEq, clockEq.symm ▸ le_refl _⟩
-          · exact Or.inr ⟨event, ready, action, configMem⟩
-      | expire event =>
-          obtain ⟨clockEq, effect⟩ := environmentStep_expire_config_activated runtime
-            execution.application state event member
-          rcases effect with ⟨configEq, activatedEq⟩ | ⟨ready, action, configMem, _⟩
-          · exact Or.inl ⟨configEq, acceptedEq, activatedEq, clockEq.symm ▸ le_refl _⟩
-          · exact Or.inr ⟨event, ready, action, configMem⟩
-
-omit [DecidableEq Player] in
-/-- Completed events stay completed. -/
-theorem ContractStep.completed_mono {before after : EventGraphRuntime.State graph}
-    (step : ContractStep before after) {event : graph.EventId}
-    (completed : event ∈ before.config.cut.completed) :
-    event ∈ after.config.cut.completed := by
-  rcases step with ⟨configEq, _⟩ | ⟨other, ready, action, member⟩
-  · rw [configEq]
-    exact completed
-  · rw [before.config.step_cut other ready action after.config member]
-    exact (EventOrder.Cut.mem_complete _ _ _ _).mpr (Or.inr completed)
-
-omit [DecidableEq Player] in
-/-- Available fields keep their values. -/
-theorem ContractStep.store_retained {before after : EventGraphRuntime.State graph}
-    (step : ContractStep before after) (field : graph.Field)
-    (value : (graph.layout field).Value) (stored : before.config.store field = some value) :
-    after.config.store field = some value := by
-  rcases step with ⟨configEq, _⟩ | ⟨other, ready, action, member⟩
-  · rw [configEq]
-    exact stored
-  · exact before.config.step_store_of_some after.config other ready action member field value
-      stored
-
-omit [DecidableEq Player] in
-/-- The completion order only grows at its end. -/
-theorem ContractStep.order_extends {before after : EventGraphRuntime.State graph}
-    (step : ContractStep before after) :
-    ∃ rest, after.publicView.observation.completionOrder =
-      before.publicView.observation.completionOrder ++ rest := by
-  rcases step with ⟨configEq, _⟩ | ⟨other, ready, action, member⟩
-  · refine ⟨[], ?_⟩
-    change after.config.history.map Completion.event = _
-    rw [configEq, List.append_nil]
-    rfl
-  · refine ⟨[other], ?_⟩
-    change after.config.history.map Completion.event =
-      before.config.history.map Completion.event ++ [other]
-    rw [before.config.step_history other ready action after.config member]
-    simp
-
-end ContractStep
 
 section Facts
 
@@ -506,15 +386,16 @@ theorem accepted_inclusion (state next : (serviceApplication setup mode deadline
       ∃ event, message.payload.call.event? (serviceGraph setup mode) = some event ∧
         state.config.cut.Ready event ∧ event ∈ next.config.cut.completed ∧
         (serviceGraph setup mode).actor? event = some message.sender := by
-  obtain ⟨valid, call⟩ := reactiveApplication_handle_eq_some (serviceRuntime setup mode deadline)
-      leaks state next message handled
+  obtain ⟨valid, native, call, drained⟩ := reactiveApplication_handle_eq_some
+    (serviceRuntime setup mode deadline) leaks state next message handled
   obtain ⟨event, named, ready, action, member⟩ :=
-    handle_config_mem_step (serviceRuntime setup mode deadline) state next _ call
-  refine
-      ⟨valid, event, named, ready, ?_, handle_sender_actor (serviceRuntime setup mode deadline)
-          state next _ call event named⟩
-  rw [state.config.step_cut event ready action next.config member]
-  exact (EventOrder.Cut.mem_complete _ _ _ _).mpr (Or.inl rfl)
+    handle_config_mem_step (serviceRuntime setup mode deadline) state native _ call
+  refine ⟨valid, event, named, ready, ?_, handle_sender_actor
+    (serviceRuntime setup mode deadline) state native _ call event named⟩
+  rw [← drained]
+  apply native.drainFuel_completed_subset native.config.remaining
+  rw [state.config.step_cut event ready action native.config member]
+  exact Finset.mem_insert_self _ _
 
 theorem settledFacts_environment
     (execution next : (serviceApplication setup mode deadline leaks).Execution)
@@ -527,8 +408,8 @@ theorem settledFacts_environment
   let app := serviceApplication setup mode deadline leaks
   obtain ⟨inputsEq, serialEq, effect⟩ :=
     environmentStep_shape setup leaks execution next command reached
-  have step := contractStep_environment (serviceRuntime setup mode deadline) leaks execution next
-      command reached
+  have path := (reactiveApplication_graphSteps (serviceRuntime setup mode deadline)
+    leaks).environmentStep execution next command reached
   have identity := (app.messageIdentityInvariant (fun _ _ => PMF.pure command)).environment
     execution next command ⟨facts.serials, facts.unique⟩ (by simp) reached
   have sound := app.receiptsSound_environmentStep _ execution next command facts.receipts
@@ -540,7 +421,7 @@ theorem settledFacts_environment
     rw [inputsEq]
   have completedMono : ∀ event, event ∈ execution.application.config.cut.completed →
       event ∈ next.application.config.cut.completed :=
-    fun _ completed => step.completed_mono completed
+    fun _ completed => EventGraph.Config.Step.path_completed_mono path completed
   refine
     { serials := identity.1
       unique := identity.2

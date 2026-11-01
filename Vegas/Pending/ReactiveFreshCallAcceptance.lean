@@ -7,8 +7,8 @@ import Vegas.Pending.ReactiveEventStability
 
 The native predicate admits opaque binding handles and authentic typed openings.
 An opening need not pass its public guards: the handler computes the publication
-result and records default if it fails. The stricter `freshServiceEnvelope`
-continues to certify successful content for the settled audit.
+result and records default if it fails. The canonical conformance predicate
+additionally fixes binding serials.
 While a ready event is unfinished, retained public receipts and an authentic
 certificate supply the handler's association and private binding conditions.
 Initialized-history quiescence supplies activity of its owner; the deadline is
@@ -77,7 +77,7 @@ theorem freshServiceEnvelope.acceptable {view : PublicView graph}
   cases packet with
   | commitment event candidate => exact ⟨conforming.1, conforming.2.2.2⟩
   | opening event candidate raw =>
-      exact ⟨conforming.1, conforming.2.1, conforming.2.2.1, conforming.2.2.2.2⟩
+      exact conforming
   | malformed raw => exact conforming
 
 /-- An acceptable fresh call carries the readiness token of its event. -/

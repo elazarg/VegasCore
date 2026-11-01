@@ -557,6 +557,19 @@ theorem defaulted_step (config : graph.Config) (event : graph.EventId)
   obtain ⟨value, _, rfl⟩ := supported
   exact config.complete_defaulted_mono event ready action value
 
+/-- An ownerless source step preserves the public default set exactly. -/
+theorem step_defaulted_of_actor_none (before after : graph.Config)
+    (event : graph.EventId) (ready : before.cut.Ready event) (action : graph.Action event)
+    (supported : after ∈ (before.step event ready action).support)
+    (ownerless : (graph.nodes event).actor = none) : after.defaulted = before.defaulted := by
+  have noDecision : before.actualDecision event action = none := by
+    simp only [Config.actualDecision, EventCode.actualDecision, ownerless]
+  rw [Config.step, PMF.support_map] at supported
+  obtain ⟨value, _chosen, rfl⟩ := supported
+  change (before.complete event ready action value).defaults.defaulted = before.defaults.defaulted
+  rw [Config.complete_defaults, noDecision]
+  rfl
+
 /-- An active owner records its requested strategic decision. -/
 theorem actualDecision_of_active (config : graph.Config) (event : graph.EventId)
     (owner : Player) (owned : (graph.nodes event).actor = some owner)
@@ -648,6 +661,21 @@ def Step (before after : graph.Config) : Prop :=
     after ∈ (before.step event ready action).support
 
 namespace Step
+
+/-- A supported graph transition retains every completed event. -/
+theorem completed_mono {before after : graph.Config} (moved : Step before after) :
+    before.cut.completed ⊆ after.cut.completed := by
+  obtain ⟨event, ready, action, supported⟩ := moved
+  rw [before.step_cut event ready action after supported]
+  exact Finset.subset_insert _ _
+
+/-- A finite graph path retains every completed event. -/
+theorem path_completed_mono {before after : graph.Config}
+    (path : Relation.ReflTransGen Step before after) :
+    before.cut.completed ⊆ after.cut.completed := by
+  induction path using Relation.ReflTransGen.head_induction_on with
+  | refl => exact Finset.Subset.refl _
+  | @head before middle moved _ ih => exact moved.completed_mono.trans ih
 
 /-- A supported transition preserves reachability from fixed inputs. -/
 theorem reachable {before after : graph.Config} (moved : Step before after)

@@ -7,15 +7,14 @@ import Vegas.Pending.EventPublicState
 
 The checker reads the public view, its prior ledger and a signed envelope. It
 admits, for a ready event within its deadline, the first canonical opaque
-binding regardless of hidden opening material, and one certified opening whose
-public guards succeed. It uses public readiness and ledger metadata, with no
+binding regardless of hidden opening material, and one authentic certified
+opening. It uses public readiness and ledger metadata, with no
 service cursor, so conformance does not depend on how an order serves ready events.
 Already published envelopes and the current pending envelope remain
 permitted. Serial evidence detects another fresh envelope without requiring
 the auditor to have sampled the earlier one; it counts distinct identifiers,
 so a chain that includes a published envelope again does not shift
-any author's expected serial. Omitted binding obligations are
-handled separately by actual deadline evidence.
+any author's expected serial. Public default is a source-game outcome.
 -/
 
 noncomputable section
@@ -42,7 +41,6 @@ def freshServiceEnvelope (view : PublicView graph)
         | none => False
         | some entered => view.clock - entered < runtime.deadline event) ∧
       certifiedOpening message.payload = true ∧
-      view.openingGuardsAccepted message.payload = true ∧
       (match nodeView graph event with
         | .resolve owner payload binding _ _ _ =>
             message.sender = owner ∧ candidate.1 = owner ∧
@@ -120,7 +118,7 @@ theorem freshServiceEnvelope_owned (view : PublicView graph)
           simp only [node, and_false] at permitted
       | resolve owner payload binding checks outputEq codeEq =>
           simp only [node] at permitted
-          have authored : message.sender = owner := permitted.2.2.2.2.1
+          have authored : message.sender = owner := permitted.2.2.2.1
           have actor := congrArg EventCode.actor codeEq
           rw [EventCode.actor_cast outputEq (graph.nodes event)] at actor
           exact ⟨event, rfl, permitted.1, authored ▸ actor⟩
@@ -161,8 +159,8 @@ theorem freshServiceEnvelope_binding_shape
   | malformed =>
       simp only [freshServiceEnvelope] at permitted
 
-/-- The opening branch exposes exactly the phase, association, certificate and
-public-guard facts used by the existing guarded-response classification. -/
+/-- The opening branch exposes the phase, association and certificate facts
+of an authentic opening. -/
 theorem freshServiceEnvelope_opening_iff
     (view : PublicView graph) (id : MessageId Player) (event : graph.EventId)
     (owner : Player) (payload : L.Ty)
@@ -181,14 +179,13 @@ theorem freshServiceEnvelope_opening_iff
         | some entered => view.clock - entered < runtime.deadline event) ∧
       certifiedOpening (⟨.opening event candidate raw, evidence, token⟩ :
         WitnessedPacket graph) = true ∧
-      view.openingGuardsAccepted ⟨.opening event candidate raw, evidence, token⟩ = true ∧
       id.1 = owner ∧ candidate.1 = owner ∧
       view.accepted binding.field = some candidate ∧ raw.ty = payload ∧
         token = some ⟨event⟩ := by
   simp only [freshServiceEnvelope, node, Message.sender]
 
 /-- A conforming packet at a resolve phase is necessarily the currently
-associated, certified, publicly validated opening. -/
+associated, certified opening, regardless of its publication result. -/
 theorem freshServiceEnvelope_resolution_shape
     (view : PublicView graph) (owner : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
@@ -202,8 +199,7 @@ theorem freshServiceEnvelope_resolution_shape
     (permitted : runtime.freshServiceEnvelope view message) :
     ∃ candidate raw, message.sender = owner ∧ candidate.1 = owner ∧
       view.accepted binding.field = some candidate ∧ raw.ty = payload ∧
-      message.payload = ⟨.opening event candidate raw, some ⟨candidate, raw⟩, some ⟨event⟩⟩ ∧
-      view.openingGuardsAccepted message.payload = true := by
+      message.payload = ⟨.opening event candidate raw, some ⟨candidate, raw⟩, some ⟨event⟩⟩ := by
   rcases message with ⟨id, ⟨packet, evidence, token⟩⟩
   cases packet with
   | commitment actual candidate =>
@@ -214,7 +210,7 @@ theorem freshServiceEnvelope_resolution_shape
   | opening actual candidate raw =>
       change some actual = some event at named
       cases Option.some.inj named
-      obtain ⟨_, _, certified, guards, authored, owned, associated, typed, tokened⟩ :=
+      obtain ⟨_, _, certified, authored, owned, associated, typed, tokened⟩ :=
         (runtime.freshServiceEnvelope_opening_iff view id event owner payload binding checks
           outputEq codeEq node candidate raw evidence token).mp permitted
       have evidenceEq : evidence = some ⟨candidate, raw⟩ := by
@@ -223,7 +219,7 @@ theorem freshServiceEnvelope_resolution_shape
         | some fact =>
             simp only [certifiedOpening, decide_eq_true_eq] at certified
             exact congrArg some certified
-      refine ⟨candidate, raw, authored, owned, associated, typed, ?_, guards⟩
+      refine ⟨candidate, raw, authored, owned, associated, typed, ?_⟩
       rw [evidenceEq, tokened]
   | malformed =>
       simp only [freshServiceEnvelope] at permitted

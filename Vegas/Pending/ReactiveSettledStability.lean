@@ -149,16 +149,6 @@ theorem State.settledContent_iff_of_path {before after : State graph}
     (completed : event ∈ before.config.cut.completed) :
     (⟨after.publicView, afterReceipts⟩ : SettledRecord graph).SettledContent message ↔
       (⟨before.publicView, beforeReceipts⟩ : SettledRecord graph).SettledContent message := by
-  have retained : ∀ {first last : graph.Config},
-      Relation.ReflTransGen EventGraph.Config.Step first last →
-      ∀ field value, first.store field = some value → last.store field = some value := by
-    intro first last steps
-    induction steps using Relation.ReflTransGen.head_induction_on with
-    | refl => exact fun _ _ stored => stored
-    | @head current middle moved _ ih =>
-        obtain ⟨other, ready, action, supported⟩ := moved
-        exact fun field value stored => ih field value
-          (current.step_store_of_some middle other ready action supported field value stored)
   obtain ⟨suffix, histories⟩ := EventGraph.Config.Step.path_history_prefix path
   have extended : after.publicView.observation.completionOrder =
       before.publicView.observation.completionOrder ++ suffix.map Completion.event := by
@@ -167,9 +157,6 @@ theorem State.settledContent_iff_of_path {before after : State graph}
     rfl
   have member : event ∈ before.publicView.observation.completionOrder :=
     (before.config.history_exact event).mpr completed
-  have guardsEq := State.openingGuardsAccepted_congr before after message.payload event named
-    (fun predecessor inside => before.config.cut.predecessor_closed completed inside)
-    (retained path)
   rcases message with ⟨id, ⟨call, evidence, token⟩⟩
   cases call with
   | malformed raw => rfl
@@ -181,9 +168,6 @@ theorem State.settledContent_iff_of_path {before after : State graph}
         (_ ∧ candidate = (id.1, .prepared (before.publicView.bindingCountBefore id.1 event)))
       rw [PublicView.bindingCountBefore_append before.publicView after.publicView id.1 event
         member _ extended]
-  | opening actual candidate raw =>
-      change (_ ∧ after.publicView.openingGuardsAccepted _ = true) ↔
-        (_ ∧ before.publicView.openingGuardsAccepted _ = true)
-      rw [guardsEq]
+  | opening actual candidate raw => rfl
 
 end Vegas.EventGraphRuntime
