@@ -6,6 +6,7 @@ import Vegas.Game.SourceServiceCanonicalSlots
 import Interaction.ReactiveRoundCongruence
 import Vegas.Pending.EventActivationOrigin
 import Vegas.Pending.EventBindingInvariant
+import Vegas.Pending.ReactiveGuardedResponse
 
 /-! # Foreign source choices and native traffic
 
@@ -1240,5 +1241,772 @@ theorem sourceService_foreign_mixture
     exact round_ready_of_pending alone (holds running) reached
   · exact fun _ => boundary.ordered.ready event.isLt
 
+
+private theorem canonical_opening_exact
+    {event : (serviceGraph setup mode).EventId} {owner : Player} {payload : L.Ty}
+    {binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
+    {checks : List (GuardCheck (serviceGraph setup mode).layout payload)}
+    (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks)
+    (node : nodeView (serviceGraph setup mode) event =
+      .resolve owner payload binding checks outputEq codeEq)
+    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (recalled : execution.InputRecall (serviceApplication setup mode deadline leaks))
+    (candidate : Handle (serviceGraph setup mode)) (value : L.Val payload)
+    (accepted : execution.application.accepted binding.field = some candidate)
+    (owned : candidate.1 = owner)
+    (fixed : execution.application.candidates.lookup candidate = .openable ⟨payload, value⟩)
+    (active : owner ∉ execution.application.config.defaulted)
+    (stored : binding.get? execution.application.config.store = some (.success value)) :
+    (serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner
+      (execution.recall owner) (execution.observe
+        (serviceApplication setup mode deadline leaks) owner) event
+      (cast (congrArg EventField.Action outputEq.symm) true) =
+      ⟨some ((disclosureSubmission (.opening event candidate ⟨payload, value⟩)).normalizeReactive
+        owner ((serviceApplication setup mode deadline leaks).observePlayer
+          execution.application owner) (execution.network.known owner))⟩ := by
+  rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_eq_of_not_bind leaks owner
+    (execution.recall owner) (execution.observe
+      (serviceApplication setup mode deadline leaks) owner) event _ (by
+        intro other otherPayload otherEq otherCode same
+        rw [node] at same
+        cases same)]
+  exact (serviceRuntime setup mode deadline).serviceDecision_authentic_opening leaks execution
+    recalled owner event payload binding checks outputEq codeEq node candidate value
+    accepted owned fixed active stored
+
+private theorem opening_normal_packet
+    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (owner : Player) (event : (serviceGraph setup mode).EventId)
+    (candidate : Handle (serviceGraph setup mode)) (raw : Raw L)
+    (owned : candidate.1 = owner)
+    (fixed : execution.application.candidates.lookup candidate = .openable raw) :
+    let app := serviceApplication setup mode deadline leaks
+    let material := (disclosureSubmission (.opening event candidate raw)).normalizeReactive
+      owner (app.observePlayer execution.application owner) (execution.network.known owner)
+    app.packet (app.submit execution.application owner material) owner
+      (execution.network.known owner) material =
+      ⟨.opening event candidate raw, some ⟨candidate, raw⟩,
+        execution.application.publicView.tokenFor (.opening event candidate raw)⟩ := by
+  intro app material
+  let original := disclosureSubmission (.opening event candidate raw)
+  let normal := (serviceRuntime setup mode deadline).reactiveNormalization leaks
+  change app.packet (app.submit execution.application owner
+      (normal.normalize owner (app.observePlayer execution.application owner)
+        (execution.network.known owner) original)) owner (execution.network.known owner)
+      (normal.normalize owner (app.observePlayer execution.application owner)
+        (execution.network.known owner) original) = _
+  rw [normal.submit, normal.packet]
+  change WitnessedPacket.mk _ _ _ = WitnessedPacket.mk _ _ _
+  congr 1
+  exact WitnessedSubmission.emit_owned original.call
+    (app.submit execution.application owner original) owner (execution.network.known owner)
+    ⟨candidate, raw⟩ owned (by
+      change execution.application.candidates.lookup candidate = .openable raw
+      exact fixed)
+
+private theorem opening_response_matched
+    {horizon leftRemaining rightRemaining : Nat}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {bound : (serviceGraph setup mode).EventId → Nat}
+    {event : (serviceGraph setup mode).EventId} {owner focal : Player} {payload : L.Ty}
+    {binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
+    {checks : List (GuardCheck (serviceGraph setup mode).layout payload)}
+    (foreign : owner ≠ focal)
+    (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks)
+    (node : nodeView (serviceGraph setup mode) event =
+      .resolve owner payload binding checks outputEq codeEq)
+    {left right : (serviceApplication setup mode deadline leaks).Execution}
+    (same : foreignReadout (leaks := leaks) focal owner event left =
+      foreignReadout (leaks := leaks) focal owner event right)
+    (leftTrace : ((serviceApplication setup mode deadline leaks).protocol
+      (serviceInitialLaw setup mode) horizon scheduler).Trace
+        (some ⟨leftRemaining + 1, none, left⟩))
+    (rightTrace : ((serviceApplication setup mode deadline leaks).protocol
+      (serviceInitialLaw setup mode) horizon scheduler).Trace
+        (some ⟨rightRemaining + 1, none, right⟩))
+    (leftReady : left.application.config.cut.Ready event)
+    (rightReady : right.application.config.cut.Ready event)
+    (value : L.Val payload)
+    (leftStored : binding.get? left.application.config.store = some (.success value))
+    (rightStored : binding.get? right.application.config.store = some (.success value))
+    (selected : (.activate owner : (serviceApplication setup mode deadline leaks).Command) ∈
+      (scheduler left.environmentRecall
+        (left.observeEnvironment (serviceApplication setup mode deadline leaks))).support)
+    (sample : Finset (MessageId Player))
+    (sampled : sample ∈ ((serviceApplication setup mode deadline leaks).observePending owner
+      left.network.pending).support) :
+    let leftActive := left.sampledActivation (serviceApplication setup mode deadline leaks)
+      owner sample
+    let rightActive := right.sampledActivation (serviceApplication setup mode deadline leaks)
+      owner sample
+    ∃ leftResponse rightResponse,
+      decidedTurnPolicy setup leaks bound owner event
+        (cast (congrArg EventField.Action outputEq.symm) true)
+        (leftActive.recall owner) (leftActive.observe
+          (serviceApplication setup mode deadline leaks) owner) = PMF.pure leftResponse ∧
+      decidedTurnPolicy setup leaks bound owner event
+        (cast (congrArg EventField.Action outputEq.symm) true)
+        (rightActive.recall owner) (rightActive.observe
+          (serviceApplication setup mode deadline leaks) owner) = PMF.pure rightResponse ∧
+      (serviceRuntime setup mode deadline).submittedEvent? leaks leftResponse =
+        (serviceRuntime setup mode deadline).submittedEvent? leaks rightResponse ∧
+      (serviceRuntime setup mode deadline).bindingTraffic leaks focal
+        (leftActive.respond (serviceApplication setup mode deadline leaks) owner leftResponse) =
+      (serviceRuntime setup mode deadline).bindingTraffic leaks focal
+        (rightActive.respond (serviceApplication setup mode deadline leaks) owner
+          rightResponse) := by
+  intro leftActive rightActive
+  let app := serviceApplication setup mode deadline leaks
+  let runtime := serviceRuntime setup mode deadline
+  let action := cast (congrArg EventField.Action outputEq.symm) true
+  have sameTraffic : runtime.bindingTraffic leaks focal left =
+      runtime.bindingTraffic leaks focal right := congrArg Prod.fst same
+  have sameTurns : ownerTurns owner event left = ownerTurns owner event right :=
+    congrArg (fun value => value.2.1) same
+  have sameRecorded : runtime.eventRecorded leaks (left.recall owner) event =
+      runtime.eventRecorded leaks (right.recall owner) event :=
+    congrArg (fun value => value.2.2) same
+  have publics : left.application.publicView = right.application.publicView :=
+    congrArg (fun value => value.2.2.2.2.2) sameTraffic
+  have environments : left.environmentRecall = right.environmentRecall :=
+    congrArg (fun value => value.2.2.1) sameTraffic
+  have networks : left.network = right.network := congrArg Prod.fst sameTraffic
+  have activated := bindingTraffic_activation runtime leaks left right focal owner
+    sameTraffic sample
+  have owned : (serviceGraph setup mode).actor? event = some owner :=
+    nodeView_resolve_actor outputEq codeEq
+  by_cases opened : ownerTurns owner event left = 0 ∧
+      runtime.eventRecorded leaks (left.recall owner) event = false ∧
+      left.application.publicView.InclusionFitsDeadline runtime bound event
+  · obtain ⟨first, unrecorded, fits⟩ := opened
+    have rightFirst : ownerTurns owner event right = 0 := sameTurns ▸ first
+    have rightUnrecorded : runtime.eventRecorded leaks (right.recall owner) event = false :=
+      sameRecorded ▸ unrecorded
+    have rightFits : right.application.publicView.InclusionFitsDeadline runtime bound event :=
+      publics ▸ fits
+    have leftMoved : leftActive ∈ (left.environmentStep app (.activate owner)).support := by
+      rw [ReactiveApplication.Execution.activation_samples, PMF.support_map]
+      exact ⟨sample, sampled, rfl⟩
+    have rightMoved : rightActive ∈ (right.environmentStep app (.activate owner)).support := by
+      rw [ReactiveApplication.Execution.activation_samples, PMF.support_map]
+      exact ⟨sample, by rw [← networks]; exact sampled, rfl⟩
+    obtain ⟨leftActiveTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup mode) horizon
+      scheduler leftRemaining left leftActive (.activate owner) leftTrace selected leftMoved
+    obtain ⟨rightActiveTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup mode) horizon
+      scheduler rightRemaining right rightActive (.activate owner) rightTrace (by
+        rw [← environments, ← observeEnvironment_eq_of_bindingTraffic focal sameTraffic]
+        exact selected) rightMoved
+    have leftFacts := legalFacts setup leaks horizon scheduler _ leftActiveTrace
+    have rightFacts := legalFacts setup leaks horizon scheduler _ rightActiveTrace
+    obtain ⟨candidate, leftAccepted, candidateOwner, leftFixed⟩ :=
+      leftFacts.binding.success_provenance binding value leftStored
+    have rightAccepted : rightActive.application.accepted binding.field = some candidate := by
+      change right.application.accepted binding.field = _
+      exact (congrFun (congrArg PublicView.accepted publics) binding.field).symm.trans
+        leftAccepted
+    obtain ⟨rightCandidate, acceptedOther, _, rightFixed⟩ :=
+      rightFacts.binding.success_provenance binding value rightStored
+    have candidateEq : rightCandidate = candidate :=
+      Option.some.inj (acceptedOther.symm.trans rightAccepted)
+    subst rightCandidate
+    have leftActiveOwner : owner ∉ leftActive.application.config.defaulted :=
+      leftActive.application.active_of_ready_owned leftFacts.quiescent leftReady owned
+    have rightActiveOwner : owner ∉ rightActive.application.config.defaulted :=
+      rightActive.application.active_of_ready_owned rightFacts.quiescent rightReady owned
+    let leftMaterial :=
+      (disclosureSubmission (.opening event candidate ⟨payload, value⟩)).normalizeReactive
+      owner (app.observePlayer leftActive.application owner) (leftActive.network.known owner)
+    let rightMaterial :=
+      (disclosureSubmission (.opening event candidate ⟨payload, value⟩)).normalizeReactive
+      owner (app.observePlayer rightActive.application owner) (rightActive.network.known owner)
+    have leftDecision : runtime.canonicalServiceDecision leaks owner (leftActive.recall owner)
+        (leftActive.observe app owner) event action = ⟨some leftMaterial⟩ :=
+      canonical_opening_exact outputEq codeEq node leftActive leftFacts.inputs candidate value
+        leftAccepted candidateOwner leftFixed leftActiveOwner leftStored
+    have rightDecision : runtime.canonicalServiceDecision leaks owner (rightActive.recall owner)
+        (rightActive.observe app owner) event action = ⟨some rightMaterial⟩ :=
+      canonical_opening_exact outputEq codeEq node rightActive rightFacts.inputs candidate value
+        rightAccepted candidateOwner rightFixed rightActiveOwner rightStored
+    refine ⟨⟨some leftMaterial⟩, ⟨some rightMaterial⟩, ?_, ?_, ?_, ?_⟩
+    · rw [decidedTurnPolicy_open action leftActive leftReady owned first,
+        decidedOpportunity_transmits action leftActive unrecorded fits _ leftDecision]
+    · rw [decidedTurnPolicy_open action rightActive rightReady owned rightFirst,
+        decidedOpportunity_transmits action rightActive rightUnrecorded rightFits _ rightDecision]
+    · rfl
+    · apply bindingTraffic_respond_other foreign.symm activated
+      refine Or.inr ⟨_, _, rfl, rfl, ?_⟩
+      rw [opening_normal_packet leftActive owner event candidate ⟨payload, value⟩ candidateOwner
+        leftFixed, opening_normal_packet rightActive owner event candidate ⟨payload, value⟩
+        candidateOwner rightFixed]
+      have activePublics : leftActive.application.publicView =
+          rightActive.application.publicView := publics
+      rw [activePublics]
+  · have rightClosed : ¬ (ownerTurns owner event right = 0 ∧
+        runtime.eventRecorded leaks (right.recall owner) event = false ∧
+        right.application.publicView.InclusionFitsDeadline runtime bound event) := by
+      rw [← sameTurns, ← sameRecorded, ← publics]
+      exact opened
+    exact ⟨⟨none⟩, ⟨none⟩, decidedTurnPolicy_closed action leftActive leftReady owned opened,
+      decidedTurnPolicy_closed action rightActive rightReady owned rightClosed, rfl,
+      bindingTraffic_respond_other foreign.symm activated _ _ (Or.inl ⟨rfl, rfl⟩)⟩
+
+
+private theorem opening_ready_handler
+    {event : (serviceGraph setup mode).EventId} {owner : Player} {payload : L.Ty}
+    {binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
+    {checks : List (GuardCheck (serviceGraph setup mode).layout payload)}
+    {outputEq : (serviceGraph setup mode).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks}
+    (node : nodeView (serviceGraph setup mode) event =
+      .resolve owner payload binding checks outputEq codeEq)
+    (left right : EventGraphRuntime.State (serviceGraph setup mode)) (focal : Player)
+    (views : left.playerView focal = right.playerView focal)
+    (leftReady : left.config.cut.Ready event) (rightReady : right.config.cut.Ready event)
+    (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
+      cut.Ready other → other = event)
+    (leftInvariant : left.BindingInvariant) (rightInvariant : right.BindingInvariant)
+    (value : L.Val payload)
+    (leftStored : binding.get? left.config.store = some (.success value))
+    (rightStored : binding.get? right.config.store = some (.success value))
+    (message : Message Player (Payload (serviceGraph setup mode))) :
+    (handle (serviceRuntime setup mode deadline) left message).map
+        (fun state => state.playerView focal) =
+      (handle (serviceRuntime setup mode deadline) right message).map
+        (fun state => state.playerView focal) := by
+  classical
+  obtain ⟨id, packet⟩ := message
+  cases packet with
+  | malformed raw => simp [handle]
+  | commitment named candidate =>
+      exact handle_commitment_playerView_congr _ left right focal id named candidate views
+  | opening named candidate raw =>
+      by_cases namedReady : left.config.cut.Ready named
+      · have namedEq := alone _ named leftReady namedReady
+        subst named
+        exact handle_opening_playerView_congr node left right focal views leftReady rightReady
+          leftInvariant rightInvariant value leftStored rightStored id candidate raw
+      · have cuts := cut_eq_of_publicView_eq (congrArg PlayerView.publicView views)
+        have rightNot : ¬right.config.cut.Ready named := by simpa only [← cuts] using namedReady
+        simp [handle, namedReady, rightNot]
+
+private theorem opening_stopped_readout_congr
+    {horizon count leftRemaining rightRemaining : Nat}
+    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (focal : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (bound : (serviceGraph setup mode).EventId → Nat)
+    {event : (serviceGraph setup mode).EventId} {owner : Player} {payload : L.Ty}
+    {binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
+    {checks : List (GuardCheck (serviceGraph setup mode).layout payload)}
+    (foreign : owner ≠ focal)
+    (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks)
+    (node : nodeView (serviceGraph setup mode) event =
+      .resolve owner payload binding checks outputEq codeEq)
+    (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
+      cut.Ready other → other = event)
+    (leftStart rightStart : (serviceApplication setup mode deadline leaks).Execution)
+    (leftTrace : ((serviceApplication setup mode deadline leaks).protocol
+      (serviceInitialLaw setup mode) horizon scheduler).Trace
+        (some ⟨leftRemaining + count, none, leftStart⟩))
+    (rightTrace : ((serviceApplication setup mode deadline leaks).protocol
+      (serviceInitialLaw setup mode) horizon scheduler).Trace
+        (some ⟨rightRemaining + count, none, rightStart⟩))
+    (leftReady : leftStart.application.config.cut.Ready event)
+    (rightReady : rightStart.application.config.cut.Ready event)
+    (value : L.Val payload)
+    (leftStored : binding.get? leftStart.application.config.store = some (.success value))
+    (rightStored : binding.get? rightStart.application.config.store = some (.success value))
+    (same : foreignReadout (leaks := leaks) focal owner event leftStart =
+      foreignReadout (leaks := leaks) focal owner event rightStart) :
+    ((serviceApplication setup mode deadline leaks).runUntil scheduler
+      (Function.update (focalPlayers setup leaks focal deviation) owner
+        (decidedTurnPolicy setup leaks bound owner event
+          (cast (congrArg EventField.Action outputEq.symm) true)))
+      (fun final => event ∈ final.application.config.cut.completed) count leftStart).map
+        (foreignReadout (leaks := leaks) focal owner event) =
+    ((serviceApplication setup mode deadline leaks).runUntil scheduler
+      (Function.update (focalPlayers setup leaks focal deviation) owner
+        (decidedTurnPolicy setup leaks bound owner event
+          (cast (congrArg EventField.Action outputEq.symm) true)))
+      (fun final => event ∈ final.application.config.cut.completed) count rightStart).map
+        (foreignReadout (leaks := leaks) focal owner event) := by
+  let app := serviceApplication setup mode deadline leaks
+  let players := Function.update (focalPlayers setup leaks focal deviation) owner
+    (decidedTurnPolicy setup leaks bound owner event
+      (cast (congrArg EventField.Action outputEq.symm) true))
+  let invariant := fun (start : app.Execution) (count : Nat) (current : app.Execution) =>
+    (∃ remaining, Nonempty ((app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+      (some ⟨remaining + count, none, current⟩))) ∧
+    (event ∉ current.application.config.cut.completed →
+      current.application.config = start.application.config)
+  have owned : (serviceGraph setup mode).actor? event = some owner :=
+    nodeView_resolve_actor outputEq codeEq
+  have advance (start : app.Execution) (startReady : start.application.config.cut.Ready event)
+      (n : Nat) (current : app.Execution) (valid : invariant start (n + 1) current)
+      (running : event ∉ current.application.config.cut.completed) (next : app.Execution)
+      (reached : next ∈ (app.round scheduler players current).support) :
+      invariant start n next := by
+    obtain ⟨⟨remaining, ⟨trace⟩⟩, framed⟩ := valid
+    have before : (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+        (some ⟨(remaining + n) + 1, none, current⟩) := by
+      simpa only [Nat.add_assoc] using trace
+    obtain ⟨nextTrace⟩ := app.raw_trace_round (serviceInitialLaw setup mode) horizon scheduler
+      players (remaining + n) current next before reached
+    refine ⟨⟨remaining, ⟨nextTrace⟩⟩, ?_⟩
+    intro unfinished
+    have currentReady : current.application.config.cut.Ready event :=
+      (framed running).symm ▸ startReady
+    exact (reactive_round_config_eq_of_pending (serviceRuntime setup mode deadline) leaks
+      scheduler players event current next
+      (fun query queryReady => alone _ query currentReady queryReady) unfinished reached).trans
+        (framed running)
+  apply ReactiveApplication.runUntil_map_congr_of_rounds app scheduler players players
+    (fun final => event ∈ final.application.config.cut.completed)
+    (foreignReadout (leaks := leaks) focal owner event)
+    (invariant leftStart) (invariant rightStart)
+  · intro n left right _leftValid _rightValid equal
+    have traffic := congrArg Prod.fst equal
+    have publics : left.application.publicView = right.application.publicView :=
+      congrArg (fun value => value.2.2.2.2.2) traffic
+    rw [cut_eq_of_publicView_eq publics]
+  · intro n left right leftValid rightValid equal running
+    obtain ⟨⟨leftRest, ⟨leftCurrentTrace⟩⟩, leftFrame⟩ := leftValid
+    obtain ⟨⟨rightRest, ⟨rightCurrentTrace⟩⟩, rightFrame⟩ := rightValid
+    have traffic := congrArg Prod.fst equal
+    have publics : left.application.publicView = right.application.publicView :=
+      congrArg (fun value => value.2.2.2.2.2) traffic
+    have rightRunning : event ∉ right.application.config.cut.completed := by
+      rw [← cut_eq_of_publicView_eq publics]
+      exact running
+    have currentLeftReady : left.application.config.cut.Ready event :=
+      (leftFrame running).symm ▸ leftReady
+    have currentRightReady : right.application.config.cut.Ready event :=
+      (rightFrame rightRunning).symm ▸ rightReady
+    have leftBefore : (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+        (some ⟨(leftRest + n) + 1, none, left⟩) := by
+      simpa only [Nat.add_assoc] using leftCurrentTrace
+    have rightBefore : (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+        (some ⟨(rightRest + n) + 1, none, right⟩) := by
+      simpa only [Nat.add_assoc] using rightCurrentTrace
+    have currentLeftStored : binding.get? left.application.config.store =
+        some (.success value) := by rw [leftFrame running]; exact leftStored
+    have currentRightStored : binding.get? right.application.config.store =
+        some (.success value) := by rw [rightFrame rightRunning]; exact rightStored
+    apply foreignRound_readout_congr scheduler focal deviation owned foreign alone _ _
+      currentLeftReady currentRightReady equal
+    · intro selected sample sampled
+      exact opening_response_matched foreign outputEq codeEq node equal leftBefore rightBefore
+        currentLeftReady currentRightReady value currentLeftStored currentRightStored
+        selected sample sampled
+    · intro id message _found _sender
+      exact opening_ready_handler node left.application right.application focal
+        (congrArg (fun value => value.2.2.2.2.1) traffic) currentLeftReady currentRightReady alone
+        (legalFacts setup leaks horizon scheduler _ leftBefore).binding
+        (legalFacts setup leaks horizon scheduler _ rightBefore).binding
+        value currentLeftStored currentRightStored ⟨message.id, message.payload.call⟩
+  · exact advance leftStart leftReady
+  · exact advance rightStart rightReady
+  · exact ⟨⟨leftRemaining, ⟨leftTrace⟩⟩, fun _ => rfl⟩
+  · exact ⟨⟨rightRemaining, ⟨rightTrace⟩⟩, fun _ => rfl⟩
+  · exact same
+
+
+/-- An honest true disclosure of the same bound value has equal stopped
+focal traffic from equal initial focal traffic at actual initialized boundaries. -/
+theorem sourceService_opening_traffic_congr
+    (runtime : EventGraphRuntime (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    {horizon : Nat} (scheduler : (application setup runtime leaks).Scheduler)
+    (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (wholeProfile : BehavioralProfile setup.program) (focal owner : Player)
+    (deviation : (application setup runtime leaks).Policy) (foreign : owner ≠ focal)
+    (event : (graph setup).EventId) {payload : L.Ty}
+    (binding : FieldRef (graph setup).layout (.binding owner payload))
+    (checks : List (GuardCheck (graph setup).layout payload))
+    (outputEq : (graph setup).outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks)
+    (node : nodeView (graph setup) event =
+      .resolve owner payload binding checks outputEq codeEq)
+    (left right : (application setup runtime leaks).Execution)
+    (leftBoundary : CompletionBoundary setup leaks scheduler
+      (Function.update (serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
+        (firstTurnTiming setup turns) wholeProfile) focal deviation) event.val left)
+    (rightBoundary : CompletionBoundary setup leaks scheduler
+      (Function.update (serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
+        (firstTurnTiming setup turns) wholeProfile) focal deviation) event.val right)
+    (leftBounded : left.environmentRecall.length ≤ horizon)
+    (rightBounded : right.environmentRecall.length ≤ horizon)
+    (value : L.Val payload)
+    (leftStored : binding.get? left.application.config.store = some (.success value))
+    (rightStored : binding.get? right.application.config.store = some (.success value))
+    (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right) :
+    (((application setup runtime leaks).runUntilHorizon scheduler
+      (Function.update (focalPlayers setup leaks focal deviation) owner
+        (decidedTurnPolicy setup leaks bound owner event
+          (cast (congrArg EventField.Action outputEq.symm) true)))
+      (fun final => event ∈ final.application.config.cut.completed) horizon left).map
+        (runtime.bindingTraffic leaks focal)) =
+    (((application setup runtime leaks).runUntilHorizon scheduler
+      (Function.update (focalPlayers setup leaks focal deviation) owner
+        (decidedTurnPolicy setup leaks bound owner event
+          (cast (congrArg EventField.Action outputEq.symm) true)))
+      (fun final => event ∈ final.application.config.cut.completed) horizon right).map
+        (runtime.bindingTraffic leaks focal)) := by
+  let app := application setup runtime leaks
+  let players := Function.update
+    (serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
+      (firstTurnTiming setup turns) wholeProfile) focal deviation
+  have follows : players owner = serviceTurnPolicy setup .sequential runtime.deadline leaks
+      bound turns (firstTurnTiming setup turns) wholeProfile owner :=
+    Function.update_of_ne foreign _ _
+  have facts (current : app.Execution) (boundary : CompletionBoundary setup leaks scheduler
+      players event.val current) (bounded : current.environmentRecall.length ≤ horizon) :
+      Nonempty ((app.protocol (initialLaw setup) horizon scheduler).Trace
+        (some ⟨horizon - current.environmentRecall.length, none, current⟩)) ∧
+      ownerTurns owner event current = 0 ∧
+      runtime.eventRecorded leaks (current.recall owner) event = false := by
+    have atTurn : SubmitsAtTurn setup leaks (players owner) owner := by
+      rw [follows]
+      exact sourceServiceTurnPolicy_submitsAtTurn setup leaks bound turns
+        (firstTurnTiming setup turns) wholeProfile owner
+    have own := SubmitsAtTurn.roundsFrom setup leaks atTurn (initialLaw setup)
+      current.environmentRecall.length current
+      boundary.supported
+    have never : ∀ entry ∈ current.recall owner,
+        entry.beforeView.application.publicView.ownTurn? owner ≠ some event := by
+      intro entry member turn
+      exact boundary.untouched event le_rfl owner entry member
+        (entry.beforeView.application.publicView.ownTurn?_spec owner event turn).1
+    refine ⟨app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players
+      current.environmentRecall.length bounded current boundary.supported, ?_, ?_⟩
+    · apply List.countP_eq_zero.mpr
+      intro entry member
+      exact fun equal => never entry member (of_decide_eq_true equal)
+    · apply Bool.eq_false_iff.mpr
+      intro recorded
+      obtain ⟨entry, member, submitted⟩ := (runtime.eventRecorded_iff leaks _ event).mp recorded
+      exact never entry member (own entry member event submitted)
+  obtain ⟨⟨leftTrace⟩, leftTurns, leftRecorded⟩ := facts left leftBoundary leftBounded
+  obtain ⟨⟨rightTrace⟩, rightTurns, rightRecorded⟩ := facts right rightBoundary rightBounded
+  have equal : foreignReadout (leaks := leaks) focal owner event left =
+      foreignReadout (leaks := leaks) focal owner event right := by
+    simp only [foreignReadout, same, leftTurns, rightTurns, leftRecorded, rightRecorded]
+  have environments : left.environmentRecall = right.environmentRecall :=
+    congrArg (fun traffic => traffic.2.2.1) same
+  have alone : ∀ (cut : (graph setup).order.Cut) other,
+      cut.Ready event → cut.Ready other → other = event := by
+    intro cut other ready otherReady
+    exact setup.eventGraph.sequentialize_ready_unique cut otherReady ready
+  rw [environments] at leftTrace
+  have coupled := opening_stopped_readout_congr scheduler focal deviation bound foreign outputEq
+    codeEq node alone left right (leftRemaining := 0) (rightRemaining := 0)
+    (by simpa only [Nat.zero_add] using leftTrace)
+    (by simpa only [Nat.zero_add] using rightTrace)
+    (leftBoundary.ordered.ready event.isLt) (rightBoundary.ordered.ready event.isLt)
+    value leftStored rightStored equal
+  have projected := congrArg (PMF.map Prod.fst) coupled
+  simpa only [ReactiveApplication.runUntilHorizon, environments, PMF.map_comp,
+    foreignReadout, Function.comp_def] using projected
+
+private theorem recorded_false_round
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
+    {owner : Player} (quiet : players owner =
+      (serviceApplication setup mode deadline leaks).silentPolicy)
+    {event : (serviceGraph setup mode).EventId}
+    {before after : (serviceApplication setup mode deadline leaks).Execution}
+    (unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
+      (before.recall owner) event = false)
+    (reached : after ∈ ((serviceApplication setup mode deadline leaks).round scheduler players
+      before).support) :
+    (serviceRuntime setup mode deadline).eventRecorded leaks (after.recall owner) event =
+      false := by
+  let app := serviceApplication setup mode deadline leaks
+  obtain ⟨command, _, middle, moved, cases⟩ := round_cases setup leaks reached
+  have recallEq := app.environmentStep_recall before middle command moved
+  have kept : (serviceRuntime setup mode deadline).eventRecorded leaks
+      (middle.recall owner) event = false := by rw [recallEq]; exact unrecorded
+  rcases cases with ⟨_, rfl⟩ | ⟨actor, _, response, chosen, rfl⟩
+  · exact kept
+  · by_cases same : actor = owner
+    · subst actor
+      rw [quiet, ReactiveApplication.silentPolicy, PMF.mem_support_pure_iff] at chosen
+      subst response
+      simpa only [ReactiveApplication.Execution.respond, ↓reduceIte, eventRecorded,
+        List.any_append, List.any_cons, List.any_nil, submittedEvent?, reduceCtorEq,
+        decide_false, Bool.false_or, Bool.or_false] using kept
+    · rw [app.respond_recall_other middle actor owner (fun equal => same equal.symm) response]
+      exact kept
+
+private theorem unrecorded_ready_handler
+    {horizon remaining : Nat}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {owner : Player} {event : (serviceGraph setup mode).EventId}
+    {left right : (serviceApplication setup mode deadline leaks).Execution}
+    (trace : ((serviceApplication setup mode deadline leaks).protocol
+      (serviceInitialLaw setup mode) horizon scheduler).Trace (some ⟨remaining, none, left⟩))
+    (unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
+      (left.recall owner) event = false)
+    (leftReady : left.application.config.cut.Ready event)
+    (rightReady : right.application.config.cut.Ready event)
+    (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
+      cut.Ready other → other = event)
+    (id : MessageId Player) (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (found : left.network.lookup id = some message) (sender : message.sender = owner) :
+    (handle (serviceRuntime setup mode deadline) left.application ⟨message.id,
+        message.payload.call⟩).map (fun state => state.playerView owner) = none ∧
+    (handle (serviceRuntime setup mode deadline) right.application ⟨message.id,
+        message.payload.call⟩).map (fun state => state.playerView owner) = none := by
+  have notNamed : message.payload.call.event? (serviceGraph setup mode) ≠ some event := by
+    intro named
+    obtain ⟨entry, present, material, transmitted, _emitted, state, known, packet⟩ :=
+      (legalFacts setup leaks horizon scheduler _ trace).provenance.lookup id message found
+    have old : entry ∈ left.recall owner := sender ▸ present
+    have call : material.call.packet = message.payload.call :=
+      congrArg (fun value => value.call) packet
+    have submitted : (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action =
+        some event := by
+      simp only [EventGraphRuntime.submittedEvent?, transmitted]
+      rw [call]
+      exact named
+    have recorded := ((serviceRuntime setup mode deadline).eventRecorded_iff leaks _ event).mpr
+      ⟨entry, old, submitted⟩
+    rw [unrecorded] at recorded
+    cases recorded
+  have rejected (state : EventGraphRuntime.State (serviceGraph setup mode))
+      (ready : state.config.cut.Ready event) :
+      handle (serviceRuntime setup mode deadline) state
+        ⟨message.id, message.payload.call⟩ = none := by
+    cases handled : handle (serviceRuntime setup mode deadline) state
+        ⟨message.id, message.payload.call⟩ with
+    | none => rfl
+    | some next =>
+        obtain ⟨query, named, queryReady, _action, _moved⟩ :=
+          handle_config_mem_step (serviceRuntime setup mode deadline) state next _ handled
+        have same := alone _ query ready queryReady
+        subst query
+        exact (notNamed named).elim
+  exact ⟨by rw [rejected left.application leftReady]; rfl,
+    by rw [rejected right.application rightReady]; rfl⟩
+
+private theorem silent_foreign_stopped_readout_congr
+    {horizon count leftRemaining rightRemaining : Nat}
+    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (focal : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    {event : (serviceGraph setup mode).EventId} {owner : Player}
+    (owned : (serviceGraph setup mode).actor? event = some owner) (foreign : owner ≠ focal)
+    (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
+      cut.Ready other → other = event)
+    (leftStart rightStart : (serviceApplication setup mode deadline leaks).Execution)
+    (leftTrace : ((serviceApplication setup mode deadline leaks).protocol
+      (serviceInitialLaw setup mode) horizon scheduler).Trace
+        (some ⟨leftRemaining + count, none, leftStart⟩))
+    (rightTrace : ((serviceApplication setup mode deadline leaks).protocol
+      (serviceInitialLaw setup mode) horizon scheduler).Trace
+        (some ⟨rightRemaining + count, none, rightStart⟩))
+    (leftReady : leftStart.application.config.cut.Ready event)
+    (rightReady : rightStart.application.config.cut.Ready event)
+    (leftUnrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
+      (leftStart.recall owner) event = false)
+    (rightUnrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
+      (rightStart.recall owner) event = false)
+    (same : foreignReadout (leaks := leaks) focal owner event leftStart =
+      foreignReadout (leaks := leaks) focal owner event rightStart) :
+    let app := serviceApplication setup mode deadline leaks
+    let players := Function.update (focalPlayers setup leaks focal deviation) owner app.silentPolicy
+    (app.runUntil scheduler players (fun final => event ∈ final.application.config.cut.completed)
+      count leftStart).map (foreignReadout (leaks := leaks) focal owner event) =
+    (app.runUntil scheduler players (fun final => event ∈ final.application.config.cut.completed)
+      count rightStart).map (foreignReadout (leaks := leaks) focal owner event) := by
+  intro app players
+  let invariant := fun (start : app.Execution) (count : Nat) (current : app.Execution) =>
+    (∃ remaining, Nonempty ((app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+      (some ⟨remaining + count, none, current⟩))) ∧
+    (event ∉ current.application.config.cut.completed →
+      current.application.config = start.application.config) ∧
+    (serviceRuntime setup mode deadline).eventRecorded leaks (current.recall owner) event = false
+  have advance (start : app.Execution) (startReady : start.application.config.cut.Ready event)
+      (n : Nat) (current : app.Execution) (valid : invariant start (n + 1) current)
+      (running : event ∉ current.application.config.cut.completed) (next : app.Execution)
+      (reached : next ∈ (app.round scheduler players current).support) :
+      invariant start n next := by
+    obtain ⟨⟨remaining, ⟨trace⟩⟩, framed, unrecorded⟩ := valid
+    have before : (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
+        (some ⟨(remaining + n) + 1, none, current⟩) := by
+      simpa only [Nat.add_assoc] using trace
+    obtain ⟨nextTrace⟩ := app.raw_trace_round (serviceInitialLaw setup mode) horizon scheduler
+      players (remaining + n) current next before reached
+    refine ⟨⟨remaining, ⟨nextTrace⟩⟩, ?_,
+      recorded_false_round (by simp only [players, Function.update_self]; rfl)
+        unrecorded reached⟩
+    intro unfinished
+    have currentReady : current.application.config.cut.Ready event :=
+      (framed running).symm ▸ startReady
+    exact (reactive_round_config_eq_of_pending (serviceRuntime setup mode deadline) leaks
+      scheduler players event current next
+      (fun query queryReady => alone _ query currentReady queryReady) unfinished reached).trans
+        (framed running)
+  apply ReactiveApplication.runUntil_map_congr_of_rounds app scheduler players players
+    (fun final => event ∈ final.application.config.cut.completed)
+    (foreignReadout (leaks := leaks) focal owner event)
+    (invariant leftStart) (invariant rightStart)
+  · intro n left right _leftValid _rightValid equal
+    have traffic := congrArg Prod.fst equal
+    have publics : left.application.publicView = right.application.publicView :=
+      congrArg (fun value => value.2.2.2.2.2) traffic
+    rw [cut_eq_of_publicView_eq publics]
+  · intro n left right leftValid rightValid equal running
+    obtain ⟨⟨leftRest, ⟨leftCurrentTrace⟩⟩, leftFrame, unrecorded⟩ := leftValid
+    obtain ⟨⟨rightRest, ⟨rightCurrentTrace⟩⟩, rightFrame, _⟩ := rightValid
+    have traffic := congrArg Prod.fst equal
+    have publics : left.application.publicView = right.application.publicView :=
+      congrArg (fun value => value.2.2.2.2.2) traffic
+    have rightRunning : event ∉ right.application.config.cut.completed := by
+      rw [← cut_eq_of_publicView_eq publics]
+      exact running
+    have currentLeftReady : left.application.config.cut.Ready event :=
+      (leftFrame running).symm ▸ leftReady
+    have currentRightReady : right.application.config.cut.Ready event :=
+      (rightFrame rightRunning).symm ▸ rightReady
+    apply foreignRound_readout_congr scheduler focal deviation owned foreign alone _ _
+      currentLeftReady currentRightReady equal
+    · intro _selected sample _sampled
+      refine ⟨⟨none⟩, ⟨none⟩, rfl, rfl, rfl, ?_⟩
+      exact bindingTraffic_respond_other foreign.symm
+        (bindingTraffic_activation (serviceRuntime setup mode deadline) leaks left right
+          focal owner traffic sample) _ _ (Or.inl ⟨rfl, rfl⟩)
+    · intro id message found sender
+      have rejected := unrecorded_ready_handler leftCurrentTrace unrecorded currentLeftReady
+        currentRightReady alone id message found sender
+      have leftNone : handle (serviceRuntime setup mode deadline) left.application
+          ⟨message.id, message.payload.call⟩ = none := by
+        cases handled : handle (serviceRuntime setup mode deadline) left.application
+            ⟨message.id, message.payload.call⟩ with
+        | none => rfl
+        | some after => rw [handled] at rejected; cases rejected.1
+      have rightNone : handle (serviceRuntime setup mode deadline) right.application
+          ⟨message.id, message.payload.call⟩ = none := by
+        cases handled : handle (serviceRuntime setup mode deadline) right.application
+            ⟨message.id, message.payload.call⟩ with
+        | none => rfl
+        | some after => rw [handled] at rejected; cases rejected.2
+      rw [leftNone, rightNone]
+  · exact advance leftStart leftReady
+  · exact advance rightStart rightReady
+  · exact ⟨⟨leftRemaining, ⟨leftTrace⟩⟩, fun _ => rfl, leftUnrecorded⟩
+  · exact ⟨⟨rightRemaining, ⟨rightTrace⟩⟩, fun _ => rfl, rightUnrecorded⟩
+  · exact same
+
+
+/-- An honest false disclosure emits no opening at its actual initialized
+boundary, so its stopped focal traffic depends only on initial focal traffic. -/
+theorem sourceService_withholding_traffic_congr
+    (runtime : EventGraphRuntime (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    {horizon : Nat} (scheduler : (application setup runtime leaks).Scheduler)
+    (bound : (graph setup).EventId → Nat) (turns : Nat)
+    (wholeProfile : BehavioralProfile setup.program) (focal owner : Player)
+    (deviation : (application setup runtime leaks).Policy) (foreign : owner ≠ focal)
+    (event : (graph setup).EventId) {payload : L.Ty}
+    (binding : FieldRef (graph setup).layout (.binding owner payload))
+    (checks : List (GuardCheck (graph setup).layout payload))
+    (outputEq : (graph setup).outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode (graph setup).layout) outputEq)
+      ((graph setup).nodes event) = .resolve owner payload binding checks)
+    (node : nodeView (graph setup) event =
+      .resolve owner payload binding checks outputEq codeEq)
+    (left right : (application setup runtime leaks).Execution)
+    (leftBoundary : CompletionBoundary setup leaks scheduler
+      (Function.update (serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
+        (firstTurnTiming setup turns) wholeProfile) focal deviation) event.val left)
+    (rightBoundary : CompletionBoundary setup leaks scheduler
+      (Function.update (serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
+        (firstTurnTiming setup turns) wholeProfile) focal deviation) event.val right)
+    (leftBounded : left.environmentRecall.length ≤ horizon)
+    (rightBounded : right.environmentRecall.length ≤ horizon)
+    (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right) :
+    (((application setup runtime leaks).runUntilHorizon scheduler
+      (Function.update (focalPlayers setup leaks focal deviation) owner
+        (decidedTurnPolicy setup leaks bound owner event
+          (cast (congrArg EventField.Action outputEq.symm) false)))
+      (fun final => event ∈ final.application.config.cut.completed) horizon left).map
+        (runtime.bindingTraffic leaks focal)) =
+    (((application setup runtime leaks).runUntilHorizon scheduler
+      (Function.update (focalPlayers setup leaks focal deviation) owner
+        (decidedTurnPolicy setup leaks bound owner event
+          (cast (congrArg EventField.Action outputEq.symm) false)))
+      (fun final => event ∈ final.application.config.cut.completed) horizon right).map
+        (runtime.bindingTraffic leaks focal)) := by
+  let app := application setup runtime leaks
+  let action := cast (congrArg EventField.Action outputEq.symm) false
+  let players := Function.update
+    (serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
+      (firstTurnTiming setup turns) wholeProfile) focal deviation
+  have silent : SilentAction event action := by
+    unfold SilentAction
+    rw [node]
+    simp only [action, cast_cast, cast_eq]
+  have quiet : decidedTurnPolicy setup leaks bound owner event action = app.silentPolicy := by
+    funext past view
+    exact decidedTurnPolicy_silent action silent past view
+  dsimp only [action] at quiet
+  have follows : players owner = serviceTurnPolicy setup .sequential runtime.deadline leaks
+      bound turns (firstTurnTiming setup turns) wholeProfile owner :=
+    Function.update_of_ne foreign _ _
+  have facts (current : app.Execution) (boundary : CompletionBoundary setup leaks scheduler
+      players event.val current) (bounded : current.environmentRecall.length ≤ horizon) :
+      Nonempty ((app.protocol (initialLaw setup) horizon scheduler).Trace
+        (some ⟨horizon - current.environmentRecall.length, none, current⟩)) ∧
+      ownerTurns owner event current = 0 ∧
+      runtime.eventRecorded leaks (current.recall owner) event = false := by
+    have atTurn : SubmitsAtTurn setup leaks (players owner) owner := by
+      rw [follows]
+      exact sourceServiceTurnPolicy_submitsAtTurn setup leaks bound turns
+        (firstTurnTiming setup turns) wholeProfile owner
+    have own := SubmitsAtTurn.roundsFrom setup leaks atTurn (initialLaw setup)
+      current.environmentRecall.length current boundary.supported
+    have never : ∀ entry ∈ current.recall owner,
+        entry.beforeView.application.publicView.ownTurn? owner ≠ some event := by
+      intro entry member turn
+      exact boundary.untouched event le_rfl owner entry member
+        (entry.beforeView.application.publicView.ownTurn?_spec owner event turn).1
+    refine ⟨app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler players
+      current.environmentRecall.length bounded current boundary.supported, ?_, ?_⟩
+    · apply List.countP_eq_zero.mpr
+      intro entry member
+      exact fun equal => never entry member (of_decide_eq_true equal)
+    · apply Bool.eq_false_iff.mpr
+      intro recorded
+      obtain ⟨entry, member, submitted⟩ := (runtime.eventRecorded_iff leaks _ event).mp recorded
+      exact never entry member (own entry member event submitted)
+  obtain ⟨⟨leftTrace⟩, leftTurns, leftRecorded⟩ := facts left leftBoundary leftBounded
+  obtain ⟨⟨rightTrace⟩, rightTurns, rightRecorded⟩ := facts right rightBoundary rightBounded
+  have equal : foreignReadout (leaks := leaks) focal owner event left =
+      foreignReadout (leaks := leaks) focal owner event right := by
+    simp only [foreignReadout, same, leftTurns, rightTurns, leftRecorded, rightRecorded]
+  have environments : left.environmentRecall = right.environmentRecall :=
+    congrArg (fun traffic => traffic.2.2.1) same
+  have alone : ∀ (cut : (graph setup).order.Cut) other,
+      cut.Ready event → cut.Ready other → other = event := by
+    intro cut other ready otherReady
+    exact setup.eventGraph.sequentialize_ready_unique cut otherReady ready
+  rw [environments] at leftTrace
+  have coupled := silent_foreign_stopped_readout_congr scheduler focal deviation
+    (nodeView_resolve_actor outputEq codeEq) foreign alone left right
+    (leftRemaining := 0) (rightRemaining := 0)
+    (by simpa only [Nat.zero_add] using leftTrace)
+    (by simpa only [Nat.zero_add] using rightTrace)
+    (leftBoundary.ordered.ready event.isLt) (rightBoundary.ordered.ready event.isLt)
+    leftRecorded rightRecorded equal
+  have projected := congrArg (PMF.map Prod.fst) coupled
+  simpa only [ReactiveApplication.runUntilHorizon, quiet, environments, PMF.map_comp,
+    foreignReadout, Function.comp_def] using projected
 
 end Vegas
