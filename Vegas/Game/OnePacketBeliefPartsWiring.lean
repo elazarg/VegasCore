@@ -108,7 +108,8 @@ def OnePacketOwnInputs.ofCertificate (wellFormed : setup.WellFormed)
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     {slots : Nat}
-    {weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p)}
+    {weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler slots p)}
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
     (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
       scale_pos

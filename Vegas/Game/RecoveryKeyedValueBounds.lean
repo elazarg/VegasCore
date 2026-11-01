@@ -464,7 +464,7 @@ theorem nativeComparison_keyed_value_bounds_of_pending [Fintype (RP).History]
               target (setup.intendedOpeningProfile (sequence n).strategy) site - excludedPayoff
                 who))| ≤
           error n := by
-  let inputs := nativeBaseInputs setup runtime leaks bounds horizon scheduler wellFormed independent
+  let inputs := OnePacketBaseInputs.ofSetup setup runtime leaks bounds horizon scheduler wellFormed independent
     observable
     sequence sourceMixed covers coversInputs capacity slots_pos
   have sameScale : scale = inputs.scale := funext scaleEq

@@ -343,7 +343,6 @@ import Vegas.Game.RecoveryNativeDebt
 import Vegas.Game.RecoveryNativeHistory
 import Vegas.Game.RecoveryNativeLaw
 import Vegas.Game.RecoveryNativeMixture
-import Vegas.Game.RecoveryNativePrefixBounds
 import Vegas.Game.RecoveryNativePrefixSites
 import Vegas.Game.RecoveryNativePrior
 import Vegas.Game.RecoveryNativeStrategy

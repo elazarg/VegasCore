@@ -108,8 +108,10 @@ omit [Finite setup.intendedProtocol.History] [DecidableEq (CellTy Player L)] in
 /-- **A debt-free witness.** At a site whose agent is forced and owes no failure,
 some history of the site decodes to a point at which nobody owes a failure. -/
 theorem exists_debtFree_witness {who : Player} {site : (onePacketN).InformationSite who}
-    (forced : ¬ FreeAgent setup runtime leaks bounds horizon scheduler ((onePacketN).agentAt site))
-    (notOwing : ¬ OwingAgent setup runtime leaks bounds horizon scheduler ((onePacketN).agentAt
+    (forced : ¬ FreeAgent setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler ((onePacketN).agentAt site))
+    (notOwing : ¬ OwingAgent setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler ((onePacketN).agentAt
       site)) :
     ∃ (witness : (onePacketN).InformationHistory who site.1)
       (control : (application setup runtime leaks).Control) (w : ProtocolState setup.program),
@@ -118,7 +120,8 @@ theorem exists_debtFree_witness {who : Player} {site : (onePacketN).InformationS
         ∀ player, ¬ ProtocolState.OwesFailure player setup.program w := by
   have isForced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks)
     (initialLaw setup)
-      horizon scheduler who site.1 := not_not.mp forced
+      horizon scheduler who site.1 :=
+    forcedAgent_of_not_free setup runtime leaks bounds (initialLaw setup) horizon scheduler forced
   obtain ⟨history, info, forcedState⟩ := isForced
   obtain ⟨state, trace⟩ := history
   cases state with
@@ -158,7 +161,8 @@ def OnePacketCounterpartInputs.ofReachComparisons
     (scaleEq : ∀ n, scale n = trembleScale
       (combinedFloor setup runtime leaks bounds horizon scheduler (sequence n)) (2 * horizon + 2) n)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler slots p))
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
     (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
       scale_pos

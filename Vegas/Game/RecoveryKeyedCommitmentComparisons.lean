@@ -153,7 +153,7 @@ theorem nativeComparison_keyed_commitment_comparisons_of_counted_service [Fintyp
                 stopped history.1) payoff) ≤
             success * intendedSiteGain setup parameter utility excludedPayoff (sequence n)
               sourceDeviation + error n := by
-  let inputs := nativeBaseInputs setup runtime leaks bounds horizon scheduler wellFormed independent
+  let inputs := OnePacketBaseInputs.ofSetup setup runtime leaks bounds horizon scheduler wellFormed independent
     observable
     sequence sourceMixed covers coversInputs capacity slots_pos
   have sameScale : scale = inputs.scale := funext scaleEq

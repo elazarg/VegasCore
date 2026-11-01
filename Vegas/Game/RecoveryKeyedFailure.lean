@@ -77,7 +77,7 @@ theorem nativeComparison_keyed_failure_bounds [Fintype (RP).History]
             (onePacketLate setup runtime leaks bounds horizon (NativeScheduler) sequence scale
               positive
               le_one n ((N).agentAt site) option) - failureScore n key option| ≤ drift n := by
-  let inputs := nativeBaseInputs setup runtime leaks bounds horizon scheduler wellFormed independent
+  let inputs := OnePacketBaseInputs.ofSetup setup runtime leaks bounds horizon scheduler wellFormed independent
     observable
     sequence sourceMixed covers coversInputs capacity slots_pos
   have sameScale : scale = inputs.scale := funext scaleEq

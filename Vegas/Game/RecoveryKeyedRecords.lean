@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryNativePrefixBounds
+import Vegas.Game.OnePacketBaseAssembly
 import Vegas.Game.OnePacketLateRecords
 
 /-! # Same-key operational records under the actual recovery beliefs -/
@@ -108,7 +108,7 @@ theorem nativeComparison_keyed_record_bounds [Fintype (RP).History]
                 (nativeComparisonLumping setup runtime leaks bounds horizon scheduler sequence scale
                   positive le_one weights covers capacity n who) (2 * horizon + 1) key option)| ≤
             drift n := by
-  let inputs := nativeBaseInputs setup runtime leaks bounds horizon scheduler wellFormed independent
+  let inputs := OnePacketBaseInputs.ofSetup setup runtime leaks bounds horizon scheduler wellFormed independent
     observable
     sequence sourceMixed covers coversInputs capacity slots_pos
   have sameScale : scale = inputs.scale := funext scaleEq

@@ -59,7 +59,8 @@ theorem reach_le_counterpart_certificate_of_repairs (wellFormed : setup.WellForm
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler slots p))
     (error_tendsto : Tendsto (fun n => slotError (scale n) (floor n)
       (trembleSlots setup bounds).card) atTop (nhds 0))
     (n : ℕ) (mixed : (sequence n).IsFullyMixed)

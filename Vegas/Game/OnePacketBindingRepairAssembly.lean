@@ -55,13 +55,16 @@ theorem exists_counterpart_certificate_of_repairs (wellFormed : setup.WellFormed
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler slots p))
     (error_tendsto : Tendsto (fun n => slotError (scale n) (floor n)
       (trembleSlots setup bounds).card) atTop (nhds 0))
     (n : ℕ) (mixed : (sequence n).IsFullyMixed)
     {who : Player} {site : (onePacketN).InformationSite who}
-    (forced : ¬ FreeAgent setup runtime leaks bounds horizon scheduler ((onePacketN).agentAt site))
-    (notOwing : ¬ OwingAgent setup runtime leaks bounds horizon scheduler ((onePacketN).agentAt
+    (forced : ¬ FreeAgent setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler ((onePacketN).agentAt site))
+    (notOwing : ¬ OwingAgent setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler ((onePacketN).agentAt
       site))
     {past : List (application setup runtime leaks).PlayerEntry}
     {view : (application setup runtime leaks).PlayerView} (atSite : site.1 = some (past, view))
@@ -103,7 +106,8 @@ theorem exists_counterpart_certificate_of_repairs (wellFormed : setup.WellFormed
     wellFormed independent observable covered sequence scale scale_pos scale_le_one small floor
     floor_pos
     floored covers capacity weights error_tendsto n mixed atSite
-    (forcedAgent_of_not_free setup runtime leaks bounds horizon scheduler forced) turn
+    (forcedAgent_of_not_free setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler forced) turn
     (toDecision history)
     (toDecision witness) historyState witnessState decodedP decodedW freeW
     regular
@@ -123,15 +127,18 @@ def OnePacketCounterpartInputs.ofBindingRepairs (wellFormed : setup.WellFormed)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds horizon scheduler slots p))
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler slots p))
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
     (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
       scale_pos
       scale_le_one weights targetSequence)
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     {who : Player} {site : (onePacketN).InformationSite who}
-    (forced : ¬ FreeAgent setup runtime leaks bounds horizon scheduler ((onePacketN).agentAt site))
-    (notOwing : ¬ OwingAgent setup runtime leaks bounds horizon scheduler ((onePacketN).agentAt
+    (forced : ¬ FreeAgent setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler ((onePacketN).agentAt site))
+    (notOwing : ¬ OwingAgent setup runtime leaks bounds (initialLaw setup)
+      horizon scheduler ((onePacketN).agentAt
       site))
     {past : List (application setup runtime leaks).PlayerEntry}
     {view : (application setup runtime leaks).PlayerView} (atSite : site.1 = some (past, view))
