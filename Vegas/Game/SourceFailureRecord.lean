@@ -84,10 +84,10 @@ theorem step {before after : (graph setup).Config}
           rw [← castSome (congrArg EventGraph.EventField.Value outputEq) .failure] at read
           exact (cast_inj _).mp read
         exact Or.inl ((ProtocolState.revealFailed_of_decode_failure setup.program other.val
-          (ContextRefs.initial setup.context (outputLayout setup.program)) []
-          (Revelations.initial setup.context) (outputRef setup.program) _ _ _ _ other.isLt owner
-          payload outputEq nextDecoded ((eventOwner?_eq_actor setup.program other).trans acting)
-          readOutput).indebted _ _)
+          (other.val + 1) (ContextRefs.initial setup.context (outputLayout setup.program)) []
+          (Revelations.initial setup.context) (outputRef setup.program) _ _ _ _ other.isLt
+          (Nat.lt_succ_self _) owner payload outputEq nextDecoded
+          ((eventOwner?_eq_actor setup.program other).trans acting) readOutput).indebted _ _)
     | bind bindOwner payload outputEq codeEq =>
         have ownerEq : bindOwner = owner :=
           Option.some.inj ((nodeView_bind_actor outputEq codeEq).symm.trans acting)

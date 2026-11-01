@@ -616,4 +616,39 @@ theorem runUntil_fixed_primary_drain
   rw [sameAction] at primary
   exact ⟨native, primary, drained⟩
 
+/-- A quiescent native protocol transition retains its graph configuration or
+performs one supported primary completion followed by automatic service. -/
+theorem reactive_protocol_primary_or_stutter (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (initial : PMF (State graph)) (horizon : Nat)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (before after : (runtime.reactiveApplication leaks).Control)
+    (joint : Player → Option (runtime.reactiveApplication leaks).Action)
+    (quiescent : ∀ event, ¬ before.execution.application.AutomaticReady event)
+    (supported : some after ∈ ((runtime.reactiveApplication leaks).transition
+      initial horizon scheduler (some before) joint).support) :
+    after.execution.application.config = before.execution.application.config ∨
+      ∃ (event : graph.EventId) (ready : before.execution.application.config.cut.Ready event)
+        (action : graph.Action event) (native : State graph),
+        native.config ∈ (before.execution.application.config.step event ready action).support ∧
+          after.execution.application.config = native.drain.config := by
+  rcases before with ⟨remaining, actor, execution⟩
+  cases actor with
+  | some who =>
+      cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp supported)
+      exact Or.inl (runtime.reactive_respond_application leaks execution who _).1
+  | none =>
+      cases remaining with
+      | zero =>
+          cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp supported)
+          exact Or.inl rfl
+      | succ remaining =>
+          obtain ⟨command, _selected, moved⟩ :=
+            Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
+          obtain ⟨next, reached, same⟩ := PMF.support_map .. ▸ moved
+          cases Option.some.inj same
+          exact environment_primary_or_stutter runtime leaks execution next command
+            quiescent reached
+
+
 end Vegas.EventGraphRuntime

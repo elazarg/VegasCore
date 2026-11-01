@@ -1,8 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketOpenableCommitment
-import Vegas.Game.OnePacketPrescribedCompletion
-import Vegas.Game.AsyncDeviationForeign
 
 /-! # The completion point after a commitment to an openable value
 
@@ -50,7 +48,7 @@ theorem completionPoint_of_openableCommitment
     {value : L.Val payload} {sent : (graph setup).Config} {ready : sent.cut.Ready event}
     {action : (graph setup).Action event}
     (successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
-      PublicationResult (L.Val payload)) = .success value)
+      Option (PublicationResult (L.Val payload))) = some (.success value))
     {rank : Nat} {profile : BehavioralProfile setup.program}
     (residual : SourceResidual setup profile rank sent) {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank sent = some point)
@@ -79,37 +77,12 @@ theorem completionPoint_of_openableCommitment
           := by
   classical
   intro stop member
-  have ordered := residual.checkpoint.ordered
-  obtain ⟨final, finalState, stepped⟩ := openableCommitment_stop (runtime := runtime) bounds
-    horizon scheduler
-    certificate players codeEq successful ordered terminalCompleted start holds stop member
-  rcases stepped with inStep | ⟨failing, failed, inStep⟩
-  · -- The event completes by the committed action, at the target.
-    obtain ⟨before, after, beforeDecoded, afterDecoded, reachedPoint⟩ :=
-      decodedPoint_step residual event ready action _ inStep
-    rw [decodedPoint_eq_of_isPrefix ordered, decoded] at beforeDecoded
-    cases Option.some.inj beforeDecoded
-    rw [stepEq, PMF.mem_support_pure_iff] at reachedPoint
-    subst reachedPoint
-    have prefixed := isPrefix_succ_of_mem_step ordered ready inStep
-    have prefixDecoded : sourceServicePrefix? setup (rank + 1)
-        final.execution.application.config = some after :=
-      (decodedPoint_eq_of_isPrefix prefixed).symm.trans afterDecoded
-    unfold completionPoint
-    rw [finalState]
-    dsimp only
-    rw [ite_eq_left prefixed .., prefixDecoded]
-    dsimp only
-    by_cases good : ProtocolState.Intended setup.program after ∧ fresh final
-    · exact Or.inr (by rw [ite_eq_left good ..])
-    · exact Or.inl (by rw [ite_eq_right good ..])
-  · -- The event fails, so the control is not fresh.
-    left
-    have output := step_binding_output (outputEq := outputEq) (codeEq := codeEq) inStep
-    have storeFailed : StoreEventFailed final.execution.application.config.store event :=
-      ⟨_, by rw [EventGraph.Config.store_output, output],
-        (isFailure_cast_binding_iff outputEq _).mpr failed⟩
-    have stale := failedStale final storeFailed
+  obtain ⟨final, finalState, completed⟩ := openableCommitment_stop (runtime := runtime) bounds
+    horizon scheduler certificate players codeEq successful residual.checkpoint.ordered
+      terminalCompleted start holds stop member
+  rcases completed with failed | ⟨primary, inStep, drained⟩
+  · left
+    have stale := failedStale final failed
     unfold completionPoint
     rw [finalState]
     dsimp only
@@ -121,6 +94,35 @@ theorem completionPoint_of_openableCommitment
         · rfl
       · rfl
     · rfl
+  · unfold completionPoint
+    rw [finalState]
+    dsimp only
+    split
+    · split
+      · rename_i found decodedFinal
+        split
+        · rename_i good
+          have clear := defaulted_eq_empty_of_decodedIntended decodedFinal good.1
+          have primaryClear : primary.config.defaulted = ∅ := by
+            rw [← primary.drain_defaulted, ← drained]
+            exact clear
+          have same : final.execution.application.config = primary.config := by
+            rw [drained, primary.drain_eq_of_empty primaryClear]
+          have actualStep : final.execution.application.config ∈
+              (sent.step event ready action).support := same.symm ▸ inStep
+          obtain ⟨before, after, beforeDecoded, afterDecoded, reachedPoint⟩ :=
+            decodedPoint_step residual event ready action _ actualStep
+          have beforeRead : decodedPoint setup sent = some point :=
+            (decodedPoint_eq residual).trans (residual.decode.symm.trans decoded)
+          rw [beforeRead] at beforeDecoded
+          cases Option.some.inj beforeDecoded
+          rw [stepEq, PMF.mem_support_pure_iff] at reachedPoint
+          subst reachedPoint
+          have samePoint : found = after := Option.some.inj (decodedFinal.symm.trans afterDecoded)
+          exact Or.inr (congrArg some samePoint)
+        · exact Or.inl rfl
+      · exact Or.inl rfl
+    · exact Or.inl rfl
 
 omit [DecidableEq Player] [Fintype Player] [IExpr.ResultTypes L] in
 private theorem cast_option_some {A B : Type} (same : A = B) (value : A) :
@@ -149,14 +151,12 @@ theorem storeEventFailed_of_unrecorded {control : (application setup runtime lea
     ((control.execution.application.config.output_available event).mpr done)
   generalize resultEq : (cast (congrArg EventGraph.EventField.Value outputEq) stored :
     PublicationResult (L.Val payload)) = result
-  have storedCast : stored = cast (congrArg EventGraph.EventField.Value outputEq.symm) result := by
-    rw [← resultEq]
-    simp only [cast_cast, cast_eq]
   cases result with
   | failure =>
-      refine ⟨stored, by rw [EventGraph.Config.store_output, storedEq], ?_⟩
-      rw [storedCast]
-      exact (isFailure_cast_binding_iff outputEq _).mpr rfl
+      apply storeEventFailed_of_ref _ event ⟨.inr event, outputEq⟩ rfl _ rfl
+      simp only [EventGraph.FieldRef.get?]
+      change cast _ (control.execution.application.config.outputs event) = _
+      rw [storedEq, cast_option_some (congrArg EventGraph.EventField.Value outputEq), resultEq]
   | success read =>
       exfalso
       have reads : (⟨.inr event, outputEq⟩ : EventGraph.FieldRef (graph setup).layout
@@ -168,10 +168,16 @@ theorem storeEventFailed_of_unrecorded {control : (application setup runtime lea
       obtain ⟨handle, accepted, ownerEq, _⟩ := facts.binding.success_provenance _ read reads
       obtain ⟨message, output, call⟩ := signed.acceptedSigned event handle accepted
       rw [ownerEq] at output
-      have recorded := (history_eventRecorded_iff (runtime := runtime) trace who event).mpr
-        ⟨message, output, by rw [call]; rfl⟩
-      rw [unrecorded] at recorded
-      cases recorded
+      obtain ⟨entry, member, emitted⟩ := List.mem_filterMap.mp output
+      obtain ⟨_, material, sent, packet⟩ := signed.emissions who entry member message emitted
+      have recorded := (runtime.eventRecorded_iff leaks _ event).mpr ⟨entry, member, ?_⟩
+      · rw [unrecorded] at recorded
+        cases recorded
+      · unfold EventGraphRuntime.submittedEvent?
+        rw [sent]
+        change material.call.packet.event? (graph setup) = some event
+        rw [← packet, call]
+        rfl
 
 section Payoffs
 
@@ -201,7 +207,7 @@ theorem completionPoint_congr_state {rank : Nat} {fresh : (application setup run
       horizon scheduler).History} (same : first.state = second.state) :
     completionPoint setup runtime leaks bounds horizon scheduler rank fresh first =
       completionPoint setup runtime leaks bounds horizon scheduler rank fresh second := by
-  unfold completionPoint
+  unfold completionPoint LateStopped
   rw [same]
 
 omit [Fintype Player] in
@@ -233,7 +239,7 @@ theorem expect_centeredCompletion_of_openableCommitment
     {value : L.Val payload} {sent : (graph setup).Config} {ready : sent.cut.Ready event}
     {action : (graph setup).Action event}
     (successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
-      PublicationResult (L.Val payload)) = .success value)
+      Option (PublicationResult (L.Val payload))) = some (.success value))
     {rank : Nat} {profile : BehavioralProfile setup.program}
     (residual : SourceResidual setup profile rank sent) {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank sent = some point)
@@ -317,12 +323,12 @@ theorem recall_eq_of_transition {initial : PMF (application setup runtime leaks)
 
 omit [Fintype Player] in
 /-- **Steps of others keep the owner unsent or fail the event.** From a state at
-which `who` has not sent for its binding `event`, the ready event of rank `rank`
+which `who` has not sent for its binding `event`, the ready event
 at `sent`, a transition at which `who` does not respond keeps `who` unsent, or
 completes the event with a failure. -/
 theorem lateUnsent_transition_other {who : Player} {event : (graph setup).EventId}
     {sent : (graph setup).Config} {past : List (application setup runtime leaks).PlayerEntry}
-    {rank : Nat} (ordered : sent.cut.IsPrefix rank) (ready : sent.cut.Ready event)
+    (ready : sent.cut.Ready event)
     {payload : L.Ty} (outputEq : (graph setup).outputLayout event = .binding who payload)
     (before : (application setup runtime leaks).Control)
     (holds : LateUnsent setup runtime leaks who event sent past (some before))
@@ -337,7 +343,7 @@ theorem lateUnsent_transition_other {who : Player} {event : (graph setup).EventI
       after) :
     LateUnsent setup runtime leaks who event sent past after ∨
       ∃ control : (application setup runtime leaks).Control, after = some control ∧
-        control.execution.application.config.cut.IsPrefix (rank + 1) ∧
+        event ∈ control.execution.application.config.cut.completed ∧
         StoreEventFailed control.execution.application.config.store event := by
   obtain ⟨atSent, extends_, unrecorded⟩ := holds
   subst atSent
@@ -345,20 +351,18 @@ theorem lateUnsent_transition_other {who : Player} {event : (graph setup).EventI
     setup)
     horizon scheduler before after joint reached
   have recallEq := recall_eq_of_transition (runtime := runtime) who before actorNe joint reached
-  rcases transition_configStep (initialLaw setup) horizon scheduler before
-    next joint reached with
-    same | ⟨completed, completedReady, action, member⟩
-  · left
-    exact ⟨same, recallEq ▸ extends_, by rw [recallEq]; exact unrecorded⟩
+  have path := reactive_protocol_graph_steps runtime leaks (initialLaw setup) horizon scheduler
+    before next joint reached
+  by_cases completed : event ∈ next.execution.application.config.cut.completed
   · right
-    have eventEq : completed = event := setup.eventGraph.sequentialize_ready_unique _ completedReady ready
-    subst eventEq
-    have done : completed ∈ next.execution.application.config.cut.completed := by
-      rw [before.execution.application.config.step_cut completed completedReady action _ member]
-      exact Finset.mem_insert_self _ _
-    refine ⟨next, rfl, isPrefix_succ_of_mem_step ordered completedReady member,
-      storeEventFailed_of_unrecorded (runtime := runtime) afterTrace outputEq done ?_⟩
+    refine ⟨next, rfl, completed,
+      storeEventFailed_of_unrecorded (runtime := runtime) afterTrace outputEq completed ?_⟩
     rw [recallEq]
     exact unrecorded
+  · left
+    have same := EventGraph.Config.Step.path_eq_of_ready_of_not_completed event
+      (fun other otherReady =>
+        setup.eventGraph.sequentialize_ready_unique _ otherReady ready) completed path
+    exact ⟨same, recallEq ▸ extends_, by rw [recallEq]; exact unrecorded⟩
 
 end Vegas

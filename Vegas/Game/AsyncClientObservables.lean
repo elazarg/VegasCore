@@ -6,8 +6,8 @@ import Vegas.Game.TerminalObservationLaws
 
 /-! # Client laws and observable guarantees under asynchronous service
 
-The common terminal observation retains the typed state, its original inputs
-and public result, and the entire realized settlement vector. Its joint law is
+The common terminal observation retains the typed cells, public default history,
+original inputs, public result and entire realized settlement vector. Its joint law is
 within the product deferral error of the source law for every source profile.
 Equilibrium assumptions are unnecessary. Event probabilities and bounded
 observable expectations inherit lower bounds with the same law error.
@@ -29,11 +29,12 @@ def clientSettlementLaw {turns : Nat} (timing : TurnTiming service.setup turns s
     (source : Profile (service.sourceModel admission).behavioralSignature)
     (sample : List (SettledEvidence service.setup service.mode) →
       PMF (List (SettledEvidence service.setup service.mode)))
-    (utility : State L service.setup.program.terminalCtx → Player → ℝ)
+    (utility : State L service.setup.program.terminalCtx × DefaultHistory Player → Player → ℝ)
     (deposit : Player → ℝ) :
     PMF (TerminalObservation service.setup) :=
   let settle := TerminalAudit.settlement
-    (serviceBaseUtility service.setup service.mode service.deadline service.leaks utility)
+    (serviceBaseUtility service.setup service.mode service.deadline service.leaks
+      (fun config => utility (config.state, config.defaults)))
     ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
       service.leaks)
     (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample) deposit
@@ -43,16 +44,17 @@ def clientSettlementLaw {turns : Nat} (timing : TurnTiming service.setup turns s
       (2 * service.horizon + 1)).bind fun final =>
         (settle final.state).map fun payoffs =>
           TerminalObservation.read service.setup
-            (serviceSourceReadout service.setup service.mode service.deadline service.leaks
-              final.state) payoffs
+            ((serviceSourceReadout service.setup service.mode service.deadline service.leaks
+              final.state).map (fun config => (config.state, config.defaults))) payoffs
 
 /-- The source law uses the same fixed terminal-input and public-result reader. -/
 def sourceSettlementLaw
     (source : Profile (service.sourceModel admission).behavioralSignature)
-    (utility : State L service.setup.program.terminalCtx → Player → ℝ) :
+    (utility : State L service.setup.program.terminalCtx × DefaultHistory Player → Player → ℝ) :
     PMF (TerminalObservation service.setup) :=
   (service.setup.run (service.setup.decodeBehavioralProfile admission source)).map
-    (fun state => TerminalObservation.read service.setup (some state) (utility state))
+    (fun config => TerminalObservation.read service.setup
+      (some (config.state, config.defaults)) (utility (config.state, config.defaults)))
 
 /-- Every source profile's raw clients reproduce its joint law within the
 product deferral error. Neither rationality nor a payoff-range premise is needed. -/
@@ -63,7 +65,7 @@ theorem clientSettlementLaw_withinTV
     (sample : List (SettledEvidence service.setup service.mode) →
       PMF (List (SettledEvidence service.setup service.mode)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
-    (utility : State L service.setup.program.terminalCtx → Player → ℝ)
+    (utility : State L service.setup.program.terminalCtx × DefaultHistory Player → Player → ℝ)
     (deposit : Player → ℝ) :
     PMF.WithinTV timing.deferralError
       (service.clientSettlementLaw admission timing source sample utility deposit)
@@ -72,7 +74,7 @@ theorem clientSettlementLaw_withinTV
     timing
     (service.setup.decodeBehavioralProfile admission source)
     (firstTurn_readout_law service.setup service.leaks ordered service.contract service.timely
-      turns _ (fun who => BehavioralPolicy.normalizeDisclosures_authentic _ _)) service.rawMenu
+      turns _ (fun _ => BehavioralPolicy.normalizeDisclosures_authentic _ _)) service.rawMenu
     (service.rawMenu_admits admission timing source) sample authentic utility deposit
   convert close.map (Function.uncurry (TerminalObservation.read service.setup)) using 1 <;>
     simp only [clientSettlementLaw, sourceSettlementLaw, PMF.map_bind, PMF.map_comp,
@@ -88,7 +90,7 @@ theorem clientSettlementLaw_event_lower_bound
     (sample : List (SettledEvidence service.setup service.mode) →
       PMF (List (SettledEvidence service.setup service.mode)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
-    (utility : State L service.setup.program.terminalCtx → Player → ℝ)
+    (utility : State L service.setup.program.terminalCtx × DefaultHistory Player → Player → ℝ)
     (deposit : Player → ℝ)
     (event : Set (TerminalObservation service.setup))
     (lower : ℝ)
@@ -111,7 +113,7 @@ theorem clientSettlementLaw_expect_lower_bound
     (sample : List (SettledEvidence service.setup service.mode) →
       PMF (List (SettledEvidence service.setup service.mode)))
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
-    (utility : State L service.setup.program.terminalCtx → Player → ℝ)
+    (utility : State L service.setup.program.terminalCtx × DefaultHistory Player → Player → ℝ)
     (deposit : Player → ℝ)
     (observable : TerminalObservation service.setup → ℝ)
     (low width lower : ℝ)
