@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Interaction.ReactiveInvariant
+import Interaction.ReactiveEnvironmentStep
 import Interaction.ReactiveStopping
 import Vegas.Pending.ReactiveRuntime
 
@@ -344,5 +345,156 @@ theorem reactiveHandle_opening_decision
   simp only [State.complete, Config.complete_history, decision]
   exact List.mem_append_right _ (List.mem_singleton_self _)
 
+
+private theorem environment_primary_or_stutter (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (before after : (runtime.reactiveApplication leaks).Execution)
+    (command : (runtime.reactiveApplication leaks).Command)
+    (quiescent : ∀ event, ¬ before.application.AutomaticReady event)
+    (reached : after ∈ (before.environmentStep (runtime.reactiveApplication leaks)
+      command).support) :
+    after.application.config = before.application.config ∨
+      ∃ (event : graph.EventId) (ready : before.application.config.cut.Ready event)
+        (action : graph.Action event) (native : State graph),
+        native.config ∈ (before.application.config.step event ready action).support ∧
+          after.application.config = native.drain.config := by
+  have drainStutter (native : State graph) (same : native.config = before.application.config) :
+      native.drain.config = before.application.config := by
+    rw [native.drain_eq_of_clear (fun event eligible => quiescent event (by
+      simpa only [State.AutomaticReady, same] using eligible)), same]
+  cases command with
+  | wait =>
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+        PMF.mem_support_pure_iff] at reached
+      subst after
+      exact Or.inl rfl
+  | activate who =>
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
+      exact Or.inl rfl
+  | «include» id =>
+      simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
+        PMF.mem_support_pure_iff] at reached
+      subst after
+      cases found : before.network.lookup id with
+      | none =>
+          left
+          simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
+            found]
+      | some message =>
+          cases accepted :
+              (runtime.reactiveApplication leaks).handle before.application message with
+          | none =>
+              left
+              simp only [ReactiveApplication.Execution.includePending,
+                MessageNetwork.includePending, found, accepted, Option.getD_none]
+          | some state =>
+              obtain ⟨native, handled, drained⟩ := reactiveHandle_call accepted
+              obtain ⟨event, _, ready, action, moved⟩ :=
+                handle_config_mem_step runtime before.application native _ handled
+              refine Or.inr ⟨event, ready, action, native, moved, ?_⟩
+              simp only [ReactiveApplication.Execution.includePending,
+                MessageNetwork.includePending, found, accepted, Option.getD_some]
+              rw [drained]
+  | application operation =>
+      obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
+      obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
+      change state ∈ ((environmentStep runtime before.application operation).map
+        State.drain).support at changed
+      obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ changed
+      cases operation with
+      | advanceClock =>
+          simp only [environmentStep, PMF.mem_support_pure_iff] at moved
+          subst native
+          exact Or.inl (drainStutter _ rfl)
+      | executeSample event =>
+          rcases (environmentStep_executeSample_config_activated runtime before.application
+            native event moved).2 with ⟨same, _⟩ | ⟨ready, action, sampled, _⟩
+          · exact Or.inl (drainStutter native same)
+          · exact Or.inr ⟨event, ready, action, native, sampled, rfl⟩
+      | expire event =>
+          rcases environmentStep_expire_config_eq_or_mem_step runtime before.application native
+            event moved with same | ⟨ready, action, expired⟩
+          · exact Or.inl (drainStutter native same)
+          · exact Or.inr ⟨event, ready, action, native, expired, rfl⟩
+
+private theorem round_primary_or_stutter (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (before after : (runtime.reactiveApplication leaks).Execution)
+    (quiescent : ∀ event, ¬ before.application.AutomaticReady event)
+    (reached : after ∈ ((runtime.reactiveApplication leaks).round scheduler players
+      before).support) :
+    after.application.config = before.application.config ∨
+      ∃ (event : graph.EventId) (ready : before.application.config.cut.Ready event)
+        (action : graph.Action event) (native : State graph),
+        native.config ∈ (before.application.config.step event ready action).support ∧
+          after.application.config = native.drain.config := by
+  let app := runtime.reactiveApplication leaks
+  obtain ⟨command, _, dispatched⟩ := (PMF.mem_support_bind_iff _ _ _).mp reached
+  obtain ⟨middle, moved, resumed⟩ := (PMF.mem_support_bind_iff _ _ _).mp dispatched
+  have configEq : after.application.config = middle.application.config := by
+    cases actor : command.actor? app with
+    | none =>
+        change after ∈ (app.resume players (command.actor? app) middle).support at resumed
+        simp only [actor, ReactiveApplication.resume, PMF.mem_support_pure_iff] at resumed
+        cases resumed
+        rfl
+    | some who =>
+        change after ∈ (app.resume players (command.actor? app) middle).support at resumed
+        rw [actor] at resumed
+        obtain ⟨response, _, rfl⟩ := PMF.support_map .. ▸ resumed
+        exact (reactive_respond_application runtime leaks middle who response).1
+  rw [configEq]
+  exact environment_primary_or_stutter runtime leaks before middle command quiescent moved
+
+/-- At a unique ready event with active owner, a completed stopped run is one
+supported primary graph step followed by native automatic completion. Arbitrary
+earlier rounds may stutter without changing the starting graph configuration. -/
+theorem runUntil_completed_primary_drain (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (event : graph.EventId) (count : Nat)
+    (before after : (runtime.reactiveApplication leaks).Execution)
+    (ready : before.application.config.cut.Ready event)
+    (unique : ∀ query, before.application.config.cut.Ready query → query = event)
+    (owner : Player) (owned : graph.actor? event = some owner)
+    (active : owner ∉ before.application.config.defaulted)
+    (reached : after ∈ ((runtime.reactiveApplication leaks).runUntil scheduler players
+      (fun current => event ∈ current.application.config.cut.completed) count before).support)
+    (completed : event ∈ after.application.config.cut.completed) :
+    ∃ (action : graph.Action event) (native : State graph),
+      native.config ∈ (before.application.config.step event ready action).support ∧
+        after.application.config = native.drain.config := by
+  induction count generalizing before with
+  | zero =>
+      cases (PMF.mem_support_pure_iff _ _).mp reached
+      exact (ready.1 completed).elim
+  | succ count ih =>
+      have quiescent : ∀ query, ¬ before.application.AutomaticReady query := by
+        intro query eligible
+        cases unique query eligible.1
+        obtain ⟨who, acting, inactive⟩ := eligible.owned
+        have same : who = owner := Option.some.inj (acting.symm.trans owned)
+        exact active (same ▸ inactive)
+      simp only [ReactiveApplication.runUntil, ready.1, ite_false] at reached
+      obtain ⟨middle, moved, rest⟩ := (PMF.mem_support_bind_iff _ _ _).mp reached
+      by_cases done : event ∈ middle.application.config.cut.completed
+      · rw [(runtime.reactiveApplication leaks).runUntil_of_stop scheduler players _ count
+          middle done, PMF.mem_support_pure_iff] at rest
+        subst after
+        rcases round_primary_or_stutter runtime leaks scheduler players before middle quiescent
+          moved with same | ⟨query, queryReady, action, native, primary, drained⟩
+        · exact (ready.1 (same ▸ done)).elim
+        · cases unique query queryReady
+          exact ⟨action, native, primary, drained⟩
+      · have same := reactive_round_config_eq_of_pending runtime leaks scheduler players event
+          before middle unique done moved
+        obtain ⟨action, native, primary, drained⟩ := ih middle (same ▸ ready)
+          (by simpa only [same] using unique) (by simpa only [same] using active) rest
+        refine ⟨action, native, ?_, drained⟩
+        simpa only [same] using primary
 
 end Vegas.EventGraphRuntime

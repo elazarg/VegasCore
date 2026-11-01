@@ -22,7 +22,7 @@ noncomputable section
 namespace GameTheory.Math.Probability
 
 /-- Disintegrating a readout law through a readout-determined choice. -/
-private theorem map_readout_choice {Choice Readout Target : Type*} (law : PMF Readout)
+theorem map_readout_choice {Choice Readout Target : Type*} (law : PMF Readout)
     (choose : Readout → Choice) (target : Choice → Readout → Target) :
     law.map (fun readout => target (choose readout) readout) =
       (law.map choose).bind fun choice =>
