@@ -6,12 +6,12 @@ import Vegas.Game.OnePacketPooledMemberGains
 import Vegas.Game.OnePacketKeyedCommitmentComparisons
 import Vegas.Game.OnePacketStoppedValueComparison
 import Vegas.Game.OnePacketUnintendedValue
-import Vegas.Game.RecoveryIrregularBeliefBounds
+import Vegas.Game.OnePacketIrregularBeliefBounds
 import GameTheoryExtensions.Analysis.Protocol.GainComparison
 import Vegas.Game.OnePacketOpeningUnique
 import Vegas.Game.OnePacketOpeningLaw
 import Vegas.Game.OnePacketPrescribedCompletion
-import Vegas.Game.RecoveryPooledGains
+import Vegas.Game.OnePacketPooledGains
 
 /-! # Native keyed local comparisons
 

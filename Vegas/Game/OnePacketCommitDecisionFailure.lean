@@ -2,7 +2,7 @@
 
 import Vegas.Game.OnePacketLateCertificate
 import Vegas.Game.OnePacketCertificateLumping
-import Vegas.Game.RecoveryNonLateChoices
+import Vegas.Game.OnePacketNonLateChoices
 import Vegas.Game.AsyncDeviationForeign
 
 /-! # Primitive failure after a prepared-slot commitment

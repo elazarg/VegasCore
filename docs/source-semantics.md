@@ -20,15 +20,14 @@ derives default control from that graph configuration:
 `Vegas.EventGraphRuntime.State.completeAutomatic_step` represents each
 automatic completion by a supported step of the same graph executor.
 
-The [replacement scope](source-absorbing-failure.md) records checked operational
-refinement and outstanding probabilistic client, deviation, monetary and
-equilibrium ports. The full repository and paper guards remain acceptance
-gates. In particular, an operational graph-path theorem alone does not imply
-preservation of every source sequential equilibrium.
+The [semantics guide](source-absorbing-failure.md) relates this execution to
+ordinary client correctness, unilateral deviation backtranslation and intended
+sequential-equilibrium compilation. Operational graph paths and probability
+laws have separate capstones with their stated service and strategic premises.
 
 Guards read permitted public data and their author's commitment. Executable
 transfers and an external valuation are separate utility components. A
 publicly defaulted player's source utility is its specified fixed exit value;
-monetary interpretation still needs its settlement correspondence.
+the monetary compiler preserves the corresponding settlement and cash law.
 
 See [the preservation scope and open questions](sequential-se-open-problems.md).

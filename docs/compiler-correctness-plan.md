@@ -21,12 +21,10 @@ The owners are [graph compilation](../Vegas/Compile/EventGraphScheduling.lean),
 [operational refinement](../Vegas/Pending/GraphRefinement.lean) and
 [direct physical compiler correctness](../Vegas/Game/SourceServiceFirstTurnCompletion.lean).
 The mode-general bounded-menu interfaces in
-[CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean) are checked under
-the same public-barrier certificate. Their manuscript composition, corresponding
-[Paper.lean](../Paper.lean) pins and full regression acceptance remain open.
-Paper-facing acceptance must pin exactly the stated
-capstones; normalization, packet, observation and induction helpers stay in
-their owning modules.
+[CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean) use the same
+public-barrier certificate. [Paper.lean](../Paper.lean) pins exactly the
+mathematical results stated in the maintained manuscript; normalization,
+packet, observation and induction helpers stay in their owning modules.
 
 The operational result reuses the existing graph reachability witness and
 native finite graph paths. Thus each projected raw prefix is related by
@@ -87,24 +85,20 @@ arbitrary graph policies that inspect chronological completion order.
 Raw operational safety needs no timeliness assumption. Its terminal availability
 conclusion uses the completion clause explicitly. Finite protocol fuel alone
 is not a proof of application completion. The SE and monetary compiler
-interfaces must compose the same native execution with their fixed default
+interfaces compose the same native execution with their fixed default
 payoffs, audit hypotheses and strategic comparison laws.
 
-## Acceptance and maintained presentation
+## Validation
 
-Manuscript acceptance requires exact capstone annotations and service-hypothesis
-mapping for operational refinement and ordinary compiler correctness. The
-preserved observable is terminal data, including public defaults. Every
-mathematical manuscript claim needs its exact guarded pin; unstated library
-helpers require none. The strategic and monetary claims retain their own
-acceptance obligations.
+Every mathematical manuscript claim has an exact guarded pin in Paper.lean;
+unstated library helpers require none. Operational and ordinary laws retain
+their service-hypothesis mapping and full public-default observation.
 
-The [bounded-runtime regression](../VegasTests/CompilerCorrectness.lean) remains
-an acceptance consumer. It must exercise successful and failed Boolean bindings
-and both disclosure choices in the actual payment service, retaining the exact
-joint full-state/payout law without an equilibrium premise. Source, scheduling,
-correlated-prior, positive-latency and recovery consumers remain part of the
-required full build.
+The [bounded-runtime regression](../VegasTests/CompilerCorrectness.lean)
+exercises successful and failed Boolean bindings and both disclosure choices
+in the actual payment service, retaining the joint full-state/payout law
+without an equilibrium premise. The default build includes all source,
+scheduling, correlated-prior, positive-latency and strategy-completion consumers.
 
 Acceptance requires the full `lake build`, exact standard-axiom guards, source
 policy, module boundaries, documentation checks and repository-checker tests.
@@ -122,7 +116,9 @@ sequential graph and isolate the missing local adapters before broadening the
 interface. Reuse existing operations and probability APIs; do not introduce
 another runtime or make this extension a prerequisite for the basic capstones.
 
-Further general DAGs, concurrent public reveals, backtranslation of arbitrary
-Interaction deviations, and concurrent raw-runtime SE are separate targets.
+Further general DAGs, concurrent public reveals, joint backtranslation of
+arbitrary Interaction profiles, and concurrent raw-runtime SE are separate
+targets. The unilateral physical deviation law above already covers arbitrary
+policies against compiled first-turn opponents.
 Parsing, extraction, cryptographic refinement and machine execution are outside
 the typed-source-to-ledger-model boundary.

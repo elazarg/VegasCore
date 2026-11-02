@@ -46,8 +46,8 @@ See [source semantics](docs/source-semantics.md).
 
 The compiler lowers source instructions to a typed event graph. Its checked
 source law, scheduler correspondence and Nash results remain in the core,
-including the concurrent event-graph Nash theorem: that result is about public
-graph scheduling, not concurrent raw-ledger SE preservation. Source execution
+including approximate Nash correspondence under every permitted public graph
+scheduler. The compiler retains source order to preserve public default timing. Source execution
 and the native runtime share absorbing public defaults; the runtime mechanically
 completes instructions of owners who have defaulted.
 There is no API compatibility requirement.
@@ -57,8 +57,9 @@ preserve every total observation of the joint typed terminal state and public
 default history under actual sequential clients, for every source profile.
 They compare those clients with canonical execution of the compiled graph,
 under the asynchronous service and timing premises. No finite wire catalogue,
-equilibrium or audit premise is required. The bounded-menu and mode-general
-ordinary interfaces remain acceptance obligations.
+equilibrium or audit premise is required. The
+[bounded-menu compiler laws](Vegas/Game/CompilerCorrectness.lean) realize this
+observation in every certified dependency mode.
 [Operational refinement](Vegas/Pending/GraphRefinement.lean) separately covers
 arbitrary raw responses. The [completion guide](docs/compiler-correctness-plan.md)
 records their hypotheses and the optional stronger graph-policy interface.

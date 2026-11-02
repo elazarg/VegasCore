@@ -4,7 +4,7 @@ import Vegas.Game.OnePacketCommitmentComparisons
 import Vegas.Game.OnePacketSilenceComparison
 import Vegas.Game.OnePacketDisclosureComparison
 import Vegas.Game.OnePacketUnintendedComparison
-import Vegas.Game.RecoveryNonLateChoices
+import Vegas.Game.OnePacketNonLateChoices
 import Vegas.Game.OnePacketStoppedValueComparison
 
 /-! # Uniform source incentive bounds at nonlate native inputs -/

@@ -2,7 +2,7 @@
 
 import Vegas.Game.IntendedCommitGain
 import Vegas.Game.OnePacketDecodedActor
-import Vegas.Game.RecoveryNonLateChoices
+import Vegas.Game.OnePacketNonLateChoices
 import Vegas.Game.OnePacketUnintendedCommitment
 import Vegas.Game.OnePacketBeliefWiring
 

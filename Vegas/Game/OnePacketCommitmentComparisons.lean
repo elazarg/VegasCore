@@ -7,8 +7,8 @@ import Vegas.Game.OnePacketOwnIntended
 import Vegas.Game.OnePacketPrescribedSites
 import Vegas.Game.OnePacketRecordedSilence
 import Vegas.Game.IntendedChoiceReach
-import Vegas.Game.RecoverySourceBeliefBounds
-import Vegas.Game.RecoveryIrregularBeliefBounds
+import Vegas.Game.OnePacketSourceBeliefBounds
+import Vegas.Game.OnePacketIrregularBeliefBounds
 import GameTheoryExtensions.Analysis.Protocol.SourceGainTransport
 import GameTheoryExtensions.Math.Probability.TotalVariation
 

@@ -5,7 +5,7 @@ import Vegas.Game.NativeExitContinuation
 import Vegas.Game.OnePacketComponents
 import Vegas.Game.OnePacketLateCertificate
 import Vegas.Game.OnePacketForeignFailureBound
-import Vegas.Game.RecoveryIrregularBeliefBounds
+import Vegas.Game.OnePacketIrregularBeliefBounds
 import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 import GameTheoryExtensions.Math.Probability.ExpectationContraction
 import GameTheory.Math.Probability.Bounds

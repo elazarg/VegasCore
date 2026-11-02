@@ -2,7 +2,7 @@
 
 import Vegas.Game.OnePacketKeyedValueBounds
 import Vegas.Game.OnePacketStoppedValueComparison
-import Vegas.Game.RecoveryPooledGains
+import Vegas.Game.OnePacketPooledGains
 
 /-! # Individual component gains under the common native completion
 

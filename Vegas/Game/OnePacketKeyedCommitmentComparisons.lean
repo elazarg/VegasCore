@@ -4,7 +4,7 @@ import Vegas.Game.OnePacketKeyedValueBounds
 import Vegas.Game.OnePacketCommittedValueAffine
 import Vegas.Game.OnePacketLateCommitFailure
 import Vegas.Game.OnePacketLateCommitments
-import Vegas.Game.RecoverySourceBeliefBounds
+import Vegas.Game.OnePacketSourceBeliefBounds
 import Vegas.Game.OnePacketCommitmentSourcePolicy
 
 /-! # Intended keyed commitments on the actual native assessment sequence -/

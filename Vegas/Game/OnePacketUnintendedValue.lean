@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketBeliefWiring
-import Vegas.Game.RecoveryNonLateChoices
+import Vegas.Game.OnePacketNonLateChoices
 import Vegas.Game.OnePacketUnintendedCommitment
 import Vegas.Game.OnePacketLateSuccess
 import Vegas.Game.OnePacketEventPhaseLaw

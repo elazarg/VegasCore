@@ -83,7 +83,8 @@ theorem AcceptedRecorded.complete {state : State graph} (recorded : state.Accept
     (nonbinding : ∀ owner payload, graph.outputLayout event ≠ .binding owner payload) :
     (state.complete event ready action value).AcceptedRecorded := by
   unfold AcceptedRecorded
-  simp only [State.complete, publicObserve, Config.complete, List.map_append, List.map_singleton]
+  simp only [State.complete, publicObserve, Config.complete, List.map_append, List.map_singleton,
+    EventGraph.completion]
   rw [bindingRecords_append]
   cases kind : graph.outputLayout event with
   | publicData payload | privateInput owner payload | publication payload =>
@@ -99,14 +100,15 @@ theorem AcceptedRecorded.binding {before after : State graph}
     (outputEq : graph.outputLayout event = .binding owner payload)
     (ready : before.config.cut.Ready event) (result : PublicationResult (L.Val payload))
     (config : after.config = before.config.complete event ready
-      (cast (congrArg EventField.Action outputEq.symm) result)
+      (cast (congrArg EventField.Action outputEq.symm) (some result))
       (cast (congrArg EventField.Value outputEq.symm) result))
     (accepted : after.accepted = Function.update before.accepted (.inr event)
       (some (owner, .prepared (before.publicView.bindingCount owner)))) :
     after.AcceptedRecorded := by
   unfold AcceptedRecorded
   rw [config]
-  simp only [publicObserve, Config.complete, List.map_append, List.map_singleton]
+  simp only [publicObserve, Config.complete, List.map_append, List.map_singleton,
+    EventGraph.completion]
   rw [bindingRecords_append]
   simp only [allocationStep, outputEq]
   rw [accepted, recorded, bindingRecords_count]

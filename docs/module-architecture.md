@@ -23,7 +23,7 @@ Source execution has one configuration-based evaluator, `SourceProgram.runFrom`.
 The source protocol uses the same sample, binding and revelation successors;
 it does not reproduce their state updates in another interpreter.
 
-The [absorbing-default port](source-absorbing-failure.md) checks that this source
+The [absorbing-default semantics](source-absorbing-failure.md) checks that this source
 executor and the graph executor preserve full configurations under compilation.
 The compiler generates sequential dependencies to retain public default timing;
 its scheduling proof uses the unique ready event. The sole ledger application
@@ -48,7 +48,8 @@ structural source induction carries typed checkpoints and automatic paths;
 defaulted instructions require no callback. Native Nash correspondence and its
 program-payment specialization use this same observation and actual-history
 settlement ranges (`AsyncServiceSpec.SettlementRange`). The concrete monetary
-runtime retains the joint typed-state/default-history/cash law. Native sequential preservation and the uniform semantic client compiler use
+runtime retains the joint typed-state/default-history/cash law. Native
+sequential preservation and the uniform semantic client compiler use
 this same runtime and preserve the complete source configuration and payoff law.
 
 Start with [sequential preservation](../Vegas/Game/SequentialCompilation.lean),

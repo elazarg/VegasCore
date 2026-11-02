@@ -12,8 +12,9 @@ preserve every total observation of the source profile's joint typed terminal
 state and public defaults under the actual physical clients. They compare the
 same clients with canonical execution of the compiled graph, using the
 asynchronous service and timing premises. They need no finite wire catalogue,
-equilibrium, audit, utility bound or independent-prior premise. Mode-general
-and bounded-menu compositions remain acceptance obligations.
+equilibrium, audit, utility bound or independent-prior premise.
+[Bounded-menu compiler laws](../Vegas/Game/CompilerCorrectness.lean) realize
+that observation in every dependency mode satisfying the public-barrier certificate.
 The [operational capstone](../Vegas/Pending/GraphRefinement.lean) exposes
 finite-path graph refinement of arbitrary raw protocol transitions and
 initialized histories. These results and their scope are listed in the
