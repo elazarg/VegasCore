@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 """Run the Lean-native Paper audit in a separate import driver."""
-from contextlib import contextmanager
 from pathlib import Path
-import ctypes
 import json
-import os
 import subprocess
 import sys
 import tempfile
@@ -12,76 +9,69 @@ import tempfile
 ROOT = Path(__file__).resolve().parent.parent
 
 
-@contextmanager
-def lean_lock():
-    """Share the repository's Lean process mutex on Windows."""
-    if os.name != 'nt':
-        yield
-        return
-    kernel = ctypes.windll.kernel32
-    kernel.CreateMutexW.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_wchar_p]
-    kernel.CreateMutexW.restype = ctypes.c_void_p
-    kernel.WaitForSingleObject.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
-    kernel.ReleaseMutex.argtypes = [ctypes.c_void_p]
-    kernel.CloseHandle.argtypes = [ctypes.c_void_p]
-    handle = kernel.CreateMutexW(None, False, 'VegasCoreLedgerBuild')
-    if not handle:
-        raise OSError('Could not create Lean process mutex')
-    try:
-        if kernel.WaitForSingleObject(handle, 0xFFFFFFFF) not in (0, 0x80):
-            raise OSError('Could not acquire Lean process mutex')
-        yield
-    finally:
-        kernel.ReleaseMutex(handle)
-        kernel.CloseHandle(handle)
+LEAN_TIMEOUT_SECONDS = 180
 
 
 def lean(args):
-    result = subprocess.run(['lake', 'env', 'lean', *map(str, args)], cwd=ROOT,
-                            text=True, encoding='utf-8', capture_output=True)
+    try:
+        result = subprocess.run(['lake', 'env', 'lean', *map(str, args)], cwd=ROOT,
+                                text=True, encoding='utf-8', capture_output=True,
+                                timeout=LEAN_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError(f'Lean audit exceeded {LEAN_TIMEOUT_SECONDS} seconds') from error
     if result.returncode:
         raise RuntimeError(result.stdout + result.stderr)
     return result.stdout
 
 
 def audit_files(files, *, source_override=None):
-    """Elaborate isolated cases in one native process; overrides are mutation tests only."""
+    """Use each exact import header and its pristine environment; overrides test mutations."""
     files = [Path(f).resolve() for f in files]
-    with lean_lock():
-        setup = ROOT / '.lake/build-stable/ir/Paper.setup.json'
-        tool_setup = ROOT / '.lake/build-stable/ir/Tools/PaperAudit.setup.json'
-        output = lean(['--setup', tool_setup, '--run', 'Tools/PaperAudit.lean', *files])
-        headers = json.loads(output.strip().splitlines()[-1])
-        imports = list(dict.fromkeys(name for h in headers for name in h['imports']))
-        prefix = ['import ' + name for name in imports]
-        if source_override is None:
-            prefix.append('import Tools.PaperAudit')
-        else:
-            # The injected copy stays in an ignored driver; maintained files and
-            # their compiled artifacts are never mutated.
-            prefix.append(source_override.replace('import Lean\n', '', 1))
-        prefix.append('open Lean Elab')
+    setup = ROOT / '.lake/build-stable/ir/Paper.setup.json'
+    tool_setup = ROOT / '.lake/build-stable/ir/Tools/PaperAudit.setup.json'
+    print(f'Auditing {len(files)} file(s); Lean calls have a '
+          f'{LEAN_TIMEOUT_SECONDS}s timeout.', file=sys.stderr, flush=True)
+    output = lean(['--setup', tool_setup, '--run', 'Tools/PaperAudit.lean', *files])
+    headers = json.loads(output.strip().splitlines()[-1])
+    groups = {}
+    for item in headers:
+        file = Path(item['file'])
+        header = file.read_text(encoding='utf-8').encode('utf-8')[:item['headerEnd']].decode('utf-8')
+        groups.setdefault(header, []).append(file)
+    tool = source_override if source_override is not None else (
+        ROOT / 'Tools/PaperAudit.lean').read_text(encoding='utf-8')
+    # Inline the validator after the target's imports. importEnv? retrieves the
+    # pristine import environment, before any validator or driver declarations.
+    # No tool import, merged headers, loader override or shared build writes occur.
+    tool = tool.replace('import Lean\n', '', 1)
+    directory = ROOT / '.lake/paper-audit'
+    directory.mkdir(parents=True, exist_ok=True)
+    reports = {}
+    for header, group in groups.items():
         commands = []
-        for file in files:
+        for file in group:
             value = file.as_posix()
             literal = (' ++\n    ').join(json.dumps(value[i:i+60], ensure_ascii=False)
                 for i in range(0, len(value), 60))
             commands.append('run_cmd do\n'
                 '  let path := ' + literal + '\n'
-                '  let report ← PaperAudit.run (← getEnv) (← getOptions) path\n'
+                '  let some env := (← getEnv).importEnv?\n'
+                '    | throwError "missing pristine import environment"\n'
+                '  let report ← PaperAudit.run env (← getOptions) path\n'
                 '  IO.println ("PAPER_AUDIT:" ++ (Lean.toJson report).compress)\n')
-        directory = ROOT / '.lake/paper-audit'
-        directory.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix='driver-', dir=directory) as temp:
             assert Path(temp).resolve().is_relative_to(directory.resolve())
             driver = Path(temp) / 'AuditDriver.lean'
-            driver.write_text('\n'.join(prefix + commands), encoding='utf-8')
+            driver.write_text(header + '\n' + tool + '\nopen Lean Elab\n' +
+                              '\n'.join(commands), encoding='utf-8')
             output = lean(['--setup', setup, driver])
-        reports = [json.loads(line.removeprefix('PAPER_AUDIT:'))
-                   for line in output.splitlines() if line.startswith('PAPER_AUDIT:')]
-        if len(reports) != len(files):
-            raise RuntimeError('Native audit did not report every input: ' + output)
-        return reports
+        for line in output.splitlines():
+            if line.startswith('PAPER_AUDIT:'):
+                report = json.loads(line.removeprefix('PAPER_AUDIT:'))
+                reports[Path(report['file'])] = report
+    if set(reports) != set(files):
+        raise RuntimeError('Native audit did not report every input')
+    return [reports[file] for file in files]
 
 
 def main():
@@ -90,7 +80,7 @@ def main():
         for error in report['errors']:
             print(report['file'] + ': ' + error)
         if not report['errors']:
-            print(f"{report['file']}: {len(report['results'])} authored proofs, "
+            print(f"{report['file']}: {len(report['results'])} Prop-typed results, "
                   f"{len(report['pins'])} exact guarded pins; native audit passed.")
     return int(any(r['errors'] for r in reports))
 

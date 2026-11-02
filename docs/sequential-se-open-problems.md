@@ -13,8 +13,8 @@ responses and useful information in rejected traffic, separating simple
 fallback rules from an explicit client with full sequential rationality.
 The [uniform semantic compiler](semantic-client-compiler.md) supplies bounded
 raw-menu clients through completion and decoding, with ledger realization
-under no pending delivery. Its catalogue premises require finite binding and
-publication value types. The [diagnostic client analysis](ledger-client-correctness.md)
+under no pending delivery. Its catalogue premises require finite binding, publication and
+initial-input value types. The [diagnostic client analysis](ledger-client-correctness.md)
 isolates the belief obligation for a manually prescribed policy; it is not an
 additional premise of the semantic compiler.
 The [correlated-prior analysis](sequential-correlated-prior-analysis.md) gives a
@@ -55,8 +55,8 @@ The substantive premises remain:
 * The actual raw-history service supplies opportunity, protected inclusion and
   completion. The opportunity and inclusion bounds sum to strictly less than
   each owned event's supplied relative deadline.
-* The finite wire menu covers relevant initial and output values, and the
-  candidate reserve exceeds the owner's binding-event count as stated in these
+* The finite wire menu covers every value of each binding, publication and
+  initial-input type; these types must be finite. The candidate reserve exceeds the owner's binding-event count as stated in these
   capstones.
 * Utilities have supplied bounds, and each excluded owner's fixed payoff is no
   greater than its utility at every intended terminal readout.

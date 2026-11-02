@@ -31,6 +31,11 @@ jobs:
         run: python scripts/check-lean-options.py
       - name: Check module boundaries and build reachability
         run: python scripts/check-module-boundaries.py
+      - name: Test repository checks before the Lean build
+        run: >-
+          python -m unittest scripts.test_doc_references scripts.test_lean_options
+          scripts.test_module_boundaries scripts.test_proof_inventory
+          scripts.test_report_unreached
       - name: Record the GameTheory revision
         id: gametheory
         run: echo "sha=$(git -C GameTheory rev-parse HEAD)" >> "$GITHUB_OUTPUT"
@@ -45,8 +50,8 @@ jobs:
         run: lake build
       - name: Audit paper syntax, proof types and exact pins with Lean
         run: python scripts/check-paper-audit.py
-      - name: Test repository checks and audit mutations
-        run: python -m unittest discover -s scripts -p 'test_*.py'
+      - name: Test native paper audits and mutations
+        run: python -m unittest discover -s scripts -p 'test_paper_audit.py'
 
   docs:
     # API documentation takes far longer than the build, so only main publishes it.

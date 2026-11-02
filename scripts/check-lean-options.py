@@ -12,9 +12,6 @@ import sys
 import tomllib
 
 
-STANDARD_AXIOMS = {"propext", "Classical.choice", "Quot.sound"}
-
-
 def check_central_options(options: dict) -> list[str]:
     """Require explicit binders and warnings as errors, with sorry warnings on."""
     required = {

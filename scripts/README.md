@@ -15,13 +15,23 @@ Module checks validate imports, aggregator coverage and architectural layers.
 Source policy rejects admissions, axiom declarations and trust escapes and enforces
 central options. The separate Lean-native paper audit runs after the build: it
 uses Lean's parser and elaborated declaration types, requires every authored
-proof (including proof-valued definitions and abbreviations) to have an adjacent
-exact guarded pin, and checks its actual axioms. It permits fresh local identifier
-shorthands but rejects instance-changing opens, shadowing notation, attributes
-and syntax extensions. Data defaults and documented structure fields are supported;
-proof-valued field defaults must be stated as separate named results. Its import driver is isolated from the paper and needs
-no unsafe loader or theorem-source exceptions. Native mutation fixtures check
-coverage, adjacency and explicit statements independently.
+Prop-typed declaration (including definitions and abbreviations of proofs) to
+have an adjacent exact guarded pin, and checks its actual axioms. Proofs stored
+inside data are not counted separately; a pinned result using such data still
+has its complete transitive axiom dependencies checked.
+
+The audit permits fresh local identifier shorthands and ordinary opens of Vegas,
+GameTheory and Interaction namespaces, including term-level opens. It rejects
+classes, scoped opens, shadowing notation, attributes and syntax extensions.
+Data defaults and documented structure fields are supported; proof-valued field
+defaults must be stated as separate named results. Each file uses its own exact
+import header and pristine import environment, before validator declarations.
+The isolated driver uses no loader overrides or shared build writes. Every Lean
+subprocess has a visible 180-second timeout; no cross-process mutex is needed.
+Native mutation fixtures check coverage, adjacency and explicit statements
+independently. CI runs ordinary script tests before the Lean build and the
+native audit tests afterward.
+
 Documentation checks resolve active citations and Markdown paths; external
 sources pinned by full commit IDs refer to their own tree.
 

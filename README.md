@@ -14,7 +14,7 @@ source policy. The manuscript is maintained separately in `overleaf/`.
 
 | Result | Checked scope |
 | --- | --- |
-| `Vegas.intended_raw_sequentialEquilibrium_preserved` | Intended-game SE extends to the bounded raw-menu game of the forced-exit contract on the sequential graph under a finitely branching asynchronous builder, arbitrary finitely branching pending observation, conditional independence of initial private data given a public signal, and funded count-audit coverage. The realized joint outcome/payoff law is preserved and no player is excluded or charged on the implementing path. |
+| `Vegas.intended_raw_sequentialEquilibrium_preserved` | Intended-game SE extends to the bounded raw-menu game of the forced-exit contract on the sequential graph with finite catalogues covering every binding, publication and initial-input value, under a finitely branching asynchronous builder, arbitrary finitely branching pending observation, conditional independence of initial private data given a public signal, and funded count-audit coverage. The realized joint outcome/payoff law is preserved and no player is excluded or charged on the implementing path. |
 | `Vegas.intended_raw_programPayments_preserved` | Every supplied compilation and its exact physical clients retain executable receipts jointly with initial inputs, typed terminal state and public results. |
 | `Vegas.EventGraphRuntime.MessageBounds.onePacket_raw_sequentialEquilibrium` | Extension from the one-permitted-packet game to the bounded raw response menu of the same native application and scheduler, for normalization-invariant utilities, authentic count-evidence coverage and deposits covering the legal-history payoff spread. |
 
@@ -101,6 +101,7 @@ toolchain and manifest determine dependencies. Run:
 
 ```powershell
 lake build
+python scripts/check-paper-audit.py
 python scripts/check-module-boundaries.py
 python scripts/check-lean-options.py
 python scripts/check-doc-references.py

@@ -363,7 +363,8 @@ omit resultTypes in
 @[simp] theorem Config.view_defaulted (who : Player) (config : Config Player L Γ) :
     (config.view who).defaulted = config.defaulted := rfl
 
-/-- A public sample leaves defaults and strategic recall unchanged. -/
+/-- A public sample records a non-default step while preserving the defaulted
+player set and strategic recall. -/
 def sampleSuccessor (name : VarId) (config : Config Player L Γ) (value : L.Val payload) :
     Config Player L ((name, .publicData payload) :: Γ) :=
   ⟨Env.cons value config.state, Registry.weaken config.registry,

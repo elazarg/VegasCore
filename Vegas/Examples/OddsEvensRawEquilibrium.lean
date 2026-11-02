@@ -87,15 +87,12 @@ theorem intended_equilibrium_preserved
     let observe := app.stateTraffic
     let audit := (rt).countAudit leaks
       evidenceService.sample
-    let base := exclusionBase fixture rt (fun _ : State simpleExpr fixture.context => ())
-      OddsEvens.sourceUtility (fun _ => 0) leaks
-    let payoff := GameTheory.Enforcement.TerminalAudit.utility base observe audit (fun _ => 800)
-    let settle := TerminalAudit.settlement base observe audit (fun _ => 800)
+    let settle := specification.settlement
     ∃ target : (raw.information initial steps serviceScheduler).BehavioralAssessment,
       target.IsSequentialEquilibrium
         (raw.decisionInformationAntichain initial steps serviceScheduler)
         (raw.bounded initial steps serviceScheduler).wellFoundedHistories
-        (fun who final => payoff final.state who) ∧
+        (fun who final => specification.payoff who final.state) ∧
       (∀ final ∈ ((raw.information initial steps serviceScheduler).runBehavioral
           target.strategy (2 * steps + 1)).support,
         ∀ control, final.state = some control →
@@ -111,7 +108,7 @@ theorem intended_equilibrium_preserved
           (instructionCount fixture.program + 1)).map
           (intendedReadoutExclusion fixture (fun _ => ()) OddsEvens.sourceUtility
             (fun _ => 0)) := by
-  intro raw observe audit base payoff settle
+  intro raw observe audit settle
   let : app.FiniteNature (Vegas.initialLaw fixture) serviceScheduler :=
     (inferInstance : app.FiniteNature initial serviceScheduler)
   obtain ⟨compiled⟩ := Vegas.intended_raw_sequentialEquilibrium_preserved
@@ -132,15 +129,12 @@ theorem fair_equilibrium_exists :
     let observe := app.stateTraffic
     let audit := (rt).countAudit leaks
       evidenceService.sample
-    let base := exclusionBase fixture rt (fun _ : State simpleExpr fixture.context => ())
-      OddsEvens.sourceUtility (fun _ => 0) leaks
-    let payoff := GameTheory.Enforcement.TerminalAudit.utility base observe audit (fun _ => 800)
-    let settle := TerminalAudit.settlement base observe audit (fun _ => 800)
+    let settle := specification.settlement
     ∃ target : (raw.information initial steps serviceScheduler).BehavioralAssessment,
       target.IsSequentialEquilibrium
         (raw.decisionInformationAntichain initial steps serviceScheduler)
         (raw.bounded initial steps serviceScheduler).wellFoundedHistories
-        (fun who final => payoff final.state who) ∧
+        (fun who final => specification.payoff who final.state) ∧
       (∀ final ∈ ((raw.information initial steps serviceScheduler).runBehavioral
           target.strategy (2 * steps + 1)).support,
         ∀ control, final.state = some control →
@@ -159,7 +153,7 @@ theorem fair_equilibrium_exists :
         (fun final => (settle final.state).map fun payoffs =>
           (sourceReadout fixture rt leaks final.state, payoffs)))
           (fun realized => realized.2 who) = 100 := by
-  intro raw observe audit base payoff settle
+  intro raw observe audit settle
   obtain ⟨target, rational, clear, noCharges, joint⟩ :=
     intended_equilibrium_preserved OddsEvens.uniformAssessment (by
       exact OddsEvens.uniformAssessment_equilibrium)

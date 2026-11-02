@@ -4,6 +4,8 @@ from pathlib import Path
 import tempfile
 import textwrap
 import unittest
+from unittest.mock import patch
+import subprocess
 
 SPEC = importlib.util.spec_from_file_location('paper_audit', Path(__file__).with_name('check-paper-audit.py'))
 AUDIT = importlib.util.module_from_spec(SPEC)
@@ -25,6 +27,7 @@ def proof(name='result', kind='theorem', result='True', body='True.intro'):
 class PaperAuditTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        (ROOT / '.lake/paper-audit').mkdir(parents=True, exist_ok=True)
         cls.temp = tempfile.TemporaryDirectory(prefix='cases-', dir=ROOT / '.lake/paper-audit')
         cls.addClassCleanup(cls.temp.cleanup)
         cls.directory = Path(cls.temp.name)
@@ -48,7 +51,7 @@ class PaperAuditTests(unittest.TestCase):
             'pinned_abbreviation': proof(kind='abbrev') + pin(),
             'documented': '/-- A reflexive result. -/ ' + proof() + pin(),
             'indented': 'section\n  ' + proof() + pin() + 'end\n',
-            'scoped': 'open Nat in ' + proof() + pin(),
+            'scoped': 'def Vegas.Paper.counter : Nat := 0\nopen Vegas.Paper in ' + proof() + pin(),
             'multiline': 'theorem Vegas.Paper.result\n  : True\n  := by\n    trivial\n' + pin(),
             'concept': 'def Vegas.Paper.Predicate : Prop := True\n' + base,
             'concept_pin': 'def Vegas.Paper.Predicate : Prop := True\n' + pin('Predicate') + base,
@@ -56,10 +59,12 @@ class PaperAuditTests(unittest.TestCase):
                          '  /-- A number. -/\n  amount : Nat\n\n'
                          '  /-- A certificate. -/\n  property : amount = amount\n' + base,
             'proof_default': 'structure Vegas.Paper.Hidden where\n  fact : (∀ n : Nat, n + 0 = n) := by simp\n' + base,
+            'type_proof_default': 'structure Vegas.Paper.Hidden : Type where\n'
+                '  fact : (1 : Nat) = 1 := rfl\n' + base,
             'data_default': 'structure Vegas.Paper.Counter where\n  value : Nat := 0\n' + base,
             'derive': 'structure Vegas.Paper.Observation where deriving Inhabited\n' + base,
             'local_instance': 'local instance : Inhabited Nat := ⟨0⟩\n' + base,
-            'attribute': 'attribute [local instance] Nat.instInhabited\n' + base,
+            'attribute': 'attribute [local instance] instInhabitedNat\n' + base,
             'alias': 'def Vegas.Paper.anchor : Nat := 0\n  alias Vegas.Paper.hidden := Nat.add_comm\n' + base,
             'notation3': 'def Vegas.Paper.anchor : Nat := 0\n  notation3 "privateToken" => True\n' + base,
             'open_classical': 'open Classical\n' + base,
@@ -69,6 +74,19 @@ class PaperAuditTests(unittest.TestCase):
             'shadow_keyword': 'local notation "by" => True\n' + base,
             'shadow_variable': 'section\nvariable (value : Nat)\nlocal notation "value" => 0\n' + base + 'end\n',
             'fresh_notation': 'local notation "auditCounter" => Nat\ndef Vegas.Paper.counter : auditCounter := 0\n' + base,
+            'class': 'class Vegas.Paper.Hidden extends Inhabited Nat\n' + base,
+            'prop_structure': 'structure Vegas.Paper.Claim : Prop where\n  fact : (1 : Nat) = 1\n' + base,
+            'subtype_data': 'def Vegas.Paper.certified : {n : Nat // n = n} := ⟨0, rfl⟩\n' + base,
+            'plift_data': 'def Vegas.Paper.certified : PLift (1 = 1) := ⟨rfl⟩\n' + base,
+            'structure_data': 'structure Vegas.Paper.Certified : Type where\n  fact : (1 : Nat) = 1\n'
+                'def Vegas.Paper.certificate : Vegas.Paper.Certified := ⟨rfl⟩\n' + base,
+            'open_pointwise': 'open Pointwise\n' + base,
+            'term_open_classical': 'def Vegas.Paper.Condition (p : Prop) : Prop := '
+                '(open Classical in (if p then True else True))\n' + base,
+            'tactic_open_pointwise': proof('hidden', body='by open Pointwise in trivial') + base,
+            'safe_term_open': 'def Vegas.Paper.counter : Nat := 0\n' +
+                proof(result='(open Vegas.Paper in counter = counter)', body='rfl') + pin(),
+            'fresh_main': 'local notation "main" => Nat\ndef Vegas.Paper.counter : main := 0\n' + base,
             'empty': '',
         }
         cls.paths = {}
@@ -76,6 +94,16 @@ class PaperAuditTests(unittest.TestCase):
             path = cls.directory / (name + '.lean')
             path.write_text(HEADER + text, encoding='utf-8')
             cls.paths[name] = path
+        # These files deliberately have different import headers. A merged driver
+        # would make Real available to lean_only and invalidate this test.
+        for name, header in (('lean_only', 'import Lean\n'), ('mathlib_real', HEADER)):
+            path = cls.directory / (name + '.lean')
+            path.write_text(header + 'def Vegas.Paper.RealType : Type := Real\n' + base,
+                            encoding='utf-8')
+            cls.paths[name] = path
+        # The real paper does not import the full Lean frontend umbrella.
+        # Auditing it catches dependencies that the small fixture headers hide.
+        cls.paths['actual_paper'] = ROOT / 'Paper.lean'
         reports = AUDIT.audit_files(list(cls.paths.values()))
         cls.reports = dict(zip(cls.paths, reports))
 
@@ -104,7 +132,9 @@ class PaperAuditTests(unittest.TestCase):
 
     def test_accepted_ordinary_lean_forms(self):
         for case in ('valid', 'pinned_definition', 'pinned_abbreviation', 'documented',
-                     'indented', 'scoped', 'multiline', 'concept', 'structure', 'fresh_notation', 'data_default'):
+                     'indented', 'scoped', 'multiline', 'concept', 'structure', 'fresh_notation', 'data_default', 'prop_structure',
+                     'subtype_data', 'plift_data', 'structure_data', 'fresh_main', 'safe_term_open',
+                     'mathlib_real'):
             with self.subTest(case=case):
                 self.assertEqual(self.reports[case]['errors'], [])
 
@@ -118,18 +148,52 @@ class PaperAuditTests(unittest.TestCase):
         self.error('empty', 'must contain stated results')
 
     def test_instances_aliases_and_syntax_extensions_reject(self):
-        for case in ('derive', 'local_instance', 'attribute', 'alias', 'notation3'):
+        self.error('derive', 'Paper declarations cannot derive instances')
+        self.error('class', 'Paper declarations cannot create classes')
+        self.error('local_instance', 'unsupported Paper declaration kind: Lean.Parser.Command.instance')
+        self.error('attribute', 'unsupported Paper command kind: Lean.Parser.Command.attribute')
+        for case in ('alias', 'notation3'):
             with self.subTest(case=case):
-                self.assertTrue(self.reports[case]['errors'], case)
+                self.error(case, 'unsupported Paper command kind')
+
+    def test_actual_paper_passes_with_its_own_import_header(self):
+        report = self.reports['actual_paper']
+        self.assertEqual(report['errors'], [])
+        self.assertTrue(report['results'])
+        self.assertEqual(set(report['results']), set(report['pins']))
+
+    def test_each_file_uses_only_its_own_imports(self):
+        self.assertEqual(self.reports['mathlib_real']['errors'], [])
+        self.assertTrue(any("Unknown identifier `Real`" in e
+                            for e in self.reports['lean_only']['errors']),
+                        self.reports['lean_only']['errors'])
+
+    def test_rejections_are_policy_diagnostics_and_keep_later_results(self):
+        for case in ('class', 'open_pointwise', 'term_open_classical', 'attribute'):
+            with self.subTest(case=case):
+                report = self.reports[case]
+                self.assertIn('Vegas.Paper.result', report['results'])
+                self.assertFalse(any('unexpected internal error' in e or
+                                     'must contain stated results' in e for e in report['errors']))
+
+    def test_lean_process_has_a_bounded_timeout(self):
+        with patch.object(AUDIT.subprocess, 'run', side_effect=subprocess.TimeoutExpired('lean', 180)) as run:
+            with self.assertRaisesRegex(RuntimeError, 'Lean audit exceeded 180 seconds'):
+                AUDIT.lean(['fixture.lean'])
+            self.assertEqual(run.call_args.kwargs['timeout'], 180)
 
     def test_meaning_changing_opens_and_notations_reject(self):
-        self.error('open_classical', 'opening Classical changes')
+        self.error('open_classical', 'Paper opens only Vegas, GameTheory and Interaction')
+        self.error('open_pointwise', 'Paper opens only Vegas, GameTheory and Interaction')
+        self.error('term_open_classical', 'Paper opens only Vegas, GameTheory and Interaction')
+        self.error('tactic_open_pointwise', 'Paper opens only Vegas, GameTheory and Interaction')
         self.error('open_scoped_classical', 'ordinary namespace opens')
         self.error('shadow_true', 'shadows an existing name')
         self.error('shadow_keyword', 'shadows a parser token')
         self.error('exit', 'unsupported terminal Paper command')
         self.error('shadow_variable', 'shadows a section variable')
         self.error('proof_default', 'proof-valued structure default')
+        self.error('type_proof_default', 'proof-valued structure default')
 
     def test_validation_checks_have_isolated_mutation_witnesses(self):
         source = (ROOT / 'Tools/PaperAudit.lean').read_text(encoding='utf-8')

@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 import Lean
 
-open Lean Elab Frontend
+open Lean Elab
 
 /-- State of the separate paper validator; it is never imported by the paper. -/
 structure PaperAudit where
@@ -19,16 +19,54 @@ structure PaperAudit.Report where
   errors : Array String
   deriving ToJson
 
-private def PaperAudit.fail (state : IO.Ref PaperAudit) (message : String) : FrontendM Unit :=
+/-- The parser and command states needed for a standalone audit. -/
+private structure PaperAudit.Input where
+  commandState : Command.State
+  parserState : Parser.ModuleParserState
+  cmdPos : String.Pos.Raw
+
+private abbrev PaperAudit.Elaboration := ReaderT Parser.InputContext (StateRefT PaperAudit.Input IO)
+
+private def PaperAudit.runCommandElabM {α : Type} (action : Command.CommandElabM α) :
+    PaperAudit.Elaboration α := do
+  let ctx ← read
+  let state ← get
+  let context : Command.Context := {
+    cmdPos := state.cmdPos, fileName := ctx.fileName, fileMap := ctx.fileMap,
+    snap? := none, cancelTk? := none }
+  match ← EIO.toIO' <| (action context).run state.commandState with
+  | .error error => throw <| IO.userError (← error.toMessageData.toString)
+  | .ok (value, commands) =>
+    modify fun s => { s with commandState := commands }
+    return value
+
+private def PaperAudit.fail (state : IO.Ref PaperAudit) (message : String) :
+    PaperAudit.Elaboration Unit :=
   state.modify fun s => { s with errors := s.errors.push message }
 
 private partial def PaperAudit.identifiers (stx : Syntax) : Array Name :=
   if stx.isIdent then #[stx.getId]
   else stx.getArgs.foldl (fun names child => names ++ identifiers child) #[]
 
+/-- Permit opens only in the domain namespaces used to state paper concepts. -/
+private def PaperAudit.checkOpen (decl : Syntax) : Command.CommandElabM Unit := do
+  unless decl.isOfKind ``Parser.Command.openSimple do
+    throwError "only ordinary namespace opens are allowed in Paper"
+  for name in identifiers decl do
+    let namespaces ← resolveNamespaceCore name
+    unless !namespaces.isEmpty && namespaces.all (fun ns =>
+        #[`Vegas, `GameTheory, `Interaction].any (·.isPrefixOf ns)) do
+      throwError "Paper opens only Vegas, GameTheory and Interaction namespaces: {name}"
+
+private partial def PaperAudit.checkTermOpens (stx : Syntax) : Command.CommandElabM Unit := do
+  if stx.isOfKind ``Parser.Term.«open» || stx.isOfKind ``Parser.Tactic.«open» then
+    checkOpen stx[1]
+  for child in stx.getArgs do checkTermOpens child
+
 /-- Validate actual parser nodes before the command can change the environment. -/
 private partial def PaperAudit.command (cmd : Syntax) : Command.CommandElabM (Option Syntax) := do
   let kind := cmd.getKind
+  checkTermOpens cmd
   if (cmd.find? (·.isOfKind ``Parser.Term.attributes)).isSome then
     throwError "Paper commands cannot install attributes or instances"
   if kind == ``Parser.Command.in then
@@ -47,17 +85,14 @@ private partial def PaperAudit.command (cmd : Syntax) : Command.CommandElabM (Op
     -- Deriving clauses have several parser wrappers; inspect their actual atom.
     if (decl.find? fun node => node.isAtom && node.getAtomVal == "deriving").isSome then
       throwError "Paper declarations cannot derive instances"
+    if decl.isOfKind ``Parser.Command.structure && decl[0].isOfKind ``Parser.Command.classTk then
+      throwError "Paper declarations cannot create classes"
     let name := decl[1][0].getId
     unless (`Vegas.Paper).isPrefixOf name && name != `Vegas.Paper do
       throwError "use a fully qualified Paper declaration name: {name}"
     return some decl
   if kind == ``Parser.Command.open then
-    unless cmd[1].isOfKind ``Parser.Command.openSimple do
-      throwError "only ordinary namespace opens are allowed in Paper"
-    for name in identifiers cmd[1] do
-      let namespaces ← resolveNamespaceCore name
-      if namespaces.any ((`Classical).isPrefixOf ·) then
-        throwError "opening Classical changes Paper instance scope"
+    checkOpen cmd[1]
     return none
   if kind == ``Parser.Command.notation then
     unless cmd[0].isNone && cmd[1].isNone &&
@@ -99,37 +134,45 @@ private def PaperAudit.missingPinErrors (state : PaperAudit) : Array String :=
     if state.pins.contains name then none else some s!"missing guarded axiom pin for {name}"
 
 private def PaperAudit.checkAdjacency (state : IO.Ref PaperAudit)
-    (pending target : Option Name) : FrontendM Unit := do
+    (pending target : Option Name) : PaperAudit.Elaboration Unit := do
   unless pending == target do
     PaperAudit.fail state "exact axiom pin must immediately follow its result"
 
 private def PaperAudit.checkExplicitStatement (state : IO.Ref PaperAudit)
-    (decl : Syntax) (name : Name) : FrontendM Unit := do
+    (decl : Syntax) (name : Name) : PaperAudit.Elaboration Unit := do
   let resultType := decl[2][1]
   let type? := if resultType.isOfKind ``Parser.Term.typeSpec then some resultType
     else resultType.getArgs.find? (·.isOfKind ``Parser.Term.typeSpec)
   unless type?.isSome do
     PaperAudit.fail state s!"{name} needs its full explicit statement"
 
-private def PaperAudit.collectMessages (state : IO.Ref PaperAudit) : FrontendM Unit := do
-  let after ← getCommandState
+private def PaperAudit.collectMessages (state : IO.Ref PaperAudit) :
+    PaperAudit.Elaboration Unit := do
+  let after := (← get).commandState
   let messages := after.messages ++ after.snapshotTasks.foldl
     (· ++ ·.get.getAll.foldl (· ++ ·.diagnostics.msgLog) .empty) .empty
-  setCommandState { after with messages := {}, snapshotTasks := #[] }
+  modify fun s => { s with commandState := { after with messages := {}, snapshotTasks := #[] } }
   for msg in messages.toList do
     if msg.severity == .error then
       let text ← msg.toString
       state.modify fun s => { s with errors := s.errors.push ("Lean elaboration: " ++ text) }
 
-private partial def PaperAudit.loop (state : IO.Ref PaperAudit) : FrontendM Unit := do
-  updateCmdPos
-  let before ← getCommandState
-  let ctx ← getInputContext
+/-- Policy rejections are ordinary audit diagnostics, not frontend internal exceptions. -/
+private def PaperAudit.attempt {α : Type} (action : Command.CommandElabM α) :
+    PaperAudit.Elaboration (Except String α) :=
+  runCommandElabM do
+    try return .ok (← action)
+    catch error => return .error (← error.toMessageData.toString)
+
+private partial def PaperAudit.loop (state : IO.Ref PaperAudit) : PaperAudit.Elaboration Unit := do
+  modify fun s => { s with cmdPos := s.parserState.pos }
+  let before := (← get).commandState
+  let ctx ← read
   let scope := before.scopes.head!
   let (cmd, ps, messages) := Parser.parseCommand ctx
     { env := before.env, options := scope.opts, currNamespace := scope.currNamespace,
-      openDecls := scope.openDecls } (← getParserState) {}
-  setParserState ps
+      openDecls := scope.openDecls } (← get).parserState {}
+  modify fun s => { s with parserState := ps }
   if messages.hasErrors then
     for msg in messages.toList do
       let text ← msg.toString
@@ -141,30 +184,47 @@ private partial def PaperAudit.loop (state : IO.Ref PaperAudit) : FrontendM Unit
     return
   let pin := cmd.isOfKind ``Lean.guardMsgsCmd
   let pending := (← state.get).pending
-  let primary? ← try
-    if pin then
-      let target ← runCommandElabM (guardTarget cmd)
+  let checked : Except String (Sum Name (Option Syntax)) ←
+    attempt (if pin then return .inl (← guardTarget cmd)
+      else return .inr (← command cmd))
+  let .ok validated := checked | do
+    let .error message := checked | return
+    PaperAudit.fail state message
+    loop state
+    return
+  let primary? ← match validated with
+    | .inl target => do
       let audit ← state.get
       unless audit.results.contains target do
         PaperAudit.fail state s!"axiom pin names no local result: {target}"
       checkAdjacency state pending (some target)
       if audit.pins.contains target then PaperAudit.fail state s!"duplicate axiom pin for {target}"
       state.modify fun s => { s with pins := s.pins.insert target, pending := none }
-      let dependencies ← runCommandElabM (collectAxioms target)
-      for name in dependencies do
-        unless #[`propext, `Classical.choice, `Quot.sound].contains name do
-          PaperAudit.fail state s!"nonstandard axiom in {target}: {name}"
+      if audit.results.contains target then
+        let dependencies ← runCommandElabM (collectAxioms target)
+        for name in dependencies do
+          unless #[`propext, `Classical.choice, `Quot.sound].contains name do
+            PaperAudit.fail state s!"nonstandard axiom in {target}: {name}"
       pure none
-    else
+    | .inr decl => do
       checkAdjacency state pending none
       state.modify fun s => { s with pending := none }
-      runCommandElabM (command cmd)
-  catch error =>
-    PaperAudit.fail state (toString error)
-    return
+      pure decl
   runCommandElabM <| withRef cmd <| Command.elabCommand cmd
   collectMessages state
-  let after ← getCommandState
+  let after := (← get).commandState
+  if let some decl := primary? then
+    if decl.isOfKind ``Parser.Command.structure then
+      let name := decl[1][0].getId
+      for field in getStructureFields after.env name do
+        if (getDefaultFnForField? after.env name field).isSome ||
+            (getAutoParamFnForField? after.env name field).isSome then
+          let some projection := getProjFnForField? after.env name field | continue
+          let some info := after.env.find? projection | continue
+          let prop ← runCommandElabM <| Command.liftTermElabM <| Meta.isProp info.type
+          if prop then
+            PaperAudit.fail state
+              s!"proof-valued structure default must be a separate named result: {projection}"
   let locals ← after.env.getLocalConstantInfos
   for info in locals do
     unless (← state.get).seen.contains info.name do
@@ -178,9 +238,7 @@ private partial def PaperAudit.loop (state : IO.Ref PaperAudit) : FrontendM Unit
             { s with results := s.results.insert info.name, pending := some info.name }
         else if primary?.any (fun decl => decl.isOfKind ``Parser.Command.structure &&
             (decl[1][0].getId).isPrefixOf info.name) then
-          if info.kind == .defn && !after.env.isProjectionFn info.name then
-            PaperAudit.fail state
-              s!"proof-valued structure default must be a separate named result: {info.name}"
+          pure ()
         else if !info.name.isInternal then
           let equation ← runCommandElabM <| Command.liftTermElabM <| Meta.isEqnThm? info.name
           unless equation.isSome do
@@ -199,13 +257,13 @@ def PaperAudit.run (env : Environment) (opts : Options) (file : String) : IO Pap
       let text ← msg.toString
       state.modify fun s => { s with errors := s.errors.push ("Lean header: " ++ text) }
   if !messages.hasErrors then
-    let _ ← ((loop state).run { inputCtx }).run {
+    let _ ← ((loop state).run inputCtx).run {
       commandState := Command.mkState
         (env.setMainModule (.str .anonymous s!"PaperAuditInput_{hash file}")) {} opts
       parserState := ps, cmdPos := ps.pos }
   let result ← state.get
   let errors := result.errors ++ result.missingPinErrors
-  let errors := if result.results.isEmpty then
+  let errors := if result.results.isEmpty && errors.isEmpty then
     errors.push "Paper must contain stated results and pins" else errors
   return {
     file := file
@@ -219,9 +277,10 @@ def main (args : List String) : IO UInt32 := do
   let mut result : Array Json := #[]
   for file in args do
     let ctx := Parser.mkInputContext (← IO.FS.readFile file) file
-    let (header, _, messages) ← Parser.parseHeader ctx
+    let (header, ps, messages) ← Parser.parseHeader ctx
     if messages.hasErrors then throw <| IO.userError s!"invalid import header: {file}"
-    result := result.push <| Json.mkObj [("file", toJson file),
+    result := result.push <| Json.mkObj
+      [("file", toJson file), ("headerEnd", toJson ps.pos.byteIdx),
       ("imports", toJson ((Elab.headerToImports header).map fun i => i.module.toString))]
   IO.println (toJson result).compress
   return 0
