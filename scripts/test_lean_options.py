@@ -13,8 +13,8 @@ STRICT = {"autoImplicit": False, "relaxedAutoImplicit": False, "warningAsError":
 
 
 def pin(name, axioms="propext, Classical.choice, Quot.sound", guard="(whitespace := lax) "):
-    return (f"/-- info: 'Vegas.Paper.{name}' depends on axioms:\n[{axioms}] -/\n"
-            f"#guard_msgs {guard}in\n#print axioms Vegas.Paper.{name}\n")
+    return (f"/-- info: 'Vegas.{name}' depends on axioms:\n[{axioms}] -/\n"
+            f"#guard_msgs {guard}in\n#print axioms Vegas.{name}\n")
 
 
 class LeanOptionTests(unittest.TestCase):
@@ -166,80 +166,66 @@ class LeanOptionTests(unittest.TestCase):
         )
         self.assertEqual(CHECKER.check_forbidden_constructs(Path("Paper.lean"), text), [])
 
-    def test_exact_audit_pin_passes(self):
-        text = "theorem witness : True := True.intro\n\n" + pin("witness")
-        self.assertEqual(CHECKER.check_audit_pins(text), [])
+    def test_exact_owning_pin_passes(self):
+        self.assertEqual(CHECKER.check_audit_pins(pin("SourceProgram.Setup.result")), [])
+
+    def test_empty_or_import_only_paper_fails(self):
+        for text in ("", "import Vegas.Game.SequentialCompilation\n", "/- no pins -/\n"):
+            with self.subTest(text=text):
+                self.assertTrue(CHECKER.check_audit_pins(text))
 
     def test_pin_must_expect_exactly_the_standard_axioms(self):
         for axioms in ("sorryAx", "propext, Classical.choice, Quot.sound, sorryAx",
-                       "propext, Quot.sound"):
+                       "propext, Quot.sound", "propext, Classical.choice, Quot.sound, propext"):
             with self.subTest(axioms=axioms):
-                failures = CHECKER.check_audit_pins(
-                    "theorem witness : True := True.intro\n" + pin("witness", axioms))
-                self.assertTrue(any("must expect exactly" in error for error in failures))
+                self.assertTrue(CHECKER.check_audit_pins(pin("result", axioms)))
 
     def test_pin_must_use_the_lax_whitespace_guard(self):
         for guard in ("", "(drop all) ", "(whitespace := exact) "):
             with self.subTest(guard=guard):
-                failures = CHECKER.check_audit_pins(
-                    "theorem witness : True := True.intro\n" + pin("witness", guard=guard))
-                self.assertTrue(any("must expect exactly" in error for error in failures))
+                self.assertTrue(CHECKER.check_audit_pins(pin("result", guard=guard)))
 
-    def test_pin_without_expected_output_fails(self):
-        failures = CHECKER.check_audit_pins(
-            "theorem witness : True := True.intro\n"
-            "#guard_msgs (whitespace := lax) in\n#print axioms Vegas.Paper.witness\n")
-        self.assertTrue(any("must expect exactly" in error for error in failures))
-
-    def test_audit_theorem_requires_guarded_pin(self):
-        for unpinned in ("", "#print axioms Vegas.Paper.witness\n",
-                         "/- #guard_msgs in\n#print axioms Vegas.Paper.witness -/\n"):
-            with self.subTest(unpinned=unpinned):
-                failures = CHECKER.check_audit_pins(
-                    "theorem witness : True := True.intro\n" + unpinned)
-                self.assertTrue(any("missing guarded axiom pin" in error for error in failures))
-
-    def test_theorems_with_attributes_or_modifiers_require_pins(self):
-        for header in ("@[simp] theorem", "protected theorem", "lemma", "@[simp] private lemma"):
-            with self.subTest(header=header):
-                failures = CHECKER.check_audit_pins(f"{header} witness : True := True.intro\n")
-                self.assertTrue(any("missing guarded axiom pin for witness" in error
-                                    for error in failures))
-
-    def test_stale_audit_pin_fails(self):
-        failures = CHECKER.check_audit_pins(pin("absent"))
-        self.assertTrue(any("names no audit theorem" in error for error in failures))
-
-    def test_duplicate_audit_pin_fails(self):
-        failures = CHECKER.check_audit_pins(
-            "theorem witness : True := True.intro\n" + pin("witness") * 2)
-        self.assertTrue(any("duplicate axiom pin" in error for error in failures))
-
-    def test_adjacent_pins_allow_documentation_and_indented_proof_bodies(self):
-        text = (
-            "namespace Vegas.Paper\n"
-            "open Vegas in\n"
-            "theorem first : True :=\n  True.intro\n" + pin("first") +
-            "/-- Another delegated theorem. -/\n"
-            "theorem second : True := first\n" + pin("second") +
-            "end Vegas.Paper\n"
-        )
-        self.assertEqual(CHECKER.check_audit_pins(text), [])
-
-    def test_footer_pins_are_not_adjacent(self):
-        text = (
-            "theorem first : True := True.intro\n"
-            "theorem second : True := True.intro\n" + pin("first") + pin("second")
-        )
-        failures = CHECKER.check_audit_pins(text)
-        self.assertEqual(sum("must immediately follow" in error for error in failures), 2)
-
-    def test_pin_cannot_precede_theorem_or_follow_another_command(self):
-        theorem = "theorem witness : True := True.intro\n"
-        for text in (pin("witness") + theorem, theorem + "def unrelated := 0\n" + pin("witness")):
+    def test_unguarded_or_undocumented_print_fails(self):
+        for text in ("#print axioms Vegas.result\n",
+                     "#guard_msgs (whitespace := lax) in\n#print axioms Vegas.result\n",
+                     pin("result").replace("#guard_msgs (whitespace := lax) in\n", "")):
             with self.subTest(text=text):
-                self.assertTrue(any("must immediately follow" in error
-                                    for error in CHECKER.check_audit_pins(text)))
+                self.assertTrue(CHECKER.check_audit_pins(text))
+
+    def test_expected_name_must_match_printed_name(self):
+        self.assertTrue(CHECKER.check_audit_pins(
+            pin("first").replace("#print axioms Vegas.first", "#print axioms Vegas.second")))
+
+    def test_duplicate_pin_fails(self):
+        self.assertTrue(CHECKER.check_audit_pins(pin("result") * 2))
+
+    def test_unicode_owning_names_pass(self):
+        self.assertEqual(CHECKER.check_audit_pins(pin("Setup.intended_isεNash_preserved")), [])
+
+    def test_unqualified_or_malformed_print_fails(self):
+        for text in (pin("result").replace("Vegas.result", "result"),
+                     pin("result") + "#print axioms\n"):
+            with self.subTest(text=text):
+                self.assertTrue(CHECKER.check_audit_pins(text))
+
+    def test_restated_paper_theorems_are_rejected(self):
+        self.assertTrue(CHECKER.check_audit_pins(
+            "theorem result : True := True.intro\n" + pin("result")))
+
+    def test_pins_in_comments_or_strings_do_not_supply_guards(self):
+        for fake in ("/- " + pin("result") + " -/\n",
+                     'def note := "' + pin("result") + '"\n'):
+            with self.subTest(fake=fake):
+                self.assertTrue(CHECKER.check_audit_pins(fake + "#print axioms Vegas.result\n"))
+
+    def test_actual_paper_mutations_fail(self):
+        paper = (Path(__file__).resolve().parent.parent / "Paper.lean").read_text(encoding="utf-8")
+        mutations = ["", paper.replace("#guard_msgs (whitespace := lax) in", ""),
+                     paper.replace("propext, Classical.choice, Quot.sound", "sorryAx"),
+                     paper.replace("#guard_msgs (whitespace := lax) in", "", 1)]
+        for index, text in enumerate(mutations):
+            with self.subTest(mutation=index):
+                self.assertTrue(CHECKER.check_audit_pins(text))
 
     def test_axiom_prints_are_allowed_only_in_paper(self):
         commands = ("#print axioms witness\n",

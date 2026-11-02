@@ -29,7 +29,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 ROOT_SOURCES = ["Paper.lean", "VegasTests", "InteractionTests", "GameTheoryExtensionsTests",
                 "Vegas/Examples"]
 IDENTIFIER = re.compile(
-    r"(?<![A-Za-z0-9_'.!?])[A-Za-z_][A-Za-z0-9_'!?]*(?:\.[A-Za-z_][A-Za-z0-9_'!?]*)*")
+    r"(?<![\w'.!?])[^\W\d][\w'!?]*(?:\.[^\W\d][\w'!?]*)*")
 
 SPEC = importlib.util.spec_from_file_location(
     "lean_options", pathlib.Path(__file__).with_name("check-lean-options.py"))

@@ -33,9 +33,7 @@ VEGAS_LAYERS = {
 
 # Libraries outside Vegas that a layer may not import. The chain model enters at
 # Pending and equilibrium analysis at Game, so expressions, the source language,
-# the event graph and the compiler stay independent of both. The commit- and
-# proposal-recovery modules of Source are proof carriers of the concurrent
-# theorem and may use analysis.
+# the event graph and the compiler stay independent of both.
 CHAIN_MODEL = ("Interaction",)
 ANALYSIS = ("GameTheory.Analysis", "GameTheoryExtensions.Analysis")
 VEGAS_EXCLUDED_LIBRARIES = {
@@ -43,7 +41,6 @@ VEGAS_EXCLUDED_LIBRARIES = {
     for layer in ("Vegas.Foundation", "Vegas.Expr", "Vegas.Source", "Vegas.EventGraph",
                   "Vegas.Compile")
 }
-SOURCE_PROOF_CARRIERS = ("Vegas.Source.CommitRecovery", "Vegas.Source.ProposalRecovery")
 
 
 def imports(text: str) -> list[str]:
@@ -213,8 +210,6 @@ def check(root: Path) -> list[str]:
             for layer, excluded in VEGAS_EXCLUDED_LIBRARIES.items():
                 if not under(module, layer):
                     continue
-                if module.startswith(SOURCE_PROOF_CARRIERS):
-                    excluded = CHAIN_MODEL
                 if any(under(dependency, prefix) for prefix in excluded):
                     failures.append(
                         f"{module}: {layer} imports outside its layer contract: {dependency}")

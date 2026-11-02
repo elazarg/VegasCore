@@ -25,6 +25,16 @@ class MentionTests(unittest.TestCase):
             "Vegas.SequentialPhase.intended_sequentialEquilibrium_preserved _\n")
         self.assertEqual(names, {"Vegas.SequentialPhase.intended_sequentialEquilibrium_preserved"})
 
+    def test_unicode_names_are_not_split(self):
+        name = "Vegas.AsyncServiceSpec.isεNash_firstTurnClientProfile_iff"
+        self.assertEqual(REPORT.mentions_in("#print axioms " + name), {name})
+
+    def test_every_actual_paper_pin_is_a_root_mention(self):
+        text = (Path(__file__).resolve().parent.parent / "Paper.lean").read_text(encoding="utf-8")
+        pins = {line.split()[-1] for line in text.splitlines() if line.startswith("#print axioms ")}
+        self.assertTrue(pins)
+        self.assertLessEqual(pins, REPORT.mentions_in(text))
+
     def test_comments_and_strings_are_not_mentions(self):
         text = ('/-- See `forceDisclose_expect_le`. -/\n'
                 '-- scheduled_terminalState_law\n'

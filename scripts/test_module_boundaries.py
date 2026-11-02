@@ -171,26 +171,26 @@ class ModuleBoundaryTests(unittest.TestCase):
                     expected = f"{layer} imports outside its layer contract: {dependency}"
                     self.assertTrue(any(expected in error for error in CHECKER.check(root)))
 
-    def test_upper_layers_and_source_carriers_may_use_analysis(self):
+    def test_upper_layers_may_use_analysis(self):
         with tempfile.TemporaryDirectory() as directory:
             root = self.fixture(directory, {
-                "Vegas": "import Vegas.Source.CommitRecoveryExit Vegas.Pending.Example "
-                         "Vegas.Game.Example",
-                "Vegas.Source.CommitRecoveryExit": "import GameTheoryExtensions.Analysis.Audit",
+                "Vegas": "import Vegas.Pending.Example Vegas.Game.Example",
                 "Vegas.Pending.Example": "import Interaction.Network",
                 "Vegas.Game.Example": "import Interaction.Network GameTheory.Analysis.Limit",
             })
             self.assertEqual(CHECKER.check(root), [])
 
-    def test_source_carriers_cannot_use_the_chain_model(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = self.fixture(directory, {
-                "Vegas": "import Vegas.Source.ProposalRecoveryExit",
-                "Vegas.Source.ProposalRecoveryExit": "import Interaction.Network",
-            })
-            self.assertTrue(any(
-                "Vegas.Source imports outside its layer contract: Interaction.Network" in error
-                for error in CHECKER.check(root)))
+    def test_source_module_names_do_not_exempt_them_from_the_layer_contract(self):
+        for module in ("Vegas.Source.CommitRecoveryExit", "Vegas.Source.ProposalRecoveryExit"):
+            for dependency in ("Interaction.Network", "GameTheoryExtensions.Analysis.Audit"):
+                with self.subTest(module=module, dependency=dependency), \
+                        tempfile.TemporaryDirectory() as directory:
+                    root = self.fixture(directory, {
+                        "Vegas": f"import {module}", module: f"import {dependency}",
+                    })
+                    self.assertTrue(any(
+                        f"Vegas.Source imports outside its layer contract: {dependency}" in error
+                        for error in CHECKER.check(root)))
 
     def test_semantic_layers_accept_the_intended_compilation_tower(self):
         with tempfile.TemporaryDirectory() as directory:

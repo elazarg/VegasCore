@@ -214,52 +214,55 @@ def check_forbidden_constructs(relative: Path, text: str) -> list[str]:
     return failures
 
 
-THEOREM = re.compile(
-    r"(?:@\[[^\]\n]*\]\s*)?(?:(?:private|protected|noncomputable)\s+)*(?:theorem|lemma)\s+([\w'.]+)"
-)
+AXIOM_PRINT = re.compile(r"#print\s+axioms\s+([\w'.]+)")
 EXACT_PIN = re.compile(
-    r"/-- info: 'Vegas\.Paper\.([\w'.]+)' depends on axioms:\s*\[([^\]]*)\]\s*-/\s*"
-    r"#guard_msgs \(whitespace := lax\) in\s*#print axioms Vegas\.Paper\.([\w'.]+)\b"
+    r"/-- info: '([\w'.]+)' depends on axioms:\s*\[([^\]]*)\]\s*-/\s*"
+    r"(?P<guard>#guard_msgs \(whitespace := lax\) in)\s*"
+    r"(?P<print>#print\s+axioms\s+([\w'.]+))"
+)
+PAPER_DECLARATION = re.compile(
+    r"(?m)^\s*(?:@\[[^\]\n]*\]\s*)?(?:(?:private|protected|noncomputable)\s+)*"
+    r"(?:theorem|lemma|def|abbrev|opaque|structure|class|instance)\b"
 )
 
 
 def check_audit_pins(text: str) -> list[str]:
-    """Require an exact guarded axiom pin immediately after each Paper theorem.
+    """Check every owning-result print, its adjacent guard and exact axiom list.
 
-    A pin is the expected-output docstring listing exactly the standard axioms,
-    then `#guard_msgs (whitespace := lax) in`, then `#print axioms` of the
-    theorem. Lean checks the expected output against the proof during the build.
+    Paper is a nonempty inventory of qualified owning declarations, with no
+    restatement declarations. Match command positions in comment/string-stripped
+    source so a quoted or nested-comment imitation cannot supply a missing pin.
+    Lean checks each expected dependency list against the imported declaration.
     """
     clean = strip_lean_comments_and_strings(text)
-    commands = list(re.finditer(r"(?m)^\S[^\n]*", clean))
-    declarations = {match.group(1) for command in commands
-                    if (match := THEOREM.match(command.group()))}
-    pin_matches = list(re.finditer(
-        r"#guard_msgs[^\n]*?\s+in\s+#print\s+axioms\s+Vegas\.Paper\.([\w'.]+)\b", clean
-    ))
-    pins = Counter(match.group(1) for match in pin_matches)
-    failures = [f"Paper.lean: missing guarded axiom pin for {name}"
-                for name in sorted(declarations - pins.keys())]
-    failures.extend(f"Paper.lean: axiom pin names no audit theorem: {name}"
-                    for name in sorted(pins.keys() - declarations))
+    prints = list(AXIOM_PRINT.finditer(clean))
+    failures: list[str] = []
+    if not prints:
+        failures.append("Paper.lean: must contain guarded owning-result axiom pins")
+    if PAPER_DECLARATION.search(clean):
+        failures.append("Paper.lean: pin owning results directly; do not declare restatements")
+    commands = list(re.finditer(r"#print\s+axioms\b", clean))
+    if len(commands) != len(prints):
+        failures.append("Paper.lean: malformed axiom print")
+    counts = Counter(match.group(1) for match in prints)
     failures.extend(f"Paper.lean: duplicate axiom pin for {name}"
-                    for name, count in sorted(pins.items()) if count != 1)
-    exact = Counter()
+                    for name, count in sorted(counts.items()) if count != 1)
+    exact = {}
     for match in EXACT_PIN.finditer(text):
-        expected = {axiom.strip() for axiom in match.group(2).split(",") if axiom.strip()}
-        if match.group(1) == match.group(3) and expected == STANDARD_AXIOMS:
-            exact[match.group(3)] += 1
-    failures.extend(
-        f"Paper.lean: axiom pin for {name} must expect exactly "
-        "[propext, Classical.choice, Quot.sound] under `#guard_msgs (whitespace := lax)`"
-        for name in sorted(pins) if exact[name] != pins[name])
-    pins_at = {match.start(): match.group(1) for match in pin_matches}
-    for index, command in enumerate(commands):
-        if declaration := THEOREM.match(command.group()):
-            name = declaration.group(1)
-            following = commands[index + 1].start() if index + 1 < len(commands) else None
-            if pins[name] == 1 and pins_at.get(following) != name:
-                failures.append(f"Paper.lean: axiom pin must immediately follow theorem {name}")
+        name = match.group(5)
+        expected = [axiom.strip() for axiom in match.group(2).split(",") if axiom.strip()]
+        if (match.group(1) == name and len(expected) == len(STANDARD_AXIOMS)
+                and set(expected) == STANDARD_AXIOMS
+                and clean[match.start("guard"):match.end("guard")] == match.group("guard")):
+            exact[match.start("print")] = name
+    for match in prints:
+        name = match.group(1)
+        if "." not in name:
+            failures.append(f"Paper.lean: axiom pin must name a qualified owning result: {name}")
+        if exact.get(match.start()) != name:
+            failures.append(
+                f"Paper.lean: axiom pin for {name} must expect exactly "
+                "[propext, Classical.choice, Quot.sound] under `#guard_msgs (whitespace := lax)`")
     return failures
 
 
@@ -294,8 +297,8 @@ def main() -> int:
         print("\n".join(failures))
         return 1
     print("Central options are strict and sorry warnings fail the build; proof admissions, "
-          "axiom declarations and trust escape hatches are absent; every Paper theorem has "
-          "an exact standard-axiom pin.")
+          "axiom declarations and trust escape hatches are absent; every Paper pin is "
+          "guarded and expects exactly the standard axioms.")
     return 0
 
 
