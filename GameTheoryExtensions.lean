@@ -31,7 +31,6 @@ import GameTheoryExtensions.Analysis.Protocol.StoppedContinuationComparison
 import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
 import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
-import GameTheoryExtensions.Analysis.Protocol.StoppedKernelComparison
 import GameTheoryExtensions.Analysis.Protocol.StoppedReadout
 import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
 import GameTheoryExtensions.Analysis.Protocol.SuccessRanking

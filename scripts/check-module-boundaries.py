@@ -203,6 +203,8 @@ def check(root: Path) -> list[str]:
                     f"{module}: unclassified Vegas top-level layer {top_layer}"
                 )
         for dependency in dependencies:
+            if under(dependency, "Tools") and not under(module, "Tools"):
+                failures.append(f"{module}: theorem libraries must not import audit tooling: {dependency}")
             for layer, allowed in VEGAS_LAYERS.items():
                 if under(module, layer) and under(dependency, "Vegas") and not any(
                         under(dependency, prefix) for prefix in allowed):

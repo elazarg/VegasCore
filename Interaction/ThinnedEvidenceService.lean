@@ -91,18 +91,6 @@ theorem thinned_delivery_mass (capture delivery : Set.Icc (0 : ℝ) 1)
     simpa only [delivered_map] using member
   · simp [thinned, EvidenceReport.deliveredEvidence]
 
-/-- The probability of collecting a particular actual item is bounded below by
-the product of capture and conditional delivery rates. -/
-theorem thinned_collection (capture delivery : Set.Icc (0 : ℝ) 1)
-    (actual : List Evidence) (evidence : Evidence) (member : evidence ∈ actual) :
-    capture.val * delivery.val ≤
-      (((thinned capture delivery).sample actual).toOuterMeasure
-        {collected | evidence ∈ collected}).toReal := by
-  apply sample_coverage _ actual evidence capture.val delivery.val delivery.property.1
-  · exact (thinned_observation_mass capture delivery actual evidence member).symm.le
-  · intro seen _ present
-    exact (thinned_delivery_mass capture delivery seen evidence present).symm.le
-
 /-- For an actual item, the catch probability is exactly the product. Thus
 strictly subunit capture or delivery is a genuinely imperfect audit. -/
 theorem thinned_collection_mass (capture delivery : Set.Icc (0 : ℝ) 1)

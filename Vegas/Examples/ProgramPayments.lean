@@ -80,7 +80,7 @@ def valuation (bonus : Int) (outcome : PublicOutcome (program bonus)) (_who : Pl
 /-- The strategic game evaluates the source program's own monetary instructions. -/
 def game (bonus : Int) : UtilityGame Player where
   form := (program bonus).gameForm initial
-  utility := (program bonus).paymentUtility (valuation bonus)
+  utility := (program bonus).paymentSumUtility (valuation bonus)
 
 theorem setup_gameForm (bonus : Int) : (setup bonus).gameForm = (game bonus).form := by
   unfold Setup.gameForm Setup.publicRun Setup.run setup game
@@ -267,7 +267,7 @@ theorem compiled_isNash_iff (bonus : Int)
         (euPreference (compiledGame bonus scheduler).utility)
         (compileEventProfile (program bonus) sourceProfile) ↔
       IsNash (game bonus).form (euPreference (game bonus).utility) sourceProfile := by
-  have correspondence := (setup bonus).eventGame_payment_approximate_nash_iff
+  have correspondence := (setup bonus).eventGame_paymentSum_approximate_nash_iff
     (finiteBindingTypes bonus) scheduler (valuation bonus) 0 sourceProfile
   rw [← isNash_iff_isεNash_zero, ← isNash_iff_isεNash_zero] at correspondence
   rw [isNash_iff, isNash_iff] at correspondence ⊢

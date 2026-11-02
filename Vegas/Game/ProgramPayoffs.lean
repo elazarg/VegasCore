@@ -6,9 +6,9 @@ import GameTheoryExtensions.Analysis.QuasilinearSettlement
 
 /-! # Strategic utility from executable source payments
 
-The program determines monetary transfers by evaluating its terminal payment
-expressions on the public outcome. Private valuations are separate data. The
-compiled payment reader retains the same realized transfer vector.
+A program evaluates its terminal payment instructions on the public outcome.
+A setup replaces a defaulted player's instruction sum by its declared exit
+transfer. Private valuation is separate from both payment rules.
 -/
 
 noncomputable section
@@ -34,31 +34,17 @@ def publicTransfers (program : SourceProgram Player L Γ O) (outcome : PublicOut
     (who : Player) : ℝ :=
   transferAmount (program.publicPayoffs outcome) who
 
-/-- Quasi-linear utility with the transfer fixed by the source program. -/
-def paymentUtility (program : SourceProgram Player L Γ O)
+/-- Valuation plus the instruction-payment sum, before any setup exit override. -/
+def paymentSumUtility (program : SourceProgram Player L Γ O)
     (valuation : PublicOutcome program → Player → ℝ) (outcome : PublicOutcome program)
     (who : Player) : ℝ :=
   monetaryUtility valuation (outcome, program.publicTransfers outcome) who
 
-@[simp] theorem paymentUtility_eq (program : SourceProgram Player L Γ O)
+@[simp] theorem paymentSumUtility_eq (program : SourceProgram Player L Γ O)
     (valuation : PublicOutcome program → Player → ℝ) (outcome : PublicOutcome program)
     (who : Player) :
-    program.paymentUtility valuation outcome who =
+    program.paymentSumUtility valuation outcome who =
       valuation outcome who + program.publicTransfers outcome who := rfl
-
-/-- Initial parameters may affect valuation, while the executable program alone
-determines the monetary receipt from the public result. -/
-def parameterPaymentUtility {Parameter : Type} (program : SourceProgram Player L Γ O)
-    (valuation : Parameter × PublicOutcome program → Player → ℝ)
-    (outcome : Parameter × PublicOutcome program) (who : Player) : ℝ :=
-  valuation outcome who + program.publicTransfers outcome.2 who
-
-@[simp] theorem parameterPaymentUtility_eq {Parameter : Type}
-    (program : SourceProgram Player L Γ O)
-    (valuation : Parameter × PublicOutcome program → Player → ℝ)
-    (outcome : Parameter × PublicOutcome program) (who : Player) :
-    program.parameterPaymentUtility valuation outcome who =
-      valuation outcome who + program.publicTransfers outcome.2 who := rfl
 
 /-- Actual receipts use the declared exit transfer after public default. -/
 def Setup.transfers (setup : Setup (Player := Player) (L := L))
@@ -90,20 +76,8 @@ def Setup.parameterPaymentUtility {Parameter : Type}
       valuation (setup.parameterOutcome parameter terminal) who +
         setup.transfers (setup.program.publicOutcome terminal) who := rfl
 
-/-- Reading a private initial parameter from the terminal state leaves the
-monetary component equal to evaluation of the program's payment instructions. -/
-@[simp] theorem Setup.parameterPaymentSumUtility_parameterOutcome {Parameter : Type}
-    (setup : Setup (Player := Player) (L := L))
-    (parameter : State L setup.context → Parameter)
-    (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)
-    (terminal : Config Player L setup.program.terminalCtx) (who : Player) :
-    setup.program.parameterPaymentUtility valuation
-        (setup.parameterOutcome parameter terminal) who =
-      valuation (setup.parameterOutcome parameter terminal) who +
-        (transferAmount (setup.program.evaluatePayoffs terminal.state) who : ℝ) := rfl
-
-/-- Canonical compilation preserves each player's aggregated monetary receipt,
-not merely the syntax of the payment instruction list. -/
+/-- Canonical compilation preserves each player's aggregated instruction-payment
+sum, before the setup's exit override. -/
 theorem canonical_transfer_law (program : SourceProgram Player L Γ O)
     (profile : BehavioralProfile program) (state : State L Γ) :
     ((toEventGraph program).terminalOutcomes (toEventGraph program).canonicalScheduler

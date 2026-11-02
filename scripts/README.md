@@ -4,6 +4,7 @@ Run the strict build and checks from the repository root:
 
 ```powershell
 lake build
+python scripts/check-paper-audit.py
 python scripts/check-module-boundaries.py
 python scripts/check-lean-options.py
 python scripts/check-doc-references.py
@@ -11,14 +12,16 @@ python -m unittest discover -s scripts -p 'test_*.py'
 ```
 
 Module checks validate imports, aggregator coverage and architectural layers.
-Source policy rejects admissions, axiom declarations and trust escapes, enforces
-central options and checks exact standard-axiom pins for Paper theorems.
-Paper uses a restricted command format: imports, section context, local notation,
-explicit concepts and theorem statements, and guarded axiom prints. Result types,
-definition/proof bodies, notation terms and structure field types use parentheses
-to make command boundaries explicit. The checker audits documented and indented
-declarations without using indentation to guess where a term ends, and rejects scoped
-declaration prefixes, instances, attributes and syntax extensions.
+Source policy rejects admissions, axiom declarations and trust escapes and enforces
+central options. The separate Lean-native paper audit runs after the build: it
+uses Lean's parser and elaborated declaration types, requires every authored
+proof (including proof-valued definitions and abbreviations) to have an adjacent
+exact guarded pin, and checks its actual axioms. It permits fresh local identifier
+shorthands but rejects instance-changing opens, shadowing notation, attributes
+and syntax extensions. Data defaults and documented structure fields are supported;
+proof-valued field defaults must be stated as separate named results. Its import driver is isolated from the paper and needs
+no unsafe loader or theorem-source exceptions. Native mutation fixtures check
+coverage, adjacency and explicit statements independently.
 Documentation checks resolve active citations and Markdown paths; external
 sources pinned by full commit IDs refer to their own tree.
 

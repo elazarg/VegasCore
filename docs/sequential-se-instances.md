@@ -22,9 +22,9 @@ establishes existence of this extension, not preservation of every full-source S
 ## Actual service
 
 [The service](../Vegas/Examples/OddsEvensService.lean) runs the ordinary
-forced-exit application. Failure permanently excludes its owner; there is no
-checkpoint, attempt number or rollback. Each event has duration six, with
-reaction and inclusion bounds three and two.
+forced-exit application. Public omission or failed publication permanently
+excludes its owner. Each event has duration six, with reaction and inclusion
+bounds three and two.
 
 Each cycle processes at most 64 pending envelopes, offers callbacks to Even
 then Odd on odd cycles, checks the four expirations, and advances the clock.

@@ -1,0 +1,227 @@
+/- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
+import Lean
+
+open Lean Elab Frontend
+
+/-- State of the separate paper validator; it is never imported by the paper. -/
+structure PaperAudit where
+  seen : NameSet := {}
+  results : NameSet := {}
+  pins : NameSet := {}
+  pending : Option Name := none
+  errors : Array String := #[]
+
+/-- Machine-readable result of parsing and elaborating a paper file. -/
+structure PaperAudit.Report where
+  file : String
+  results : Array String
+  pins : Array String
+  errors : Array String
+  deriving ToJson
+
+private def PaperAudit.fail (state : IO.Ref PaperAudit) (message : String) : FrontendM Unit :=
+  state.modify fun s => { s with errors := s.errors.push message }
+
+private partial def PaperAudit.identifiers (stx : Syntax) : Array Name :=
+  if stx.isIdent then #[stx.getId]
+  else stx.getArgs.foldl (fun names child => names ++ identifiers child) #[]
+
+/-- Validate actual parser nodes before the command can change the environment. -/
+private partial def PaperAudit.command (cmd : Syntax) : Command.CommandElabM (Option Syntax) := do
+  let kind := cmd.getKind
+  if (cmd.find? (·.isOfKind ``Parser.Term.attributes)).isSome then
+    throwError "Paper commands cannot install attributes or instances"
+  if kind == ``Parser.Command.in then
+    unless #[``Parser.Command.include, ``Parser.Command.omit, ``Parser.Command.variable,
+        ``Parser.Command.open].contains cmd[0].getKind do
+      throwError "unsupported scoped Paper command"
+    let _ ← command cmd[0]
+    return ← command cmd[2]
+  if kind == ``Parser.Command.declaration then
+    unless cmd[0].getArgs.toList.drop 1 |>.all (·.isNone) do
+      throwError "Paper declarations cannot install attributes, instances or modifiers"
+    let decl := cmd[1]
+    unless #[``Parser.Command.definition, ``Parser.Command.abbrev,
+        ``Parser.Command.theorem, ``Parser.Command.structure].contains decl.getKind do
+      throwError "unsupported Paper declaration kind: {decl.getKind}"
+    -- Deriving clauses have several parser wrappers; inspect their actual atom.
+    if (decl.find? fun node => node.isAtom && node.getAtomVal == "deriving").isSome then
+      throwError "Paper declarations cannot derive instances"
+    let name := decl[1][0].getId
+    unless (`Vegas.Paper).isPrefixOf name && name != `Vegas.Paper do
+      throwError "use a fully qualified Paper declaration name: {name}"
+    return some decl
+  if kind == ``Parser.Command.open then
+    unless cmd[1].isOfKind ``Parser.Command.openSimple do
+      throwError "only ordinary namespace opens are allowed in Paper"
+    for name in identifiers cmd[1] do
+      let namespaces ← resolveNamespaceCore name
+      if namespaces.any ((`Classical).isPrefixOf ·) then
+        throwError "opening Classical changes Paper instance scope"
+    return none
+  if kind == ``Parser.Command.notation then
+    unless cmd[0].isNone && cmd[1].isNone &&
+        (cmd[2].find? (·.isOfKind ``Parser.Term.local)).isSome &&
+        cmd[4].isNone && cmd[5].isNone && cmd[6].isNone && cmd[7].getArgs.size == 1 do
+      throwError "Paper permits only a fresh local identifier shorthand"
+    let some token := cmd[7][0].isStrLit? | throwError "expected a local identifier shorthand"
+    unless !token.isEmpty && isIdFirst token.toList.head! && token.toList.all isIdRest do
+      throwError "Paper notation must be a fresh identifier"
+    if ((Parser.getTokenTable (← getEnv)).find? token).isSome then
+      throwError "Paper notation shadows a parser token: {token}"
+    let name := token.toName
+    let scope := (← get).scopes.head!
+    let resolved := Lean.ResolveName.resolveGlobalName (← getEnv) scope.opts
+      scope.currNamespace scope.openDecls name
+    unless resolved.isEmpty do
+      throwError "Paper notation shadows an existing name: {token}"
+    if scope.varDecls.any (fun vars => (identifiers vars).contains name) then
+      throwError "Paper notation shadows a section variable: {token}"
+    return none
+  if #[``Parser.Command.section, ``Parser.Command.end, ``Parser.Command.universe,
+      ``Parser.Command.variable, ``Parser.Command.include, ``Parser.Command.omit,
+      ``Parser.Command.moduleDoc].contains kind then
+    return none
+  throwError "unsupported Paper command kind: {kind}"
+
+private def PaperAudit.guardTarget (cmd : Syntax) : Command.CommandElabM Name := do
+  match cmd with
+  | `(command| $[$doc?:docComment]? #guard_msgs (whitespace := lax) in $child) =>
+    unless doc?.isSome do throwError "axiom guard needs its expected message"
+    unless child.raw.isOfKind ``Parser.Command.printAxioms do
+      throwError "Paper guards must check only an axiom print"
+    return child.raw[2].getId
+  | _ => throwError "axiom pin requires exactly #guard_msgs (whitespace := lax)"
+
+/-- The coverage check is separate from adjacency, so both are tested independently. -/
+private def PaperAudit.missingPinErrors (state : PaperAudit) : Array String :=
+  state.results.toArray.filterMap fun name =>
+    if state.pins.contains name then none else some s!"missing guarded axiom pin for {name}"
+
+private def PaperAudit.checkAdjacency (state : IO.Ref PaperAudit)
+    (pending target : Option Name) : FrontendM Unit := do
+  unless pending == target do
+    PaperAudit.fail state "exact axiom pin must immediately follow its result"
+
+private def PaperAudit.checkExplicitStatement (state : IO.Ref PaperAudit)
+    (decl : Syntax) (name : Name) : FrontendM Unit := do
+  let resultType := decl[2][1]
+  let type? := if resultType.isOfKind ``Parser.Term.typeSpec then some resultType
+    else resultType.getArgs.find? (·.isOfKind ``Parser.Term.typeSpec)
+  unless type?.isSome do
+    PaperAudit.fail state s!"{name} needs its full explicit statement"
+
+private def PaperAudit.collectMessages (state : IO.Ref PaperAudit) : FrontendM Unit := do
+  let after ← getCommandState
+  let messages := after.messages ++ after.snapshotTasks.foldl
+    (· ++ ·.get.getAll.foldl (· ++ ·.diagnostics.msgLog) .empty) .empty
+  setCommandState { after with messages := {}, snapshotTasks := #[] }
+  for msg in messages.toList do
+    if msg.severity == .error then
+      let text ← msg.toString
+      state.modify fun s => { s with errors := s.errors.push ("Lean elaboration: " ++ text) }
+
+private partial def PaperAudit.loop (state : IO.Ref PaperAudit) : FrontendM Unit := do
+  updateCmdPos
+  let before ← getCommandState
+  let ctx ← getInputContext
+  let scope := before.scopes.head!
+  let (cmd, ps, messages) := Parser.parseCommand ctx
+    { env := before.env, options := scope.opts, currNamespace := scope.currNamespace,
+      openDecls := scope.openDecls } (← getParserState) {}
+  setParserState ps
+  if messages.hasErrors then
+    for msg in messages.toList do
+      let text ← msg.toString
+      state.modify fun s => { s with errors := s.errors.push ("Lean parser: " ++ text) }
+    return
+  if Parser.isTerminalCommand cmd then
+    unless cmd.isOfKind ``Parser.Command.eoi do
+      PaperAudit.fail state s!"unsupported terminal Paper command: {cmd.getKind}"
+    return
+  let pin := cmd.isOfKind ``Lean.guardMsgsCmd
+  let pending := (← state.get).pending
+  let primary? ← try
+    if pin then
+      let target ← runCommandElabM (guardTarget cmd)
+      let audit ← state.get
+      unless audit.results.contains target do
+        PaperAudit.fail state s!"axiom pin names no local result: {target}"
+      checkAdjacency state pending (some target)
+      if audit.pins.contains target then PaperAudit.fail state s!"duplicate axiom pin for {target}"
+      state.modify fun s => { s with pins := s.pins.insert target, pending := none }
+      let dependencies ← runCommandElabM (collectAxioms target)
+      for name in dependencies do
+        unless #[`propext, `Classical.choice, `Quot.sound].contains name do
+          PaperAudit.fail state s!"nonstandard axiom in {target}: {name}"
+      pure none
+    else
+      checkAdjacency state pending none
+      state.modify fun s => { s with pending := none }
+      runCommandElabM (command cmd)
+  catch error =>
+    PaperAudit.fail state (toString error)
+    return
+  runCommandElabM <| withRef cmd <| Command.elabCommand cmd
+  collectMessages state
+  let after ← getCommandState
+  let locals ← after.env.getLocalConstantInfos
+  for info in locals do
+    unless (← state.get).seen.contains info.name do
+      state.modify fun s => { s with seen := s.seen.insert info.name }
+      let prop ← runCommandElabM <| Command.liftTermElabM <| Meta.isProp info.toConstantVal.type
+      if prop then
+        if primary?.any (fun decl => decl[1][0].getId == info.name) then
+          let decl := primary?.get!
+          checkExplicitStatement state decl info.name
+          state.modify fun s =>
+            { s with results := s.results.insert info.name, pending := some info.name }
+        else if primary?.any (fun decl => decl.isOfKind ``Parser.Command.structure &&
+            (decl[1][0].getId).isPrefixOf info.name) then
+          if info.kind == .defn && !after.env.isProjectionFn info.name then
+            PaperAudit.fail state
+              s!"proof-valued structure default must be a separate named result: {info.name}"
+        else if !info.name.isInternal then
+          let equation ← runCommandElabM <| Command.liftTermElabM <| Meta.isEqnThm? info.name
+          unless equation.isSome do
+            PaperAudit.fail state s!"unexpected generated Paper result: {info.name}"
+  loop state
+
+/-- Audit a file in a separately loaded import environment, without loader trust overrides. -/
+def PaperAudit.run (env : Environment) (opts : Options) (file : String) : IO PaperAudit.Report := do
+  let inputCtx := Parser.mkInputContext (← IO.FS.readFile file) file
+  let (_, ps, messages) ← Parser.parseHeader inputCtx
+  let seen := (← env.getLocalConstantInfos).foldl (fun names info => names.insert info.name)
+    ({} : NameSet)
+  let state ← IO.mkRef ({ seen } : PaperAudit)
+  for msg in messages.toList do
+    if msg.severity == .error then
+      let text ← msg.toString
+      state.modify fun s => { s with errors := s.errors.push ("Lean header: " ++ text) }
+  if !messages.hasErrors then
+    let _ ← ((loop state).run { inputCtx }).run {
+      commandState := Command.mkState
+        (env.setMainModule (.str .anonymous s!"PaperAuditInput_{hash file}")) {} opts
+      parserState := ps, cmdPos := ps.pos }
+  let result ← state.get
+  let errors := result.errors ++ result.missingPinErrors
+  let errors := if result.results.isEmpty then
+    errors.push "Paper must contain stated results and pins" else errors
+  return {
+    file := file
+    results := result.results.toArray.map toString
+    pins := result.pins.toArray.map toString
+    errors := errors
+  }
+
+/-- Parse import headers with Lean, for the separate audit driver. -/
+def main (args : List String) : IO UInt32 := do
+  let mut result : Array Json := #[]
+  for file in args do
+    let ctx := Parser.mkInputContext (← IO.FS.readFile file) file
+    let (header, _, messages) ← Parser.parseHeader ctx
+    if messages.hasErrors then throw <| IO.userError s!"invalid import header: {file}"
+    result := result.push <| Json.mkObj [("file", toJson file),
+      ("imports", toJson ((Elab.headerToImports header).map fun i => i.module.toString))]
+  IO.println (toJson result).compress
+  return 0

@@ -3,12 +3,13 @@
 import Vegas.Game.SourceServiceFirstTurnCompletion
 import Mathlib.Tactic.Convert
 
-/-! # Source law of the first-turn compiler in every certified mode
+/-! # Sequential source law of the first-turn compiler
 
-A public-barrier certificate makes each supported dependency mode equal to the
-compiler's sequential graph. The native client and source reader constructors
-respect that equality, so the direct asynchronous compiler theorem retains its
-full source-configuration law in every certified mode.
+The public-barrier premise identifies a compiled service graph with the
+compiler's sequential graph. Native client and source-reader constructors
+respect that equality, preserving the direct asynchronous source law on this
+same sequential compiler output. The shared mode parameter adds no concurrent
+compiler result; lower graph APIs retain their separate nonordered scope.
 -/
 
 noncomputable section

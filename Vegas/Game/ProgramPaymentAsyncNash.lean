@@ -5,10 +5,10 @@ import Vegas.Game.ProgramPayoffs
 
 /-! # Program payments on the audited asynchronous service
 
-Monetary settlement evaluates the program's payment expressions on the
-typed terminal readout and subtracts collectible deposits. Valuation is separate
-analysis data. An unfinished readout gives both components zero before any audit
-deduction.
+Monetary settlement evaluates the setup's actual receipts on the typed terminal
+readout, using its declared exit transfer after public default, and subtracts
+collectible deposits. Valuation is separate analysis data. An absent readout
+gives both components zero before any audit deduction.
 -/
 
 noncomputable section
@@ -90,11 +90,14 @@ theorem paymentExpectedUtility_eq {Parameter : Type}
     (serviceSourceAudit service.setup service.mode service.deadline service.leaks sample)
     deposit state who).trans (by rw [combined])
 
-/-- Declared bounds on valuation, executable receipts, and deposits provide the
+/-- Declared bounds on valuation, instruction-payment sums, and deposits provide the
 runtime Nash theorem's interval at actual initialized histories, including
 unfinished readouts. Its width is
-`max 0 (valuationHigh + transferHigh) - min 0 (valuationLow + transferLow) +
-depositBound`, so callers need no separate case analysis of audit verdicts. -/
+`max 0 (valuationHigh + max transferHigh exitTransfer) -
+min 0 (valuationLow + min transferLow exitTransfer) + depositBound`, where
+`exitTransfer = (service.setup.exitTransfers who : ℝ)` for the player in
+question. Thus the interval covers the instruction sum, the exit override,
+absent readouts and audit deductions without a separate verdict case split. -/
 theorem payment_within_of_bounds {Parameter : Type}
     (parameter : State L service.setup.context → Parameter)
     (valuation : Parameter × PublicOutcome service.setup.program → Player → ℝ)

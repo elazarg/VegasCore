@@ -4,7 +4,6 @@ import Interaction.ChallengeWindow
 import Interaction.CommitmentCandidates
 import Interaction.IdealCommitments
 import Interaction.MessageInvariant
-import Interaction.MessageLedgerCount
 import Interaction.MessageMonitoring
 import Interaction.MessageNetwork
 import Interaction.MessageNetworkCounters

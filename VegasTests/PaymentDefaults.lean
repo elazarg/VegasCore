@@ -148,6 +148,30 @@ example (exit : Int) : (cashSetup exit).transfers
     (cashProgram.publicOutcome (finished none false)) .alice = (exit : ℝ) :=
   omission_transfers exit
 
+/-- The parameterized monetary source utility includes the six-unit exit override. -/
+example : (cashSetup 6).parameterPaymentUtility
+    (fun (_ : Unit × PublicOutcome cashProgram) (_ : Player) => 0)
+    ((), cashProgram.publicOutcome (finished none false)) .alice = 6 := by
+  rw [Setup.parameterPaymentUtility_eq, zero_add]
+  exact omission_transfers 6
+
+/-- Actual compiled graph receipts pay six on omission even though `ret` pays five. -/
+example :
+    (((cashSetup 6).eventGame (cashSetup 6).eventGraph.canonicalScheduler).play
+        (compileEventProfile cashProgram (profile none false))).map
+        (fun outcome => (cashSetup 6).eventTransfers outcome .alice) = PMF.pure 6 := by
+  simp_rw [Setup.eventTransfers_eq_transfers]
+  change (((cashSetup 6).eventGraph.canonicalGame
+      ((cashSetup 6).initialLaw.map (cashSetup 6).eventInputs)).play
+        (compileEventProfile cashProgram (profile none false))).map
+      ((fun terminal => (cashSetup 6).transfers (cashProgram.publicOutcome terminal) .alice) ∘
+        terminalConfig cashProgram) = _
+  rw [← PMF.map_comp]
+  erw [canonical_setup_law (cashSetup 6) (profile none false)]
+  change ((PMF.pure initial).bind _).map _ = _
+  erw [PMF.pure_bind, run_profile, PMF.pure_map]
+  exact congrArg PMF.pure (omission_transfers 6)
+
 /-- The same contract retains the ordinary five-unit receipt on successful play. -/
 example : (cashSetup 0).transfers
     (cashProgram.publicOutcome (finished (some (.success true)) true)) .alice = 5 := by

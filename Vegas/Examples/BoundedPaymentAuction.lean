@@ -174,14 +174,14 @@ def valuation (penalty : Int) (values : Player → ℝ)
 
 /-- The evaluated instructions agree with the ordinary real-valued economic
 settlement on every bounded report and failure outcome. -/
-theorem paymentUtility_eq_economic (penalty : Int) (values : Player → ℝ)
+theorem paymentSumUtility_eq_economic (penalty : Int) (values : Player → ℝ)
     (outcome : PublicOutcome (program penalty)) (who : Player) :
-    (program penalty).paymentUtility (valuation penalty values) outcome who =
+    (program penalty).paymentSumUtility (valuation penalty values) outcome who =
       CommitRevealAuction.utility values (penalty : ℝ)
         (CommitRevealAuction.result
           (integerPublication (outcome.values.get (.there .here)))
           (integerPublication (outcome.values.get .here))) who := by
-  rw [paymentUtility_eq]
+  rw [paymentSumUtility_eq]
   unfold publicTransfers
   rw [publicPayoffs_eq]
   cases who <;>
@@ -194,7 +194,7 @@ theorem paymentUtility_eq_economic (penalty : Int) (values : Player → ℝ)
   all_goals split_ifs <;> ring
 
 /-- The finite report alphabet supports the existing full-deviation compiler
-Nash equivalence with the program's own evaluated monetary instructions. -/
+Nash equivalence for the program's evaluated instruction-payment sum. -/
 theorem compiled_nash_iff (penalty : Int) (values : Player → ℝ)
     (scheduler : (setup penalty).eventGraph.PublicScheduler) (error : ℝ)
     (profile : BehavioralProfile (program penalty)) :
@@ -203,9 +203,10 @@ theorem compiled_nash_iff (penalty : Int) (values : Player → ℝ)
           valuation penalty values ((setup penalty).eventPublicOutcome outcome) who +
             (transferAmount (terminalPayouts (program penalty) outcome) who : ℝ)) error
         (compileEventProfile (program penalty) profile) ↔
-      IsεNash (setup penalty).gameForm ((program penalty).paymentUtility (valuation penalty values))
+      IsεNash (setup penalty).gameForm
+        ((program penalty).paymentSumUtility (valuation penalty values))
         error profile :=
-  (setup penalty).eventGame_payment_approximate_nash_iff (finiteBindingTypes penalty)
+  (setup penalty).eventGame_paymentSum_approximate_nash_iff (finiteBindingTypes penalty)
     scheduler (valuation penalty values) error profile
 
 
@@ -263,12 +264,12 @@ theorem update_profile (penalty : Int) (before after : Bid) :
 counterexample: Alice's net utility increases from one to five. -/
 theorem profitable_misreport (penalty : Int) (values : Player → ℝ)
     (valueAlice : values .alice = 5) :
-    expectedUtility ((program penalty).paymentUtility (valuation penalty values)) Player.alice
+    expectedUtility ((program penalty).paymentSumUtility (valuation penalty values)) Player.alice
         ((setup penalty).gameForm.play (profile penalty (bid 5))) <
-      expectedUtility ((program penalty).paymentUtility (valuation penalty values)) Player.alice
+      expectedUtility ((program penalty).paymentSumUtility (valuation penalty values)) Player.alice
         ((setup penalty).gameForm.play (profile penalty (bid 6))) := by
   rw [play_truthful, play_misreport, expectedUtility_pure, expectedUtility_pure,
-    paymentUtility_eq_economic, paymentUtility_eq_economic]
+    paymentSumUtility_eq_economic, paymentSumUtility_eq_economic]
   norm_num [CommitRevealAuction.utility, CommitRevealAuction.result,
     result, integerPublication, bid, Env.get, Env.cons, valueAlice]
 
@@ -278,7 +279,7 @@ comparators in this game form. -/
 theorem truthful_not_dominant (penalty : Int) (values : Player → ℝ)
     (valueAlice : values .alice = 5) :
     ¬ IsDominant (setup penalty).gameForm
-      (euPreference ((program penalty).paymentUtility (valuation penalty values)))
+      (euPreference ((program penalty).paymentSumUtility (valuation penalty values)))
       Player.alice (alicePolicy penalty (bid 5)) := by
   intro dominant
   have bound := dominant (alicePolicy penalty (bid 6)) (profile penalty (bid 5))

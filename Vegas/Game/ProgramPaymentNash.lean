@@ -6,9 +6,11 @@ import Vegas.Game.SourceProtocolNash
 
 /-! # Nash correspondence for executable program payments
 
-The compiled utility evaluates the actual compiled payment instructions. Initial
-parameters can enter valuation through a derived outcome reader: the source
-policies, their observations, and execution remain those of the original setup.
+Graph receipts evaluate compiled payment instructions and apply the setup's
+declared exit transfer after public default. Initial parameters can enter
+valuation through a derived outcome reader, without changing source policies,
+observations or execution. A separate instruction-sum theorem serves analyses
+that deliberately omit the setup's exit override.
 -/
 
 noncomputable section
@@ -20,9 +22,9 @@ open GameTheory GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [IExpr.ResultTypes L]
 
-/-- Same-error Nash preservation and reflection for quasi-linear utility whose
-receipts are the actual compiled program payments. -/
-theorem eventGame_payment_approximate_nash_iff
+/-- Same-error Nash correspondence for the evaluated instruction-payment sum,
+before applying the setup's declared exit transfer. -/
+theorem eventGame_paymentSum_approximate_nash_iff
     (setup : Setup (Player := Player) (L := L))
     (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (scheduler : setup.eventGraph.PublicScheduler)
@@ -32,19 +34,57 @@ theorem eventGame_payment_approximate_nash_iff
         (fun outcome who => valuation (setup.eventPublicOutcome outcome) who +
           (transferAmount (terminalPayouts setup.program outcome) who : ℝ))
         ε (compileEventProfile setup.program profile) ↔
-      IsεNash setup.gameForm (setup.program.paymentUtility valuation) ε profile := by
+      IsεNash setup.gameForm (setup.program.paymentSumUtility valuation) ε profile := by
   have utility_eq :
       (fun (outcome : (setup.eventGame scheduler).sig.Outcome) who =>
         valuation (setup.eventPublicOutcome outcome) who +
         (transferAmount (terminalPayouts setup.program outcome) who : ℝ)) =
       (fun (outcome : (setup.eventGame scheduler).sig.Outcome) who =>
-        setup.program.paymentUtility valuation (setup.eventPublicOutcome outcome) who) := by
+        setup.program.paymentSumUtility valuation (setup.eventPublicOutcome outcome) who) := by
     funext outcome who
-    simp only [paymentUtility_eq, publicTransfers, eventPublicOutcome,
+    simp only [paymentSumUtility_eq, publicTransfers, eventPublicOutcome,
       publicPayoffs_publicOutcome, terminalPayouts_eq_source, terminalConfig]
   rw [utility_eq]
   exact setup.eventGame_approximate_nash_iff finite scheduler
-    (setup.program.paymentUtility valuation) ε profile
+    (setup.program.paymentSumUtility valuation) ε profile
+
+/-- Actual graph receipts replace the instruction sum after public default. -/
+def eventTransfers (setup : Setup (Player := Player) (L := L))
+    (outcome : setup.eventGraph.gameSignature.Outcome) (who : Player) : ℝ :=
+  if who ∈ outcome.1.defaulted then (setup.exitTransfers who : ℝ)
+  else (transferAmount (terminalPayouts setup.program outcome) who : ℝ)
+
+@[simp] theorem eventTransfers_eq_transfers (setup : Setup (Player := Player) (L := L))
+    (outcome : setup.eventGraph.gameSignature.Outcome) (who : Player) :
+    setup.eventTransfers outcome who = setup.transfers (setup.eventPublicOutcome outcome) who := by
+  simp only [eventTransfers, Setup.transfers, eventPublicOutcome, publicTransfers,
+    publicPayoffs_publicOutcome, terminalPayouts_eq_source, terminalConfig]
+  rfl
+
+/-- Same-error Nash preservation and reflection for actual default-aware receipts. -/
+theorem eventGame_payment_approximate_nash_iff
+    (setup : Setup (Player := Player) (L := L))
+    (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (scheduler : setup.eventGraph.PublicScheduler)
+    (valuation : PublicOutcome setup.program → Player → ℝ)
+    (ε : ℝ) (profile : BehavioralProfile setup.program) :
+    IsεNash (setup.eventGame scheduler)
+        (fun outcome who => valuation (setup.eventPublicOutcome outcome) who +
+          setup.eventTransfers outcome who)
+        ε (compileEventProfile setup.program profile) ↔
+      IsεNash setup.gameForm
+        (fun outcome who => valuation outcome who + setup.transfers outcome who) ε profile := by
+  have utility_eq :
+      (fun (outcome : (setup.eventGame scheduler).sig.Outcome) who =>
+        valuation (setup.eventPublicOutcome outcome) who + setup.eventTransfers outcome who) =
+      (fun (outcome : (setup.eventGame scheduler).sig.Outcome) who =>
+        valuation (setup.eventPublicOutcome outcome) who +
+          setup.transfers (setup.eventPublicOutcome outcome) who) := by
+    funext outcome who
+    rw [eventTransfers_eq_transfers]
+  rw [utility_eq]
+  exact setup.eventGame_approximate_nash_iff finite scheduler
+    (fun outcome who => valuation outcome who + setup.transfers outcome who) ε profile
 
 /-- A derived analysis view of the original execution. The strategies are
 unchanged; the outcome retains an initial parameter jointly with the public result. -/
@@ -152,8 +192,8 @@ theorem parameterEventGame_approximate_nash_iff {Parameter : Type}
       hasExpectation_of_payoffIntegrable (payoffIntegrable_of_finite_support _ _
         (setup.eventGame_play_support_finite finite scheduler _)))
 
-/-- Parameter-dependent valuation plus actual compiled monetary receipts has
-the same Nash error as valuation plus source-program payments. -/
+/-- Parameter-dependent valuation and actual default-aware receipts have the
+same Nash error in the graph and source games. -/
 theorem parameterEventGame_payment_approximate_nash_iff {Parameter : Type}
     (setup : Setup (Player := Player) (L := L))
     (parameter : State L setup.context → Parameter)
@@ -163,22 +203,22 @@ theorem parameterEventGame_payment_approximate_nash_iff {Parameter : Type}
     (ε : ℝ) (profile : BehavioralProfile setup.program) :
     IsεNash (setup.eventGame scheduler)
         (fun outcome who => valuation (setup.eventParameterOutcome parameter outcome) who +
-          (transferAmount (terminalPayouts setup.program outcome) who : ℝ))
+          setup.eventTransfers outcome who)
         ε (compileEventProfile setup.program profile) ↔
       IsεNash (setup.parameterGameForm parameter)
-        (setup.program.parameterPaymentUtility valuation) ε profile := by
+        (setup.parameterPaymentUtility valuation) ε profile := by
   have utility_eq :
       (fun (outcome : (setup.eventGame scheduler).sig.Outcome) who =>
         valuation (setup.eventParameterOutcome parameter outcome) who +
-        (transferAmount (terminalPayouts setup.program outcome) who : ℝ)) =
+        setup.eventTransfers outcome who) =
       (fun (outcome : (setup.eventGame scheduler).sig.Outcome) who =>
-        setup.program.parameterPaymentUtility valuation
-        (setup.eventParameterOutcome parameter outcome) who) := by
+        setup.parameterPaymentUtility valuation
+          (setup.eventParameterOutcome parameter outcome) who) := by
     funext outcome who
-    simp only [SourceProgram.parameterPaymentUtility_eq, publicTransfers, eventParameterOutcome,
-      parameterOutcome, publicPayoffs_publicOutcome, terminalPayouts_eq_source, terminalConfig]
+    rw [Setup.parameterPaymentUtility_eq, eventTransfers_eq_transfers]
+    rfl
   rw [utility_eq]
   exact setup.parameterEventGame_approximate_nash_iff parameter finite scheduler
-    (setup.program.parameterPaymentUtility valuation) ε profile
+    (setup.parameterPaymentUtility valuation) ε profile
 
 end Vegas.SourceProgram.Setup

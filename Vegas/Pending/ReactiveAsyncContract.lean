@@ -13,7 +13,7 @@ is the time between two clock advances, so the public clock counts slots.
 
 The contract has per-event bounds. `delay event` bounds how many slots an
 owned event may be ready before its owner is activated, and `bound event` how
-many slots an owner's latest packet for a ready event may wait for inclusion.
+many slots an owner's sole packet for a ready event may wait for inclusion.
 Together they make a prescribed packet timely when
 `delay event + bound event < runtime.deadline event`.
 
@@ -41,6 +41,15 @@ def OwnerActivatedSince (history : List (runtime.reactiveApplication leaks).Envi
     entry.beforeView.application.activatedAt event = some entered ∧
     entry.beforeView.application.EventReady event
 
+/-- The native opportunity condition at a fixed execution. -/
+def OpportunityAt (execution : (runtime.reactiveApplication leaks).Execution)
+    (delay : graph.EventId → Nat) : Prop :=
+  ∀ event owner entered, graph.actor? event = some owner →
+    execution.application.publicView.EventReady event →
+    execution.application.activatedAt event = some entered →
+    entered + delay event < execution.application.clock →
+    OwnerActivatedSince runtime leaks execution.environmentRecall event owner entered
+
 /-- **Opportunity within `delay`.** Once an owned event has been ready for more
 than `delay event` slots, its owner has been activated since it became ready.
 Further activations of anyone are allowed. -/
@@ -50,11 +59,7 @@ def Opportunity (initial : PMF (runtime.reactiveApplication leaks).State) (horiz
   ∀ (control : (runtime.reactiveApplication leaks).Control),
     ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
       (some control) →
-    ∀ event owner entered, graph.actor? event = some owner →
-      control.execution.application.publicView.EventReady event →
-      control.execution.application.activatedAt event = some entered →
-      entered + delay event < control.execution.application.clock →
-      OwnerActivatedSince runtime leaks control.execution.environmentRecall event owner entered
+    OpportunityAt runtime leaks control.execution delay
 
 /-- `entry` emitted a packet authored by the author of `id`, addressed to
 `event`, whose identifier is not `id`: another identifier of the same author
@@ -63,6 +68,21 @@ def EmitsOtherFor (entry : (runtime.reactiveApplication leaks).PlayerEntry)
     (event : graph.EventId) (id : MessageId Player) : Prop :=
   ∃ message, entry.emitted = some message ∧ message.sender = id.1 ∧
     message.payload.call.event? graph = some event ∧ message.id ≠ id
+
+/-- The native protected-inclusion condition at a fixed execution, retaining the
+same recalled-packet uniqueness and strict timing premises. -/
+def ProtectedInclusionAt (execution : (runtime.reactiveApplication leaks).Execution)
+    (bound : graph.EventId → Nat) : Prop :=
+  ∀ event owner, graph.actor? event = some owner →
+  ∀ (earlier later : List (runtime.reactiveApplication leaks).PlayerEntry) entry message,
+    execution.recall owner = earlier ++ entry :: later →
+    entry.emitted = some message → message.sender = owner →
+    message.payload.call.event? graph = some event →
+    entry.beforeView.application.publicView.EventReady event →
+    (∀ other ∈ earlier ++ later, ¬ EmitsOtherFor runtime leaks other event message.id) →
+    event ∉ execution.application.config.cut.completed →
+    entry.beforeView.application.publicView.clock + bound event < execution.application.clock →
+    ∃ accepted, (message.id, accepted) ∈ execution.receipts
 
 /-- **Protected inclusion within `bound`.** When an owner has authored a
 packet addressed to its event while the event was ready at clock `sent`, and
@@ -85,17 +105,7 @@ def ProtectedInclusion (initial : PMF (runtime.reactiveApplication leaks).State)
   ∀ (control : (runtime.reactiveApplication leaks).Control),
     ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
       (some control) →
-    ∀ event owner, graph.actor? event = some owner →
-    ∀ (earlier later : List (runtime.reactiveApplication leaks).PlayerEntry) entry message,
-      control.execution.recall owner = earlier ++ entry :: later →
-      entry.emitted = some message → message.sender = owner →
-      message.payload.call.event? graph = some event →
-      entry.beforeView.application.publicView.EventReady event →
-      (∀ other ∈ earlier ++ later, ¬ EmitsOtherFor runtime leaks other event message.id) →
-      event ∉ control.execution.application.config.cut.completed →
-      entry.beforeView.application.publicView.clock + bound event <
-        control.execution.application.clock →
-      ∃ accepted, (message.id, accepted) ∈ control.execution.receipts
+    ProtectedInclusionAt runtime leaks control.execution bound
 
 /-- The asynchronous service contract for a fixed horizon and scheduler, with
 per-event reaction bounds `delay` and inclusion bounds `bound`. Finite

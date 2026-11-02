@@ -68,16 +68,17 @@ theorem historyGain_eq_zero_of_constant_payoff (run : M.ContinuationRunner)
       _ = value := expect_constant _ _
   exact sub_eq_zero.mpr ((fixed _).trans (fixed _).symm)
 
-/-- Continuation indifference at every hidden history gives indifference at the
-information site for any assessment beliefs. Different hidden histories may
+/-- Continuation indifference on the support of the assessment's beliefs gives
+indifference at the information site. Different hidden histories may
 have different fixed payoffs; only control over the continuation is irrelevant. -/
 theorem gain_eq_zero_of_constant_continuations [Finite E.History]
     (run : M.ContinuationRunner) (observe : E.History → Observation)
     (utility : Observation → ι → ℝ) (assessment : M.BehavioralAssessment) {who : ι}
     (deviation : M.AssessmentDeviation who)
     (value : M.InformationHistory who deviation.1.1 → ℝ)
-    (constant : ∀ history players final, final ∈ (run players history.1).support →
-      utility (observe final) who = value history) :
+    (constant : ∀ history ∈ (assessment.belief who deviation.1).support,
+      ∀ players final, final ∈ (run players history.1).support →
+        utility (observe final) who = value history) :
     expect (M.assessmentComparisonWith run observe assessment who deviation).alternative
         (utility · who) -
       expect (M.assessmentComparisonWith run observe assessment who deviation).prescribed
@@ -85,9 +86,9 @@ theorem gain_eq_zero_of_constant_continuations [Finite E.History]
   rw [M.gain_eq_expect_historyGain]
   calc
     _ = expect (assessment.belief who deviation.1) (fun _ => 0) :=
-      expect_congr_on_support (fun history _ =>
+      expect_congr_on_support (fun history supported =>
         M.historyGain_eq_zero_of_constant_payoff run observe utility assessment deviation
-          history (value history) (constant history))
+          history (value history) (constant history supported))
     _ = 0 := expect_constant _ _
 
 end GameTheory.Protocol.InformationModel

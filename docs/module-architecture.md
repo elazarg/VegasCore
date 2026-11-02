@@ -17,6 +17,7 @@ subtree; imports do not preserve unused research modules merely to keep a name.
 | Vegas.Pending | Submission, inclusion, relative deadlines, operational graph refinement, automatic completion, service and count-audit contracts. |
 | Vegas.Compile | Source-to-graph compiler and source/scheduler correspondence. |
 | Vegas.Game | Ordinary compiler correctness, intended-source extension, Nash correspondence and raw non-concurrent SE preservation. |
+| Tools | Read-only Lean-native paper validation and repository checks; theorem libraries cannot import this layer. |
 | Tests and examples | Retained semantic regressions and concrete consumers. |
 
 Source execution has one configuration-based evaluator, `SourceProgram.runFrom`.
@@ -109,6 +110,10 @@ its declarations. These standalone examples each protect a concrete behavior:
 | [LateOpeningRuntimeSourceContinuation](../Vegas/Examples/LateOpeningRuntimeSourceContinuation.lean) | The intended source continuation draws Bob's answer from his policy at the observed bit and retains the single private initial draw in its terminal law. |
 | [ProgramPaymentsNativeRepresentation](../Vegas/Examples/ProgramPaymentsNativeRepresentation.lean) | Equal graph configurations can have different native handle observations and acceptance behavior; the actual execution cannot factor through graph configuration alone. |
 | [ProgramPaymentsRuntime](../Vegas/Examples/ProgramPaymentsRuntime.lean) | The concrete bounded runtime has the specified Nash choices and exact joint typed-state, default-history and cash settlement law. |
+
+The separate Lean-native validator parses and elaborates Paper in an isolated import
+driver. It checks proof-valued declarations, ordinary command scope, and actual
+axiom dependencies; the theorem libraries do not import the validator.
 
 Every paper-stated mathematical result needs an exact guarded pin after its full local statement in
 [Paper.lean](../Paper.lean). Library results have no separate pin requirement.

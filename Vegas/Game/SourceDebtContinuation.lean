@@ -110,41 +110,6 @@ theorem exclusionBase_expect_of_owesFailure {Parameter : Type}
     (payoffIntegrable_constant _ _), ?_⟩
   exact (expect_congr_on_support fixed).trans (expect_constant _ _)
 
-/-- At a history carrying source debt, every whole-policy deviation has zero
-base-utility gain under complete play. -/
-theorem exclusionBase_historyGain_eq_zero_of_owesFailure {Parameter : Type}
-    (parameter : State L setup.context → Parameter)
-    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-    (excludedPayoff : Player → ℝ)
-    (menu : (application setup runtime leaks).ResponseMenu) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler)
-    (completes : CompletesPlay runtime leaks (initialLaw setup) horizon scheduler)
-    (certificate : (menu.protocol (initialLaw setup) horizon scheduler).WellFoundedHistories)
-    (assessment : (menu.information (initialLaw setup) horizon scheduler).BehavioralAssessment)
-    {who : Player}
-    (deviation : (menu.information (initialLaw setup) horizon scheduler).AssessmentDeviation who)
-    (history : (menu.information (initialLaw setup) horizon scheduler).InformationHistory who
-      deviation.1.1)
-    (owed : DecodedState setup runtime leaks profile (ProtocolState.OwesFailure
-      who setup.program) history.1.state) :
-    (menu.information (initialLaw setup) horizon scheduler).historyGain
-      ((menu.information (initialLaw setup) horizon scheduler).runBehavioralTerminalFrom
-        certificate)
-      (fun final => final.state)
-      (exclusionBase setup runtime parameter utility excludedPayoff leaks) assessment deviation
-      history = 0 := by
-  let model := menu.information (initialLaw setup) horizon scheduler
-  have fixed (players : ∀ player, model.BehavioralPolicy player) :
-      expect ((model.runBehavioralTerminalFrom certificate players history.1).map
-        (fun final => final.state))
-        (fun state => exclusionBase setup runtime parameter utility excludedPayoff leaks
-          state who) = excludedPayoff who := by
-    rw [expect_map]
-    exact (exclusionBase_expect_of_owesFailure parameter utility excludedPayoff menu horizon
-      scheduler completes certificate players who history.1 owed).2
-  unfold InformationModel.historyGain
-  exact sub_eq_zero.mpr ((fixed _).trans (fixed _).symm)
-
 /-- Any belief supported on histories carrying own source debt makes every
 whole-policy deviation indifferent under complete play. -/
 theorem exclusionBase_gain_eq_zero_of_owesFailure {Parameter : Type}
@@ -174,10 +139,13 @@ theorem exclusionBase_gain_eq_zero_of_owesFailure {Parameter : Type}
       (fun final => final.state) assessment who deviation).prescribed
         (fun state => exclusionBase setup runtime parameter utility excludedPayoff leaks
           state who) = 0 := by
-  rw [(menu.information (initialLaw setup) horizon scheduler).gain_eq_expect_historyGain]
-  rw [expect_congr_on_support (g := fun _ => 0) (fun history supported =>
-    exclusionBase_historyGain_eq_zero_of_owesFailure parameter utility excludedPayoff menu horizon
-      scheduler completes certificate assessment deviation history (owed history supported))]
-  exact expect_constant _ _
+  let model := menu.information (initialLaw setup) horizon scheduler
+  apply model.gain_eq_zero_of_constant_continuations
+    (model.runBehavioralTerminalFrom certificate) (fun final => final.state)
+    (exclusionBase setup runtime parameter utility excludedPayoff leaks) assessment deviation
+    (fun _ => excludedPayoff who)
+  intro history supported players final reached
+  exact exclusionBase_continuation_of_owesFailure parameter utility excludedPayoff menu horizon
+    scheduler completes certificate players who history.1 (owed history supported) final reached
 
 end Vegas

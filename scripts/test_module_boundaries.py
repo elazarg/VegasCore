@@ -26,6 +26,14 @@ class ModuleBoundaryTests(unittest.TestCase):
             path.write_text(text, encoding="utf-8")
         return root
 
+    def test_audit_tools_are_outside_the_theorem_libraries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = self.fixture(directory, {"Vegas": "import Vegas.Game",
+                "Vegas.Game": "import Tools.PaperAudit", "Tools": "import Tools.PaperAudit",
+                "Tools.PaperAudit": "import Lean"},
+                extra_config='[[lean_lib]]\nname = "Tools"\n')
+            self.assertTrue(any("must not import audit tooling" in e for e in CHECKER.check(root)))
+
     def test_comments_do_not_create_imports(self):
         self.assertEqual(CHECKER.imports(
             "/- import Bogus\n/- nested -/ -/\nimport Vegas.Foundation -- comment\n"
@@ -181,7 +189,7 @@ class ModuleBoundaryTests(unittest.TestCase):
             self.assertEqual(CHECKER.check(root), [])
 
     def test_source_module_names_do_not_exempt_them_from_the_layer_contract(self):
-        for module in ("Vegas.Source.CommitRecoveryExit", "Vegas.Source.ProposalRecoveryExit"):
+        for module in ("Vegas.Source.Adapter", "Vegas.Source.Invariant"):
             for dependency in ("Interaction.Network", "GameTheoryExtensions.Analysis.Audit"):
                 with self.subTest(module=module, dependency=dependency), \
                         tempfile.TemporaryDirectory() as directory:

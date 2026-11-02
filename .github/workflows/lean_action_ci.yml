@@ -29,8 +29,6 @@ jobs:
         run: python scripts/check-doc-references.py
       - name: Require centralized Lean options
         run: python scripts/check-lean-options.py
-      - name: Test repository checks
-        run: python -m unittest discover -s scripts -p 'test_*.py'
       - name: Check module boundaries and build reachability
         run: python scripts/check-module-boundaries.py
       - name: Record the GameTheory revision
@@ -45,6 +43,10 @@ jobs:
       - uses: leanprover/lean-action@24581d74d674803a25a81b10b059c5c0cdd344c6 # v1.6.2
       - name: Build with centralized warning-as-error options
         run: lake build
+      - name: Audit paper syntax, proof types and exact pins with Lean
+        run: python scripts/check-paper-audit.py
+      - name: Test repository checks and audit mutations
+        run: python -m unittest discover -s scripts -p 'test_*.py'
 
   docs:
     # API documentation takes far longer than the build, so only main publishes it.

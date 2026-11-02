@@ -2,7 +2,7 @@ name = "VegasCore"
 version = "0.1.0"
 buildDir = ".lake/build-stable"
 keywords = ["math"]
-defaultTargets = ["GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction", "InteractionTests", "Vegas", "VegasTests", "Paper"]
+defaultTargets = ["GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction", "InteractionTests", "Vegas", "VegasTests", "Paper", "Tools"]
 
 [leanOptions]
 pp.unicode.fun = true
@@ -49,3 +49,6 @@ name = "Interaction"
 
 [[lean_lib]]
 name = "InteractionTests"
+
+[[lean_lib]]
+name = "Tools"
