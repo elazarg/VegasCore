@@ -68,9 +68,9 @@ private def respond (who : Player) : app.Policy := fun past view =>
 /-- A complete action law using ledger data and the player's own private state. -/
 def policy (who : Player) : app.Policy := app.ledgerPolicy (respond who)
 
-theorem policy_usesLedgerOnly (who : Player) :
-    ReactiveApplication.Policy.UsesLedgerOnly app (policy who) :=
-  app.ledgerPolicy_usesLedgerOnly (respond who)
+theorem policy_ignoresLeakedFields (who : Player) :
+    ReactiveApplication.Policy.IgnoresLeakedFields app (policy who) :=
+  app.ledgerPolicy_ignoresLeakedFields (respond who)
 
 theorem policy_of_defaulted (who : Player) (past : List app.PlayerEntry)
     (view : app.PlayerView)

@@ -132,6 +132,22 @@ class PaperAuditTests(unittest.TestCase):
                 '(h : (fun _ : Nat => True) 0) : True := h\n' + pin(),
             'placeholder_lambda_type': 'theorem Vegas.Paper.result '
                 '(h : (fun (x : _) => True) (0 : Nat)) : True := h\n' + pin(),
+            'variable_hole': 'variable (x : _)\n' +
+                proof(result='x = (1 : Nat) → x = 1', body='id') + pin(),
+            'variable_named_hole': 'variable (x : ?a)\n' +
+                proof(result='x = (1 : Nat) → x = 1', body='id') + pin(),
+            'named_binder_type': 'theorem Vegas.Paper.result (x : ?a) : '
+                'x = (1 : Nat) → x = 1 := id\n' + pin(),
+            'implicit_variable': 'variable (x : Nat)\nvariable {x}\n' +
+                proof(result='x = x', body='rfl') + pin(),
+            'forall_anonymous': 'theorem Vegas.Paper.result '
+                '(h : ∀ _ : Nat, True) : True := h 0\n' + pin(),
+            'exists_anonymous': 'theorem Vegas.Paper.result '
+                '(h : ∃ _ : Nat, True) : True := h.elim (fun _ proof => proof)\n' + pin(),
+            'match_pattern': 'theorem Vegas.Paper.result (n : Nat) '
+                '(h : match n with | _ => True) : True := h\n' + pin(),
+            'lambda_match': 'theorem Vegas.Paper.result '
+                '(h : (fun | _ => True) (0 : Nat)) : True := h\n' + pin(),
             'empty': '',
         }
         cls.paths = {}
@@ -227,6 +243,43 @@ class PaperAuditTests(unittest.TestCase):
                 self.error(case, 'needs explicit binder types')
         self.assertEqual(self.reports['anonymous_function']['errors'], [])
         self.assertEqual(self.reports['anonymous_binder_function']['errors'], [])
+
+    def test_section_variables_and_named_type_holes(self):
+        for case in ('variable_hole', 'variable_named_hole'):
+            with self.subTest(case=case):
+                self.error(case, 'Paper section variable types cannot contain holes')
+        self.error('named_binder_type', 'needs explicit binder types')
+        self.assertEqual(self.reports['implicit_variable']['errors'], [])
+
+    def test_anonymous_quantifiers_and_match_patterns_are_valid(self):
+        for case in ('forall_anonymous', 'exists_anonymous', 'match_pattern', 'lambda_match'):
+            with self.subTest(case=case):
+                self.assertEqual(self.reports[case]['errors'], [])
+
+    def test_freshness_gate_rejects_an_edited_source_without_rebuilding(self):
+        directory = ROOT / '.lake/paper-audit'
+        with tempfile.TemporaryDirectory(prefix='freshness-', dir=directory) as temp:
+            project = Path(temp)
+            self.assertTrue(project.resolve().is_relative_to(directory.resolve()))
+            (project / 'lean-toolchain').write_text(
+                (ROOT / 'lean-toolchain').read_text(encoding='utf-8'), encoding='utf-8')
+            (project / 'lakefile.toml').write_text(
+                'name = "audit_freshness"\n[[lean_lib]]\nname = "Paper"\n'
+                '[[lean_lib]]\nname = "Tools"\n', encoding='utf-8')
+            source = project / 'Paper.lean'
+            source.write_text('def certificate : Nat := 0\n', encoding='utf-8')
+            (project / 'Tools.lean').write_text('def helper : Nat := 0\n', encoding='utf-8')
+            built = subprocess.run(['lake', 'build', 'Paper', 'Tools'], cwd=project,
+                                   capture_output=True, text=True, timeout=180)
+            self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+            artifact = project / '.lake/build/lib/lean/Paper.olean'
+            original = artifact.read_bytes()
+            with patch.object(AUDIT, 'ROOT', project):
+                AUDIT.ensure_fresh_build()
+                source.write_text('def certificate : Nat := 1\n', encoding='utf-8')
+                with self.assertRaisesRegex(RuntimeError, 'build is missing or stale'):
+                    AUDIT.ensure_fresh_build()
+            self.assertEqual(artifact.read_bytes(), original)
 
     def test_actual_paper_passes_with_its_own_import_header(self):
         report = self.reports['actual_paper']

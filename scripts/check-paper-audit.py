@@ -24,8 +24,19 @@ def lean(args):
     return result.stdout
 
 
+def ensure_fresh_build():
+    """Refuse to audit proofs against missing or outdated target artifacts."""
+    result = subprocess.run(['lake', 'build', '--no-build', 'Paper', 'Tools'], cwd=ROOT,
+                            text=True, encoding='utf-8', capture_output=True,
+                            timeout=LEAN_TIMEOUT_SECONDS)
+    if result.returncode:
+        raise RuntimeError('Paper/Tools build is missing or stale; run lake build Paper Tools.\n'
+                           + result.stdout + result.stderr)
+
+
 def audit_files(files, *, source_override=None):
     """Use each exact import header and its pristine environment; overrides test mutations."""
+    ensure_fresh_build()
     files = [Path(f).resolve() for f in files]
     setup = ROOT / '.lake/build-stable/ir/Paper.setup.json'
     tool_setup = ROOT / '.lake/build-stable/ir/Tools/PaperAudit.setup.json'

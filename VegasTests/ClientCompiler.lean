@@ -28,9 +28,9 @@ private def compiled (intended : fixture.intendedModel.BehavioralAssessment)
 example (intended : fixture.intendedModel.BehavioralAssessment)
     (equilibrium : fixture.IntendedSequentialEquilibrium
       (fun _ => ()) Vegas.Examples.OddsEvens.sourceUtility intended) (who : Bool) :
-    ReactiveApplication.Policy.UsesLedgerOnly app
+    ReactiveApplication.Policy.IgnoresLeakedFields app
       ((compiled intended equilibrium).ledgerClients who) :=
-  (compiled intended equilibrium).ledgerClients_useLedgerOnly who
+  (compiled intended equilibrium).ledgerClients_ignoreLeakedFields who
 
 example (intended : fixture.intendedModel.BehavioralAssessment)
     (equilibrium : fixture.IntendedSequentialEquilibrium

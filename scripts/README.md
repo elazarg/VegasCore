@@ -30,7 +30,9 @@ Notation names are checked again when declarations or opens change their scope.
 Data defaults and documented structure fields are supported; proof-valued field
 defaults must be stated as separate named results. Each file uses its own exact
 import header and pristine import environment, before validator declarations.
-The isolated driver uses no loader overrides or shared build writes. Every Lean
+Before auditing, `lake build --no-build Paper Tools` rejects missing or stale
+proof artifacts. The isolated driver uses no loader overrides and never
+rebuilds those artifacts. Every Lean
 subprocess has a visible 180-second timeout; no cross-process mutex is needed.
 Native mutation fixtures check coverage, adjacency and explicit statements
 independently. CI runs ordinary script tests before the Lean build and the

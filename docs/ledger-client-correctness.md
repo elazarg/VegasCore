@@ -33,7 +33,7 @@ observation would still allow a policy to recover a pending message from its
 saved history. The projection retains own actions and output and makes the
 candidate's action law invariant under changing the removed fields with all
 retained fields fixed. Own emitted envelopes can themselves retain evidence
-materialized after a private pending delivery. `UsesLedgerOnly` therefore does
+materialized after a private pending delivery. `IgnoresLeakedFields` therefore does
 not assert independence from every causal effect of pending information. The
 generic physical-realization theorem uses `DeliversNothing`, so these private
 deliveries do not occur in that theorem's initialized histories.

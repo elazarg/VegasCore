@@ -71,9 +71,10 @@ def ledgerClients : Player → (app).Policy :=
 
 /-- Applying the ledger projection preserves the callback law, with own actions
 and emitted packets retained. -/
-theorem ledgerClients_useLedgerOnly (who : Player) :
-    ReactiveApplication.Policy.UsesLedgerOnly (app) (compiled.ledgerClients who) :=
-  (raw).ledgerProfile_usesLedgerOnly Initial horizon scheduler compiled.assessment.strategy who
+theorem ledgerClients_ignoreLeakedFields (who : Player) :
+    ReactiveApplication.Policy.IgnoresLeakedFields (app) (compiled.ledgerClients who) :=
+  (raw).ledgerProfile_ignoresLeakedFields Initial horizon scheduler
+    compiled.assessment.strategy who
 
 /-- Decoding and restriction recover the complete selected strategy. -/
 theorem clients_strategy (who : Player) :
@@ -286,7 +287,7 @@ theorem compile_ledger_correct (intended : setup.intendedModel.BehavioralAssessm
       ((raw).decisionInformationAntichain Initial horizon scheduler)
       (fun who site => compiled.assessment.truncatedContinuationContext site
         (fun final => spec.payoff who final.state) (2 * horizon + 1)) ∧
-    (∀ who, ReactiveApplication.Policy.UsesLedgerOnly (app) (compiled.ledgerClients who)) ∧
+    (∀ who, ReactiveApplication.Policy.IgnoresLeakedFields (app) (compiled.ledgerClients who)) ∧
     (∀ (history : ((raw).protocol Initial horizon scheduler).History) who,
       (raw).restrictPolicy Initial horizon scheduler who (compiled.ledgerClients who)
         ((model).infoOf who history.trace) =
@@ -296,7 +297,7 @@ theorem compile_ledger_correct (intended : setup.intendedModel.BehavioralAssessm
         (instructionCount setup.program + 1)).map
         (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
   intro compiled
-  exact ⟨compiled.equilibrium, compiled.ledgerClients_useLedgerOnly,
+  exact ⟨compiled.equilibrium, compiled.ledgerClients_ignoreLeakedFields,
     compiled.ledgerClients_strategy_at_history unobserved,
     compiled.ledgerClients_outcomeLaw unobserved⟩
 

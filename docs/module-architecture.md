@@ -17,7 +17,7 @@ subtree; imports do not preserve unused research modules merely to keep a name.
 | Vegas.Pending | Submission, inclusion, relative deadlines, operational graph refinement, automatic completion, service and count-audit contracts. |
 | Vegas.Compile | Source-to-graph compiler and source/scheduler correspondence. |
 | Vegas.Game | Ordinary compiler correctness, intended-source extension, Nash correspondence and raw non-concurrent SE preservation. |
-| Tools | Read-only Lean-native paper validation and repository checks; theorem libraries cannot import this layer. |
+| Tools | Lean-native paper validation; theorem libraries cannot import this layer. |
 | Tests and examples | Retained semantic regressions and concrete consumers. |
 
 Source execution has one configuration-based evaluator, `SourceProgram.runFrom`.

@@ -5,7 +5,6 @@ open Lean Elab
 
 /-- State of the separate paper validator; it is never imported by the paper. -/
 structure PaperAudit where
-  seen : NameSet := {}
   notations : Array (String × Nat) := #[]
   results : NameSet := {}
   pins : NameSet := {}
@@ -41,8 +40,7 @@ private def PaperAudit.runCommandElabM {α : Type} (action : Command.CommandElab
     modify fun s => { s with commandState := commands }
     return value
 
-private def PaperAudit.fail (state : IO.Ref PaperAudit) (message : String) :
-    PaperAudit.Elaboration Unit :=
+private def PaperAudit.fail (state : IO.Ref PaperAudit) (message : String) : IO Unit :=
   state.modify fun s => { s with errors := s.errors.push message }
 
 private partial def PaperAudit.identifiers (stx : Syntax) : Array Name :=
@@ -160,15 +158,30 @@ private def PaperAudit.binderType? (binder : Syntax) : Option Syntax :=
 
 private partial def PaperAudit.typeHasHole (stx : Syntax) : Bool := Id.run do
   if let some type := binderType? stx then return typeHasHole type
-  if stx.isOfKind ``Parser.Term.basicFun then
-    for binder in stx[0].getArgs do
+  if stx.isOfKind ``Lean.unbracketedExplicitBinders then
+    return stx[1].getArgs.any typeHasHole
+  if stx.isOfKind ``Lean.bracketedExplicitBinders then return typeHasHole stx[3]
+  if stx.isOfKind ``Lean.binderIdent then return false
+  if stx.isOfKind ``Parser.Term.matchAlt then return typeHasHole stx[3]
+  if stx.isOfKind ``Parser.Term.basicFun || stx.isOfKind ``Parser.Term.forall then
+    let index := if stx.isOfKind ``Parser.Term.forall then 1 else 0
+    for binder in stx[index].getArgs do
       let type? := if let some type := binderType? binder then some type
         else match binder with
           | `(term| ($_name : $type)) => some type.raw
           | _ => none
       if type?.any typeHasHole then return true
-    return stx.getArgs.toList.drop 1 |>.any typeHasHole
-  return stx.isOfKind ``Parser.Term.hole || stx.getArgs.any typeHasHole
+    return stx.getArgs.toList.drop (index + 1) |>.any typeHasHole
+  return stx.isOfKind ``Parser.Term.hole || stx.isOfKind ``Parser.Term.syntheticHole ||
+    stx.getArgs.any typeHasHole
+
+private partial def PaperAudit.checkVariableTypes (state : IO.Ref PaperAudit)
+    (stx : Syntax) : PaperAudit.Elaboration Unit := do
+  if stx.isOfKind ``Parser.Command.variable then
+    for binder in stx[1].getArgs do
+      if (binderType? binder).any typeHasHole then
+        fail state "Paper section variable types cannot contain holes"
+  for child in stx.getArgs do checkVariableTypes state child
 
 private def PaperAudit.checkExplicitStatement (state : IO.Ref PaperAudit)
     (decl : Syntax) (name : Name) : PaperAudit.Elaboration Unit := do
@@ -191,7 +204,7 @@ private def PaperAudit.collectMessages (state : IO.Ref PaperAudit) :
   for msg in messages.toList do
     if msg.severity == .error then
       let text ← msg.toString
-      state.modify fun s => { s with errors := s.errors.push ("Lean elaboration: " ++ text) }
+      fail state ("Lean elaboration: " ++ text)
 
 /-- Policy rejections are ordinary audit diagnostics, not frontend internal exceptions. -/
 private def PaperAudit.attempt {α : Type} (action : Command.CommandElabM α) :
@@ -212,7 +225,7 @@ private partial def PaperAudit.loop (state : IO.Ref PaperAudit) : PaperAudit.Ela
   if messages.hasErrors then
     for msg in messages.toList do
       let text ← msg.toString
-      state.modify fun s => { s with errors := s.errors.push ("Lean parser: " ++ text) }
+      fail state ("Lean parser: " ++ text)
     return
   if Parser.isTerminalCommand cmd then
     unless cmd.isOfKind ``Parser.Command.eoi do
@@ -249,6 +262,7 @@ private partial def PaperAudit.loop (state : IO.Ref PaperAudit) : PaperAudit.Ela
       pure decl
   runCommandElabM <| withRef cmd <| Command.elabCommand cmd
   collectMessages state
+  checkVariableTypes state cmd
   let after := (← get).commandState
   state.modify fun s =>
     { s with notations := s.notations.filter (fun entry => entry.2 ≤ after.scopes.length) }
@@ -271,30 +285,24 @@ private partial def PaperAudit.loop (state : IO.Ref PaperAudit) : PaperAudit.Ela
           if prop then
             PaperAudit.fail state
               s!"proof-valued structure default must be a separate named result: {projection}"
-  let locals ← after.env.getLocalConstantInfos
-  for info in locals do
-    unless (← state.get).seen.contains info.name do
-      state.modify fun s => { s with seen := s.seen.insert info.name }
-      if primary?.any (fun decl => decl[1][0].getId == info.name) then
-        let prop ← runCommandElabM <| Command.liftTermElabM <| Meta.isProp info.toConstantVal.type
-        if prop then
-          let decl := primary?.get!
-          checkExplicitStatement state decl info.name
-          state.modify fun s =>
-            { s with results := s.results.insert info.name, pending := some info.name }
+  if let some decl := primary? then
+    let name := decl[1][0].getId
+    if let some info := after.env.find? name then
+      let prop ← runCommandElabM <| Command.liftTermElabM <| Meta.isProp info.type
+      if prop then
+        checkExplicitStatement state decl name
+        state.modify fun s => { s with results := s.results.insert name, pending := some name }
   loop state
 
 /-- Audit a file in a separately loaded import environment, without loader trust overrides. -/
 def PaperAudit.run (env : Environment) (opts : Options) (file : String) : IO PaperAudit.Report := do
   let inputCtx := Parser.mkInputContext (← IO.FS.readFile file) file
   let (_, ps, messages) ← Parser.parseHeader inputCtx
-  let seen := (← env.getLocalConstantInfos).foldl (fun names info => names.insert info.name)
-    ({} : NameSet)
-  let state ← IO.mkRef ({ seen } : PaperAudit)
+  let state ← IO.mkRef ({} : PaperAudit)
   for msg in messages.toList do
     if msg.severity == .error then
       let text ← msg.toString
-      state.modify fun s => { s with errors := s.errors.push ("Lean header: " ++ text) }
+      fail state ("Lean header: " ++ text)
   if !messages.hasErrors then
     let _ ← ((loop state).run inputCtx).run {
       commandState := Command.mkState

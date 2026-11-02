@@ -682,7 +682,7 @@ theorem Vegas.Paper.compile_ledger_correct
       ((raw).decisionInformationAntichain Initial horizon scheduler)
       (fun who site => compiled.assessment.truncatedContinuationContext site
         (fun final => spec.payoff who final.state) clientFuel) ∧
-    (∀ who, ReactiveApplication.Policy.UsesLedgerOnly app (compiled.ledgerClients who)) ∧
+    (∀ who, ReactiveApplication.Policy.IgnoresLeakedFields app (compiled.ledgerClients who)) ∧
     (∀ (history : ((raw).protocol Initial horizon scheduler).History) who,
       (raw).restrictPolicy Initial horizon scheduler who (compiled.ledgerClients who)
         ((model).infoOf who history.trace) =

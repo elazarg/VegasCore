@@ -54,7 +54,7 @@ specification is fixed before selecting the source equilibrium.
 
 The artifact exposes physical `clients` and projected
 `ClientCompilation.ledgerClients` over the Interaction callback API. The latter
-satisfy the exact `UsesLedgerOnly` projection described below. Each callback law
+satisfy the exact `IgnoresLeakedFields` projection described below. Each callback law
 is supported within a finite response menu. Physical policy realization does not enlarge the
 assessment's deviation domain: its menu is
 `Vegas.EventGraphRuntime.MessageBounds.rawMenu`, built from the configured bounded
@@ -158,7 +158,7 @@ player and pending pool receives the empty selected-identifier set with
 probability one. The same predicate applies directly to `leaks` and to
 `app.observePending`.
 
-`UsesLedgerOnly` states invariance under clearing the leaked-message field from the
+`IgnoresLeakedFields` states invariance under clearing the leaked-message field from the
 current view and each recorded pre-response view. It retains application views,
 receipts, own actions and emitted envelopes. Thus its invariance compares
 inputs with those retained fields fixed; it is not independence from every

@@ -29,11 +29,11 @@ def ledgerProfile
   app.ledgerPolicy (menu.decodeProfile initial horizon scheduler profile who)
 
 /-- The translated callback is invariant under the exact ledger-view projection. -/
-theorem ledgerProfile_usesLedgerOnly
+theorem ledgerProfile_ignoresLeakedFields
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
-    (who : Principal) : Policy.UsesLedgerOnly app
+    (who : Principal) : Policy.IgnoresLeakedFields app
       (menu.ledgerProfile initial horizon scheduler profile who) :=
-  app.ledgerPolicy_usesLedgerOnly _
+  app.ledgerPolicy_ignoresLeakedFields _
 
 variable (unobserved : app.observePending.DeliversNothing)
 

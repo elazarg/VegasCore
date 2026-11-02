@@ -37,12 +37,12 @@ def ledgerPolicy (policy : app.Policy) : app.Policy := fun past view =>
 
 /-- Erasing explicit leaked fields leaves the action law unchanged. Own actions,
 emitted packets and all other retained fields are held fixed by this predicate. -/
-def Policy.UsesLedgerOnly (policy : app.Policy) : Prop :=
+def Policy.IgnoresLeakedFields (policy : app.Policy) : Prop :=
   ∀ past view, policy past view =
     policy (past.map (PlayerEntry.ledgerOnly app)) (view.ledgerOnly app)
 
-theorem ledgerPolicy_usesLedgerOnly (policy : app.Policy) :
-    Policy.UsesLedgerOnly app (app.ledgerPolicy policy) := by
+theorem ledgerPolicy_ignoresLeakedFields (policy : app.Policy) :
+    Policy.IgnoresLeakedFields app (app.ledgerPolicy policy) := by
   intro past view
   simp only [ledgerPolicy, List.map_map, Function.comp_def,
     PlayerEntry.ledgerOnly_idempotent, PlayerView.ledgerOnly_idempotent]

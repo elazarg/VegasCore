@@ -25,15 +25,15 @@ import sys
 
 ROOTS_DEFINING = (
     "GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction",
-    "InteractionTests", "Vegas", "VegasTests", "Paper", "GameTheory/GameTheory",
+    "InteractionTests", "Vegas", "VegasTests", "Paper", "Tools", "GameTheory/GameTheory",
 )
 ROOTS_CITING = (
     "GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction",
-    "InteractionTests", "Vegas", "VegasTests", "Paper",
+    "InteractionTests", "Vegas", "VegasTests", "Paper", "Tools",
 )
 PROJECT_PREFIXES = {
     "GameTheory", "GameTheoryExtensions", "GameTheoryExtensionsTests",
-    "Interaction", "InteractionTests", "Vegas", "VegasTests", "Paper",
+    "Interaction", "InteractionTests", "Vegas", "VegasTests", "Paper", "Tools", "PaperAudit",
 }
 
 # Tactics, options, tooling syntax, and trusted Lean core declarations with
@@ -45,26 +45,29 @@ ALLOWED = {
     "set_option", "implemented_by", "Classical.choice", "Quot.sound",
 }
 
+IDENTIFIER = r"[^\W\d][\w'!?]*"
+QUALIFIED_NAME = IDENTIFIER + r"(?:\." + IDENTIFIER + r")*"
+
 DECL = re.compile(
     r"^\s*(?:@\[[^\]]*\]\s*)*"
     r"(?:private\s+|protected\s+|noncomputable\s+|partial\s+|unsafe\s+)*"
     r"(theorem|lemma|def|abbrev|structure|inductive|class|instance|opaque)\s+"
-    r"([A-Za-z_][A-Za-z0-9_.'!?]*)"
+    rf"({QUALIFIED_NAME})"
 )
 # A structure or class field: a name, its binders, then the type ascription.
 # The lookahead keeps `field := value` assignments out of the index.
 FIELD = re.compile(
-    r"^\s+([a-z][A-Za-z0-9_']*)"
+    rf"^\s+({IDENTIFIER})"
     r"(?:\s*(?:\([^()]*\)|\{[^{}]*\}|\[[^\[\]]*\]|⦃[^⦃⦄]*⦄))*"
     r"\s*:(?!=)"
 )
 CONSTRUCTOR = re.compile(
-    r"^\s*\|\s*([A-Za-z_][A-Za-z0-9_']*)(?:\s*(?::|\(|\{)|\s*$)"
+    rf"^\s*\|\s*({IDENTIFIER})(?:\s*(?::|\(|\{{)|\s*$)"
 )
-CITED = re.compile(r"`([A-Za-z_][A-Za-z0-9_.'!?]*)`")
+CITED = re.compile(rf"`({QUALIFIED_NAME})`")
 DOC_COMMENT = re.compile(r"/-(?:!|-)[\s\S]*?-/")
 PROJECT_PATH = re.compile(
-    r"`((?:GameTheoryExtensions|GameTheoryExtensionsTests|Interaction|InteractionTests|Vegas|VegasTests|Paper)"
+    r"`((?:GameTheoryExtensions|GameTheoryExtensionsTests|Interaction|InteractionTests|Vegas|VegasTests|Paper|Tools)"
     r"(?:/[A-Za-z0-9_.-]+)*\.lean)(?::\d+)?`"
 )
 MARKDOWN_LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
@@ -158,15 +161,15 @@ def source_contexts(clean: str) -> list[Context]:
         )
         contexts.append(Context(namespace, tuple(opened)))
         if match := re.match(
-                r"^\s*namespace\s+([A-Za-z_][A-Za-z0-9_.']*)\s*$", line):
+                rf"^\s*namespace\s+({QUALIFIED_NAME})\s*$", line):
             frames.append(("namespace", tuple(match.group(1).split("."))))
-        elif re.match(r"^\s*section(?:\s+[A-Za-z_][A-Za-z0-9_']*)?\s*$", line):
+        elif re.match(rf"^\s*section(?:\s+{IDENTIFIER})?\s*$", line):
             frames.append(("section", ()))
-        elif re.match(r"^\s*end(?:\s+[A-Za-z_][A-Za-z0-9_.']*)?\s*$", line):
+        elif re.match(rf"^\s*end(?:\s+{QUALIFIED_NAME})?\s*$", line):
             if frames:
                 frames.pop()
         elif match := re.match(r"^\s*open\s+(.+)$", line):
-            opened.extend(re.findall(r"[A-Za-z_][A-Za-z0-9_.']*", match.group(1)))
+            opened.extend(re.findall(QUALIFIED_NAME, match.group(1)))
     return contexts
 
 
@@ -224,7 +227,8 @@ def declaration_shaped(cited: str) -> bool:
     if cited in ALLOWED or cited.endswith((".lean", ".md", ".toml", ".py", ".sh")):
         return False
     last = cited.split(".")[-1]
-    camel = bool(re.search(r"[a-z][A-Z]", last))
+    camel = any(first.islower() and second.isupper()
+                for first, second in zip(last, last[1:]))
     return last[:1].islower() and (
         "." in cited or "_" in last or camel or last.endswith(("?", "!"))
     )

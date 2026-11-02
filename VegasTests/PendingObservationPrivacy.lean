@@ -152,14 +152,14 @@ theorem ledger_projection_retains_emitted_evidence :
 private def rememberEvidence : app.Policy := fun past _ =>
   PMF.pure (if (recalledEvidence past).isEmpty then ⟨none⟩ else guessedForward)
 
-/-- UsesLedgerOnly removes leaked view fields, while legitimate own-output
+/-- Ignoring leaked fields erases their direct use, while legitimate own-output
 recall can still distinguish earlier private deliveries. -/
 theorem ledger_policy_can_recall_private_evidence :
-    ReactiveApplication.Policy.UsesLedgerOnly app (app.ledgerPolicy rememberEvidence) ∧
+    ReactiveApplication.Policy.IgnoresLeakedFields app (app.ledgerPolicy rememberEvidence) ∧
       app.ledgerPolicy rememberEvidence ((forwarded false).recall .bob)
         ((forwarded false).observe app .bob) = PMF.pure ⟨none⟩ ∧
       app.ledgerPolicy rememberEvidence ((forwarded true).recall .bob)
         ((forwarded true).observe app .bob) = PMF.pure guessedForward :=
-  ⟨app.ledgerPolicy_usesLedgerOnly rememberEvidence, rfl, rfl⟩
+  ⟨app.ledgerPolicy_ignoresLeakedFields rememberEvidence, rfl, rfl⟩
 
 end VegasTests.PendingObservationPrivacy

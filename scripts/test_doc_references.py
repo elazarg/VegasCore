@@ -11,11 +11,15 @@ SCRIPT = Path(__file__).with_name("check-doc-references.py").resolve()
 
 
 class DocReferenceTests(unittest.TestCase):
-    def run_markdown_checker(self, text):
+    def run_markdown_checker(self, text, extra_files=None):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "lakefile.toml").write_text("", encoding="utf-8")
             (root / "README.md").write_text(text, encoding="utf-8")
+            for name, contents in (extra_files or {}).items():
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(contents, encoding="utf-8")
             subprocess.run(["git", "init", "-q", str(root)], check=True)
             subprocess.run(["git", "-C", str(root), "add", "README.md"], check=True)
             return subprocess.run([sys.executable, str(SCRIPT)], cwd=root,
@@ -33,6 +37,34 @@ class DocReferenceTests(unittest.TestCase):
                 path.write_text(contents, encoding="utf-8")
             return subprocess.run([sys.executable, str(SCRIPT)], cwd=root,
                                   capture_output=True, text=True)
+
+    def test_unicode_declaration_and_namespace_citations(self):
+        declaration = "namespace Vegas.Δ\ntheorem isεNash : True := by trivial\nend Vegas.Δ\n"
+        valid = self.run_checker(declaration + "/-! `Vegas.Δ.isεNash` exists. -/\n")
+        self.assertEqual(valid.returncode, 0, valid.stdout)
+        missing = self.run_checker(declaration + "/-! `Vegas.Δ.isεNashMissing` exists. -/\n")
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertIn("Vegas.Δ.isεNashMissing", missing.stdout)
+
+    def test_markdown_unicode_citation_breaks_when_its_declaration_is_renamed(self):
+        valid = self.run_markdown_checker("`Vegas.isεNash_result`", {
+            "Vegas/Test.lean": "theorem Vegas.isεNash_result : True := by trivial\n"})
+        self.assertEqual(valid.returncode, 0, valid.stdout)
+        missing = self.run_markdown_checker("`Vegas.isεNash_result`", {
+            "Vegas/Test.lean": "theorem Vegas.isεNash_renamed : True := by trivial\n"})
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertIn("Vegas.isεNash_result", missing.stdout)
+
+    def test_tools_declarations_can_be_cited(self):
+        result = self.run_checker("/-! `PaperAudit.inspect` exists. -/\n", {
+            "Tools/PaperAudit.lean": "def PaperAudit.inspect : Nat := 0\n"})
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_tools_docstrings_reject_missing_names(self):
+        result = self.run_checker("def existing := 0\n", {
+            "Tools/PaperAudit.lean": "/-! `Vegas.unknown_tool_reference` is absent. -/\n"})
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unknown_tool_reference", result.stdout)
 
     def test_regression_library_declarations_can_be_cited(self):
         result = self.run_checker(
