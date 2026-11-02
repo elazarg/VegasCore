@@ -5,7 +5,7 @@ import Vegas.Source.InitialState
 import Vegas.Expr.Simple
 import GameTheoryExtensions.Math.Probability.Uniform
 import Vegas.Game.RevealService
-import Vegas.Game.IntendedAuditedOutcome
+import Vegas.Game.IntendedHistory
 import Vegas.Game.IntendedAuthenticOpening
 import GameTheory.Analysis.Protocol.SequentialExistence
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion

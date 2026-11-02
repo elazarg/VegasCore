@@ -220,27 +220,45 @@ EXACT_PIN = re.compile(
     r"(?P<guard>#guard_msgs \(whitespace := lax\) in)\s*"
     r"(?P<print>#print\s+axioms\s+([\w'.]+))"
 )
-PAPER_DECLARATION = re.compile(
+PAPER_OTHER_DECLARATION = re.compile(
     r"(?m)^\s*(?:@\[[^\]\n]*\]\s*)?(?:(?:private|protected|noncomputable)\s+)*"
-    r"(?:theorem|lemma|def|abbrev|opaque|structure|class|instance)\b"
+    r"(?:def|abbrev|opaque|structure|class|instance)\b"
+)
+
+THEOREM = re.compile(
+    r"(?:@\[[^\]\n]*\]\s*)?(?:(?:private|protected|noncomputable)\s+)*"
+    r"(?:theorem|lemma)\s+([\w'.]+)"
 )
 
 
-def check_audit_pins(text: str) -> list[str]:
-    """Check every owning-result print, its adjacent guard and exact axiom list.
+def has_explicit_statement(header: str) -> bool:
+    """Find the result colon outside binders, before the proof assignment."""
+    depth = 0
+    for index, char in enumerate(header):
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth -= 1
+        elif char == ":" and depth == 0:
+            return header[index:index + 2] != ":="
+    return False
 
-    Paper is a nonempty inventory of qualified owning declarations, with no
-    restatement declarations. Match command positions in comment/string-stripped
-    source so a quoted or nested-comment imitation cannot supply a missing pin.
-    Lean checks each expected dependency list against the imported declaration.
+
+def check_audit_pins(text: str) -> list[str]:
+    """Require full local paper statements and adjacent exact axiom pins.
+
+    Theorems use fully qualified names so their identity is explicit locally.
+    Proofs may delegate to the library. Match actual command positions so quoted
+    or nested-comment imitations cannot supply a missing guard or expected list.
+    Lean checks the statements, proofs and expected dependency lists together.
     """
     clean = strip_lean_comments_and_strings(text)
     prints = list(AXIOM_PRINT.finditer(clean))
     failures: list[str] = []
     if not prints:
-        failures.append("Paper.lean: must contain guarded owning-result axiom pins")
-    if PAPER_DECLARATION.search(clean):
-        failures.append("Paper.lean: pin owning results directly; do not declare restatements")
+        failures.append("Paper.lean: must contain fully stated results and guarded axiom pins")
+    if PAPER_OTHER_DECLARATION.search(clean):
+        failures.append("Paper.lean: model definitions belong in their owning modules")
     commands = list(re.finditer(r"#print\s+axioms\b", clean))
     if len(commands) != len(prints):
         failures.append("Paper.lean: malformed axiom print")
@@ -248,6 +266,7 @@ def check_audit_pins(text: str) -> list[str]:
     failures.extend(f"Paper.lean: duplicate axiom pin for {name}"
                     for name, count in sorted(counts.items()) if count != 1)
     exact = {}
+    guards_at = {}
     for match in EXACT_PIN.finditer(text):
         name = match.group(5)
         expected = [axiom.strip() for axiom in match.group(2).split(",") if axiom.strip()]
@@ -255,14 +274,34 @@ def check_audit_pins(text: str) -> list[str]:
                 and set(expected) == STANDARD_AXIOMS
                 and clean[match.start("guard"):match.end("guard")] == match.group("guard")):
             exact[match.start("print")] = name
+            guards_at[match.start("guard")] = name
     for match in prints:
         name = match.group(1)
-        if "." not in name:
-            failures.append(f"Paper.lean: axiom pin must name a qualified owning result: {name}")
+        if not name.startswith("Vegas.Paper."):
+            failures.append(f"Paper.lean: axiom pin must name a full local paper statement: {name}")
         if exact.get(match.start()) != name:
             failures.append(
                 f"Paper.lean: axiom pin for {name} must expect exactly "
                 "[propext, Classical.choice, Quot.sound] under `#guard_msgs (whitespace := lax)`")
+    top_commands = list(re.finditer(r"(?m)^\S[^\n]*", clean))
+    declarations = {}
+    for index, command in enumerate(top_commands):
+        declaration = THEOREM.match(command.group())
+        if not declaration:
+            continue
+        name = declaration.group(1)
+        declarations[name] = command.start()
+        if not name.startswith("Vegas.Paper."):
+            failures.append(f"Paper.lean: use a fully qualified paper theorem name: {name}")
+        following = top_commands[index + 1].start() if index + 1 < len(top_commands) else len(clean)
+        if not has_explicit_statement(clean[command.start() + declaration.end():following]):
+            failures.append(f"Paper.lean: theorem {name} needs its full explicit statement")
+        if guards_at.get(following) != name:
+            failures.append(f"Paper.lean: exact axiom pin must immediately follow theorem {name}")
+    failures.extend(f"Paper.lean: missing guarded axiom pin for {name}"
+                    for name in sorted(declarations.keys() - counts.keys()))
+    failures.extend(f"Paper.lean: axiom pin names no local paper theorem: {name}"
+                    for name in sorted(counts.keys() - declarations.keys()))
     return failures
 
 

@@ -26,8 +26,7 @@ variable (service : AsyncServiceSpec Player L)
 /-- Program-determined receipts on the runtime's typed source readout. -/
 def paymentTransfers :=
   serviceBaseUtility service.setup service.mode service.deadline service.leaks
-    (fun terminal who => (transferAmount
-      (service.setup.program.evaluatePayoffs terminal.state) who : ℝ))
+    (fun terminal => service.setup.transfers (service.setup.program.publicOutcome terminal))
 
 /-- Private valuation uses the same readout, independently of the money reader. -/
 def paymentValuation {Parameter : Type}
@@ -66,7 +65,7 @@ theorem paymentExpectedUtility_eq {Parameter : Type}
     service.paymentExpectedUtility parameter valuation sample deposit =
       TerminalAudit.utility
         (serviceBaseUtility service.setup service.mode service.deadline service.leaks
-          (fun terminal => service.setup.program.parameterPaymentUtility valuation
+          (fun terminal => service.setup.parameterPaymentUtility valuation
             (service.setup.parameterOutcome parameter terminal)))
         ((serviceRuntime service.setup service.mode service.deadline).serviceAuditObservation
           service.leaks)
@@ -76,7 +75,7 @@ theorem paymentExpectedUtility_eq {Parameter : Type}
       (fun state who => service.paymentValuation parameter valuation state who +
         service.paymentTransfers state who) =
       serviceBaseUtility service.setup service.mode service.deadline service.leaks
-        (fun terminal => service.setup.program.parameterPaymentUtility valuation
+        (fun terminal => service.setup.parameterPaymentUtility valuation
           (service.setup.parameterOutcome parameter terminal)) := by
     funext state who
     simp only [paymentValuation, paymentTransfers, serviceBaseUtility]
@@ -122,29 +121,43 @@ theorem payment_within_of_bounds {Parameter : Type}
       PMF (List (SettledEvidence service.setup service.mode)))
     (deposit : Player → ℝ)
     (deposit_bounds : ∀ who, 0 ≤ deposit who ∧ deposit who ≤ depositBound) :
-    service.SettlementRange parameter (service.setup.program.parameterPaymentUtility valuation)
-      sample deposit (fun _ => min 0 (valuationLow + transferLow) - depositBound)
-      (fun _ => max 0 (valuationHigh + transferHigh) - min 0 (valuationLow + transferLow) +
+    service.SettlementRange parameter (service.setup.parameterPaymentUtility valuation)
+      sample deposit
+      (fun who => min 0 (valuationLow + min transferLow (service.setup.exitTransfers who : ℝ)) -
+        depositBound)
+      (fun who => max 0 (valuationHigh + max transferHigh (service.setup.exitTransfers who : ℝ)) -
+        min 0 (valuationLow + min transferLow (service.setup.exitTransfers who : ℝ)) +
         depositBound) := by
   intro control trace payoffs supported who
   rw [TerminalAudit.settlement, PMF.support_map] at supported
   obtain ⟨verdict, _, rfl⟩ := supported
   let base := serviceBaseUtility service.setup service.mode service.deadline service.leaks
-    (fun terminal => service.setup.program.parameterPaymentUtility valuation
+    (fun terminal => service.setup.parameterPaymentUtility valuation
       (service.setup.parameterOutcome parameter terminal))
-  have baseBounds : min 0 (valuationLow + transferLow) ≤ base (some control) who ∧
-      base (some control) who ≤ max 0 (valuationHigh + transferHigh) := by
+  have baseBounds :
+      min 0 (valuationLow + min transferLow (service.setup.exitTransfers who : ℝ)) ≤
+        base (some control) who ∧ base (some control) who ≤
+      max 0 (valuationHigh + max transferHigh (service.setup.exitTransfers who : ℝ)) := by
     unfold base serviceBaseUtility
     cases readout : serviceSourceReadout service.setup service.mode service.deadline
         service.leaks (some control) with
     | none => exact ⟨min_le_left _ _, le_max_left _ _⟩
     | some terminal =>
         simp only [Option.elim_some, Setup.parameterPaymentUtility_parameterOutcome]
+        have cashBounds :
+            min transferLow (service.setup.exitTransfers who : ℝ) ≤
+              service.setup.transfers (service.setup.program.publicOutcome terminal) who ∧
+            service.setup.transfers (service.setup.program.publicOutcome terminal) who ≤
+              max transferHigh (service.setup.exitTransfers who : ℝ) := by
+          unfold Setup.transfers
+          split
+          · exact ⟨min_le_right _ _, le_max_right _ _⟩
+          · exact ⟨(min_le_left _ _).trans (transfer_bounds control trace terminal readout who).1,
+              (transfer_bounds control trace terminal readout who).2.trans (le_max_left _ _)⟩
         exact ⟨(min_le_right _ _).trans
-          (add_le_add (valuation_bounds control trace terminal readout who).1
-            (transfer_bounds control trace terminal readout who).1),
-          (add_le_add (valuation_bounds control trace terminal readout who).2
-            (transfer_bounds control trace terminal readout who).2).trans (le_max_right _ _)⟩
+          (add_le_add (valuation_bounds control trace terminal readout who).1 cashBounds.1),
+          (add_le_add (valuation_bounds control trace terminal readout who).2 cashBounds.2).trans
+            (le_max_right _ _)⟩
   have chargeBounds : 0 ≤ (if verdict who then deposit who else 0) ∧
       (if verdict who then deposit who else 0) ≤ depositBound := by
     cases verdict who
@@ -171,13 +184,13 @@ theorem payment_rawClientProfile_isεNash_approximate {Parameter : Type}
     {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
     (low : Player → ℝ) (range : ℝ)
     (within : service.SettlementRange parameter
-      (service.setup.program.parameterPaymentUtility valuation) sample deposit low
+      (service.setup.parameterPaymentUtility valuation) sample deposit low
       (fun _ => range))
     (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature) :
     (IsεNash ((service.sourceModel admission).toBehavioralGameForm
         (instructionCount service.setup.program + 1))
         (fun final who => (service.setup.protocolReadout final.state).elim 0
-          (fun terminal => service.setup.program.parameterPaymentUtility valuation
+          (fun terminal => service.setup.parameterPaymentUtility valuation
             (service.setup.parameterOutcome parameter terminal) who)) ε source →
       IsεNash ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
           service.horizon service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
@@ -192,12 +205,12 @@ theorem payment_rawClientProfile_isεNash_approximate {Parameter : Type}
       IsεNash ((service.sourceModel admission).toBehavioralGameForm
           (instructionCount service.setup.program + 1))
         (fun final who => (service.setup.protocolReadout final.state).elim 0
-          (fun terminal => service.setup.program.parameterPaymentUtility valuation
+          (fun terminal => service.setup.parameterPaymentUtility valuation
             (service.setup.parameterOutcome parameter terminal) who))
         (ε + 2 * timing.deferralError * range) source) := by
   rw [service.paymentExpectedUtility_eq]
   exact service.isεNash_rawClientProfile_approximate admission ordered parameter
-    (service.setup.program.parameterPaymentUtility valuation) sample authentic deposit
+    (service.setup.parameterPaymentUtility valuation) sample authentic deposit
     nonnegative timing low range within ε source
 
 /-- For every timely contract builder, first-opportunity clients preserve and
@@ -214,7 +227,7 @@ theorem payment_firstTurnClientProfile_isεNash_iff {Parameter : Type}
     (deposit : Player → ℝ) (nonnegative : ∀ who, 0 ≤ deposit who)
     (turns : Nat) (low : Player → ℝ) (range : ℝ)
     (within : service.SettlementRange parameter
-      (service.setup.program.parameterPaymentUtility valuation) sample deposit low
+      (service.setup.parameterPaymentUtility valuation) sample deposit low
       (fun _ => range))
     (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature) :
     IsεNash ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
@@ -226,11 +239,11 @@ theorem payment_firstTurnClientProfile_isεNash_iff {Parameter : Type}
     IsεNash ((service.sourceModel admission).toBehavioralGameForm
         (instructionCount service.setup.program + 1))
       (fun final who => (service.setup.protocolReadout final.state).elim 0
-        (fun terminal => service.setup.program.parameterPaymentUtility valuation
+        (fun terminal => service.setup.parameterPaymentUtility valuation
           (service.setup.parameterOutcome parameter terminal) who)) ε source := by
   rw [service.paymentExpectedUtility_eq]
   exact service.isεNash_firstTurnClientProfile_iff admission ordered parameter
-    (service.setup.program.parameterPaymentUtility valuation) sample authentic deposit
+    (service.setup.parameterPaymentUtility valuation) sample authentic deposit
     nonnegative turns low range within ε source
 
 /-- For every admitted source profile, the runtime preserves the joint typed
@@ -255,9 +268,9 @@ theorem payment_firstTurnClientProfile_settlement_law
             final.state).map (fun config => (config.state, config.defaults)), receipts)) =
       (service.setup.run (service.setup.decodeBehavioralProfile admission source)).map
         (fun terminal => (some (terminal.state, terminal.defaults), fun who =>
-          (transferAmount (service.setup.program.evaluatePayoffs terminal.state) who : ℝ))) := by
+          service.setup.transfers (service.setup.program.publicOutcome terminal) who)) := by
   exact service.firstTurnClientProfile_settlement_law admission ordered
-    (fun _ => ()) (fun outcome => service.setup.program.publicTransfers outcome.2)
+    (fun _ => ()) (fun outcome => service.setup.transfers outcome.2)
     sample authentic deposit turns source
 
 end Vegas.AsyncServiceSpec

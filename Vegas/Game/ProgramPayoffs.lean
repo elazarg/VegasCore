@@ -29,7 +29,7 @@ def publicPayoffs (program : SourceProgram Player L Γ O) (outcome : PublicOutco
     (state : Config Player L program.terminalCtx) :
     program.publicPayoffs (program.publicOutcome state) = program.evaluatePayoffs state.state := rfl
 
-/-- Monetary receipts are the sum of every instruction for the player. -/
+/-- Sum the terminal payment instructions before the setup's exit override. -/
 def publicTransfers (program : SourceProgram Player L Γ O) (outcome : PublicOutcome program)
     (who : Player) : ℝ :=
   transferAmount (program.publicPayoffs outcome) who
@@ -60,9 +60,39 @@ def parameterPaymentUtility {Parameter : Type} (program : SourceProgram Player L
     program.parameterPaymentUtility valuation outcome who =
       valuation outcome who + program.publicTransfers outcome.2 who := rfl
 
+/-- Actual receipts use the declared exit transfer after public default. -/
+def Setup.transfers (setup : Setup (Player := Player) (L := L))
+    (outcome : PublicOutcome setup.program) (who : Player) : ℝ :=
+  if who ∈ outcome.defaults.defaulted then (setup.exitTransfers who : ℝ)
+  else setup.program.publicTransfers outcome who
+
+/-- Valuation plus the setup's default-aware executable receipts. -/
+def Setup.parameterPaymentUtility {Parameter : Type}
+    (setup : Setup (Player := Player) (L := L))
+    (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (outcome : Parameter × PublicOutcome setup.program) (who : Player) : ℝ :=
+  valuation outcome who + setup.transfers outcome.2 who
+
+@[simp] theorem Setup.parameterPaymentUtility_eq {Parameter : Type}
+    (setup : Setup (Player := Player) (L := L))
+    (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (outcome : Parameter × PublicOutcome setup.program) (who : Player) :
+    setup.parameterPaymentUtility valuation outcome who =
+      valuation outcome who + setup.transfers outcome.2 who := rfl
+
+/-- Both valuation and receipts use the same full source observation. -/
+@[simp] theorem Setup.parameterPaymentUtility_parameterOutcome {Parameter : Type}
+    (setup : Setup (Player := Player) (L := L))
+    (parameter : State L setup.context → Parameter)
+    (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (terminal : Config Player L setup.program.terminalCtx) (who : Player) :
+    setup.parameterPaymentUtility valuation (setup.parameterOutcome parameter terminal) who =
+      valuation (setup.parameterOutcome parameter terminal) who +
+        setup.transfers (setup.program.publicOutcome terminal) who := rfl
+
 /-- Reading a private initial parameter from the terminal state leaves the
 monetary component equal to evaluation of the program's payment instructions. -/
-@[simp] theorem Setup.parameterPaymentUtility_parameterOutcome {Parameter : Type}
+@[simp] theorem Setup.parameterPaymentSumUtility_parameterOutcome {Parameter : Type}
     (setup : Setup (Player := Player) (L := L))
     (parameter : State L setup.context → Parameter)
     (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)

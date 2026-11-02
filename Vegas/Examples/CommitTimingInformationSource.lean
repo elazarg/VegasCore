@@ -1,11 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.IntendedAuditedOutcome
+import Vegas.Game.IntendedHistory
+import Vegas.Game.RevealService
 import Vegas.Game.IntendedAuthenticOpening
 import Vegas.Source.InitialState
 import Vegas.Source.SetupProtocolBehavioral
 import Vegas.Expr.Simple
 import GameTheory.Analysis.Protocol.SequentialExistence
+import GameTheory.Protocol.BehavioralTerminal
+import GameTheoryExtensions.Math.Probability.Expectation
 
 /-! # A hidden immutable bit and two Boolean commitments
 

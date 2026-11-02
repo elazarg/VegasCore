@@ -143,6 +143,26 @@ theorem run_profile (bonus : Int) (choice : Bool) :
     exact Finset.notMem_empty _), PMF.pure_bind]
   rfl
 
+/-- At every supported execution the declared exit receipt agrees with the
+conditional payment: public default cannot accompany successful publication. -/
+theorem transfers_eq_publicTransfers_of_run (bonus : Int)
+    (profile : BehavioralProfile (program bonus))
+    (terminal : Config Player simpleExpr (program bonus).terminalCtx)
+    (supported : terminal ∈ ((program bonus).run profile initial).support) :
+    (setup bonus).transfers ((program bonus).publicOutcome terminal) =
+      (program bonus).publicTransfers ((program bonus).publicOutcome terminal) := by
+  simp only [SourceProgram.run, program, runFrom, PMF.support_bind, Set.mem_iUnion,
+    PMF.mem_support_pure_iff] at supported
+  obtain ⟨binding, _, disclose, _, rfl⟩ := supported
+  funext who
+  cases who
+  cases binding with
+  | none => cases disclose <;> rfl
+  | some result =>
+      cases result with
+      | failure => cases disclose <;> rfl
+      | success value => cases value <;> cases disclose <;> rfl
+
 theorem play_profile (bonus : Int) (choice : Bool) :
     (game bonus).form.play (profile bonus choice) = PMF.pure (result bonus choice) := by
   change ((program bonus).run (profile bonus choice) initial).map (publicOutcome _) = _

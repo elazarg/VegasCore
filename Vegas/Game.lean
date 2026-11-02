@@ -17,7 +17,7 @@ import Vegas.Game.EventCompilation
 import Vegas.Game.EventScheduling
 import Vegas.Game.HonestContinuationIntended
 import Vegas.Game.IntendedAsyncNash
-import Vegas.Game.IntendedAuditedOutcome
+import Vegas.Game.IntendedHistory
 import Vegas.Game.IntendedChoiceReach
 import Vegas.Game.IntendedCommitGain
 import Vegas.Game.IntendedAuthenticOpening
@@ -275,6 +275,7 @@ import Vegas.Game.OnePacketZeroContent
 import Vegas.Game.ProgramPaymentAsyncNash
 import Vegas.Game.ProgramPaymentNash
 import Vegas.Game.ProgramPayoffs
+import Vegas.Game.ClientSpecification
 import Vegas.Game.ClientCompiler
 import Vegas.Game.ClientFunding
 import Vegas.Game.ClientObservables

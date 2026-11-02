@@ -57,7 +57,7 @@ section InformationModels
 
 variable [Fintype Player]
 
-abbrev menu := sourceServiceMenu service.setup service.leaks service.bounds service.rosters
+abbrev menu := sourceServiceMenu service.setup service.leaks service.bounds
 
 abbrev planLength : Nat := (rosterPlan service.setup service.rosters).length
 

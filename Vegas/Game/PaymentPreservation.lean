@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SequentialCompilation
+import Vegas.Game.ClientCompiler
 import Vegas.Game.NativePaymentReadout
 import Vegas.Game.TerminalObservation
 
@@ -30,12 +30,6 @@ variable {Player : Type} [instDecEq : DecidableEq Player] [instFintype : Fintype
 local notation "app" => application setup runtime leaks
 local notation "Initial" => initialLaw setup
 
-variable [finiteNature : (application setup runtime leaks).FiniteNature
-    (initialLaw setup) scheduler]
-  [finiteSource : Finite setup.intendedProtocol.History]
-
-include finiteNature finiteSource
-
 local notation "raw" => bounds.rawMenu runtime leaks
 local notation "R" => ReactiveApplication.ResponseMenu.information
   (bounds.rawMenu runtime leaks) Initial horizon scheduler
@@ -44,68 +38,31 @@ variable {Public : Type*} {signal : State L setup.context → Public}
 
 variable {Parameter : Type} (parameter : State L setup.context → Parameter)
   (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)
-  (exitValuation exitTransfer : Player → ℝ)
+  (exitValuation : Player → ℝ)
 
-local notation "utility" => setup.program.parameterPaymentUtility valuation
+local notation "utility" => setup.parameterPaymentUtility valuation
+local notation "exitTransfer" => (fun who => (setup.exitTransfers who : ℝ))
 local notation "exitPayoff" => (fun who => exitValuation who + exitTransfer who)
 
 local notation "base" => exclusionBase setup runtime parameter utility exitPayoff leaks
 local notation "read" => sourceReadout setup runtime leaks
 
 /-- Native raw-menu sequential compilation preserves realized cash jointly with
-initial inputs, terminal state and public results. Exit valuation and cash are
-separately declared; the source utilities keep their original bounds. -/
+initial inputs, terminal state and public results. Cash uses the setup's declared
+exit transfer; valuation is supplied separately. -/
 theorem intended_raw_programPayments_preserved
-    (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal) {delay bound : (graph setup).EventId → Nat}
-    (opportunity : Opportunity runtime leaks Initial horizon scheduler delay)
-    (inclusion : ProtectedInclusion runtime leaks Initial horizon scheduler bound)
-    (completes : CompletesPlay runtime leaks Initial horizon scheduler)
-    (timely : AsyncTimely runtime delay bound)
-    (lowerUtility upperUtility : Player → ℝ)
-    (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
-    (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
-    (below : ∀ (final : setup.intendedProtocol.History) terminal,
-      setup.protocolReadout final.state = some terminal →
-        ∀ who, exitPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
+    (spec : ClientSpec setup runtime leaks bounds horizon scheduler parameter utility exitPayoff)
     (intended : setup.intendedModel.BehavioralAssessment)
-    (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended)
-    (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
-    (service : EvidenceReportService (CountEvidence (graph setup)))
-    (observationRate deliveryRate : Player → ℝ)
-    (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
-    (coverage : CountEvidenceCoverage service observationRate deliveryRate)
-    (deposit : Player → ℝ) (deposit_nonnegative : ∀ who, 0 ≤ deposit who)
-    (sufficient : ∀ who,
-      max 0 (max (exitPayoff who) (upperUtility who)) -
-          min 0 (min (exitPayoff who) (lowerUtility who)) ≤
-        observationRate who * deliveryRate who * deposit who) :
+    (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended) :
     let observe := (app).stateTraffic
-    let audit := runtime.countAudit leaks service.sample
-    let payoff := TerminalAudit.utility base observe audit deposit
-    let settle := TerminalAudit.settlement base observe audit deposit
-    ∃ target : (R).BehavioralAssessment,
-      target.IsSequentialEquilibriumFor
-        ((raw).decisionInformationAntichain Initial horizon scheduler)
-        (fun who site => target.truncatedContinuationContext site
-          (fun final => payoff final.state who) (2 * horizon + 1)) ∧
-      (∀ final ∈ ((R).runBehavioral target.strategy (2 * horizon + 1)).support,
-        ∀ control, final.state = some control →
-          control.execution.application.config.defaulted = ∅) ∧
-      (∀ final ∈ ((R).runBehavioral target.strategy (2 * horizon + 1)).support,
-        ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
-      ((R).runBehavioral target.strategy (2 * horizon + 1)).bind
-        (fun final => (settle final.state).map fun payoffs => (read final.state, payoffs)) =
-        (setup.intendedModel.runBehavioral intended.strategy
-          (instructionCount setup.program + 1)).map
-          (intendedReadoutExclusion setup parameter utility exitPayoff) ∧
+    let audit := runtime.countAudit leaks spec.evidenceService.sample
+    ∃ compiled : ClientCompilation spec intended,
+      let target := compiled.assessment
       ((R).runBehavioral target.strategy (2 * horizon + 1)).bind
         (fun final => (TerminalAudit.settlement
           (exclusionBase setup runtime parameter
-            (fun outcome who => setup.program.publicTransfers outcome.2 who) exitTransfer leaks)
-          observe audit deposit final.state).map fun receipts =>
+            (fun outcome who => setup.transfers outcome.2 who) exitTransfer leaks)
+          observe audit spec.deposit final.state).map fun receipts =>
             TerminalObservation.read setup
               ((read final.state).map (fun config => (config.state, config.defaults))) receipts) =
         (setup.intendedModel.runBehavioral intended.strategy
@@ -113,29 +70,31 @@ theorem intended_raw_programPayments_preserved
             TerminalObservation.read setup ((setup.protocolReadout final.state).map
               (fun config => (config.state, config.defaults)))
               (fun who => (setup.protocolReadout final.state).elim 0 (fun terminal =>
-                setup.program.publicTransfers (setup.program.publicOutcome terminal) who))) := by
+                setup.transfers (setup.program.publicOutcome terminal) who))) := by
   classical
-  intro observe audit payoff settle
-  obtain ⟨target, targetSE, clear, clean, joint⟩ :=
-    intended_raw_sequentialEquilibrium_preserved (setup := setup) (runtime := runtime)
-      (leaks := leaks) (bounds := bounds) (horizon := horizon) (scheduler := scheduler) parameter
-      utility exitPayoff wellFormed independent observable opportunity inclusion completes timely
-      lowerUtility upperUtility lower_le le_upper below intended equilibrium covers coversInputs
-      capacity service observationRate deliveryRate delivery_nonnegative coverage deposit
-      deposit_nonnegative sufficient
-  refine ⟨target, targetSE, clear, clean, joint, ?_⟩
+  intro observe audit
+  let settle := TerminalAudit.settlement base observe audit spec.deposit
+  obtain ⟨compiled⟩ := intended_raw_sequentialEquilibrium_preserved spec intended equilibrium
+  refine ⟨compiled, ?_⟩
+  let target := compiled.assessment
+  have clear := compiled.noDefaults
+  have joint : ((R).runBehavioral target.strategy (2 * horizon + 1)).bind
+        (fun final => (settle final.state).map fun payoffs => (read final.state, payoffs)) =
+      (setup.intendedModel.runBehavioral intended.strategy
+        (instructionCount setup.program + 1)).map
+        (intendedReadoutExclusion setup parameter utility exitPayoff) := compiled.outcomeLaw
   let targetLaw := ((R).runBehavioral target.strategy (2 * horizon + 1)).map History.state
   let sourceLaw := (setup.intendedModel.runBehavioral intended.strategy
     (instructionCount setup.program + 1)).map (fun final =>
       let terminal := setup.protocolReadout final.state
       (terminal, fun who => terminal.elim 0 (fun state =>
-        setup.program.publicTransfers (setup.program.publicOutcome state) who)))
+        setup.transfers (setup.program.publicOutcome state) who)))
   have utilityLaw :
-      (TerminalAudit.jointSettlement targetLaw base observe audit deposit).map
+      (TerminalAudit.jointSettlement targetLaw base observe audit spec.deposit).map
         (fun realized => (read realized.1, realized.2)) =
         sourceLaw.map (utilityReadout (fun terminal who => terminal.elim 0 (fun state =>
           valuation (setup.parameterOutcome parameter state) who))) := by
-    have left : (TerminalAudit.jointSettlement targetLaw base observe audit deposit).map
+    have left : (TerminalAudit.jointSettlement targetLaw base observe audit spec.deposit).map
         (fun realized => (read realized.1, realized.2)) =
         ((R).runBehavioral target.strategy (2 * horizon + 1)).bind
           (fun final => (settle final.state).map fun payoffs => (read final.state, payoffs)) := by
@@ -154,10 +113,11 @@ theorem intended_raw_programPayments_preserved
         (setup.protocolReadout final.state).elim 0 (fun terminal =>
           valuation (setup.parameterOutcome parameter terminal) who) +
         (setup.protocolReadout final.state).elim 0 (fun terminal =>
-          setup.program.publicTransfers (setup.program.publicOutcome terminal) who)
-      rw [setup.intended_exclusionReadoutUtility wellFormed parameter utility exitPayoff final who]
+          setup.transfers (setup.program.publicOutcome terminal) who)
+      rw [setup.intended_exclusionReadoutUtility spec.wellFormed parameter utility exitPayoff
+        final who]
       cases setup.protocolReadout final.state <;>
-        simp only [Option.elim_none, Option.elim_some, parameterPaymentUtility_eq, add_zero]
+        simp only [Option.elim_none, Option.elim_some, Setup.parameterPaymentUtility_eq, add_zero]
       rfl
   have cleanSupport : ∀ control, some control ∈ targetLaw.support →
       control.execution.application.config.defaulted = ∅ := by
@@ -167,8 +127,8 @@ theorem intended_raw_programPayments_preserved
   have factors := exclusionBase_valuation_factors (runtime := runtime) (leaks := leaks)
     parameter valuation exitValuation targetLaw cleanSupport
   have cash := jointCashLaw_of_utility_law (runtime := runtime) (leaks := leaks) parameter
-    valuation (fun outcome who => setup.program.publicTransfers outcome.2 who)
-    exitValuation exitTransfer targetLaw sourceLaw factors observe audit deposit utilityLaw
+    valuation (fun outcome who => setup.transfers outcome.2 who)
+    exitValuation exitTransfer targetLaw sourceLaw factors observe audit spec.deposit utilityLaw
   have observed := congrArg (PMF.map (fun realized =>
     TerminalObservation.read setup
       (realized.1.map (fun config => (config.state, config.defaults))) realized.2)) cash

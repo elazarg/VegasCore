@@ -74,10 +74,10 @@ expected payout 100 per player.
 
 [Monetary preservation](../Vegas/Game/PaymentPreservation.lean) uses the
 same forced-exit runtime and distinguishes executable cash from valuation.
-Neither result needs phase recovery machinery. Concurrent SE preservation is
-separate research; its failure rules must be justified by its own argument.
+Concurrent SE preservation is separate research; its service and information
+hypotheses require their own argument.
 
 Useful refinements are an operational evidence-capture producer, a more
 selective service satisfying the same all-history contract, and concrete
-instances with nonempty partial pending observation. The general recovery
+instances with nonempty partial pending observation. The general native sequential
 preservation theorem already permits arbitrary finitely branching observation.

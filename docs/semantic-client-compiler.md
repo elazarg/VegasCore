@@ -86,7 +86,7 @@ service, observation or prior premise.
 `ClientCompilation.clients_noDefaults` and
 `ClientCompilation.clients_noCharges` transfer clean-path guarantees
 to supported ordinary physical runs. They require no empty-observation
-premise: arbitrary pending-observation kernels satisfying the specification
+premise: arbitrary finitely branching pending-observation kernels satisfying the specification
 remain allowed.
 
 For interfaces delivering no pending observations:

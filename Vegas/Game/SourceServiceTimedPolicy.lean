@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.SourceServiceMenu
+import Vegas.Game.RevealServiceRosterPolicy
 import Vegas.Game.SourceServicePolicy
 import Interaction.ScheduledOpening
 

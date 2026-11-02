@@ -26,7 +26,7 @@ public-barrier certificate. [Paper.lean](../Paper.lean) pins exactly the
 mathematical results stated in the maintained manuscript; normalization,
 packet, observation and induction helpers stay in their owning modules.
 
-The operational result reuses the existing graph reachability witness and
+The operational result uses the graph reachability witness and
 native finite graph paths. Thus each projected raw prefix is related by
 actual graph steps with their dependent actions; bookkeeping transitions
 may stutter. This establishes execution safety, not a probability comparison for
@@ -37,7 +37,7 @@ comparing the exact source-to-ledger law with the canonical graph law through
 their common typed-state/default readout. The direct source-to-ledger proof
 lifts one local graph-continuation identity through actual completion ranks,
 then applies source readout once. It composes omission/withholding, typed
-acceptance and chance sampling without a phase-end semantics. Client recovery
+acceptance and chance sampling. Strategy completion
 and disclosure normalization preserve the original profile's joint
 typed-state/default law; private intentions after failure may differ.
 

@@ -20,41 +20,6 @@ open Vegas Vegas.SourceProgram Vegas.EventGraphRuntime Interaction
 open Vegas.Examples.OddsEvensService
 open Vegas.Examples.OddsEvensRaw
 
-private def specification : Vegas.ClientSpec
-    fixture runtime leaks Vegas.Examples.OddsEvens.bounds horizon scheduler
-    (fun _ => ()) Vegas.Examples.OddsEvens.sourceUtility (fun _ => 0) where
-  finiteNature := by change app.FiniteNature initial scheduler; infer_instance
-  finiteSource := inferInstance
-  Public := Unit
-  signal := Vegas.Examples.OddsEvens.signal
-  wellFormed := Vegas.Examples.OddsEvens.wellFormed
-  independent := Vegas.Examples.OddsEvens.independent
-  observable := Vegas.Examples.OddsEvens.observable
-  delay := fun _ => 3
-  bound := fun _ => 2
-  opportunity := opportunity
-  inclusion := protectedInclusion
-  completes := completesPlay
-  timely := timely
-  lowerUtility := fun _ => 0
-  upperUtility := fun _ => 200
-  lower_le := fun result who => (Vegas.Examples.OddsEvens.sourceUtility_bounds result who).1
-  le_upper := fun result who => (Vegas.Examples.OddsEvens.sourceUtility_bounds result who).2
-  exitBelow := fun _ terminal _ who =>
-    (Vegas.Examples.OddsEvens.sourceUtility_bounds
-      (fixture.parameterOutcome (fun _ => ()) terminal) who).1
-  outputValues := Vegas.Examples.OddsEvens.outputValues
-  inputValues := Vegas.Examples.OddsEvens.inputValues
-  capacity := Vegas.Examples.OddsEvens.candidateCapacity
-  evidenceService := evidenceService
-  observationRate := fun _ => halfRate.val
-  deliveryRate := fun _ => halfRate.val
-  delivery_nonnegative := fun _ => by norm_num [halfRate]
-  coverage := thinnedCountEvidence_coverage halfRate halfRate
-  deposit := fun _ => 800
-  deposit_nonnegative := fun _ => by norm_num
-  funded := fun _ => by norm_num [fixture, Vegas.Examples.OddsEvens.setup, halfRate]
-
 private def compiled (intended : fixture.intendedModel.BehavioralAssessment)
     (equilibrium : fixture.IntendedSequentialEquilibrium
       (fun _ => ()) Vegas.Examples.OddsEvens.sourceUtility intended) :=

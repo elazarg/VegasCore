@@ -8,7 +8,7 @@ subtree; imports do not preserve unused research modules merely to keep a name.
 
 | Layer | Responsibility and main owners |
 | --- | --- |
-| GameTheory | Separately managed protocol, probability and equilibrium foundation. The submodule is unchanged by core pruning. |
+| GameTheory | Separately managed protocol, probability and equilibrium foundation.  |
 | GameTheoryExtensions | Probability, belief transport, consistency and enforcement adapters required by the retained results. |
 | Interaction | Authenticated message network, actual recall, partial observation, scheduler laws and evidence. |
 | Vegas.Foundation / Vegas.Expr | Typed values, environments and executable expressions. |
@@ -85,7 +85,7 @@ definitions. Share actual operations and isolate hypotheses that vary with a
 runtime. Stronger sequential results should reuse the concrete execution and
 information definitions; they do not require a universal runtime language.
 
-Every paper-stated mathematical result needs an exact guarded pin in
+Every paper-stated mathematical result needs an exact guarded pin after its full local statement in
 [Paper.lean](../Paper.lean). Library results have no separate pin requirement.
 Central options, source policy and structural checks apply throughout the tree.
 See [validation](../scripts/README.md) and [archived research](archives.md).

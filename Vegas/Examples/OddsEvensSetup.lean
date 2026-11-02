@@ -5,7 +5,7 @@ import Vegas.Game.RevealService
 import Vegas.Game.OnePacketPublicInitialSignal
 import Vegas.Game.OnePacketSwapFiberSum
 import Vegas.Game.ProgramPayoffs
-import Vegas.Game.IntendedAuditedOutcome
+import Vegas.Game.IntendedHistory
 import Vegas.Game.OnePacketRetention
 
 /-! # Two-player Odds–Evens with executable settlement -/

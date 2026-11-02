@@ -61,10 +61,10 @@ The substantive premises remain:
   deposit covers the stated utility spread, including the exclusion override
   and zero fallback.
 
-There is no complete-pending-observation premise in the recovery theorems and no
+There is no complete-pending-observation premise in the native sequential-preservation theorems and no
 independent-per-message-delay premise. Those facts distinguish their scope
 from the deferred concurrent construction. The evidence-coverage premise still
-needs an operational producer; arbitrary pending observation does not produce
+needs an operational producer; finitely branching pending observation does not produce
 it automatically.
 
 ## First priority: an explicit audit backend

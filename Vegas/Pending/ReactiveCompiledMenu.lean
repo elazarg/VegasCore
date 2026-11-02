@@ -9,9 +9,8 @@ import Vegas.Pending.EventPublicState
 This is a response restriction of the existing reactive application. Its
 binding domain is fixed before selecting an equilibrium and must cover every
 source payload value. Ordinary opportunities permit waiting and the
-first source decision for an event. The service selects the required set only
-at the last unsent binding opportunity. Detecting an omitted required binding
-needs a public deadline obligation, not just an audit of emitted packets.
+first source decision for an event. Binding omission is a silent source choice
+at every opportunity, including the final visit before deadline expiry.
 
 Fresh openings are permitted once per unique event, using existing own response
 recall. Once submitted, a pending canonical opening remains available for inclusion.
@@ -96,6 +95,31 @@ def decisionActions (who : Player)
                 (cast (congrArg EventField.Action outputEq.symm) disclose)
       else {⟨none⟩}
 
+omit [Fintype Player] in
+/-- Omission or withholding gives silence at every strategic opportunity. -/
+theorem silence_decisionActions (who : Player)
+    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
+    (view : (runtime.reactiveApplication leaks).PlayerView) :
+    (⟨none⟩ : (runtime.reactiveApplication leaks).Action) ∈
+      bounds.decisionActions runtime leaks who past view := by
+  classical
+  unfold decisionActions
+  split
+  · exact Finset.mem_singleton_self _
+  · split
+    · cases kind : nodeView graph _ with
+      | sample => exact Finset.mem_singleton_self _
+      | bind owner payload outputEq codeEq =>
+          refine Finset.mem_image.mpr ⟨none, ?_, ?_⟩
+          · simp [bindingChoices]
+          · simp [serviceDecision, reactiveDecision, kind,
+              ReactiveApplication.SubmissionNormalization.action]
+      | resolve owner payload binding checks outputEq codeEq =>
+          refine Finset.mem_image.mpr ⟨false, Finset.mem_univ _, ?_⟩
+          simp [serviceDecision, reactiveDecision, kind, reactiveResolutionPacket,
+            ReactiveApplication.SubmissionNormalization.action]
+    · exact Finset.mem_singleton_self _
+
 open Classical in
 /-- Ordinary opportunities permit waiting. A
 fresh source decision is available only before its event has been submitted. -/
@@ -103,22 +127,9 @@ def compiledActions (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
     Finset (runtime.reactiveApplication leaks).Action :=
-  ((bounds.decisionActions runtime leaks who past view).filter
-    (fun response => runtime.firstSubmission leaks past response) ∪
-      {⟨none⟩}) ∩
-        (bounds.menu runtime leaks).actions who past view
-
-open Classical in
-/-- The service uses this set only at the last unsent binding opportunity.
-Coverage proves the fallback unreachable there; no source failure is added. -/
-def requiredBindingActions (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView) :
-    Finset (runtime.reactiveApplication leaks).Action :=
-  let choices := (bounds.decisionActions runtime leaks who past view).filter
+  (bounds.decisionActions runtime leaks who past view).filter
     (fun response => runtime.firstSubmission leaks past response) ∩
       (bounds.menu runtime leaks).actions who past view
-  if choices.Nonempty then choices else {⟨none⟩}
 
 theorem silence_compiled (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
@@ -127,7 +138,8 @@ theorem silence_compiled (who : Player)
       bounds.compiledActions runtime leaks who past view := by
   classical
   apply Finset.mem_inter.mpr
-  refine ⟨Finset.mem_union_right _ (Finset.mem_singleton_self _), ?_⟩
+  refine ⟨Finset.mem_filter.mpr
+    ⟨bounds.silence_decisionActions runtime leaks who past view, rfl⟩, ?_⟩
   rw [bounds.menu_mem]
   exact ⟨trivial, rfl⟩
 
@@ -136,17 +148,6 @@ theorem compiledActions_nonempty (who : Player)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
     (bounds.compiledActions runtime leaks who past view).Nonempty :=
   ⟨⟨none⟩, bounds.silence_compiled runtime leaks who past view⟩
-
-theorem requiredBindingActions_nonempty (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView) :
-    (bounds.requiredBindingActions runtime leaks who past view).Nonempty := by
-  classical
-  unfold requiredBindingActions
-  dsimp only
-  split
-  · assumption
-  · exact Finset.singleton_nonempty _
 
 theorem binding_normalized_available (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)

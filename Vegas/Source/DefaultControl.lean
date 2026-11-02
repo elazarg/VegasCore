@@ -23,12 +23,9 @@ def defaults (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} �
   | _, _, .reveal _ _ _ _ _ _ next => Sum.elim DecisionView.defaults (defaults who next)
 
 /-- The same public default status at every source program point. -/
-def defaulted (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → ProtocolView who program → Finset Player
-  | _, _, .ret _ => fun view => DecisionView.defaulted view
-  | _, _, .sample _ _ _ next => Sum.elim DecisionView.defaulted (defaulted who next)
-  | _, _, .commit _ _ _ _ next => Sum.elim DecisionView.defaulted (defaulted who next)
-  | _, _, .reveal _ _ _ _ _ _ next => Sum.elim DecisionView.defaulted (defaulted who next)
+def defaulted (who : Player) {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (view : ProtocolView who program) : Finset Player :=
+  (defaults who program view).defaulted
 
 end ProtocolView
 
@@ -103,12 +100,9 @@ theorem defaults_back_step : {Γ : SourceCtx Player L} → {O : Finset VarId} �
           exact defaults_back_step next rest target joint running supported
 
 /-- Public absorbing defaults at the current source program point. -/
-def defaulted : {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → ProtocolState program → Finset Player
-  | _, _, .ret _ => fun config => Config.defaulted config
-  | _, _, .sample _ _ _ next => Sum.elim Config.defaulted (defaulted next)
-  | _, _, .commit _ _ _ _ next => Sum.elim Config.defaulted (defaulted next)
-  | _, _, .reveal _ _ _ _ _ _ next => Sum.elim Config.defaulted (defaulted next)
+def defaulted {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (state : ProtocolState program) : Finset Player :=
+  (defaults program state).defaulted
 
 @[simp] theorem defaulted_entry {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (config : Config Player L Γ) :
@@ -116,42 +110,15 @@ def defaulted : {Γ : SourceCtx Player L} → {O : Finset VarId} →
   cases program <;> rfl
 
 /-- Public default membership is read from the complete public default record. -/
-theorem defaulted_eq_defaults :
-    {Γ : SourceCtx Player L} → {names : Finset VarId} →
-    (program : SourceProgram Player L Γ names) → (point : ProtocolState program) →
-    ProtocolState.defaulted program point = (ProtocolState.defaults program point).defaulted
-  | _, _, .ret _, _ => rfl
-  | _, _, .sample _ _ _ next, point => by
-      cases point with
-      | inl config => rfl
-      | inr rest => exact defaulted_eq_defaults next rest
-  | _, _, .commit _ _ _ _ next, point => by
-      cases point with
-      | inl config => rfl
-      | inr rest => exact defaulted_eq_defaults next rest
-  | _, _, .reveal _ _ _ _ _ _ next, point => by
-      cases point with
-      | inl config => rfl
-      | inr rest => exact defaulted_eq_defaults next rest
+theorem defaulted_eq_defaults {Γ : SourceCtx Player L} {names : Finset VarId}
+    (program : SourceProgram Player L Γ names) (point : ProtocolState program) :
+    ProtocolState.defaulted program point = (ProtocolState.defaults program point).defaulted := rfl
 
 /-- Every player observes the complete public default status. -/
-theorem defaulted_observe (who : Player) :
-    {Γ : SourceCtx Player L} → {O : Finset VarId} →
-    (program : SourceProgram Player L Γ O) → (state : ProtocolState program) →
-    ProtocolView.defaulted who program (observe who program state) = defaulted program state
-  | _, _, .ret _, _ => rfl
-  | _, _, .sample _ _ _ next, state => by
-      cases state with
-      | inl config => rfl
-      | inr rest => exact defaulted_observe who next rest
-  | _, _, .commit _ _ _ _ next, state => by
-      cases state with
-      | inl config => rfl
-      | inr rest => exact defaulted_observe who next rest
-  | _, _, .reveal _ _ _ _ _ _ next, state => by
-      cases state with
-      | inl config => rfl
-      | inr rest => exact defaulted_observe who next rest
+theorem defaulted_observe (who : Player) {Γ : SourceCtx Player L} {O : Finset VarId}
+    (program : SourceProgram Player L Γ O) (state : ProtocolState program) :
+    ProtocolView.defaulted who program (observe who program state) = defaulted program state := by
+  exact congrArg DefaultHistory.defaulted (defaults_observe who program state)
 
 /-- Even arbitrary joint actions cannot restore a publicly defaulted player. -/
 theorem defaulted_step : {Γ : SourceCtx Player L} → {O : Finset VarId} →
@@ -163,13 +130,14 @@ theorem defaulted_step : {Γ : SourceCtx Player L} → {O : Finset VarId} →
       have same := (PMF.mem_support_pure_iff _ _).mp reached
       subst after
       exact Finset.Subset.refl _
-  | _, _, .sample _ _ _ next, before, after, joint, reached => by
+  | _, _, .sample name _ _ next, before, after, joint, reached => by
       cases before with
       | inl config =>
           simp only [step, Sum.elim_inl, PMF.support_map, Set.mem_image] at reached
           obtain ⟨value, _, rfl⟩ := reached
-          simpa only [defaulted, Sum.elim_inl, Sum.elim_inr, defaulted_entry,
-            sampleSuccessor_defaulted] using Finset.Subset.refl config.defaulted
+          simp only [defaulted, defaults, Sum.elim_inl, Sum.elim_inr, defaults_entry]
+          change config.defaulted ⊆ (sampleSuccessor name config value).defaulted
+          rw [sampleSuccessor_defaulted]
       | inr rest =>
           simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
           obtain ⟨target, supported, rfl⟩ := reached
@@ -179,9 +147,12 @@ theorem defaulted_step : {Γ : SourceCtx Player L} → {O : Finset VarId} →
       | inl config =>
           have same := (PMF.mem_support_pure_iff _ _).mp reached
           subst after
-          simpa only [defaulted, Sum.elim_inl, Sum.elim_inr, defaulted_entry] using
-            commitSuccessor_defaulted_mono name guard config
-              (OwnAction.binding owner name _ (joint owner))
+          simp only [defaulted, defaults, Sum.elim_inl, Sum.elim_inr, defaults_entry]
+          change config.defaulted ⊆
+            (commitSuccessor name guard config
+              (OwnAction.binding owner name _ (joint owner))).defaulted
+          exact commitSuccessor_defaulted_mono name guard config
+            (OwnAction.binding owner name _ (joint owner))
       | inr rest =>
           simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
           obtain ⟨target, supported, rfl⟩ := reached
@@ -191,9 +162,11 @@ theorem defaulted_step : {Γ : SourceCtx Player L} → {O : Finset VarId} →
       | inl config =>
           have same := (PMF.mem_support_pure_iff _ _).mp reached
           subst after
-          simpa only [defaulted, Sum.elim_inl, Sum.elim_inr, defaulted_entry] using
-            revealSuccessor_defaulted_mono published source config
-              (OwnAction.disclosure (joint owner))
+          simp only [defaulted, defaults, Sum.elim_inl, Sum.elim_inr, defaults_entry]
+          change config.defaulted ⊆
+            (revealSuccessor published source config (OwnAction.disclosure (joint owner))).defaulted
+          exact revealSuccessor_defaulted_mono published source config
+            (OwnAction.disclosure (joint owner))
       | inr rest =>
           simp only [step, Sum.elim_inr, PMF.support_map, Set.mem_image] at reached
           obtain ⟨target, supported, rfl⟩ := reached

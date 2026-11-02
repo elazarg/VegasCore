@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import Vegas.Game.ClientSpecification
 import Vegas.Game.OnePacketEquilibriumPreservation
 import Vegas.Game.OnePacketRawLaw
 
@@ -26,85 +27,37 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
   {scheduler : (application setup runtime leaks).Scheduler}
-  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [Finite setup.intendedProtocol.History]
-  {Public : Type*} {signal : State L setup.context → Public}
 
 local notation "Initial" => initialLaw setup
 
-variable {Parameter : Type} (parameter : State L setup.context → Parameter)
-  (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
-  (excludedPayoff : Player → ℝ)
+variable {Parameter : Type} {parameter : State L setup.context → Parameter}
+  {utility : Parameter × PublicOutcome setup.program → Player → ℝ}
+  {excludedPayoff : Player → ℝ}
 
 open Classical in
 /-- An intended sequential equilibrium compiles to an actual native assessment
 that is sequentially rational against every policy in the supplied bounded raw
 menu and preserves the joint complete source configuration and settled payoff. -/
 theorem intended_raw_sequentialEquilibrium_preserved
-    (wellFormed : setup.WellFormed)
-    (independent : setup.PrivateInputsIndependentGiven signal)
-    (observable : setup.PublicInitialSignal signal)
-    {delay bound : (graph setup).EventId → Nat}
-    (opportunity : Opportunity runtime leaks Initial horizon scheduler delay)
-    (inclusion : ProtectedInclusion runtime leaks Initial horizon scheduler bound)
-    (completes : CompletesPlay runtime leaks Initial horizon scheduler)
-    (timely : runtime.AsyncTimely delay bound)
-    (lowerUtility upperUtility : Player → ℝ)
-    (lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who)
-    (le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who)
-    (below : ∀ (final : setup.intendedProtocol.History) terminal,
-      setup.protocolReadout final.state = some terminal →
-        ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
+    (spec : ClientSpec setup runtime leaks bounds horizon scheduler
+      parameter utility excludedPayoff)
     (intended : setup.intendedModel.BehavioralAssessment)
-    (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended)
-    (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
-    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
-    (service : EvidenceReportService (CountEvidence (graph setup)))
-    (observationRate deliveryRate : Player → ℝ)
-    (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
-    (coverage : CountEvidenceCoverage service observationRate deliveryRate)
-    (deposit : Player → ℝ) (deposit_nonnegative : ∀ who, 0 ≤ deposit who)
-    (sufficient : ∀ who,
-      max 0 (max (excludedPayoff who) (upperUtility who)) -
-          min 0 (min (excludedPayoff who) (lowerUtility who)) ≤
-        observationRate who * deliveryRate who * deposit who) :
-    let raw := bounds.rawMenu runtime leaks
-    let observe := (application setup runtime leaks).stateTraffic
-    let audit := runtime.countAudit leaks service.sample
-    let base := exclusionBase setup runtime parameter utility excludedPayoff leaks
-    let payoff := TerminalAudit.utility base observe audit deposit
-    let settle := TerminalAudit.settlement base observe audit deposit
-    ∃ target : (raw.information Initial horizon scheduler).BehavioralAssessment,
-      target.IsSequentialEquilibriumFor
-        (raw.decisionInformationAntichain Initial horizon scheduler)
-        (fun who site => target.truncatedContinuationContext site
-          (fun history => payoff history.state who) (2 * horizon + 1)) ∧
-      (∀ final ∈ ((raw.information Initial horizon scheduler).runBehavioral
-          target.strategy (2 * horizon + 1)).support,
-        ∀ control, final.state = some control →
-          control.execution.application.config.defaulted = ∅) ∧
-      (∀ final ∈ ((raw.information Initial horizon scheduler).runBehavioral
-          target.strategy (2 * horizon + 1)).support,
-        ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
-      ((raw.information Initial horizon scheduler).runBehavioral target.strategy
-          (2 * horizon + 1)).bind
-          (fun final => (settle final.state).map fun payoffs =>
-            (sourceReadout setup runtime leaks final.state, payoffs)) =
-        (setup.intendedModel.runBehavioral intended.strategy
-          (instructionCount setup.program + 1)).map
-          (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
+    (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended) :
+    Nonempty (ClientCompilation spec intended) := by
+  let := spec.finiteNature
+  let := spec.finiteSource
   obtain ⟨native, nativeSE, nativeClear, nativeLaw⟩ :=
     intended_onePacket_sequentialEquilibrium_preserved (runtime := runtime) parameter utility
-      excludedPayoff wellFormed independent observable opportunity inclusion completes timely
-      lowerUtility upperUtility lower_le le_upper below intended equilibrium covers coversInputs
-      capacity
+      excludedPayoff spec.wellFormed spec.independent spec.observable spec.opportunity
+      spec.inclusion spec.completes spec.timely spec.exitBelow intended equilibrium
+      spec.outputValues spec.inputValues spec.capacity
   obtain ⟨target, targetSE, clean, states, joint⟩ :=
     intended_raw_sequentialEquilibrium_of_onePacket (runtime := runtime) (initial := Initial)
-      parameter utility excludedPayoff intended native nativeSE nativeLaw service observationRate
-      deliveryRate delivery_nonnegative coverage lowerUtility upperUtility
-      (fun _ _ _ who => lower_le _ who) (fun _ _ _ who => le_upper _ who)
-      deposit deposit_nonnegative sufficient
-  refine ⟨target, targetSE, ?_, clean, joint⟩
+      parameter utility excludedPayoff intended native nativeSE nativeLaw spec.evidenceService
+      spec.observationRate spec.deliveryRate spec.delivery_nonnegative spec.coverage
+      spec.lowerUtility spec.upperUtility spec.lower_le spec.le_upper spec.deposit
+      spec.deposit_nonnegative spec.funded
+  refine ⟨⟨target, targetSE, ?_, clean, joint⟩⟩
   intro final supported control current
   let raw := bounds.rawMenu runtime leaks
   let normalize := (runtime.reactiveNormalization leaks).state

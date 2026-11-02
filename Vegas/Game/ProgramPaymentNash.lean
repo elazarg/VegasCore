@@ -175,7 +175,7 @@ theorem parameterEventGame_payment_approximate_nash_iff {Parameter : Type}
         setup.program.parameterPaymentUtility valuation
         (setup.eventParameterOutcome parameter outcome) who) := by
     funext outcome who
-    simp only [parameterPaymentUtility_eq, publicTransfers, eventParameterOutcome,
+    simp only [SourceProgram.parameterPaymentUtility_eq, publicTransfers, eventParameterOutcome,
       parameterOutcome, publicPayoffs_publicOutcome, terminalPayouts_eq_source, terminalConfig]
   rw [utility_eq]
   exact setup.parameterEventGame_approximate_nash_iff parameter finite scheduler

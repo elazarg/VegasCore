@@ -24,3 +24,7 @@ import VegasTests.ServiceTiming
 import VegasTests.SourceSemantics
 import VegasTests.SourceSetup
 import VegasTests.ValueBinding
+
+import VegasTests.PrivateInputs
+import VegasTests.PendingObservationPrivacy
+import VegasTests.PaymentDefaults

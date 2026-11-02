@@ -39,52 +39,6 @@ local notation "raw" => bounds.rawMenu runtime leaks
 local notation "model" => ReactiveApplication.ResponseMenu.information
   (bounds.rawMenu runtime leaks) Initial horizon scheduler
 
-/-- The checked source, service and enforcement obligations of compilation.
-The source assessment is supplied separately, so one specification serves
-every intended equilibrium of the game. Catalogue coverage includes every
-off-path payload value and therefore entails finite binding and publication
-value carriers. -/
-structure ClientSpec where
-  /-- Every physical nature kernel has finite support. -/
-  finiteNature : (app).FiniteNature Initial scheduler
-  /-- The intended source game has finitely many legal histories. -/
-  finiteSource : Finite setup.intendedProtocol.History
-  Public : Type
-  signal : State L setup.context → Public
-  wellFormed : setup.WellFormed
-  independent : setup.PrivateInputsIndependentGiven signal
-  observable : setup.PublicInitialSignal signal
-  delay : (graph setup).EventId → Nat
-  bound : (graph setup).EventId → Nat
-  opportunity : Opportunity runtime leaks Initial horizon scheduler delay
-  inclusion : ProtectedInclusion runtime leaks Initial horizon scheduler bound
-  completes : CompletesPlay runtime leaks Initial horizon scheduler
-  timely : AsyncTimely runtime delay bound
-  lowerUtility : Player → ℝ
-  upperUtility : Player → ℝ
-  lower_le : ∀ outcome who, lowerUtility who ≤ utility outcome who
-  le_upper : ∀ outcome who, utility outcome who ≤ upperUtility who
-  exitBelow : ∀ (final : setup.intendedProtocol.History) terminal,
-    setup.protocolReadout final.state = some terminal →
-      ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who
-  /-- The finite wire catalogue contains every value of each binding and
-  publication payload type, including off-equilibrium values. -/
-  outputValues : bounds.CoversOutputValues
-  /-- Every value of each initial binding input type belongs to the catalogue. -/
-  inputValues : bounds.CoversInputValues
-  capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount
-  evidenceService : EvidenceReportService (CountEvidence (graph setup))
-  observationRate : Player → ℝ
-  deliveryRate : Player → ℝ
-  delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who
-  coverage : CountEvidenceCoverage evidenceService observationRate deliveryRate
-  deposit : Player → ℝ
-  deposit_nonnegative : ∀ who, 0 ≤ deposit who
-  funded : ∀ who,
-    max 0 (max (excludedPayoff who) (upperUtility who)) -
-        min 0 (min (excludedPayoff who) (lowerUtility who)) ≤
-      observationRate who * deliveryRate who * deposit who
-
 variable {setup runtime leaks bounds horizon scheduler parameter utility excludedPayoff}
 
 variable (spec : ClientSpec setup runtime leaks bounds horizon scheduler
@@ -92,67 +46,12 @@ variable (spec : ClientSpec setup runtime leaks bounds horizon scheduler
 
 namespace ClientSpec
 
-/-- The distribution of base utilities after the terminal count-audit deduction. -/
-def settlement : (app).ProtocolState → PMF (Player → ℝ) :=
-  TerminalAudit.settlement
-    (exclusionBase setup runtime parameter utility excludedPayoff leaks)
-    (app).stateTraffic (runtime.countAudit leaks spec.evidenceService.sample) spec.deposit
-
-/-- The complete source configuration, including default history, jointly with
-the settled-payoff vector of a physical state. -/
-def observation (state : (app).ProtocolState) :
-    PMF (Option (Config Player L setup.program.terminalCtx) × (Player → ℝ)) :=
-  (spec.settlement state).map fun payoffs =>
-    (sourceReadout setup runtime leaks state, payoffs)
-
-/-- A player's expected audited utility at a physical protocol state. -/
-def payoff (who : Player) (state : (app).ProtocolState) : ℝ :=
-  TerminalAudit.utility
-    (exclusionBase setup runtime parameter utility excludedPayoff leaks)
-    (app).stateTraffic (runtime.countAudit leaks spec.evidenceService.sample)
-    spec.deposit state who
-
-end ClientSpec
-
-/-- A semantic artifact certifying equilibrium in the bounded raw response-menu
-game and preserving its source readout and settled payoff law. -/
-structure ClientCompilation (intended : setup.intendedModel.BehavioralAssessment) where
-  assessment : (model).BehavioralAssessment
-  equilibrium : assessment.IsSequentialEquilibriumFor
-    ((raw).decisionInformationAntichain Initial horizon scheduler)
-    (fun who site => assessment.truncatedContinuationContext site
-      (fun final => spec.payoff who final.state) (2 * horizon + 1))
-  noDefaults : ∀ final ∈ ((model).runBehavioral assessment.strategy (2 * horizon + 1)).support,
-    ∀ control, final.state = some control → control.execution.application.config.defaulted = ∅
-  noCharges : ∀ final ∈ ((model).runBehavioral assessment.strategy (2 * horizon + 1)).support,
-    ∀ who, TerminalAudit.charge (app).stateTraffic
-      (runtime.countAudit leaks spec.evidenceService.sample) final.state who = 0
-  outcomeLaw : ((model).runBehavioral assessment.strategy (2 * horizon + 1)).bind
-      (fun final => spec.observation final.state) =
-    (setup.intendedModel.runBehavioral intended.strategy
-      (instructionCount setup.program + 1)).map
-      (intendedReadoutExclusion setup parameter utility excludedPayoff)
-
-namespace ClientSpec
-
 /-- Select a common consistent bounded-menu completion as part of the semantic
 artifact. Runtime clients decode this selected strategy. -/
 def compile (intended : setup.intendedModel.BehavioralAssessment)
     (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended) :
-    ClientCompilation spec intended := by
-  classical
-  letI := spec.finiteNature
-  letI := spec.finiteSource
-  have existsTarget := intended_raw_sequentialEquilibrium_preserved
-    (setup := setup) (runtime := runtime) (leaks := leaks) (bounds := bounds)
-    (horizon := horizon) (scheduler := scheduler) parameter utility excludedPayoff
-    spec.wellFormed spec.independent spec.observable spec.opportunity spec.inclusion spec.completes
-    spec.timely spec.lowerUtility spec.upperUtility spec.lower_le spec.le_upper spec.exitBelow
-    intended equilibrium spec.outputValues spec.inputValues spec.capacity spec.evidenceService
-    spec.observationRate spec.deliveryRate spec.delivery_nonnegative spec.coverage spec.deposit
-    spec.deposit_nonnegative spec.funded
-  have chosen := Classical.choose_spec existsTarget
-  exact ⟨Classical.choose existsTarget, chosen.1, chosen.2.1, chosen.2.2.1, chosen.2.2.2⟩
+    ClientCompilation spec intended :=
+  Classical.choice (intended_raw_sequentialEquilibrium_preserved spec intended equilibrium)
 
 end ClientSpec
 

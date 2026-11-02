@@ -120,24 +120,26 @@ theorem jointCashLaw_of_utility_law {Observation : Type}
 total utility, including the separately declared exit valuation and transfer. -/
 theorem exclusionBase_expect_monetaryUtility {Observation : Type}
     (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)
-    (exitValuation exitTransfer : Player → ℝ)
+    (exitValuation : Player → ℝ)
     (observe : (application setup runtime leaks).ProtocolState → Observation)
     (audit : Observation → PMF (Player → Bool)) (deposit : Player → ℝ)
     (state : (application setup runtime leaks).ProtocolState) (who : Player) :
     expect (TerminalAudit.settlement
         (exclusionBase setup runtime parameter
-          (fun outcome owner => setup.program.publicTransfers outcome.2 owner) exitTransfer leaks)
+          (fun outcome owner => setup.transfers outcome.2 owner)
+          (fun owner => (setup.exitTransfers owner : ℝ)) leaks)
         observe audit deposit state)
       (fun receipts => monetaryUtility
         (exclusionBase setup runtime parameter valuation exitValuation leaks)
         (state, receipts) who) =
       TerminalAudit.utility
-        (exclusionBase setup runtime parameter (setup.program.parameterPaymentUtility valuation)
-          (fun owner => exitValuation owner + exitTransfer owner) leaks)
+        (exclusionBase setup runtime parameter (setup.parameterPaymentUtility valuation)
+          (fun owner => exitValuation owner + (setup.exitTransfers owner : ℝ)) leaks)
         observe audit deposit state who := by
   rw [TerminalAudit.settlement_expect_monetaryUtility]
   congr 1
   funext current owner
-  exact (exclusionBase_add parameter valuation _ exitValuation exitTransfer current owner).symm
+  exact (exclusionBase_add parameter valuation _ exitValuation
+    (fun who => (setup.exitTransfers who : ℝ)) current owner).symm
 
 end Vegas

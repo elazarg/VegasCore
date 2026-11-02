@@ -50,9 +50,7 @@ variable {Parameter : Type} (parameter : State L setup.context → Parameter)
   (excludedPayoff : Player → ℝ)
 
 open Classical in
-/-- Every intended sequential equilibrium has an actual native one-packet
-implementation with the same joint configuration and base payoff law. -/
-theorem intended_onePacket_sequentialEquilibrium_preserved
+private theorem intended_onePacket_sequentialEquilibrium_preserved_of_bounded_utility
     (wellFormed : setup.WellFormed)
     (independent : setup.PrivateInputsIndependentGiven signal)
     (observable : setup.PublicInitialSignal signal)
@@ -231,5 +229,166 @@ theorem intended_onePacket_sequentialEquilibrium_preserved
   exact onePacket_defaulted_eq_empty_of_readout_law setup runtime leaks bounds Initial horizon
     scheduler wellFormed intended.strategy limit.strategy (2 * horizon + 1) readoutLaw final
       supported control current
+
+private theorem exists_bounded_utility_extension
+    {History Outcome Agent : Type*} [Finite History]
+    (readout : History → Option Outcome) (payoff : Outcome → Agent → ℝ) :
+    ∃ extension : Outcome → Agent → ℝ, ∃ bound : Agent → ℝ,
+      (∀ who, 0 ≤ bound who) ∧
+      (∀ outcome who, |extension outcome who| ≤ bound who) ∧
+      ∀ history outcome, readout history = some outcome → extension outcome = payoff outcome := by
+  classical
+  let := Fintype.ofFinite History
+  let bound := fun who => ∑ history, |(readout history).elim 0 (fun outcome => payoff outcome who)|
+  let extension := fun outcome who =>
+    if ∃ history, readout history = some outcome then payoff outcome who else 0
+  have nonnegative : ∀ who, 0 ≤ bound who :=
+    fun _ => Finset.sum_nonneg fun _ _ => abs_nonneg _
+  refine ⟨extension, bound, nonnegative, ?_, ?_⟩
+  · intro outcome who
+    by_cases represented : ∃ history, readout history = some outcome
+    · simp only [extension, ite_eq_left represented]
+      obtain ⟨history, observed⟩ := represented
+      have bounded := Finset.single_le_sum
+        (fun other (_ : other ∈ Finset.univ) =>
+          abs_nonneg ((readout other).elim 0 (fun result => payoff result who)))
+        (Finset.mem_univ history)
+      simpa only [observed, Option.elim_some] using bounded
+    · simpa only [extension, ite_eq_right represented, abs_zero] using nonnegative who
+  · intro history outcome observed
+    funext who
+    exact ite_eq_left ⟨history, observed⟩
+
+open Classical in
+/-- Every intended sequential equilibrium has an actual native one-packet
+implementation with the same joint configuration and base payoff law. -/
+theorem intended_onePacket_sequentialEquilibrium_preserved
+    (wellFormed : setup.WellFormed)
+    (independent : setup.PrivateInputsIndependentGiven signal)
+    (observable : setup.PublicInitialSignal signal)
+    {delay bound : (graph setup).EventId → Nat}
+    (opportunity : Opportunity runtime leaks Initial horizon scheduler delay)
+    (inclusion : ProtectedInclusion runtime leaks Initial horizon scheduler bound)
+    (completes : CompletesPlay runtime leaks Initial horizon scheduler)
+    (timely : runtime.AsyncTimely delay bound)
+    (below : ∀ (final : setup.intendedProtocol.History) terminal,
+      setup.protocolReadout final.state = some terminal →
+        ∀ who, excludedPayoff who ≤ utility (setup.parameterOutcome parameter terminal) who)
+    (intended : setup.intendedModel.BehavioralAssessment)
+    (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended)
+    (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
+    (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount) :
+    ∃ native : (N).BehavioralAssessment,
+      native.IsSequentialEquilibriumFor
+        ((Menu).decisionInformationAntichain Initial horizon scheduler)
+        (fun who site => native.truncatedContinuationContext site
+          (fun final => exclusionBase setup runtime parameter utility excludedPayoff leaks
+            final.state who) (2 * horizon + 1)) ∧
+      (∀ final ∈ ((N).runBehavioral native.strategy (2 * horizon + 1)).support,
+        ∀ control, final.state = some control →
+          control.execution.application.config.defaulted = ∅) ∧
+      ((N).runBehavioral native.strategy (2 * horizon + 1)).map
+        (readoutExclusion setup runtime leaks bounds Initial horizon scheduler parameter utility
+          excludedPayoff) =
+        (setup.intendedModel.runBehavioral intended.strategy
+          (instructionCount setup.program + 1)).map
+          (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
+  classical
+  let readout : setup.intendedProtocol.History ⊕ (E).History →
+      Option (Parameter × PublicOutcome setup.program) := fun history =>
+    (Sum.elim (fun source => setup.protocolReadout source.state)
+      (fun native => sourceReadout setup runtime leaks native.state) history).map
+        (setup.parameterOutcome parameter)
+  obtain ⟨extension, bound, nonnegative, bounded, agrees⟩ :=
+    exists_bounded_utility_extension readout utility
+  have sourceAgrees (history : setup.intendedProtocol.History) terminal
+      (observed : setup.protocolReadout history.state = some terminal) :
+      extension (setup.parameterOutcome parameter terminal) =
+        utility (setup.parameterOutcome parameter terminal) := by
+    exact agrees (.inl history) _ (by simp only [readout, Sum.elim_inl, observed, Option.map_some])
+  have nativeAgrees (history : (E).History) terminal
+      (observed : sourceReadout setup runtime leaks history.state = some terminal) :
+      extension (setup.parameterOutcome parameter terminal) =
+        utility (setup.parameterOutcome parameter terminal) := by
+    exact agrees (.inr history) _ (by simp only [readout, Sum.elim_inr, observed, Option.map_some])
+  have sourcePayoff :
+      (fun who (history : setup.intendedProtocol.History) =>
+        (setup.protocolReadout history.state).elim 0
+          (fun terminal => extension (setup.parameterOutcome parameter terminal) who)) =
+      (fun who (history : setup.intendedProtocol.History) =>
+        (setup.protocolReadout history.state).elim 0
+          (fun terminal => utility (setup.parameterOutcome parameter terminal) who)) := by
+    funext who history
+    cases observed : setup.protocolReadout history.state with
+    | none => rfl
+    | some terminal => exact congrFun (sourceAgrees history terminal observed) who
+  have extensionEquilibrium : setup.IntendedSequentialEquilibrium parameter extension intended := by
+    unfold Setup.IntendedSequentialEquilibrium at equilibrium ⊢
+    rw [sourcePayoff]
+    exact equilibrium
+  have extensionBelow : ∀ (history : setup.intendedProtocol.History) terminal,
+      setup.protocolReadout history.state = some terminal →
+        ∀ who, excludedPayoff who ≤ extension (setup.parameterOutcome parameter terminal) who := by
+    intro history terminal observed who
+    rw [sourceAgrees history terminal observed]
+    exact below history terminal observed who
+  obtain ⟨native, rational, clear, law⟩ :=
+    intended_onePacket_sequentialEquilibrium_preserved_of_bounded_utility parameter extension
+      excludedPayoff wellFormed independent observable opportunity inclusion completes timely
+      (fun who => -bound who) bound
+      (fun outcome who => (abs_le.mp (bounded outcome who)).1)
+      (fun outcome who => (abs_le.mp (bounded outcome who)).2)
+      extensionBelow intended extensionEquilibrium covers coversInputs capacity
+  have readoutPayoff {readout : Option (Config Player L setup.program.terminalCtx)}
+      (same : ∀ terminal, readout = some terminal →
+        extension (setup.parameterOutcome parameter terminal) =
+          utility (setup.parameterOutcome parameter terminal)) :
+      exclusionReadoutUtility setup parameter extension excludedPayoff readout =
+        exclusionReadoutUtility setup parameter utility excludedPayoff readout := by
+    funext who
+    cases observed : readout with
+    | none => rfl
+    | some terminal =>
+      simp only [exclusionReadoutUtility, Option.elim_some, exclusionTerminalUtility,
+        exclusionUtility]
+      rw [same terminal observed]
+  have nativePayoff (history : (E).History) :
+      exclusionBase setup runtime parameter extension excludedPayoff leaks history.state =
+        exclusionBase setup runtime parameter utility excludedPayoff leaks history.state := by
+    have readoutSame := readoutPayoff (nativeAgrees history)
+    funext who
+    cases current : history.state with
+    | none => rfl
+    | some control =>
+      simp only [exclusionBase, current] at readoutSame ⊢
+      rw [congrFun readoutSame who]
+  have nativeObservation :
+      readoutExclusion setup runtime leaks bounds Initial horizon scheduler parameter extension
+          excludedPayoff =
+        readoutExclusion setup runtime leaks bounds Initial horizon scheduler parameter utility
+          excludedPayoff := by
+    funext history
+    exact congrArg (fun payoff => (sourceReadout setup runtime leaks history.state, payoff))
+      (nativePayoff history)
+  have sourceObservation : intendedReadoutExclusion setup parameter extension excludedPayoff =
+      intendedReadoutExclusion setup parameter utility excludedPayoff := by
+    funext history
+    exact congrArg (fun payoff => (setup.protocolReadout history.state, payoff))
+      (readoutPayoff (sourceAgrees history))
+  refine ⟨native, ?_, clear, ?_⟩
+  · have same :
+        (fun who (history : (E).History) => exclusionBase setup runtime parameter extension
+          excludedPayoff leaks history.state who) =
+        (fun who (history : (E).History) => exclusionBase setup runtime parameter utility
+          excludedPayoff leaks history.state who) := by
+      funext who history
+      exact congrFun (nativePayoff history) who
+    change native.IsSequentialEquilibriumFor _
+      (fun who site => native.truncatedContinuationContext site
+        ((fun player (history : (E).History) => exclusionBase setup runtime parameter extension
+          excludedPayoff leaks history.state player) who) (2 * horizon + 1)) at rational
+    rw [same] at rational
+    exact rational
+  · rwa [nativeObservation, sourceObservation] at law
 
 end Vegas

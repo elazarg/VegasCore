@@ -3,6 +3,10 @@
 import Vegas.Examples.ProgramPaymentsRuntimeService
 import Vegas.Game.ProgramPaymentAsyncNash
 import Vegas.Game.SourceProtocolNash
+import Vegas.Pending.ExclusionAcceptedOutput
+import Vegas.Pending.ExclusionEvidence
+import Vegas.Pending.ReactiveAssociationEvidence
+import Vegas.Compile.EventGraphParameterReadout
 
 /-! # Executable payments change equilibrium in an actual native runtime
 
@@ -88,38 +92,151 @@ def sourceGame (bonus : Int) : UtilityGame Player where
   form := ((setup bonus).informationModel (admission bonus)).toBehavioralGameForm
     (instructionCount (program bonus) + 1)
   utility history who := ((setup bonus).protocolReadout history.state).elim 0
-    (fun terminal => (program bonus).paymentUtility (valuation bonus)
-      ((program bonus).publicOutcome terminal) who)
+    (fun terminal => (setup bonus).parameterPaymentUtility (runtimeValuation bonus)
+      ((setup bonus).parameterOutcome (parameter bonus) terminal) who)
+
+private abbrev bindingEvent (bonus : Int) : (graph (setup bonus)).EventId :=
+  ⟨0, by change 0 < 2; decide⟩
+private abbrev publicationEvent (bonus : Int) : (graph (setup bonus)).EventId :=
+  ⟨1, by change 1 < 2; decide⟩
+
+/-- A successful publication in an initialized raw readout rules out both
+possible public failure witnesses of this two-event program. -/
+private theorem not_defaulted_of_readout_success (bonus : Int)
+    (control : (serviceApplication (setup bonus) .sequential (service bonus).deadline
+      (leaks bonus)).Control)
+    (trace : ((serviceApplication (setup bonus) .sequential (service bonus).deadline
+      (leaks bonus)).protocol (serviceInitialLaw (setup bonus) .sequential)
+        (service bonus).horizon (service bonus).scheduler).Trace (some control))
+    (terminal : Config Player simpleExpr (program bonus).terminalCtx)
+    (read : serviceSourceReadout (setup bonus) .sequential (service bonus).deadline
+      (leaks bonus) (some control) = some terminal)
+    (published : terminal.state.get .here = .success true) : .alice ∉ terminal.defaulted := by
+  let nativeRuntime := serviceRuntime (setup bonus) .sequential (service bonus).deadline
+  let inputs : PMF (graph (setup bonus)).Inputs :=
+    (setup bonus).initialLaw.map (setup bonus).eventInputs
+  have initialized : inputs.map EventGraphRuntime.State.initial =
+      serviceInitialLaw (setup bonus) .sequential := by
+    rw [PMF.map_comp]
+    rfl
+  rw [← initialized] at trace
+  have valid := reactive_history_invariant nativeRuntime (leaks bonus) inputs
+    (service bonus).horizon (service bonus).scheduler trace
+  obtain ⟨_, _, invariant⟩ := valid
+  have bindings := reactiveBindingInvariant_history nativeRuntime (leaks bonus) inputs
+    (service bonus).horizon (service bonus).scheduler trace
+  have failures := ExclusionEvidence.history nativeRuntime (leaks bonus) inputs
+    (service bonus).horizon (service bonus).scheduler trace
+  have defaults := serviceSourceReadout_defaults (setup bonus) .sequential
+    (service bonus).deadline (leaks bonus) control terminal read
+  rw [serviceSourceReadout_eq_decode, decodeConfig?] at read
+  obtain ⟨state, decoded, same⟩ := Option.map_eq_some_iff.mp read
+  have states : state = terminal.state := congrArg Config.state same
+  have agree : (terminalRefs (program bonus)).Agrees state
+      control.execution.application.config.store :=
+    decodeState?_agrees _ _ state decoded
+  have publication := agree (HasVar.here :
+    HasVar (program bonus).terminalCtx 1 (.publication .bool))
+  rw [states, published] at publication
+  let binding : FieldRef (graph (setup bonus)).layout (.binding Player.alice .bool) :=
+    ⟨.inr (bindingEvent bonus), rfl⟩
+  obtain ⟨checks, code⟩ : ∃ checks : List (GuardCheck (graph (setup bonus)).layout BaseTy.bool),
+      (graph (setup bonus)).nodes (publicationEvent bonus) =
+        EventCode.resolve (layout := (graph (setup bonus)).layout)
+          Player.alice BaseTy.bool binding checks := by
+    refine ⟨?_, ?_⟩
+    swap
+    rfl
+  have bound := invariant.reachable.publication_binding (publicationEvent bonus) .alice .bool
+    binding checks rfl code true publication
+  have bindingSuccess := outputSucceeded_of_ref _ (bindingEvent bonus) binding rfl bound
+    (by intro impossible; cases impossible)
+  have publicationSuccess := outputSucceeded_of_ref _ (publicationEvent bonus)
+    (⟨.inr (publicationEvent bonus), rfl⟩ :
+      FieldRef (graph (setup bonus)).layout (.publication .bool)) rfl publication
+    (by intro impossible; cases impossible)
+  intro inactive
+  have nativeInactive : Player.alice ∈ control.execution.application.config.defaulted := by
+    change Player.alice ∈ terminal.defaults.defaulted at inactive
+    rw [defaults] at inactive
+    exact inactive
+  obtain ⟨event, _, failed⟩ := (failures.defaulted_zero .alice).mp nativeInactive
+  fin_cases event
+  · exact bindingSuccess.not_publicFailure bindings failed
+  · exact publicationSuccess.not_publicFailure bindings failed
+
+private theorem transfers_eq_publicTransfers_of_readout (bonus : Int)
+    (control : (serviceApplication (setup bonus) .sequential (service bonus).deadline
+      (leaks bonus)).Control)
+    (trace : ((serviceApplication (setup bonus) .sequential (service bonus).deadline
+      (leaks bonus)).protocol (serviceInitialLaw (setup bonus) .sequential)
+        (service bonus).horizon (service bonus).scheduler).Trace (some control))
+    (terminal : Config Player simpleExpr (program bonus).terminalCtx)
+    (read : serviceSourceReadout (setup bonus) .sequential (service bonus).deadline
+      (leaks bonus) (some control) = some terminal) :
+    (setup bonus).transfers ((program bonus).publicOutcome terminal) =
+      (program bonus).publicTransfers ((program bonus).publicOutcome terminal) := by
+  funext who
+  cases who
+  unfold Setup.transfers
+  split_ifs with inactive
+  · have noTrue := not_defaulted_of_readout_success bonus control trace terminal read
+    have published : terminal.state.get .here ≠ .success true := fun success =>
+      noTrue success inactive
+    have payments : (program bonus).publicPayoffs ((program bonus).publicOutcome terminal) =
+        [(Player.alice, if (((program bonus).publicOutcome terminal).values.get .here :
+          PublicationResult Bool).getD false then bonus else 0)] := rfl
+    change ((0 : Int) : ℝ) =
+      (transferAmount ((program bonus).publicPayoffs ((program bonus).publicOutcome terminal))
+        Player.alice : ℝ)
+    rw [payments]
+    change ((0 : Int) : ℝ) = (transferAmount [(Player.alice,
+      if (terminal.state.get .here).getD false then bonus else 0)] Player.alice : ℝ)
+    cases result : terminal.state.get .here with
+    | failure => simp [PublicationResult.getD, transferAmount]
+    | success value =>
+        cases value with
+        | false => simp [PublicationResult.getD, transferAmount]
+        | true => exact (published result).elim
+  · rfl
 
 /-- Every supported monetary settlement at an initialized raw history satisfies
 the same numerical interval, including unfinished readouts and actual charges. -/
 theorem realized_payoff_bounds (bonus : Int) :
     (service bonus).SettlementRange (parameter bonus)
-      ((program bonus).parameterPaymentUtility (runtimeValuation bonus)) (auditSample bonus)
+      ((setup bonus).parameterPaymentUtility (runtimeValuation bonus)) (auditSample bonus)
       deposit (fun _ => -|(bonus : ℝ) - 1| - 1) (fun _ => 2 * |(bonus : ℝ) - 1| + 1) := by
-  intro control _trace payoffs supported who
+  intro control trace payoffs supported who
   rw [Enforcement.TerminalAudit.settlement, PMF.support_map] at supported
   obtain ⟨verdict, _, rfl⟩ := supported
   let output := serviceSourceReadout (setup bonus) .sequential (service bonus).deadline
     (leaks bonus) (some control)
   change -|(bonus : ℝ) - 1| - 1 ≤ output.elim 0 (fun terminal =>
-      (program bonus).parameterPaymentUtility (runtimeValuation bonus)
+      (setup bonus).parameterPaymentUtility (runtimeValuation bonus)
         ((setup bonus).parameterOutcome (parameter bonus) terminal) who) -
           (if verdict who then deposit who else 0) ∧
-    output.elim 0 (fun terminal => (program bonus).parameterPaymentUtility
+    output.elim 0 (fun terminal => (setup bonus).parameterPaymentUtility
       (runtimeValuation bonus) ((setup bonus).parameterOutcome (parameter bonus) terminal) who) -
       (if verdict who then deposit who else 0) ≤
         (-|(bonus : ℝ) - 1| - 1) + (2 * |(bonus : ℝ) - 1| + 1)
   have nonnegative := abs_nonneg ((bonus : ℝ) - 1)
   have baseBounds : -|(bonus : ℝ) - 1| ≤ output.elim 0 (fun terminal =>
-      (program bonus).parameterPaymentUtility (runtimeValuation bonus)
+      (setup bonus).parameterPaymentUtility (runtimeValuation bonus)
         ((setup bonus).parameterOutcome (parameter bonus) terminal) who) ∧
-      output.elim 0 (fun terminal => (program bonus).parameterPaymentUtility
+      output.elim 0 (fun terminal => (setup bonus).parameterPaymentUtility
         (runtimeValuation bonus) ((setup bonus).parameterOutcome (parameter bonus) terminal)
           who) ≤ |(bonus : ℝ) - 1| := by
-    cases output with
+    cases read : output with
     | none => simp only [Option.elim_none]; constructor <;> linarith
     | some terminal =>
+        have transfers := transfers_eq_publicTransfers_of_readout bonus control trace terminal read
+        change -|(bonus : ℝ) - 1| ≤
+            valuation bonus ((program bonus).publicOutcome terminal) who +
+              (setup bonus).transfers ((program bonus).publicOutcome terminal) who ∧
+          valuation bonus ((program bonus).publicOutcome terminal) who +
+              (setup bonus).transfers ((program bonus).publicOutcome terminal) who ≤
+            |(bonus : ℝ) - 1|
+        rw [transfers]
         cases who
         exact abs_le.mp (utility_abs_le bonus ((program bonus).publicOutcome terminal))
   obtain ⟨lower, upper⟩ := baseBounds
@@ -145,14 +262,47 @@ theorem source_isNash_iff (bonus : Int) (choice : Bool) :
     IsNash (sourceGame bonus).form (euPreference (sourceGame bonus).utility)
         (sourceProfile bonus choice) ↔
       IsNash (game bonus).form (euPreference (game bonus).utility) (profile bonus choice) := by
+  let actual := fun (terminal : Config Player simpleExpr (program bonus).terminalCtx) who =>
+    (setup bonus).parameterPaymentUtility (runtimeValuation bonus)
+      ((setup bonus).parameterOutcome (parameter bonus) terminal) who
   have correspondence := (setup bonus).protocol_isεNash_iff (admission bonus)
-    (program bonus).publicOutcome (all_permitted bonus)
-    (game bonus).utility 0 (sourceProfile bonus choice)
+    id (all_permitted bonus) actual 0 (sourceProfile bonus choice)
   rw [decode_sourceProfile] at correspondence
   rw [← isNash_iff_isεNash_zero, ← isNash_iff_isεNash_zero] at correspondence
-  rw [isNash_iff, isNash_iff] at correspondence ⊢
-  simpa only [sourceGame, game, Setup.gameForm, Setup.observedGameForm, Setup.publicRun,
-    Setup.run, setup, SourceProgram.gameForm, PMF.pure_bind] using correspondence
+  change IsNash (sourceGame bonus).form (euPreference (sourceGame bonus).utility)
+      (sourceProfile bonus choice) ↔
+    IsNash ((setup bonus).observedGameForm id) (euPreference actual)
+      (profile bonus choice) at correspondence
+  have law (players : BehavioralProfile (program bonus)) :
+      ((((setup bonus).observedGameForm id).play players).map actual) =
+        (((game bonus).form.play players).map (game bonus).utility) := by
+    simp only [Setup.observedGameForm, Setup.run, setup, PMF.pure_bind, game,
+      SourceProgram.gameForm, PMF.map_comp, Function.comp_def, id_eq]
+    apply map_congr_on_support _
+    intro terminal supported
+    funext who
+    change valuation bonus ((program bonus).publicOutcome terminal) who +
+        (setup bonus).transfers ((program bonus).publicOutcome terminal) who =
+      valuation bonus ((program bonus).publicOutcome terminal) who +
+        (program bonus).publicTransfers ((program bonus).publicOutcome terminal) who
+    rw [transfers_eq_publicTransfers_of_run bonus players terminal supported]
+  have has (players : BehavioralProfile (program bonus)) (who : Player) :
+      UtilityHasExpectation actual who (((setup bonus).observedGameForm id).play players) ↔
+        UtilityHasExpectation (game bonus).utility who ((game bonus).form.play players) :=
+    hasExpectation_observed_law_iff _ _ actual (game bonus).utility
+      (fun values : Player → ℝ => values who) (law players)
+  have value (players : BehavioralProfile (program bonus)) (who : Player) :
+      extendedExpectedUtility actual who (((setup bonus).observedGameForm id).play players) =
+        extendedExpectedUtility (game bonus).utility who ((game bonus).form.play players) :=
+    extendedExpect_observed_law_eq _ _ actual (game bonus).utility
+      (fun values : Player → ℝ => values who) (law players)
+  refine correspondence.trans ?_
+  rw [isNash_iff, isNash_iff]
+  apply forall_congr'
+  intro who
+  apply forall_congr'
+  intro replacement
+  exact and_congr (has _ who) (and_congr (has _ who) (by rw [value, value]; rfl))
 
 /-- Changing the executable bonus changes the actual raw-runtime equilibrium.
 Both source and runtime quantifiers retain all their legal deviations. -/
@@ -202,10 +352,15 @@ theorem settlement_law (bonus : Int) (choice : Bool) :
     (auditSample bonus) (audit_authentic bonus) deposit 1 (sourceProfile bonus choice)
   change _ = ((setup bonus).run ((setup bonus).decodeBehavioralProfile (admission bonus)
     (sourceProfile bonus choice))).map (fun terminal =>
-      (some (terminal.state, terminal.defaults), fun who =>
-        (transferAmount ((program bonus).evaluatePayoffs terminal.state)
-        who : ℝ))) at law
-  rw [decode_sourceProfile, run_sourceProfile, PMF.pure_map, evaluatePayoffs_final] at law
+      (some (terminal.state, terminal.defaults),
+        (setup bonus).transfers ((program bonus).publicOutcome terminal))) at law
+  rw [decode_sourceProfile, run_sourceProfile, PMF.pure_map] at law
+  have actual := transfers_eq_publicTransfers_of_run bonus (profile bonus choice)
+    (final bonus choice) (by rw [run_profile]; exact (PMF.mem_support_pure_iff _ _).mpr rfl)
+  rw [actual] at law
+  change _ = PMF.pure (some ((final bonus choice).state, (final bonus choice).defaults), fun who =>
+    (transferAmount ((program bonus).evaluatePayoffs (final bonus choice).state) who : ℝ)) at law
+  rw [evaluatePayoffs_final] at law
   have receipts : (fun who : Player =>
       (transferAmount [(.alice, if choice then bonus else 0)] who : ℝ)) =
       fun _ : Player => ((if choice then bonus else 0 : Int) : ℝ) := by

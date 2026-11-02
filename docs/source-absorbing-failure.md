@@ -172,7 +172,7 @@ and its physical clients uniformly. Physical incentive comparisons cover
 menu-admissible policies, not arbitrary policies outside the finite raw menu.
 Value coverage includes every binding/publication payload value and initial
 binding input, so those types must be finite. Ordinary clients allow arbitrary
-specified pending observations. Ledger-only clients realize the same run and
+specified finitely branching pending observations. Ledger-only clients realize the same run and
 rationality certificate under the explicit no-delivered-pending-data premise.
 The semantic selection is nonconstructive; executable numerical synthesis is a
 separate target.

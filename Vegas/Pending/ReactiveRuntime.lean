@@ -44,6 +44,39 @@ def reactiveApplication (runtime : EventGraphRuntime graph)
   observePublic := State.publicView
   observePending := leaks
 
+/-- Pending observation samples change only private network knowledge. Every
+supported activation has the same scheduler observation and recall entry. -/
+theorem reactiveApplication_activation_schedulerInput (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (execution next : (runtime.reactiveApplication leaks).Execution) (who : Player)
+    (supported : next ∈ (execution.environmentStep
+      (runtime.reactiveApplication leaks) (.activate who)).support) :
+    (next.environmentRecall, next.observeEnvironment (runtime.reactiveApplication leaks)) =
+      (execution.environmentRecall ++
+        [⟨execution.observeEnvironment (runtime.reactiveApplication leaks), .activate who⟩],
+        execution.observeEnvironment (runtime.reactiveApplication leaks)) := by
+  obtain ⟨updated, sampled, rfl⟩ := PMF.support_map .. ▸ supported
+  obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ sampled
+  rfl
+
+/-- Scheduling after an activation cannot distinguish its private pending
+observation samples, for any scheduler law. -/
+theorem reactiveApplication_activation_scheduler (runtime : EventGraphRuntime graph)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (execution left right : (runtime.reactiveApplication leaks).Execution) (who : Player)
+    (leftSupported : left ∈ (execution.environmentStep
+      (runtime.reactiveApplication leaks) (.activate who)).support)
+    (rightSupported : right ∈ (execution.environmentStep
+      (runtime.reactiveApplication leaks) (.activate who)).support) :
+    scheduler left.environmentRecall (left.observeEnvironment (runtime.reactiveApplication leaks)) =
+      scheduler right.environmentRecall
+        (right.observeEnvironment (runtime.reactiveApplication leaks)) := by
+  have same := (reactiveApplication_activation_schedulerInput runtime leaks execution left who
+    leftSupported).trans (reactiveApplication_activation_schedulerInput runtime leaks execution
+      right who rightSupported).symm
+  exact congrArg (fun input => scheduler input.1 input.2) same
+
 /-- Inclusion first checks the packet's readiness token, then runs the
 contract's call handler. A missing or foreign token is rejected. -/
 theorem reactiveApplication_handle (runtime : EventGraphRuntime graph)

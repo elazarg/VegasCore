@@ -750,6 +750,65 @@ private theorem resolveOutput?_false_eq_failure_of_ready (state : State graph)
   rw [readsEq]
   exact read
 
+namespace State
+
+/-- Complete an owned event as failure, independently of clocks and packets.
+Samples are unchanged and are never selected for automatic default service. -/
+def completeFailure (state : State graph) (event : graph.EventId)
+    (ready : state.config.cut.Ready event) : State graph :=
+  match nodeView graph event with
+  | .bind _owner payload outputEq _ =>
+      state.complete event ready
+        (cast (congrArg EventField.Action outputEq.symm)
+          (none : Option (PublicationResult (L.Val payload))))
+        (cast (congrArg EventField.Value outputEq.symm)
+          (PublicationResult.failure : PublicationResult (L.Val payload)))
+  | .resolve _owner payload _binding _checks outputEq _ =>
+      state.complete event ready (cast (congrArg EventField.Action outputEq.symm) false)
+        (cast (congrArg EventField.Value outputEq.symm)
+          (PublicationResult.failure : PublicationResult (L.Val payload)))
+  | .sample .. => state
+
+/-- Automatic default service uses the original graph law, with its guard semantics. -/
+theorem completeFailure_step (state : State graph) (event : graph.EventId)
+    (ready : state.config.cut.Ready event) {owner : Player}
+    (acting : graph.actor? event = some owner) :
+    ∃ action : graph.Action event,
+      (state.completeFailure event ready).config ∈ (state.config.step event ready action).support :=
+    by
+  cases view : nodeView graph event with
+  | bind actor payload outputEq codeEq =>
+      refine ⟨cast (congrArg EventField.Action outputEq.symm)
+        (none : Option (PublicationResult (L.Val payload))), ?_⟩
+      rw [state.config.step_eq_map_of_code event ready outputEq (.bind actor payload) codeEq
+        none (PMF.pure PublicationResult.failure)
+        (by simp [EventCode.effectiveAction, EventCode.actor, EventCode.failureAction])]
+      simp [completeFailure, view, complete]
+  | resolve actor payload binding checks outputEq codeEq =>
+      refine ⟨cast (congrArg EventField.Action outputEq.symm) false, ?_⟩
+      rw [state.config.step_eq_map_of_code event ready outputEq
+        (.resolve actor payload binding checks) codeEq false (PMF.pure PublicationResult.failure)]
+      · simp [completeFailure, view, complete]
+      · simp only [EventCode.effectiveAction, EventCode.actor, EventCode.failureAction, ite_self]
+        rw [EventCode.resolve_eval?, resolveOutput?_false_eq_failure_of_ready state event ready
+          actor payload binding checks outputEq codeEq]
+        rfl
+  | sample payload law outputEq codeEq =>
+      have actorEq : graph.actor? event = none :=
+        (EventCode.actor_cast outputEq (graph.nodes event)).symm.trans
+          (congrArg EventCode.actor codeEq)
+      rw [actorEq] at acting
+      cases acting
+
+theorem completeFailure_tables (state : State graph) (event : graph.EventId)
+    (ready : state.config.cut.Ready event) :
+    (state.completeFailure event ready).accepted = state.accepted ∧
+      (state.completeFailure event ready).candidates = state.candidates ∧
+      (state.completeFailure event ready).clock = state.clock := by
+  cases view : nodeView graph event <;> simp [completeFailure, view, complete]
+
+end State
+
 /-- Event-addressed packet inclusion. Rejected packets remain observable in
 the network and receipt history, but this function changes no contract state
 for them. -/
@@ -1194,17 +1253,7 @@ private def expire (runtime : EventGraphRuntime graph) (state : State graph)
     | none => state
     | some entered =>
         if _due : runtime.deadline event ≤ state.clock - entered then
-          match nodeView graph event with
-          | .bind _owner payload outputEq _codeEq =>
-              let failed : PublicationResult (L.Val payload) := .failure
-              state.complete event ready
-                (cast (congrArg EventField.Action outputEq.symm)
-                  (none : Option (PublicationResult (L.Val payload))))
-                (cast (congrArg EventField.Value outputEq.symm) failed)
-          | .resolve owner payload binding checks outputEq _codeEq =>
-              (acceptResolution state event ready owner payload binding checks
-                outputEq false).getD state
-          | .sample .. => state
+          state.completeFailure event ready
         else state
   else state
 
@@ -1248,7 +1297,7 @@ theorem environmentStep_tables
       change next ∈ (PMF.pure (expire runtime state event)).support at member
       simp only [PMF.mem_support_pure_iff _ _] at member
       subst next
-      unfold expire
+      unfold expire State.completeFailure
       split
       · split
         · exact ⟨rfl, rfl⟩
@@ -1257,14 +1306,7 @@ theorem environmentStep_tables
             cases view : nodeView graph event with
             | bind => exact ⟨rfl, rfl⟩
             | sample => exact ⟨rfl, rfl⟩
-            | resolve owner payload binding checks outputEq codeEq =>
-                unfold acceptResolution
-                cases resolved : EventCode.resolveOutput? binding checks false
-                    state.config.store
-                · simp only [resolved]
-                  exact ⟨rfl, rfl⟩
-                · simp only [resolved]
-                  exact ⟨rfl, rfl⟩
+            | resolve => exact ⟨rfl, rfl⟩
           · exact ⟨rfl, rfl⟩
       · exact ⟨rfl, rfl⟩
 
@@ -1323,7 +1365,7 @@ theorem environmentStep_expire_bind_eq
           (none : Option (PublicationResult (L.Val payload))))
         (cast (congrArg EventField.Value outputEq.symm)
           (PublicationResult.failure : PublicationResult (L.Val payload)))) := by
-  simp only [environmentStep, expire, dite_eq_left ready]
+  simp only [environmentStep, expire, State.completeFailure, dite_eq_left ready]
   split
   · rename_i activation
     rw [activated] at activation
@@ -1353,9 +1395,7 @@ theorem environmentStep_expire_resolve_eq
         (cast (congrArg EventField.Action outputEq.symm) false)
         (cast (congrArg EventField.Value outputEq.symm)
           (PublicationResult.failure : PublicationResult (L.Val payload)))) := by
-  have resultEq := resolveOutput?_false_eq_failure_of_ready state event ready
-    owner payload binding checks outputEq codeEq
-  simp only [environmentStep, expire, dite_eq_left ready]
+  simp only [environmentStep, expire, State.completeFailure, dite_eq_left ready]
   split
   · rename_i activation
     rw [activated] at activation
@@ -1363,7 +1403,7 @@ theorem environmentStep_expire_resolve_eq
   · rename_i actual activation
     have same : actual = entered := by simpa [activated] using activation.symm
     subst actual
-    simp [due, viewEq, acceptResolution, resultEq]
+    simp only [dite_eq_left due, viewEq]
 
 /-- A supported expiry command either stutters or performs exactly one graph
 step at its addressed event. The stutter cases are not-ready, unactivated,
@@ -1377,7 +1417,7 @@ theorem environmentStep_expire_config_eq_or_mem_step
         next.config ∈ (state.config.step event ready action).support := by
   simp only [environmentStep, PMF.mem_support_pure_iff _ _] at member
   subst next
-  unfold expire
+  unfold expire State.completeFailure
   split
   · rename_i ready
     split
@@ -1399,8 +1439,7 @@ theorem environmentStep_expire_config_eq_or_mem_step
               owner payload binding checks outputEq codeEq
             refine Or.inr ⟨ready,
               cast (congrArg EventField.Action outputEq.symm) false, ?_⟩
-            simpa only [view, acceptResolution, resultEq, bind, pure, State.complete,
-              Option.bind_some, Option.getD_some] using
+            simpa only [State.complete] using
                 resolve_complete_mem_step state event ready owner payload binding
                   checks outputEq codeEq false .failure (by simpa only [ite_self] using resultEq)
       · exact Or.inl rfl
@@ -1417,7 +1456,7 @@ theorem environmentStep_expire_of_not_activated
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (activated : state.activatedAt event = none) :
     environmentStep runtime state (.expire event) = PMF.pure state := by
-  simp only [environmentStep, expire, dite_eq_left ready]
+  simp only [environmentStep, expire, State.completeFailure, dite_eq_left ready]
   split
   · rfl
   · rename_i entered actual
@@ -1430,7 +1469,7 @@ theorem environmentStep_expire_of_not_due
     (entered : Nat) (activated : state.activatedAt event = some entered)
     (due : ¬runtime.deadline event ≤ state.clock - entered) :
     environmentStep runtime state (.expire event) = PMF.pure state := by
-  simp only [environmentStep, expire, dite_eq_left ready]
+  simp only [environmentStep, expire, State.completeFailure, dite_eq_left ready]
   split
   · rename_i actual
     rw [activated] at actual
@@ -1450,7 +1489,7 @@ theorem environmentStep_expire_sample_eq
       (graph.nodes event) = .sample payload law)
     (viewEq : nodeView graph event = .sample payload law outputEq codeEq) :
     environmentStep runtime state (.expire event) = PMF.pure state := by
-  simp only [environmentStep, expire, dite_eq_left ready]
+  simp only [environmentStep, expire, State.completeFailure, dite_eq_left ready]
   split
   · rename_i actual
     rw [activated] at actual

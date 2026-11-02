@@ -39,6 +39,44 @@ theorem collection_probability (actual : List (CountEvidence compiled))
   norm_num [halfRate] at mass
   exact mass
 
+/-- The source, service and audit certificates of the two-player runtime. -/
+def specification : Vegas.ClientSpec
+    fixture rt leaks Vegas.Examples.OddsEvens.bounds steps serviceScheduler
+    (fun _ => ()) Vegas.Examples.OddsEvens.sourceUtility (fun _ => 0) where
+  finiteNature := by change app.FiniteNature initial serviceScheduler; infer_instance
+  finiteSource := inferInstance
+  Public := Unit
+  signal := Vegas.Examples.OddsEvens.signal
+  wellFormed := Vegas.Examples.OddsEvens.wellFormed
+  independent := Vegas.Examples.OddsEvens.independent
+  observable := Vegas.Examples.OddsEvens.observable
+  delay := fun _ => 3
+  bound := fun _ => 2
+  opportunity := opportunity
+  inclusion := protectedInclusion
+  completes := completesPlay
+  timely := timely
+  lowerUtility := fun _ => 0
+  upperUtility := fun _ => 200
+  lower_le := fun _ terminal _ who => (Vegas.Examples.OddsEvens.sourceUtility_bounds
+    (fixture.parameterOutcome (fun _ => ()) terminal) who).1
+  le_upper := fun _ terminal _ who => (Vegas.Examples.OddsEvens.sourceUtility_bounds
+    (fixture.parameterOutcome (fun _ => ()) terminal) who).2
+  exitBelow := fun _ terminal _ who =>
+    (Vegas.Examples.OddsEvens.sourceUtility_bounds
+      (fixture.parameterOutcome (fun _ => ()) terminal) who).1
+  outputValues := Vegas.Examples.OddsEvens.outputValues
+  inputValues := Vegas.Examples.OddsEvens.inputValues
+  capacity := Vegas.Examples.OddsEvens.candidateCapacity
+  evidenceService := evidenceService
+  observationRate := fun _ => halfRate.val
+  deliveryRate := fun _ => halfRate.val
+  delivery_nonnegative := fun _ => by norm_num [halfRate]
+  coverage := thinnedCountEvidence_coverage halfRate halfRate
+  deposit := fun _ => 800
+  deposit_nonnegative := fun _ => by norm_num
+  funded := fun _ => by norm_num [fixture, Vegas.Examples.OddsEvens.setup, halfRate]
+
 /-- Every intended source equilibrium has a clean raw-runtime realization under
 the concrete two-player service and imperfect audit. -/
 theorem intended_equilibrium_preserved
@@ -76,26 +114,13 @@ theorem intended_equilibrium_preserved
   intro raw observe audit base payoff settle
   let : app.FiniteNature (Vegas.initialLaw fixture) serviceScheduler :=
     (inferInstance : app.FiniteNature initial serviceScheduler)
-  obtain ⟨target, rational, clear, noCharges, joint⟩ :=
-    Vegas.intended_raw_sequentialEquilibrium_preserved
-      (setup := fixture) (runtime := rt) (leaks := leaks) (bounds := OddsEvens.bounds)
-      (horizon := steps) (scheduler := serviceScheduler) (fun _ => ())
-      OddsEvens.sourceUtility (fun _ => 0)
-      OddsEvens.wellFormed OddsEvens.independent
-      OddsEvens.observable opportunity protectedInclusion completesPlay timely
-      (fun _ => 0) (fun _ => 200)
-      (fun result who => (OddsEvens.sourceUtility_bounds result who).1)
-      (fun result who => (OddsEvens.sourceUtility_bounds result who).2)
-      (fun final terminal _ who => le_trans (by norm_num [fixture, OddsEvens.setup, halfRate])
-        (OddsEvens.sourceUtility_bounds
-          (fixture.parameterOutcome (fun _ => ()) terminal) who).1)
-      intended equilibrium OddsEvens.outputValues OddsEvens.inputValues
-      OddsEvens.candidateCapacity
-      evidenceService
-      (fun _ => halfRate.val) (fun _ => halfRate.val) (fun _ => by norm_num [halfRate])
-      (thinnedCountEvidence_coverage halfRate halfRate)
-      (fun _ => 800) (fun _ => by norm_num)
-      (fun _ => by norm_num [fixture, OddsEvens.setup, halfRate])
+  obtain ⟨compiled⟩ := Vegas.intended_raw_sequentialEquilibrium_preserved
+    specification intended equilibrium
+  let target := compiled.assessment
+  have rational := compiled.equilibrium
+  have clear := compiled.noDefaults
+  have noCharges := compiled.noCharges
+  have joint := compiled.outcomeLaw
   refine ⟨target, ?_, clear, noCharges, joint⟩
   exact (target.isSequentialEquilibrium_iff_truncated_of_bounded _ _ _
     (raw.bounded initial steps serviceScheduler) _).mpr rational
