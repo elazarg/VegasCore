@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.RevealServiceRosterPolicy
+import Vegas.Pending.ReactiveService
 
 /-! # Finite activation rosters in the native service
 

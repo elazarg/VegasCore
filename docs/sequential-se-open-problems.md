@@ -40,7 +40,11 @@ The monetary specialization
 `Vegas.intended_raw_programPayments_preserved` in
 [PaymentPreservation](../Vegas/Game/PaymentPreservation.lean)
 additionally retains executable cash with the initial reader and full typed
-store. It separates valuation, declared exit valuation and exit transfer.
+store for every supplied `ClientCompilation`. It uses that artifact's assessment
+and the exact physical clients decoded from it, including the output of
+`ClientSpec.compile`. It separates valuation, declared exit valuation and exit
+transfer, and needs no additional source-equilibrium premise after the artifact
+has been supplied.
 
 The substantive premises remain:
 

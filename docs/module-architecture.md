@@ -37,10 +37,15 @@ The direct sequential physical-client laws compose the source continuation
 with silent expiry, typed acceptance and chance sampling in
 [SourceServiceFirstTurnCompletion](../Vegas/Game/SourceServiceFirstTurnCompletion.lean).
 They preserve the joint typed-state/public-default law of every source profile.
-The public-barrier certificate transports this law to every certified execution
-mode in [ServiceHonestLaw](../Vegas/Game/ServiceHonestLaw.lean), and
-[CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean) realizes it with
-bounded-menu clients under the supplied value-coverage and capacity interfaces.
+The mode-parametric interfaces in
+[ServiceHonestLaw](../Vegas/Game/ServiceHonestLaw.lean) require public-barrier
+ordering. For compiled service graphs, that premise identifies the graph with
+the same sequential graph (`serviceGraph_eq_sequential`); it adds no concurrent
+compiler mode. [CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean)
+realizes the law with bounded-menu clients under the supplied value-coverage
+and capacity interfaces. The lower graph APIs retain genuinely nonordered
+results, including the different raw reveal-order laws in
+[ConcurrentRevealOrderLaw](../Vegas/Examples/ConcurrentRevealOrderLaw.lean).
 The [physical deviation law](../Vegas/Game/AsyncDeviationReadout.lean)
 backtranslates every raw unilateral policy against first-turn clients to one
 behavioral source policy with the same typed-state/public-default law. Its
@@ -84,6 +89,26 @@ Use `rg` and `python lean-defs.py <files>` to inspect owners before adding
 definitions. Share actual operations and isolate hypotheses that vary with a
 runtime. Stronger sequential results should reuse the concrete execution and
 information definitions; they do not require a universal runtime language.
+
+
+## Standalone checked consumers
+
+The test and example umbrellas are deliberate build roots. A standalone module's
+checked assertions consume the production APIs even when no other module imports
+its declarations. These standalone examples each protect a concrete behavior:
+
+| Example | Checked behavior |
+| --- | --- |
+| [BoundedPaymentAuction](../Vegas/Examples/BoundedPaymentAuction.lean) | Executable bounded-auction transfers retain a profitable conditional-withholding misreport, so truth telling is not dominant for any integer withholding charge. |
+| [CommitTimingInformationSource](../Vegas/Examples/CommitTimingInformationSource.lean) | Alice's honest expected value is one half because her first commitment cannot observe Bob's retained private bit. |
+| [ConcurrentRevealOrderLaw](../Vegas/Examples/ConcurrentRevealOrderLaw.lean) | The actual raw callbacks at independent reveals yield different terminal store laws under two reveal orders. |
+| [CorrelatedInitialBitsInformation](../Vegas/Examples/CorrelatedInitialBitsInformation.lean) | Actual private views identify the shared-bit component of an information fiber and support the conditional Bayes-belief transport. |
+| [LateLeak.CalibratedPenaltyPreservation](../Vegas/Examples/LateLeak/CalibratedPenaltyPreservation.lean) | The finite late-leak game admits a preserving sequential equilibrium under the calibrated cost bounds, including a forfeit-only construction. |
+| [LateLeak.ObservableOutcomeSeparation](../Vegas/Examples/LateLeak/ObservableOutcomeSeparation.lean) | Profitable deferral creates a positive total-variation gap in the observable result law of the finite late-leak game. |
+| [LateLeak.SettleLatePreservation](../Vegas/Examples/LateLeak/SettleLatePreservation.lean) | A sufficiently high inclusion probability prevents preservation in the finite settle-late game despite arbitrary prescribed forfeit and charge margins. |
+| [LateOpeningRuntimeSourceContinuation](../Vegas/Examples/LateOpeningRuntimeSourceContinuation.lean) | The intended source continuation draws Bob's answer from his policy at the observed bit and retains the single private initial draw in its terminal law. |
+| [ProgramPaymentsNativeRepresentation](../Vegas/Examples/ProgramPaymentsNativeRepresentation.lean) | Equal graph configurations can have different native handle observations and acceptance behavior; the actual execution cannot factor through graph configuration alone. |
+| [ProgramPaymentsRuntime](../Vegas/Examples/ProgramPaymentsRuntime.lean) | The concrete bounded runtime has the specified Nash choices and exact joint typed-state, default-history and cash settlement law. |
 
 Every paper-stated mathematical result needs an exact guarded pin after its full local statement in
 [Paper.lean](../Paper.lean). Library results have no separate pin requirement.

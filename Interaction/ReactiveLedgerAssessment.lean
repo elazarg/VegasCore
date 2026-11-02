@@ -21,13 +21,14 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication Principal}
   (menu : app.ResponseMenu) (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
-/-- Decode all response laws and erase pending observations throughout recall. -/
+/-- Decode response laws and project current and recalled leaked-view fields.
+Own actions and emitted packets remain in recall. -/
 def ledgerProfile
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who) :
     Principal → app.Policy := fun who =>
   app.ledgerPolicy (menu.decodeProfile initial horizon scheduler profile who)
 
-/-- The translated policy ignores pending observations throughout its recall. -/
+/-- The translated callback is invariant under the exact ledger-view projection. -/
 theorem ledgerProfile_usesLedgerOnly
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (who : Principal) : Policy.UsesLedgerOnly app

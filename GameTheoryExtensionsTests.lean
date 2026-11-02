@@ -23,3 +23,4 @@ import GameTheoryExtensionsTests.StoppedCharge
 import GameTheoryExtensionsTests.SupportedChoiceContinuation
 import GameTheoryExtensionsTests.TotalVariation
 import GameTheoryExtensionsTests.ZeroSumOutcomeLaws
+import GameTheoryExtensionsTests.ProportionalBeliefTransport

@@ -52,9 +52,10 @@ specification is fixed before selecting the source equilibrium.
 * no public defaults or audit charges on its supported paths;
 * the exact joint full source-configuration/default-history and settled-payoff law.
 
-The artifact exposes physical `clients` and pending-independent `ClientCompilation.ledgerClients`
-over the Interaction callback API. Each callback law is supported within a
-finite response menu. Physical policy realization does not enlarge the
+The artifact exposes physical `clients` and projected
+`ClientCompilation.ledgerClients` over the Interaction callback API. The latter
+satisfy the exact `UsesLedgerOnly` projection described below. Each callback law
+is supported within a finite response menu. Physical policy realization does not enlarge the
 assessment's deviation domain: its menu is
 `Vegas.EventGraphRuntime.MessageBounds.rawMenu`, built from the configured bounded
 submissions and known packets. Backtranslation of arbitrary out-of-menu
@@ -88,6 +89,16 @@ service, observation or prior premise.
 to supported ordinary physical runs. They require no empty-observation
 premise: arbitrary finitely branching pending-observation kernels satisfying the specification
 remain allowed.
+
+For valuation plus the setup's executable receipts, the
+[monetary capstone](../Vegas/Game/PaymentPreservation.lean) applies to **every
+supplied `ClientCompilation`**. Its cash law uses the same assessment and the
+same audit, not a separately selected completion. The companion
+`ClientCompilation.clients_programPayments_preserved` identifies actual physical
+client receipts jointly with the fixed initial-state, terminal-state and public
+readers. In particular, it applies to the exact clients returned by
+`spec.compile intended equilibrium`. Once the artifact is supplied, the cash
+proof needs no additional source-equilibrium premise.
 
 For interfaces delivering no pending observations:
 
@@ -147,11 +158,25 @@ player and pending pool receives the empty selected-identifier set with
 probability one. The same predicate applies directly to `leaks` and to
 `app.observePending`.
 
-Under that premise, the pending component of every actual current and recalled
-view is empty. Erasing it preserves the policy, while `UsesLedgerOnly` also
-states independence from pending data at arbitrary input views. The periodic
-service satisfies the premise. Erasing informative delivered pending data
-requires a separate information-invariance argument.
+`UsesLedgerOnly` states invariance under clearing the leaked-message field from the
+current view and each recorded pre-response view. It retains application views,
+receipts, own actions and emitted envelopes. Thus its invariance compares
+inputs with those retained fields fixed; it is not independence from every
+effect of a private pending delivery.
+
+For example, a fixed forwarding request can name a guessed message identifier.
+If that pending message was privately delivered, packet materialization can
+attach its authentic certificate. The sender's own emitted envelope then
+retains that certificate even after the leaked fields are erased. A later
+projected callback can read it from own-output recall. This behavior is checked
+in [the pending-observation regression](../VegasTests/PendingObservationPrivacy.lean).
+
+Under `DeliversNothing`, the leaked fields of every actual current and recalled
+view are empty. The projection is then the identity at every initialized legal
+history, which yields the stated ledger-client physical realization and
+continuation laws. The periodic service satisfies this premise. A realization
+claim for informative pending delivery requires a separate argument about the
+information retained in actions, emitted packets and application observations.
 
 ## Semantic construction and executable synthesis
 

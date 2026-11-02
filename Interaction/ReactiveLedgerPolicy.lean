@@ -2,13 +2,15 @@
 
 import Interaction.ReactiveApplication
 
-/-! # Policies that ignore pending-message observations
+/-! # Policies on the ledger projection of callback views
 
 The ledger projection retains application observations, receipts, the player's
-own actions and emitted packets. It removes passive pending-message observations
-from both the current view and every view in private recall. For the event
-application the retained application view consists of contract state and the
-player's own private values.
+own actions and emitted packets. It erases the leaked-message field from the current
+view and every recorded pre-response view. It does not erase information carried by
+retained own output: certificate materialization can depend on earlier passive
+delivery. For the event application the retained application view consists of
+contract state and the player's own private values. Physical realization of
+arbitrary decoded profiles additionally uses an empty pending-delivery kernel.
 -/
 
 namespace Interaction.ReactiveApplication
@@ -29,11 +31,12 @@ def PlayerEntry.ledgerOnly (entry : app.PlayerEntry) : app.PlayerEntry :=
 @[simp] theorem PlayerEntry.ledgerOnly_idempotent (entry : app.PlayerEntry) :
     (entry.ledgerOnly app).ledgerOnly app = entry.ledgerOnly app := rfl
 
-/-- Run a policy using ledger observations throughout its recall. -/
+/-- Project current and recalled views, retaining own actions and emitted packets. -/
 def ledgerPolicy (policy : app.Policy) : app.Policy := fun past view =>
   policy (past.map (PlayerEntry.ledgerOnly app)) (view.ledgerOnly app)
 
-/-- Removing all pending observations leaves the policy's action law unchanged. -/
+/-- Erasing explicit leaked fields leaves the action law unchanged. Own actions,
+emitted packets and all other retained fields are held fixed by this predicate. -/
 def Policy.UsesLedgerOnly (policy : app.Policy) : Prop :=
   ∀ past view, policy past view =
     policy (past.map (PlayerEntry.ledgerOnly app)) (view.ledgerOnly app)

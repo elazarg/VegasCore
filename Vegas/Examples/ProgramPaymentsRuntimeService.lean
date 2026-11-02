@@ -2,6 +2,7 @@
 
 import Vegas.Examples.ProgramPayments
 import Vegas.Game.SourceServiceSpec
+import Vegas.Pending.ReactiveMonitoring
 
 /-! # A checked native service for the conditional payment program
 

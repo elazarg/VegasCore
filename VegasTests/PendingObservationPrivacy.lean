@@ -2,6 +2,7 @@
 
 import Vegas.Pending.ReactiveRuntime
 import Interaction.ReactiveMessageReadout
+import Interaction.ReactiveLedgerPolicy
 import Vegas.Examples.PrivateValueAuction
 import Vegas.Compile.EventGraphAssembly
 import GameTheory.Math.Probability.Uniform
@@ -99,5 +100,66 @@ theorem every_scheduler_same_law (scheduler : app.Scheduler) :
       scheduler observed.environmentRecall (observed.observeEnvironment app) :=
   reactiveApplication_activation_scheduler runtime leaks scheduler sent missed observed .bob
     missed_supported observed_supported
+
+private def certificate : OpeningFact graph := ⟨(.alice, .prepared 0), ⟨.int, 7⟩⟩
+
+private def certifiedCommitment : app.Action :=
+  ⟨some ⟨⟨.commitment firstEvent certificate.handle, some certificate.raw⟩, .owned certificate⟩⟩
+
+private def certifiedSent : app.Execution :=
+  initialExecution.respond app .alice certifiedCommitment
+
+private def certifiedBranch (seen : Bool) : app.Execution :=
+  certifiedSent.sampledActivation app .bob (if seen then {(.alice, 0)} else ∅)
+
+theorem certified_branch_supported (seen : Bool) :
+    certifiedBranch seen ∈ (certifiedSent.environmentStep app (.activate .bob)).support := by
+  rw [ReactiveApplication.Execution.activation_samples, PMF.support_map]
+  refine ⟨if seen then {(.alice, 0)} else ∅, ?_, rfl⟩
+  change _ ∈ ((PMF.uniformOfFintype Bool).map fun selected =>
+    if selected then (certifiedSent.network.pending.map Message.id).toFinset else ∅).support
+  rw [PMF.support_map]
+  refine ⟨seen, PMF.mem_support_uniformOfFintype seen, ?_⟩
+  have ids : certifiedSent.network.pending.map Message.id = [(.alice, 0)] := rfl
+  cases seen <;> simp [ids]
+
+private def guessedForward : app.Action :=
+  ⟨some ⟨⟨.malformed ⟨.int, 0⟩, none⟩, .forward (.alice, 0)⟩⟩
+
+private def forwarded (seen : Bool) : app.Execution :=
+  (certifiedBranch seen).respond app .bob guessedForward
+
+private def recalledEvidence (past : List app.PlayerEntry) : List (OpeningFact graph) :=
+  past.filterMap fun entry => entry.emitted.bind fun message => message.payload.evidence
+
+/-- A fixed request for a guessed identifier materializes evidence only after
+private delivery. Neither branch has included a packet. -/
+theorem guessed_forward_materializes_private_evidence :
+    recalledEvidence ((forwarded false).recall .bob) = [] ∧
+      recalledEvidence ((forwarded true).recall .bob) = [certificate] ∧
+      (forwarded false).network.ledger = [] ∧ (forwarded true).network.ledger = [] :=
+  ⟨rfl, rfl, rfl, rfl⟩
+
+/-- Erasing explicit leaked fields retains the authentic packet Bob emitted. -/
+theorem ledger_projection_retains_emitted_evidence :
+    recalledEvidence (((forwarded false).recall .bob).map
+      (ReactiveApplication.PlayerEntry.ledgerOnly app)) = [] ∧
+    recalledEvidence (((forwarded true).recall .bob).map
+      (ReactiveApplication.PlayerEntry.ledgerOnly app)) = [certificate] ∧
+    ((forwarded false).observe app .bob).ledgerOnly app =
+      ((forwarded true).observe app .bob).ledgerOnly app := ⟨rfl, rfl, rfl⟩
+
+private def rememberEvidence : app.Policy := fun past _ =>
+  PMF.pure (if (recalledEvidence past).isEmpty then ⟨none⟩ else guessedForward)
+
+/-- UsesLedgerOnly removes leaked view fields, while legitimate own-output
+recall can still distinguish earlier private deliveries. -/
+theorem ledger_policy_can_recall_private_evidence :
+    ReactiveApplication.Policy.UsesLedgerOnly app (app.ledgerPolicy rememberEvidence) ∧
+      app.ledgerPolicy rememberEvidence ((forwarded false).recall .bob)
+        ((forwarded false).observe app .bob) = PMF.pure ⟨none⟩ ∧
+      app.ledgerPolicy rememberEvidence ((forwarded true).recall .bob)
+        ((forwarded true).observe app .bob) = PMF.pure guessedForward :=
+  ⟨app.ledgerPolicy_usesLedgerOnly rememberEvidence, rfl, rfl⟩
 
 end VegasTests.PendingObservationPrivacy

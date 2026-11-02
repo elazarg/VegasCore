@@ -220,10 +220,6 @@ EXACT_PIN = re.compile(
     r"(?P<guard>#guard_msgs \(whitespace := lax\) in)\s*"
     r"(?P<print>#print\s+axioms\s+([\w'.]+))"
 )
-PAPER_UNSUPPORTED_DECLARATION = re.compile(
-    r"(?m)^\s*(?:@\[[^\]\n]*\]\s*)?(?:(?:private|protected|noncomputable)\s+)*"
-    r"(?:opaque|class|instance)\b"
-)
 PAPER_CONCEPT = re.compile(
     r"(?:@\[[^\]\n]*\]\s*)?(?:(?:private|protected|noncomputable)\s+)*"
     r"(?:def|abbrev|structure)\s+([\w'.]+)"
@@ -233,6 +229,142 @@ THEOREM = re.compile(
     r"(?:@\[[^\]\n]*\]\s*)?(?:(?:private|protected|noncomputable)\s+)*"
     r"(?:theorem|lemma)\s+([\w'.]+)"
 )
+
+# Paper uses a deliberately small command language. In particular it may not
+# install syntax, instances or attributes that change subsequent statements.
+PAPER_COMMANDS = {
+    "import", "section", "end", "noncomputable", "universe", "open", "variable",
+    "include", "omit", "local", "def", "abbrev", "structure", "theorem", "lemma",
+    "#guard_msgs", "#print",
+}
+def paper_commands(clean: str) -> tuple[list[tuple[int, str]], list[str]]:
+    """Parse the small Paper command grammar without indentation heuristics.
+
+    Result types and declaration bodies are parenthesized; this makes their
+    boundaries explicit even when they contain multiline terms or proofs.
+    Variable binders and notation bodies are likewise delimited. Everything
+    outside those terms must be an allowlisted command, regardless of layout.
+    """
+    commands = []
+    pos = 0
+    pairs = {"(": ")", "[": "]", "{": "}", "⟨": "⟩", "⦃": "⦄"}
+
+    def space(at):
+        while at < len(clean) and clean[at].isspace():
+            at += 1
+        return at
+
+    def group(at):
+        if at >= len(clean) or clean[at] not in pairs:
+            raise ValueError("expected a delimited Paper term")
+        stack = [pairs[clean[at]]]
+        at += 1
+        while at < len(clean) and stack:
+            char = clean[at]
+            if char == "«":
+                end = clean.find("»", at + 1)
+                if end < 0:
+                    raise ValueError("unterminated quoted identifier")
+                at = end + 1
+                continue
+            if char in pairs:
+                stack.append(pairs[char])
+            elif char in pairs.values():
+                if char != stack.pop():
+                    raise ValueError("mismatched Paper term delimiters")
+            at += 1
+        if stack:
+            raise ValueError("unterminated Paper term")
+        return at
+
+    def parenthesized(at):
+        at = space(at)
+        if at >= len(clean) or clean[at] != "(":
+            raise ValueError("full explicit statements and bodies must be parenthesized")
+        return group(at)
+
+    try:
+        while (pos := space(pos)) < len(clean):
+            start = pos
+            found = re.match(r"#[\w]+|[\w']+", clean[pos:])
+            head = found[0] if found else ""
+            if head not in PAPER_COMMANDS:
+                raise ValueError(f"unsupported Paper command: {head or clean[pos:pos + 20]}")
+            if head in {"def", "abbrev", "structure", "theorem", "lemma"}:
+                declaration = (THEOREM if head in {"theorem", "lemma"} else PAPER_CONCEPT).match(
+                    clean[pos:])
+                if declaration is None:
+                    raise ValueError("expected an explicitly named Paper declaration")
+                pos = space(pos + declaration.end())
+                while pos < len(clean) and clean[pos] in "([{":
+                    pos = space(group(pos))
+                if head == "structure":
+                    if re.match(r"where\b", clean[pos:]) is None:
+                        raise ValueError("Paper structures must use explicit fields")
+                    end = clean.find("\n", pos)
+                    end = len(clean) if end < 0 else end
+                    if clean[pos + len("where"):end].strip():
+                        raise ValueError("Paper structure fields must follow the where line")
+                    pos = end + 1
+                    while True:
+                        field = re.match(r"[ \t]+[\w']+\s*:\s*", clean[pos:])
+                        if field is None:
+                            break
+                        pos = parenthesized(pos + field.end())
+                        end = clean.find("\n", pos)
+                        end = len(clean) if end < 0 else end
+                        if clean[pos:end].strip():
+                            raise ValueError("unexpected command after a Paper field")
+                        pos = end + 1
+                else:
+                    if clean.startswith(":", pos) and not clean.startswith(":=", pos):
+                        pos = space(parenthesized(pos + 1))
+                    elif head in {"theorem", "lemma"}:
+                        raise ValueError("theorem needs its full explicit statement")
+                    if not clean.startswith(":=", pos):
+                        raise ValueError("expected a parenthesized declaration body")
+                    pos = parenthesized(pos + 2)
+            elif head == "variable":
+                pos = space(pos + len(head))
+                count = 0
+                while pos < len(clean) and clean[pos] in "([{":
+                    pos = space(group(pos))
+                    count += 1
+                if not count:
+                    raise ValueError("Paper variables must use explicit binder groups")
+                if re.match(r"in\b", clean[pos:]):
+                    pos += 2
+            elif head == "local":
+                notation = re.match(r"local\s+notation\s+=>", clean[pos:])
+                if notation is None:
+                    raise ValueError("only delimited local notation is allowed")
+                pos = parenthesized(pos + notation.end())
+            else:
+                end = clean.find("\n", pos)
+                end = len(clean) if end < 0 else end
+                command = clean[pos:end].strip()
+                patterns = {
+                    "import": r"import\s+[\w'.]+",
+                    "section": r"section(?:\s+[\w']+)?",
+                    "end": r"end(?:\s+[\w']+)?",
+                    "noncomputable": r"noncomputable section",
+                    "universe": r"universe(?:\s+[\w']+)+",
+                    "open": r"open(?:\s+[\w'.]+)+",
+                    "include": r"include(?:\s+[\w'.]+)+",
+                    "omit": r"omit(?:\s+[\w'.]+)+",
+                    "#guard_msgs": r"#guard_msgs \(whitespace := lax\) in",
+                    "#print": r"#print\s+axioms\s+[\w'.]+",
+                }
+                if (not re.fullmatch(patterns[head], command)
+                        or head == "open" and "in" in command.split()
+                        or head in {"include", "omit"} and "in" in command.split()[:-1]):
+                    raise ValueError(f"unsupported Paper command: {command}")
+                pos = end
+            commands.append((start, clean[start:pos]))
+    except ValueError as error:
+        number = clean.count("\n", 0, pos) + 1
+        return commands, [f"Paper.lean:{number}: {error}"]
+    return commands, []
 
 
 def has_explicit_statement(header: str) -> bool:
@@ -271,8 +403,8 @@ def check_audit_pins(text: str) -> list[str]:
     failures: list[str] = []
     if not prints:
         failures.append("Paper.lean: must contain fully stated results and guarded axiom pins")
-    if PAPER_UNSUPPORTED_DECLARATION.search(clean):
-        failures.append("Paper.lean: local concepts must use def, abbrev or structure")
+    top_commands, command_failures = paper_commands(clean)
+    failures.extend(command_failures)
     commands = list(re.finditer(r"#print\s+axioms\b", clean))
     if len(commands) != len(prints):
         failures.append("Paper.lean: malformed axiom print")
@@ -297,22 +429,21 @@ def check_audit_pins(text: str) -> list[str]:
             failures.append(
                 f"Paper.lean: axiom pin for {name} must expect exactly "
                 "[propext, Classical.choice, Quot.sound] under `#guard_msgs (whitespace := lax)`")
-    top_commands = list(re.finditer(r"(?m)^\S[^\n]*", clean))
     declarations = {}
-    for index, command in enumerate(top_commands):
-        concept = PAPER_CONCEPT.match(command.group())
+    for index, (start, command) in enumerate(top_commands):
+        concept = PAPER_CONCEPT.match(command)
         if concept and not concept.group(1).startswith("Vegas.Paper."):
             failures.append(
                 f"Paper.lean: use a fully qualified paper concept name: {concept.group(1)}")
-        declaration = THEOREM.match(command.group())
+        declaration = THEOREM.match(command)
         if not declaration:
             continue
         name = declaration.group(1)
-        declarations[name] = command.start()
+        declarations[name] = start
         if not name.startswith("Vegas.Paper."):
             failures.append(f"Paper.lean: use a fully qualified paper theorem name: {name}")
-        following = top_commands[index + 1].start() if index + 1 < len(top_commands) else len(clean)
-        if not has_explicit_statement(clean[command.start() + declaration.end():following]):
+        following = top_commands[index + 1][0] if index + 1 < len(top_commands) else len(clean)
+        if not has_explicit_statement(clean[start + declaration.end():following]):
             failures.append(f"Paper.lean: theorem {name} needs its full explicit statement")
         if guards_at.get(following) != name:
             failures.append(f"Paper.lean: exact axiom pin must immediately follow theorem {name}")

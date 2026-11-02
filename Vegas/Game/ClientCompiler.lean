@@ -64,11 +64,13 @@ variable {spec} {intended : setup.intendedModel.BehavioralAssessment}
 def clients : Player → (app).Policy :=
   (raw).decodeProfile Initial horizon scheduler compiled.assessment.strategy
 
-/-- The same uniform translation with all pending observations erased. -/
+/-- The uniform translation projected through current and recalled leaked fields,
+retaining own actions and emitted packets. -/
 def ledgerClients : Player → (app).Policy :=
   (raw).ledgerProfile Initial horizon scheduler compiled.assessment.strategy
 
-/-- Pending observations in the current view and recall do not affect ledger clients. -/
+/-- Applying the ledger projection preserves the callback law, with own actions
+and emitted packets retained. -/
 theorem ledgerClients_useLedgerOnly (who : Player) :
     ReactiveApplication.Policy.UsesLedgerOnly (app) (compiled.ledgerClients who) :=
   (raw).ledgerProfile_usesLedgerOnly Initial horizon scheduler compiled.assessment.strategy who

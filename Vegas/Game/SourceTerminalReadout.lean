@@ -166,6 +166,6 @@ theorem terminalPrefix_readout_law (menu : (application setup runtime leaks).Res
         (fun final supported => stable final supported)).trans (PMF.map_const _ _)
     _ = _ := by
       rw [state, sourceReadout, serviceSourceReadout_eq_decode,
-        serviceSourcePrefix?_terminal_readout, List.map_id]
+        serviceSourcePrefix?_terminal_readout]
 
 end Vegas

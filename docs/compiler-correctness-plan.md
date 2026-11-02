@@ -15,14 +15,17 @@ not assume equilibrium.
 | Raw Interaction to graph | `Vegas.EventGraphRuntime.reactive_protocol_graph_refinement` | Every transition between initialized controls follows a finite supported graph path, including automatic completion. Every initialized raw history has a graph-reachable configuration; service completion makes all terminal fields available. |
 | Compiled graph to ledger | `Vegas.sourceServiceClientPolicy_graph_law` | Actual sequential first-opportunity clients and canonical execution of the compiled graph and policy have the same law through every total reader of typed state and public defaults. |
 | Source to ledger | `Vegas.sourceServiceClientPolicy_outcome_law` | Those same physical clients preserve that joint source law for every source profile, without a finite wire catalogue, equilibrium, audit, utility-bound or independent-prior premise. |
-| Raw unilateral deviation to source | `Vegas.asyncDeviation_readout_law` | Every physical policy against first-turn clients has one behavioral source deviation with the same typed-state/full-default-history law in each certified dependency mode. No finite-player or wire-value catalogue premise. |
+| Raw unilateral deviation to source | `Vegas.asyncDeviation_readout_law` | Every physical policy against first-turn clients has one behavioral source deviation with the same typed-state/full-default-history law on the sequential compiled service graph. No finite-player or wire-value catalogue premise. |
 
 The owners are [graph compilation](../Vegas/Compile/EventGraphScheduling.lean),
 [operational refinement](../Vegas/Pending/GraphRefinement.lean) and
 [direct physical compiler correctness](../Vegas/Game/SourceServiceFirstTurnCompletion.lean).
-The mode-general bounded-menu interfaces in
-[CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean) use the same
-public-barrier certificate. [Paper.lean](../Paper.lean) pins exactly the
+The mode-parametric bounded-menu interfaces in
+[CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean) require public-barrier
+ordering. On compiled service graphs, `serviceGraph_eq_sequential` identifies
+each such graph with the sequential graph; this gives no additional compiler
+mode. Generic nonordered graph results and their regression fixtures retain
+their separate scope. [Paper.lean](../Paper.lean) pins exactly the
 mathematical results stated in the maintained manuscript; normalization,
 packet, observation and induction helpers stay in their owning modules.
 

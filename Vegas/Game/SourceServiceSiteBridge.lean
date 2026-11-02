@@ -132,7 +132,7 @@ theorem firstTurnSourceLaw_of_completion_law
   have readEq (final : app.Execution) :
       sourceReadout setup runtime leaks (app.finished final) = read final.application.config := by
     change serviceSourceReadout setup .sequential runtime.deadline leaks (some ⟨0, none, final⟩) = _
-    rw [serviceSourceReadout_eq_decode, List.map_id]
+    rw [serviceSourceReadout_eq_decode]
   change (app.roundsFrom (initialLaw setup) scheduler players horizon).map
     (fun final => sourceReadout setup runtime leaks (app.finished final)) = _
   rw [← initialLaw_bind_sourceContinuation setup profile, ReactiveApplication.roundsFrom,

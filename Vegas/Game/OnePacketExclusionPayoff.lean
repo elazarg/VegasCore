@@ -2,6 +2,7 @@
 
 import Vegas.Game.IntendedPreservation
 import Vegas.Game.RevealServicePayoffs
+import Vegas.Pending.ReactiveNormalization
 import Vegas.Game.SourceTerminalReadout
 import Vegas.Game.SourceStateKernel
 import Interaction.ReactiveNormalHistory

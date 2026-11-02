@@ -4,18 +4,12 @@ import Vegas.Game.RevealService
 import Vegas.Compile.EventGraphReadoutComplete
 import Vegas.EventGraph.SequentialLaw
 
-/-! # Net utilities for the monitored reveal service
+/-! # Complete source readout and base utility
 
-One collectible deposit per ordinary player is charged at settlement when a
-packet it signed, on the ledger or in the watcher's report, is forbidden by the
-settled record. The utility and deposit are fixed before choosing an
-equilibrium. Reporting has no separate payment here; the watcher retains its
-declared base utility and must be indifferent for the watcher-extension theorem.
-
-The comparison tolerates arbitrary outcomes after an extra response, including
-communication that a recipient reads before the watcher reports. Its probability
-bound concerns actual collection evidence, supplied by the monitored service.
-The deduction models collection in utility units, not an implementation of escrow.
+The service reader decodes the native graph's typed terminal store and history
+into a complete source configuration, retaining its public default record.
+The base utility evaluates a supplied payoff at that readout and is zero when
+no source configuration is available.
 -/
 
 noncomputable section
@@ -45,7 +39,7 @@ def serviceSourceReadout (state : (serviceApplication setup mode deadline leaks)
       Vegas.decodeConfig? setup.program setup.program
         (ContextRefs.initial setup.context (outputLayout setup.program))
         (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
-        (config.history.map (id))
+        config.history
     else none
 
 /-- Successful full decoding already certifies that every source event is
@@ -57,8 +51,7 @@ theorem serviceSourceReadout_eq_decode
         (ContextRefs.initial setup.context (outputLayout setup.program))
         (Revelations.initial setup.context) [] (outputEmbedding setup.program)
         control.execution.application.config.store
-        (control.execution.application.config.history.map
-          (id)) := by
+        control.execution.application.config.history := by
   unfold serviceSourceReadout
   rw [Option.bind_some]
   change (if control.execution.application.config.cut.Terminal then
@@ -82,7 +75,7 @@ theorem serviceSourceReadout_defaults
     source.defaults = control.execution.application.config.defaults := by
   rw [serviceSourceReadout_eq_decode, decodeConfig?] at read
   obtain ⟨_, _, rfl⟩ := Option.map_eq_some_iff.mp read
-  simp only [EventGraph.Config.defaults, EventCompletion.defaults, List.map_map]
+  simp only [EventGraph.Config.defaults, EventCompletion.defaults]
   rfl
 
 /-- Every complete native cut has a full source readout, without an execution

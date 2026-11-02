@@ -5,7 +5,6 @@ import Vegas.EventGraph.BarrierInformation
 import Vegas.EventGraph.Barriers
 import Vegas.EventGraph.Basic
 import Vegas.EventGraph.BindingRefinement
-import Vegas.EventGraph.Canonical
 import Vegas.EventGraph.CanonicalStep
 import Vegas.EventGraph.Code
 import Vegas.EventGraph.Commutation

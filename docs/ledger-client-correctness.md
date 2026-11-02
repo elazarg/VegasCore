@@ -7,8 +7,9 @@ identify that particular policy with an equilibrium. The generic compiler
 uses the preservation theorem's selected completion instead.
 
 The client uses contract state, ledger packets and receipts, its private game
-values, and its own submission history. It ignores pending messages throughout
-its recall. Other players may deviate. This is the deployment target for the
+values, and its own submission history. Its callback applies the ledger
+projection to explicit leaked-message fields. Other players may deviate. This
+is the deployment target for the
 [explicit Odds–Evens client](../Vegas/Examples/OddsEvensLedgerClient.lean).
 
 ## What the honest client must remember
@@ -30,7 +31,12 @@ The [ledger projection](../Interaction/ReactiveLedgerPolicy.lean) also removes
 pending observations from each historical view. Removing only the current
 observation would still allow a policy to recover a pending message from its
 saved history. The projection retains own actions and output and makes the
-candidate's action law invariant under changing the removed observations.
+candidate's action law invariant under changing the removed fields with all
+retained fields fixed. Own emitted envelopes can themselves retain evidence
+materialized after a private pending delivery. `UsesLedgerOnly` therefore does
+not assert independence from every causal effect of pending information. The
+generic physical-realization theorem uses `DeliversNothing`, so these private
+deliveries do not occur in that theorem's initialized histories.
 
 ## A disclosure already on the ledger
 

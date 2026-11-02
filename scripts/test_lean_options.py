@@ -18,7 +18,7 @@ def pin(name, axioms="propext, Classical.choice, Quot.sound", guard="(whitespace
 
 
 def statement(name="result", **kwargs):
-    return (f"theorem Vegas.Paper.{name} : True := True.intro\n" + pin(name, **kwargs))
+    return (f"theorem Vegas.Paper.{name} : (True) := (True.intro)\n" + pin(name, **kwargs))
 
 
 class LeanOptionTests(unittest.TestCase):
@@ -175,26 +175,26 @@ class LeanOptionTests(unittest.TestCase):
 
     def test_paper_concepts_do_not_need_axiom_pins(self):
         concepts = (
-            "def Vegas.Paper.InRange (low high cash : ℝ) : Prop := low ≤ cash ∧ cash ≤ high\n",
-            "abbrev Vegas.Paper.Receipts (Player : Type) := Player → ℝ\n",
-            "structure Vegas.Paper.CashObservation where\n  amount : ℝ\n  defaulted : Bool\n",
+            "def Vegas.Paper.InRange (low high cash : ℝ) : (Prop) := (low ≤ cash ∧ cash ≤ high)\n",
+            "abbrev Vegas.Paper.Receipts (Player : Type) := (Player → ℝ)\n",
+            "structure Vegas.Paper.CashObservation where\n  amount : (ℝ)\n  defaulted : (Bool)\n",
         )
         for concept in concepts:
             with self.subTest(concept=concept):
                 self.assertEqual(CHECKER.check_audit_pins(concept + statement()), [])
 
     def test_paper_concept_names_are_fully_qualified(self):
-        for command in ("def InRange : Prop := True\n", "abbrev Receipts := Nat → ℝ\n",
-                        "structure CashObservation where\n  amount : ℝ\n"):
+        for command in ("def InRange : (Prop) := (True)\n", "abbrev Receipts := (Nat → ℝ)\n",
+                        "structure CashObservation where\n  amount : (ℝ)\n"):
             with self.subTest(command=command):
                 errors = CHECKER.check_audit_pins(command + statement())
                 self.assertTrue(any("fully qualified paper concept name" in e for e in errors))
 
     def test_theorem_using_local_concept_keeps_full_statement_and_exact_pin(self):
-        concept = "def Vegas.Paper.InRange (low high cash : ℝ) : Prop := low ≤ cash ∧ cash ≤ high\n"
+        concept = "def Vegas.Paper.InRange (low high cash : ℝ) : (Prop) := (low ≤ cash ∧ cash ≤ high)\n"
         header = ("theorem Vegas.Paper.range_lower (low high cash : ℝ)\n"
                   "    (within : Vegas.Paper.InRange low high cash)")
-        theorem = header + " : low ≤ cash := within.1\n"
+        theorem = header + " : (low ≤ cash) := (within.1)\n"
         self.assertEqual(CHECKER.check_audit_pins(concept + theorem + pin("range_lower")), [])
         mutations = (
             (header + " := within.1\n" + pin("range_lower"), "full explicit statement"),
@@ -323,6 +323,99 @@ class LeanOptionTests(unittest.TestCase):
         root = Path(__file__).resolve().parent.parent
         self.assertEqual(CHECKER.check_audit_pins(
             (root / "Paper.lean").read_text(encoding="utf-8")), [])
+
+    def test_unpinned_declarations_cannot_hide_in_layout_or_prefixes(self):
+        hidden = "theorem Vegas.Paper.hidden : True := True.intro\n"
+        variants = (
+            "/-- documentation -/ " + hidden,
+            "open Nat in " + hidden,
+            "section\n  " + hidden + "end\n",
+            "section\n\t" + hidden + "end\n",
+            "theorem\n  Vegas.Paper.hidden : True := True.intro\n",
+            "noncomputable " + hidden,
+        )
+        for variant in variants:
+            with self.subTest(variant=variant):
+                self.assertTrue(CHECKER.check_audit_pins(statement() + variant))
+
+    def test_documented_and_indented_statements_are_audited(self):
+        self.assertEqual(CHECKER.check_audit_pins("/-- documentation -/ " + statement()), [])
+        text = "section\n  " + statement() + "end\n"
+        self.assertEqual(CHECKER.check_audit_pins(text), [])
+        self.assertTrue(CHECKER.check_audit_pins(text.replace("#guard_msgs", "-- #guard_msgs")))
+
+    def test_paper_command_allowlist_rejects_semantic_modifiers(self):
+        commands = (
+            "local instance : Inhabited Nat := ⟨0⟩\n",
+            "attribute [local instance] Nat.instInhabited\n",
+            "@[local instance] def Vegas.Paper.hidden : Inhabited Nat := ⟨0⟩\n",
+            "inductive Hidden where | hidden\n",
+            "macro_rules | `(hidden) => `(True)\n",
+            'syntax "hidden" : command\n',
+            "namespace Hidden\nend Hidden\n",
+            "#check Nat\n",
+            "unknown_command\n",
+            "%%\n",
+        )
+        for command in commands:
+            for prefix in ("", "  "):
+                with self.subTest(command=command, prefix=prefix):
+                    text = statement() + "\nsection\n" + prefix + command + "end\n"
+                    self.assertTrue(CHECKER.check_audit_pins(text))
+
+    def test_same_line_commands_cannot_change_a_pinned_statement(self):
+        commands = (
+            "section attribute [local instance] Nat.instInhabited\n",
+            "open Nat in " + statement(),
+            "local notation \"hidden\" => True attribute [local instance] Nat.instInhabited\n",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                self.assertTrue(CHECKER.check_audit_pins(command + statement()))
+
+    def test_imported_commands_cannot_hide_as_term_continuations(self):
+        for command in ("alias Vegas.Paper.hidden := Nat.add_comm", 'notation3 "privateToken" => True'):
+            for indent in ("", "  ", "      "):
+                with self.subTest(command=command, indent=indent):
+                    text = (statement() + "section\n"
+                            "  def Vegas.Paper.anchor : (Nat) := (0)\n"
+                            + indent + command + "\nend\n")
+                    self.assertTrue(CHECKER.check_audit_pins(text))
+
+    def test_multiline_declarations_use_structural_boundaries(self):
+        text = ("section\n  theorem Vegas.Paper.result\n"
+                "    (x : Nat) : (\n      x = x) := (by\n    rfl)\n"
+                + pin("result") + "end\n")
+        self.assertEqual(CHECKER.check_audit_pins(text), [])
+        self.assertTrue(CHECKER.check_audit_pins(text.replace("rfl)", "rfl")))
+
+    def test_structure_fields_cannot_install_derived_instances(self):
+        root = Path(__file__).resolve().parent.parent
+        paper = (root / "Paper.lean").read_text(encoding="utf-8")
+        for tail in ("where deriving Inhabited",
+                     "where field : (Nat) deriving Inhabited",
+                     "where\n  field : (Nat) deriving Inhabited",
+                     "where\n  field : (Nat)\n  deriving Inhabited"):
+            with self.subTest(tail=tail):
+                self.assertTrue(CHECKER.check_audit_pins(
+                    paper + "\nstructure Vegas.Paper.Hidden " + tail + "\n"))
+
+    def test_actual_paper_rejects_hidden_results_and_command_changes(self):
+        root = Path(__file__).resolve().parent.parent
+        paper = (root / "Paper.lean").read_text(encoding="utf-8")
+        hidden = "theorem Vegas.Paper.hidden : True := True.intro\n"
+        mutations = (
+            "/-- documentation -/ " + hidden,
+            "open Nat in " + hidden,
+            "section\n  " + hidden + "end\n",
+            "local instance : Inhabited Nat := ⟨0⟩\n",
+            "attribute [local instance] Nat.instInhabited\n",
+            "inductive Hidden where | hidden\n",
+            "macro_rules | `(hidden) => `(True)\n",
+        )
+        for mutation in mutations:
+            with self.subTest(mutation=mutation):
+                self.assertTrue(CHECKER.check_audit_pins(paper + "\n" + mutation))
 
 
 if __name__ == "__main__":

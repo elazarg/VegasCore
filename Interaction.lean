@@ -74,14 +74,12 @@ import Interaction.ReactiveReceipts
 import Interaction.ReactiveRecordedEnvironment
 import Interaction.ReactiveRecovery
 import Interaction.ReactiveResponseAccounting
-import Interaction.ReactiveResponseBelief
 import Interaction.ReactiveResponseBudget
 import Interaction.ReactiveResponseCount
 import Interaction.ReactiveResponseEmbedding
 import Interaction.ReactiveResponseEvaluation
 import Interaction.ReactiveResponseMenu
 import Interaction.ReactiveResponseNormalization
-import Interaction.ReactiveResponseStopped
 import Interaction.ReactiveRestrictedContinuation
 import Interaction.ReactiveRoundCongruence
 import Interaction.ReactiveRoundReachability

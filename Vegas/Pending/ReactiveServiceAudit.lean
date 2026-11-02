@@ -1,6 +1,5 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingOmission
 import Vegas.Pending.ReactiveSettledVerdict
 import Interaction.ReactiveTrafficState
 import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
@@ -20,27 +19,6 @@ open Interaction GameTheory.Math.Probability GameTheory.Enforcement
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-
-open Classical in
-/-- Only a completed binding without an accepted handle counts as an omission.
-The responsible account is the statically declared actor of that event. -/
-def PublicView.missedBindingBy (view : PublicView graph) (who : Player) : Bool :=
-  decide (∃ event, graph.actor? event = some who ∧ view.missedBinding event = true)
-
-theorem PublicView.missedBindingBy_of_event (view : PublicView graph) (who : Player)
-    (event : graph.EventId) (owned : graph.actor? event = some who)
-    (missed : view.missedBinding event = true) : view.missedBindingBy who = true := by
-  classical
-  exact decide_eq_true ⟨event, owned, missed⟩
-
-theorem PublicView.missedBindingBy_clear (view : PublicView graph)
-    (clear : ∀ event, view.missedBinding event = false) (who : Player) :
-    view.missedBindingBy who = false := by
-  classical
-  apply decide_eq_false
-  rintro ⟨event, _owned, missed⟩
-  rw [clear event] at missed
-  cases missed
 
 /-- The contract's settled record at an execution: its public view and the
 receipts of every inclusion. -/

@@ -15,8 +15,8 @@ source policy. The manuscript is maintained separately in `overleaf/`.
 | Result | Checked scope |
 | --- | --- |
 | `Vegas.intended_raw_sequentialEquilibrium_preserved` | Intended-game SE extends to the bounded raw-menu game of the forced-exit contract on the sequential graph under a finitely branching asynchronous builder, arbitrary finitely branching pending observation, conditional independence of initial private data given a public signal, and funded count-audit coverage. The realized joint outcome/payoff law is preserved and no player is excluded or charged on the implementing path. |
-| `Vegas.intended_raw_programPayments_preserved` | Monetary specialization with executable program transfers and valuation, retaining the initialized typed/public/net-payoff joint law. |
-| `Vegas.EventGraphRuntime.MessageBounds.onePacket_raw_sequentialEquilibrium` | Extension from the one-permitted-packet game to the bounded raw response menu on the plain contract, under conditional audit coverage and adequate deposits. |
+| `Vegas.intended_raw_programPayments_preserved` | Every supplied compilation and its exact physical clients retain executable receipts jointly with initial inputs, typed terminal state and public results. |
+| `Vegas.EventGraphRuntime.MessageBounds.onePacket_raw_sequentialEquilibrium` | Extension from the one-permitted-packet game to the bounded raw response menu of the same native application and scheduler, for normalization-invariant utilities, authentic count-evidence coverage and deposits covering the legal-history payoff spread. |
 
 These theorems need neither complete pending visibility nor independent
 inclusion jobs for different messages. Their substantive hypotheses include
@@ -46,9 +46,11 @@ See [source semantics](docs/source-semantics.md).
 
 The compiler lowers source instructions to a typed event graph. Its checked
 source law, scheduler correspondence and Nash results remain in the core,
-including approximate Nash correspondence under every permitted public graph
-scheduler. The compiler retains source order to preserve public default timing. Source execution
-and the native runtime share absorbing public defaults; the runtime mechanically
+including approximate Nash correspondence. The compiled graph is a total source
+order: every permitted public graph scheduler produces the same event plan
+(`Vegas.toEventGraph_policyPlan_eq`). Scheduler quantification adds no choice of
+execution order for this compiler. Source execution and the native runtime
+share absorbing public defaults; the runtime mechanically
 completes instructions of owners who have defaulted.
 There is no API compatibility requirement.
 
@@ -59,7 +61,10 @@ They compare those clients with canonical execution of the compiled graph,
 under the asynchronous service and timing premises. No finite wire catalogue,
 equilibrium or audit premise is required. The
 [bounded-menu compiler laws](Vegas/Game/CompilerCorrectness.lean) realize this
-observation in every certified dependency mode.
+observation on the sequential compiled graph. A dependency mode satisfying the
+public-barrier certificate yields that identical graph; the certificate does
+not supply another compiler mode. Generic nonordered graph results and their
+regressions remain separate library interfaces.
 [Operational refinement](Vegas/Pending/GraphRefinement.lean) separately covers
 arbitrary raw responses. The [completion guide](docs/compiler-correctness-plan.md)
 records their hypotheses and the optional stronger graph-policy interface.

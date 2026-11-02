@@ -13,6 +13,12 @@ python -m unittest discover -s scripts -p 'test_*.py'
 Module checks validate imports, aggregator coverage and architectural layers.
 Source policy rejects admissions, axiom declarations and trust escapes, enforces
 central options and checks exact standard-axiom pins for Paper theorems.
+Paper uses a restricted command format: imports, section context, local notation,
+explicit concepts and theorem statements, and guarded axiom prints. Result types,
+definition/proof bodies, notation terms and structure field types use parentheses
+to make command boundaries explicit. The checker audits documented and indented
+declarations without using indentation to guess where a term ends, and rejects scoped
+declaration prefixes, instances, attributes and syntax extensions.
 Documentation checks resolve active citations and Markdown paths; external
 sources pinned by full commit IDs refer to their own tree.
 

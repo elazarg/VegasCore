@@ -46,7 +46,7 @@ private theorem decoded_terminal_readout
     exact iff_of_true (Finset.mem_univ event) event.isLt
   have full := residual.checkpoint.ordered.unique atEnd
   subst rank
-  rw [sourceReadout, serviceSourceReadout_eq_decode, List.map_id] at readout
+  rw [sourceReadout, serviceSourceReadout_eq_decode] at readout
   have read := sourceServicePrefix?_terminal_readout setup control.execution.application.config
   have decoded : sourceServicePrefix? setup (eventCount setup.program)
       control.execution.application.config = some

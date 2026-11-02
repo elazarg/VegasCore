@@ -131,9 +131,14 @@ inclusion and completion, with the strict reaction-plus-inclusion timing margin.
 
 [CompilerCorrectness](../Vegas/Game/CompilerCorrectness.lean) realizes those
 laws in bounded menus under their value-coverage and capacity interfaces.
-Certified dependency modes use the public-barrier equality in
-[RevealService](../Vegas/Game/RevealService.lean), without changing the source
-order. [AsyncDeviationReadout](../Vegas/Game/AsyncDeviationReadout.lean)
+The mode-parametric interfaces require public-barrier ordering.
+`serviceGraph_eq_sequential` in [RevealService](../Vegas/Game/RevealService.lean)
+identifies every such compiled service graph with the sequential graph, so this
+premise supplies no additional concurrent compiler mode. The lower graph APIs
+also support genuinely nonordered executions; their raw reveal-order laws can
+differ, as checked in
+[ConcurrentRevealOrderLaw](../Vegas/Examples/ConcurrentRevealOrderLaw.lean).
+[AsyncDeviationReadout](../Vegas/Game/AsyncDeviationReadout.lean)
 backtranslates every unilateral physical policy against first-turn opponents to
 one behavioral source deviation with the same joint typed-state/default law.
 It adds no finite-player or wire-value catalogue premise.
@@ -177,10 +182,11 @@ rationality certificate under the explicit no-delivered-pending-data premise.
 The semantic selection is nonconstructive; executable numerical synthesis is a
 separate target.
 
-[PaymentPreservation](../Vegas/Game/PaymentPreservation.lean) specializes the
-same assessment to executable transfers and external valuation, preserving the
-joint initial, full terminal, public and cash observation. It uses the declared
-exit transfer and total exit utility without identifying them.
+[PaymentPreservation](../Vegas/Game/PaymentPreservation.lean) applies to every
+supplied compilation, including the artifact returned by `ClientSpec.compile`.
+Its assessment and exact physical clients preserve the joint initial cells,
+typed terminal state, public defaults, public result and executable cash law.
+It uses the declared exit transfer and the separately supplied exit valuation.
 
 See the [compiler capstones](compiler-correctness-plan.md),
 [concrete instance](sequential-se-instances.md) and

@@ -14,7 +14,10 @@ same clients with canonical execution of the compiled graph, using the
 asynchronous service and timing premises. They need no finite wire catalogue,
 equilibrium, audit, utility bound or independent-prior premise.
 [Bounded-menu compiler laws](../Vegas/Game/CompilerCorrectness.lean) realize
-that observation in every dependency mode satisfying the public-barrier certificate.
+that observation under public-barrier ordering. For a compiled service graph,
+`serviceGraph_eq_sequential` identifies every mode satisfying that premise with
+the sequential graph. This interface adds no concurrent compiler mode; the
+lower graph APIs and genuinely nonordered regression results remain separate.
 The [operational capstone](../Vegas/Pending/GraphRefinement.lean) exposes
 finite-path graph refinement of arbitrary raw protocol transitions and
 initialized histories. These results and their scope are listed in the

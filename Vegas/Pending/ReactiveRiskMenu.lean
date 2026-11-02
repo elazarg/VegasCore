@@ -1,14 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.ReactiveCanonicalMenu
-import Vegas.Pending.ReactiveServiceAudit
+import Vegas.Pending.ReactiveServiceConformance
 import Interaction.ReactiveSubmissionSerial
 
 /-! # A candidate continuation menu after locally visible service risk
 
-The public trigger is owner-specific: only `missedBindingBy who` affects
-`who`'s menu. Private recall remembers unprotected owned submissions and
-unprotected first binding opportunities. They include a ready binding already
+Own recall remembers unprotected submissions by this player and unprotected
+first binding opportunities. They include a ready binding already
 due for expiry and open the complete effective menu before the first attempt. Any response
 latches the opportunity, including silence or a packet for a foreign event.
 Each recorded before-view is tested against the recall prefix preceding it,

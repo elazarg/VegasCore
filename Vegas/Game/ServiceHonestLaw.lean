@@ -126,7 +126,7 @@ theorem firstTurn_readout_law [Finite Player]
                 decodeConfig? setup.program setup.program
                   (ContextRefs.initial setup.context (outputLayout setup.program))
                   (Revelations.initial setup.context) [] (outputEmbedding setup.program)
-                    config.store (config.history.map id)
+                    config.store config.history
               else none
           AsyncContract runtime leaks initial horizon scheduler delay bound →
           AsyncTimely runtime delay bound →
