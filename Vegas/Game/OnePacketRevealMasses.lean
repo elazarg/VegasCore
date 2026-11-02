@@ -58,7 +58,7 @@ theorem onePacket_honest_discloses (assessment : setup.intendedModel.BehavioralA
     {payload : L.Ty} (outputEq : (graph setup).outputLayout event = .publication payload)
     (choice : Option (OwnAction Player L))
     (supported : choice ∈ (asIfHonestProfile setup runtime leaks assessment who
-      (some (control.execution.recall who,
+      (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who))).support) :
     choice.bind (encodeEventAction? setup.program event) =
       some (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) := by
@@ -102,12 +102,12 @@ theorem onePacket_honestChoice_reveal (assessment : setup.intendedModel.Behavior
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     {payload : L.Ty} (outputEq : (graph setup).outputLayout event = .publication payload) :
     honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who)) =
       PMF.pure (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))
-        (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+        (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who) event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))) := by
   change (honestResponse setup runtime leaks assessment who _ _).map _ = _
@@ -119,9 +119,9 @@ theorem onePacket_honestChoice_reveal (assessment : setup.intendedModel.Behavior
   rw [PMF.map_comp]
   rw [map_congr_support (g := fun _ => responseChoice setup runtime leaks bounds (initialLaw
     setup) horizon
-      scheduler who (some (control.execution.recall who,
+      scheduler who (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who))
-      (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+      (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) event
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))) _
     fun choice supported => by
@@ -145,20 +145,20 @@ theorem onePacket_slotChoice_reveal (assessment : setup.intendedModel.Behavioral
       ((graph setup).nodes event) = .resolve owner payload binding checks}
     (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
     slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who)) =
       PMF.pure (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))
-        (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+        (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who) event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))) := by
   rw [slotChoice_eq_map (runtime := runtime) (initialLaw setup) horizon scheduler turn]
   rw [map_congr_support (g := fun _ => responseChoice setup runtime leaks bounds (initialLaw
     setup) horizon
-      scheduler who (some (control.execution.recall who,
+      scheduler who (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who))
-      (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+      (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) event
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))) _
     fun pair supported => by
@@ -182,7 +182,7 @@ theorem onePacket_disclosure_offered (covers : bounds.CoversOutputValues)
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (unsent : runtime.eventRecorded leaks (control.execution.recall who) event = false)
+    (unsent : runtime.eventRecorded leaks (control.execution.logs who) event = false)
     {owner : Player} {payload : L.Ty} {binding : EventGraph.FieldRef (graph setup).layout
       (.binding owner payload)}
     {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
@@ -191,14 +191,14 @@ theorem onePacket_disclosure_offered (covers : bounds.CoversOutputValues)
       ((graph setup).nodes event) = .resolve owner payload binding checks}
     (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
     (material : (application setup runtime leaks).Submission)
-    (sends : (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+    (sends : (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)).transmission =
         some material) :
-    runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+    runtime.canonicalServiceDecision leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) event
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) ∈
-      bounds.onePacketActions runtime leaks who (control.execution.recall who)
+      bounds.onePacketActions runtime leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) := by
   classical
   have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
@@ -207,7 +207,7 @@ theorem onePacket_disclosure_offered (covers : bounds.CoversOutputValues)
     (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
   have activeView := runtime.canonicalServiceDecision_active leaks who
-    (control.execution.recall who) (control.execution.observe (application setup runtime leaks) who)
+    (control.execution.logs who) (control.execution.observe (application setup runtime leaks) who)
     event (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) material sends
   have values := covers event
   rw [outputEq] at values
@@ -219,10 +219,10 @@ theorem onePacket_disclosure_offered (covers : bounds.CoversOutputValues)
       (fun field candidate accepted =>
         onePacket_accepted_allowed (runtime := runtime) bounds trace field candidate accepted)
       packet sent
-  have inMenu : runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+  have inMenu : runtime.canonicalServiceDecision leaks who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) ∈
-        (bounds.menu runtime leaks).actions who (control.execution.recall who)
+        (bounds.menu runtime leaks).actions who (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who) := by
     apply bounds.canonicalServiceDecision_available runtime leaks who
     cases sent : reactiveResolutionPacket who event payload binding checks outputEq

@@ -196,7 +196,7 @@ theorem include_bindingTraffic_of_handled {who : Player}
       have receipts : left.receipts = right.receipts := congrArg (fun value => value.2.1) same
       have environments : left.environmentRecall = right.environmentRecall :=
         congrArg (fun value => value.2.2.1) same
-      have recalled : left.recall who = right.recall who :=
+      have recalled : left.logs who = right.logs who :=
         congrArg (fun value => value.2.2.2.1) same
       have publics : left.application.publicView = right.application.publicView :=
         congrArg (fun value => value.2.2.2.2.2) same
@@ -376,13 +376,13 @@ theorem focalRound_traffic_congr
           (serviceRuntime setup mode deadline).bindingTraffic leaks who second :=
         bindingTraffic_activation (serviceRuntime setup mode deadline) leaks left right who actor
             same sample
-      change ((players actor (first.recall actor) (first.observe app actor)).map
+      change ((players actor (first.logs actor) (first.observe app actor)).map
           (first.respond app actor)).map _ =
-        ((players actor (second.recall actor) (second.observe app actor)).map
+        ((players actor (second.logs actor) (second.observe app actor)).map
           (second.respond app actor)).map _
       by_cases deviator : actor = who
       · subst actor
-        have recalled : first.recall who = second.recall who :=
+        have recalled : first.logs who = second.logs who :=
           congrArg (fun value => value.2.2.2.1) activated
         rw [recalled, observe_eq_of_bindingTraffic who activated, PMF.map_comp, PMF.map_comp]
         apply map_congr_on_support _

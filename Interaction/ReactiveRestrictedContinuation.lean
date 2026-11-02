@@ -16,7 +16,7 @@ namespace Interaction.ReactiveApplication.ResponseMenu
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Math.Probability
 
-variable {Principal : Type} [DecidableEq Principal] [Fintype Principal]
+variable {Principal : Type} [DecidableEq Principal] [Finite Principal]
   {app : ReactiveApplication Principal} (menu : app.ResponseMenu)
   (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
@@ -28,6 +28,7 @@ theorem run_restrict_eq_finish (players : Principal → app.Policy)
       (fun who => menu.restrictPolicy initial horizon scheduler who (players who))
       fuel history).map History.state =
       app.finish initial horizon scheduler players history.state := by
+  let : Fintype Principal := Fintype.ofFinite Principal
   rw [menu.run_restrict_control_steps initial horizon scheduler players covered]
   exact app.iterate_eq_finish initial horizon scheduler players fuel history.state enough
 

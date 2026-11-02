@@ -259,7 +259,7 @@ theorem onePacket_silent_of_pending (horizon : Nat)
     (owned : (graph setup).actor? event = some owner) (other : Player) (different : other ≠ owner)
     (response : (application setup runtime leaks).Action)
     (member : response ∈ bounds.onePacketActions runtime leaks other
-      (control.execution.recall other)
+      (control.execution.logs other)
       (control.execution.observe (application setup runtime leaks) other)) :
     response.transmission = none := by
   let app := application setup runtime leaks
@@ -278,7 +278,7 @@ theorem onePacket_silent_of_pending (horizon : Nat)
     actorRecord_history (runtime := runtime) (failureProfile setup.program) horizon scheduler trace
   have sameRank := EventOrder.Cut.IsPrefix.unique ordered residual.checkpoint.ordered
   subst sameRank
-  set envelope := runtime.localEnvelope leaks other (control.execution.recall other)
+  set envelope := runtime.localEnvelope leaks other (control.execution.logs other)
     (control.execution.observe app other) material with envelopeEq
   obtain ⟨tokenValid, correct, first⟩ := (countPermits_eq_true_iff _ _).mp permitted
   obtain ⟨named, namedEvent, tokenEq⟩ := (WitnessedPacket.tokenValid_iff _).mp tokenValid
@@ -305,7 +305,7 @@ theorem onePacket_silent_of_pending (horizon : Nat)
     ⟨message, onLedger, _, messageNamed, messageSender⟩ | owed
   · obtain ⟨entry, entryPresent, material, _transmission, emitted, _packet⟩ :=
       facts.provenance.ledger message onLedger
-    have recalled : message ∈ app.outputs (control.execution.recall other) := by
+    have recalled : message ∈ app.outputs (control.execution.logs other) := by
       apply List.mem_filterMap.mpr
       exact ⟨entry, messageSender ▸ entryPresent, emitted⟩
     have emitted : message ∈ control.execution.network.inputs := by

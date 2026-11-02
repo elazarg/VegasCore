@@ -20,7 +20,7 @@ open GameTheory.Math.Probability
 variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication Principal)
 
 def Execution.Issued (execution : app.Execution) (message : Message Principal app.Payload) : Prop :=
-  ∃ entry ∈ execution.recall message.sender, ∃ material,
+  ∃ entry ∈ execution.logs message.sender, ∃ material,
     entry.action.transmission = some material ∧ entry.emitted = some message ∧
       ∃ state known, app.packet state message.sender known material = message.payload
 
@@ -29,11 +29,11 @@ def Execution.Provenance (execution : app.Execution) : Prop :=
 
 omit [DecidableEq Principal] in
 theorem Issued.mono {before after : app.Execution}
-    (recall : ∀ who, before.recall who ⊆ after.recall who)
+    (logs : ∀ who, before.logs who ⊆ after.logs who)
     {message : Message Principal app.Payload} (issued : before.Issued app message) :
     after.Issued app message := by
   obtain ⟨entry, member, material, transmission, emitted, packet⟩ := issued
-  exact ⟨entry, recall message.sender member, material, transmission, emitted, packet⟩
+  exact ⟨entry, logs message.sender member, material, transmission, emitted, packet⟩
 
 omit [DecidableEq Principal] in
 /-- Every key carried by an actually issued packet occurs in its author's
@@ -45,7 +45,7 @@ theorem Issued.mem_response_keys {Key : Type*}
       ∀ state who known, responseKey response = packetKey (app.packet state who known material))
     {execution : app.Execution} {message : Message Principal app.Payload} {key : Key}
     (issued : execution.Issued app message) (selected : packetKey message.payload = some key) :
-    key ∈ ((execution.recall message.sender).map PlayerEntry.action).filterMap responseKey := by
+    key ∈ ((execution.logs message.sender).map PlayerEntry.action).filterMap responseKey := by
   obtain ⟨entry, member, material, transmitted, _emitted, state, known, packet⟩ := issued
   apply List.mem_filterMap.mpr
   refine ⟨entry.action, List.mem_map.mpr ⟨entry, member, rfl⟩, ?_⟩

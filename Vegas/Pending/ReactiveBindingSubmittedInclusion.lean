@@ -26,7 +26,7 @@ theorem input_of_lookup (count : runtime.CountRecall leaks original)
     (found : original.network.lookup id = some message) : message ∈ original.network.inputs := by
   obtain ⟨entry, member, material, _, emitted, _⟩ := provenance.lookup id message found
   have output : message ∈ (runtime.reactiveApplication leaks).outputs
-      (original.recall message.sender) := List.mem_filterMap.mpr ⟨entry, member, emitted⟩
+      (original.logs message.sender) := List.mem_filterMap.mpr ⟨entry, member, emitted⟩
   rw [← count.1 message.sender] at output
   exact (List.mem_filter.mp output).1
 

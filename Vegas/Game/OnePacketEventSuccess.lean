@@ -186,10 +186,10 @@ theorem acceptanceInvariant_transition (who : Player)
                                 · obtain ⟨idEq, -⟩ := Prod.mk.inj (List.mem_singleton.mp new)
                                   -- The included envelope is the message.
                                   obtain ⟨earlier, later, split⟩ := records
-                                  change execution.recall who = _ at split
+                                  change execution.logs who = _ at split
                                   have recalledOutput : message ∈
                                       (application setup runtime leaks).outputs
-                                        (execution.recall who) := by
+                                        (execution.logs who) := by
                                     rw [split]
                                     exact List.mem_filterMap.mpr ⟨entry, by simp, emitted⟩
                                   rw [← inputRecall who] at recalledOutput
@@ -231,20 +231,20 @@ theorem acceptanceInvariant_respond {remaining : Nat} {who : Player}
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (action : (graph setup).Action event) (material : (application setup runtime leaks).Submission)
-    (submits : (runtime.canonicalServiceDecision leaks who (execution.recall who)
+    (submits : (runtime.canonicalServiceDecision leaks who (execution.logs who)
       (execution.observe (application setup runtime leaks) who) event action).transmission =
         some material)
     (after : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, none, execution.respond (application setup runtime leaks)
-        who (runtime.canonicalServiceDecision leaks who (execution.recall who)
+        who (runtime.canonicalServiceDecision leaks who (execution.logs who)
           (execution.observe (application setup runtime leaks) who) event action)⟩)) :
     ∃ output, AcceptanceInvariant setup runtime leaks bounds horizon scheduler who
       (respondEntry setup runtime leaks execution who (runtime.canonicalServiceDecision leaks who
-        (execution.recall who) (execution.observe (application setup runtime leaks) who) event
+        (execution.logs who) (execution.observe (application setup runtime leaks) who) event
           action))
       (sentEnvelope setup runtime leaks execution who material) event execution.application.config
       action output (some ⟨remaining, none, execution.respond (application setup runtime leaks) who
-        (runtime.canonicalServiceDecision leaks who (execution.recall who)
+        (runtime.canonicalServiceDecision leaks who (execution.logs who)
           (execution.observe (application setup runtime leaks) who) event action)⟩) := by
   have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
     scheduler trace
@@ -255,7 +255,7 @@ theorem acceptanceInvariant_respond {remaining : Nat} {who : Player}
   have ready := (execution.application.publicView_eventReady event).mp
     (PublicView.ownTurn?_spec _ who event turn).1
   have respondApplication : (execution.respond (application setup runtime leaks) who
-      (runtime.canonicalServiceDecision leaks who (execution.recall who)
+      (runtime.canonicalServiceDecision leaks who (execution.logs who)
         (execution.observe (application setup runtime leaks) who) event action)).application =
       (application setup runtime leaks).submit execution.application who material := by
     unfold ReactiveApplication.Execution.respond

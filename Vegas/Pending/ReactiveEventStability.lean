@@ -62,7 +62,7 @@ variable {Player : Type} [DecidableEq Player]
 the events completed since were ready together with it, its activation time is
 unchanged, and accepted handles changed only at the outputs of those events. -/
 def EntryEventStable (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
-  ∀ who, ∀ entry ∈ execution.recall who, ∀ event,
+  ∀ who, ∀ entry ∈ execution.logs who, ∀ event,
     entry.beforeView.application.publicView.EventReady event →
     event ∉ execution.application.config.cut.completed →
     ∃ extra, execution.application.publicView.observation.completionOrder =
@@ -243,7 +243,7 @@ theorem step_store_eq_or_output {config next : graph.Config} {event : graph.Even
 current one, and a public field it saw now differs only if it was unavailable
 then and is the output of an event that had not completed then. -/
 def EntryStoreStable (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
-  ∀ who, ∀ entry ∈ execution.recall who,
+  ∀ who, ∀ entry ∈ execution.logs who,
     entry.beforeView.application.publicView.observation.completionOrder <+:
         execution.application.publicView.observation.completionOrder ∧
       ∀ field, execution.application.publicView.observation.store field ≠

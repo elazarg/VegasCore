@@ -141,7 +141,7 @@ theorem storeEventFailed_of_unrecorded {control : (application setup runtime lea
     {who : Player} {event : (graph setup).EventId} {payload : L.Ty}
     (outputEq : (graph setup).outputLayout event = .binding who payload)
     (done : event ∈ control.execution.application.config.cut.completed)
-    (unrecorded : runtime.eventRecorded leaks (control.execution.recall who) event =
+    (unrecorded : runtime.eventRecorded leaks (control.execution.logs who) event =
       false) :
     StoreEventFailed control.execution.application.config.store event := by
   have facts := legalFacts setup leaks horizon scheduler _ trace
@@ -289,8 +289,8 @@ def LateUnsent (who : Player) (event : (graph setup).EventId) (sent : (graph set
     (application setup runtime leaks).ProtocolState → Prop
   | none => False
   | some control => control.execution.application.config = sent ∧
-      past <+: control.execution.recall who ∧
-      runtime.eventRecorded leaks (control.execution.recall who) event = false
+      past <+: control.execution.logs who ∧
+      runtime.eventRecorded leaks (control.execution.logs who) event = false
 
 omit [Fintype Player] in
 /-- A transition at which `who` does not respond keeps the recall of `who`. -/
@@ -302,7 +302,7 @@ theorem recall_eq_of_transition {initial : PMF (application setup runtime leaks)
     {after : (application setup runtime leaks).Control}
     (reached : some after ∈ ((application setup runtime leaks).transition initial horizon scheduler
       (some before) joint).support) :
-    after.execution.recall who = before.execution.recall who := by
+    after.execution.logs who = before.execution.logs who := by
   rcases before with ⟨remaining, actor, execution⟩
   cases actor with
   | some responder =>
@@ -318,7 +318,7 @@ theorem recall_eq_of_transition {initial : PMF (application setup runtime leaks)
           obtain ⟨command, _, supported⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
           obtain ⟨next, moved, same⟩ := PMF.support_map .. ▸ supported
           cases Option.some.inj same
-          change next.recall who = execution.recall who
+          change next.logs who = execution.logs who
           rw [(application setup runtime leaks).environmentStep_recall execution next command moved]
 
 omit [Fintype Player] in

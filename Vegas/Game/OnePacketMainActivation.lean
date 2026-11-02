@@ -27,14 +27,14 @@ def MainActivationStep (source : setup.intendedModel.BehavioralAssessment) (foca
       (Player → Option (application setup runtime leaks).Action) → Prop
   | none, _ => True
   | some before, joint => ∀ owner, before.actor = some owner → owner ≠ focal →
-      FirstActivation setup runtime leaks owner (some (before.execution.recall owner,
+      FirstActivation setup runtime leaks owner (some (before.execution.logs owner,
         before.execution.observe (application setup runtime leaks) owner)) →
       responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler owner
-        (some (before.execution.recall owner,
+        (some (before.execution.logs owner,
           before.execution.observe (application setup runtime leaks) owner))
         ((joint owner).getD ⟨none⟩) ∈
         (honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler source owner
-          (some (before.execution.recall owner,
+          (some (before.execution.logs owner,
             before.execution.observe (application setup runtime leaks) owner))).support
 
 /-- Every foreign first activation at or beyond a specified trace length uses

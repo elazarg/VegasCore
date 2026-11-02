@@ -28,9 +28,9 @@ the player's recall at `anchor`, recorded next at that input's view, respond
 with the recorded response; elsewhere follow `players`. -/
 def anchoredPolicy (anchor : app.Execution) (players : Principal → app.Policy) :
     Principal → app.Policy := fun who past view =>
-  match (anchor.recall who)[past.length]? with
+  match (anchor.logs who)[past.length]? with
   | some entry =>
-      if past ++ [entry] <+: anchor.recall who ∧ entry.beforeView = view then
+      if past ++ [entry] <+: anchor.logs who ∧ entry.beforeView = view then
         PMF.pure entry.action
       else players who past view
   | none => players who past view
@@ -40,9 +40,9 @@ omit [DecidableEq Principal] in
 continuing profile. -/
 theorem anchoredPolicy_of_extends (anchor : app.Execution) (players : Principal → app.Policy)
     (who : Principal) (past : List app.PlayerEntry) (view : app.PlayerView)
-    (extends_ : anchor.recall who <+: past) :
+    (extends_ : anchor.logs who <+: past) :
     anchoredPolicy anchor players who past view = players who past view := by
-  have none : (anchor.recall who)[past.length]? = none :=
+  have none : (anchor.logs who)[past.length]? = none :=
     List.getElem?_eq_none (extends_.length_le)
   unfold anchoredPolicy
   rw [none]
@@ -52,10 +52,10 @@ omit [DecidableEq Principal] in
 recorded response. -/
 theorem anchoredPolicy_of_recorded (anchor : app.Execution) (players : Principal → app.Policy)
     (who : Principal) (past : List app.PlayerEntry) (entry : app.PlayerEntry)
-    (recorded : past ++ [entry] <+: anchor.recall who) :
+    (recorded : past ++ [entry] <+: anchor.logs who) :
     anchoredPolicy anchor players who past entry.beforeView = PMF.pure entry.action := by
   classical
-  have found : (anchor.recall who)[past.length]? = some entry := by
+  have found : (anchor.logs who)[past.length]? = some entry := by
     obtain ⟨rest, same⟩ := recorded
     rw [← same]
     simp
@@ -65,8 +65,8 @@ theorem anchoredPolicy_of_recorded (anchor : app.Execution) (players : Principal
 
 private theorem respond_recall_self (execution : app.Execution) (who : Principal)
     (action : app.Action) :
-    ∃ emitted, (execution.respond app who action).recall who =
-      execution.recall who ++ [⟨execution.observe app who, action, emitted⟩] := by
+    ∃ emitted, (execution.respond app who action).logs who =
+      execution.logs who ++ [⟨execution.observe app who, action, emitted⟩] := by
   rcases action with ⟨transmission⟩
   cases transmission <;> simp only [Execution.respond, ↓reduceIte] <;> exact ⟨_, rfl⟩
 
@@ -76,7 +76,7 @@ theorem runRounds_anchoredPolicy (scheduler : app.Scheduler) (anchor : app.Execu
     app.runRounds scheduler (anchoredPolicy anchor players) count anchor =
       app.runRounds scheduler players count anchor := by
   refine PolicyInvariant.runRounds_congr (predicate := fun execution =>
-    ∀ who, anchor.recall who <+: execution.recall who) ⟨?_, ?_⟩ players ?_ scheduler count
+    ∀ who, anchor.logs who <+: execution.logs who) ⟨?_, ?_⟩ players ?_ scheduler count
     anchor fun _ => List.prefix_refl _
   · intro execution responder action valid _ who
     by_cases same : who = responder

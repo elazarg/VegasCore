@@ -64,9 +64,9 @@ theorem earlierOwnPacket_of_output {horizon : Nat}
     (who : Player) (payload : WitnessedPacket (serviceGraph setup mode))
     (other : Message Player (WitnessedPacket (serviceGraph setup mode)))
     (member : other ∈ (serviceApplication setup mode deadline leaks).outputs
-      (control.execution.recall who)) :
+      (control.execution.logs who)) :
     EarlierOwnPacket ((serviceApplication setup mode deadline leaks).outputs
-        (control.execution.recall who))
+        (control.execution.logs who))
       ⟨(who, control.execution.network.nextSerial who), payload⟩ other := by
   have recalled := (serviceRuntime setup mode deadline).countRecall_history leaks trace
   have signed := signedCommitments_history (serviceRuntime setup mode deadline) leaks
@@ -90,10 +90,10 @@ theorem output_event {horizon : Nat}
       (serviceInitialLaw setup mode) horizon scheduler).Trace (some control))
     (who : Player) (event : (serviceGraph setup mode).EventId)
     (unsent : (serviceRuntime setup mode deadline).eventRecorded leaks
-      (control.execution.recall who) event = false)
+      (control.execution.logs who) event = false)
     (other : Message Player (WitnessedPacket (serviceGraph setup mode)))
     (member : other ∈ (serviceApplication setup mode deadline leaks).outputs
-      (control.execution.recall who)) :
+      (control.execution.logs who)) :
     other.payload.call.event? (serviceGraph setup mode) ≠ some event := by
   have signed := signedCommitments_history (serviceRuntime setup mode deadline) leaks
     (serviceInitialLaw setup mode) (serviceInitialLaw_initialized setup) horizon scheduler trace
@@ -103,7 +103,7 @@ theorem output_event {horizon : Nat}
       some event := by
     intro submitted
     have recorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-        (control.execution.recall who) event = true :=
+        (control.execution.logs who) event = true :=
       List.any_eq_true.mpr ⟨entry, entryMember, by simp [submitted]⟩
     rw [unsent] at recorded
     cases recorded
@@ -128,16 +128,16 @@ theorem canonicalServiceDecision_countPermits {horizon : Nat}
     (who : Player) (event : (serviceGraph setup mode).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (unsent : (serviceRuntime setup mode deadline).eventRecorded leaks
-      (control.execution.recall who) event = false)
+      (control.execution.logs who) event = false)
     (action : (serviceGraph setup mode).Action event)
     (material : (serviceApplication setup mode deadline leaks).Submission)
     (submits : ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
-      (control.execution.recall who)
+      (control.execution.logs who)
       (control.execution.observe (serviceApplication setup mode deadline leaks) who) event
       action).transmission = some material) :
     countPermits ((serviceApplication setup mode deadline leaks).outputs
-        (control.execution.recall who))
-      ((serviceRuntime setup mode deadline).localEnvelope leaks who (control.execution.recall who)
+        (control.execution.logs who))
+      ((serviceRuntime setup mode deadline).localEnvelope leaks who (control.execution.logs who)
         (control.execution.observe (serviceApplication setup mode deadline leaks) who)
         material) = true := by
   have recalled := (serviceRuntime setup mode deadline).countRecall_history leaks trace
@@ -151,7 +151,7 @@ theorem canonicalServiceDecision_countPermits {horizon : Nat}
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
   have ready := (control.execution.application.publicView_eventReady event).mp readyView
   have activeView := (serviceRuntime setup mode deadline).canonicalServiceDecision_active leaks
-    who (control.execution.recall who)
+    who (control.execution.logs who)
     (control.execution.observe (serviceApplication setup mode deadline leaks) who)
     event action material submits
   have active : who ∉ control.execution.application.config.defaulted := activeView
@@ -160,7 +160,7 @@ theorem canonicalServiceDecision_countPermits {horizon : Nat}
   -- The transmitted packet names the event.
   have named : material.call.packet.event? (serviceGraph setup mode) = some event := by
     rcases (serviceRuntime setup mode deadline).canonicalServiceDecision_cases leaks who
-        (control.execution.recall who)
+        (control.execution.logs who)
         (control.execution.observe (serviceApplication setup mode deadline leaks) who) event
         action with silent | submitted
     · rw [silent] at submits
@@ -218,7 +218,7 @@ theorem canonicalServiceDecision_countPermits {horizon : Nat}
         | some serial =>
             have fresh := canonicalFreshSlot_spec actor _ serial selected
             rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_binding leaks actor
-              (control.execution.recall actor)
+              (control.execution.logs actor)
               (control.execution.observe (serviceApplication setup mode deadline leaks) actor) event
               payload outputEq codeEq node activeView serial selected choice] at submits
             cases Option.some.inj submits
@@ -233,7 +233,7 @@ theorem canonicalServiceDecision_countPermits {horizon : Nat}
         Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
       subst actorEq
       rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_eq_of_not_bind leaks actor
-        (control.execution.recall actor)
+        (control.execution.logs actor)
         (control.execution.observe (serviceApplication setup mode deadline leaks) actor) event
         action
         (fun _ _ _ _ bind => by rw [node] at bind; cases bind)] at submits
@@ -342,15 +342,15 @@ theorem canonical_mem_onePacket_of_pending {horizon : Nat}
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (unsent : runtime.eventRecorded leaks (control.execution.recall who) event = false)
+    (unsent : runtime.eventRecorded leaks (control.execution.logs who) event = false)
     (action : (graph setup).Action event)
-    (retained : runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+    (retained : runtime.canonicalServiceDecision leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) event action ∈
-      bounds.canonicalActions runtime leaks who (control.execution.recall who)
+      bounds.canonicalActions runtime leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who)) :
-    runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+    runtime.canonicalServiceDecision leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) event action ∈
-      bounds.onePacketActions runtime leaks who (control.execution.recall who)
+      bounds.onePacketActions runtime leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) := by
   have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
     scheduler).Trace

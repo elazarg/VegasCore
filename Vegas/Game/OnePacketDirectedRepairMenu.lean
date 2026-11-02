@@ -45,18 +45,18 @@ theorem localEnvelope_rawBinding
     (originalCount : runtime.CountRecall leaks original)
     (repairedCount : runtime.CountRecall leaks repaired)
     (event : (graph setup).EventId) (serial : Nat) (first second : Option (Raw L)) :
-    runtime.localEnvelope leaks owner (original.recall owner)
+    runtime.localEnvelope leaks owner (original.logs owner)
         (original.observe (application setup runtime leaks) owner)
         ⟨⟨.commitment event (owner, .prepared serial), first⟩, .none⟩ =
-      runtime.localEnvelope leaks owner (repaired.recall owner)
+      runtime.localEnvelope leaks owner (repaired.logs owner)
         (repaired.observe (application setup runtime leaks) owner)
         ⟨⟨.commitment event (owner, .prepared serial), second⟩, .none⟩ := by
-  change Message.mk (owner, (application setup runtime leaks).submissionCount (original.recall
+  change Message.mk (owner, (application setup runtime leaks).submissionCount (original.logs
     owner))
       (⟨.commitment event (owner, .prepared serial), none,
         original.application.publicView.tokenFor (.commitment event (owner, .prepared serial))⟩ :
         WitnessedPacket (graph setup)) =
-    Message.mk (owner, (application setup runtime leaks).submissionCount (repaired.recall owner))
+    Message.mk (owner, (application setup runtime leaks).submissionCount (repaired.logs owner))
       ⟨.commitment event (owner, .prepared serial), none,
         repaired.application.publicView.tokenFor (.commitment event (owner, .prepared serial))⟩
   rw [← originalCount.2.1 owner, ← repairedCount.2.1 owner, frame.network, frame.publicView]
@@ -68,7 +68,7 @@ private opening by any bounded opening at the same fresh prepared slot. -/
 theorem onePacket_rawBinding
     (frame : Frame runtime leaks memory owner original repaired)
     (recalled : Vegas.operationalRecall (runtime := runtime) (setup := setup) (leaks := leaks)
-        (original.recall owner) = Vegas.operationalRecall (runtime := runtime) (repaired.recall
+        (original.logs owner) = Vegas.operationalRecall (runtime := runtime) (repaired.logs
           owner))
     (originalCount : runtime.CountRecall leaks original)
     (repairedCount : runtime.CountRecall leaks repaired)
@@ -77,19 +77,19 @@ theorem onePacket_rawBinding
     (bounded : bounds.AllowsOpening second)
     (member : (⟨some ⟨⟨.commitment event (owner, .prepared serial), first⟩, .none⟩⟩ :
       (application setup runtime leaks).Action) ∈ bounds.onePacketActions runtime leaks owner
-        (original.recall owner) (original.observe (application setup runtime leaks) owner)) :
+        (original.logs owner) (original.observe (application setup runtime leaks) owner)) :
     (⟨some ⟨⟨.commitment event (owner, .prepared serial), second⟩, .none⟩⟩ :
       (application setup runtime leaks).Action) ∈ bounds.onePacketActions runtime leaks owner
-        (repaired.recall owner) (repaired.observe (application setup runtime leaks) owner) := by
+        (repaired.logs owner) (repaired.observe (application setup runtime leaks) owner) := by
   obtain ⟨effective, permitted⟩ := (bounds.mem_onePacketActions runtime leaks owner
-    (original.recall owner) (original.observe (application setup runtime leaks) owner) _).mp member
-  have fields := (bounds.menu_mem runtime leaks owner (original.recall owner)
+    (original.logs owner) (original.observe (application setup runtime leaks) owner) _).mp member
+  have fields := (bounds.menu_mem runtime leaks owner (original.logs owner)
     (original.observe (application setup runtime leaks) owner) _).mp effective
   have packetBound := fields.1.1.1
-  apply (bounds.mem_onePacketActions runtime leaks owner (repaired.recall owner)
+  apply (bounds.mem_onePacketActions runtime leaks owner (repaired.logs owner)
     (repaired.observe (application setup runtime leaks) owner) _).mpr
   refine ⟨?_, Or.inr ⟨_, rfl, ?_⟩⟩
-  · apply (bounds.menu_mem runtime leaks owner (repaired.recall owner)
+  · apply (bounds.menu_mem runtime leaks owner (repaired.logs owner)
       (repaired.observe (application setup runtime leaks) owner) _).mpr
     refine ⟨⟨⟨packetBound, bounded⟩, trivial⟩, ?_⟩
     simp only [ReactiveApplication.SubmissionNormalization.action, reactiveNormalization,
@@ -112,7 +112,7 @@ replaced by a covered typed default; usable bounded material stays unchanged. -/
 theorem repairResponse_onePacket
     (frame : Frame runtime leaks memory owner original repaired)
     (recalled : Vegas.operationalRecall (runtime := runtime) (setup := setup) (leaks := leaks)
-        (original.recall owner) = Vegas.operationalRecall (runtime := runtime) (repaired.recall
+        (original.logs owner) = Vegas.operationalRecall (runtime := runtime) (repaired.logs
           owner))
     (originalCount : runtime.CountRecall leaks original)
     (repairedCount : runtime.CountRecall leaks repaired)
@@ -126,11 +126,11 @@ theorem repairResponse_onePacket
     (covered : bounds.CoversOutputValues)
     (member : (⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩ :
       (application setup runtime leaks).Action) ∈ bounds.onePacketActions runtime leaks owner
-        (original.recall owner) (original.observe (application setup runtime leaks) owner)) :
+        (original.logs owner) (original.observe (application setup runtime leaks) owner)) :
     (memory.repairResponse runtime leaks owner
       (repaired.observe (application setup runtime leaks) owner)
       ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩).1 ∈
-      bounds.onePacketActions runtime leaks owner (repaired.recall owner)
+      bounds.onePacketActions runtime leaks owner (repaired.logs owner)
         (repaired.observe (application setup runtime leaks) owner) := by
   have actualFresh := (frame.slots (.prepared serial)).mp fresh
   have originalFresh : (memory.shadow.inputView runtime leaks
@@ -151,9 +151,9 @@ theorem repairResponse_onePacket
       rw [memory.repairResponse_usable runtime leaks owner _ event payload outputEq codeEq
         node serial opening originalFresh actualFresh value decoded]
       have effective := ((bounds.mem_onePacketActions runtime leaks owner
-        (original.recall owner) (original.observe (application setup runtime leaks) owner) _).mp
+        (original.logs owner) (original.observe (application setup runtime leaks) owner) _).mp
           member).1
-      have fields := (bounds.menu_mem runtime leaks owner (original.recall owner)
+      have fields := (bounds.menu_mem runtime leaks owner (original.logs owner)
         (original.observe (application setup runtime leaks) owner) _).mp effective
       exact frame.onePacket_rawBinding bounds recalled originalCount
         repairedCount event serial

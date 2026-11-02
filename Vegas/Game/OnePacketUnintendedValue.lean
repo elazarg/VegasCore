@@ -200,7 +200,7 @@ theorem unintendedCommitment_stopped_value
   subst otherEvent
   obtain ⟨remaining, execution, current, pastEq, viewEq⟩ :
       ∃ remaining execution, history.1.state = some ⟨remaining, some who, execution⟩ ∧
-        execution.recall who = past ∧
+        execution.logs who = past ∧
         execution.observe (application setup runtime leaks) who = view := by
     obtain ⟨fullHistory, infoEq⟩ := history
     have observed : (application setup runtime leaks).observe who fullHistory.state =
@@ -231,7 +231,7 @@ theorem unintendedCommitment_stopped_value
     exact history_length_of_isPrefix _ foundOrdered
   have ordered : execution.application.config.cut.IsPrefix
       (siteRank (runtime := runtime) site.1) := siteRankEq.symm ▸ foundOrdered
-  have actualAt : site.1 = some (execution.recall who,
+  have actualAt : site.1 = some (execution.logs who,
       execution.observe (application setup runtime leaks) who) := by
     rw [pastEq, viewEq]
     exact atSite

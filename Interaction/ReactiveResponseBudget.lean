@@ -19,7 +19,7 @@ variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication P
 
 def responseBudget (horizon : Nat) : app.ProtocolState → Prop
   | none => True
-  | some control => ∀ who, (control.execution.recall who).length + control.remaining +
+  | some control => ∀ who, (control.execution.logs who).length + control.remaining +
       (if control.actor = some who then 1 else 0) ≤ horizon
 
 theorem responseBudget_transition (initial : PMF app.State) (horizon : Nat)
@@ -62,7 +62,7 @@ theorem responseBudget_transition (initial : PMF app.State) (horizon : Nat)
               have budget := valid who
               rw [app.environmentStep_recall execution next command moved]
               simp only [reduceCtorEq, ↓reduceIte] at budget
-              change (execution.recall who).length + remaining +
+              change (execution.logs who).length + remaining +
                 (if command.actor? app = some who then 1 else 0) ≤ horizon
               split <;> omega
 
@@ -80,7 +80,7 @@ theorem active_recall_lt_horizon (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (control : app.Control)
     (trace : (app.protocol initial horizon scheduler).Trace (some control))
     (who : Principal) (active : control.actor = some who) :
-    (control.execution.recall who).length < horizon := by
+    (control.execution.logs who).length < horizon := by
   have budget := app.responseBudget_history initial horizon scheduler trace who
   simp only [active, ↓reduceIte] at budget
   omega

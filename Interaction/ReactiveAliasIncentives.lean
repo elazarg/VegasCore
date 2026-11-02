@@ -22,7 +22,7 @@ variable {Principal : Type} [DecidableEq Principal]
   {app : ReactiveApplication Principal}
   (normal : app.SubmissionNormalization) (raw : app.ResponseMenu)
   (stable : ∀ who past view,
-    raw.actions who (normal.recall who past) view = raw.actions who past view)
+    raw.actions who (normal.logs who past) view = raw.actions who past view)
   (closed : ∀ who past view response, response ∈ raw.actions who past view →
     normal.action who past view response ∈ raw.actions who past view)
   (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
@@ -33,7 +33,7 @@ theorem decode_canonicalPolicy (who : Principal)
     app.decodePolicy (raw.embedPolicy initial horizon scheduler who
         (normal.canonicalPolicy raw stable closed initial horizon scheduler who source)) past view =
       app.decodePolicy ((normal.menu raw).embedPolicy initial horizon scheduler who source)
-        (normal.recall who past) view := by
+        (normal.logs who past) view := by
   simp only [decodePolicy, ResponseMenu.embedPolicy, canonicalPolicy, PMF.map_comp]
   rfl
 
@@ -43,7 +43,7 @@ theorem decode_canonicalProfile
     raw.decodeProfile initial horizon scheduler (fun who =>
         normal.canonicalPolicy raw stable closed initial horizon scheduler who (source who)) =
       (fun who past view => (normal.menu raw).decodeProfile initial horizon scheduler source who
-        (normal.recall who past) view) := by
+        (normal.logs who past) view) := by
   funext who past view
   exact normal.decode_canonicalPolicy raw stable closed initial horizon scheduler who
     (source who) past view
@@ -77,7 +77,7 @@ theorem aliasDeviation_finish
         ((normal.menu raw).decodeProfile initial horizon scheduler (GameTheory.Profile.update
           (sig := ((normal.menu raw).information initial horizon scheduler).behavioralSignature)
             source who (normal.aliasDeviation raw initial horizon scheduler who
-              (execution.recall who) alternative)))
+              (execution.logs who) alternative)))
           (normal.state (some ⟨remaining, actor, execution⟩)) := by
   rw [raw.decodeProfile_update, (normal.menu raw).decodeProfile_update,
     normal.decode_canonicalProfile, normal.decode_aliasDeviation raw stable]
@@ -91,7 +91,7 @@ theorem aliasDeviation_finish
   simp only [finish, PMF.map_comp]
   rfl
 
-variable [Fintype Principal]
+variable [Finite Principal]
 
 theorem aliasDeviation_historyLaw
     (source : ∀ who,

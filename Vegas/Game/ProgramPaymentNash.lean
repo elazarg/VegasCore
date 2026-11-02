@@ -108,7 +108,7 @@ theorem parameterGameForm_eq_observedGameForm {Parameter : Type}
 
 /-- The same-error protocol Nash equivalence retains correlated initial
 parameters without changing the observations available to any strategy. -/
-theorem parameterProtocol_isεNash_iff {Parameter : Type} [Fintype Player]
+theorem parameterProtocol_isεNash_iff {Parameter : Type} [Finite Player]
     (setup : Setup (Player := Player) (L := L))
     (admission : CommitmentInterface setup.program)
     (allAdmitted : ∀ who (policy : BehavioralPolicy who setup.program),

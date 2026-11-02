@@ -4,6 +4,9 @@ import Vegas.Game.OnePacketDelivery
 import Vegas.Game.OnePacketIntendedProjection
 import Vegas.Pending.ExclusionInformationHistory
 import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # Free and keyed components of the native one-packet game
 
@@ -108,7 +111,7 @@ theorem unforcedLaw_fullSupport {scale : ℝ} (positive : 0 < scale) (le_one : s
       le_one agent choice) := by
   intro other
   let := Fintype.ofFinite ((onePacketN).Choice agent.1 agent.2.1)
-  exact mem_support_mix_left _ _ _ positive (PMF.mem_support_uniformOfFintype other)
+  exact mem_support_mix_left _ _ _ positive (mem_support_uniformLaw other)
 
 theorem onePacketComponent_fullSupport (assessment : setup.intendedModel.BehavioralAssessment)
     {slots : Nat} {scale : ℝ} (positive : 0 < scale) (le_one : scale ≤ 1)

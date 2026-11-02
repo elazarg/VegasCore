@@ -23,7 +23,7 @@ theorem withNetworkReceipts (frame : Frame runtime leaks memory owner original r
     (receipts : List (MessageId Player × Bool)) :
     Frame runtime leaks memory owner { original with network := network, receipts := receipts }
       { repaired with network := network, receipts := receipts } := by
-  refine ⟨frame.past, ?_, frame.lengths, rfl, frame.service, frame.views, frame.recall,
+  refine ⟨frame.past, ?_, frame.lengths, rfl, frame.service, frame.views, frame.logs,
     frame.slots, frame.successful, frame.submissions⟩
   have applications := congrArg ReactiveApplication.PlayerView.application frame.observed
   exact congrArg (fun view => (⟨network.observe owner, view, receipts⟩ :

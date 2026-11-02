@@ -45,9 +45,9 @@ theorem ledgerProfile_agrees
     (control : app.Control)
     (trace : (app.protocol initial horizon scheduler).Trace (some control)) (who : Principal) :
     menu.ledgerProfile initial horizon scheduler profile who
-      (control.execution.recall who) (control.execution.observe app who) =
+      (control.execution.logs who) (control.execution.observe app who) =
     menu.decodeProfile initial horizon scheduler profile who
-      (control.execution.recall who) (control.execution.observe app who) :=
+      (control.execution.logs who) (control.execution.observe app who) :=
   app.ledgerPolicy_eq_at_history unobserved initial horizon scheduler control trace who _
 
 /-- Restricting ledger callbacks recovers the profile at every bounded-menu decision. -/
@@ -73,14 +73,14 @@ theorem restrict_ledgerProfile_history
       | none => cases observed
       | some control =>
           change some data = (if control.actor = some who then
-            some (control.execution.recall who, control.execution.observe app who) else none)
+            some (control.execution.logs who, control.execution.observe app who) else none)
             at observed
           split at observed
           · cases Option.some.inj observed
             rw [menu.restrictPolicy_congr_at initial horizon scheduler who _ _ _ _
               (menu.ledgerProfile_agrees initial horizon scheduler unobserved profile control
                 (menu.toRawTrace initial horizon scheduler trace) who)]
-            exact decoded (some (control.execution.recall who, control.execution.observe app who))
+            exact decoded (some (control.execution.logs who, control.execution.observe app who))
           · cases observed
 
 /-- Ledger callbacks stay within the menu at every legal bounded-menu decision. -/
@@ -94,7 +94,7 @@ theorem ledgerProfile_admissible
     (menu.toRawTrace initial horizon scheduler trace) who] at supported
   exact menu.decode_embedPolicy_covered initial horizon scheduler who (profile who) _ _ _ supported
 
-variable [Fintype Principal]
+variable [Finite Principal]
 
 /-- The actual ledger clients realize every complete behavioral continuation. -/
 theorem run_ledgerProfile_eq_finish

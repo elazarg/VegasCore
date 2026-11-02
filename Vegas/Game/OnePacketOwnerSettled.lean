@@ -294,8 +294,8 @@ theorem ownOutput_eq_of_event {control : (application setup runtime leaks).Contr
     (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     {first second : Message Player (WitnessedPacket (graph setup))}
-    (firstMember : first ∈ (application setup runtime leaks).outputs (control.execution.recall who))
-    (secondMember : second ∈ (application setup runtime leaks).outputs (control.execution.recall
+    (firstMember : first ∈ (application setup runtime leaks).outputs (control.execution.logs who))
+    (secondMember : second ∈ (application setup runtime leaks).outputs (control.execution.logs
       who))
     (firstNamed : first.payload.call.event? (graph setup) = some event)
     (secondNamed : second.payload.call.event? (graph setup) = some event) : first = second := by
@@ -341,10 +341,10 @@ theorem openable_of_pending {control : (application setup runtime leaks).Control
     (debtFree : ∀ point, nativeDecodedState setup runtime leaks (some control) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
     (pending : ∃ event, control.execution.application.config.cut.Ready event ∧
-      ∀ message ∈ (application setup runtime leaks).outputs (control.execution.recall who),
+      ∀ message ∈ (application setup runtime leaks).outputs (control.execution.logs who),
         message.payload.call.event? (graph setup) ≠ some event)
     (serial : Nat)
-    (named : NamedSlot who ((application setup runtime leaks).outputs (control.execution.recall
+    (named : NamedSlot who ((application setup runtime leaks).outputs (control.execution.logs
       who))
       serial) :
     ∃ raw, control.execution.application.candidates.lookup (who, .prepared serial) =
@@ -479,10 +479,10 @@ theorem ownerSettled_of_trace {control : (application setup runtime leaks).Contr
     (debtFree : ∀ point, nativeDecodedState setup runtime leaks (some control) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
     (pending : ∃ event, control.execution.application.config.cut.Ready event ∧
-      ∀ message ∈ (application setup runtime leaks).outputs (control.execution.recall who),
+      ∀ message ∈ (application setup runtime leaks).outputs (control.execution.logs who),
         message.payload.call.event? (graph setup) ≠ some event) :
     OwnerSettled who (NamedSlot who ((application setup runtime leaks).outputs
-      (control.execution.recall who))) control.execution.application where
+      (control.execution.logs who))) control.execution.application where
   noFailure := noFailure_of_debtFree (runtime := runtime) trace debtFree
   bindAction completion member owner payload outputEq codeEq := by
     have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)

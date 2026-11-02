@@ -62,54 +62,54 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
     (current : history.state = some ⟨remaining, some who, execution⟩)
     (forcedState : ForcedState setup runtime leaks who history.state)
     (ready : execution.application.config.cut.Ready event)
-    (activated : ∃ entry ∈ execution.recall who, ActivatedAt setup runtime leaks who event entry) :
-    (runtime.eventRecorded leaks (execution.recall who) event = false →
+    (activated : ∃ entry ∈ execution.logs who, ActivatedAt setup runtime leaks who event entry) :
+    (runtime.eventRecorded leaks (execution.logs who) event = false →
       (targetSequence n).strategy who
-          (some (execution.recall who, execution.observe (application setup runtime leaks) who)) =
+          (some (execution.logs who, execution.observe (application setup runtime leaks) who)) =
         slotTrembledChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler (scale n)
           (scale_pos n).le (scale_le_one n) who
-          (some (execution.recall who, execution.observe (application setup runtime leaks) who))
+          (some (execution.logs who, execution.observe (application setup runtime leaks) who))
           ((keyWeights setup runtime leaks bounds horizon scheduler (weights n)
-              (some (LateKey.ofView setup runtime leaks who (execution.recall who)
+              (some (LateKey.ofView setup runtime leaks who (execution.logs who)
                 (execution.observe (application setup runtime leaks) who)))).bind
             (lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler (sequence
               n) who
-              (some (execution.recall who, execution.observe (application setup runtime leaks)
+              (some (execution.logs who, execution.observe (application setup runtime leaks)
                 who))))
           (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
             who
-            (some (execution.recall who, execution.observe (application setup runtime leaks) who))))
+            (some (execution.logs who, execution.observe (application setup runtime leaks) who))))
           (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler (sequence n)
             who
-            (some (execution.recall who, execution.observe (application setup runtime leaks)
+            (some (execution.logs who, execution.observe (application setup runtime leaks)
               who)))) ∧
-    (runtime.eventRecorded leaks (execution.recall who) event = true →
+    (runtime.eventRecorded leaks (execution.logs who) event = true →
       ∃ main : PMF ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-          scheduler).Choice who (some (execution.recall who,
+          scheduler).Choice who (some (execution.logs who,
             execution.observe (application setup runtime leaks) who))),
         (main = honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
-            (sequence n) who (some (execution.recall who,
+            (sequence n) who (some (execution.logs who,
               execution.observe (application setup runtime leaks) who)) ∨
           ∃ others : PMF (LateOption slots), main = others.bind
             (lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler (sequence
               n) who
-              (some (execution.recall who,
+              (some (execution.logs who,
                 execution.observe (application setup runtime leaks) who)))) ∧
-        (targetSequence n).strategy who (some (execution.recall who,
+        (targetSequence n).strategy who (some (execution.logs who,
             execution.observe (application setup runtime leaks) who)) =
           slotTrembledChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
             (scale n)
-            (scale_pos n).le (scale_le_one n) who (some (execution.recall who,
+            (scale_pos n).le (scale_le_one n) who (some (execution.logs who,
               execution.observe (application setup runtime leaks) who)) main
             (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
-              who (some (execution.recall who,
+              who (some (execution.logs who,
                 execution.observe (application setup runtime leaks) who))))
             (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler (sequence
               n) who
-              (some (execution.recall who,
+              (some (execution.logs who,
                 execution.observe (application setup runtime leaks) who)))) := by
   have observed : (onePacketN).infoOf who history.trace =
-      some (execution.recall who, execution.observe (application setup runtime leaks) who) := by
+      some (execution.logs who, execution.observe (application setup runtime leaks) who) := by
     refine ((bounds.onePacketMenu runtime leaks).info (initialLaw setup) horizon
       scheduler who history.trace).trans ?_
     rw [current]
@@ -123,7 +123,7 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
   rw [observed] at played
   have forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
     setup)
-      horizon scheduler who (some (execution.recall who,
+      horizon scheduler who (some (execution.logs who,
         execution.observe (application setup runtime leaks) who)) :=
     observed ▸ forcedAgent_of_history (runtime := runtime) history forcedState
   let agent : (onePacketN).InformationAgent (onePacketN).playedInformation :=
@@ -160,7 +160,7 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
     ownTurn?_of_ready setup execution.application ready owned
   constructor
   · intro unrecorded
-    have late : LateDelivery setup runtime leaks who (some (execution.recall who,
+    have late : LateDelivery setup runtime leaks who (some (execution.logs who,
         execution.observe (application setup runtime leaks) who)) :=
       ⟨_, _, event, rfl, pendingEvent_of_spec (runtime := runtime) turn unrecorded, entry, member,
         activatedAt⟩
@@ -169,11 +169,11 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
         (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler) agent :=
       ⟨late, notFree⟩
     have weightsEq : keyWeights setup runtime leaks bounds horizon scheduler (weights n)
-        (some (LateKey.ofView setup runtime leaks who (execution.recall who)
+        (some (LateKey.ofView setup runtime leaks who (execution.logs who)
           (execution.observe (application setup runtime leaks) who))) =
         weights n (.inr (some ⟨agentLateKey setup runtime leaks bounds (initialLaw setup) horizon
           scheduler agent, ⟨agent, keyed⟩, rfl⟩)) := by
-      have present : some (LateKey.ofView setup runtime leaks who (execution.recall who)
+      have present : some (LateKey.ofView setup runtime leaks who (execution.logs who)
           (execution.observe (application setup runtime leaks) who)) ∈ Set.range
             fun agent : {agent : (onePacketN).InformationAgent (onePacketN).playedInformation //
               ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
@@ -198,7 +198,7 @@ theorem certificate_strategyShape (sequence : ℕ → setup.intendedModel.Behavi
     exact bind_lateComponent setup runtime leaks bounds (initialLaw setup) horizon scheduler
       (sequence n) _ (scale n) (scale_pos n).le (scale_le_one n) who _
   · intro recorded
-    have notLate : ¬ LateDelivery setup runtime leaks who (some (execution.recall who,
+    have notLate : ¬ LateDelivery setup runtime leaks who (some (execution.logs who,
         execution.observe (application setup runtime leaks) who)) := by
       rintro ⟨_, _, other, same, pending, _⟩
       obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj same)
@@ -255,7 +255,7 @@ site's pending event as the owner's turn. -/
 def SiteActivated (who : Player) (info : (application setup runtime leaks).Info)
     (state : (application setup runtime leaks).ProtocolState) : Prop :=
   ∀ control, state = some control → ∀ entry rest,
-    control.execution.recall who = infoRecall (runtime := runtime) info ++ entry :: rest →
+    control.execution.logs who = infoRecall (runtime := runtime) info ++ entry :: rest →
       ∀ event, pendingEvent setup runtime leaks who info = some event →
         ActivatedAt setup runtime leaks who event entry
 
@@ -280,9 +280,9 @@ theorem controlStep_recall_entry (players : Player → (application setup runtim
     ∃ control', next = some control' ∧
       (control.actor = some who → ∃ entry : (application setup runtime leaks).PlayerEntry,
         entry.beforeView = control.execution.observe (application setup runtime leaks) who ∧
-          control'.execution.recall who = control.execution.recall who ++ [entry]) ∧
+          control'.execution.logs who = control.execution.logs who ++ [entry]) ∧
       (control.actor ≠ some who →
-        control'.execution.recall who = control.execution.recall who) := by
+        control'.execution.logs who = control.execution.logs who) := by
   rcases control with ⟨remaining, actor, execution⟩
   unfold ReactiveApplication.controlStep at member
   cases actor with
@@ -351,8 +351,8 @@ theorem activationTracked_step (players : Player → (application setup runtime 
         simp only [ReactiveApplication.observe, acting, ↓reduceIte] at atSite
         subst atSite
         rw [appended] at recallEq
-        change control.execution.recall who ++ [added] =
-          control.execution.recall who ++ entry :: rest at recallEq
+        change control.execution.logs who ++ [added] =
+          control.execution.logs who ++ entry :: rest at recallEq
         obtain ⟨rfl, -⟩ := List.cons.inj (List.append_cancel_left recallEq)
         unfold ActivatedAt
         rw [before]
@@ -387,7 +387,7 @@ theorem siteActivated_of_history {who : Player} {site : (onePacketN).Information
   by_cases acting : control.actor = some who
   · simp only [ReactiveApplication.observe, acting, ↓reduceIte] at seen
     rw [← seen] at recallEq
-    change control.execution.recall who = control.execution.recall who ++ entry :: rest
+    change control.execution.logs who = control.execution.logs who ++ entry :: rest
       at recallEq
     have lengths := congrArg List.length recallEq
     simp at lengths
@@ -464,9 +464,9 @@ theorem siteComponentShape_of_installed_within
       (runtime := runtime) key event payload) →
       ∀ (remaining : Nat) (execution : (application setup runtime leaks).Execution),
         allowed (some ⟨remaining, some who, execution⟩) →
-        (∃ entry rest, execution.recall who = infoRecall (runtime := runtime) site.1 ++ entry ::
+        (∃ entry rest, execution.logs who = infoRecall (runtime := runtime) site.1 ++ entry ::
           rest) →
-          ∃ entry ∈ execution.recall who, ActivatedAt setup runtime leaks who event entry)
+          ∃ entry ∈ execution.logs who, ActivatedAt setup runtime leaks who event entry)
     (strategyShape : ∀ (history : (onePacketProtocol setup runtime leaks bounds horizon
         scheduler).History) (remaining : Nat) (execution : (application setup runtime
           leaks).Execution)
@@ -477,51 +477,51 @@ theorem siteComponentShape_of_installed_within
       allowed history.state →
       ForcedState setup runtime leaks who history.state →
       execution.application.config.cut.Ready event →
-      (∃ entry ∈ execution.recall who, ActivatedAt setup runtime leaks who event entry) →
-      (runtime.eventRecorded leaks (execution.recall who) event = false →
-        strategy (some (execution.recall who, execution.observe (application setup runtime leaks)
+      (∃ entry ∈ execution.logs who, ActivatedAt setup runtime leaks who event entry) →
+      (runtime.eventRecorded leaks (execution.logs who) event = false →
+        strategy (some (execution.logs who, execution.observe (application setup runtime leaks)
           who)) =
           slotTrembledChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler scale
-            nonnegative le_one who (some (execution.recall who,
+            nonnegative le_one who (some (execution.logs who,
               execution.observe (application setup runtime leaks) who))
-            ((weights (LateKey.ofView setup runtime leaks who (execution.recall who)
+            ((weights (LateKey.ofView setup runtime leaks who (execution.logs who)
                 (execution.observe (application setup runtime leaks) who))).bind
               (lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
                 assessment who
-                (some (execution.recall who, execution.observe (application setup runtime leaks)
+                (some (execution.logs who, execution.observe (application setup runtime leaks)
                   who))))
             (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon
               scheduler who
-              (some (execution.recall who, execution.observe (application setup runtime leaks)
+              (some (execution.logs who, execution.observe (application setup runtime leaks)
                 who))))
             (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment
               who
-              (some (execution.recall who, execution.observe (application setup runtime leaks)
+              (some (execution.logs who, execution.observe (application setup runtime leaks)
                 who)))) ∧
-      (runtime.eventRecorded leaks (execution.recall who) event = true →
+      (runtime.eventRecorded leaks (execution.logs who) event = true →
         ∃ main : PMF ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-            scheduler).Choice who (some (execution.recall who,
+            scheduler).Choice who (some (execution.logs who,
               execution.observe (application setup runtime leaks) who))),
           (main = honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
-              assessment who (some (execution.recall who,
+              assessment who (some (execution.logs who,
                 execution.observe (application setup runtime leaks) who)) ∨
             ∃ others : PMF (LateOption slots), main = others.bind
               (lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
                 assessment who
-                (some (execution.recall who,
+                (some (execution.logs who,
                   execution.observe (application setup runtime leaks) who)))) ∧
-          strategy (some (execution.recall who,
+          strategy (some (execution.logs who,
               execution.observe (application setup runtime leaks) who)) =
             slotTrembledChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler scale
-              nonnegative le_one who (some (execution.recall who,
+              nonnegative le_one who (some (execution.logs who,
                 execution.observe (application setup runtime leaks) who)) main
               (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon
                 scheduler
-                who (some (execution.recall who,
+                who (some (execution.logs who,
                   execution.observe (application setup runtime leaks) who))))
               (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
                 assessment who
-                (some (execution.recall who,
+                (some (execution.logs who,
                   execution.observe (application setup runtime leaks) who))))) :
     SiteComponentShape (runtime := runtime) assessment scale nonnegative le_one
       (fun other => if other = key then PMF.pure option else weights other) key profile
@@ -534,12 +534,12 @@ theorem siteComponentShape_of_installed_within
   rw [current] at consistent
   by_cases atSite : (application setup runtime leaks).observe key.owner
       (some ⟨remaining, some key.owner, execution⟩) = site.1
-  · have infoEq : site.1 = some (execution.recall key.owner,
+  · have infoEq : site.1 = some (execution.logs key.owner,
         execution.observe (application setup runtime leaks) key.owner) := by
       rw [← atSite]
       simp only [ReactiveApplication.observe, ↓reduceIte]
     have keyEq : LateKey.ofView setup runtime leaks key.owner
-      (execution.recall key.owner)
+      (execution.logs key.owner)
         (execution.observe (application setup runtime leaks) key.owner) = key
           := by
       rw [infoEq] at siteKey
@@ -553,7 +553,7 @@ theorem siteComponentShape_of_installed_within
       simp only [↓reduceIte]
     · intro _
       exact ⟨_, Or.inr ⟨PMF.pure option, rfl⟩, installed⟩
-  · have notSite : some (execution.recall key.owner,
+  · have notSite : some (execution.logs key.owner,
         execution.observe (application setup runtime leaks) key.owner) ≠
           site.1 := by
       intro same
@@ -561,11 +561,11 @@ theorem siteComponentShape_of_installed_within
       rw [← same]
       simp only [ReactiveApplication.observe, ↓reduceIte]
     have keyNe : LateKey.ofView setup runtime leaks key.owner
-      (execution.recall key.owner)
+      (execution.logs key.owner)
         (execution.observe (application setup runtime leaks) key.owner) ≠ key
           := fun same =>
       atSite (siteConsistent_key (runtime := runtime) siteKey consistent same)
-    have longer : ∃ entry rest, execution.recall key.owner =
+    have longer : ∃ entry rest, execution.logs key.owner =
         infoRecall (runtime := runtime) site.1 ++ entry :: rest := by
       rcases consistent with ⟨_, sameInfo⟩ | longer
       · exact (atSite sameInfo).elim

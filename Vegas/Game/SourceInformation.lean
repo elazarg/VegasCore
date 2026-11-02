@@ -6,6 +6,9 @@ import GameTheoryExtensions.Analysis.Protocol.Bayes
 import GameTheory.Analysis.Protocol.CounterfactualDecomposition
 import GameTheoryExtensions.Math.Probability.Uniform
 import Vegas.Source.RevealSequence
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # Source decision depths and finite revelation histories
 
@@ -89,7 +92,7 @@ def uniformPolicy (who : Player) : {Γ : SourceCtx Player L} → {O : Finset Var
   | _, _, .sample .., impossible => impossible.elim
   | _, _, .commit .., impossible => impossible.elim
   | _, _, .reveal _ _ _ _ _ _ next, reveals =>
-      (fun _ _ _ => PMF.uniformOfFintype Bool, uniformPolicy who next reveals)
+      (fun _ _ _ => uniformLaw Bool, uniformPolicy who next reveals)
 
 /-- A reveal-only program binds nothing, so its fresh-binding alphabets are
 vacuously finite. -/
@@ -112,7 +115,7 @@ def uniformReference (setup : Setup (Player := Player) (L := L))
     let := setup.finite_choice finite admission who info
     let := Fintype.ofFinite ((setup.informationModel admission).Choice who info)
     let := setup.choice_nonempty admission who info
-    PMF.uniformOfFintype _
+    uniformLaw _
 
 theorem uniformReference_fullSupport (setup : Setup (Player := Player) (L := L))
     (finite : setup.program.FiniteBindingTypes) (admission : CommitmentInterface setup.program)
@@ -122,7 +125,7 @@ theorem uniformReference_fullSupport (setup : Setup (Player := Player) (L := L))
   let := setup.finite_choice finite admission who info
   let := Fintype.ofFinite ((setup.informationModel admission).Choice who info)
   let := setup.choice_nonempty admission who info
-  exact PMF.mem_support_uniformOfFintype choice
+  exact mem_support_uniformLaw choice
 
 theorem uniformReference_fullyMixed (setup : Setup (Player := Player) (L := L))
     (finite : setup.program.FiniteBindingTypes) (admission : CommitmentInterface setup.program) :

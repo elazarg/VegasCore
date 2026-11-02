@@ -64,7 +64,7 @@ theorem sourceTerminal_transition {initial : PMF (application setup runtime
             ((reactiveApplication_graphSteps runtime leaks).environmentStep
               execution next command stepped) terminal
 
-variable [Fintype Player]
+variable [Finite Player]
 
 /-- Every supported continuation retains the full completed native graph configuration. -/
 theorem sourceTerminal_config_stable (menu : (application setup runtime leaks).ResponseMenu)

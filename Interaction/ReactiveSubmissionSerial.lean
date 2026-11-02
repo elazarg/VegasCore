@@ -33,7 +33,7 @@ theorem submissionCount_append (first second : List app.PlayerEntry) :
   simp only [submissionCount, List.countP_append]
 
 def Execution.SerialRecall (execution : app.Execution) : Prop :=
-  ∀ who, execution.network.nextSerial who = app.submissionCount (execution.recall who)
+  ∀ who, execution.network.nextSerial who = app.submissionCount (execution.logs who)
 
 theorem initial_serialRecall (state : app.State) :
     (Execution.initial app state).SerialRecall app := fun _ => rfl
@@ -90,7 +90,7 @@ theorem serialRecall_history (scheduler : app.Scheduler) (initial : PMF app.Stat
 fresh submissions. -/
 def Execution.SerialsIssued (execution : app.Execution) : Prop :=
   ∀ who serial, serial < execution.network.nextSerial who →
-    ∃ entry ∈ execution.recall who, entry.action.isSubmission app = true ∧
+    ∃ entry ∈ execution.logs who, entry.action.isSubmission app = true ∧
       ∃ message, entry.emitted = some message ∧ message.id = (who, serial)
 
 theorem respond_nextSerial (execution : app.Execution) (who observer : Principal)

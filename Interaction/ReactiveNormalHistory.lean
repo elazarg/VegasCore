@@ -23,14 +23,14 @@ def state : app.ProtocolState → app.ProtocolState :=
   Option.map fun control => { control with execution := normal.execution control.execution }
 
 def info (who : Principal) : app.Info → app.Info :=
-  Option.map fun data => (normal.recall who data.1, data.2)
+  Option.map fun data => (normal.logs who data.1, data.2)
 
 def joint (before : app.ProtocolState) (choices : Principal → Option app.Action) :
     Principal → Option app.Action :=
   match before with
   | none => choices
   | some control => fun who => (choices who).map
-      (normal.action who (control.execution.recall who) (control.execution.observe app who))
+      (normal.action who (control.execution.logs who) (control.execution.observe app who))
 
 omit [DecidableEq Principal] in
 @[simp] theorem state_actor (before : app.ProtocolState) :
@@ -94,7 +94,7 @@ theorem state_transition (initial : PMF app.State) (horizon : Nat)
 
 variable (raw : app.ResponseMenu)
   (stable : ∀ who past view,
-    raw.actions who (normal.recall who past) view = raw.actions who past view)
+    raw.actions who (normal.logs who past) view = raw.actions who past view)
 
 include stable in
 theorem legal_joint (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
@@ -119,15 +119,15 @@ theorem legal_joint (initial : PMF app.State) (horizon : Nat) (scheduler : app.S
           simp only [joint, chosen, Option.map_some]
           have active : app.actor (some control) = some who := by
             exact player.1
-          have member : response ∈ raw.actions who (control.execution.recall who)
+          have member : response ∈ raw.actions who (control.execution.logs who)
               (control.execution.observe app who) := by
             exact player.2
           constructor
           · exact (normal.state_actor (some control)).trans active
-          · change normal.action who (control.execution.recall who)
+          · change normal.action who (control.execution.logs who)
                 (control.execution.observe app who) response ∈
               ((normal.menu raw).actions who
-                (normal.recall who (control.execution.recall who))
+                (normal.logs who (control.execution.logs who))
                   (control.execution.observe app who))
             rw [normal.menu_mem]
             exact ⟨response, (stable who _ _).symm ▸ member, normal.action_recall ..⟩
@@ -200,7 +200,7 @@ def choice (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
   | some data =>
       obtain ⟨response, member, chosen⟩ := original.2
       refine ⟨normal.action who data.1 data.2 response, ?_, ?_⟩
-      · apply (normal.menu_mem raw who (normal.recall who data.1) data.2 _).mpr
+      · apply (normal.menu_mem raw who (normal.logs who data.1) data.2 _).mpr
         exact ⟨response, (stable who data.1 data.2).symm ▸ member,
           normal.action_recall who data.1 data.2 response⟩
       · simp only [chosen, Option.map_some]
@@ -226,7 +226,7 @@ def site (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
       subst other
       refine ⟨normal.action who data.1 data.2 response, ?_⟩
       refine ⟨normal.action who data.1 data.2 response, ?_, rfl⟩
-      exact (normal.menu_mem raw who (normal.recall who data.1) data.2 _).mpr
+      exact (normal.menu_mem raw who (normal.logs who data.1) data.2 _).mpr
         ⟨response, (stable who data.1 data.2).symm ▸ supported,
           normal.action_recall who data.1 data.2 response⟩
 
@@ -246,7 +246,7 @@ def canonicalChoice (initial : PMF app.State) (horizon : Nat) (scheduler : app.S
   | some data =>
       obtain ⟨response, member, chosen⟩ := canonical.2
       have rawMember := ((normal.menu_mem_iff_of_closed raw who
-        (normal.recall who data.1) data.2 (closed who _ _) response).mp member).1
+        (normal.logs who data.1) data.2 (closed who _ _) response).mp member).1
       exact ⟨response, (stable who data.1 data.2) ▸ rawMember, chosen⟩
 
 @[simp] theorem choice_canonicalChoice (initial : PMF app.State) (horizon : Nat)
@@ -262,7 +262,7 @@ def canonicalChoice (initial : PMF app.State) (horizon : Nat) (scheduler : app.S
   | none => rfl
   | some data =>
       obtain ⟨response, member, chosen⟩ := canonical.2
-      have fixed := normal.menu_normal raw who (normal.recall who data.1) data.2 response member
+      have fixed := normal.menu_normal raw who (normal.logs who data.1) data.2 response member
       rw [normal.action_recall] at fixed
       change canonical.1.map (normal.action who data.1 data.2) = canonical.1
       rw [chosen, Option.map_some, fixed]

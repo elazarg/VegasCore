@@ -31,7 +31,7 @@ open SourceProgram
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Protocol.InformationModel GameTheory.Math.Probability
 
-variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
+variable {Player : Type} [DecidableEq Player] [Finite Player] {L : IExpr}
   [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
@@ -58,7 +58,7 @@ theorem intended_expect_readout_runFrom (wellFormed : setup.WellFormed)
     expect_map]
   rfl
 
-omit [Fintype Player] in
+omit [Finite Player] in
 /-- A point's remaining instructions are at most the program's. -/
 private theorem remaining_le_instructionCount (point : ProtocolState setup.program)
     (who : Player) :

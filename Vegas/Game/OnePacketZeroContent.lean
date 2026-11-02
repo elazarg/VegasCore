@@ -42,7 +42,7 @@ theorem zeroContent_binding_of_turn (assessment : setup.intendedModel.Behavioral
     (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
     (response : (application setup runtime leaks).Action)
-    (member : response ∈ bounds.onePacketActions runtime leaks who (execution.recall who)
+    (member : response ∈ bounds.onePacketActions runtime leaks who (execution.logs who)
       (execution.observe (application setup runtime leaks) who))
     (transmits : response.transmission ≠ none)
     (zero : contentFactor setup runtime leaks assessment who execution
@@ -78,7 +78,7 @@ theorem zeroContent_binding_of_turn (assessment : setup.intendedModel.Behavioral
   | resolve owner payload binding checks outputEq codeEq =>
       exfalso
       obtain ⟨source, supported⟩ := (asIfHonestProfile setup runtime leaks assessment who
-        (some (execution.recall who,
+        (some (execution.logs who,
           execution.observe (application setup runtime leaks) who))).support_nonempty
       have discloses := onePacket_honest_discloses (runtime := runtime) assessment trace who named
         turn outputEq source
@@ -91,9 +91,9 @@ theorem zeroContent_binding_of_turn (assessment : setup.intendedModel.Behavioral
           -- The response is an opening of the reveal.
           obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions runtime leaks who _ _
             response).mp member
-          have verdict : CountPermits ((application setup runtime leaks).outputs (execution.recall
+          have verdict : CountPermits ((application setup runtime leaks).outputs (execution.logs
             who))
-              (runtime.localEnvelope leaks who (execution.recall who)
+              (runtime.localEnvelope leaks who (execution.logs who)
                 (execution.observe (application setup runtime leaks) who) material) := by
             rcases permitted with silent | ⟨other, otherSends, counted⟩
             · rw [sends] at silent
@@ -103,7 +103,7 @@ theorem zeroContent_binding_of_turn (assessment : setup.intendedModel.Behavioral
               exact (countPermits_eq_true_iff _ _).mp counted
           have correct := verdict.2.1
           unfold CountCallCorrect at correct
-          have callEq : (runtime.localEnvelope leaks who (execution.recall who)
+          have callEq : (runtime.localEnvelope leaks who (execution.logs who)
               (execution.observe (application setup runtime leaks) who) material).payload.call =
               material.call.packet := rfl
           rw [callEq] at correct
@@ -138,7 +138,7 @@ theorem zeroContent_binding (assessment : setup.intendedModel.BehavioralAssessme
     (notOwed : ∀ point, decodedPoint setup execution.application.config = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
     (response : (application setup runtime leaks).Action)
-    (member : response ∈ bounds.onePacketActions runtime leaks who (execution.recall who)
+    (member : response ∈ bounds.onePacketActions runtime leaks who (execution.logs who)
       (execution.observe (application setup runtime leaks) who))
     (transmits : response.transmission ≠ none)
     (zero : contentFactor setup runtime leaks assessment who execution

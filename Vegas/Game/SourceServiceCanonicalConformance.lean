@@ -52,7 +52,7 @@ theorem canonicalServiceDecision_freshServiceEnvelope {horizon remaining : Nat}
     (action : (serviceGraph setup mode).Action event)
     (material : (serviceApplication setup mode deadline leaks).Submission)
     (submits :
-        ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who (middle.recall who)
+        ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who (middle.logs who)
         (middle.observe (serviceApplication setup mode deadline leaks) who) event
         action).transmission = some material) :
     (serviceRuntime setup mode deadline).freshServiceEnvelope middle.application.publicView
@@ -64,7 +64,7 @@ theorem canonicalServiceDecision_freshServiceEnvelope {horizon remaining : Nat}
   have acceptable := canonicalServiceDecision_freshServiceAcceptable trace who event turn within
     action material submits
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
-  have active := runtime.canonicalServiceDecision_active leaks who (middle.recall who)
+  have active := runtime.canonicalServiceDecision_active leaks who (middle.logs who)
     (middle.observe app who) event action material submits
   cases node : nodeView (serviceGraph setup mode) event with
   | sample payload law outputEq codeEq =>
@@ -80,13 +80,13 @@ theorem canonicalServiceDecision_freshServiceEnvelope {horizon remaining : Nat}
         ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
       cases choice with
       | none =>
-          rw [runtime.canonicalServiceDecision_binding_none leaks who (middle.recall who)
+          rw [runtime.canonicalServiceDecision_binding_none leaks who (middle.logs who)
             (middle.observe app who) event who payload outputEq codeEq node] at submits
           cases submits
       | some result =>
           have canonical := canonicalFreshSlot_canonical who (middle.observe app who).application
             fresh
-          rw [runtime.canonicalServiceDecision_binding leaks who (middle.recall who)
+          rw [runtime.canonicalServiceDecision_binding leaks who (middle.logs who)
             (middle.observe app who) event payload outputEq codeEq node active _ canonical result]
             at submits
           cases Option.some.inj submits
@@ -95,10 +95,10 @@ theorem canonicalServiceDecision_freshServiceEnvelope {horizon remaining : Nat}
       obtain ⟨choice, rfl⟩ : ∃ choice : Bool,
           action = cast (congrArg EventGraph.EventField.Action outputEq.symm) choice :=
         ⟨cast (congrArg EventGraph.EventField.Action outputEq) action, by simp⟩
-      rw [runtime.canonicalServiceDecision_eq_of_not_bind leaks who (middle.recall who)
+      rw [runtime.canonicalServiceDecision_eq_of_not_bind leaks who (middle.logs who)
         (middle.observe app who) event _
         (fun _ _ _ _ different => by rw [node] at different; cases different)] at submits
-      rcases runtime.serviceDecision_resolution_cases leaks who (middle.recall who)
+      rcases runtime.serviceDecision_resolution_cases leaks who (middle.logs who)
         (middle.observe app who) event actor payload binding checks outputEq codeEq node choice
         with silent | ⟨candidate, value, evidence, _, _, _, responseEq⟩
       · rw [silent] at submits
@@ -114,7 +114,7 @@ section Support
 /-- Every fresh call of `who` conforms to the audit on the view it was made
 from. -/
 def FreshCallsConform (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (who : Player) : Prop := ∀ entry ∈ execution.recall who, ∀ material message,
+    (who : Player) : Prop := ∀ entry ∈ execution.logs who, ∀ material message,
     entry.action.transmission = some material → entry.emitted = some message →
     (serviceRuntime setup mode deadline).freshServiceEnvelope
     entry.beforeView.application.publicView message
@@ -177,8 +177,8 @@ theorem freshCallsConform_round {horizon remaining : Nat}
           change transmission = _ at submitted
           rw [submitted]
         subst responseEq
-        have submitRecall : (middle.respond app who ⟨some material⟩).recall who =
-            middle.recall who ++ [⟨middle.observe app who, ⟨some material⟩,
+        have submitRecall : (middle.respond app who ⟨some material⟩).logs who =
+            middle.logs who ++ [⟨middle.observe app who, ⟨some material⟩,
               some ⟨(who, middle.network.nextSerial who),
                 app.packet (app.submit middle.application who material) who
                   (middle.network.known who) material⟩⟩] := by
@@ -217,7 +217,7 @@ theorem sourceServiceTurnPolicy_freshServiceEnvelope
         ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
         scheduler players count).support)
     (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (member : entry ∈ execution.recall who)
+    (member : entry ∈ execution.logs who)
     (material : (serviceApplication setup mode deadline leaks).Submission)
     (fresh : entry.action.transmission = some material)
     (message : Message Player (WitnessedPacket (serviceGraph setup mode)))

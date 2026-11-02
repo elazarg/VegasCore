@@ -239,7 +239,7 @@ theorem clearInput_of_forced_response
   obtain ⟨⟨state, trace⟩, seen, witnessForced⟩ := forced
   rw [onePacket_infoOf] at seen
   have observed : (application setup runtime leaks).observe actor (some control) =
-      some (control.execution.recall actor,
+      some (control.execution.logs actor,
         control.execution.observe (application setup runtime leaks) actor) := by
     simp [ReactiveApplication.observe, acting]
   rw [observed] at seen
@@ -372,16 +372,16 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
     {actor : Player} (acting : control.actor = some actor)
     (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
       setup) horizon
-      scheduler actor (some (control.execution.recall actor,
+      scheduler actor (some (control.execution.logs actor,
         control.execution.observe (application setup runtime leaks) actor)))
-    (clear : runtime.ClearInput leaks (some (control.execution.recall actor,
+    (clear : runtime.ClearInput leaks (some (control.execution.logs actor,
       control.execution.observe (application setup runtime leaks) actor)))
-    (canonical : DisclosureCanonical setup runtime leaks bounds actor (control.execution.recall
+    (canonical : DisclosureCanonical setup runtime leaks bounds actor (control.execution.logs
       actor)
       (control.execution.observe (application setup runtime leaks) actor))
     (response : (application setup runtime leaks).Action)
     (member : response ∈ bounds.onePacketActions runtime leaks actor
-      (control.execution.recall actor)
+      (control.execution.logs actor)
       (control.execution.observe (application setup runtime leaks) actor))
     (nextEq : next.execution = control.execution.respond (application setup runtime leaks) actor
       response)
@@ -393,7 +393,7 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
         next.execution
         response)
     (info : (application setup runtime leaks).Info)
-    (infoEq : info = some (control.execution.recall actor,
+    (infoEq : info = some (control.execution.logs actor,
       control.execution.observe (application setup runtime leaks) actor))
     (played : info ∈ (onePacketN).playedInformation actor)
     (choice : (onePacketN).Choice actor info) (chosen : choice.1 = some response) :
@@ -440,25 +440,25 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
       slotCombination (scale n)
         (mainFactor bounds (keyWeights setup runtime leaks bounds horizon
           scheduler (weights n)
-          (some (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+          (some (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
             (control.execution.observe (application setup runtime leaks) actor))))
-          (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+          (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
             (control.execution.observe (application setup runtime leaks) actor))
           (LateKey.ofView setup runtime leaks actor
-            ((control.execution.respond (application setup runtime leaks) actor response).recall
+            ((control.execution.respond (application setup runtime leaks) actor response).logs
               actor)
             ((control.execution.respond (application setup runtime leaks) actor response).observe
               (application setup runtime leaks) actor)))
         (silenceFactor (LateKey.ofView setup runtime leaks actor
-          ((control.execution.respond (application setup runtime leaks) actor response).recall
+          ((control.execution.respond (application setup runtime leaks) actor response).logs
             actor)
           ((control.execution.respond (application setup runtime leaks) actor response).observe
             (application setup runtime leaks) actor)))
         (slotTierFactor bounds
-          (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+          (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
             (control.execution.observe (application setup runtime leaks) actor))
           (LateKey.ofView setup runtime leaks actor
-            ((control.execution.respond (application setup runtime leaks) actor response).recall
+            ((control.execution.respond (application setup runtime leaks) actor response).logs
               actor)
             ((control.execution.respond (application setup runtime leaks) actor response).observe
               (application setup runtime leaks) actor))) := by
@@ -498,15 +498,15 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
           response)
         response * slotCombination (scale n) main
           (silenceFactor (LateKey.ofView setup runtime leaks actor
-            ((control.execution.respond (application setup runtime leaks) actor response).recall
+            ((control.execution.respond (application setup runtime leaks) actor response).logs
               actor)
             ((control.execution.respond (application setup runtime leaks) actor response).observe
               (application setup runtime leaks) actor)))
           (slotTierFactor bounds
-            (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+            (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
               (control.execution.observe (application setup runtime leaks) actor))
             (LateKey.ofView setup runtime leaks actor
-              ((control.execution.respond (application setup runtime leaks) actor response).recall
+              ((control.execution.respond (application setup runtime leaks) actor response).logs
                 actor)
               ((control.execution.respond (application setup runtime leaks) actor response).observe
                 (application setup runtime leaks) actor)))) := by
@@ -524,7 +524,7 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
               := rfl
         have silenceOne : silenceFactor (LateKey.ofView setup runtime leaks
           actor
-            ((control.execution.respond (application setup runtime leaks) actor ⟨none⟩).recall
+            ((control.execution.respond (application setup runtime leaks) actor ⟨none⟩).logs
               actor)
             ((control.execution.respond (application setup runtime leaks) actor ⟨none⟩).observe
               (application setup runtime leaks) actor)) = 1 := by
@@ -538,14 +538,14 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
         obtain ⟨event, turn, unsent, _⟩ := onePacket_content_pos (runtime := runtime) (sequence n)
           trace actor
           response member material sends _ positive
-        have pending : (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+        have pending : (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
             (control.execution.observe (application setup runtime leaks) actor)).pending =
               some event := by
           rw [LateKey.ofView_pending rawTrace actor]
           exact pendingEvent_of_spec (runtime := runtime) (setup := setup) (leaks := leaks)
             (view := control.execution.observe (application setup runtime leaks) actor) turn unsent
         have lastSome : (LateKey.ofView setup runtime leaks actor
-            ((control.execution.respond (application setup runtime leaks) actor response).recall
+            ((control.execution.respond (application setup runtime leaks) actor response).logs
               actor)
             ((control.execution.respond (application setup runtime leaks) actor response).observe
               (application setup runtime leaks) actor)).lastEmitted ≠ none :=
@@ -554,7 +554,7 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
           exact Option.some_ne_none _
         have silenceZero : silenceFactor (LateKey.ofView setup runtime leaks
           actor
-            ((control.execution.respond (application setup runtime leaks) actor response).recall
+            ((control.execution.respond (application setup runtime leaks) actor response).logs
               actor)
             ((control.execution.respond (application setup runtime leaks) actor response).observe
               (application setup runtime leaks) actor)) = 0 := by
@@ -562,10 +562,10 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
           simp [lastSome]
         have uniform : 1 / ((trembleSlots setup bounds).card : ℝ) ≤ slotTierFactor (runtime :=
           runtime) bounds
-            (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+            (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
               (control.execution.observe (application setup runtime leaks) actor))
             (LateKey.ofView setup runtime leaks actor
-              ((control.execution.respond (application setup runtime leaks) actor response).recall
+              ((control.execution.respond (application setup runtime leaks) actor response).logs
                 actor)
               ((control.execution.respond (application setup runtime leaks) actor response).observe
                 (application setup runtime leaks) actor)) := by
@@ -580,7 +580,7 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
               unfold pendingBindingSlotFactor
               cases last : (LateKey.ofView setup runtime leaks actor
                   ((control.execution.respond (application setup runtime leaks) actor
-                    response).recall
+                    response).logs
                     actor)
                   ((control.execution.respond (application setup runtime leaks) actor
                     response).observe
@@ -597,18 +597,18 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
         exact cube_le_slotError_of_slot_ge (scale_pos n).le (small n) (floor_pos n)
           (floored (by rw [sends]; exact Option.some_ne_none _)) slotsPos mainNonneg
           (silenceFactor_mem (runtime := runtime) _).1 uniform
-  by_cases isLate : LateDelivery setup runtime leaks actor (some (control.execution.recall actor,
+  by_cases isLate : LateDelivery setup runtime leaks actor (some (control.execution.logs actor,
       control.execution.observe (application setup runtime leaks) actor))
   · have keyed : ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup) horizon
     scheduler)
         (LateDeliveryAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler) agent :=
       ⟨isLate, notFree⟩
     have weightsEq : keyWeights setup runtime leaks bounds horizon scheduler (weights n)
-        (some (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+        (some (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
           (control.execution.observe (application setup runtime leaks) actor))) =
         weights n (.inr (some ⟨agentLateKey setup runtime leaks bounds (initialLaw setup) horizon
           scheduler agent, ⟨agent, keyed⟩, rfl⟩)) := by
-      have present : some (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+      have present : some (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
           (control.execution.observe (application setup runtime leaks) actor)) ∈ Set.range
             fun agent : {agent : (onePacketN).InformationAgent (onePacketN).playedInformation //
               ownedKeyed (FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler)
@@ -628,12 +628,12 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
       (onePacketLate setup runtime leaks bounds horizon scheduler sequence scale scale_pos
         scale_le_one (slots := slots) n) notFree keyed
     have profileEq : certificateProfile setup runtime leaks bounds horizon scheduler sequence scale
-        scale_pos scale_le_one weights n actor (some (control.execution.recall actor,
+        scale_pos scale_le_one weights n actor (some (control.execution.logs actor,
           control.execution.observe (application setup runtime leaks) actor)) =
         slotTrembledChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler (scale n)
           (scale_pos n).le (scale_le_one n) actor _
           ((keyWeights setup runtime leaks bounds horizon scheduler (weights n)
-            (some (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+            (some (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
               (control.execution.observe (application setup runtime leaks) actor)))).bind
             (lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler (sequence n)
               actor _))
@@ -647,23 +647,23 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
         (sequence n) _ (scale n) (scale_pos n).le (scale_le_one n) actor _
     have mainEq : mainFactor bounds (keyWeights setup runtime leaks bounds
       horizon scheduler (weights n)
-        (some (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+        (some (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
           (control.execution.observe (application setup runtime leaks) actor))))
-        (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+        (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
           (control.execution.observe (application setup runtime leaks) actor))
         (LateKey.ofView setup runtime leaks actor
-          ((control.execution.respond (application setup runtime leaks) actor response).recall
+          ((control.execution.respond (application setup runtime leaks) actor response).logs
             actor)
           ((control.execution.respond (application setup runtime leaks) actor response).observe
             (application setup runtime leaks) actor)) =
         ∑ option, ((keyWeights setup runtime leaks bounds horizon scheduler (weights n)
-          (some (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+          (some (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
             (control.execution.observe (application setup runtime leaks) actor)))) option).toReal *
           lateOptionFactor bounds
-            (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+            (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
               (control.execution.observe (application setup runtime leaks) actor))
             (LateKey.ofView setup runtime leaks actor
-              ((control.execution.respond (application setup runtime leaks) actor response).recall
+              ((control.execution.respond (application setup runtime leaks) actor response).logs
                 actor)
               ((control.execution.respond (application setup runtime leaks) actor response).observe
                 (application setup runtime leaks) actor)) option := by
@@ -671,12 +671,12 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
       simp only [keyLate.mpr isLate, ↓reduceIte]
     refine ⟨_, _, _, mainFactor bounds
       (keyWeights setup runtime leaks bounds horizon scheduler (weights n)
-        (some (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+        (some (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
           (control.execution.observe (application setup runtime leaks) actor))))
-      (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+      (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
         (control.execution.observe (application setup runtime leaks) actor))
       (LateKey.ofView setup runtime leaks actor
-        ((control.execution.respond (application setup runtime leaks) actor response).recall actor)
+        ((control.execution.respond (application setup runtime leaks) actor response).logs actor)
         ((control.execution.respond (application setup runtime leaks) actor response).observe
           (application setup runtime leaks) actor)), _, _, profileEq, ?_, silenceMass, slotMass,
       responseEq.symm, ?_⟩
@@ -699,7 +699,7 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
       (onePacketLate setup runtime leaks bounds horizon scheduler sequence scale scale_pos
         scale_le_one (slots := slots) n) notFree unkeyed
     have profileEq : certificateProfile setup runtime leaks bounds horizon scheduler sequence scale
-        scale_pos scale_le_one weights n actor (some (control.execution.recall actor,
+        scale_pos scale_le_one weights n actor (some (control.execution.logs actor,
           control.execution.observe (application setup runtime leaks) actor)) =
         slotTrembledChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler (scale n)
           (scale_pos n).le (scale_le_one n) actor _
@@ -714,20 +714,20 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
       rfl
     have mainEq : mainFactor bounds (keyWeights setup runtime leaks bounds
       horizon scheduler (weights n)
-        (some (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+        (some (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
           (control.execution.observe (application setup runtime leaks) actor))))
-        (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+        (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
           (control.execution.observe (application setup runtime leaks) actor))
         (LateKey.ofView setup runtime leaks actor
-          ((control.execution.respond (application setup runtime leaks) actor response).recall
+          ((control.execution.respond (application setup runtime leaks) actor response).logs
             actor)
           ((control.execution.respond (application setup runtime leaks) actor response).observe
             (application setup runtime leaks) actor)) =
         honestFactor
-          (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+          (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
             (control.execution.observe (application setup runtime leaks) actor))
           (LateKey.ofView setup runtime leaks actor
-            ((control.execution.respond (application setup runtime leaks) actor response).recall
+            ((control.execution.respond (application setup runtime leaks) actor response).logs
               actor)
             ((control.execution.respond (application setup runtime leaks) actor response).observe
               (application setup runtime leaks) actor)) := by
@@ -735,12 +735,12 @@ theorem certificate_slotLaw_at (sequence : ℕ → setup.intendedModel.Behaviora
       exact ite_eq_right_iff.mpr fun late => absurd (keyLate.mp late) isLate
     refine ⟨_, _, _, mainFactor bounds
       (keyWeights setup runtime leaks bounds horizon scheduler (weights n)
-        (some (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+        (some (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
           (control.execution.observe (application setup runtime leaks) actor))))
-      (LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+      (LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
         (control.execution.observe (application setup runtime leaks) actor))
       (LateKey.ofView setup runtime leaks actor
-        ((control.execution.respond (application setup runtime leaks) actor response).recall actor)
+        ((control.execution.respond (application setup runtime leaks) actor response).logs actor)
         ((control.execution.respond (application setup runtime leaks) actor response).observe
           (application setup runtime leaks) actor)), _, _, profileEq, ?_, silenceMass, slotMass,
       responseEq.symm, ?_⟩
@@ -773,7 +773,7 @@ theorem certificate_slotLaw (sequence : ℕ → setup.intendedModel.BehavioralAs
       ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some control) → ∀ actor, ForcedState setup runtime leaks who (some
           control) →
-      actor ≠ who → DisclosureCanonical setup runtime leaks bounds actor (control.execution.recall
+      actor ≠ who → DisclosureCanonical setup runtime leaks bounds actor (control.execution.logs
         actor)
         (control.execution.observe (application setup runtime leaks) actor))
     (n : ℕ) {before after : (application setup runtime leaks).ProtocolState}
@@ -834,7 +834,7 @@ theorem certificate_slotLaw (sequence : ℕ → setup.intendedModel.BehavioralAs
       (onePacketN).playedInformation actor :=
     (onePacketN).mem_playedInformation (history := ⟨some control, prior⟩) legal.1
   have observed : (application setup runtime leaks).observe actor (some control) =
-      some (control.execution.recall actor,
+      some (control.execution.logs actor,
         control.execution.observe (application setup runtime leaks) actor) := by
     simp [ReactiveApplication.observe, acting]
   have clear := clearInput_of_forced_response acting other observerForced forced

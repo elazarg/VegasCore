@@ -35,7 +35,7 @@ theorem decodeProfile_update
     simp only [decodeProfile, GameTheory.Profile.update, Function.update_self]
   · simp only [decodeProfile, GameTheory.Profile.update, Function.update_of_ne same]
 
-variable [Fintype Principal]
+variable [Finite Principal]
 
 theorem run_eq_finish
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)

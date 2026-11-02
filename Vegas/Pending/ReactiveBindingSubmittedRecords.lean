@@ -23,14 +23,14 @@ private theorem earlierInput_of_countRecall
     (material : WitnessedSubmission graph)
     (message : Message Player (WitnessedPacket graph))
     (member : message ∈ execution.network.inputs) (sender : message.sender = who) :
-    EarlierOwnPacket ((runtime.reactiveApplication leaks).outputs (execution.recall who))
-      (runtime.localEnvelope leaks who (execution.recall who)
+    EarlierOwnPacket ((runtime.reactiveApplication leaks).outputs (execution.logs who))
+      (runtime.localEnvelope leaks who (execution.logs who)
         (execution.observe (runtime.reactiveApplication leaks) who) material) message := by
   refine ⟨?_, sender, ?_⟩
   · rw [← count.1 who]
     exact List.mem_filter.mpr ⟨member, by simpa using sender⟩
   · change message.id.2 < (runtime.reactiveApplication leaks).submissionCount
-      (execution.recall who)
+      (execution.logs who)
     rw [← count.2.1 who, ← sender]
     exact count.2.2.serial_lt member
 
@@ -41,8 +41,8 @@ theorem priorBinding_ne_of_permitted
     (count : runtime.CountRecall leaks execution) (who : Player)
     (event : graph.EventId) (serial : Nat) (opening : Option (Raw L))
     (permitted : countPermits
-      ((runtime.reactiveApplication leaks).outputs (execution.recall who))
-      (runtime.localEnvelope leaks who (execution.recall who)
+      ((runtime.reactiveApplication leaks).outputs (execution.logs who))
+      (runtime.localEnvelope leaks who (execution.logs who)
         (execution.observe (runtime.reactiveApplication leaks) who)
         ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩) = true)
     (message : Message Player (WitnessedPacket graph))

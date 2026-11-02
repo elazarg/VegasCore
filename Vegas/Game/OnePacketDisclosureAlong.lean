@@ -179,7 +179,7 @@ theorem disclosureResolves_along (wellFormed : setup.WellFormed) {who : Player}
     {control : (application setup runtime leaks).Control}
     (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     (isPrefix : TracePrefix prior trace) {r : Player} (different : r ≠ who) :
-    DisclosureResolves setup runtime leaks r (control.execution.recall r)
+    DisclosureResolves setup runtime leaks r (control.execution.logs r)
       (control.execution.observe (application setup runtime leaks) r) := by
   intro event pending owner payload binding checks outputEq codeEq node
   obtain ⟨turn, _, owned, _⟩ := pendingEvent_spec (runtime := runtime) (setup := setup) pending
@@ -218,7 +218,7 @@ theorem disclosureResolves_along (wellFormed : setup.WellFormed) {who : Player}
           control.execution.application facts.binding owner event payload binding checks outputEq
           _ active discloses value stored
       apply runtime.canonicalServiceDecision_openable leaks owner
-        (control.execution.recall owner)
+        (control.execution.logs owner)
         (control.execution.observe (application setup runtime leaks) owner) event owner payload
           binding checks outputEq codeEq node active value _ candidate accepted candidateOwner
       change binding.get? ((graph setup).playerStore owner

@@ -5,6 +5,9 @@ import Vegas.Examples.OddsEvensLedgerClient
 import Vegas.Pending.ReactiveOpeningConformance
 import Vegas.Game.NativeExitContinuation
 import Vegas.Pending.ReactiveCountVerdict
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # Native client decisions after runtime irregularities
 
@@ -246,10 +249,10 @@ example (e o : Bool) :
   cases e <;> cases o <;> decide
 
 example (e : Bool) :
-    expect (PMF.uniformOfFintype Bool)
+    expect (uniformLaw Bool)
       (fun o => (cash (.success e) (.success o) odd : ℝ)) = 100 := by
   rw [expect_eq_sum]
-  cases e <;> norm_num [Fintype.sum_bool, PMF.uniformOfFintype_apply, cash, even, odd]
+  cases e <;> norm_num [Fintype.sum_bool, uniformLaw_apply, cash, even, odd]
 
 example (other : PublicationResult Bool) (own : Bool) :
     74 ≤ cash (.success own) other even ∧ cash .failure other even = 0 := by

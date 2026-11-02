@@ -264,13 +264,13 @@ submitted. -/
 def PendingBinding (execution : (serviceApplication setup mode deadline leaks).Execution)
     (who : Player) : Prop := ∃ event payload, (serviceGraph setup mode).outputLayout event =
     .binding who payload ∧ event ∉ execution.application.config.cut.completed ∧
-    (serviceRuntime setup mode deadline).eventRecorded leaks (execution.recall who) event = true
+    (serviceRuntime setup mode deadline).eventRecorded leaks (execution.logs who) event = true
 
 /-- Every prepared slot `who` has used lies below its public binding count, or
 at it while a binding of `who` it has submitted for is unfinished. -/
 def CanonicalSlotsUsed (execution : (serviceApplication setup mode deadline leaks).Execution)
     (who : Player) : Prop := ∀ serial ∈ (serviceRuntime setup mode deadline).submittedCandidateSlots
-    leaks (execution.recall who), serial < execution.application.publicView.bindingCount who ∨
+    leaks (execution.logs who), serial < execution.application.publicView.bindingCount who ∨
     (serial = execution.application.publicView.bindingCount who ∧ PendingBinding setup leaks
         execution who)
 
@@ -289,7 +289,7 @@ theorem not_pendingBinding_at_turn {horizon : Nat}
     (event : (serviceGraph setup mode).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-        (control.execution.recall who) event = false) :
+        (control.execution.logs who) event = false) :
     ¬ PendingBinding setup leaks control.execution who := by
   rintro ⟨other, payload, _, unfinished, recorded⟩
   have facts := legalFacts setup leaks horizon scheduler control trace
@@ -326,13 +326,13 @@ theorem canonicalSlot_fresh_of_used {horizon : Nat}
     (event : (serviceGraph setup mode).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-        (control.execution.recall who) event = false) :
+        (control.execution.logs who) event = false) :
     control.execution.application.candidates.lookup
       (who, .prepared (control.execution.application.publicView.bindingCount who)) = .fresh := by
   have noPending := not_pendingBinding_at_turn trace who atTurn event turn unrecorded
   have unused : control.execution.application.publicView.bindingCount who ∉
       (serviceRuntime setup mode deadline).submittedCandidateSlots leaks
-      (control.execution.recall who) := by
+      (control.execution.logs who) := by
     intro member
     rcases valid _ member with lower | ⟨_, pending⟩
     · exact Nat.lt_irrefl _ lower
@@ -422,7 +422,7 @@ theorem canonicalSlotsUsed_respond {horizon remaining : Nat}
     {policy : (serviceApplication setup mode deadline leaks).Policy}
     (canonical : SubmitsCanonically policy who)
     {response : (serviceApplication setup mode deadline leaks).Action}
-    (chosen : response ∈ (policy (middle.recall who)
+    (chosen : response ∈ (policy (middle.logs who)
       (middle.observe (serviceApplication setup mode deadline leaks) who)).support)
     (atTurn : OwnSubmissionsAtTurn setup leaks middle who)
     (valid : CanonicalSlotsUsed setup leaks middle who) :
@@ -434,9 +434,9 @@ theorem canonicalSlotsUsed_respond {horizon remaining : Nat}
       who response
   obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle who response
   have recordedMono : ∀ event,
-      (serviceRuntime setup mode deadline).eventRecorded leaks (middle.recall who) event = true →
+      (serviceRuntime setup mode deadline).eventRecorded leaks (middle.logs who) event = true →
         (serviceRuntime setup mode deadline).eventRecorded leaks
-        ((middle.respond app who response).recall who)
+        ((middle.respond app who response).logs who)
           event = true := by
     intro event recorded
     rw [recalled]
@@ -465,7 +465,7 @@ theorem canonicalSlotsUsed_respond {horizon remaining : Nat}
     have fresh := canonicalSlot_fresh_of_used trace who atTurn valid event turn unrecorded
     have canonical := canonicalFreshSlot_canonical who (middle.observe app who).application fresh
     obtain ⟨selected, ⟨payload, layout⟩, named⟩ := canonicalServiceDecision_candidateSlot who
-      (middle.recall who) (middle.observe app who) event owned action serial slot
+      (middle.logs who) (middle.observe app who) event owned action serial slot
     rw [canonical] at selected
     cases Option.some.inj selected
     have ready := (middle.application.publicView_eventReady event).mp
@@ -577,7 +577,7 @@ theorem canonicalSlot_resources_of_used
     (event : (serviceGraph setup mode).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-        (control.execution.recall who) event = false) :
+        (control.execution.logs who) event = false) :
     control.execution.application.publicView.bindingCount who < bounds.candidateCount ∧
       control.execution.application.candidates.lookup
         (who, .prepared (control.execution.application.publicView.bindingCount who)) = .fresh ∧
@@ -607,7 +607,7 @@ submitted for, early enough to be included before the deadline within
 `bound`. -/
 def OwnFreshCalls (bound : (serviceGraph setup mode).EventId → Nat)
     (execution : (serviceApplication setup mode deadline leaks).Execution) (who : Player) : Prop :=
-  ∀ entry ∈ execution.recall who, ∀ material,
+  ∀ entry ∈ execution.logs who, ∀ material,
     entry.action.transmission = some material →
     ∃ event message, entry.emitted = some message ∧ message.sender = who ∧
       message.payload.call.event? (serviceGraph setup mode) = some event ∧
@@ -617,7 +617,7 @@ def OwnFreshCalls (bound : (serviceGraph setup mode).EventId → Nat)
 
 /-- Two fresh calls of `who` for one event emitted the same identifier. -/
 def OneCallPerEvent (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (who : Player) : Prop := ∀ first ∈ execution.recall who, ∀ second ∈ execution.recall who, ∀
+    (who : Player) : Prop := ∀ first ∈ execution.logs who, ∀ second ∈ execution.logs who, ∀
     event (firstMessage secondMessage : Message Player (WitnessedPacket (serviceGraph setup mode))),
     (serviceRuntime setup mode deadline).submittedEvent? leaks first.action = some event →
     (serviceRuntime setup mode deadline).submittedEvent? leaks second.action = some event →
@@ -683,7 +683,7 @@ private theorem freshCalls_round
       | some material =>
           obtain ⟨event, action, _turn, unrecorded, fits, decided⟩ :=
             sourceServiceTurnPolicy_submission chosen rfl
-          have canonical := runtime.canonicalServiceDecision_cases leaks who (middle.recall who)
+          have canonical := runtime.canonicalServiceDecision_cases leaks who (middle.logs who)
             (middle.observe app who) event action
           rw [← decided] at canonical
           have named : runtime.submittedEvent? leaks (⟨some material⟩ : app.Action) =
@@ -698,11 +698,11 @@ private theorem freshCalls_round
               (app.submit middle.application who material) who (middle.network.known who) material⟩
           let entry : app.PlayerEntry :=
             ⟨middle.observe app who, ⟨some material⟩, some message⟩
-          have recalled : (middle.respond app who ⟨some material⟩).recall who =
-              middle.recall who ++ [entry] := by
+          have recalled : (middle.respond app who ⟨some material⟩).logs who =
+              middle.logs who ++ [entry] := by
             simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
             rfl
-          have absent : ∀ old ∈ middle.recall who,
+          have absent : ∀ old ∈ middle.logs who,
               runtime.submittedEvent? leaks old.action ≠ some event := by
             intro old present submitted
             have recorded := (runtime.eventRecorded_iff leaks _ event).mpr ⟨old, present, submitted⟩

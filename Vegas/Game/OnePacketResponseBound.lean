@@ -65,7 +65,7 @@ theorem certificate_responseMass_le_response
       scheduler actor ((application setup runtime leaks).observe actor (some control)))
     (clear : runtime.ClearInput leaks
       ((application setup runtime leaks).observe actor (some control)))
-    (canonical : DisclosureCanonical setup runtime leaks bounds actor (control.execution.recall
+    (canonical : DisclosureCanonical setup runtime leaks bounds actor (control.execution.logs
       actor)
       (control.execution.observe (application setup runtime leaks) actor))
     (atTurn : ∀ response named, joint actor = some response →
@@ -90,7 +90,7 @@ theorem certificate_responseMass_le_response
     (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
       scheduler).mem_playedInformation (history := ⟨_, prior⟩) legal.1
   have observed : (application setup runtime leaks).observe actor (some control) =
-      some (control.execution.recall actor,
+      some (control.execution.logs actor,
         control.execution.observe (application setup runtime leaks) actor) := by
     simp [ReactiveApplication.observe, acting]
   rw [observed] at forced clear

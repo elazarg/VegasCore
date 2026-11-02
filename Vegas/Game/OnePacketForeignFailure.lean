@@ -86,17 +86,17 @@ theorem foreign_nonmain_prefix_of_firstFailure
             (some before) ⟨joint, legal⟩).support),
       TracePrefix startTrace prior ∧ TracePrefix (prior.extend joint legal realized) target ∧
       before.actor = some owner ∧ joint owner = some response ∧
-      pendingEvent setup runtime leaks owner (some (before.execution.recall owner,
+      pendingEvent setup runtime leaks owner (some (before.execution.logs owner,
         before.execution.observe (application setup runtime leaks) owner)) = some event ∧
-      (∀ previous ∈ before.execution.recall owner,
+      (∀ previous ∈ before.execution.logs owner,
         ¬ ActivatedAt setup runtime leaks owner event previous) ∧
       responseChoice setup runtime leaks bounds (initialLaw setup) horizon
         scheduler owner
-        (some (before.execution.recall owner,
+        (some (before.execution.logs owner,
           before.execution.observe (application setup runtime leaks) owner)) response ∉
         (honestChoice setup runtime leaks bounds (initialLaw setup) horizon
           scheduler source owner
-          (some (before.execution.recall owner,
+          (some (before.execution.logs owner,
             before.execution.observe (application setup runtime leaks) owner))).support := by
   have rawPrior := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
     horizon scheduler trace
@@ -127,9 +127,9 @@ theorem foreign_nonmain_prefix_of_firstFailure
           (some before) ⟨joint, legal⟩).support),
       TracePrefix startTrace prior ∧ TracePrefix (prior.extend joint legal realized) trace ∧
       before.actor = some owner ∧ joint owner = some response ∧
-      pendingEvent setup runtime leaks owner (some (before.execution.recall owner,
+      pendingEvent setup runtime leaks owner (some (before.execution.logs owner,
         before.execution.observe (application setup runtime leaks) owner)) = some event ∧
-      ∀ previous ∈ before.execution.recall owner,
+      ∀ previous ∈ before.execution.logs owner,
         ¬ ActivatedAt setup runtime leaks owner event previous := by
     rcases origin with ⟨message, member, _included, sender, named⟩ | ⟨_, entered, activated, due⟩
     · have recorded := eventRecorded_of_pending setup leaks
@@ -156,20 +156,20 @@ theorem foreign_nonmain_prefix_of_firstFailure
   have localLegal := legal.2 owner
   rw [chosen] at localLegal
   have offered : response ∈ bounds.onePacketActions runtime leaks owner
-      (before.execution.recall owner) (before.execution.observe (application setup runtime leaks)
+      (before.execution.logs owner) (before.execution.observe (application setup runtime leaks)
         owner) :=
     localLegal.2
   have selected : (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
-      owner (some (before.execution.recall owner,
+      owner (some (before.execution.logs owner,
         before.execution.observe (application setup runtime leaks) owner)) response).1 = some
           response := by
     simp only [responseChoice, dite_eq_left offered]
   have notMain : responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
     owner
-      (some (before.execution.recall owner,
+      (some (before.execution.logs owner,
         before.execution.observe (application setup runtime leaks) owner)) response ∉
       (honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler source owner
-        (some (before.execution.recall owner,
+        (some (before.execution.logs owner,
           before.execution.observe (application setup runtime leaks) owner))).support := by
     rcases before with ⟨responsesLeft, actor, earlierExecution⟩
     dsimp only at acting
@@ -247,9 +247,9 @@ theorem firstForeignFailure_not_mainActivationTraceAfter
     startTrace.length prior joint
     legal realized afterPrefix main future.length_le
   apply outside
-  have first : FirstActivation setup runtime leaks owner (some (before.execution.recall owner,
+  have first : FirstActivation setup runtime leaks owner (some (before.execution.logs owner,
       before.execution.observe (application setup runtime leaks) owner)) :=
-    ⟨before.execution.recall owner, before.execution.observe (application setup runtime leaks)
+    ⟨before.execution.logs owner, before.execution.observe (application setup runtime leaks)
       owner, originEvent,
       rfl, pending, never⟩
   have selected := supported owner acting different first

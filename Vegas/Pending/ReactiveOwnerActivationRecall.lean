@@ -29,7 +29,7 @@ theorem recalled_turn_of_ownerActivatedSince (runtime : EventGraphRuntime graph)
     (actor : graph.actor? event = some owner)
     (activated : runtime.OwnerActivatedSince leaks control.execution.environmentRecall
       event owner entered) :
-    ∃ response ∈ control.execution.recall owner,
+    ∃ response ∈ control.execution.logs owner,
       response.beforeView.application.publicView.ownTurn? owner = some event := by
   obtain ⟨activation, recorded, command, _entered, ready⟩ := activated
   obtain ⟨before, _prefixTrace, _own, response, remembered, viewed, publicEqual⟩ :=
@@ -65,7 +65,7 @@ theorem due_owner_recalled_turn_of_opportunity (runtime : EventGraphRuntime grap
     (ready : control.execution.application.config.cut.Ready event)
     (entered : Nat) (activated : control.execution.application.activatedAt event = some entered)
     (due : runtime.deadline event ≤ control.execution.application.clock - entered) :
-    ∃ response ∈ control.execution.recall owner,
+    ∃ response ∈ control.execution.logs owner,
       response.beforeView.application.publicView.ownTurn? owner = some event := by
   have occurred := opportunity event owner entered actor
     ((control.execution.application.publicView_eventReady event).mpr ready) activated (by

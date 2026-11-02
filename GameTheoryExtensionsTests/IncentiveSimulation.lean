@@ -4,6 +4,9 @@ import GameTheory.Analysis.IncentiveSimulation
 import GameTheoryExtensionsTests.IncentiveCone
 import GameTheoryExtensions.Math.Probability.Support
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # Mixing continuation comparisons and its limits
 
@@ -22,7 +25,7 @@ namespace GameTheoryExtensionsTests.IncentiveSimulation
 
 open GameTheory GameTheory.Math.Probability
 
-def coin : PMF Bool := (PMF.uniformOfFintype _)
+def coin : PMF Bool := (uniformLaw _)
 
 def source (_who : Unit) (branch : Bool) : IncentiveComparison (Bool × Bool) :=
   ⟨PMF.pure (branch, true), PMF.pure (branch, false)⟩
@@ -57,7 +60,7 @@ theorem no_single_source_prescribed (branch : Bool) :
   change coin.map id = PMF.pure branch at projected
   rw [PMF.map_id] at projected
   have mass := congrArg (fun law => (law (!branch)).toReal) projected
-  cases branch <;> norm_num [coin, toReal_uniformOfFintype_apply,
+  cases branch <;> norm_num [coin, toReal_uniformLaw_apply,
     toReal_pure_apply] at mass
 
 /-- Matching these law pairs transports every utility satisfying both source

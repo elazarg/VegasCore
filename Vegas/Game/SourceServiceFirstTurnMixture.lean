@@ -165,7 +165,7 @@ theorem canonicalServiceDecision_transmits_of_effective {horizon : Nat}
     (action : (graph setup).Action event)
     (effective : EffectiveAction control.execution.application.config event action)
     (loud : ¬ SilentAction event action) :
-    ∃ material, (runtime.canonicalServiceDecision leaks owner (control.execution.recall owner)
+    ∃ material, (runtime.canonicalServiceDecision leaks owner (control.execution.logs owner)
       (control.execution.observe (application setup runtime leaks) owner) event
         action).transmission =
         some material := by
@@ -207,7 +207,7 @@ theorem canonicalServiceDecision_transmits_of_effective {horizon : Nat}
       obtain ⟨chosen, chosenEq⟩ := canonicalFreshSlot_isSome owner
         (control.execution.observe app owner).application serial selected
       rw [actionEq, runtime.canonicalServiceDecision_binding leaks owner
-        (control.execution.recall owner) (control.execution.observe app owner) event payload
+        (control.execution.logs owner) (control.execution.observe app owner) event payload
         outputEq
         codeEq node active chosen chosenEq result]
       exact ⟨_, rfl⟩
@@ -236,13 +236,13 @@ theorem canonicalServiceDecision_transmits_of_effective {horizon : Nat}
           control.execution.application.config.store) = _
         rw [binding.get?_playerStore owner _ rfl, stored]
       have transmits := runtime.canonicalServiceDecision_openable leaks owner
-        (control.execution.recall owner) (control.execution.observe app owner) event owner payload
+        (control.execution.logs owner) (control.execution.observe app owner) event owner payload
         binding checks outputEq codeEq node active value observedStored candidate accepted
         candidateOwner
       have back := congrArg (cast (congrArg EventGraph.EventField.Action outputEq.symm)) disclose
       simp only [cast_cast, cast_eq] at back
       rw [back]
-      cases sent : (runtime.canonicalServiceDecision leaks owner (control.execution.recall owner)
+      cases sent : (runtime.canonicalServiceDecision leaks owner (control.execution.logs owner)
           (control.execution.observe app owner) event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)).transmission with
       | none => exact (transmits sent).elim
@@ -269,10 +269,10 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
       (∀ owner, (graph setup).actor? event = some owner →
         ∀ current : (application setup runtime leaks).Execution, current.application.config =
           config →
-          sourceServiceCanonicalPolicy setup runtime leaks profile owner (current.recall owner)
+          sourceServiceCanonicalPolicy setup runtime leaks profile owner (current.logs owner)
               (current.observe (application setup runtime leaks) owner) =
             law.map fun action => runtime.canonicalServiceDecision leaks owner
-              (current.recall owner) (current.observe (application setup runtime leaks) owner) event
+              (current.logs owner) (current.observe (application setup runtime leaks) owner) event
               action) ∧
       ((∀ who, (profile who).AuthenticDisclosures setup.program) →
         ∀ action ∈ law.support, EffectiveAction config event action) := by

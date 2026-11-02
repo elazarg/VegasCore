@@ -43,7 +43,7 @@ def SubmitsAtTurn (policy : (serviceApplication setup mode deadline leaks).Polic
 
 /-- Every recorded fresh submission was for its author's own turn. -/
 def SubmissionsAtTurn (execution : (serviceApplication setup mode deadline leaks).Execution) :
-    Prop := ∀ who, ∀ entry ∈ execution.recall who, ∀ event,
+    Prop := ∀ who, ∀ entry ∈ execution.logs who, ∀ event,
     (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action = some event →
     entry.beforeView.application.publicView.ownTurn? who = some event
 

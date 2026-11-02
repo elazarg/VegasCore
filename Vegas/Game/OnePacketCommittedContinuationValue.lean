@@ -71,10 +71,10 @@ theorem assembled_commitment_value_affine
     (history : (N).InformationHistory who site.1)
     {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
-    (atSite : site.1 = some (execution.recall who,
+    (atSite : site.1 = some (execution.logs who,
       execution.observe (application setup runtime leaks) who))
     (member : response ∈ bounds.onePacketActions runtime leaks who
-      (execution.recall who) (execution.observe (application setup runtime leaks) who))
+      (execution.logs who) (execution.observe (application setup runtime leaks) who))
     (material : (application setup runtime leaks).Submission)
     (sends : response.transmission = some material)
     (event : (graph setup).EventId) {serial : Nat}
@@ -154,7 +154,7 @@ theorem assembled_commitment_value_affine
       setup.protocolObserve who (some point) := by
     rw [atSite]
     exact projectView_observe setup runtime leaks who execution _ ordered point decoded
-      (execution.recall who)
+      (execution.logs who)
   have offeredAt := offered
   rw [projected] at offeredAt
   change ProtocolView.intendedMenu who setup.program

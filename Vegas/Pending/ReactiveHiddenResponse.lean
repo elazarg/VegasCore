@@ -89,18 +89,18 @@ theorem reactive_respond_hidden_congr
     (network : left.network = right.network) (receipts : left.receipts = right.receipts)
     (views : ∀ who, who ≠ hidden →
       left.application.playerView who = right.application.playerView who)
-    (recall : ∀ who, who ≠ hidden → left.recall who = right.recall who)
+    (logs : ∀ who, who ≠ hidden → left.logs who = right.logs who)
     (response : (runtime.reactiveApplication leaks).Action) :
     let first := left.respond (runtime.reactiveApplication leaks) actor response
     let second := right.respond (runtime.reactiveApplication leaks) actor response
     first.network = second.network ∧ first.receipts = second.receipts ∧
       (∀ who, who ≠ hidden →
         first.application.playerView who = second.application.playerView who) ∧
-      (∀ who, who ≠ hidden → first.recall who = second.recall who) := by
+      (∀ who, who ≠ hidden → first.logs who = second.logs who) := by
   let app := runtime.reactiveApplication leaks
   have actingView := observed_eq runtime leaks left right actor network receipts
     (views actor foreign)
-  have actingRecall := recall actor foreign
+  have actingRecall := logs actor foreign
   have networks : (left.respond app actor response).network =
       (right.respond app actor response).network := by
     rcases response with ⟨transmission⟩
@@ -136,7 +136,7 @@ theorem reactive_respond_hidden_congr
             (views actor foreign) material
           simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit,
             ↓reduceIte]
-          change left.recall actor ++ [⟨left.observe app actor, _,
+          change left.logs actor ++ [⟨left.observe app actor, _,
             some ⟨(actor, left.network.nextSerial actor), material.emit
               (app.submit left.application actor material) actor
               (left.network.known actor)⟩⟩] = _
@@ -144,6 +144,6 @@ theorem reactive_respond_hidden_congr
           rfl
     · rw [app.respond_recall_other left actor who same response,
         app.respond_recall_other right actor who same response]
-      exact recall who ordinary
+      exact logs who ordinary
 
 end Vegas.EventGraphRuntime

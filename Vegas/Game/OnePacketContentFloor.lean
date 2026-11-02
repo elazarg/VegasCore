@@ -88,7 +88,7 @@ def responseContents (assessment : setup.intendedModel.BehavioralAssessment) (wh
       leaks).ProtocolState →
       Finset ℝ
   | some control, some next =>
-      ((bounds.onePacketMenu runtime leaks).actions who (control.execution.recall who)
+      ((bounds.onePacketMenu runtime leaks).actions who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who)).image
           (contentFactor setup runtime leaks assessment who control.execution next.execution)
   | _, _ => ∅
@@ -177,7 +177,7 @@ theorem contentFloor_le_of_step (assessment : setup.intendedModel.BehavioralAsse
       rw [chosen, Option.getD_some] at positive
       rw [Option.getD_some]
       have offered : action ∈ (bounds.onePacketMenu runtime leaks).actions actor
-          (control.execution.recall actor)
+          (control.execution.logs actor)
           (control.execution.observe (application setup runtime leaks) actor) := by
         have localLegal := legal.2 actor
         rw [chosen] at localLegal

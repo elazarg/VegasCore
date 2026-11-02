@@ -93,10 +93,10 @@ theorem onePacket_recorded_not_offered {control : (application setup runtime lea
     (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
-    (recorded : runtime.eventRecorded leaks (control.execution.recall who) event = true)
+    (recorded : runtime.eventRecorded leaks (control.execution.logs who) event = true)
     (response : (application setup runtime leaks).Action)
     (named : runtime.submittedEvent? leaks response = some event) :
-    response ∉ bounds.onePacketActions runtime leaks who (control.execution.recall who)
+    response ∉ bounds.onePacketActions runtime leaks who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) := by
   intro member
   have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
@@ -127,13 +127,13 @@ theorem onePacket_recorded_not_offered {control : (application setup runtime lea
             (initialLaw setup) horizon (fun _ _ _ _ member => (List.not_mem_nil member).elim)
             rawTrace who entry entryMember earlier transmits
           have output : message ∈ (application setup runtime leaks).outputs
-              (control.execution.recall who) :=
+              (control.execution.logs who) :=
             List.mem_filterMap.mpr ⟨entry, entryMember, emits⟩
           obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions runtime leaks who _ _
             response).mp member
           have verdict : CountPermits ((application setup runtime leaks).outputs
-              (control.execution.recall who))
-              (runtime.localEnvelope leaks who (control.execution.recall who)
+              (control.execution.logs who))
+              (runtime.localEnvelope leaks who (control.execution.logs who)
                 (control.execution.observe (application setup runtime leaks) who) material) := by
             rcases permitted with silent | ⟨other, otherSends, counted⟩
             · rw [sends] at silent
@@ -142,7 +142,7 @@ theorem onePacket_recorded_not_offered {control : (application setup runtime lea
               cases Option.some.inj otherSends
               exact (countPermits_eq_true_iff _ _).mp counted
           have recalled := runtime.countRecall_history leaks rawTrace
-          have callEq : (runtime.localEnvelope leaks who (control.execution.recall who)
+          have callEq : (runtime.localEnvelope leaks who (control.execution.logs who)
               (control.execution.observe (application setup runtime leaks) who)
                 material).payload.call =
               material.call.packet := rfl
@@ -162,14 +162,14 @@ theorem onePacket_responseChoice_of_recorded {control : (application setup runti
     (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
-    (recorded : runtime.eventRecorded leaks (control.execution.recall who) event = true)
+    (recorded : runtime.eventRecorded leaks (control.execution.logs who) event = true)
     (response : (application setup runtime leaks).Action)
     (names : response = ⟨none⟩ ∨ runtime.submittedEvent? leaks response = some event) :
     responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who)) response =
       silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who)) := by
   rcases names with silent | named
   · subst silent
@@ -256,23 +256,23 @@ theorem honestChoice_silence_of_recorded (assessment : setup.intendedModel.Behav
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (recorded : runtime.eventRecorded leaks (control.execution.recall who) event = true) :
+    (recorded : runtime.eventRecorded leaks (control.execution.logs who) event = true) :
     honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who)) =
       PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))) := by
   change (honestResponse setup runtime leaks assessment who _ _).map _ = _
-  rw [show (honestResponse setup runtime leaks assessment who (control.execution.recall who)
+  rw [show (honestResponse setup runtime leaks assessment who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who)).map
       (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))) =
-      (honestResponse setup runtime leaks assessment who (control.execution.recall who)
+      (honestResponse setup runtime leaks assessment who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who)).map
         (fun _ => silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-          (some (control.execution.recall who,
+          (some (control.execution.logs who,
             control.execution.observe (application setup runtime leaks) who))) from
     map_congr_support _ fun response supported =>
       onePacket_responseChoice_of_recorded (runtime := runtime) trace who event recorded response
@@ -289,24 +289,24 @@ theorem slotChoice_silence_of_recorded (assessment : setup.intendedModel.Behavio
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (recorded : runtime.eventRecorded leaks (control.execution.recall who) event = true) :
+    (recorded : runtime.eventRecorded leaks (control.execution.logs who) event = true) :
     slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who)) =
       PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))) := by
   rw [slotChoice_eq_map (runtime := runtime) (initialLaw setup) horizon scheduler turn]
-  rw [show (slotPairs setup runtime leaks bounds assessment who (control.execution.recall who)
+  rw [show (slotPairs setup runtime leaks bounds assessment who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who)).map
       (fun pair => slotChoiceOf setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (control.execution.recall who) (control.execution.observe (application setup runtime
+        (control.execution.logs who) (control.execution.observe (application setup runtime
           leaks) who)
         event pair.1 pair.2) =
-      (slotPairs setup runtime leaks bounds assessment who (control.execution.recall who)
+      (slotPairs setup runtime leaks bounds assessment who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who)).map
         (fun _ => silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-          (some (control.execution.recall who,
+          (some (control.execution.logs who,
             control.execution.observe (application setup runtime leaks) who))) from
     map_congr_support _ fun pair _ =>
       onePacket_responseChoice_of_recorded (runtime := runtime) trace who event recorded _

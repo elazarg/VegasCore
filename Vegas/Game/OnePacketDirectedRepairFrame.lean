@@ -47,9 +47,9 @@ theorem operationalView (frame : Frame runtime leaks memory owner original repai
 /-- Foreign players have equal full decision inputs under the repair frame. -/
 theorem decisionInput {who : Player}
     (frame : Frame runtime leaks memory owner original repaired) (foreign : who ≠ owner) :
-    (original.recall who, original.observe (application setup runtime leaks) who) =
-      (repaired.recall who, repaired.observe (application setup runtime leaks) who) :=
-  Prod.ext (frame.recall who foreign) (frame.foreign_observed who foreign)
+    (original.logs who, original.observe (application setup runtime leaks) who) =
+      (repaired.logs who, repaired.observe (application setup runtime leaks) who) :=
+  Prod.ext (frame.logs who foreign) (frame.foreign_observed who foreign)
 
 /-- Replacing only the private material of a canonical binding leaves the
 owner's operational recall unchanged. Both actual signed envelopes, including
@@ -57,23 +57,23 @@ the readiness token and fresh serial, are identical. -/
 theorem operationalRecall_rawBinding
     (frame : Frame runtime leaks memory owner original repaired)
     (recalled : Vegas.operationalRecall (runtime := runtime) (setup := setup) (leaks := leaks)
-        (original.recall owner) = Vegas.operationalRecall (runtime := runtime) (repaired.recall
+        (original.logs owner) = Vegas.operationalRecall (runtime := runtime) (repaired.logs
           owner))
     (event : (graph setup).EventId) (first second : Option (Raw L)) (serial : Nat) :
     Vegas.operationalRecall (runtime := runtime)
         ((original.respond (application setup runtime leaks) owner
-          ⟨some ⟨⟨.commitment event (owner, .prepared serial), first⟩, .none⟩⟩).recall owner) =
+          ⟨some ⟨⟨.commitment event (owner, .prepared serial), first⟩, .none⟩⟩).logs owner) =
       Vegas.operationalRecall (runtime := runtime)
         ((repaired.respond (application setup runtime leaks) owner
-          ⟨some ⟨⟨.commitment event (owner, .prepared serial), second⟩, .none⟩⟩).recall owner) := by
+          ⟨some ⟨⟨.commitment event (owner, .prepared serial), second⟩, .none⟩⟩).logs owner) := by
   have publicEq := frame.publicView
   have network := frame.network
   have current := frame.operationalView
   simp only [ReactiveApplication.Execution.respond, Vegas.operationalRecall,
     List.map_append, List.map_cons, List.map_nil,
     ite_true]
-  change Vegas.operationalRecall (runtime := runtime) (original.recall owner) ++ [_] =
-    Vegas.operationalRecall (runtime := runtime) (repaired.recall owner) ++ [_]
+  change Vegas.operationalRecall (runtime := runtime) (original.logs owner) ++ [_] =
+    Vegas.operationalRecall (runtime := runtime) (repaired.logs owner) ++ [_]
   rw [recalled]
   congr 1
   apply congrArg List.singleton
@@ -94,7 +94,7 @@ theorem operationalRecall_rawBinding
 owner-local invariants needed for equality of all players' late-delivery keys. -/
 theorem lateKey (frame : Frame runtime leaks memory owner original repaired)
     (recalled : Vegas.operationalRecall (runtime := runtime) (setup := setup) (leaks := leaks)
-        (original.recall owner) = Vegas.operationalRecall (runtime := runtime) (repaired.recall
+        (original.logs owner) = Vegas.operationalRecall (runtime := runtime) (repaired.logs
           owner))
     (delivered : deliveredValue setup runtime leaks owner
         (original.observe (application setup runtime leaks) owner) =
@@ -102,9 +102,9 @@ theorem lateKey (frame : Frame runtime leaks memory owner original repaired)
         owner))
     (who : Player) :
     Vegas.lateKey setup runtime leaks who
-        (some (original.recall who, original.observe (application setup runtime leaks) who)) =
+        (some (original.logs who, original.observe (application setup runtime leaks) who)) =
       Vegas.lateKey setup runtime leaks who
-        (some (repaired.recall who, repaired.observe (application setup runtime leaks) who)) := by
+        (some (repaired.logs who, repaired.observe (application setup runtime leaks) who)) := by
   by_cases same : who = owner
   · subst who
     simp only [Vegas.lateKey]
@@ -122,7 +122,7 @@ and every player's delivery key. -/
 theorem operationalState
     (frame : Frame runtime leaks memory owner original repaired)
     (recalled : Vegas.operationalRecall (runtime := runtime) (setup := setup) (leaks := leaks)
-        (original.recall owner) = Vegas.operationalRecall (runtime := runtime) (repaired.recall
+        (original.logs owner) = Vegas.operationalRecall (runtime := runtime) (repaired.logs
           owner))
     (delivered : deliveredValue setup runtime leaks owner
         (original.observe (application setup runtime leaks) owner) =

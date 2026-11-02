@@ -29,7 +29,7 @@ theorem onePacket_opening_candidate
     (who : Player) (material : WitnessedSubmission (graph setup))
     (event : (graph setup).EventId) (candidate : Handle (graph setup)) (raw : Raw L)
     (packet : material.call.packet = .opening event candidate raw)
-    (certified : (runtime.localEnvelope leaks who (control.execution.recall who)
+    (certified : (runtime.localEnvelope leaks who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) material).payload.evidence =
         some ⟨candidate, raw⟩) :
     control.execution.application.candidates.lookup candidate = .openable raw := by
@@ -78,9 +78,9 @@ theorem opening_candidate_of_signed
     (leftFixed : original.execution.application.candidates.lookup candidate =
       .openable ⟨payload, value⟩)
     (signed : SignedBinding
-      (EarlierOwnPacket ((application setup runtime leaks).outputs (original.execution.recall
+      (EarlierOwnPacket ((application setup runtime leaks).outputs (original.execution.logs
         owner))
-        (runtime.localEnvelope leaks owner (original.execution.recall owner)
+        (runtime.localEnvelope leaks owner (original.execution.logs owner)
           (original.execution.observe (application setup runtime leaks) owner) material))
       owner candidate binding.field) :
     candidate.1 = owner ∧ repaired.execution.application.candidates.lookup candidate =

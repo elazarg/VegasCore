@@ -117,7 +117,7 @@ theorem repair_binding_history
             cases Option.some.inj same
             let execution := ReactiveApplication.Execution.initial (application setup runtime
               leaks) state
-            let memory := BindingMemory.atRecall runtime leaks (execution.recall owner)
+            let memory := BindingMemory.atRecall runtime leaks (execution.logs owner)
             refine ⟨{
               sourceState := rfl
               memory := memory

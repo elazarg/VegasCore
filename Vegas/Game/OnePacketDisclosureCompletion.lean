@@ -168,7 +168,7 @@ theorem accepted_until_continuation
                 (initialLaw setup) horizon _ rawPrior
               obtain ⟨first, last, split⟩ := priorInvariant.2.1
               have recorded : message ∈ (application setup runtime leaks).outputs
-                  (before.execution.recall who) := by
+                  (before.execution.logs who) := by
                 rw [split]
                 exact List.mem_filterMap.mpr ⟨entry, by simp, priorInvariant.2.2.1⟩
               rw [← recalled who] at recorded

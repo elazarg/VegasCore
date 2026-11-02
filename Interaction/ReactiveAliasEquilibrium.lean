@@ -19,11 +19,11 @@ namespace Interaction.ReactiveApplication.SubmissionNormalization
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 open GameTheory.Protocol.InformationModel
 
-variable {Principal : Type} [Fintype Principal] [DecidableEq Principal]
+variable {Principal : Type} [Finite Principal] [DecidableEq Principal]
   {app : ReactiveApplication Principal}
   (normal : app.SubmissionNormalization) (raw : app.ResponseMenu)
   (stable : ∀ who past view,
-    raw.actions who (normal.recall who past) view = raw.actions who past view)
+    raw.actions who (normal.logs who past) view = raw.actions who past view)
   (closed : ∀ who past view response, response ∈ raw.actions who past view →
     normal.action who past view response ∈ raw.actions who past view)
   (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
@@ -37,6 +37,7 @@ theorem canonical_initial_stateLaw
         (source who)) fuel).map (fun history => normal.state history.state)) =
       (((normal.menu raw).information initial horizon scheduler).runBehavioral source fuel).map
         History.state := by
+  let : Fintype Principal := Fintype.ofFinite Principal
   have law := normal.runBehavioral_projection raw stable initial horizon scheduler
     (fun who => normal.canonicalPolicy raw stable closed initial horizon scheduler who
       (source who)) source
@@ -64,6 +65,7 @@ theorem canonical_assessmentLaw
           raw).information initial horizon scheduler).truncatedRunner (2 * horizon + 1))
         source (normal.site raw stable initial horizon scheduler who original)
           (source.strategy who)).map History.state := by
+  let : Fintype Principal := Fintype.ofFinite Principal
   simp only [assessmentLawWith, GameTheory.Profile.update_eq_self]
   rw [strategy, ← beliefs, PMF.bind_map, PMF.map_bind, PMF.map_bind]
   apply bind_congr_on_support _
@@ -99,6 +101,7 @@ theorem aliasDeviation_assessmentLaw
         source (normal.site raw stable initial horizon scheduler who original)
           (normal.aliasDeviation raw initial horizon scheduler who past alternative)).map
             History.state := by
+  let : Fintype Principal := Fintype.ofFinite Principal
   simp only [assessmentLawWith]
   rw [strategy, ← beliefs, PMF.bind_map, PMF.map_bind, PMF.map_bind]
   apply bind_congr_on_support _
@@ -128,6 +131,7 @@ def aliasIncentiveSimulation
       ((raw.information initial horizon scheduler).assessmentComparisonWith
         ((raw.information initial horizon scheduler).truncatedRunner (2 * horizon + 1))
         (fun history => normal.state history.state) target) := by
+  let : Fintype Principal := Fintype.ofFinite Principal
   have hasData (who : Principal)
       (original : (raw.information initial horizon scheduler).InformationSite who) :
       ∃ data, original.1 = some data := by
@@ -180,6 +184,7 @@ theorem exists_canonical_sequentialEquilibrium [app.FiniteNature initial schedul
           (2 * horizon + 1)).map (fun history => normal.state history.state)) =
         (((normal.menu raw).information initial horizon scheduler).runBehavioral source.strategy
           (2 * horizon + 1)).map History.state := by
+  let : Fintype Principal := Fintype.ofFinite Principal
   obtain ⟨target, strategy, consistent, beliefs⟩ :=
     normal.exists_canonical_consistent raw stable closed initial horizon scheduler source
       equilibrium.2

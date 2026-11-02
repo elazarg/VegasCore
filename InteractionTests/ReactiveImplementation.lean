@@ -3,6 +3,9 @@
 import Interaction.ReactiveImplementation
 import GameTheoryExtensions.Math.Probability.Uniform
 import GameTheory.Core.Deviation
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # Private state stays outside the reactive game
 
@@ -34,7 +37,7 @@ private abbrev app : ReactiveApplication Bool where
 private def send (bit : Bool) : app.Action := ⟨some bit⟩
 
 private def retainedBit : app.Implementation Bool where
-  initial := (PMF.uniformOfFintype _)
+  initial := (uniformLaw _)
   respond bit _ := PMF.pure (send bit, bit)
 
 private def scheduler : app.Scheduler := fun _ _ => PMF.pure (.activate false)
@@ -63,10 +66,10 @@ theorem private_two (bit : Bool) :
 /-- Behavioral realization retains the correlation between the two packets. -/
 theorem behavioral_two :
     app.runRounds scheduler (Function.update players false retainedBit.policy) 2 initial =
-      (PMF.uniformOfFintype Bool).map twice := by
+      (uniformLaw Bool).map twice := by
   unfold initial
   rw [← retainedBit.realize_initial false players scheduler 2 ()]
-  change (PMF.uniformOfFintype Bool).bind _ = _
+  change (uniformLaw Bool).bind _ = _
   rw [← PMF.bind_pure_comp, Function.comp_def]
   apply bind_congr_on_support _
   intro bit _
@@ -74,7 +77,7 @@ theorem behavioral_two :
 
 theorem correlated_packets (bit : Bool) :
     (twice bit).network.pending = [⟨(false, 0), bit⟩, ⟨(false, 1), bit⟩] ∧
-      ((twice bit).recall false).length = 2 := ⟨rfl, rfl⟩
+      ((twice bit).logs false).length = 2 := ⟨rfl, rfl⟩
 
 private def counter (initialLaw : PMF Nat) : app.Implementation Nat where
   initial := initialLaw

@@ -28,7 +28,7 @@ open SourceProgram
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability GameTheory.Enforcement Interaction EventGraphRuntime
 
-variable {Player : Type} [DecidableEq Player] [Fintype Player]
+variable {Player : Type} [DecidableEq Player] [Finite Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
 namespace AsyncServiceSpec
@@ -133,6 +133,7 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
               (fun config => (config.state, config.defaults)),
             fun who => (service.setup.protocolReadout final.state).elim 0
               (fun state => utility (service.setup.parameterOutcome parameter state) who)))) := by
+  let : Fintype Player := Fintype.ofFinite Player
   intro forfeited base payoff settle clients firstTurn
   obtain ⟨sourceNash, _, sourceLaw⟩ := service.setup.intended_forfeit_isεNash_preserved
     (sourceService_finiteBindingTypes service.setup service.bounds service.values)

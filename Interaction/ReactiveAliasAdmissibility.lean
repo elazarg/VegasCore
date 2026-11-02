@@ -21,7 +21,7 @@ open GameTheory.Protocol GameTheory.Math.Probability
 variable {Principal : Type} {app : ReactiveApplication Principal}
   (normal : app.SubmissionNormalization) (raw : app.ResponseMenu)
   (stable : ∀ who past view,
-    raw.actions who (normal.recall who past) view = raw.actions who past view)
+    raw.actions who (normal.logs who past) view = raw.actions who past view)
 
 include stable in
 theorem aliasImplementation_respond_admissible
@@ -35,7 +35,7 @@ theorem aliasImplementation_respond_admissible
     result.1 ∈ (normal.menu raw).actions who past view := by
   classical
   by_cases usable : names.length = past.length ∧
-      normal.recall who (restoreActions past names) = past
+      normal.logs who (restoreActions past names) = past
   · dsimp only [aliasImplementation] at supported
     rw [ite_eq_left usable, PMF.support_map] at supported
     obtain ⟨response, supported, rfl⟩ := supported
@@ -47,7 +47,7 @@ theorem aliasImplementation_respond_admissible
     · change normal.action who past view response =
         normal.action who (restoreActions past names) view response
       calc
-        _ = normal.action who (normal.recall who (restoreActions past names)) view response :=
+        _ = normal.action who (normal.logs who (restoreActions past names)) view response :=
           congrArg (fun remembered => normal.action who remembered view response) usable.2.symm
         _ = _ := normal.action_recall who (restoreActions past names) view response
   · dsimp only [aliasImplementation] at supported

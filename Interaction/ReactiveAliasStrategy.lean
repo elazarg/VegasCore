@@ -23,7 +23,7 @@ open GameTheory.Protocol GameTheory.Math.Probability Filter
 variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication Principal}
   (normal : app.SubmissionNormalization) (raw : app.ResponseMenu)
   (stable : ∀ who past view,
-    raw.actions who (normal.recall who past) view = raw.actions who past view)
+    raw.actions who (normal.logs who past) view = raw.actions who past view)
   (closed : ∀ who past view response, response ∈ raw.actions who past view →
     normal.action who past view response ∈ raw.actions who past view)
   (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)

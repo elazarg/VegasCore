@@ -99,12 +99,12 @@ private theorem first_of_never
     (execution : (application setup runtime leaks).Execution) (owner : Player)
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? owner = some event)
-    (never : ∀ entry ∈ execution.recall owner,
+    (never : ∀ entry ∈ execution.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner ≠ some event) :
-    serviceTurn setup .sequential runtime.deadline leaks owner event (execution.recall owner)
+    serviceTurn setup .sequential runtime.deadline leaks owner event (execution.logs owner)
       (execution.observe (application setup runtime leaks) owner) = some 0 := by
   change (if execution.application.publicView.ownTurn? owner = some event then
-    some ((execution.recall owner).countP fun entry =>
+    some ((execution.logs owner).countP fun entry =>
       decide (entry.beforeView.application.publicView.ownTurn? owner = some event)) else none) =
         some 0
   simp only [turn, ↓reduceIte, Option.some.injEq]
@@ -121,7 +121,7 @@ private theorem waiting_no_pending
       horizon scheduler).Trace (some control))
     (owner : Player) (event : (graph setup).EventId)
     (truthful : OwnSubmissionsAtTurn setup leaks control.execution owner)
-    (never : ∀ entry ∈ control.execution.recall owner,
+    (never : ∀ entry ∈ control.execution.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner ≠ some event) :
     ∀ message ∈ control.execution.network.pending, message.sender = owner →
       message.payload.call.event? (graph setup) ≠ some event := by
@@ -129,7 +129,7 @@ private theorem waiting_no_pending
   intro message pending sender named
   obtain ⟨entry, entryPresent, material, transmitted, _emitted, state, known, packet⟩ :=
     facts.provenance.pending message pending
-  have old : entry ∈ control.execution.recall owner := sender ▸ entryPresent
+  have old : entry ∈ control.execution.logs owner := sender ▸ entryPresent
   have call : material.call.packet = message.payload.call :=
     congrArg (fun value => value.call) packet
   have submitted : runtime.submittedEvent? leaks entry.action = some event := by
@@ -154,14 +154,14 @@ private theorem first_callback_runUntil
       ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
         (some ⟨remaining, some owner, execution⟩) →
       ∀ ready : execution.application.config.cut.Ready event,
-      serviceTurn setup .sequential runtime.deadline leaks owner event (execution.recall owner)
+      serviceTurn setup .sequential runtime.deadline leaks owner event (execution.logs owner)
         (execution.observe (application setup runtime leaks) owner) = some 0 →
       execution.application.publicView.InclusionFitsDeadline runtime bound event →
       OwnSubmissionsAtTurn setup leaks execution owner →
-      (∀ entry ∈ execution.recall owner,
+      (∀ entry ∈ execution.logs owner,
         entry.beforeView.application.publicView.ownTurn? owner ≠ some event) →
       EffectiveAction execution.application.config event action →
-      ∀ response ∈ (players owner (execution.recall owner)
+      ∀ response ∈ (players owner (execution.logs owner)
           (execution.observe (application setup runtime leaks) owner)).support,
         (((application setup runtime leaks).runUntil scheduler players
           (fun final => event ∈ final.application.config.cut.completed) remaining
@@ -178,7 +178,7 @@ private theorem first_callback_runUntil
         (some ⟨remaining, none, execution⟩) →
       ∀ ready : execution.application.config.cut.Ready event,
       OwnSubmissionsAtTurn setup leaks execution owner →
-      (∀ entry ∈ execution.recall owner,
+      (∀ entry ∈ execution.logs owner,
         entry.beforeView.application.publicView.ownTurn? owner ≠ some event) →
       ActivationsAnswered setup leaks execution →
       EffectiveAction execution.application.config event action →
@@ -263,8 +263,8 @@ private theorem first_callback_runUntil
               execution.application.config :=
             ((runtime.reactive_respond_application leaks middle who response).1).trans sameMiddle
           have ownerRecall := app.respond_recall_other middle who owner (Ne.symm same) response
-          have nextRecall : (middle.respond app who response).recall owner =
-              execution.recall owner := ownerRecall.trans (congrFun recallEq owner)
+          have nextRecall : (middle.respond app who response).logs owner =
+              execution.logs owner := ownerRecall.trans (congrFun recallEq owner)
           have readyNext : (middle.respond app who response).application.config.cut.Ready event :=
             sameNext.symm ▸ ready
           exact (ih _ nextTrace readyNext (by
@@ -305,9 +305,9 @@ theorem sourceService_firstTurn_mixture
     (law : PMF ((graph setup).Action event))
     (callback : ∀ current : (application setup runtime leaks).Execution,
       current.application.config = execution.application.config →
-      sourceServiceCanonicalPolicy setup runtime leaks profile owner (current.recall owner)
+      sourceServiceCanonicalPolicy setup runtime leaks profile owner (current.logs owner)
           (current.observe (application setup runtime leaks) owner) =
-        law.map (fun action => runtime.canonicalServiceDecision leaks owner (current.recall owner)
+        law.map (fun action => runtime.canonicalServiceDecision leaks owner (current.logs owner)
           (current.observe (application setup runtime leaks) owner) event action)) :
     let players := serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
       (firstTurnTiming setup turns) profile
@@ -346,9 +346,9 @@ theorem sourceService_firstTurn_mixture
       invariant current → ¬ stop current →
       ∀ command ∈ (scheduler current.environmentRecall (current.observeEnvironment app)).support,
       ∀ middle ∈ (current.environmentStep app command).support,
-        command.actor? app = some owner → first (middle.recall owner) (middle.observe app owner) →
-        players owner (middle.recall owner) (middle.observe app owner) =
-          law.bind (fun action => member action (middle.recall owner)
+        command.actor? app = some owner → first (middle.logs owner) (middle.observe app owner) →
+        players owner (middle.logs owner) (middle.observe app owner) =
+          law.bind (fun action => member action (middle.logs owner)
             (middle.observe app owner)) := by
     intro remaining current _ valid unfinished command _ middle moved active firstNow
     have commandEq : command = .activate owner := by
@@ -358,12 +358,12 @@ theorem sourceService_firstTurn_mixture
     have sameConfig : middle.application.config = execution.application.config :=
       (congrArg EventGraphRuntime.State.config sameApplication).trans (valid unfinished)
     change serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
-        (firstTurnTiming setup turns) profile owner (middle.recall owner)
+        (firstTurnTiming setup turns) profile owner (middle.logs owner)
           (middle.observe app owner) = _
     rw [sourceServiceTurnPolicy_firstTurn owned firstNow]
     simp only [member, first, firstNow, ↓reduceIte]
     unfold serviceCanonicalOpportunity decidedOpportunity
-    by_cases recorded : runtime.eventRecorded leaks (middle.recall owner) event = true
+    by_cases recorded : runtime.eventRecorded leaks (middle.logs owner) event = true
     · simp only [recorded, ↓reduceIte, PMF.bind_const]
     · have notRecorded := Bool.eq_false_of_not_eq_true recorded
       simp only [notRecorded, Bool.false_eq_true, ↓reduceIte]
@@ -372,7 +372,7 @@ theorem sourceService_firstTurn_mixture
       · simp only [fits, ↓reduceIte]
         have compiled := congrArg (fun responseLaw : PMF app.Action => responseLaw.bind
           (fun response => if response.transmission = none then
-            app.silentPolicy (middle.recall owner) (middle.observe app owner)
+            app.silentPolicy (middle.logs owner) (middle.observe app owner)
           else PMF.pure response)) (callback middle sameConfig)
         exact compiled.trans (by rw [PMF.bind_map]; rfl)
       · simp only [fits, ↓reduceIte, PMF.bind_const]
@@ -401,10 +401,10 @@ theorem sourceService_firstTurn_mixture
   obtain ⟨trace⟩ := app.raw_trace_roundsFrom (initialLaw setup) horizon scheduler
     background
     execution.environmentRecall.length bounded execution boundary.supported
-  have clean : ∀ before entry, before ++ [entry] <+: execution.recall owner →
+  have clean : ∀ before entry, before ++ [entry] <+: execution.logs owner →
       ¬ first before entry.beforeView := by
     intro before entry prefixed earlier
-    have memberEntry : entry ∈ execution.recall owner := prefixed.subset (by simp)
+    have memberEntry : entry ∈ execution.logs owner := prefixed.subset (by simp)
     exact boundary.untouched event le_rfl owner entry memberEntry
       (PublicView.ownTurn?_spec _ owner event (sourceServiceTurn_first earlier).1).1
   have mixed := app.runUntil_mixture_at_first (initialLaw setup) horizon scheduler background owner
@@ -541,23 +541,23 @@ private theorem firstTurn_fixed_accepted_runUntil_bind_runPlan
     (ready : execution.application.config.cut.Ready event)
     (turn : execution.application.publicView.ownTurn? owner = some event)
     (first : serviceTurn setup .sequential runtime.deadline leaks owner event
-      (execution.recall owner) (execution.observe (application setup runtime leaks) owner) = some 0)
+      (execution.logs owner) (execution.observe (application setup runtime leaks) owner) = some 0)
     (fits : execution.application.publicView.InclusionFitsDeadline runtime bound event)
     (truthful : OwnSubmissionsAtTurn setup leaks execution owner)
-    (never : ∀ entry ∈ execution.recall owner,
+    (never : ∀ entry ∈ execution.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner ≠ some event)
     (material : (application setup runtime leaks).Submission)
-    (sends : (runtime.canonicalServiceDecision leaks owner (execution.recall owner)
+    (sends : (runtime.canonicalServiceDecision leaks owner (execution.logs owner)
       (execution.observe (application setup runtime leaks) owner) event action).transmission =
         some material)
     (response : (application setup runtime leaks).Action)
     (selected : response ∈ (if serviceTurn setup .sequential runtime.deadline leaks owner event
-        (execution.recall owner)
+        (execution.logs owner)
           (execution.observe (application setup runtime leaks) owner) = some 0
-      then decidedOpportunity setup leaks bound owner event action (execution.recall owner)
+      then decidedOpportunity setup leaks bound owner event action (execution.logs owner)
         (execution.observe (application setup runtime leaks) owner)
       else serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
-        (firstTurnTiming setup turns) source owner (execution.recall owner)
+        (firstTurnTiming setup turns) source owner (execution.logs owner)
           (execution.observe (application setup runtime leaks) owner)).support) :
     let players := serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
       (firstTurnTiming setup turns) source
@@ -581,10 +581,10 @@ private theorem firstTurn_fixed_accepted_runUntil_bind_runPlan
     if serviceTurn setup .sequential runtime.deadline leaks owner event past view = some 0 then
       decidedOpportunity setup leaks bound owner event action past view
     else players owner past view
-  let canonical := runtime.canonicalServiceDecision leaks owner (execution.recall owner)
+  let canonical := runtime.canonicalServiceDecision leaks owner (execution.logs owner)
     (execution.observe app owner) event action
-  have unsent : runtime.eventRecorded leaks (execution.recall owner) event = false := by
-    cases recorded : runtime.eventRecorded leaks (execution.recall owner) event with
+  have unsent : runtime.eventRecorded leaks (execution.logs owner) event = false := by
+    cases recorded : runtime.eventRecorded leaks (execution.logs owner) event with
     | false => rfl
     | true =>
         obtain ⟨entry, remembered, submitted⟩ :=
@@ -596,13 +596,13 @@ private theorem firstTurn_fixed_accepted_runUntil_bind_runPlan
     cases impossible
   have chosen : response = canonical := by
     rw [ite_eq_left first] at selected
-    change response ∈ (if runtime.eventRecorded leaks (execution.recall owner) event then
-      app.silentPolicy (execution.recall owner) (execution.observe app owner) else
+    change response ∈ (if runtime.eventRecorded leaks (execution.logs owner) event then
+      app.silentPolicy (execution.logs owner) (execution.observe app owner) else
       if execution.application.publicView.InclusionFitsDeadline runtime bound event then
         if canonical.transmission = none then
-          app.silentPolicy (execution.recall owner) (execution.observe app owner)
+          app.silentPolicy (execution.logs owner) (execution.observe app owner)
         else PMF.pure canonical else
-          app.silentPolicy (execution.recall owner)
+          app.silentPolicy (execution.logs owner)
             (execution.observe app owner)).support at selected
     simpa only [unsent, Bool.false_eq_true, ↓reduceIte, ite_eq_left fits, ite_eq_right loud,
       PMF.mem_support_pure_iff] using selected
@@ -612,10 +612,10 @@ private theorem firstTurn_fixed_accepted_runUntil_bind_runPlan
   let message := sentEnvelope setup runtime leaks execution owner material
   have configEq : after.application.config = execution.application.config :=
     (runtime.reactive_respond_application leaks execution owner canonical).1
-  have recalled : after.recall owner = execution.recall owner ++ [entry] := by
+  have recalled : after.logs owner = execution.logs owner ++ [entry] := by
     rw [runtime.respond_recall leaks execution owner owner canonical, ite_eq_left rfl]
     rfl
-  have recorded : entry ∈ after.recall owner := by
+  have recorded : entry ∈ after.logs owner := by
     rw [recalled]
     exact List.mem_append_right _ (List.mem_singleton_self _)
   have call : FreshCall setup leaks owner event bound entry message := by
@@ -626,7 +626,7 @@ private theorem firstTurn_fixed_accepted_runUntil_bind_runPlan
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨_, rfl⟩) horizon scheduler trace
-  have sole : ∀ other ∈ after.recall owner,
+  have sole : ∀ other ∈ after.logs owner,
       ¬ EmitsOtherFor runtime leaks other event message.id := by
     intro other remembered emits
     rw [recalled] at remembered
@@ -739,7 +739,7 @@ private theorem firstTurn_fixed_transmitting_runUntil_bind_runPlan
   have truthful : OwnSubmissionsAtTurn setup leaks execution owner :=
     atTurn.roundsFrom setup leaks (initialLaw setup) execution.environmentRecall.length execution
       boundary.supported
-  have never : ∀ entry ∈ execution.recall owner,
+  have never : ∀ entry ∈ execution.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner ≠ some event := by
     intro entry remembered turn
     exact boundary.untouched event le_rfl owner entry remembered

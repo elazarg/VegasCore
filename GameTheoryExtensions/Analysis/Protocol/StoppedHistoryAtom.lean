@@ -11,7 +11,7 @@ namespace GameTheory.Protocol.InformationModel
 
 open ExecutionProtocol GameTheory.Math.Probability
 
-variable {Player : Type*} [Fintype Player] {E : ExecutionProtocol Player}
+variable {Player : Type*} {E : ExecutionProtocol Player} [E.FiniteMovers]
   (model : InformationModel E)
 
 /-- The existing stopped evaluator reaches only genuine extensions of its full

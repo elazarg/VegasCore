@@ -24,14 +24,14 @@ private theorem old_response_mem_before (inputs : compiled.Inputs)
     (valid : before.application.Invariant inputs)
     (reached : after ∈ ((app).runRounds scheduler players count before).support)
     (owner : OddsEvens.Player) (entry : app.PlayerEntry)
-    (recorded : entry ∈ after.recall owner)
+    (recorded : entry ∈ after.logs owner)
     (old : entry.beforeView.application.publicView.clock <
-      before.application.clock) : entry ∈ before.recall owner := by
+      before.application.clock) : entry ∈ before.logs owner := by
   let predicate := fun execution : (app).Execution =>
     execution.application.Invariant inputs ∧
       before.application.clock ≤ execution.application.clock ∧
-      ∀ who remembered, remembered ∈ execution.recall who →
-        remembered ∈ before.recall who ∨ before.application.clock ≤
+      ∀ who remembered, remembered ∈ execution.logs who →
+        remembered ∈ before.logs who ∨ before.application.clock ≤
           remembered.beforeView.application.publicView.clock
   have invariant : (app).PolicyInvariant players predicate := {
     respond := by
@@ -99,7 +99,7 @@ theorem processing_segment (players : OddsEvens.Player → app.Policy)
       execution).support) :
     next.network.pending = [] ∧
       next.network.ledger = execution.network.ledger ++ execution.network.pending ∧
-      next.recall = execution.recall ∧
+      next.logs = execution.logs ∧
       next.environmentRecall.length = execution.environmentRecall.length +
         execution.network.pending.length ∧
       ∀ message ∈ execution.network.pending,
@@ -149,12 +149,12 @@ theorem submitted_receipt_after_block (remaining cycle count : Nat)
     (players : OddsEvens.Player → app.Policy) (room : packetBudget ≤ count)
     (reached : after ∈ (app.runRounds scheduler players count before).support)
     (owner : OddsEvens.Player) (entry : app.PlayerEntry)
-    (recorded : entry ∈ before.recall owner)
+    (recorded : entry ∈ before.logs owner)
     (message : Message OddsEvens.Player app.Payload) (emitted : entry.emitted = some message) :
     ∃ accepted, (message.id, accepted) ∈ after.receipts := by
   have inputRecall := app.history_inputRecall initial horizon scheduler trace
   have submitted : message ∈ before.network.inputs := by
-    have remembered : message ∈ app.outputs (before.recall owner) :=
+    have remembered : message ∈ app.outputs (before.logs owner) :=
       List.mem_filterMap.mpr ⟨entry, recorded, emitted⟩
     rw [← inputRecall owner] at remembered
     exact (List.mem_filter.mp remembered).1
@@ -180,7 +180,7 @@ theorem receipt_after_boundary (inputs : compiled.Inputs)
       (ReactiveApplication.Execution.initial app (State.initial inputs))).support)
     (suffixReached : execution ∈ (app.runRounds scheduler players count before).support)
     (owner : OddsEvens.Player) (entry : app.PlayerEntry)
-    (recorded : entry ∈ execution.recall owner)
+    (recorded : entry ∈ execution.logs owner)
     (old : entry.beforeView.application.publicView.clock < cycle)
     (message : Message OddsEvens.Player app.Payload) (emitted : entry.emitted = some message) :
     ∃ accepted, (message.id, accepted) ∈ execution.receipts := by
@@ -228,7 +228,7 @@ theorem initialized_run_receipt (inputs : compiled.Inputs)
     (reached : execution ∈ (app.runRounds scheduler players used
       (ReactiveApplication.Execution.initial app (State.initial inputs))).support)
     (clock : execution.application.clock = used / width)
-    (owner : OddsEvens.Player) (entry : app.PlayerEntry) (recorded : entry ∈ execution.recall owner)
+    (owner : OddsEvens.Player) (entry : app.PlayerEntry) (recorded : entry ∈ execution.logs owner)
     (message : Message OddsEvens.Player app.Payload) (emitted : entry.emitted = some message)
     (elapsed : entry.beforeView.application.publicView.clock + 2 <
       execution.application.clock) :
@@ -252,7 +252,7 @@ theorem initialized_run_receipt (inputs : compiled.Inputs)
 receipt. The claim includes off-path traffic and histories after exclusion. -/
 theorem idle_emission_receipt (remaining : Nat) (execution : app.Execution)
     (trace : (app.protocol initial horizon scheduler).Trace (some ⟨remaining, none, execution⟩))
-    (owner : OddsEvens.Player) (entry : app.PlayerEntry) (recorded : entry ∈ execution.recall owner)
+    (owner : OddsEvens.Player) (entry : app.PlayerEntry) (recorded : entry ∈ execution.logs owner)
     (message : Message OddsEvens.Player app.Payload) (emitted : entry.emitted = some message)
     (elapsed : entry.beforeView.application.publicView.clock + 2 <
       execution.application.clock) :
@@ -283,7 +283,7 @@ clock, so the idle receipt bound also covers active raw controls. -/
 theorem emission_receipt (current : app.Control)
     (trace : (app.protocol initial horizon scheduler).Trace (some current))
     (owner : OddsEvens.Player) (entry : app.PlayerEntry)
-    (recorded : entry ∈ current.execution.recall owner)
+    (recorded : entry ∈ current.execution.logs owner)
     (message : Message OddsEvens.Player app.Payload) (emitted : entry.emitted = some message)
     (elapsed : entry.beforeView.application.publicView.clock + 2 <
       current.execution.application.clock) :
@@ -308,7 +308,7 @@ theorem protectedInclusion :
     ProtectedInclusion runtime leaks initial horizon scheduler (fun _ => 2) := by
   intro current trace event owner _acting earlier later entry message recalled emitted _sender
     _event _ready _sole _unfinished elapsed
-  have member : entry ∈ current.execution.recall owner := by
+  have member : entry ∈ current.execution.logs owner := by
     rw [recalled]
     exact List.mem_append_right _ List.mem_cons_self
   exact emission_receipt current trace owner entry member message emitted elapsed

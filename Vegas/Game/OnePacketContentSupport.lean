@@ -156,7 +156,7 @@ theorem onePacket_content_pos (assessment : setup.intendedModel.BehavioralAssess
       scheduler).Trace (some control))
     (who : Player) (response : (application setup runtime leaks).Action)
     (member : response ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who))
     (material : (application setup runtime leaks).Submission)
     (sends : response.transmission = some material) (after : (application setup runtime
@@ -164,7 +164,7 @@ theorem onePacket_content_pos (assessment : setup.intendedModel.BehavioralAssess
     (positive : 0 < contentFactor setup runtime leaks assessment who control.execution after
       response) :
     ∃ event, control.execution.application.publicView.ownTurn? who = some event ∧
-      runtime.eventRecorded leaks (control.execution.recall who) event = false ∧
+      runtime.eventRecorded leaks (control.execution.logs who) event = false ∧
       material.call.packet.event? (graph setup) = some event := by
   obtain ⟨named, action, packetEvent, sent, encoded⟩ :=
     onePacket_sentSourceAction (runtime := runtime) who _ _ response member material sends after
@@ -177,7 +177,7 @@ theorem onePacket_content_pos (assessment : setup.intendedModel.BehavioralAssess
     rw [sent] at positive
     exact (PMF.mem_support_iff _ _).mpr (ENNReal.toReal_pos_iff.mp positive).1.ne'
   have supported : some action ∈ (asIfHonestProfile setup runtime leaks assessment who
-      (some (control.execution.recall who,
+      (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who))).support := weighted
   obtain ⟨rank, point, ordered, decoded⟩ :=
     onePacket_decodes (runtime := runtime) (setup.intendedOpeningProfile assessment.strategy) trace
@@ -203,7 +203,7 @@ theorem onePacket_content_pos (assessment : setup.intendedModel.BehavioralAssess
         encodeEventAction?_event_unique setup.program named event action encoded atTurn
       subst same
       refine ⟨named, rfl, ?_, packetEvent⟩
-      cases recorded : runtime.eventRecorded leaks (control.execution.recall who) named
+      cases recorded : runtime.eventRecorded leaks (control.execution.logs who) named
         with
       | false => rfl
       | true =>
@@ -228,13 +228,13 @@ theorem onePacket_content_pos (assessment : setup.intendedModel.BehavioralAssess
                 rawTrace who entry entryMember earlier transmits
               obtain ⟨message, emits, call⟩ := emitted
               have output : message ∈ (application setup runtime leaks).outputs
-                  (control.execution.recall who) :=
+                  (control.execution.logs who) :=
                 List.mem_filterMap.mpr ⟨entry, entryMember, emits⟩
               obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions runtime leaks who _ _
                 response).mp member
               have verdict : CountPermits ((application setup runtime leaks).outputs
-                  (control.execution.recall who))
-                  (runtime.localEnvelope leaks who (control.execution.recall who)
+                  (control.execution.logs who))
+                  (runtime.localEnvelope leaks who (control.execution.logs who)
                     (control.execution.observe (application setup runtime leaks) who) material) :=
                       by
                 rcases permitted with silent | ⟨other, otherSends, counted⟩
@@ -244,7 +244,7 @@ theorem onePacket_content_pos (assessment : setup.intendedModel.BehavioralAssess
                   cases Option.some.inj otherSends
                   exact (countPermits_eq_true_iff _ _).mp counted
               have recalled := runtime.countRecall_history leaks rawTrace
-              have callEq : (runtime.localEnvelope leaks who (control.execution.recall who)
+              have callEq : (runtime.localEnvelope leaks who (control.execution.logs who)
                   (control.execution.observe (application setup runtime leaks) who)
                     material).payload.call =
                   material.call.packet := rfl

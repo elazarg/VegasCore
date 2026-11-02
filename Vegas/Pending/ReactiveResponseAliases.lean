@@ -49,7 +49,7 @@ theorem rawMenu_recall (who : Player)
     (past : List (runtime.reactiveApplication leaks).PlayerEntry)
     (view : (runtime.reactiveApplication leaks).PlayerView) :
     (bounds.rawMenu runtime leaks).actions who
-        ((runtime.reactiveNormalization leaks).recall who past) view =
+        ((runtime.reactiveNormalization leaks).logs who past) view =
       (bounds.rawMenu runtime leaks).actions who past view :=
   bounds.rawMenu_eq_of_outputs runtime leaks who _ _ view
     ((runtime.reactiveNormalization leaks).recall_outputs who past)

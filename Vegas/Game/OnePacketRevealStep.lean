@@ -85,7 +85,7 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (unsent : runtime.eventRecorded leaks (control.execution.recall who) event = false)
+    (unsent : runtime.eventRecorded leaks (control.execution.logs who) event = false)
     {owner : Player} {payload : L.Ty} {binding : EventGraph.FieldRef (graph setup).layout
       (.binding owner payload)}
     {checks : List (EventGraph.GuardCheck (graph setup).layout payload)}
@@ -93,17 +93,17 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .resolve owner payload binding checks}
     (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
-    (canonical : DisclosureCanonical setup runtime leaks bounds who (control.execution.recall who)
+    (canonical : DisclosureCanonical setup runtime leaks bounds who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who))
     (response : (application setup runtime leaks).Action)
     (member : response ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who))
     (positive : 0 < contentFactor setup runtime leaks assessment who control.execution
       (control.execution.respond (application setup runtime leaks) who response) response)
     (choice : (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
       scheduler).Choice who
-      (some (control.execution.recall who,
+      (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who)))
     (chosen : choice.1 = some response) :
     (honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who _
@@ -111,7 +111,7 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
       contentFactor setup runtime leaks assessment who control.execution
           (control.execution.respond (application setup runtime leaks) who response) response *
         transmitFactor (runtime := runtime) (LateKey.ofView setup runtime leaks who
-          ((control.execution.respond (application setup runtime leaks) who response).recall who)
+          ((control.execution.respond (application setup runtime leaks) who response).logs who)
           ((control.execution.respond (application setup runtime leaks) who response).observe
             (application setup runtime leaks) who)) ∧
     (∀ {slots : Nat} (slot : Fin slots),
@@ -120,7 +120,7 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
         contentFactor setup runtime leaks assessment who control.execution
             (control.execution.respond (application setup runtime leaks) who response) response *
           transmitFactor (runtime := runtime) (LateKey.ofView setup runtime leaks who
-            ((control.execution.respond (application setup runtime leaks) who response).recall who)
+            ((control.execution.respond (application setup runtime leaks) who response).logs who)
             ((control.execution.respond (application setup runtime leaks) who response).observe
               (application setup runtime leaks) who))) ∧
     (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who _)
@@ -128,7 +128,7 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
       contentFactor setup runtime leaks assessment who control.execution
           (control.execution.respond (application setup runtime leaks) who response) response *
         silenceFactor (runtime := runtime) (LateKey.ofView setup runtime leaks who
-          ((control.execution.respond (application setup runtime leaks) who response).recall who)
+          ((control.execution.respond (application setup runtime leaks) who response).logs who)
           ((control.execution.respond (application setup runtime leaks) who response).observe
             (application setup runtime leaks) who)) ∧
     (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who _
@@ -136,11 +136,11 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
       contentFactor setup runtime leaks assessment who control.execution
           (control.execution.respond (application setup runtime leaks) who response) response *
         transmitFactor (runtime := runtime) (LateKey.ofView setup runtime leaks who
-          ((control.execution.respond (application setup runtime leaks) who response).recall who)
+          ((control.execution.respond (application setup runtime leaks) who response).logs who)
           ((control.execution.respond (application setup runtime leaks) who response).observe
             (application setup runtime leaks) who)) := by
   classical
-  have pendingEq : pendingEvent setup runtime leaks who (some (control.execution.recall who,
+  have pendingEq : pendingEvent setup runtime leaks who (some (control.execution.logs who,
       control.execution.observe (application setup runtime leaks) who)) = some event := by
     unfold pendingEvent
     change (control.execution.application.publicView.ownTurn? who).filter _ = _
@@ -159,21 +159,21 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
     node
   have lateEq : ∀ {slots : Nat} (slot : Fin slots),
       lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who
-          (some (control.execution.recall who,
+          (some (control.execution.logs who,
             control.execution.observe (application setup runtime leaks) who)) (some slot) =
         PMF.pure (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-          (some (control.execution.recall who,
+          (some (control.execution.logs who,
             control.execution.observe (application setup runtime leaks) who))
-          (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+          (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
             (control.execution.observe (application setup runtime leaks) who) event
             (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))) := by
     intro slots slot
     rw [lateChoice_some_eq_map (runtime := runtime) assessment who _ _ event turn slot]
     rw [map_congr_support (g := fun _ => responseChoice setup runtime leaks bounds (initialLaw
       setup)
-        horizon scheduler who (some (control.execution.recall who,
+        horizon scheduler who (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))
-        (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+        (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who) event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))) _
       fun other supported => by
@@ -186,24 +186,24 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
     exact PMF.map_const _ _
   have disclosureValue : (responseChoice setup runtime leaks bounds (initialLaw setup) horizon
     scheduler
-      who (some (control.execution.recall who,
+      who (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who))
-      (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+      (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) event
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))).1 =
-      some (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+      some (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) event
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)) := by
     simp only [responseChoice, offered, ↓reduceDIte]
   have notSilence : responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
     who
-      (some (control.execution.recall who,
+      (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who))
-      (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+      (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) event
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)) ≠
       silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who)) := by
     intro same
     have values := congrArg Subtype.val same
@@ -226,13 +226,13 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
       have contentOne : contentFactor setup runtime leaks assessment who control.execution
           (control.execution.respond (application setup runtime leaks) who ⟨none⟩) ⟨none⟩ = 1 := rfl
       have lastNone : (LateKey.ofView setup runtime leaks who
-          ((control.execution.respond (application setup runtime leaks) who ⟨none⟩).recall who)
+          ((control.execution.respond (application setup runtime leaks) who ⟨none⟩).logs who)
           ((control.execution.respond (application setup runtime leaks) who ⟨none⟩).observe
             (application setup runtime leaks) who)).lastEmitted = none := by
         rw [LateKey.respond_lastEmitted]
         rfl
       have silenceOne : silenceFactor (runtime := runtime) (LateKey.ofView setup runtime leaks who
-          ((control.execution.respond (application setup runtime leaks) who ⟨none⟩).recall who)
+          ((control.execution.respond (application setup runtime leaks) who ⟨none⟩).logs who)
           ((control.execution.respond (application setup runtime leaks) who ⟨none⟩).observe
             (application setup runtime leaks) who)) = 1 := by
         unfold silenceFactor
@@ -240,7 +240,7 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
         simp
       have transmitZero : transmitFactor (runtime := runtime) (LateKey.ofView setup runtime leaks
         who
-          ((control.execution.respond (application setup runtime leaks) who ⟨none⟩).recall who)
+          ((control.execution.respond (application setup runtime leaks) who ⟨none⟩).logs who)
           ((control.execution.respond (application setup runtime leaks) who ⟨none⟩).observe
             (application setup runtime leaks) who)) = 0 := by
         unfold transmitFactor
@@ -260,9 +260,9 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
       cases Option.some.inj turnNamed
       have responseEq := unique response member material sends packetEvent
       have choiceEq : choice = responseChoice setup runtime leaks bounds (initialLaw setup) horizon
-          scheduler who (some (control.execution.recall who,
+          scheduler who (some (control.execution.logs who,
             control.execution.observe (application setup runtime leaks) who))
-          (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+          (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
             (control.execution.observe (application setup runtime leaks) who) event
             (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)) := by
         apply Subtype.ext
@@ -273,7 +273,7 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
             := by
         have weighted : sentSourceAction setup runtime leaks
             (control.execution.respond (application setup runtime leaks) who response) response ∈
-            (asIfHonestProfile setup runtime leaks assessment who (some (control.execution.recall
+            (asIfHonestProfile setup runtime leaks assessment who (some (control.execution.logs
               who,
               control.execution.observe (application setup runtime leaks) who))).support := by
           unfold contentFactor at positive
@@ -288,23 +288,23 @@ theorem onePacket_pendingReveal_masses (assessment : setup.intendedModel.Behavio
         unfold contentFactor
         rw [sends]
         change ((asIfHonestProfile setup runtime leaks assessment who (some
-          (control.execution.recall who,
+          (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))) _).toReal = 1
         rw [pure, PMF.pure_apply_self, ENNReal.toReal_one]
       have lastSome : (LateKey.ofView setup runtime leaks who
-          ((control.execution.respond (application setup runtime leaks) who response).recall who)
+          ((control.execution.respond (application setup runtime leaks) who response).logs who)
           ((control.execution.respond (application setup runtime leaks) who response).observe
             (application setup runtime leaks) who)).lastEmitted ≠ none := by
         rw [LateKey.respond_lastEmitted, sends]
         exact Option.some_ne_none _
       have silenceZero : silenceFactor (runtime := runtime) (LateKey.ofView setup runtime leaks who
-          ((control.execution.respond (application setup runtime leaks) who response).recall who)
+          ((control.execution.respond (application setup runtime leaks) who response).logs who)
           ((control.execution.respond (application setup runtime leaks) who response).observe
             (application setup runtime leaks) who)) = 0 := by
         unfold silenceFactor
         simp [lastSome]
       have transmitOne : transmitFactor (runtime := runtime) (LateKey.ofView setup runtime leaks who
-          ((control.execution.respond (application setup runtime leaks) who response).recall who)
+          ((control.execution.respond (application setup runtime leaks) who response).logs who)
           ((control.execution.respond (application setup runtime leaks) who response).observe
             (application setup runtime leaks) who)) = 1 := by
         unfold transmitFactor

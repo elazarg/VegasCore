@@ -33,7 +33,7 @@ private theorem exists_response_trace_with_record
     (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩))
     (member : response ∈ bounds.onePacketActions runtime leaks who
-      (execution.recall who) (execution.observe (application setup runtime leaks) who)) :
+      (execution.logs who) (execution.observe (application setup runtime leaks) who)) :
     ∃ trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
         (some ⟨remaining, none, execution.respond (application setup runtime leaks) who response⟩),
       operationalRecord setup runtime leaks bounds horizon scheduler trace =
@@ -91,7 +91,7 @@ theorem binding_trace (frame : DirectedBindingFrame (runtime := runtime) memory 
     (covered : bounds.CoversOutputValues)
     (member : (⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩ :
       (application setup runtime leaks).Action) ∈ bounds.onePacketActions runtime leaks owner
-        (original.recall owner) (original.observe (application setup runtime leaks) owner)) :
+        (original.logs owner) (original.observe (application setup runtime leaks) owner)) :
     let app := application setup runtime leaks
     let view := repaired.observe app owner
     let response : app.Action :=

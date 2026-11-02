@@ -9,6 +9,9 @@ import Vegas.Game.IntendedHistory
 import Vegas.Game.IntendedAuthenticOpening
 import GameTheory.Analysis.Protocol.SequentialExistence
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # An immutable opening followed by a private answer
 
@@ -63,7 +66,7 @@ def bitLaw : PMF Bool :=
   mix (9 / 20) (by norm_num) (by norm_num) (PMF.pure true) (PMF.pure false)
 
 def prior : PMF Parameter :=
-  bitLaw.bind fun bit => (PMF.uniformOfFintype (Fin 3)).map fun label => (bit, label)
+  bitLaw.bind fun bit => (uniformLaw (Fin 3)).map fun label => (bit, label)
 
 def setup : Setup (Player := Player) (L := simpleExpr) where
   context := initialCtx
@@ -123,7 +126,7 @@ theorem initialLaw_support (state : State simpleExpr initialCtx) :
           (by norm_num) (μ := PMF.pure true) (ν := PMF.pure false)
           (a := true) (by simp)
     · rw [PMF.support_map]
-      exact ⟨label, PMF.mem_support_uniformOfFintype label, rfl⟩
+      exact ⟨label, mem_support_uniformLaw label, rfl⟩
 
 theorem answerGuard_predicts
     (observation : SourceObservation simpleExpr bob ((2, .publication .bool) :: initialCtx))
@@ -294,7 +297,7 @@ theorem bob_success_gross (reward : ℝ) (bit : Bool) (label : Fin 3) (answer : 
 
 /-- Conditional on either published bit, every label guess is worth one third. -/
 theorem bob_uniform_success_value (reward : ℝ) (bit : Bool) (answer : Answer) :
-    expect (PMF.uniformOfFintype (Fin 3)) (fun label =>
+    expect (uniformLaw (Fin 3)) (fun label =>
       grossUtility reward ((bit, label),
         publicOutcome program (finalConfig bit label true answer true)) bob) =
       if answer.val = 0 then 2 / 5
@@ -313,7 +316,7 @@ theorem bob_uniform_success_value (reward : ℝ) (bit : Bool) (answer : Answer) 
 
 theorem bob_safe_strictly_best (reward : ℝ) (bit : Bool) (answer : Answer)
     (different : answer ≠ safe) :
-    expect (PMF.uniformOfFintype (Fin 3)) (fun label =>
+    expect (uniformLaw (Fin 3)) (fun label =>
       grossUtility reward ((bit, label),
         publicOutcome program (finalConfig bit label true answer true)) bob) < 2 / 5 := by
   rw [bob_uniform_success_value]
@@ -415,7 +418,7 @@ def intendedUniformProfile : ∀ who, setup.intendedModel.BehavioralPolicy who :
       InformationModel.InformationSite.finite_choice setup.intendedModel who ⟨info, decision⟩
     letI : Fintype (setup.intendedModel.Choice who info) := Fintype.ofFinite _
     letI : Nonempty (setup.intendedModel.Choice who info) := ⟨intendedFallback who info⟩
-    exact PMF.uniformOfFintype _
+    exact uniformLaw _
   · exact PMF.pure (intendedFallback who info)
 
 theorem intendedUniformProfile_mixed
@@ -430,7 +433,7 @@ theorem intendedUniformProfile_mixed
   let : Nonempty (setup.intendedModel.Choice who site.1) := ⟨intendedFallback who site.1⟩
   unfold intendedUniformProfile
   rw [dite_eq_left site.2]
-  exact PMF.mem_support_uniformOfFintype choice
+  exact mem_support_uniformLaw choice
 
 /-- The prescribed safe policy has a belief completion satisfying the common
 fully mixed limiting requirement. Rationality is a separate obligation. -/

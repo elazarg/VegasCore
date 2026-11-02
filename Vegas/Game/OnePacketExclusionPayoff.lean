@@ -196,7 +196,7 @@ theorem exclusionBase_eq_readout_of_readout
           leaks control who defaulted
 
 /-- A completed native graph freezes its base exit utility under arbitrary continuations. -/
-theorem sourceTerminal_exclusionBase_stable [Fintype Player]
+theorem sourceTerminal_exclusionBase_stable [Finite Player]
     (menu : (application setup runtime leaks).ResponseMenu)
     (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
     (scheduler : (application setup runtime leaks).Scheduler)
@@ -317,7 +317,7 @@ Every sequential equilibrium of the intended game of a well-formed setup is the
 pointwise limit of fully mixed Bayes-consistent assessments, and is sequentially
 rational against the exclusion payoff of the intended readout for play cut off
 at the intended game's horizon, whatever the exclusion payoffs. -/
-theorem intended_exclusionSource [Fintype Player] (wellFormed : setup.WellFormed)
+theorem intended_exclusionSource [Finite Player] (wellFormed : setup.WellFormed)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ) (intended : setup.intendedModel.BehavioralAssessment)

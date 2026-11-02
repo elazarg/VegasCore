@@ -87,7 +87,7 @@ theorem ownPlayReachProbability_pos_support {who : Player} (policy : M.Behaviora
         exact pmf_toReal_pos_iff.mp first
       · exact ih rest earlier
 
-variable [Fintype Player]
+variable [E.FiniteMovers]
 
 /-- Every own action on a positive-probability history has positive probability
 under the player's behavioral policy at its recorded information state. -/

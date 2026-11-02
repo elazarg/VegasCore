@@ -105,7 +105,7 @@ def operationalState : (application setup runtime leaks).ProtocolState →
           setup runtime leaks)
         leaked := control.execution.network.leaked
         keys := fun who => lateKey setup runtime leaks who
-          (some (control.execution.recall who,
+          (some (control.execution.logs who,
             control.execution.observe (application setup runtime leaks) who)) }
 
 /-- The observer's own recall at a native protocol state. -/
@@ -113,7 +113,7 @@ def ownerRecall (who : Player) :
     (application setup runtime leaks).ProtocolState → List (application setup runtime
       leaks).PlayerEntry
   | none => []
-  | some control => control.execution.recall who
+  | some control => control.execution.logs who
 
 /-- The chance factor of a native completion: the evaluator mass of the first
 new record's retained output when it is a sample. Deterministic decisions and
@@ -547,7 +547,7 @@ theorem stepProb_of_actor
       rw [acting]
       exact fun same => different (Option.some.inj same).symm) _
   · intro absent
-    exact (absent (Finset.mem_univ _)).elim
+    exact (absent ((ExecutionProtocol.mem_movers _).mpr acting)).elim
 
 omit [Fintype Player] in
 /-- A response's transition is the point mass at the response. -/
@@ -574,7 +574,7 @@ theorem transition_environment (control : (application setup runtime leaks).Cont
       scheduler
       (some control) joint).support) :
     ∃ next : (application setup runtime leaks).Control, after = some next ∧
-      next.execution.recall = control.execution.recall := by
+      next.execution.logs = control.execution.logs := by
   rcases control with ⟨remaining, current, execution⟩
   cases idle
   cases remaining with
@@ -713,18 +713,18 @@ theorem step_factor {sequence : ℕ → setup.intendedModel.BehavioralAssessment
                   execution := control.execution.respond (application setup runtime leaks) actor
                     ((joint actor).getD ⟨none⟩) }) =
                 ownerStepMass setup runtime leaks bounds horizon scheduler (profiles n actor)
-                  (control.execution.recall actor)
+                  (control.execution.logs actor)
                   ⟨control.execution.observe (application setup runtime leaks) actor,
                     (joint actor).getD ⟨none⟩, emitted⟩ := by
               rw [mass]
               unfold ownerStepMass
-              have general : ∀ info (_ : info = some (control.execution.recall actor,
+              have general : ∀ info (_ : info = some (control.execution.logs actor,
                   control.execution.observe (application setup runtime leaks) actor))
                   (choice : (onePacketInformation setup runtime leaks bounds horizon
                     scheduler).Choice
                     actor info), choice.1 = some action →
                   (profiles n actor info choice).toReal =
-                    (((profiles n actor (some (control.execution.recall actor,
+                    (((profiles n actor (some (control.execution.logs actor,
                       control.execution.observe (application setup runtime leaks) actor))).map
                         Subtype.val) (some action)).toReal := by
                 rintro info rfl choice value

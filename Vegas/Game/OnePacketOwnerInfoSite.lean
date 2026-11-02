@@ -66,33 +66,33 @@ theorem ownerSwap_info_of_traces {first second : (application setup runtime leak
     (secondTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
       second))
     {who : Player}
-    (sameKey : lateKey setup runtime leaks who (some (first.execution.recall who,
+    (sameKey : lateKey setup runtime leaks who (some (first.execution.logs who,
         first.execution.observe (application setup runtime leaks) who)) =
-      lateKey setup runtime leaks who (some (second.execution.recall who,
+      lateKey setup runtime leaks who (some (second.execution.logs who,
         second.execution.observe (application setup runtime leaks) who)))
     (firstDebtFree : ∀ point, nativeDecodedState setup runtime leaks (some first) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
     (secondDebtFree : ∀ point, nativeDecodedState setup runtime leaks (some second) = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
     (firstPending : ∃ event, first.execution.application.config.cut.Ready event ∧
-      ∀ message ∈ (application setup runtime leaks).outputs (first.execution.recall who),
+      ∀ message ∈ (application setup runtime leaks).outputs (first.execution.logs who),
         message.payload.call.event? (graph setup) ≠ some event)
     (secondPending : ∃ event, second.execution.application.config.cut.Ready event ∧
-      ∀ message ∈ (application setup runtime leaks).outputs (second.execution.recall who),
+      ∀ message ∈ (application setup runtime leaks).outputs (second.execution.logs who),
         message.payload.call.event? (graph setup) ≠ some event) :
     (ownerSwap who (first.execution.observe (application setup runtime leaks) who).application
         (second.execution.observe (application setup runtime leaks) who).application).info
           (runtime := runtime)
-        (some (first.execution.recall who,
+        (some (first.execution.logs who,
           first.execution.observe (application setup runtime leaks) who)) =
-      some (second.execution.recall who,
+      some (second.execution.logs who,
         second.execution.observe (application setup runtime leaks) who) := by
   simp only [lateKey, Option.some.injEq, LateKey.mk.injEq, true_and] at sameKey
   obtain ⟨currentEq, recalledEq, _⟩ := sameKey
-  have lengthEq : (first.execution.recall who).length = (second.execution.recall who).length := by
+  have lengthEq : (first.execution.logs who).length = (second.execution.logs who).length := by
     simpa using congrArg List.length recalledEq
-  have emittedEq : (first.execution.recall who).map ReactiveApplication.PlayerEntry.emitted =
-      (second.execution.recall who).map ReactiveApplication.PlayerEntry.emitted := by
+  have emittedEq : (first.execution.logs who).map ReactiveApplication.PlayerEntry.emitted =
+      (second.execution.logs who).map ReactiveApplication.PlayerEntry.emitted := by
     have mapped := congrArg (List.map Prod.snd) recalledEq
     rw [List.map_map, List.map_map] at mapped
     exact mapped
@@ -102,7 +102,7 @@ theorem ownerSwap_info_of_traces {first second : (application setup runtime leak
   have secondSettled := ownerSettled_of_trace (runtime := runtime) secondTrace secondDebtFree
     secondPending
   rw [← outputsEq] at secondSettled
-  change some ((first.execution.recall who).map _, _) = _
+  change some ((first.execution.logs who).map _, _) = _
   congr 2
   · apply List.ext_getElem (by simpa using lengthEq)
     intro k firstInside secondInside
@@ -113,8 +113,8 @@ theorem ownerSwap_info_of_traces {first second : (application setup runtime leak
       List.getElem?_eq_getElem secondInside, Option.map_some, Option.some.injEq,
       Prod.mk.injEq] at entryKey
     obtain ⟨operational, emitted⟩ := entryKey
-    have takeEq : (application setup runtime leaks).outputs ((first.execution.recall who).take k) =
-        (application setup runtime leaks).outputs ((second.execution.recall who).take k) := by
+    have takeEq : (application setup runtime leaks).outputs ((first.execution.logs who).take k) =
+        (application setup runtime leaks).outputs ((second.execution.logs who).take k) := by
       apply outputs_eq_of_emitted (runtime := runtime)
       rw [List.map_take, List.map_take, emittedEq]
     obtain ⟨firstBefore, firstView, firstGrows, firstFresh, firstInitial, firstRecorded⟩ :=
@@ -124,16 +124,16 @@ theorem ownerSwap_info_of_traces {first second : (application setup runtime leak
         secondInside
     rw [← takeEq] at secondFresh
     have knownEq : ReactiveApplication.ResponseMenu.knownPackets
-        ((first.execution.recall who).take k) (first.execution.recall who)[k].beforeView =
-        ReactiveApplication.ResponseMenu.knownPackets ((second.execution.recall who).take k)
-          (second.execution.recall who)[k].beforeView := by
+        ((first.execution.logs who).take k) (first.execution.logs who)[k].beforeView =
+        ReactiveApplication.ResponseMenu.knownPackets ((second.execution.logs who).take k)
+          (second.execution.logs who)[k].beforeView := by
       simp only [operationalView, Prod.mk.injEq] at operational
       unfold ReactiveApplication.ResponseMenu.knownPackets
       rw [takeEq, operational.2.1]
     rw [knownEq] at firstRecorded
-    rcases firstEntry : (first.execution.recall who)[k] with
+    rcases firstEntry : (first.execution.logs who)[k] with
       ⟨firstBeforeView, firstAction, firstEmitted⟩
-    rcases secondEntry : (second.execution.recall who)[k] with
+    rcases secondEntry : (second.execution.logs who)[k] with
       ⟨secondBeforeView, secondAction, secondEmitted⟩
     rw [firstEntry] at firstView firstRecorded operational emitted
     rw [secondEntry] at secondView secondRecorded firstRecorded operational emitted
@@ -147,7 +147,7 @@ theorem ownerSwap_info_of_traces {first second : (application setup runtime leak
       firstSettled
       secondSettled firstRecorded secondRecorded emitted
       (fun message event serial sent call => ⟨message,
-        List.mem_filterMap.mpr ⟨(first.execution.recall who)[k], List.getElem_mem firstInside,
+        List.mem_filterMap.mpr ⟨(first.execution.logs who)[k], List.getElem_mem firstInside,
           by rw [firstEntry]; exact sent⟩, event, call⟩)
     have viewEq := EventGraphRuntime.HiddenSwap.view_ownerSwap_of_settled (runtime := runtime) who
       firstSettled
@@ -164,10 +164,10 @@ packets. -/
 theorem pending_of_lateDelivery {control : (application setup runtime leaks).Control}
     (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     {who : Player}
-    (late : LateDelivery setup runtime leaks who (some (control.execution.recall who,
+    (late : LateDelivery setup runtime leaks who (some (control.execution.logs who,
       control.execution.observe (application setup runtime leaks) who))) :
     ∃ event, control.execution.application.config.cut.Ready event ∧
-      ∀ message ∈ (application setup runtime leaks).outputs (control.execution.recall who),
+      ∀ message ∈ (application setup runtime leaks).outputs (control.execution.logs who),
         message.payload.call.event? (graph setup) ≠ some event := by
   obtain ⟨past, view, event, infoEq, pending, _⟩ := late
   obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj infoEq)
@@ -193,7 +193,7 @@ private theorem site_realized {who : Player}
     ∃ control : (application setup runtime leaks).Control,
       Nonempty ((onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
         control)) ∧
-      control.execution.recall who = past ∧
+      control.execution.logs who = past ∧
       control.execution.observe (application setup runtime leaks) who = view ∧
       ∀ point, nativeDecodedState setup runtime leaks (some control) = some point →
         ¬ ProtocolState.OwesFailure who setup.program point := by

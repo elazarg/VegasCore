@@ -79,10 +79,10 @@ theorem infoOf_mapTrace (swap : HiddenSwap (graph setup))
   | none => rfl
   | some control =>
       change (if control.actor = some who then
-          some ((control.execution.recall who).map swap.entry,
+          some ((control.execution.logs who).map swap.entry,
             (swap.execution control.execution).observe _ who) else none) =
         swap.info (if control.actor = some who then
-          some (control.execution.recall who, control.execution.observe _ who) else none)
+          some (control.execution.logs who, control.execution.observe _ who) else none)
       split
       · rw [swap.observe_execution]
         rfl

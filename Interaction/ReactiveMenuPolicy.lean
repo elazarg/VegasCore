@@ -23,8 +23,8 @@ variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication P
 def Admissible (who : Principal) (policy : app.Policy) : Prop :=
   ∀ control, (menu.protocol initial horizon scheduler).Trace (some control) →
     control.actor = some who → ∀ action ∈
-      (policy (control.execution.recall who) (control.execution.observe app who)).support,
-      action ∈ menu.actions who (control.execution.recall who) (control.execution.observe app who)
+      (policy (control.execution.logs who) (control.execution.observe app who)).support,
+      action ∈ menu.actions who (control.execution.logs who) (control.execution.observe app who)
 
 open Classical in
 def restrictPolicy (who : Principal) (policy : app.Policy) :
@@ -162,7 +162,7 @@ theorem embed_restrictPolicy_history (who : Principal) (policy : app.Policy)
       | none => cases observed
       | some control =>
           change some data = (if control.actor = some who then
-            some (control.execution.recall who, control.execution.observe app who) else none)
+            some (control.execution.logs who, control.execution.observe app who) else none)
             at observed
           split at observed
           · rename_i active
@@ -178,8 +178,8 @@ theorem restrictProfile_fullSupport (profile : Principal → app.Policy)
     (positive : ∀ who control,
       (menu.protocol initial horizon scheduler).Trace (some control) →
       control.actor = some who → ∀ action ∈
-        menu.actions who (control.execution.recall who) (control.execution.observe app who),
-        action ∈ (profile who (control.execution.recall who)
+        menu.actions who (control.execution.logs who) (control.execution.observe app who),
+        action ∈ (profile who (control.execution.logs who)
           (control.execution.observe app who)).support) :
     ∀ who (site : (menu.information initial horizon scheduler).InformationSite who)
       (choice : (menu.information initial horizon scheduler).Choice who site.1),
@@ -200,7 +200,7 @@ theorem restrictProfile_fullSupport (profile : Principal → app.Policy)
         stateEq ▸ history.1.trace
       rw [stateEq] at observed
       change (if control.actor = some who then
-        some (control.execution.recall who, control.execution.observe app who) else none) = site.1
+        some (control.execution.logs who, control.execution.observe app who) else none) = site.1
         at observed
       rw [ite_eq_left acting] at observed
       rcases site with ⟨info, occurs⟩
@@ -208,7 +208,7 @@ theorem restrictProfile_fullSupport (profile : Principal → app.Policy)
       cases observed
       intro choice
       suffices choice.1 ∈ ((menu.restrictPolicy initial horizon scheduler who (profile who)
-          (some (control.execution.recall who,
+          (some (control.execution.logs who,
             control.execution.observe app who))).map Subtype.val).support by
         obtain ⟨other, supported, same⟩ := PMF.support_map .. ▸ this
         exact (Subtype.ext same) ▸ supported
@@ -218,7 +218,7 @@ theorem restrictProfile_fullSupport (profile : Principal → app.Policy)
         _ _ (covered who control traced acting), chosen, PMF.support_map]
       exact ⟨action, positive who control traced acting action allowed, rfl⟩
 
-variable [Fintype Principal]
+variable [Finite Principal]
 
 theorem behavioralJoint_restrict (profile : Principal → app.Policy)
     (covered : ∀ who, menu.Admissible initial horizon scheduler who (profile who))

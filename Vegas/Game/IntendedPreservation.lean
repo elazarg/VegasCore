@@ -6,6 +6,7 @@ import Vegas.Game.SourceInformation
 import Vegas.Game.SourceContinuation
 import GameTheoryExtensions.Analysis.Protocol.PassageRestrictionExtension
 import GameTheoryExtensions.Protocol.ContinuationHorizon
+import GameTheoryExtensions.Protocol.JointDistribution
 
 /-! # Intended-game preservation
 
@@ -192,7 +193,7 @@ theorem intended_bounded :
 /-- Sequential equilibrium of the intended commit–reveal model, with utility
 read from the terminal state's initial parameter and public outcome. Terminal
 continuations use the canonical bounded source horizon. -/
-abbrev IntendedSequentialEquilibrium [Fintype Player] {Parameter : Type}
+abbrev IntendedSequentialEquilibrium [Finite Player] {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (intended : setup.intendedModel.BehavioralAssessment) : Prop :=
@@ -203,7 +204,7 @@ abbrev IntendedSequentialEquilibrium [Fintype Player] {Parameter : Type}
 
 /-- Every terminal continuation of a new action at an intended decision site
 retains the deviating owner's owed failure, independently of later choices. -/
-theorem deviation_owesFailure [Fintype Player]
+theorem deviation_owesFailure [Finite Player]
     (admission : CommitmentInterface setup.program) (wellFormed : setup.WellFormed)
     (certificate :
       (setup.executionProtocol admission).WellFoundedHistories)
@@ -242,11 +243,12 @@ theorem deviation_owesFailure [Fintype Player]
   rw [PMF.mem_support_bindOnSupport_iff] at continued
   obtain ⟨target, realized, child⟩ := continued
   have chosen : draw.1 who = action.1 := by
+    let : Fintype Player := Fintype.ofFinite Player
     have marginal : draw.1 ∈ ((model.behavioralJoint deviating
         ((setup.intendedRestriction admission).history history.1).trace running).map
           Subtype.val).support :=
       (PMF.mem_support_map_iff _ _ _).mpr ⟨draw, drawn, rfl⟩
-    rw [model.behavioralJoint_map_val, independentProduct_support_iff] at marginal
+    rw [model.behavioralJoint_map_val_eq_product, independentProduct_support_iff] at marginal
     have own := marginal who
     have info : model.infoOf who
         ((setup.intendedRestriction admission).history history.1).trace =
@@ -283,7 +285,7 @@ theorem deviation_owesFailure [Fintype Player]
       exact ⟨finalIndebted, stopped⟩
 
 /-- Every terminal continuation of an extra action records an own failed reveal. -/
-theorem deviation_failedReveals_pos [Fintype Player]
+theorem deviation_failedReveals_pos [Finite Player]
     (admission : CommitmentInterface setup.program) (wellFormed : setup.WellFormed)
     (certificate :
       (setup.executionProtocol admission).WellFoundedHistories)
@@ -322,7 +324,7 @@ theorem deviation_failedReveals_pos [Fintype Player]
 
 /-- Every terminal continuation of an extra action publicly defaults its owner,
 using actual trace provenance rather than arbitrary failed cells. -/
-theorem deviation_defaulted [Fintype Player]
+theorem deviation_defaulted [Finite Player]
     (admission : CommitmentInterface setup.program) (wellFormed : setup.WellFormed)
     (certificate :
       (setup.executionProtocol admission).WellFoundedHistories)
@@ -368,7 +370,7 @@ sitewise commitment admission and the forfeit pass, with a forfeit no smaller
 than the payoff range. The source
 equilibrium has the intended joint law of terminal store and payoff, and no
 reveal fails on any history it reaches. -/
-theorem intended_forfeit_sequentialEquilibrium_preserved [Fintype Player]
+theorem intended_forfeit_sequentialEquilibrium_preserved [Finite Player]
     (admission : CommitmentInterface setup.program)
     (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (wellFormed : setup.WellFormed) {Parameter : Type}
@@ -519,7 +521,7 @@ fixed exit utility under any sitewise binding admission. The declared exit
 payoff is compared only with actual intended terminal readouts. The target
 retains the intended strategy and joint typed-readout/payoff law, and its
 equilibrium paths have neither a public default nor a failed reveal. -/
-theorem intended_sequentialEquilibrium_preserved [Fintype Player]
+theorem intended_sequentialEquilibrium_preserved [Finite Player]
     (admission : CommitmentInterface setup.program)
     (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (wellFormed : setup.WellFormed) {Parameter : Type}

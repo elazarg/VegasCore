@@ -120,7 +120,7 @@ structure Reflecting : Prop where
       ∃ draws : ∀ who, M.Choice who (M.infoOf who original.trace),
         choices = fun who => restriction.choiceAt who original (draws who)
 
-variable [Fintype ι] [DecidableEq ι] {restriction}
+variable [Finite ι] [DecidableEq ι] {restriction}
 
 /-- One embedded step is at least as likely under the retained conditional. -/
 private theorem one_step_le (reflecting : restriction.Reflecting)
@@ -133,6 +133,7 @@ private theorem one_step_le (reflecting : restriction.Reflecting)
       M.runBehavioralFrom (Function.update source who
         (restriction.retainedPolicy who deviation fallback)) 1 original next := by
   classical
+  let : Fintype ι := Fintype.ofFinite ι
   by_cases stopped : E.terminal original.state
   · rw [N.runBehavioralFrom_of_terminal _ _ ((restriction.terminal original).mpr stopped),
       M.runBehavioralFrom_of_terminal _ _ stopped, PMF.pure_apply, PMF.pure_apply]
@@ -187,6 +188,7 @@ theorem runBehavioral_embedded_le (reflecting : restriction.Reflecting)
       M.runBehavioral (Function.update source who
         (restriction.retainedPolicy who deviation fallback)) fuel history := by
   classical
+  let : Fintype ι := Fintype.ofFinite ι
   induction fuel generalizing history with
   | zero =>
       simp only [runBehavioral, runBehavioralFrom, ExecutionProtocol.runRandomizedFor,
@@ -234,6 +236,7 @@ theorem embedded_or_debt (source : ∀ i, M.BehavioralPolicy i)
     ∀ reached ∈ (N.runBehavioral (Function.update target who deviation) fuel).support,
       reached ∈ Set.range restriction.history ∨ debt reached.state := by
   classical
+  let : Fintype ι := Fintype.ofFinite ι
   induction fuel with
   | zero =>
       intro reached member
@@ -319,6 +322,7 @@ theorem expect_deviation_le_retained {fuel : ℕ}
       expect (M.runBehavioral (Function.update source who
         (restriction.retainedPolicy who deviation fallback)) fuel) sourcePayoff := by
   classical
+  let : Fintype ι := Fintype.ofFinite ι
   let deviated := N.runBehavioral (Function.update target who deviation) fuel
   let retained := M.runBehavioral (Function.update source who
     (restriction.retainedPolicy who deviation fallback)) fuel
@@ -371,6 +375,7 @@ theorem isεNash_extends_of_debt {fuel : ℕ}
     (ε : ℝ) (equilibrium : IsεNash (M.toBehavioralGameForm fuel) sourceUtility ε source) :
     IsεNash (N.toBehavioralGameForm fuel) targetUtility ε target := by
   classical
+  let : Fintype ι := Fintype.ofFinite ι
   refine GameForm.isεNash_of_deviation_bounds (source := M.toBehavioralGameForm fuel)
     (target := N.toBehavioralGameForm fuel) (sourceUtility := sourceUtility)
     (targetUtility := targetUtility) source target (fun who _ => ?_) (fun who replacement => ?_)
@@ -409,7 +414,7 @@ theorem isεNash_extends_of_debt {fuel : ℕ}
       (fun history => sourceUtility history who) (fun history => targetUtility history who)
       (fun history => matching history who) (forfeits who) sourceIntegrable integrable)
 
-omit [Fintype ι] [DecidableEq ι] in
+omit [Finite ι] [DecidableEq ι] in
 /-- Updating one player of a profile with a policy, and of an extension of the
 profile with an extension of that policy, keeps the extension. -/
 theorem ExtendsProfile.update {source : (i : ι) → M.BehavioralPolicy i}
@@ -428,7 +433,7 @@ theorem ExtendsProfile.update {source : (i : ι) → M.BehavioralPolicy i}
   · simp only [Function.update_of_ne different]
     exact agrees player original
 
-omit [Fintype ι] [DecidableEq ι] in
+omit [Finite ι] [DecidableEq ι] in
 /-- Updating one player of a profile with a policy keeps an extension of the
 profile an extension, once that player plays the extension of the updated
 profile. -/

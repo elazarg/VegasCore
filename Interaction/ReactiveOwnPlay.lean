@@ -45,14 +45,14 @@ theorem recallOwnPlay_append (past : List app.PlayerEntry) (entry : app.PlayerEn
 
 def recallAt (who : Principal) : app.ProtocolState → List app.PlayerEntry
   | none => []
-  | some control => control.execution.recall who
+  | some control => control.execution.logs who
 
 variable [DecidableEq Principal]
 
 theorem respond_ownPlay (execution : app.Execution) (who : Principal) (response : app.Action) :
-    app.recallOwnPlay ((execution.respond app who response).recall who) =
-      (some (execution.recall who, execution.observe app who), response) ::
-        app.recallOwnPlay (execution.recall who) := by
+    app.recallOwnPlay ((execution.respond app who response).logs who) =
+      (some (execution.logs who, execution.observe app who), response) ::
+        app.recallOwnPlay (execution.logs who) := by
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => simp only [Execution.respond, ↓reduceIte, recallOwnPlay_append]
@@ -110,7 +110,7 @@ theorem trace_ownPlay (initial : PMF app.State) (horizon : Nat) (scheduler : app
                   obtain ⟨command, _, supported⟩ :=
                     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ realized)
                   obtain ⟨next, moved, rfl⟩ := PMF.support_map .. ▸ supported
-                  exact congrArg (fun recall => app.recallOwnPlay (recall who))
+                  exact congrArg (fun logs => app.recallOwnPlay (logs who))
                     (app.environmentStep_recall execution next command moved).symm
 
 namespace ResponseMenu

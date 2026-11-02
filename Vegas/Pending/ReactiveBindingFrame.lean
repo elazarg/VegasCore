@@ -25,25 +25,25 @@ variable {Player : Type} [DecidableEq Player]
 
 structure Frame (memory : BindingMemory runtime leaks) (owner : Player)
     (original repaired : (runtime.reactiveApplication leaks).Execution) : Prop where
-  past : memory.restoreRecall runtime leaks (repaired.recall owner) = original.recall owner
+  past : memory.restoreRecall runtime leaks (repaired.logs owner) = original.logs owner
   observed : memory.shadow.inputView runtime leaks
     (repaired.observe (runtime.reactiveApplication leaks) owner) =
       original.observe (runtime.reactiveApplication leaks) owner
-  lengths : (repaired.recall owner).length = memory.responses.length
+  lengths : (repaired.logs owner).length = memory.responses.length
   network : original.network = repaired.network
   service : original.environmentRecall = repaired.environmentRecall
   views : ∀ who, who ≠ owner →
     original.application.playerView who = repaired.application.playerView who
-  recall : ∀ who, who ≠ owner → original.recall who = repaired.recall who
+  logs : ∀ who, who ≠ owner → original.logs who = repaired.logs who
   slots : ∀ query, original.application.candidates.lookup (owner, query) = .fresh ↔
     repaired.application.candidates.lookup (owner, query) = .fresh
   successful : original.application.config.store.BindingRefines repaired.application.config.store
-  submissions : runtime.submissionRecall leaks (original.recall owner) =
-    runtime.submissionRecall leaks (repaired.recall owner)
+  submissions : runtime.submissionRecall leaks (original.logs owner) =
+    runtime.submissionRecall leaks (repaired.logs owner)
 
 theorem frame_atRecall (owner : Player)
     (execution : (runtime.reactiveApplication leaks).Execution) :
-    Frame runtime leaks (atRecall runtime leaks (execution.recall owner)) owner
+    Frame runtime leaks (atRecall runtime leaks (execution.logs owner)) owner
       execution execution where
   past := restoreRecall_atRecall runtime leaks _
   observed := BindingShadow.inputView_empty runtime leaks _
@@ -51,7 +51,7 @@ theorem frame_atRecall (owner : Player)
   network := rfl
   service := rfl
   views := fun _ _ => rfl
-  recall := fun _ _ => rfl
+  logs := fun _ _ => rfl
   slots := fun _ => Iff.rfl
   successful := Store.BindingRefines.refl _
   submissions := rfl
@@ -72,8 +72,8 @@ theorem publicView (frame : Frame runtime leaks memory owner original repaired) 
 
 theorem firstSubmission (frame : Frame runtime leaks memory owner original repaired)
     (response : (runtime.reactiveApplication leaks).Action) :
-    runtime.firstSubmission leaks (original.recall owner) response =
-      runtime.firstSubmission leaks (repaired.recall owner) response := by
+    runtime.firstSubmission leaks (original.logs owner) response =
+      runtime.firstSubmission leaks (repaired.logs owner) response := by
   unfold EventGraphRuntime.firstSubmission
   cases runtime.submittedEvent? leaks response with
   | none => rfl
@@ -102,7 +102,7 @@ theorem activate (frame : Frame runtime leaks memory owner original repaired)
         network := repaired.network.learn actor selected
         environmentRecall := repaired.environmentRecall ++
           [⟨repaired.observeEnvironment app, .activate actor⟩] } := by
-  refine ⟨frame.past, ?_, frame.lengths, ?_, ?_, frame.views, frame.recall, frame.slots,
+  refine ⟨frame.past, ?_, frame.lengths, ?_, ?_, frame.views, frame.logs, frame.slots,
     frame.successful, frame.submissions⟩
   · have ownApplication := congrArg ReactiveApplication.PlayerView.application frame.observed
     change (⟨(repaired.network.learn actor selected).observe owner,
@@ -145,7 +145,7 @@ theorem foreign_response (frame : Frame runtime leaks memory owner original repa
       (repaired.respond (runtime.reactiveApplication leaks) actor response) := by
   let app := runtime.reactiveApplication leaks
   have paired := memory.foreign_response runtime leaks original repaired owner actor foreign
-    frame.past frame.observed frame.network frame.views frame.recall response
+    frame.past frame.observed frame.network frame.views frame.logs response
   refine ⟨paired.1, paired.2.1, ?_, paired.2.2.1, ?_, paired.2.2.2.2.1,
     paired.2.2.2.2.2, ?_, ?_, ?_⟩
   · rw [app.respond_recall_other repaired actor owner foreign.symm response]
@@ -194,7 +194,7 @@ theorem transport_response (frame : Frame runtime leaks memory owner original re
   · intro who different
     rw [app.respond_recall_other original owner who different response,
       app.respond_recall_other repaired owner who different response]
-    exact frame.recall who different
+    exact frame.logs who different
   · intro query
     rw [unchanged original, unchanged repaired]
     exact frame.slots query

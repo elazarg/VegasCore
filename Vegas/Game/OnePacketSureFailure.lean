@@ -134,9 +134,9 @@ theorem onePacket_accepted_new {control next : (application setup runtime leaks)
                             facts.provenance.pending envelope pending
                           rw [envelopeSender] at otherMember
                           obtain ⟨earlier, later, split⟩ := records
-                          change execution.recall who = _ at split
+                          change execution.logs who = _ at split
                           have output : message ∈ (application setup runtime leaks).outputs
-                              (execution.recall who) := by
+                              (execution.logs who) := by
                             rw [split]
                             exact List.mem_filterMap.mpr ⟨entry, by simp, emitted⟩
                           have named' : message.payload.call.event? (graph setup) = some named := by

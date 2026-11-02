@@ -63,7 +63,7 @@ theorem Execution.InputRecall.earlier_inputs_iff_outputs {execution : app.Execut
     (recalled : execution.InputRecall app) (message other : Message Principal app.Payload) :
     (other ∈ execution.network.inputs ∧ other.sender = message.sender ∧
       other.id.2 < message.id.2) ↔
-    (other ∈ app.outputs (execution.recall message.sender) ∧ other.sender = message.sender ∧
+    (other ∈ app.outputs (execution.logs message.sender) ∧ other.sender = message.sender ∧
       other.id.2 < message.id.2) := by
   rw [← recalled message.sender]
   constructor
@@ -149,12 +149,12 @@ theorem own_verdict_iff_outputs
     (execution : app.Execution) (recalled : execution.InputRecall app) (who : Principal) :
     (∀ message ∈ execution.network.inputs, message.sender = who →
       verdict execution.network.inputs message = true) ↔
-      ∀ message ∈ app.outputs (execution.recall who),
-        verdict (app.outputs (execution.recall who)) message = true := by
+      ∀ message ∈ app.outputs (execution.logs who),
+        verdict (app.outputs (execution.logs who)) message = true := by
   classical
   have localVerdict (message : Message Principal app.Payload) (owner : message.sender = who) :
       verdict execution.network.inputs message =
-        verdict (app.outputs (execution.recall who)) message := by
+        verdict (app.outputs (execution.logs who)) message := by
     apply congruent
     intro other
     simpa only [owner] using recalled.earlier_inputs_iff_outputs message other

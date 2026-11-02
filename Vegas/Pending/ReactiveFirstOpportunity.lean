@@ -33,7 +33,7 @@ theorem inclusionFitsDeadline_of_unrecalled_turn
     (event : graph.EventId) (owner : Player) (acting : graph.actor? event = some owner)
     (ready : control.execution.application.publicView.EventReady event)
     (entered : Nat) (activated : control.execution.application.activatedAt event = some entered)
-    (never : ∀ entry ∈ control.execution.recall owner,
+    (never : ∀ entry ∈ control.execution.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner ≠ some event) :
     control.execution.application.publicView.InclusionFitsDeadline runtime bound event := by
   apply PublicView.inclusionFitsDeadline_of_response_delay runtime delay bound timely _ event

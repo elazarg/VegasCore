@@ -43,7 +43,7 @@ def responseMass (profile : ∀ player,
     (control : (application setup runtime leaks).Control)
     (joint : Player → Option (application setup runtime leaks).Action) : ℝ :=
   match control.actor with
-  | some actor => (((profile actor (some (control.execution.recall actor,
+  | some actor => (((profile actor (some (control.execution.logs actor,
       control.execution.observe (application setup runtime leaks) actor))).map Subtype.val)
         (joint actor)).toReal
   | none => 1
@@ -76,13 +76,13 @@ theorem stepProb_eq_responseMass (profile : ∀ player,
     initialized acting]
   unfold responseMass
   rw [acting]
-  have general : ∀ info (_ : info = some (control.execution.recall actor,
+  have general : ∀ info (_ : info = some (control.execution.logs actor,
       control.execution.observe (application setup runtime leaks) actor))
       (choice : (onePacketInformation setup runtime leaks bounds horizon scheduler).Choice actor
         info),
       choice.1 = joint actor →
       (profile actor info choice).toReal =
-        (((profile actor (some (control.execution.recall actor,
+        (((profile actor (some (control.execution.logs actor,
           control.execution.observe (application setup runtime leaks) actor))).map Subtype.val)
             (joint actor)).toReal := by
     rintro info rfl choice value
@@ -154,14 +154,14 @@ theorem responseMass_le_of_slotTrembled
     (joint : Player → Option (application setup runtime leaks).Action) {scale : ℝ}
     (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
     (main alternative slot : PMF ((onePacketInformation setup runtime leaks bounds horizon
-      scheduler).Choice actor (some (control.execution.recall actor,
+      scheduler).Choice actor (some (control.execution.logs actor,
         control.execution.observe (application setup runtime leaks) actor))))
-    (component : profile actor (some (control.execution.recall actor,
+    (component : profile actor (some (control.execution.logs actor,
         control.execution.observe (application setup runtime leaks) actor)) =
       slotTrembledChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler scale
         nonnegative le_one actor _ main alternative slot)
     (outside : ∀ choice : (onePacketInformation setup runtime leaks bounds horizon
-        scheduler).Choice actor (some (control.execution.recall actor,
+        scheduler).Choice actor (some (control.execution.logs actor,
           control.execution.observe (application setup runtime leaks) actor)),
       choice.1 = joint actor → main choice = 0 ∧ alternative choice = 0 ∧ slot choice = 0) :
     responseMass setup runtime leaks bounds horizon scheduler profile control joint ≤ scale ^ 3 :=
@@ -170,7 +170,7 @@ theorem responseMass_le_of_slotTrembled
   rw [acting]
   simp only
   by_cases found : ∃ choice : (onePacketInformation setup runtime leaks bounds horizon
-      scheduler).Choice actor (some (control.execution.recall actor,
+      scheduler).Choice actor (some (control.execution.logs actor,
         control.execution.observe (application setup runtime leaks) actor)), choice.1 = joint actor
   · obtain ⟨choice, value⟩ := found
     rw [← value, pmf_map_apply_of_injective _ Subtype.val_injective, component]
@@ -179,7 +179,7 @@ theorem responseMass_le_of_slotTrembled
       horizon
       scheduler nonnegative le_one actor _ main alternative slot choice mainZero alternativeZero
       slotZero
-  · have zero : ((profile actor (some (control.execution.recall actor,
+  · have zero : ((profile actor (some (control.execution.logs actor,
         control.execution.observe (application setup runtime leaks) actor))).map Subtype.val)
           (joint actor) = 0 := by
       rw [PMF.map_apply]

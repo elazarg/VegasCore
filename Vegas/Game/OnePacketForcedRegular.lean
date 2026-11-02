@@ -372,7 +372,7 @@ theorem intended_of_regular (wellFormed : setup.WellFormed)
                   obtain ⟨entry, entryPresent, material, _transmission, emitted, _packet⟩ :=
                     facts.provenance.ledger message onLedger
                   have recalled : message ∈ (application setup runtime leaks).outputs
-                      (control.execution.recall message.sender) :=
+                      (control.execution.logs message.sender) :=
                     List.mem_filterMap.mpr ⟨entry, entryPresent, emitted⟩
                   rw [← facts.inputs message.sender] at recalled
                   exact (List.mem_filter.mp recalled).1

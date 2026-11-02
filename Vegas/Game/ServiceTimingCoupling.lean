@@ -266,7 +266,7 @@ theorem overriddenTurnProfile_fix_roundsFrom_bind_lower {β : Type}
           rw [← app.runRounds_policyMixture scheduler (timing event owner owned) member
             owner base horizon (ReactiveApplication.Execution.initial app state)]
           have prior : (app.policyMixture (timing event owner owned) member).posterior
-              ((ReactiveApplication.Execution.initial app state).recall owner) =
+              ((ReactiveApplication.Execution.initial app state).logs owner) =
                 timing event owner owned :=
             app.policyMixture_posterior_of_agree _ _ app.silentPolicy _
               fun before entry member => by

@@ -42,12 +42,13 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {runtime : EventGraphRuntime graph}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
 
+omit [Fintype Player] in
 open Classical in
 /-- Committing, at an actual decision history, a response whose local
 envelope the count verdict forbids gives the coverage product as a lower bound
 on the expected collection, under arbitrary later behavioral policies of any
 response menu. -/
-theorem countForbidden_collection_committed
+theorem countForbidden_collection_committed [Finite Player]
     (menu : (runtime.reactiveApplication leaks).ResponseMenu)
     (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
     (scheduler : (runtime.reactiveApplication leaks).Scheduler)
@@ -65,8 +66,8 @@ theorem countForbidden_collection_committed
     (observed : (menu.information initial horizon scheduler).infoOf who history.trace = info)
     (material : (runtime.reactiveApplication leaks).Submission)
     (selected : choice.1 = some ⟨some material⟩)
-    (forbidden : countPermits ((runtime.reactiveApplication leaks).outputs (execution.recall who))
-      (runtime.localEnvelope leaks who (execution.recall who)
+    (forbidden : countPermits ((runtime.reactiveApplication leaks).outputs (execution.logs who))
+      (runtime.localEnvelope leaks who (execution.logs who)
         (execution.observe (runtime.reactiveApplication leaks) who) material) = false) :
     observationRate who * deliveryRate who ≤
       expect ((menu.information initial horizon scheduler).runBehavioralTerminalFrom certificate
@@ -75,6 +76,7 @@ theorem countForbidden_collection_committed
         (fun final => TerminalAudit.charge (runtime.reactiveApplication leaks).stateTraffic
           (runtime.countAudit leaks service.sample) final.state who) := by
   classical
+  let : Fintype Player := Fintype.ofFinite Player
   subst info
   let app := runtime.reactiveApplication leaks
   let model := menu.information initial horizon scheduler

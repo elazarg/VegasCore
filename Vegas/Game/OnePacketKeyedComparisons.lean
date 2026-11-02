@@ -155,7 +155,7 @@ private theorem lateChoice_eq_pure_opening
   have lateEq := lateChoice_reveal (runtime := runtime) source trace who _ turn node slot
   have choiceEq : choice = responseChoice setup runtime leaks bounds (initialLaw setup) horizon
       scheduler who _ (runtime.canonicalServiceDecision leaks who
-        (execution.recall who) (execution.observe (application setup runtime leaks) who) _
+        (execution.logs who) (execution.observe (application setup runtime leaks) who) _
         (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)) := by
     rw [← responseEq]
     apply Subtype.ext

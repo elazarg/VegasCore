@@ -2,6 +2,9 @@
 
 import Vegas.Examples.OddsEvensFairValue
 import Vegas.Game.OnePacketLawApproximation
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # The exact fair configuration and payoff law of Odds–Evens -/
 
@@ -14,8 +17,8 @@ open SourceProgram EventGraphRuntime Interaction GameTheory GameTheory.Protocol
 
 /-- The complete fair configuration and payoff law, retaining both private bits and defaults. -/
 def uniformJointLaw : PMF (Option (Config Player simpleExpr program.terminalCtx) × (Player → ℝ)) :=
-  ((PMF.uniformOfFintype Bool).bind fun e =>
-    (PMF.uniformOfFintype Bool).map (fun o => (e, o))).map fun bits =>
+  ((uniformLaw Bool).bind fun e =>
+    (uniformLaw Bool).map (fun o => (e, o))).map fun bits =>
       (some (bitConfig bits.1 bits.2), fun who =>
         (cash (.success bits.1) (.success bits.2) who : ℝ))
 
@@ -41,13 +44,13 @@ theorem uniform_source_joint_law :
 theorem uniformJointLaw_expected (who : Player) :
     expect uniformJointLaw (fun realized => realized.2 who) = 100 := by
   have law : uniformJointLaw =
-      (setup.run (sourceBitProfile (PMF.uniformOfFintype Bool) (PMF.uniformOfFintype Bool))).map
+      (setup.run (sourceBitProfile (uniformLaw Bool) (uniformLaw Bool))).map
         (fun terminal => (some terminal, fun actor =>
           sourceUtility (setup.parameterOutcome (fun _ => ()) terminal) actor)) := by
     rw [sourceBitProfile_run]
     simp only [uniformJointLaw, PMF.map_bind, PMF.map_comp]
     rfl
   rw [law, expect_map]
-  exact sourceBitProfile_uniform_value (PMF.uniformOfFintype Bool) who
+  exact sourceBitProfile_uniform_value (uniformLaw Bool) who
 
 end Vegas.Examples.OddsEvens

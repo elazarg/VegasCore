@@ -63,7 +63,7 @@ private theorem recorded_fresh_call
     (owner : Player) (event : (graph setup).EventId) (bound : (graph setup).EventId → Nat)
     (entry : (application setup runtime leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup)))
-    (recorded : entry ∈ control.execution.recall owner)
+    (recorded : entry ∈ control.execution.logs owner)
     (call : FreshCall setup leaks owner event bound entry message) :
     runtime.submittedEvent? leaks entry.action = some event := by
   have signed := signedCommitments_history runtime leaks (initialLaw setup)
@@ -89,11 +89,11 @@ private theorem respond_sole_call
       runtime.submittedEvent? leaks response ≠ some event)
     (execution : (application setup runtime leaks).Execution) (actor : Player)
     (response : (application setup runtime leaks).Action)
-    (member : response ∈ (players actor (execution.recall actor)
+    (member : response ∈ (players actor (execution.logs actor)
       (execution.observe (application setup runtime leaks) actor)).support)
-    (recorded : entry ∈ execution.recall owner)
-    (sole : ∀ other ∈ execution.recall owner, ¬ EmitsOtherFor runtime leaks other event id) :
-    ∀ other ∈ (execution.respond (application setup runtime leaks) actor response).recall owner,
+    (recorded : entry ∈ execution.logs owner)
+    (sole : ∀ other ∈ execution.logs owner, ¬ EmitsOtherFor runtime leaks other event id) :
+    ∀ other ∈ (execution.respond (application setup runtime leaks) actor response).logs owner,
       ¬ EmitsOtherFor runtime leaks other event id := by
   let app := application setup runtime leaks
   by_cases same : actor = owner
@@ -124,9 +124,9 @@ private theorem settled_of_recorded
     (valid : SettlesFreshCalls setup leaks owner event bound execution)
     (entry : (application setup runtime leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup)))
-    (recorded : entry ∈ execution.recall owner)
+    (recorded : entry ∈ execution.logs owner)
     (call : FreshCall setup leaks owner event bound entry message)
-    (sole : ∀ other ∈ execution.recall owner,
+    (sole : ∀ other ∈ execution.logs owner,
       ¬ EmitsOtherFor runtime leaks other event message.id) :
     Settled setup leaks event message.id execution := by
   obtain ⟨earlier, later, split⟩ := List.mem_iff_append.mp recorded
@@ -163,14 +163,14 @@ private theorem round_accepted_result
     (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
     (sameConfig : execution.application.config = sent)
-    (recorded : entry ∈ execution.recall owner)
-    (sole : ∀ other ∈ execution.recall owner,
+    (recorded : entry ∈ execution.logs owner)
+    (sole : ∀ other ∈ execution.logs owner,
       ¬ EmitsOtherFor runtime leaks other event message.id)
     (witness : AcceptanceWitness event message sent action output execution.application)
     (reached : next ∈
       ((application setup runtime leaks).round scheduler players execution).support) :
-    (next.application.config = sent ∧ entry ∈ next.recall owner ∧
-      (∀ other ∈ next.recall owner, ¬ EmitsOtherFor runtime leaks other event message.id) ∧
+    (next.application.config = sent ∧ entry ∈ next.logs owner ∧
+      (∀ other ∈ next.logs owner, ¬ EmitsOtherFor runtime leaks other event message.id) ∧
       AcceptanceWitness event message sent action output next.application) ∨
     (event ∈ next.application.config.cut.completed ∧
       (graph setup).runPlan ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
@@ -187,7 +187,7 @@ private theorem round_accepted_result
   have fresh : (message.id, true) ∉ execution.receipts := fun receipt =>
     readyBefore.1 (settledBefore.2.2 receipt)
   have input : message ∈ execution.network.inputs := by
-    have recalled : message ∈ app.outputs (execution.recall owner) :=
+    have recalled : message ∈ app.outputs (execution.logs owner) :=
       List.mem_filterMap.mpr ⟨entry, recorded, call.emitted⟩
     rw [← facts.inputs owner] at recalled
     exact (List.mem_filter.mp recalled).1
@@ -198,8 +198,8 @@ private theorem round_accepted_result
   obtain ⟨middleTrace⟩ := app.raw_trace_environment (initialLaw setup) horizon scheduler
     remaining execution middle command trace selected moved
   have recallEq := app.environmentStep_recall execution middle command moved
-  have recordedMiddle : entry ∈ middle.recall owner := by rw [recallEq]; exact recorded
-  have soleMiddle : ∀ other ∈ middle.recall owner,
+  have recordedMiddle : entry ∈ middle.logs owner := by rw [recallEq]; exact recorded
+  have soleMiddle : ∀ other ∈ middle.logs owner,
       ¬ EmitsOtherFor runtime leaks other event message.id := by rw [recallEq]; exact sole
   have witnessMiddle := witness.keep
     ((keepsFixedCandidates_step runtime leaks).environmentStep execution middle command moved)
@@ -278,8 +278,8 @@ private theorem runUntil_accepted_result
       ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
         (some ⟨remaining, none, execution⟩) →
       execution.application.config = sent →
-      entry ∈ execution.recall owner →
-      (∀ other ∈ execution.recall owner, ¬ EmitsOtherFor runtime leaks other event message.id) →
+      entry ∈ execution.logs owner →
+      (∀ other ∈ execution.logs owner, ¬ EmitsOtherFor runtime leaks other event message.id) →
       AcceptanceWitness event message sent action output execution.application →
       stopped ∈ ((application setup runtime leaks).runUntil scheduler players
         (fun final => event ∈ final.application.config.cut.completed) count execution).support →
@@ -341,9 +341,9 @@ theorem FreshCall.accepted_runPlan
     (output : ((graph setup).outputLayout event).Value)
     (entry : (application setup runtime leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup)))
-    (recorded : entry ∈ execution.recall owner)
+    (recorded : entry ∈ execution.logs owner)
     (call : FreshCall setup leaks owner event bound entry message)
-    (sole : ∀ other ∈ execution.recall owner,
+    (sole : ∀ other ∈ execution.logs owner,
       ¬ EmitsOtherFor runtime leaks other event message.id)
     (witness : AcceptanceWitness event message execution.application.config action output
       execution.application)

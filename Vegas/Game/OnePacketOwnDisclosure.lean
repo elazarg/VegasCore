@@ -72,7 +72,7 @@ theorem disclosureResolves_of_debtFree (wellFormed : setup.WellFormed)
     (who : Player) (forced : ForcedState setup runtime leaks who (some control))
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure who setup.program point) :
-    DisclosureResolves setup runtime leaks who (control.execution.recall who)
+    DisclosureResolves setup runtime leaks who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) := by
   intro event pending owner payload binding checks outputEq codeEq node
   obtain ⟨turn, _, owned, _⟩ := pendingEvent_spec (runtime := runtime) (setup := setup) pending
@@ -112,7 +112,7 @@ theorem disclosureResolves_of_debtFree (wellFormed : setup.WellFormed)
       simp only [EventGraphRuntime.canonicalServiceDecision,
         EventGraphRuntime.canonicalReactiveDecision, node, ite_eq_right observedActive]
       change ((EventGraphRuntime.reactiveNormalization runtime leaks).action owner
-        (control.execution.recall owner) (control.execution.observe (application setup runtime
+        (control.execution.logs owner) (control.execution.observe (application setup runtime
           leaks)
           owner)
         ⟨(EventGraphRuntime.reactiveResolutionPacket owner event payload binding checks

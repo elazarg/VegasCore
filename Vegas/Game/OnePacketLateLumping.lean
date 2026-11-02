@@ -133,7 +133,7 @@ theorem commitStatuses_nil_of_unsent {who : Player}
       have emitted : message ∈ control.execution.network.inputs :=
         facts.carried.pending message member
       have recalled : message ∈ (application setup runtime leaks).outputs
-          (control.execution.recall who) := by
+          (control.execution.logs who) := by
         rw [← inputRecall who]
         exact List.mem_filter.mpr ⟨emitted, by simp [sender]⟩
       obtain ⟨entry, inRecall, entryEmitted⟩ := List.mem_filterMap.mp recalled
@@ -291,7 +291,7 @@ def OwnerBindingLaw {LateOption : Type}
       ForcedState setup runtime leaks key.owner history.state →
       execution.application.config.cut.Ready event →
       PMF.WithinTV δ (((bounds.onePacketMenu runtime leaks).decodeProfile (initialLaw setup)
-          horizon scheduler profile key.owner (execution.recall key.owner)
+          horizon scheduler profile key.owner (execution.logs key.owner)
           (execution.observe (application setup runtime leaks) key.owner)).map
             (commitMove (runtime := runtime) event key.owner payload
               execution))

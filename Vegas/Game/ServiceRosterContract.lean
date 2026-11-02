@@ -70,7 +70,7 @@ theorem protectedInclusion :
   dsimp only at late
   rcases calendar control trace with
     ⟨current, offset, entryClock, obsolete, phase⟩ | ⟨_, _, terminal⟩
-  · have member : entry ∈ control.execution.recall owner := by
+  · have member : entry ∈ control.execution.logs owner := by
       rw [split]
       simp
     obtain ⟨sent, currentOrObsolete⟩ := phase.responses owner entry member event seen unfinished

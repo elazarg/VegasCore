@@ -99,7 +99,7 @@ restart guide. Those research targets are not current theorem claims.
 The GameTheory foundation is a separately managed Git submodule. The pinned
 toolchain and manifest determine dependencies. The pinned foundation revision
 is anchored by the annotated tag
-[`vegascore-foundation-8bb3fc27`](https://github.com/elazarg/GameTheory/tree/vegascore-foundation-8bb3fc27).
+[`v4.35.0`](https://github.com/elazarg/GameTheory/tree/v4.35.0).
 Run:
 
 ```powershell

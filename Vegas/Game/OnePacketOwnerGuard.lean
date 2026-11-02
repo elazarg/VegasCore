@@ -344,7 +344,7 @@ variable (setup runtime leaks) in
 /-- **Owned requests name own handles.** Every recalled transmission requesting
 owned evidence requests a fact about a handle of the recalling player. -/
 def OwnedRequestsOwn (execution : (application setup runtime leaks).Execution) : Prop :=
-  ∀ who, ∀ recalled ∈ execution.recall who, ∀ submission,
+  ∀ who, ∀ recalled ∈ execution.logs who, ∀ submission,
     recalled.action.transmission = some submission →
     ∀ fact, submission.evidence = .owned fact → fact.handle.1 = who
 
@@ -398,7 +398,7 @@ theorem ownedRequestsOwn_history
             have request := Option.some.inj normalEvidence
             change submission.evidence.normalize observer (submission.call.candidateAfter observer
               (fun slot => execution.application.candidates.lookup (observer, slot)))
-                (ReactiveApplication.ResponseMenu.knownPackets (execution.recall observer)
+                (ReactiveApplication.ResponseMenu.knownPackets (execution.logs observer)
                   (execution.observe app observer)) = submission.evidence at request
             rw [owned] at request
             exact handle_owner_of_normalize request

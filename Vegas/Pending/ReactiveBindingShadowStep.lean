@@ -24,8 +24,8 @@ namespace BindingMemory
 
 theorem repairResponse_submit_input (who : Player) (memory : BindingMemory runtime leaks)
     (left right : (runtime.reactiveApplication leaks).Execution)
-    (lengths : (right.recall who).length = memory.responses.length)
-    (past : memory.restoreRecall runtime leaks (right.recall who) = left.recall who)
+    (lengths : (right.logs who).length = memory.responses.length)
+    (past : memory.restoreRecall runtime leaks (right.logs who) = left.logs who)
     (observed : memory.shadow.inputView runtime leaks
       (right.observe (runtime.reactiveApplication leaks) who) =
         left.observe (runtime.reactiveApplication leaks) who)
@@ -48,10 +48,10 @@ theorem repairResponse_submit_input (who : Player) (memory : BindingMemory runti
       ⟨repaired.2, memory.responses ++ [(memory.shadow.inputView runtime leaks view, original)]⟩
     let before := left.respond app who original
     let after := right.respond app who repaired.1
-    remembered.restoreRecall runtime leaks (after.recall who) = before.recall who ∧
+    remembered.restoreRecall runtime leaks (after.logs who) = before.logs who ∧
       remembered.shadow.inputView runtime leaks (after.observe app who) =
         before.observe app who ∧
-      (after.recall who).length = remembered.responses.length := by
+      (after.logs who).length = remembered.responses.length := by
   let app := runtime.reactiveApplication leaks
   let beforeView := right.observe app who
   let originalCall : Submission graph := ⟨.commitment event (who, .prepared serial), opening⟩
@@ -98,13 +98,13 @@ theorem repairResponse_submit_input (who : Player) (memory : BindingMemory runti
     let remembered : BindingMemory runtime leaks :=
       ⟨repaired.2, memory.responses ++
         [(memory.shadow.inputView runtime leaks beforeView, original)]⟩
-    remembered.restoreRecall runtime leaks ((right.respond app who repaired.1).recall who) =
-      before.recall who ∧
+    remembered.restoreRecall runtime leaks ((right.respond app who repaired.1).logs who) =
+      before.logs who ∧
     remembered.shadow.inputView runtime leaks ((right.respond app who repaired.1).observe app who) =
       before.observe app who ∧
-    ((right.respond app who repaired.1).recall who).length = remembered.responses.length)
+    ((right.respond app who repaired.1).logs who).length = remembered.responses.length)
   rw [repairedEq]
-  change remembered.restoreRecall runtime leaks (after.recall who) = before.recall who ∧
+  change remembered.restoreRecall runtime leaks (after.logs who) = before.logs who ∧
     remembered.shadow.inputView runtime leaks (after.observe app who) = before.observe app who ∧ _
   have submittedConfig : after.application.config = right.application.config := by
     change (submitStep (repairedCall.register right.application who) who
@@ -149,7 +149,7 @@ theorem repairResponse_submit_input (who : Player) (memory : BindingMemory runti
     exact congrArg (fun receipts => (⟨before.network.observe who,
       app.observePlayer before.application who, receipts⟩ : app.PlayerView))
         (congrArg ReactiveApplication.PlayerView.receipts observed)
-  · change (after.recall who).length = remembered.responses.length
+  · change (after.logs who).length = remembered.responses.length
     simp only [after, repaired, remembered, ReactiveApplication.Execution.respond,
       ↓reduceIte, List.length_append, List.length_singleton, lengths]
 

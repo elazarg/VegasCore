@@ -185,21 +185,21 @@ theorem includePending_accepted (execution : (runtime.reactiveApplication leaks)
 the responder's, which records the envelope the response emits. -/
 theorem respond_recall (execution : (runtime.reactiveApplication leaks).Execution)
     (who observer : Player) (action : (runtime.reactiveApplication leaks).Action) :
-    (execution.respond (runtime.reactiveApplication leaks) who action).recall observer =
-      if observer = who then execution.recall who ++
+    (execution.respond (runtime.reactiveApplication leaks) who action).logs observer =
+      if observer = who then execution.logs who ++
         [⟨execution.observe (runtime.reactiveApplication leaks) who, action,
           action.transmission.map fun material =>
             ⟨(who, execution.network.nextSerial who),
               (runtime.reactiveApplication leaks).packet
                 ((runtime.reactiveApplication leaks).submit execution.application who material)
                 who (execution.network.known who) material⟩⟩]
-      else execution.recall observer := by
+      else execution.logs observer := by
   rcases action with ⟨_ | material⟩ <;> rfl
 
 /-- Every envelope a player recalls emitting is signed by it and carries the
 packet of the submission it recalls. -/
 def EmissionsRecorded (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
-  ∀ who, ∀ entry ∈ execution.recall who, ∀ message, entry.emitted = some message →
+  ∀ who, ∀ entry ∈ execution.logs who, ∀ message, entry.emitted = some message →
     message.sender = who ∧ ∃ material, entry.action.transmission = some material ∧
       message.payload.call = material.call.packet
 
@@ -208,12 +208,12 @@ structure SignedCommitments (execution : (runtime.reactiveApplication leaks).Exe
     Prop where
   provenance : execution.Provenance (runtime.reactiveApplication leaks)
   emissions : EmissionsRecorded runtime leaks execution
-  ownFixed : ∀ who, ∀ message ∈ (runtime.reactiveApplication leaks).outputs (execution.recall who),
+  ownFixed : ∀ who, ∀ message ∈ (runtime.reactiveApplication leaks).outputs (execution.logs who),
     ∀ event slot, message.payload.call = .commitment event (who, slot) →
       execution.application.candidates.lookup (who, slot) ≠ .fresh
   acceptedSigned : ∀ event candidate,
     execution.application.accepted (.inr event) = some candidate →
-      ∃ message ∈ (runtime.reactiveApplication leaks).outputs (execution.recall candidate.1),
+      ∃ message ∈ (runtime.reactiveApplication leaks).outputs (execution.logs candidate.1),
         message.payload.call = .commitment event candidate
   inputHandles : ∀ input candidate, execution.application.accepted (.inl input) = some candidate →
     candidate.2 = .initial input
@@ -251,8 +251,8 @@ theorem SignedCommitments.respond {execution : (runtime.reactiveApplication leak
         material.call.packet).accepted = _
       rw [submitStep_accepted, Submission.register_accepted]
   have outputsMono (observer : Player) :
-      app.outputs (execution.recall observer) ⊆
-        app.outputs ((execution.respond app who action).recall observer) := by
+      app.outputs (execution.logs observer) ⊆
+        app.outputs ((execution.respond app who action).logs observer) := by
     intro message member
     obtain ⟨entry, entryMember, emitted⟩ := List.mem_filterMap.mp member
     exact List.mem_filterMap.mpr
@@ -324,7 +324,7 @@ theorem SignedCommitments.environmentStep
   · intro event candidate accepted
     rw [recallSame]
     have origin : execution.application.accepted (.inr event) = some candidate ∨
-        ∃ envelope ∈ app.outputs (execution.recall candidate.1),
+        ∃ envelope ∈ app.outputs (execution.logs candidate.1),
           envelope.payload.call = .commitment event candidate := by
       cases command with
       | wait =>

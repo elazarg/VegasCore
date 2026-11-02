@@ -2,7 +2,7 @@
 
 import Vegas.Game.OnePacketComponents
 import Vegas.Game.OnePacketExclusionPayoff
-import GameTheoryExtensions.Analysis.Protocol.ComponentCompletion
+import GameTheory.Analysis.Protocol.ComponentCompletion
 
 /-! # A common consistent completion of native operational components
 
@@ -219,8 +219,9 @@ theorem SourceProgram.Setup.exists_onePacket_consistent_completion {Parameter : 
     exact onePacketComponent_fullSupport setup runtime leaks bounds initial horizon scheduler
       (sourceSequence n) (positive n) (le_one n) agent part
   let core :=
-    (N).exists_consistent_pooled_completion ((menu).decisionRecall initial horizon scheduler)
-      fallback certificate payoff (Pool := Pool) (Part := parts) pools laws componentFull
+    (N).exists_consistent_completion_with_shared_mixture_weights
+      ((menu).decisionRecall initial horizon scheduler)
+      fallback certificate payoff (WeightGroup := Pool) (Part := parts) pools laws componentFull
   rcases core with ⟨weights, sequence, limit, index, assembled, mixed, bayes, increasing, converges,
     consistent, pooled, limits⟩
   have freeOptimal : ∀ who (site : (N).InformationSite who),

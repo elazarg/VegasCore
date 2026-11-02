@@ -48,7 +48,7 @@ theorem history_emitted_isSome
     (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some control))
     (who : Player) (entry : (application setup runtime leaks).PlayerEntry)
-    (member : entry ∈ control.execution.recall who) :
+    (member : entry ∈ control.execution.logs who) :
     entry.emitted.isSome = entry.action.transmission.isSome := by
   have emitted := (transmissionsEmitted_serviceInvariant (runtime := runtime) scheduler).history
     (initialLaw setup)
@@ -74,8 +74,8 @@ theorem history_outputs_length
     (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some control))
     (who : Player) :
-    ((application setup runtime leaks).outputs (control.execution.recall who)).length =
-      (application setup runtime leaks).submissionCount (control.execution.recall who) := by
+    ((application setup runtime leaks).outputs (control.execution.logs who)).length =
+      (application setup runtime leaks).submissionCount (control.execution.logs who) := by
   unfold ReactiveApplication.outputs ReactiveApplication.submissionCount
   rw [List.length_filterMap_eq_countP]
   apply List.countP_congr
@@ -90,8 +90,8 @@ theorem history_eventRecorded_iff
     (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some control))
     (who : Player) (event : (graph setup).EventId) :
-    runtime.eventRecorded leaks (control.execution.recall who) event = true ↔
-      ∃ message ∈ (application setup runtime leaks).outputs (control.execution.recall who),
+    runtime.eventRecorded leaks (control.execution.logs who) event = true ↔
+      ∃ message ∈ (application setup runtime leaks).outputs (control.execution.logs who),
         message.payload.call.event? (graph setup) = some event := by
   have emitted := (transmissionsEmitted_serviceInvariant (runtime := runtime) scheduler).history
     (initialLaw setup)
@@ -131,7 +131,7 @@ theorem history_slotCommitted_iff
       (some control))
     (who : Player) (serial : Nat) :
     SlotCommitted control.execution.network.inputs who serial ↔
-      SlotCommitted ((application setup runtime leaks).outputs (control.execution.recall who)) who
+      SlotCommitted ((application setup runtime leaks).outputs (control.execution.logs who)) who
         serial := by
   have recalled := runtime.countRecall_history leaks trace
   rw [← recalled.1 who]
@@ -150,7 +150,7 @@ theorem history_canonicalFreshSlot
     (who : Player) :
     canonicalFreshSlot who (control.execution.observe (application setup runtime leaks)
       who).application =
-      publicFreshSlot ((application setup runtime leaks).outputs (control.execution.recall who)) who
+      publicFreshSlot ((application setup runtime leaks).outputs (control.execution.logs who)) who
         (control.execution.application.publicView.bindingCount who) := by
   change canonicalFreshSlot who (control.execution.application.playerView who) = _
   rw [canonicalFreshSlot_eq_publicFreshSlot (preparedFresh_history (runtime := runtime) horizon

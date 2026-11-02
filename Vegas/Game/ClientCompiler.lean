@@ -107,9 +107,9 @@ theorem ledgerClients_agree
     (unobserved : leaks.DeliversNothing)
     (control : (app).Control)
     (trace : ((app).protocol Initial horizon scheduler).Trace (some control)) (who : Player) :
-    compiled.ledgerClients who (control.execution.recall who)
+    compiled.ledgerClients who (control.execution.logs who)
       (control.execution.observe (app) who) =
-      compiled.clients who (control.execution.recall who) (control.execution.observe (app) who) :=
+      compiled.clients who (control.execution.logs who) (control.execution.observe (app) who) :=
   (raw).ledgerProfile_agrees Initial horizon scheduler unobserved
     compiled.assessment.strategy control trace who
 

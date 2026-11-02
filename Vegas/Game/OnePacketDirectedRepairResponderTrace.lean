@@ -94,7 +94,7 @@ theorem responder_trace (frame : DirectedBindingFrame (runtime := runtime) memor
       operationalRecord setup runtime leaks bounds horizon scheduler imagePrior)
     (left right : (application setup runtime leaks).Action)
     (available : right ∈ bounds.onePacketActions runtime leaks actor
-      (repaired.recall actor) (repaired.observe (application setup runtime leaks) actor))
+      (repaired.logs actor) (repaired.observe (application setup runtime leaks) actor))
     (after : BindingMemory.Frame runtime leaks nextMemory owner
       (original.respond (application setup runtime leaks) actor left)
       (repaired.respond (application setup runtime leaks) actor right)) :
@@ -170,7 +170,7 @@ theorem foreign_response_trace (frame : DirectedBindingFrame (runtime := runtime
       operationalRecord setup runtime leaks bounds horizon scheduler imagePrior)
     (response : (application setup runtime leaks).Action)
     (available : response ∈ bounds.onePacketActions runtime leaks actor
-      (original.recall actor) (original.observe (application setup runtime leaks) actor)) :
+      (original.logs actor) (original.observe (application setup runtime leaks) actor)) :
     DirectedBindingFrame (runtime := runtime) memory owner
         (original.respond (application setup runtime leaks) actor response)
         (repaired.respond (application setup runtime leaks) actor response) ∧
@@ -184,7 +184,7 @@ theorem foreign_response_trace (frame : DirectedBindingFrame (runtime := runtime
             operationalRecord setup runtime leaks bounds horizon scheduler prior := by
   apply frame.responder_trace remaining actor prior imagePrior records
     response response
-  · rw [← frame.recall actor foreign, ← frame.toFrame.foreign_observed actor
+  · rw [← frame.logs actor foreign, ← frame.toFrame.foreign_observed actor
       foreign]
     exact available
   · exact frame.toFrame.foreign_response actor foreign response

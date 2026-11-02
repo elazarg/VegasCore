@@ -2,6 +2,9 @@
 
 import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceContinuation
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # Active-player factors across chance and idle players
 
@@ -33,7 +36,7 @@ private def terminal : State → Prop
   | _ => False
 
 private def transition : State → (Bool → Option Bool) → PMF State
-  | .chance, _ => (PMF.uniformOfFintype Bool).map State.choice
+  | .chance, _ => (uniformLaw Bool).map State.choice
   | .choice _, joint => PMF.pure (.done ((joint false).getD false))
   | .done answer, _ => PMF.pure (.done answer)
 
@@ -113,9 +116,9 @@ theorem chance_has_two_successors (legal : {joint // arena.Legal State.chance jo
     State.choice false ∈ (arena.step State.chance legal).support ∧
       State.choice true ∈ (arena.step State.chance legal).support := by
   constructor <;> rw [show arena.step State.chance legal =
-    (PMF.uniformOfFintype Bool).map State.choice from rfl, PMF.support_map]
-  · exact ⟨false, PMF.mem_support_uniformOfFintype _, rfl⟩
-  · exact ⟨true, PMF.mem_support_uniformOfFintype _, rfl⟩
+    (uniformLaw Bool).map State.choice from rfl, PMF.support_map]
+  · exact ⟨false, mem_support_uniformLaw _, rfl⟩
+  · exact ⟨true, mem_support_uniformLaw _, rfl⟩
 
 private theorem chance_keeps_all (source target : ∀ who, model.BehavioralPolicy who)
     (next : arena.History) :

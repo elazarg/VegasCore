@@ -3,6 +3,9 @@
 import GameTheory.Analysis.IncentiveCone
 import GameTheoryExtensions.Math.Probability.Support
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # Incentive preservation without prescribed-law matching
 
@@ -22,12 +25,12 @@ def source : Unit → IncentiveComparison Bool :=
   fun _ => ⟨PMF.pure true, PMF.pure false⟩
 
 def target : IncentiveComparison Bool :=
-  ⟨(PMF.uniformOfFintype _), PMF.pure false⟩
+  ⟨(uniformLaw _), PMF.pure false⟩
 
 theorem target_difference : target.difference = (1 / 2 : ℝ) • (source ()).difference := by
   ext outcome
   cases outcome <;> norm_num [target, source, IncentiveComparison.difference,
-    toReal_uniformOfFintype_apply, toReal_pure_apply]
+    toReal_uniformLaw_apply, toReal_pure_apply]
 
 theorem target_in_cone : target.difference ∈ IncentiveComparison.cone source := by
   rw [target_difference]
@@ -42,7 +45,7 @@ theorem no_prescribed_root_mixture (roots : PMF Unit) :
     target.prescribed ≠ roots.bind (fun root => (source root).prescribed) := by
   intro same
   have mass := congrArg (fun law => (law true).toReal) same
-  norm_num [target, source, toReal_uniformOfFintype_apply,
+  norm_num [target, source, toReal_uniformLaw_apply,
     toReal_pure_apply] at mass
 
 end GameTheoryExtensionsTests.IncentiveCone

@@ -73,8 +73,8 @@ theorem RecordsSubmittedBindings.binding_submission
     (serial : Nat) (opening : Option (Raw L))
     (fresh : original.application.candidates.lookup (who, .prepared serial) = .fresh)
     (permitted : countPermits
-      ((runtime.reactiveApplication leaks).outputs (original.recall who))
-      (runtime.localEnvelope leaks who (original.recall who)
+      ((runtime.reactiveApplication leaks).outputs (original.logs who))
+      (runtime.localEnvelope leaks who (original.logs who)
         (original.observe (runtime.reactiveApplication leaks) who)
         ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩) = true) :
     let app := runtime.reactiveApplication leaks

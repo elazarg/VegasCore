@@ -55,7 +55,7 @@ theorem recall_entry_legal (initial : PMF app.State) (horizon : Nat)
   cases Option.some.inj same
   exact legal
 
-theorem recall_entry_supported [Fintype Principal]
+theorem recall_entry_supported [Finite Principal]
     (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (who : Principal) (history : (menu.protocol initial horizon scheduler).History)

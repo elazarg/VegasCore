@@ -14,7 +14,7 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability
 open scoped ENNReal
 
-variable {Player : Type} [DecidableEq Player] [Fintype Player]
+variable {Player : Type} [DecidableEq Player] [Finite Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
   {Signal : Type*} (signal : State L setup.context → Signal) (value : Signal)
@@ -66,7 +66,7 @@ theorem conditionInitial_behavioralJoint_probability
         (((policies who view).map Subtype.val) (joint who)).toReal) observed
     _ = _ := congrArg ENNReal.toReal secondMass
 
-omit [Fintype Player] in
+omit [Finite Player] in
 private theorem initialEntry_injective :
     Function.Injective (fun initial : State L setup.context =>
       some (ProtocolState.entry setup.program (Config.initial initial))) := by
@@ -75,7 +75,7 @@ private theorem initialEntry_injective :
   simpa only [Option.map_some, ProtocolState.base_entry, Option.some.injEq, Config.initial]
     using bases
 
-omit [Fintype Player] in
+omit [Finite Player] in
 /-- The actual initialization kernel has the same proportional atom law as
 the conditional initial state, before any strategic action is taken. -/
 theorem conditionInitial_protocolStep_initial_scale

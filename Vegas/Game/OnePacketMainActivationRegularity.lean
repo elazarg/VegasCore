@@ -61,7 +61,7 @@ theorem nonlate_of_mainActivationTraceAfter
     (main : MainActivationTraceAfter setup runtime leaks bounds horizon
       scheduler source focal
       startTrace.length trace) :
-    ¬ LateDelivery setup runtime leaks owner (some (control.execution.recall owner,
+    ¬ LateDelivery setup runtime leaks owner (some (control.execution.logs owner,
       control.execution.observe (application setup runtime leaks) owner)) := by
   rintro ⟨past, view, event, same, pending, entry, remembered, activated⟩
   obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj same.symm)
@@ -103,9 +103,9 @@ theorem nonlate_of_mainActivationTraceAfter
   have supportStep := mainActivationStep_of_tracePrefix (runtime := runtime) source focal
     startTrace.length prior joint
     legal realized afterPrefix main future.length_le
-  have first : FirstActivation setup runtime leaks owner (some (before.execution.recall owner,
+  have first : FirstActivation setup runtime leaks owner (some (before.execution.logs owner,
       before.execution.observe (application setup runtime leaks) owner)) :=
-    ⟨before.execution.recall owner, before.execution.observe (application setup runtime leaks)
+    ⟨before.execution.logs owner, before.execution.observe (application setup runtime leaks)
       owner, event,
       rfl, firstPending, never⟩
   have supported := supportStep owner acting different first
@@ -126,11 +126,11 @@ theorem nonlate_of_mainActivationTraceAfter
     cases Option.some.inj (earlyDecoded.symm.trans pointDecoded)
     exact ProtocolState.Intended.not_owesFailure owner setup.program earlyPoint earlyIntended
   have offered : response ∈ bounds.onePacketActions runtime leaks owner
-      (before.execution.recall owner) (before.execution.observe (application setup runtime leaks)
+      (before.execution.logs owner) (before.execution.observe (application setup runtime leaks)
         owner) :=
     (chosen ▸ legal.2 owner).2
   have selected : (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
-      owner (some (before.execution.recall owner,
+      owner (some (before.execution.logs owner,
         before.execution.observe (application setup runtime leaks) owner)) response).1 = some
           response := by
     simp only [responseChoice, dite_eq_left offered]
@@ -148,7 +148,7 @@ theorem nonlate_of_mainActivationTraceAfter
       supported
     have responseEq := Option.some.inj (selected.symm.trans canonical)
     rw [responseEq]
-    rcases canonical_silentOrNames (runtime := runtime) owner (execution.recall owner)
+    rcases canonical_silentOrNames (runtime := runtime) owner (execution.logs owner)
       (execution.observe (application setup runtime leaks) owner) event action with silent | names
     · rw [sends] at silent
       cases silent
@@ -169,8 +169,8 @@ theorem nonlate_of_mainActivationTraceAfter
           first second actions ih reached
   obtain ⟨earlier, later, split⟩ := laterRecord afterPrefix
   have recorded :
-      runtime.eventRecorded leaks (control.execution.recall owner) event = true :=
-    (runtime.eventRecorded_iff leaks (control.execution.recall owner) event).mpr
+      runtime.eventRecorded leaks (control.execution.logs owner) event = true :=
+    (runtime.eventRecorded_iff leaks (control.execution.logs owner) event).mpr
       ⟨recordedEntry, by rw [split]; exact List.mem_append_right _ (List.mem_cons_self ..), named⟩
   rw [(pendingEvent_spec (runtime := runtime) pending).2.2.2] at recorded
   cases recorded
@@ -184,16 +184,16 @@ private theorem main_of_no_pending
     (point : ProtocolState setup.program)
     (decoded : decodedPoint setup execution.application.config = some point)
     (intended : ProtocolState.Intended setup.program point)
-    (noPending : pendingEvent setup runtime leaks owner (some (execution.recall owner,
+    (noPending : pendingEvent setup runtime leaks owner (some (execution.logs owner,
       execution.observe (application setup runtime leaks) owner)) = none)
     (response : (application setup runtime leaks).Action)
     (offered : response ∈ bounds.onePacketActions runtime leaks owner
-      (execution.recall owner) (execution.observe (application setup runtime leaks) owner)) :
+      (execution.logs owner) (execution.observe (application setup runtime leaks) owner)) :
     responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler owner
-      (some (execution.recall owner, execution.observe (application setup runtime leaks) owner))
+      (some (execution.logs owner, execution.observe (application setup runtime leaks) owner))
         response ∈
       (honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler source owner
-        (some (execution.recall owner,
+        (some (execution.logs owner,
           execution.observe (application setup runtime leaks) owner))).support := by
   have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
     horizon scheduler trace
@@ -203,12 +203,12 @@ private theorem main_of_no_pending
   have samePoint := Option.some.inj ((decodedPoint_eq residual).symm.trans decoded)
   subst point
   have records : ∀ event, execution.application.publicView.ownTurn? owner = some event →
-      runtime.eventRecorded leaks (execution.recall owner) event = true := by
+      runtime.eventRecorded leaks (execution.logs owner) event = true := by
     intro event turn
-    cases actual : runtime.eventRecorded leaks (execution.recall owner) event with
+    cases actual : runtime.eventRecorded leaks (execution.logs owner) event with
     | true => rfl
     | false =>
-        have pending : pendingEvent setup runtime leaks owner (some (execution.recall owner,
+        have pending : pendingEvent setup runtime leaks owner (some (execution.logs owner,
             execution.observe (application setup runtime leaks) owner)) = some event :=
           pendingEvent_of_spec (runtime := runtime) turn actual
         rw [noPending] at pending
@@ -240,13 +240,13 @@ private theorem main_of_no_pending
     rfl
   have mainLaw : honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
     source owner
-      (some (execution.recall owner, execution.observe (application setup runtime leaks) owner)) =
+      (some (execution.logs owner, execution.observe (application setup runtime leaks) owner)) =
       PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler owner
-        (some (execution.recall owner, execution.observe (application setup runtime leaks)
+        (some (execution.logs owner, execution.observe (application setup runtime leaks)
           owner))) := by
     cases turn : execution.application.publicView.ownTurn? owner with
     | none =>
-        exact honestChoice_silence_of_noTurn (runtime := runtime) source owner (execution.recall
+        exact honestChoice_silence_of_noTurn (runtime := runtime) source owner (execution.logs
           owner)
           (execution.observe (application setup runtime leaks) owner) turn
     | some event =>
@@ -295,23 +295,23 @@ theorem response_main_of_mainActivationTraceAfter
       (some control) joint) :
     responseChoice setup runtime leaks bounds (initialLaw setup) horizon
       scheduler owner
-      (some (control.execution.recall owner,
+      (some (control.execution.logs owner,
         control.execution.observe (application setup runtime leaks) owner)) ((joint owner).getD
           ⟨none⟩) ∈
       (honestChoice setup runtime leaks bounds (initialLaw setup) horizon
         scheduler source owner
-        (some (control.execution.recall owner,
+        (some (control.execution.logs owner,
           control.execution.observe (application setup runtime leaks) owner))).support := by
   have nonlate := nonlate_of_mainActivationTraceAfter (runtime := runtime) wellFormed covers
     capacity source
     focal owner different opportunity timely start control startTrace trace
     startPrefix current turn clear regular notOwed main
-  by_cases first : FirstActivation setup runtime leaks owner (some (control.execution.recall owner,
+  by_cases first : FirstActivation setup runtime leaks owner (some (control.execution.logs owner,
       control.execution.observe (application setup runtime leaks) owner))
   · exact stepMain owner active different first
-  have noPending : pendingEvent setup runtime leaks owner (some (control.execution.recall owner,
+  have noPending : pendingEvent setup runtime leaks owner (some (control.execution.logs owner,
       control.execution.observe (application setup runtime leaks) owner)) = none := by
-    cases actual : pendingEvent setup runtime leaks owner (some (control.execution.recall owner,
+    cases actual : pendingEvent setup runtime leaks owner (some (control.execution.logs owner,
         control.execution.observe (application setup runtime leaks) owner)) with
     | none => rfl
     | some event =>

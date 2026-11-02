@@ -71,24 +71,24 @@ theorem normalized_opening_available [Fintype Player]
       owner
         ((runtime.reactiveApplication leaks).observePlayer original.application owner)
         (original.network.known owner))⟩ : (runtime.reactiveApplication leaks).Action) ∈
-          (bounds.menu runtime leaks).actions owner (original.recall owner)
+          (bounds.menu runtime leaks).actions owner (original.logs owner)
             (original.observe (runtime.reactiveApplication leaks) owner)) :
     (⟨some ((disclosureSubmission (.opening event candidate raw)).normalizeReactive owner
         ((runtime.reactiveApplication leaks).observePlayer repaired.application owner)
         (repaired.network.known owner))⟩ : (runtime.reactiveApplication leaks).Action) ∈
-          (bounds.menu runtime leaks).actions owner (repaired.recall owner)
+          (bounds.menu runtime leaks).actions owner (repaired.logs owner)
             (repaired.observe (runtime.reactiveApplication leaks) owner) := by
   let app := runtime.reactiveApplication leaks
   have leftKnown := app.known_from_recall original owner leftRecall
   have rightKnown := app.known_from_recall repaired owner rightRecall
   change original.network.known owner = ReactiveApplication.ResponseMenu.knownPackets
-    (original.recall owner) (original.observe app owner) at leftKnown
+    (original.logs owner) (original.observe app owner) at leftKnown
   change repaired.network.known owner = ReactiveApplication.ResponseMenu.knownPackets
-    (repaired.recall owner) (repaired.observe app owner) at rightKnown
+    (repaired.logs owner) (repaired.observe app owner) at rightKnown
   have sameKnown : ReactiveApplication.ResponseMenu.knownPackets
-      (original.recall owner) (original.observe app owner) =
+      (original.logs owner) (original.observe app owner) =
         ReactiveApplication.ResponseMenu.knownPackets
-          (repaired.recall owner) (repaired.observe app owner) := by
+          (repaired.logs owner) (repaired.observe app owner) := by
     rw [← leftKnown, ← rightKnown, frame.network]
   have allowed := ((bounds.menu_mem runtime leaks owner _ _ _).mp available).1
   rw [frame.normalized_opening_eq event candidate raw owned leftFixed rightFixed,
@@ -100,7 +100,7 @@ theorem normalized_opening_available [Fintype Player]
       (repaired.network.known owner)).normalizeReactive
         owner (app.observePlayer repaired.application owner)
         (ReactiveApplication.ResponseMenu.knownPackets
-          (repaired.recall owner) (repaired.observe app owner)))⟩ : app.Action) = _
+          (repaired.logs owner) (repaired.observe app owner)))⟩ : app.Action) = _
   rw [← rightKnown, WitnessedSubmission.normalizeReactive_idempotent]
 
 end Vegas.EventGraphRuntime.BindingMemory.Frame

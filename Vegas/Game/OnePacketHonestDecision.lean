@@ -93,7 +93,7 @@ section Repeated
 
 /-- Every transmitting recall entry emitted the packet of its submission. -/
 def TransmissionsEmitted (execution : (application setup runtime leaks).Execution) : Prop :=
-  ∀ who, ∀ entry ∈ execution.recall who, ∀ material, entry.action.transmission = some material →
+  ∀ who, ∀ entry ∈ execution.logs who, ∀ material, entry.action.transmission = some material →
     ∃ message, entry.emitted = some message ∧ message.payload.call = material.call.packet
 
 /-- Transmissions are emitted at every history, under arbitrary responses and

@@ -22,8 +22,8 @@ theorem respond_environmentRecall (execution : app.Execution) (who : Principal)
   | some transmission => rfl
 
 theorem respond_actions (execution : app.Execution) (who : Principal) (action : app.Action) :
-    ((execution.respond app who action).recall who).map PlayerEntry.action =
-      (execution.recall who).map PlayerEntry.action ++ [action] := by
+    ((execution.respond app who action).logs who).map PlayerEntry.action =
+      (execution.logs who).map PlayerEntry.action ++ [action] := by
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => simp only [Execution.respond, ↓reduceIte, List.map_append, List.map_cons, List.map_nil]
@@ -32,8 +32,8 @@ theorem respond_actions (execution : app.Execution) (who : Principal) (action : 
 
 theorem respond_recall_length (execution : app.Execution) (who observer : Principal)
     (action : app.Action) :
-    ((execution.respond app who action).recall observer).length =
-      (execution.recall observer).length + if who = observer then 1 else 0 := by
+    ((execution.respond app who action).logs observer).length =
+      (execution.logs observer).length + if who = observer then 1 else 0 := by
   by_cases same : who = observer
   · subst observer
     have counts := congrArg List.length (app.respond_actions execution who action)
@@ -44,7 +44,7 @@ theorem respond_recall_length (execution : app.Execution) (who observer : Princi
 
 theorem respond_recall_prefix (execution : app.Execution) (who observer : Principal)
     (action : app.Action) :
-    execution.recall observer <+: (execution.respond app who action).recall observer := by
+    execution.logs observer <+: (execution.respond app who action).logs observer := by
   by_cases same : observer = who
   · subst observer
     rcases action with ⟨transmission⟩
@@ -60,7 +60,7 @@ theorem transition_recall_prefix (initial : PMF app.State) (horizon : Nat)
     (joint : Principal → Option app.Action)
     (reached : after ∈ (app.transition initial horizon scheduler (some before) joint).support) :
     ∃ next, after = some next ∧
-      ∀ who, before.execution.recall who <+: next.execution.recall who := by
+      ∀ who, before.execution.logs who <+: next.execution.logs who := by
   rcases before with ⟨remaining, actor, execution⟩
   cases actor with
   | some who =>
@@ -81,7 +81,7 @@ theorem reaches_recall_prefix (initial : PMF app.State) (horizon : Nat)
     (path : (app.protocol initial horizon scheduler).ReachesWithin fuel first last)
     (before after : app.Control) (firstEq : first.state = some before)
     (lastEq : last.state = some after) (who : Principal) :
-    before.execution.recall who <+: after.execution.recall who := by
+    before.execution.logs who <+: after.execution.logs who := by
   induction path generalizing before with
   | refl _ history => cases Option.some.inj (firstEq.symm.trans lastEq); rfl
   | @step steps history target joint legal reached supported suffix ih =>

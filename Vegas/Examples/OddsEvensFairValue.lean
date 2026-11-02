@@ -4,7 +4,9 @@ import Vegas.Examples.OddsEvensSetup
 import Vegas.Examples.OddsEvensFairDecode
 import Vegas.Examples.OddsEvensFairSequential
 import Vegas.Game.IntendedAuthenticOpening
-import Mathlib.Probability.Distributions.Uniform
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # Exact source execution and the fair payoff in Odds–Evens -/
 
@@ -105,22 +107,22 @@ theorem sourceUtility_bitConfig (e o : Bool) (who : Player) :
       cash (.success e) (.success o) who := rfl
 
 theorem uniform_opponent_value (bit : Bool) (who : Player) :
-    expect (PMF.uniformOfFintype Bool)
+    expect (uniformLaw Bool)
       (fun other => (cash (.success bit) (.success other) who : ℝ)) = 100 := by
   rw [expect_eq_sum]
   cases bit <;> cases who <;>
-    norm_num [Fintype.sum_bool, PMF.uniformOfFintype_apply, cash, even, odd]
+    norm_num [Fintype.sum_bool, uniformLaw_apply, cash, even, odd]
 
 theorem sourceBitProfile_uniform_value (own : PMF Bool) (who : Player) :
-    expect (setup.run (sourceBitProfile own (PMF.uniformOfFintype Bool)))
+    expect (setup.run (sourceBitProfile own (uniformLaw Bool)))
       (fun terminal => sourceUtility (setup.parameterOutcome (fun _ => ()) terminal) who) =
         100 := by
   let payoff : Config Player simpleExpr program.terminalCtx → ℝ := fun terminal =>
     sourceUtility (setup.parameterOutcome (fun _ => ()) terminal) who
-  change expect (setup.run (sourceBitProfile own (PMF.uniformOfFintype Bool))) payoff = 100
+  change expect (setup.run (sourceBitProfile own (uniformLaw Bool))) payoff = 100
   rw [sourceBitProfile_run, expect_bind_tower]
   · have inner (e : Bool) :
-        expect ((PMF.uniformOfFintype Bool).map (bitConfig e)) payoff = 100 := by
+        expect ((uniformLaw Bool).map (bitConfig e)) payoff = 100 := by
       rw [expect_map]
       exact uniform_opponent_value e who
     simp_rw [inner]
@@ -132,27 +134,27 @@ theorem sourceBitProfile_uniform_value (own : PMF Bool) (who : Player) :
     rwa [abs_of_nonneg lower]
 
 theorem sourceBitProfile_uniform_first_value (own : PMF Bool) (who : Player) :
-    expect (setup.run (sourceBitProfile (PMF.uniformOfFintype Bool) own))
+    expect (setup.run (sourceBitProfile (uniformLaw Bool) own))
       (fun terminal => sourceUtility (setup.parameterOutcome (fun _ => ()) terminal) who) =
         100 := by
   let payoff : Config Player simpleExpr program.terminalCtx → ℝ := fun terminal =>
     sourceUtility (setup.parameterOutcome (fun _ => ()) terminal) who
-  change expect (setup.run (sourceBitProfile (PMF.uniformOfFintype Bool) own)) payoff = 100
+  change expect (setup.run (sourceBitProfile (uniformLaw Bool) own)) payoff = 100
   rw [sourceBitProfile_run]
-  change expect ((PMF.uniformOfFintype Bool).bind
+  change expect ((uniformLaw Bool).bind
     (fun e => own.bind (fun o => PMF.pure (bitConfig e o)))) payoff = 100
   rw [PMF.bind_comm, expect_bind_tower]
   · have inner (o : Bool) :
-        expect ((PMF.uniformOfFintype Bool).bind fun e => PMF.pure (bitConfig e o))
+        expect ((uniformLaw Bool).bind fun e => PMF.pure (bitConfig e o))
           payoff = 100 := by
-      change expect ((PMF.uniformOfFintype Bool).map (fun e => bitConfig e o)) payoff = 100
+      change expect ((uniformLaw Bool).map (fun e => bitConfig e o)) payoff = 100
       rw [expect_map]
       have swapped (e : Bool) : payoff (bitConfig e o) =
           (cash (.success o) (.success e) who : ℝ) := by
         change (cash (.success e) (.success o) who : ℝ) = _
         simp only [cash, eq_comm]
       calc
-        _ = expect (PMF.uniformOfFintype Bool)
+        _ = expect (uniformLaw Bool)
             (fun e => (cash (.success o) (.success e) who : ℝ)) :=
           expect_congr_on_support (fun e _ => swapped e)
         _ = 100 := uniform_opponent_value o who
@@ -191,13 +193,13 @@ theorem uniform_root_value (who : Player) (deviation : setup.intendedModel.Behav
   rw [sourceDecoded_bitRun, ← sourceBitProfile_run]
   cases who with
   | false =>
-      have unchanged : secondBitLaw changed = PMF.uniformOfFintype Bool := by
+      have unchanged : secondBitLaw changed = uniformLaw Bool := by
         change secondBitLaw uniformProfile = _
         exact secondBitLaw_uniform
       rw [unchanged]
       exact sourceBitProfile_uniform_value (firstBitLaw changed) even
   | true =>
-      have unchanged : firstBitLaw changed = PMF.uniformOfFintype Bool := by
+      have unchanged : firstBitLaw changed = uniformLaw Bool := by
         change firstBitLaw uniformProfile = _
         exact firstBitLaw_uniform
       rw [unchanged]

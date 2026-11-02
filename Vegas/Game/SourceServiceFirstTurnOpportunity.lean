@@ -44,7 +44,7 @@ theorem opportunity_turn {horizon : Nat}
     (owned : (serviceGraph setup mode).actor? event = some owner)
     (ready : execution.application.config.cut.Ready event) (entered : Nat)
     (activated : execution.application.activatedAt event = some entered)
-    (late : entered + delay event < execution.application.clock) : ∃ entry ∈ execution.recall owner,
+    (late : entered + delay event < execution.application.clock) : ∃ entry ∈ execution.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner = some event := by
   have facts := legalFacts setup leaks horizon scheduler _ trace
   obtain ⟨scheduled, member, activate, _, seenReady⟩ := contract.opportunity _ trace event owner
@@ -75,7 +75,7 @@ theorem firstTurn_inclusionFits {horizon : Nat}
     (owned : (serviceGraph setup mode).actor? event = some owner)
     (ready : execution.application.config.cut.Ready event)
     {view : (serviceApplication setup mode deadline leaks).PlayerView}
-    (first : serviceTurn setup mode deadline leaks owner event (execution.recall owner) view =
+    (first : serviceTurn setup mode deadline leaks owner event (execution.logs owner) view =
         some 0) :
     execution.application.publicView.InclusionFitsDeadline (serviceRuntime setup mode deadline)
         bound event := by

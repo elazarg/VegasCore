@@ -180,9 +180,9 @@ theorem exists_bindingRepairs_for_owners
         operationalRecord setup runtime leaks bounds horizon scheduler first =
           operationalRecord setup runtime leaks bounds horizon scheduler image ∧
         (∀ player, player ∉ owners →
-          (original.execution.recall player,
+          (original.execution.logs player,
             original.execution.observe (application setup runtime leaks) player) =
-          (repaired.execution.recall player,
+          (repaired.execution.logs player,
             repaired.execution.observe (application setup runtime leaks) player)) ∧
         original.execution.application.config.store.BindingRefines
           repaired.execution.application.config.store ∧

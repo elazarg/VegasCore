@@ -43,11 +43,11 @@ theorem onePacket_silent_of_forcedObserver (horizon : Nat)
     {event : (graph setup).EventId} (ready : control.execution.application.config.cut.Ready event)
     (other : Player) (notWho : other ≠ who)
     (emitted : (graph setup).actor? event = some other →
-      ∃ message ∈ (application setup runtime leaks).outputs (control.execution.recall other),
+      ∃ message ∈ (application setup runtime leaks).outputs (control.execution.logs other),
         message.payload.call.event? (graph setup) = some event)
     (response : (application setup runtime leaks).Action)
     (member : response ∈ bounds.onePacketActions runtime leaks other
-      (control.execution.recall other)
+      (control.execution.logs other)
       (control.execution.observe (application setup runtime leaks) other)) :
     response.transmission = none := by
   let app := application setup runtime leaks
@@ -66,7 +66,7 @@ theorem onePacket_silent_of_forcedObserver (horizon : Nat)
     intro message onLedger
     obtain ⟨entry, entryPresent, material, _transmission, emitted, _packet⟩ :=
       facts.provenance.ledger message onLedger
-    have recalled : message ∈ app.outputs (control.execution.recall message.sender) :=
+    have recalled : message ∈ app.outputs (control.execution.logs message.sender) :=
       List.mem_filterMap.mpr ⟨entry, entryPresent, emitted⟩
     rw [← inputRecall message.sender] at recalled
     exact (List.mem_filter.mp recalled).1
@@ -75,7 +75,7 @@ theorem onePacket_silent_of_forcedObserver (horizon : Nat)
       rawTrace
   have sameRank := EventOrder.Cut.IsPrefix.unique ordered residual.checkpoint.ordered
   subst sameRank
-  set envelope := runtime.localEnvelope leaks other (control.execution.recall other)
+  set envelope := runtime.localEnvelope leaks other (control.execution.logs other)
     (control.execution.observe app other) material with envelopeEq
   obtain ⟨tokenValid, correct, first⟩ := (countPermits_eq_true_iff _ _).mp permitted
   obtain ⟨named, namedEvent, tokenEq⟩ := (WitnessedPacket.tokenValid_iff _).mp tokenValid
@@ -85,7 +85,7 @@ theorem onePacket_silent_of_forcedObserver (horizon : Nat)
   have earlierFirst : ∀ message ∈ control.execution.network.inputs, message.sender = other →
       message.payload.call.event? (graph setup) = some named → False := by
     intro message present messageSender messageNamed
-    have recalled : message ∈ app.outputs (control.execution.recall other) := by
+    have recalled : message ∈ app.outputs (control.execution.logs other) := by
       rw [← inputRecall other]
       exact List.mem_filter.mpr ⟨present, by simp [messageSender]⟩
     have lower : message.id.2 < envelope.id.2 := by
@@ -131,7 +131,7 @@ theorem onePacket_named_of_forcedObserver (horizon : Nat)
     (other : Player) (notWho : other ≠ who)
     {material : (application setup runtime leaks).Submission}
     (member : (⟨some material⟩ : (application setup runtime leaks).Action) ∈
-      bounds.onePacketActions runtime leaks other (control.execution.recall other)
+      bounds.onePacketActions runtime leaks other (control.execution.logs other)
         (control.execution.observe (application setup runtime leaks) other)) :
     ∃ event, control.execution.application.config.cut.Ready event ∧
       material.call.packet.event? (graph setup) = some event ∧
@@ -152,7 +152,7 @@ theorem onePacket_named_of_forcedObserver (horizon : Nat)
     intro message onLedger
     obtain ⟨entry, entryPresent, material, _transmission, emitted, _packet⟩ :=
       facts.provenance.ledger message onLedger
-    have recalled : message ∈ app.outputs (control.execution.recall message.sender) :=
+    have recalled : message ∈ app.outputs (control.execution.logs message.sender) :=
       List.mem_filterMap.mpr ⟨entry, entryPresent, emitted⟩
     rw [← inputRecall message.sender] at recalled
     exact (List.mem_filter.mp recalled).1
@@ -161,7 +161,7 @@ theorem onePacket_named_of_forcedObserver (horizon : Nat)
       rawTrace
   have sameRank := EventOrder.Cut.IsPrefix.unique ordered residual.checkpoint.ordered
   subst sameRank
-  set envelope := runtime.localEnvelope leaks other (control.execution.recall other)
+  set envelope := runtime.localEnvelope leaks other (control.execution.logs other)
     (control.execution.observe app other) material with envelopeEq
   obtain ⟨tokenValid, correct, first⟩ := (countPermits_eq_true_iff _ _).mp permitted
   obtain ⟨named, namedEvent, tokenEq⟩ := (WitnessedPacket.tokenValid_iff _).mp tokenValid
@@ -184,7 +184,7 @@ theorem onePacket_named_of_forcedObserver (horizon : Nat)
       ⟨message, onLedger, _, messageNamed, messageSender⟩ | owed
     · have present : message ∈ control.execution.network.inputs :=
         ledgerInputs message onLedger
-      have recalled : message ∈ app.outputs (control.execution.recall other) := by
+      have recalled : message ∈ app.outputs (control.execution.logs other) := by
         rw [← inputRecall other]
         exact List.mem_filter.mpr ⟨present, by simp [messageSender]⟩
       have lower : message.id.2 < envelope.id.2 := by

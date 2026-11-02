@@ -38,7 +38,7 @@ theorem BehavioralAssessment.IsFullyMixed.support_at_history
         value ▸ choice.property
       exact mixed who (M.informationSite who history action running legal) choice
 
-variable [Fintype ι]
+variable [E.FiniteMovers]
 
 theorem BehavioralAssessment.IsFullyMixed.history_supported
     {assessment : M.BehavioralAssessment} (mixed : assessment.IsFullyMixed) :
@@ -59,7 +59,7 @@ theorem BehavioralAssessment.IsFullyMixed.history_supported
       · rw [PMF.support_bindOnSupport]
         exact Set.mem_iUnion₂.mpr ⟨_, realized, (PMF.mem_support_pure_iff _ _).mpr rfl⟩
 
-omit [Fintype ι] in
+omit [E.FiniteMovers] in
 /-- A bounded protocol admitting full mixing has only finitely many legal
 histories when its choices and transitions branch finitely, even when its
 ambient state carrier is infinite. -/

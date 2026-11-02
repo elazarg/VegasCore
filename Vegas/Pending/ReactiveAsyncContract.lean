@@ -75,7 +75,7 @@ def ProtectedInclusionAt (execution : (runtime.reactiveApplication leaks).Execut
     (bound : graph.EventId → Nat) : Prop :=
   ∀ event owner, graph.actor? event = some owner →
   ∀ (earlier later : List (runtime.reactiveApplication leaks).PlayerEntry) entry message,
-    execution.recall owner = earlier ++ entry :: later →
+    execution.logs owner = earlier ++ entry :: later →
     entry.emitted = some message → message.sender = owner →
     message.payload.call.event? graph = some event →
     entry.beforeView.application.publicView.EventReady event →

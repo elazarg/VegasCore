@@ -42,7 +42,7 @@ theorem onePacket_commitment_fresh {control : (application setup runtime leaks).
       scheduler).Trace (some control))
     (who : Player) (response : (application setup runtime leaks).Action)
     (member : response ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who))
     (material : (application setup runtime leaks).Submission)
     (sends : response.transmission = some material) {event : (graph setup).EventId}
@@ -57,9 +57,9 @@ theorem onePacket_commitment_fresh {control : (application setup runtime leaks).
   have recalled := runtime.countRecall_history leaks rawTrace
   obtain ⟨effective, permitted⟩ := (bounds.mem_onePacketActions runtime leaks who _ _
     response).mp member
-  have verdict : CountPermits ((application setup runtime leaks).outputs (control.execution.recall
+  have verdict : CountPermits ((application setup runtime leaks).outputs (control.execution.logs
     who))
-      (runtime.localEnvelope leaks who (control.execution.recall who)
+      (runtime.localEnvelope leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) material) := by
     rcases permitted with silent | ⟨other, otherSends, counted⟩
     · rw [sends] at silent
@@ -67,7 +67,7 @@ theorem onePacket_commitment_fresh {control : (application setup runtime leaks).
     · rw [sends] at otherSends
       cases Option.some.inj otherSends
       exact (countPermits_eq_true_iff _ _).mp counted
-  have callEq : (runtime.localEnvelope leaks who (control.execution.recall who)
+  have callEq : (runtime.localEnvelope leaks who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) material).payload.call =
       material.call.packet := rfl
   have correct := verdict.2.1
@@ -78,7 +78,7 @@ theorem onePacket_commitment_fresh {control : (application setup runtime leaks).
   · refine ((preparedFresh_history (runtime := runtime) horizon scheduler rawTrace) who
       serial).mpr ?_
     rintro ⟨message, input, sender, committed, call⟩
-    have output : message ∈ (application setup runtime leaks).outputs (control.execution.recall
+    have output : message ∈ (application setup runtime leaks).outputs (control.execution.logs
       who) := by
       rw [← recalled.1 who]
       exact List.mem_filter.mpr ⟨input, by simp [sender]⟩
@@ -93,7 +93,7 @@ theorem onePacket_commitment_fresh {control : (application setup runtime leaks).
       (bounds.rawMenu runtime leaks) who _ _ response effective
     have materialNormal : material.normalizeReactive who
         (control.execution.observe (application setup runtime leaks) who).application
-        (ReactiveApplication.ResponseMenu.knownPackets (control.execution.recall who)
+        (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who)) = material := by
       have transmitted := congrArg ReactiveApplication.Action.transmission normal
       rcases response with ⟨transmission⟩
@@ -102,16 +102,16 @@ theorem onePacket_commitment_fresh {control : (application setup runtime leaks).
       exact Option.some.inj transmitted
     have evidence := congrArg WitnessedSubmission.evidence materialNormal
     change EvidenceRequest.canonical (ReactiveApplication.ResponseMenu.knownPackets
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who))
       (material.evidence.resolve who (material.call.candidateAfter who
         (control.execution.observe (application setup runtime leaks) who).application.candidates)
-        (ReactiveApplication.ResponseMenu.knownPackets (control.execution.recall who)
+        (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who))) = material.evidence
       at evidence
     rw [show material.evidence.resolve who (material.call.candidateAfter who
         (control.execution.observe (application setup runtime leaks) who).application.candidates)
-        (ReactiveApplication.ResponseMenu.knownPackets (control.execution.recall who)
+        (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who)) = none
       from evidenceNone] at evidence
     exact evidence.symm
@@ -130,7 +130,7 @@ theorem acceptanceInvariant_respond_commitment {remaining : Nat} {who : Player}
     {payload : L.Ty} (outputEq : (graph setup).outputLayout event = .binding who payload)
     (response : (application setup runtime leaks).Action)
     (member : response ∈ bounds.onePacketActions runtime leaks who
-      (execution.recall who) (execution.observe (application setup runtime leaks) who))
+      (execution.logs who) (execution.observe (application setup runtime leaks) who))
     (material : (application setup runtime leaks).Submission)
     (sends : response.transmission = some material) {serial : Nat}
     (packet : material.call.packet = .commitment event (who, .prepared serial))
@@ -240,7 +240,7 @@ theorem onePacket_commitment_freshCall {bound : (graph setup).EventId → Nat}
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
     (response : (application setup runtime leaks).Action)
     (member : response ∈ bounds.onePacketActions runtime leaks who
-      (execution.recall who) (execution.observe (application setup runtime leaks) who))
+      (execution.logs who) (execution.observe (application setup runtime leaks) who))
     (material : (application setup runtime leaks).Submission)
     (sends : response.transmission = some material) {serial : Nat}
     (packet : material.call.packet = .commitment event (who, .prepared serial)) :

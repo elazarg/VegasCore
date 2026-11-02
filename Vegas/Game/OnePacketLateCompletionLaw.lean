@@ -102,23 +102,23 @@ def LateOwnerShape (assessment : setup.intendedModel.BehavioralAssessment) {scal
     history.state = some ⟨later, some who, reached⟩ →
     LateUnsent setup runtime leaks who event sent past history.state →
     (∃ options : PMF (LateOption slots),
-      installed who (some (reached.recall who, reached.observe (application setup runtime leaks)
+      installed who (some (reached.logs who, reached.observe (application setup runtime leaks)
         who)) =
         slotTrembledChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler scale
           nonnegative le_one who
-          (some (reached.recall who, reached.observe (application setup runtime leaks) who))
+          (some (reached.logs who, reached.observe (application setup runtime leaks) who))
           (options.bind (lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
             assessment who
-            (some (reached.recall who, reached.observe (application setup runtime leaks) who))))
+            (some (reached.logs who, reached.observe (application setup runtime leaks) who))))
           (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
             who
-            (some (reached.recall who, reached.observe (application setup runtime leaks) who))))
+            (some (reached.logs who, reached.observe (application setup runtime leaks) who))))
           (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who
-            (some (reached.recall who, reached.observe (application setup runtime leaks) who)))) ∨
-    installed who (some (reached.recall who, reached.observe (application setup runtime leaks)
+            (some (reached.logs who, reached.observe (application setup runtime leaks) who)))) ∨
+    installed who (some (reached.logs who, reached.observe (application setup runtime leaks)
       who)) =
       PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (some (reached.recall who, reached.observe (application setup runtime leaks) who)))
+        (some (reached.logs who, reached.observe (application setup runtime leaks) who)))
 
 variable (setup runtime leaks bounds horizon scheduler) in
 /-- **The late owner shape from a decision.** The shape of the owner's laws at
@@ -134,32 +134,32 @@ def LateOwnerShapeFrom (assessment : setup.intendedModel.BehavioralAssessment) {
       (initialLaw setup) horizon scheduler).History) (later : Nat)
       (reached : (application setup runtime leaks).Execution),
     history.state = some ⟨later, some who, reached⟩ →
-    LateUnsent setup runtime leaks who event start.application.config (start.recall who)
+    LateUnsent setup runtime leaks who event start.application.config (start.logs who)
       history.state →
-    (reached.recall who = start.recall who →
+    (reached.logs who = start.logs who →
       reached.observe (application setup runtime leaks) who =
         start.observe (application setup runtime leaks) who) →
-    (reached.recall who ≠ start.recall who → ∃ response,
-      start.recall who ++ [respondEntry setup runtime leaks start who response] <+:
-        reached.recall who) →
+    (reached.logs who ≠ start.logs who → ∃ response,
+      start.logs who ++ [respondEntry setup runtime leaks start who response] <+:
+        reached.logs who) →
     (∃ options : PMF (LateOption slots),
-      installed who (some (reached.recall who, reached.observe (application setup runtime leaks)
+      installed who (some (reached.logs who, reached.observe (application setup runtime leaks)
         who)) =
         slotTrembledChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler scale
           nonnegative le_one who
-          (some (reached.recall who, reached.observe (application setup runtime leaks) who))
+          (some (reached.logs who, reached.observe (application setup runtime leaks) who))
           (options.bind (lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
             assessment who
-            (some (reached.recall who, reached.observe (application setup runtime leaks) who))))
+            (some (reached.logs who, reached.observe (application setup runtime leaks) who))))
           (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
             who
-            (some (reached.recall who, reached.observe (application setup runtime leaks) who))))
+            (some (reached.logs who, reached.observe (application setup runtime leaks) who))))
           (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who
-            (some (reached.recall who, reached.observe (application setup runtime leaks) who)))) ∨
-    installed who (some (reached.recall who, reached.observe (application setup runtime leaks)
+            (some (reached.logs who, reached.observe (application setup runtime leaks) who)))) ∨
+    installed who (some (reached.logs who, reached.observe (application setup runtime leaks)
       who)) =
       PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (some (reached.recall who, reached.observe (application setup runtime leaks) who)))
+        (some (reached.logs who, reached.observe (application setup runtime leaks) who)))
 
 /-- The late owner shape since a decision's recall is the late owner shape from
 the decision. -/
@@ -170,7 +170,7 @@ theorem LateOwnerShape.from {assessment : setup.intendedModel.BehavioralAssessme
     {start : (application setup runtime leaks).Execution}
     (shape : LateOwnerShape setup runtime leaks bounds horizon scheduler assessment nonnegative
       le_one
-      slots installed who event start.application.config (start.recall who)) :
+      slots installed who event start.application.config (start.logs who)) :
     LateOwnerShapeFrom setup runtime leaks bounds horizon scheduler assessment nonnegative le_one
       slots installed who event start :=
   fun history later reached state holds _ _ => shape history later reached state holds
@@ -186,7 +186,7 @@ theorem lateUnsent_facts {who : Player} {event : (graph setup).EventId}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
     {later : Nat} {actor : Option Player} {reached : (application setup runtime leaks).Execution}
     (holds : LateUnsent setup runtime leaks who event execution.application.config
-      (execution.recall who) (some ⟨later, actor, reached⟩)) :
+      (execution.logs who) (some ⟨later, actor, reached⟩)) :
     reached.application.config.cut.Ready event ∧
       reached.application.config.cut.IsPrefix rank ∧
       sourceServicePrefix? setup rank reached.application.config = some point ∧
@@ -231,7 +231,7 @@ theorem lateBinding_exitBound
       ((graph setup).nodes event) = .bind who payload}
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
     (turn : execution.application.publicView.ownTurn? who = some event)
-    (unrecorded : runtime.eventRecorded leaks (execution.recall who) event = false)
+    (unrecorded : runtime.eventRecorded leaks (execution.logs who) event = false)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
     (shape : LateOwnerShapeFrom setup runtime leaks bounds horizon scheduler assessment positive.le
       le_one slots installed who event execution)
@@ -257,34 +257,34 @@ theorem lateBinding_exitBound
         (initialLaw setup) horizon scheduler).History) (later : Nat)
         (reached : (application setup runtime leaks).Execution),
       history.state = some ⟨later, some who, reached⟩ →
-      LateUnsent setup runtime leaks who event execution.application.config (execution.recall who)
+      LateUnsent setup runtime leaks who event execution.application.config (execution.logs who)
         history.state →
       expect (asIfHonestProfile setup runtime leaks assessment who
-        (some (reached.recall who, reached.observe (application setup runtime leaks) who)))
+        (some (reached.logs who, reached.observe (application setup runtime leaks) who)))
           centered = 0)
     (committed : ∀ (history : ((bounds.onePacketMenu runtime leaks).protocol
         (initialLaw setup) horizon scheduler).History) (later : Nat)
         (reached : (application setup runtime leaks).Execution),
       history.state = some ⟨later, some who, reached⟩ →
-      LateUnsent setup runtime leaks who event execution.application.config (execution.recall who)
+      LateUnsent setup runtime leaks who event execution.application.config (execution.logs who)
         history.state →
-      (reached.recall who = execution.recall who →
+      (reached.logs who = execution.logs who →
         reached.observe (application setup runtime leaks) who =
           execution.observe (application setup runtime leaks) who) →
-      (reached.recall who ≠ execution.recall who → ∃ response,
-        execution.recall who ++ [respondEntry setup runtime leaks execution who response] <+:
-          reached.recall who) →
+      (reached.logs who ≠ execution.logs who → ∃ response,
+        execution.logs who ++ [respondEntry setup runtime leaks execution who response] <+:
+          reached.logs who) →
       ∀ slot < bounds.candidateCount,
-        countPermits ((application setup runtime leaks).outputs (reached.recall who))
-          (slotEnvelope setup runtime leaks who (reached.recall who)
+        countPermits ((application setup runtime leaks).outputs (reached.logs who))
+          (slotEnvelope setup runtime leaks who (reached.logs who)
             (reached.observe (application setup runtime leaks) who) event slot) = true →
         ∃ factor : ℝ, ∀ choice ∈ (asIfHonestProfile setup runtime leaks assessment who
-            (some (reached.recall who, reached.observe (application setup runtime leaks)
+            (some (reached.logs who, reached.observe (application setup runtime leaks)
               who))).support,
           ∀ next : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
               horizon scheduler).History,
             next.state = some ⟨later, none, reached.respond (application setup runtime leaks) who
-              (slotResponse setup runtime leaks who (reached.recall who)
+              (slotResponse setup runtime leaks who (reached.logs who)
                 (reached.observe (application setup runtime leaks) who) event slot choice)⟩ →
             |expect ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
                 scheduler).runBehavioralUntil
@@ -302,16 +302,16 @@ theorem lateBinding_exitBound
   let model := onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
   let certificate := (menu.bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
   let sent := execution.application.config
-  let past := execution.recall who
+  let past := execution.logs who
   let stopped := LateStopped setup runtime leaks bounds horizon scheduler rank
   -- Before the owner's response at the start the state is the start's; after it the
   -- recall extends the start's by the entry of that response.
   let through : (application setup runtime leaks).ProtocolState → Prop := fun state =>
     ∀ control : (application setup runtime leaks).Control, state = some control →
-      (control.execution.recall who = past → state = start.state) ∧
-      (control.execution.recall who ≠ past → ∃ response,
+      (control.execution.logs who = past → state = start.state) ∧
+      (control.execution.logs who ≠ past → ∃ response,
         past ++ [respondEntry setup runtime leaks execution who response] <+:
-          control.execution.recall who)
+          control.execution.logs who)
   let inside : (menu.protocol (initialLaw setup) horizon scheduler).History → Prop :=
     fun history => LateUnsent setup runtime leaks who event sent past history.state ∧
       through history.state
@@ -380,7 +380,7 @@ theorem lateBinding_exitBound
             rw [State.publicView_eventReady, State.publicView_eventReady, atSent]) who]
         exact turn
       let info : (application setup runtime leaks).Info :=
-        some (reached.recall who, reached.observe (application setup runtime leaks) who)
+        some (reached.logs who, reached.observe (application setup runtime leaks) who)
       let respondState := fun response : (application setup runtime leaks).Action =>
         (some ⟨later, none, reached.respond (application setup runtime leaks) who response⟩ :
           (application setup runtime leaks).ProtocolState)
@@ -471,8 +471,8 @@ theorem lateBinding_exitBound
       have silentInside : ∀ next : (menu.protocol (initialLaw setup) horizon scheduler).History,
           next.state = respondState ⟨none⟩ → inside next := by
         intro next nextState
-        have recallEq : (reached.respond (application setup runtime leaks) who ⟨none⟩).recall who =
-            reached.recall who ++ [respondEntry setup runtime leaks reached who ⟨none⟩] := by
+        have recallEq : (reached.respond (application setup runtime leaks) who ⟨none⟩).logs who =
+            reached.logs who ++ [respondEntry setup runtime leaks reached who ⟨none⟩] := by
           rw [runtime.respond_recall leaks reached who who ⟨none⟩, ite_eq_left rfl ..]
           rfl
         refine ⟨?_, ?_⟩
@@ -488,15 +488,15 @@ theorem lateBinding_exitBound
         · intro nextControl nextEq
           rw [nextState] at nextEq
           cases Option.some.inj nextEq
-          have longer : (reached.respond (application setup runtime leaks) who ⟨none⟩).recall who ≠
+          have longer : (reached.respond (application setup runtime leaks) who ⟨none⟩).logs who ≠
               past := by
             intro same
             have lengthEq := congrArg List.length same
             rw [recallEq, List.length_append, List.length_singleton] at lengthEq
-            have shorter : past.length ≤ (reached.recall who).length := extends_.length_le
+            have shorter : past.length ≤ (reached.logs who).length := extends_.length_le
             omega
           refine ⟨fun same => (longer same).elim, fun _ => ?_⟩
-          by_cases atStart : reached.recall who = past
+          by_cases atStart : reached.logs who = past
           · have startEq := (throughHere.1 atStart).symm
             rw [current, state] at startEq
             cases startEq
@@ -514,8 +514,8 @@ theorem lateBinding_exitBound
           bounds.silence_onePacket runtime leaks who, ↓reduceDIte, Option.getD_some]
       rw [expectEq]
       have holdsState : LateUnsent setup runtime leaks who event execution.application.config
-          (execution.recall who) history.state := holds.1
-      have sameView : reached.recall who = execution.recall who →
+          (execution.logs who) history.state := holds.1
+      have sameView : reached.logs who = execution.logs who →
           reached.observe (application setup runtime leaks) who =
             execution.observe (application setup runtime leaks) who := by
         intro atStart
@@ -560,12 +560,12 @@ theorem lateBinding_exitBound
               |readOff (respondState (choiceResponse (runtime := runtime) (responseChoice setup
                 runtime leaks bounds
                   (initialLaw setup) horizon scheduler who info
-                  (slotResponse setup runtime leaks who (reached.recall who)
+                  (slotResponse setup runtime leaks who (reached.logs who)
                     (reached.observe (application setup runtime leaks) who) event slot choice)))) -
                 factor * centered choice| ≤ ε := by
           intro slot below
           by_cases permitted : countPermits ((application setup runtime leaks).outputs
-              (reached.recall who)) (slotEnvelope setup runtime leaks who (reached.recall who)
+              (reached.logs who)) (slotEnvelope setup runtime leaks who (reached.logs who)
                 (reached.observe (application setup runtime leaks) who) event slot) = true
           · obtain ⟨factor, near⟩ := committed history later reached state holdsState
               sameView throughHere.2 slot below permitted
@@ -574,22 +574,22 @@ theorem lateBinding_exitBound
               traceHere who event
               turnHere choice member
             have inMenu := (slotResponse_mem_onePacket_iff setup runtime leaks bounds who
-              (reached.recall who) (reached.observe (application setup runtime leaks) who) event
+              (reached.logs who) (reached.observe (application setup runtime leaks) who) event
                 node
               slot below choice covered).mpr permitted
             have responded : choiceResponse (runtime := runtime) (responseChoice setup runtime
               leaks bounds (initialLaw setup)
-                horizon scheduler who info (slotResponse setup runtime leaks who (reached.recall
+                horizon scheduler who info (slotResponse setup runtime leaks who (reached.logs
                   who)
                   (reached.observe (application setup runtime leaks) who) event slot choice)) =
-                slotResponse setup runtime leaks who (reached.recall who)
+                slotResponse setup runtime leaks who (reached.logs who)
                   (reached.observe (application setup runtime leaks) who) event slot choice := by
               simp only [choiceResponse, responseChoice, info, inMenu, ↓reduceDIte,
                 Option.getD_some]
             obtain ⟨next, nextMember, nextState⟩ := reachable (responseChoice setup runtime leaks
               bounds
               (initialLaw setup) horizon scheduler who info (slotResponse setup runtime leaks who
-                (reached.recall who) (reached.observe (application setup runtime leaks) who) event
+                (reached.logs who) (reached.observe (application setup runtime leaks) who) event
                   slot
                 choice))
             rw [responded] at nextState
@@ -598,11 +598,11 @@ theorem lateBinding_exitBound
             obtain ⟨value, successful, _⟩ := values who payload outputEq codeEq node
             obtain ⟨material, transmits, envelope⟩ := slotResponse_transmission setup runtime
               leaks who
-              (reached.recall who) (reached.observe (application setup runtime leaks) who) event
+              (reached.logs who) (reached.observe (application setup runtime leaks) who) event
                 node
               slot choice action encoded (by rw [successful]; rfl)
             have named : runtime.submittedEvent? leaks (slotResponse setup runtime leaks who
-                (reached.recall who) (reached.observe (application setup runtime leaks) who) event
+                (reached.logs who) (reached.observe (application setup runtime leaks) who) event
                   slot
                 choice) = some event := by
               have call : material.call.packet = .commitment event (who, .prepared slot) :=
@@ -627,17 +627,17 @@ theorem lateBinding_exitBound
             have covered := onePacket_honest_covered (runtime := runtime) assessment covers
               traceHere who event
               turnHere choice member
-            have notMenu : slotResponse setup runtime leaks who (reached.recall who)
+            have notMenu : slotResponse setup runtime leaks who (reached.logs who)
                 (reached.observe (application setup runtime leaks) who) event slot choice ∉
-                bounds.onePacketActions runtime leaks who (reached.recall who)
+                bounds.onePacketActions runtime leaks who (reached.logs who)
                   (reached.observe (application setup runtime leaks) who) := fun inMenu =>
               permitted ((slotResponse_mem_onePacket_iff setup runtime leaks bounds who
-                (reached.recall who) (reached.observe (application setup runtime leaks) who) event
+                (reached.logs who) (reached.observe (application setup runtime leaks) who) event
                   node
                 slot below choice covered).mp inMenu)
             have responded : choiceResponse (runtime := runtime) (responseChoice setup runtime
               leaks bounds (initialLaw setup)
-                horizon scheduler who info (slotResponse setup runtime leaks who (reached.recall
+                horizon scheduler who info (slotResponse setup runtime leaks who (reached.logs
                   who)
                   (reached.observe (application setup runtime leaks) who) event slot choice)) =
                 ⟨none⟩ := by
@@ -647,7 +647,7 @@ theorem lateBinding_exitBound
             exact ε_nonneg
         exact abs_expect_slotTrembled_lateChoice_le (runtime := runtime) assessment positive.le
           le_one
-          options who (reached.recall who) (reached.observe (application setup runtime leaks) who)
+          options who (reached.logs who) (reached.observe (application setup runtime leaks) who)
             event
           turnHere (fun response => readOff (respondState response)) centered
           (fun response => readOffBounded _) centeredBounded
@@ -681,7 +681,7 @@ theorem lateBinding_exitBound
               setup)
               (horizon := horizon) (scheduler := scheduler) who ⟨later, actor, reached⟩ owner
               joint (nextEq ▸ realized')
-            have notStart : reached.recall who ≠ past := by
+            have notStart : reached.logs who ≠ past := by
               intro atStart
               have startEq := (throughHere.1 atStart).symm
               rw [current, state] at startEq
@@ -745,7 +745,7 @@ theorem lateBinding_completionPointLaw
       ((graph setup).nodes event) = .bind who payload}
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
     (turn : execution.application.publicView.ownTurn? who = some event)
-    (unrecorded : runtime.eventRecorded leaks (execution.recall who) event = false)
+    (unrecorded : runtime.eventRecorded leaks (execution.logs who) event = false)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
@@ -766,25 +766,25 @@ theorem lateBinding_completionPointLaw
         (initialLaw setup) horizon scheduler).History) (later : Nat)
         (reached : (application setup runtime leaks).Execution),
       history.state = some ⟨later, some who, reached⟩ →
-      LateUnsent setup runtime leaks who event execution.application.config (execution.recall who)
+      LateUnsent setup runtime leaks who event execution.application.config (execution.logs who)
         history.state →
-      (reached.recall who = execution.recall who →
+      (reached.logs who = execution.logs who →
         reached.observe (application setup runtime leaks) who =
           execution.observe (application setup runtime leaks) who) →
-      (reached.recall who ≠ execution.recall who → ∃ response,
-        execution.recall who ++ [respondEntry setup runtime leaks execution who response] <+:
-          reached.recall who) →
+      (reached.logs who ≠ execution.logs who → ∃ response,
+        execution.logs who ++ [respondEntry setup runtime leaks execution who response] <+:
+          reached.logs who) →
       ∀ slot < bounds.candidateCount,
-        countPermits ((application setup runtime leaks).outputs (reached.recall who))
-          (slotEnvelope setup runtime leaks who (reached.recall who)
+        countPermits ((application setup runtime leaks).outputs (reached.logs who))
+          (slotEnvelope setup runtime leaks who (reached.logs who)
             (reached.observe (application setup runtime leaks) who) event slot) = true →
         ∃ factor : ℝ, ∀ choice ∈ (asIfHonestProfile setup runtime leaks assessment who
-            (some (reached.recall who, reached.observe (application setup runtime leaks)
+            (some (reached.logs who, reached.observe (application setup runtime leaks)
               who))).support,
           ∀ next : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
               horizon scheduler).History,
             next.state = some ⟨later, none, reached.respond (application setup runtime leaks) who
-              (slotResponse setup runtime leaks who (reached.recall who)
+              (slotResponse setup runtime leaks who (reached.logs who)
                 (reached.observe (application setup runtime leaks) who) event slot choice)⟩ →
             |expect ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
                 scheduler).runBehavioralUntil
@@ -837,10 +837,10 @@ theorem lateBinding_completionPointLaw
   have mean : ∀ (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
       (later : Nat) (reached : (application setup runtime leaks).Execution),
       history.state = some ⟨later, some who, reached⟩ →
-      LateUnsent setup runtime leaks who event execution.application.config (execution.recall who)
+      LateUnsent setup runtime leaks who event execution.application.config (execution.logs who)
         history.state →
       expect (asIfHonestProfile setup runtime leaks assessment who
-        (some (reached.recall who, reached.observe (application setup runtime leaks) who)))
+        (some (reached.logs who, reached.observe (application setup runtime leaks) who)))
           centered =
         0 := by
     intro history later reached state holds
@@ -852,9 +852,9 @@ theorem lateBinding_completionPointLaw
       orderedHere decodedHere intendedPoint turnHere (by
         rw [defaulted_eq_empty_of_decodedIntended
           ((decodedPoint_eq_of_isPrefix orderedHere).trans decodedHere) intendedPoint]
-        exact Finset.notMem_empty _) (reached.recall who)
+        exact Finset.notMem_empty _) (reached.logs who)
     have firstIntegrable : PayoffIntegrable (asIfHonestProfile setup runtime leaks assessment who
-        (some (reached.recall who, reached.observe (application setup runtime leaks) who)))
+        (some (reached.logs who, reached.observe (application setup runtime leaks) who)))
         (fun choice => expect (ProtocolState.step setup.program point
           (fun _ => choice)) value) :=
       payoffIntegrable_of_bounded _ _ (C := bound) fun choice =>
@@ -865,24 +865,24 @@ theorem lateBinding_completionPointLaw
   have committed : ∀ (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
       (later : Nat) (reached : (application setup runtime leaks).Execution),
       history.state = some ⟨later, some who, reached⟩ →
-      LateUnsent setup runtime leaks who event execution.application.config (execution.recall who)
+      LateUnsent setup runtime leaks who event execution.application.config (execution.logs who)
         history.state →
-      (reached.recall who = execution.recall who →
+      (reached.logs who = execution.logs who →
         reached.observe (application setup runtime leaks) who =
           execution.observe (application setup runtime leaks) who) →
-      (reached.recall who ≠ execution.recall who → ∃ response,
-        execution.recall who ++ [respondEntry setup runtime leaks execution who response] <+:
-          reached.recall who) →
+      (reached.logs who ≠ execution.logs who → ∃ response,
+        execution.logs who ++ [respondEntry setup runtime leaks execution who response] <+:
+          reached.logs who) →
       ∀ slot < bounds.candidateCount,
-        countPermits ((application setup runtime leaks).outputs (reached.recall who))
-          (slotEnvelope setup runtime leaks who (reached.recall who)
+        countPermits ((application setup runtime leaks).outputs (reached.logs who))
+          (slotEnvelope setup runtime leaks who (reached.logs who)
             (reached.observe (application setup runtime leaks) who) event slot) = true →
         ∃ factor : ℝ, ∀ choice ∈ (asIfHonestProfile setup runtime leaks assessment who
-            (some (reached.recall who, reached.observe (application setup runtime leaks)
+            (some (reached.logs who, reached.observe (application setup runtime leaks)
               who))).support,
           ∀ next : (menu.protocol (initialLaw setup) horizon scheduler).History,
             next.state = some ⟨later, none, reached.respond (application setup runtime leaks) who
-              (slotResponse setup runtime leaks who (reached.recall who)
+              (slotResponse setup runtime leaks who (reached.logs who)
                 (reached.observe (application setup runtime leaks) who) event slot choice)⟩ →
             |expect (model.runBehavioralUntil certificate installed stopped next) payoff -
               factor * centered choice| ≤ 2 * bound * η := by

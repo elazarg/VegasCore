@@ -39,7 +39,7 @@ theorem bindingTraffic_include_of_handler (runtime : EventGraphRuntime graph)
   have receipts : left.receipts = right.receipts := congrArg (fun value => value.2.1) same
   have environments : left.environmentRecall = right.environmentRecall :=
     congrArg (fun value => value.2.2.1) same
-  have recalled : left.recall focal = right.recall focal :=
+  have recalled : left.logs focal = right.logs focal :=
     congrArg (fun value => value.2.2.2.1) same
   have views : left.application.playerView focal = right.application.playerView focal :=
     congrArg (fun value => value.2.2.2.2.1) same
@@ -88,7 +88,7 @@ theorem bindingTraffic_maintenance (runtime : EventGraphRuntime graph)
   have receipts : left.receipts = right.receipts := congrArg (fun value => value.2.1) same
   have environments : left.environmentRecall = right.environmentRecall :=
     congrArg (fun value => value.2.2.1) same
-  have recalled : left.recall focal = right.recall focal :=
+  have recalled : left.logs focal = right.logs focal :=
     congrArg (fun value => value.2.2.2.1) same
   have views : left.application.playerView focal = right.application.playerView focal :=
     congrArg (fun value => value.2.2.2.2.1) same
@@ -114,7 +114,7 @@ theorem bindingTraffic_maintenance (runtime : EventGraphRuntime graph)
   rw [networks, receipts, environments, environment, recalled, drained]
   exact congrArg (fun publicView => (right.network, right.receipts,
     right.environmentRecall ++ [⟨right.observeEnvironment app, .application command⟩],
-      right.recall focal, after.drain.playerView focal, publicView))
+      right.logs focal, after.drain.playerView focal, publicView))
         (congrArg PlayerView.publicView drained)
 
 end Vegas.EventGraphRuntime

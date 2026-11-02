@@ -26,14 +26,14 @@ private theorem recall_subset_at_tracePrefix {before : (application setup runtim
     {top : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state}
     (isPrefix : TracePrefix prior top) (after : (application setup runtime leaks).Control)
     (current : state = some after) (who : Player) :
-    before.execution.recall who ⊆ after.execution.recall who := by
+    before.execution.logs who ⊆ after.execution.logs who := by
   have carry : ∀ {first last : (onePacketProtocol setup runtime leaks bounds horizon
     scheduler).State}
       (firstTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace first)
       (lastTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace last),
       TracePrefix firstTrace lastTrace → ∀ control,
       first = some control → ∃ next, last = some next ∧
-        ∀ actor, control.execution.recall actor ⊆ next.execution.recall actor := by
+        ∀ actor, control.execution.logs actor ⊆ next.execution.logs actor := by
     intro first last firstTrace lastTrace
     induction lastTrace with
     | start =>
@@ -84,7 +84,7 @@ theorem response_atTurn_of_forced_prefix {focal : Player}
       ⟨(owner, original.network.nextSerial owner),
         app.packet (app.submit original.application owner material) owner
           (original.network.known owner) material⟩⟩
-  have recalled : entry ∈ (original.respond app owner response).recall owner := by
+  have recalled : entry ∈ (original.respond app owner response).logs owner := by
     rw [runtime.respond_recall leaks]
     simp only [↓reduceIte, List.mem_append, List.mem_singleton]
     exact Or.inr rfl

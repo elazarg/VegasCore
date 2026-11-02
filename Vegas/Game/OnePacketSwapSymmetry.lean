@@ -151,7 +151,7 @@ structure SwapGuard (swap : HiddenSwap (graph setup)) (allowed : Set (graph setu
   reveals : ∀ event, current.application.config.cut.Ready event ∨
       event ∈ current.application.config.cut.completed →
     RevealFixed swap current.application event
-  requests : ∀ who, ∀ recalled ∈ current.recall who, swap.RequestFixed recalled.action
+  requests : ∀ who, ∀ recalled ∈ current.logs who, swap.RequestFixed recalled.action
   expired : ∀ event, ¬ swap.values.ExpiryFixed event →
     event ∈ current.application.config.cut.completed →
       current.application.accepted (.inr event) ≠ none
@@ -493,7 +493,7 @@ theorem transition_swap (swap : HiddenSwap (graph setup))
               ((joint who).getD ⟨none⟩)) at guarded
             generalize (joint who).getD ⟨none⟩ = response at guarded ⊢
             have member : ∃ recalled ∈ (current.respond (application setup runtime leaks) who
-                response).recall who, recalled.action = response := by
+                response).logs who, recalled.action = response := by
               rcases response with ⟨transmission⟩
               cases transmission <;>
               · simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
@@ -544,7 +544,7 @@ theorem requestFixed_of_respond (swap : HiddenSwap (graph setup))
       (current.respond (application setup runtime leaks) who response)) :
     swap.RequestFixed response := by
   have member : ∃ recalled ∈ (current.respond (application setup runtime leaks) who
-      response).recall who, recalled.action = response := by
+      response).logs who, recalled.action = response := by
     rcases response with ⟨transmission⟩
     cases transmission <;>
     · simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
@@ -662,7 +662,7 @@ def onePacketSwapSymmetry (bounds : MessageBounds (graph setup))
             change swap.RequestFixed ((joint who).getD ⟨none⟩) at fixed
             rw [chosen] at fixed
             change swap.action response ∈ bounds.onePacketActions runtime leaks who
-              ((current.recall who).map swap.entry)
+              ((current.logs who).map swap.entry)
               ((swap.execution current).observe (application setup runtime leaks) who)
             rw [swap.observe_execution]
             exact bounds.swap_mem_onePacketActions swap who _ _ rfl response available fixed

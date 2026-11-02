@@ -44,9 +44,9 @@ theorem onePacket_not_emitsOtherFor {horizon : Nat}
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     (message : Message Player (WitnessedPacket (graph setup)))
-    (member : message ∈ (application setup runtime leaks).outputs (control.execution.recall who))
+    (member : message ∈ (application setup runtime leaks).outputs (control.execution.logs who))
     (named : message.payload.call.event? (graph setup) = some event)
-    (entry : (application setup runtime leaks).PlayerEntry) (_ : entry ∈ control.execution.recall
+    (entry : (application setup runtime leaks).PlayerEntry) (_ : entry ∈ control.execution.logs
       who) :
     ¬ EmitsOtherFor runtime leaks entry event message.id := by
   rintro ⟨other, emitted, sender, otherNamed, different⟩
@@ -65,11 +65,11 @@ theorem onePacket_not_emitsOtherFor {horizon : Nat}
   have messageSender : message.sender = who := by
     obtain ⟨recorded, recordedMember, recordedEmitted⟩ := List.mem_filterMap.mp member
     exact (signed.emissions who recorded recordedMember message recordedEmitted).1
-  have otherMember : other ∈ (application setup runtime leaks).outputs (control.execution.recall
+  have otherMember : other ∈ (application setup runtime leaks).outputs (control.execution.logs
     who) :=
     List.mem_filterMap.mpr ⟨entry, by assumption, emitted⟩
   have inputOf (packet : Message Player (WitnessedPacket (graph setup)))
-      (output : packet ∈ (application setup runtime leaks).outputs (control.execution.recall who)) :
+      (output : packet ∈ (application setup runtime leaks).outputs (control.execution.logs who)) :
       packet ∈ control.execution.network.inputs := by
     rw [← recalled.1 who] at output
     exact (List.mem_filter.mp output).1

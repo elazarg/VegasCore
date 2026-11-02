@@ -31,7 +31,7 @@ variable {Player : Type} [DecidableEq Player]
 current one, and while no event has completed since, its public observation,
 accepted handles and activation times are the current ones. -/
 def EntryStable (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
-  ∀ who, ∀ entry ∈ execution.recall who,
+  ∀ who, ∀ entry ∈ execution.logs who,
     entry.beforeView.application.publicView.observation.completionOrder <+:
         execution.application.publicView.observation.completionOrder ∧
       (entry.beforeView.application.publicView.observation.completionOrder =

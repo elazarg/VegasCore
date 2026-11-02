@@ -26,7 +26,7 @@ def embedPolicy (who : Principal)
     (app.information initial horizon scheduler).BehavioralPolicy who := fun info =>
   (policy info).map (menu.rawChoice initial horizon scheduler who info)
 
-variable [Fintype Principal]
+variable [Finite Principal]
 
 theorem behavioralJoint_embed
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
@@ -38,10 +38,11 @@ theorem behavioralJoint_embed
       ((menu.information initial horizon scheduler).behavioralJoint profile
         history.trace running).map fun joint =>
           ⟨joint.1, menu.legal_raw initial horizon scheduler joint.2⟩ := by
+  let : Fintype Principal := Fintype.ofFinite Principal
   rcases history with ⟨state, trace⟩
   cases trace <;>
-    simp only [InformationModel.behavioralJoint, embedPolicy, ← independentProduct_map,
-      PMF.map_comp] <;>
+    simp only [InformationModel.behavioralJoint_eq_independentProduct, embedPolicy,
+      ← independentProduct_map, PMF.map_comp] <;>
     rfl
 
 /-- The map retains the complete history, rather than just public outcomes. -/

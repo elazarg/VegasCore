@@ -24,7 +24,7 @@ variable {Principal : Type} [Fintype Principal] [DecidableEq Principal]
   {app : ReactiveApplication Principal}
   (normal : app.SubmissionNormalization) (raw : app.ResponseMenu)
   (stable : ∀ who past view,
-    raw.actions who (normal.recall who past) view = raw.actions who past view)
+    raw.actions who (normal.logs who past) view = raw.actions who past view)
   (closed : ∀ who past view response, response ∈ raw.actions who past view →
     normal.action who past view response ∈ raw.actions who past view)
   (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
@@ -136,10 +136,11 @@ theorem splitBayes_projection
   rw [N.bayesBelief_apply]
   exact (bayes who target sourcePositive history).symm
 
+omit [Fintype Principal] in
 /-- Every consistent normalized assessment has consistent raw beliefs for the
 canonical response policy, with exactly the prescribed belief projection at
 every decision site. Sequential rationality is a separate obligation. -/
-theorem exists_canonical_consistent [app.FiniteNature initial scheduler]
+theorem exists_canonical_consistent [Finite Principal] [app.FiniteNature initial scheduler]
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralAssessment)
     (consistent : source.IsSequentiallyConsistent
       ((normal.menu raw).decisionInformationAntichain initial horizon scheduler)) :
@@ -151,6 +152,7 @@ theorem exists_canonical_consistent [app.FiniteNature initial scheduler]
         (target.belief who original).map
           (normal.informationHistory raw stable initial horizon scheduler who original.1) =
         source.belief who (normal.site raw stable initial horizon scheduler who original) := by
+  let : Fintype Principal := Fintype.ofFinite Principal
   obtain ⟨sequence, admissible, converges⟩ := consistent
   let weight (n : Nat) : ℝ := 1 / ((n : ℝ) + 1)
   have positive (n : Nat) : 0 < weight n := by dsimp [weight]; positivity

@@ -26,11 +26,11 @@ private theorem resume_policyMixture {Result : Type} (initial : PMF Index)
     (policies : Index → app.Policy) (who : Principal) (players : Principal → app.Policy)
     (rest : (Principal → app.Policy) → app.Execution → PMF Result)
     (restMixture : ∀ current : app.Execution,
-      ((app.policyMixture initial policies).posterior (current.recall who)).bind
+      ((app.policyMixture initial policies).posterior (current.logs who)).bind
           (fun index => rest (Function.update players who (policies index)) current) =
         rest (Function.update players who (app.policyMixture initial policies).policy) current)
     (current : app.Execution) (actor : Option Principal) :
-    ((app.policyMixture initial policies).posterior (current.recall who)).bind (fun index =>
+    ((app.policyMixture initial policies).posterior (current.logs who)).bind (fun index =>
       (app.resume (Function.update players who (policies index)) actor current).bind
         (rest (Function.update players who (policies index)))) =
       (app.resume (Function.update players who (app.policyMixture initial policies).policy)
@@ -62,11 +62,11 @@ private theorem round_policyMixture {Result : Type} (scheduler : app.Scheduler)
     (players : Principal → app.Policy)
     (rest : (Principal → app.Policy) → app.Execution → PMF Result)
     (restMixture : ∀ current : app.Execution,
-      ((app.policyMixture initial policies).posterior (current.recall who)).bind
+      ((app.policyMixture initial policies).posterior (current.logs who)).bind
           (fun index => rest (Function.update players who (policies index)) current) =
         rest (Function.update players who (app.policyMixture initial policies).policy) current)
     (execution : app.Execution) :
-    ((app.policyMixture initial policies).posterior (execution.recall who)).bind (fun index =>
+    ((app.policyMixture initial policies).posterior (execution.logs who)).bind (fun index =>
       (app.round scheduler (Function.update players who (policies index)) execution).bind
         (rest (Function.update players who (policies index)))) =
       (app.round scheduler (Function.update players who (app.policyMixture initial policies).policy)
@@ -87,7 +87,7 @@ private theorem round_policyMixture {Result : Type} (scheduler : app.Scheduler)
 theorem runRounds_policyMixture (scheduler : app.Scheduler) (initial : PMF Index)
     (policies : Index → app.Policy) (who : Principal) (players : Principal → app.Policy)
     (count : Nat) (execution : app.Execution) :
-    ((app.policyMixture initial policies).posterior (execution.recall who)).bind
+    ((app.policyMixture initial policies).posterior (execution.logs who)).bind
         (fun index => app.runRounds scheduler (Function.update players who (policies index))
           count execution) =
       app.runRounds scheduler
@@ -105,7 +105,7 @@ theorem runUntil_policyMixture (scheduler : app.Scheduler) (initial : PMF Index)
     (policies : Index → app.Policy) (who : Principal) (players : Principal → app.Policy)
     (stop : app.Execution → Prop) [DecidablePred stop] (count : Nat)
     (execution : app.Execution) :
-    ((app.policyMixture initial policies).posterior (execution.recall who)).bind
+    ((app.policyMixture initial policies).posterior (execution.logs who)).bind
         (fun index => app.runUntil scheduler (Function.update players who (policies index))
           stop count execution) =
       app.runUntil scheduler
@@ -130,8 +130,8 @@ theorem runUntil_congr_of_agree (scheduler : app.Scheduler)
         (execution.observeEnvironment app)).support,
       ∀ middle ∈ (execution.environmentStep app command).support, ∀ who,
         command.actor? app = some who →
-          first who (middle.recall who) (middle.observe app who) =
-            second who (middle.recall who) (middle.observe app who))
+          first who (middle.logs who) (middle.observe app who) =
+            second who (middle.logs who) (middle.observe app who))
     (preserved : ∀ execution, invariant execution → ¬ stop execution →
       ∀ next ∈ (app.round scheduler first execution).support, invariant next)
     (count : Nat) (execution : app.Execution) (holds : invariant execution) :
@@ -175,8 +175,8 @@ theorem runUntil_congr_of_agree_on_traces (initial : PMF app.State) (horizon : N
         (execution.observeEnvironment app)).support,
       ∀ middle ∈ (execution.environmentStep app command).support, ∀ who,
         command.actor? app = some who →
-          first who (middle.recall who) (middle.observe app who) =
-            second who (middle.recall who) (middle.observe app who))
+          first who (middle.logs who) (middle.observe app who) =
+            second who (middle.logs who) (middle.observe app who))
     (preserved : ∀ remaining execution,
       (app.protocol initial horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩) →
       invariant execution → ¬ stop execution →
@@ -242,9 +242,9 @@ theorem runUntil_mixture_at_first (initial : PMF app.State) (horizon : Nat)
         (execution.observeEnvironment app)).support,
       ∀ middle ∈ (execution.environmentStep app command).support,
         command.actor? app = some owner →
-        first (middle.recall owner) (middle.observe app owner) →
-        client (middle.recall owner) (middle.observe app owner) =
-          law.bind fun index => member index (middle.recall owner) (middle.observe app owner))
+        first (middle.logs owner) (middle.observe app owner) →
+        client (middle.logs owner) (middle.observe app owner) =
+          law.bind fun index => member index (middle.logs owner) (middle.observe app owner))
     (preserved : ∀ remaining execution,
       (app.protocol initial horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩) →
       invariant execution → ¬ stop execution →
@@ -254,7 +254,7 @@ theorem runUntil_mixture_at_first (initial : PMF app.State) (horizon : Nat)
     (trace : (app.protocol initial horizon scheduler).Trace
       (some ⟨remaining + count, none, execution⟩))
     (holds : invariant execution)
-    (clean : ∀ before entry, before ++ [entry] <+: execution.recall owner →
+    (clean : ∀ before entry, before ++ [entry] <+: execution.logs owner →
       ¬ first before entry.beforeView) :
     app.runUntil scheduler (Function.update others owner client) stop count execution =
       law.bind fun index =>
@@ -277,7 +277,7 @@ theorem runUntil_mixture_at_first (initial : PMF app.State) (horizon : Nat)
       · subst isOwner
         simp only [Function.update_self]
         rw [app.policyMixture_policy]
-        by_cases firstNow : first (middle.recall who) (middle.observe app who)
+        by_cases firstNow : first (middle.logs who) (middle.observe app who)
         · rw [prior _ (once _ _ firstNow)]
           exact atFirst remaining current currentTrace currentHolds running command selected
             middle moved active firstNow
@@ -286,7 +286,7 @@ theorem runUntil_mixture_at_first (initial : PMF app.State) (horizon : Nat)
     holds
   rw [congruent, ← app.runUntil_policyMixture scheduler law member owner others stop count
     execution]
-  change (mixture.posterior (execution.recall owner)).bind _ = _
+  change (mixture.posterior (execution.logs owner)).bind _ = _
   rw [prior _ clean]
 
 end Interaction.ReactiveApplication

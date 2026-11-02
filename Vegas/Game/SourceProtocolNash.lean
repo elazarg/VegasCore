@@ -19,7 +19,7 @@ namespace Vegas.SourceProgram.Setup
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability
 
-variable {Player : Type} [DecidableEq Player] [Fintype Player]
+variable {Player : Type} [DecidableEq Player] [Finite Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
   (admission : CommitmentInterface setup.program)
@@ -30,7 +30,7 @@ def encodeBehavioralProfile (profile : BehavioralProfile setup.program)
     Profile (setup.informationModel admission).behavioralSignature :=
   fun who => setup.toProtocolBehavioralPolicy admission who (profile who) (permitted who)
 
-omit [Fintype Player] in
+omit [Finite Player] in
 @[simp] theorem decodeBehavioralProfile_encodeBehavioralProfile
     (profile : BehavioralProfile setup.program)
     (permitted : ∀ who, (profile who).Admitted setup.program admission) :
@@ -40,7 +40,7 @@ omit [Fintype Player] in
   exact congrArg Subtype.val ((setup.behavioralPolicyEquiv admission who).symm_apply_apply
     ⟨profile who, permitted who⟩)
 
-omit [Fintype Player] in
+omit [Finite Player] in
 /-- Arbitrary legal protocol deviations change exactly the corresponding source policy. -/
 theorem decodeBehavioralProfile_protocol_update
     (profile : Profile (setup.informationModel admission).behavioralSignature)
@@ -54,7 +54,7 @@ theorem decodeBehavioralProfile_protocol_update
     simp only [decodeBehavioralProfile, Profile.update, Function.update_self]
   · simp only [decodeBehavioralProfile, Profile.update, Function.update_of_ne same]
 
-omit [Fintype Player] in
+omit [Finite Player] in
 /-- An analysis projection of the existing typed execution; source strategies
 and observations are unchanged. -/
 def observedGameForm {Observation : Type}

@@ -18,7 +18,7 @@ namespace Vegas
 open SourceProgram GameTheory GameTheory.Protocol GameTheory.Math.Probability
   Interaction EventGraphRuntime
 
-variable {Player : Type} [DecidableEq Player] [Fintype Player]
+variable {Player : Type} [DecidableEq Player] [Finite Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
   {runtime : EventGraphRuntime (graph setup)}
@@ -42,6 +42,7 @@ theorem exclusionBase_continuation_of_defaulted {Parameter : Type}
         certificate players history).support,
       exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who =
         excludedPayoff who := by
+  let : Fintype Player := Fintype.ofFinite Player
   let closed := fun state : (application setup runtime leaks).ProtocolState =>
     ∃ next : (application setup runtime leaks).Control,
       state = some next ∧ who ∈ next.execution.application.config.defaulted
@@ -81,6 +82,7 @@ theorem exclusionBase_expect_of_defaulted {Parameter : Type}
     expect law (fun final =>
       exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who) =
         excludedPayoff who := by
+  let : Fintype Player := Fintype.ofFinite Player
   have fixed := exclusionBase_continuation_of_defaulted parameter utility excludedPayoff menu
     initial horizon scheduler certificate players history control current who defaulted
   refine ⟨payoffIntegrable_congr_on_support (fun final supported => (fixed final supported).symm)

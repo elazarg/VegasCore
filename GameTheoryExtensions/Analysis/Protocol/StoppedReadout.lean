@@ -10,7 +10,7 @@ namespace GameTheory.Protocol.InformationModel
 
 open GameTheory.Math.Probability ExecutionProtocol
 
-variable {Player : Type*} [Fintype Player] {protocol : ExecutionProtocol Player}
+variable {Player : Type*} {protocol : ExecutionProtocol Player} [protocol.FiniteMovers]
   (model : InformationModel protocol)
 
 /-- A readout frozen after the chosen stop has the same terminal and stopped law. -/

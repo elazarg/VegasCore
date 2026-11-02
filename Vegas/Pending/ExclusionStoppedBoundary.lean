@@ -14,7 +14,7 @@ namespace Vegas.EventGraphRuntime
 open Interaction GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Math.Probability
 
-variable {Player : Type} [DecidableEq Player] [Fintype Player]
+variable {Player : Type} [DecidableEq Player] [Finite Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
   (runtime : EventGraphRuntime graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
@@ -45,7 +45,7 @@ def ClearEnvironmentBoundary (extraStop : (protocol).History → Prop)
       history.state = some ⟨remaining, command.actor? nativeApp, next⟩ ∧
       TracePrefix start.trace prior ∧ TracePrefix prior history.trace
 
-omit [Fintype Player] in
+omit [Finite Player] in
 private theorem respond_clear (execution : (nativeApp).Execution) (who : Player)
     (response : (nativeApp).Action)
     (valid : execution.application.config.defaulted = ∅) :
@@ -53,7 +53,7 @@ private theorem respond_clear (execution : (nativeApp).Execution) (who : Player)
   rw [(runtime.reactive_respond_application leaks execution who response).1]
   exact valid
 
-omit [Fintype Player] in
+omit [Finite Player] in
 private theorem transition_clear_or_environment (current : (nativeApp).Control)
     (target : (nativeApp).ProtocolState) (joint : Player → Option (nativeApp).Action)
     (valid : current.execution.application.config.defaulted = ∅)

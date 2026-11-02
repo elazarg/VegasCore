@@ -290,14 +290,14 @@ theorem assembled_nonlate_pending_comparisons
             subst named
             obtain ⟨payload, binding, checks, outputEq, codeEq, _node⟩ :=
               onePacket_opening_node (runtime := runtime) member sends packet
-            let key := LateKey.ofView setup runtime leaks who (execution.recall who)
+            let key := LateKey.ofView setup runtime leaks who (execution.logs who)
               (execution.observe (application setup runtime leaks) who)
             have pendingHere := pending
             rw [actualAt] at pendingHere
             have decided := decidedEvent_eq_of_pending setup runtime leaks horizon scheduler
               pendingHere ((Menu).toRawTrace (initialLaw setup) horizon scheduler
                 (current ▸ history.1.trace)) rfl
-              (lateKey_some (runtime := runtime) who (execution.recall who)
+              (lateKey_some (runtime := runtime) who (execution.logs who)
                 (execution.observe (application setup runtime leaks) who))
             have near := OnePacketComparison.assembled_firstActivation_disclosure_gain_le
               (runtime := runtime)
@@ -482,7 +482,7 @@ theorem assembled_nonlate_local_comparisons
       history.1.trace).symm.trans history.2
     rw [state] at observed
     simp only [ReactiveApplication.observe, actor, ↓reduceIte] at observed
-    exact ⟨control.execution.recall who,
+    exact ⟨control.execution.logs who,
       control.execution.observe (application setup runtime leaks) who, observed.symm⟩
   cases pending : pendingEvent setup runtime leaks who site.1 with
   | none =>

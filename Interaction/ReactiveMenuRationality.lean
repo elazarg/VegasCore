@@ -17,11 +17,11 @@ namespace Interaction.ReactiveApplication.ResponseMenu
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Math.Probability
 
-variable {Principal : Type} [DecidableEq Principal] [Fintype Principal]
+variable {Principal : Type} [DecidableEq Principal] [Finite Principal]
   {app : ReactiveApplication Principal} (menu : app.ResponseMenu)
   (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
-omit [Fintype Principal] in
+omit [Finite Principal] in
 /-- Decoded behavioral policies stay within the menu at every legal decision. -/
 theorem decodeProfile_admissible
     (profile : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)

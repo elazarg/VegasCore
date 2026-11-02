@@ -101,7 +101,7 @@ def SettlesFreshCalls (owner : Player) (event : (serviceGraph setup mode).EventI
     (bound : (serviceGraph setup mode).EventId → Nat)
     (execution : (serviceApplication setup mode deadline leaks).Execution) :
     Prop :=
-  ∀ earlier entry later message, execution.recall owner = earlier ++ entry :: later →
+  ∀ earlier entry later message, execution.logs owner = earlier ++ entry :: later →
     FreshCall setup leaks owner event bound entry message →
     (∀ other ∈ earlier ++ later, ¬ EmitsOtherFor (serviceRuntime setup mode deadline) leaks other
         event message.id) →

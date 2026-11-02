@@ -24,8 +24,8 @@ variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication P
 
 private theorem respond_recall_self' (execution : app.Execution) (who : Principal)
     (action : app.Action) :
-    ∃ emitted, (execution.respond app who action).recall who =
-      execution.recall who ++ [⟨execution.observe app who, action, emitted⟩] := by
+    ∃ emitted, (execution.respond app who action).logs who =
+      execution.logs who ++ [⟨execution.observe app who, action, emitted⟩] := by
   rcases action with ⟨transmission⟩
   cases transmission <;> simp only [Execution.respond, ↓reduceIte] <;> exact ⟨_, rfl⟩
 
@@ -37,7 +37,7 @@ theorem anchored_of_trace (initial : PMF app.State) (horizon : Nat) (scheduler :
     (anchor : app.Execution) (players : Principal → app.Policy) :
     ∀ {state} (_ : (app.protocol initial horizon scheduler).Trace state)
       (control : app.Control), state = some control →
-      (∀ who, control.execution.recall who <+: anchor.recall who) →
+      (∀ who, control.execution.logs who <+: anchor.logs who) →
       control.remaining ≤ horizon ∧
       match control.actor with
       | none => control.execution ∈ (app.roundsFrom initial scheduler
@@ -76,15 +76,15 @@ theorem anchored_of_trace (initial : PMF app.State) (horizon : Nat) (scheduler :
               cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp realized)
               obtain ⟨emitted, recalled⟩ := respond_recall_self' execution who
                 ((joint who).getD ⟨none⟩)
-              have priorBelow : ∀ player, execution.recall player <+: anchor.recall player := by
+              have priorBelow : ∀ player, execution.logs player <+: anchor.logs player := by
                 intro player
                 refine List.IsPrefix.trans ?_ (below player)
                 by_cases same : player = who
                 · subst same
-                  change execution.recall player <+: (execution.respond app player _).recall player
+                  change execution.logs player <+: (execution.respond app player _).logs player
                   rw [recalled]
                   exact List.prefix_append _ _
-                · change execution.recall player <+: (execution.respond app who _).recall player
+                · change execution.logs player <+: (execution.respond app who _).logs player
                   rw [app.respond_recall_other execution who player same]
               obtain ⟨within, inside, earlier, earlierMem, command, selected, active, moved⟩ :=
                 ih _ rfl priorBelow
@@ -98,12 +98,12 @@ theorem anchored_of_trace (initial : PMF app.State) (horizon : Nat) (scheduler :
               refine (PMF.mem_support_bind_iff _ _ _).mpr ⟨command, selected, ?_⟩
               refine (PMF.mem_support_bind_iff _ _ _).mpr ⟨execution, moved, ?_⟩
               rw [active]
-              change _ ∈ ((anchoredPolicy anchor players who (execution.recall who)
+              change _ ∈ ((anchoredPolicy anchor players who (execution.logs who)
                 (execution.observe app who)).map (execution.respond app who)).support
               have recorded := below who
-              change (execution.respond app who _).recall who <+: anchor.recall who at recorded
+              change (execution.respond app who _).logs who <+: anchor.logs who at recorded
               rw [recalled] at recorded
-              rw [anchoredPolicy_of_recorded anchor players who (execution.recall who)
+              rw [anchoredPolicy_of_recorded anchor players who (execution.logs who)
                 ⟨execution.observe app who, _, emitted⟩ recorded, PMF.pure_map]
               exact (PMF.mem_support_pure_iff _ _).mpr rfl
           | none =>
@@ -120,10 +120,10 @@ theorem anchored_of_trace (initial : PMF app.State) (horizon : Nat) (scheduler :
                   obtain ⟨command, selected, middle, stepped, same⟩ := realized
                   cases Option.some.inj same
                   have recallEq := app.environmentStep_recall execution middle command stepped
-                  have priorBelow : ∀ player, execution.recall player <+: anchor.recall player :=
+                  have priorBelow : ∀ player, execution.logs player <+: anchor.logs player :=
                     fun player => by
                       have := below player
-                      change middle.recall player <+: anchor.recall player at this
+                      change middle.logs player <+: anchor.logs player at this
                       rwa [recallEq] at this
                   obtain ⟨within, reached⟩ := ih _ rfl priorBelow
                   change remaining + 1 ≤ horizon at within

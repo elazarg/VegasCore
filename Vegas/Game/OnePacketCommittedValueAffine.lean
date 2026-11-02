@@ -254,14 +254,14 @@ theorem assembled_committed_value_sub_le
       · simp only [forced, ↓reduceIte, mul_zero, add_zero]
         obtain ⟨remaining, execution, current, recallEq, observeEq, ordered⟩ :=
           ordered_of_site setup runtime leaks bounds horizon scheduler atSite history
-        have actualAt : site.1 = some (execution.recall who,
+        have actualAt : site.1 = some (execution.logs who,
             execution.observe (application setup runtime leaks) who) := by
           simpa only [recallEq, observeEq] using atSite
         obtain ⟨point, decoded, intendedPoint, reachedPoint⟩ :=
           intendedReached_of_forced_debtFree (runtime := runtime) wellFormed site debtFree history
             current ordered forced
         have member : response ∈ bounds.onePacketActions runtime leaks who
-            (execution.recall who) (execution.observe (application setup runtime leaks) who) := by
+            (execution.logs who) (execution.observe (application setup runtime leaks) who) := by
           obtain ⟨other, chosen, member⟩ := choice_response setup runtime leaks bounds horizon
             scheduler site actualAt choice
           cases Option.some.inj (selected.symm.trans chosen)

@@ -3,6 +3,7 @@
 import Vegas.Game.OnePacketBindingSite
 import Vegas.Game.OnePacketRealizedCommitment
 import Vegas.Game.OnePacketRetention
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Component masses at realized commitments
 
@@ -53,7 +54,7 @@ theorem onePacket_binding_transmission_masses
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
     (response : (application setup runtime leaks).Action)
     (member : response ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who))
     (material : (application setup runtime leaks).Submission)
     (sends : response.transmission = some material)
@@ -61,14 +62,14 @@ theorem onePacket_binding_transmission_masses
       (control.execution.respond (application setup runtime leaks) who response) response)
     (choice : (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
       scheduler).Choice who
-      (some (control.execution.recall who,
+      (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who)))
     (chosen : choice.1 = some response) :
     ∃ serial canonical, serial < bounds.candidateCount ∧
       canonicalFreshSlot who
         (control.execution.observe (application setup runtime leaks) who).application = some
           canonical ∧
-      (∃ value, response = slotResponse setup runtime leaks who (control.execution.recall who)
+      (∃ value, response = slotResponse setup runtime leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) event serial
         (sourceOfValue setup event outputEq value)) ∧
       (honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who
@@ -100,19 +101,19 @@ theorem onePacket_binding_transmission_masses
     node
   obtain ⟨canonical, selected⟩ := onePacket_canonicalFreshSlot_exists (runtime := runtime) trace who
   have supported : sourceOfValue setup event outputEq value ∈ (asIfHonestProfile setup runtime leaks
-      assessment who (some (control.execution.recall who,
+      assessment who (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who))).support := by
     rw [contentEq] at positive
     exact (PMF.mem_support_iff _ _).mpr (ENNReal.toReal_pos_iff.mp positive).1.ne'
-  have offered : slotResponse setup runtime leaks who (control.execution.recall who)
+  have offered : slotResponse setup runtime leaks who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) event serial
       (sourceOfValue setup event outputEq value) ∈ bounds.onePacketActions runtime leaks
-        who (control.execution.recall who)
+        who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) :=
     responseEq ▸ member
   have choiceEq : choice = slotChoiceOf setup runtime leaks bounds (initialLaw setup) horizon
     scheduler
-      who (control.execution.recall who) (control.execution.observe (application setup runtime
+      who (control.execution.logs who) (control.execution.observe (application setup runtime
         leaks) who)
       event serial (sourceOfValue setup event outputEq value) := by
     apply Subtype.ext
@@ -129,7 +130,7 @@ theorem onePacket_binding_transmission_masses
   · rw [slotChoice_slotChoiceOf_apply (runtime := runtime) (initialLaw setup) horizon scheduler
       site supported
       slotCapacity offered, contentEq,
-      PMF.uniformOfFinset_apply_of_mem (trembleSlots_nonempty setup bounds)
+      uniformOn_apply_of_mem (trembleSlots_nonempty setup bounds)
         ((mem_trembleSlots_iff setup bounds capacityOne serial).mpr slotCapacity),
       ENNReal.toReal_mul, ENNReal.toReal_inv, ENNReal.toReal_natCast, mul_comm, one_div]
   · rw [silence_slotChoiceOf_apply (runtime := runtime) (initialLaw setup) horizon scheduler site

@@ -79,7 +79,7 @@ theorem certificate_firstActivation_lateOwnerShape
     (history : (onePacketN).InformationHistory who site.1)
     {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
-    (atSite : site.1 = some (execution.recall who,
+    (atSite : site.1 = some (execution.logs who,
       execution.observe (application setup runtime leaks) who))
     (forced : ForcedState setup runtime leaks who history.1.state)
     (response : (application setup runtime leaks).Action) :
@@ -88,15 +88,15 @@ theorem certificate_firstActivation_lateOwnerShape
       (Profile.update (sig := (onePacketN).behavioralSignature) (targetSequence n).strategy who
         (((targetSequence n).strategy who).withLaw site.1 law)) who event
       execution.application.config
-      (execution.recall who ++ [respondEntry setup runtime leaks execution who response]) := by
+      (execution.logs who ++ [respondEntry setup runtime leaks execution who response]) := by
   intro later laterRemaining reached state holds
   obtain ⟨atSent, extends_, unrecordedHere⟩ := (by simpa only [state] using holds :
     LateUnsent setup runtime leaks who event execution.application.config
-      (execution.recall who ++ [respondEntry setup runtime leaks execution who response])
+      (execution.logs who ++ [respondEntry setup runtime leaks execution who response])
       (some ⟨laterRemaining, some who, reached⟩))
   rw [Profile.update_same]
   -- The later recall is longer than the site's, so the decision is not the site's.
-  have notSite : (some (reached.recall who, reached.observe (application setup runtime leaks) who) :
+  have notSite : (some (reached.logs who, reached.observe (application setup runtime leaks) who) :
       (application setup runtime leaks).Info) ≠ site.1 := by
     intro same
     rw [atSite, Option.some.injEq, Prod.mk.injEq] at same
@@ -116,7 +116,7 @@ theorem certificate_firstActivation_lateOwnerShape
   have ready : reached.application.config.cut.Ready event := by
     rw [atSent]
     exact (execution.application.publicView_eventReady event).mp readyView
-  have activated : ∃ entry ∈ reached.recall who, ActivatedAt setup runtime leaks who event entry :=
+  have activated : ∃ entry ∈ reached.logs who, ActivatedAt setup runtime leaks who event entry :=
     ⟨respondEntry setup runtime leaks execution who response,
       extends_.subset (List.mem_append_right _ (List.mem_singleton_self _)),
       respondEntry_activatedAt setup runtime leaks turn response⟩
@@ -151,7 +151,7 @@ theorem certificate_firstActivation_lateOwnerShapeFrom
     (history : (onePacketN).InformationHistory who site.1)
     {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
-    (atSite : site.1 = some (execution.recall who,
+    (atSite : site.1 = some (execution.logs who,
       execution.observe (application setup runtime leaks) who))
     (forced : ForcedState setup runtime leaks who history.1.state) :
     LateOwnerShapeFrom setup runtime leaks bounds horizon scheduler (sequence n) (scale_pos n).le
@@ -159,10 +159,10 @@ theorem certificate_firstActivation_lateOwnerShapeFrom
       (Profile.update (sig := (onePacketN).behavioralSignature) (targetSequence n).strategy who
         (((targetSequence n).strategy who).withLaw site.1 law)) who event execution := by
   intro later laterRemaining reached state holds sameView extended
-  by_cases sameRecall : reached.recall who = execution.recall who
+  by_cases sameRecall : reached.logs who = execution.logs who
   · -- The site itself: the installed late option or silence.
     rw [Profile.update_same]
-    have same : (some (reached.recall who, reached.observe (application setup runtime leaks) who) :
+    have same : (some (reached.logs who, reached.observe (application setup runtime leaks) who) :
         (application setup runtime leaks).Info) = site.1 := by
       rw [atSite, sameRecall, sameView sameRecall]
     obtain ⟨siteInfo, decision⟩ := site
@@ -179,7 +179,7 @@ theorem certificate_firstActivation_lateOwnerShapeFrom
   · -- Later: the late component, after a response at the site.
     obtain ⟨response, extends_⟩ := extended sameRecall
     have unsent : LateUnsent setup runtime leaks who event execution.application.config
-        (execution.recall who ++ [respondEntry setup runtime leaks execution who response])
+        (execution.logs who ++ [respondEntry setup runtime leaks execution who response])
         later.state := by
       rw [state] at holds ⊢
       exact ⟨holds.1, extends_, holds.2.2⟩

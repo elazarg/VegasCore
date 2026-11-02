@@ -121,7 +121,7 @@ theorem owes_of_not_commitsAtTurn (wellFormed : setup.WellFormed)
     rw [chosen] at legal
     cases legal
   subst active
-  have atSite : site.1 = some (execution.recall who, execution.observe app who) := by
+  have atSite : site.1 = some (execution.logs who, execution.observe app who) := by
     rw [← observed]
     simp [ReactiveApplication.observe]
   obtain ⟨rank, ⟨residual⟩, _⟩ := decodedState_intended_or_owes (runtime := runtime) wellFormed

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketDelivery
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Value-free sending of a slot-trembled late component
 
@@ -197,7 +198,7 @@ theorem abs_expect_slotTrembled_lateChoice_le
     apply abs_expect_le_of_support
     intro slot member
     rw [expect_map]
-    exact perSlot slot (tierBelow slot ((PMF.mem_support_uniformOfFinset_iff _ _).mp member))
+    exact perSlot slot (tierBelow slot ((mem_support_uniformOn_iff _ _).mp member))
   have silenceZero : value (choiceResponse (runtime := runtime) (silenceChoice setup runtime leaks
     bounds initial horizon
       scheduler who (some (past, view)))) = 0 := silentChoice _ rfl

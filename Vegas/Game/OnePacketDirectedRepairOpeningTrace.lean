@@ -42,9 +42,9 @@ private theorem opening_countPermits
     (after : BindingMemory.Frame runtime leaks nextMemory owner
       (original.respond (application setup runtime leaks) owner ⟨some material⟩)
       (repaired.respond (application setup runtime leaks) owner ⟨some material⟩))
-    (permitted : runtime.OnePacketResponse leaks owner (original.recall owner)
+    (permitted : runtime.OnePacketResponse leaks owner (original.logs owner)
       (original.observe (application setup runtime leaks) owner) ⟨some material⟩) :
-    runtime.OnePacketResponse leaks owner (repaired.recall owner)
+    runtime.OnePacketResponse leaks owner (repaired.logs owner)
       (repaired.observe (application setup runtime leaks) owner) ⟨some material⟩ := by
   have inputs := congrArg (fun net => net.inputs) after.network
   have first := (runtime.countPermits_respond leaks original originalCount owner
@@ -81,7 +81,7 @@ theorem normalized_opening_trace
     (member : (⟨some ((disclosureSubmission (.opening event candidate raw)).normalizeReactive
         owner ((application setup runtime leaks).observePlayer original.application owner)
           (original.network.known owner))⟩ : (application setup runtime leaks).Action) ∈
-      bounds.onePacketActions runtime leaks owner (original.recall owner)
+      bounds.onePacketActions runtime leaks owner (original.logs owner)
         (original.observe (application setup runtime leaks) owner)) :
     let app := application setup runtime leaks
     let material := (disclosureSubmission (.opening event candidate raw)).normalizeReactive owner
@@ -126,7 +126,7 @@ theorem normalized_opening_trace
   rw [← responseEq] at after
   change BindingMemory.Frame runtime leaks remembered owner
     (original.respond app owner response) (repaired.respond app owner response) at after
-  have parts := (bounds.mem_onePacketActions runtime leaks owner (original.recall owner)
+  have parts := (bounds.mem_onePacketActions runtime leaks owner (original.logs owner)
     (original.observe app owner) _).mp member
   have targetEffective := frame.toFrame.normalized_opening_available bounds
     originalCount.1
@@ -135,8 +135,8 @@ theorem normalized_opening_trace
     leftFixed rightFixed]
     at targetEffective
   have targetMember : response ∈ bounds.onePacketActions runtime leaks owner
-      (repaired.recall owner) (repaired.observe app owner) := by
-    apply (bounds.mem_onePacketActions runtime leaks owner (repaired.recall owner)
+      (repaired.logs owner) (repaired.observe app owner) := by
+    apply (bounds.mem_onePacketActions runtime leaks owner (repaired.logs owner)
       (repaired.observe app owner) _).mpr
     refine ⟨targetEffective, Or.inr ?_⟩
     apply opening_countPermits (runtime := runtime) frame originalCount repairedCount material after

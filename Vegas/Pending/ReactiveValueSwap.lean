@@ -123,7 +123,7 @@ player's recall. -/
 def execution (current : (runtime.reactiveApplication leaks).Execution) :
     (runtime.reactiveApplication leaks).Execution :=
   ⟨current.application.swap swap, current.network, current.receipts,
-    fun who => (current.recall who).map swap.entry, current.environmentRecall⟩
+    fun who => (current.logs who).map swap.entry, current.environmentRecall⟩
 
 @[simp] theorem execution_application (current : (runtime.reactiveApplication leaks).Execution) :
     (swap.execution current).application = current.application.swap swap := rfl
@@ -135,7 +135,7 @@ def execution (current : (runtime.reactiveApplication leaks).Execution) :
     (swap.execution current).receipts = current.receipts := rfl
 
 @[simp] theorem execution_recall (current : (runtime.reactiveApplication leaks).Execution)
-    (who : Player) : (swap.execution current).recall who = (current.recall who).map swap.entry :=
+    (who : Player) : (swap.execution current).logs who = (current.logs who).map swap.entry :=
   rfl
 
 @[simp] theorem execution_environmentRecall
@@ -168,15 +168,15 @@ theorem entry_involutive :
 
 theorem execution_involutive :
     Function.Involutive (swap.execution (runtime := runtime) (leaks := leaks)) := by
-  rintro ⟨application, network, receipts, recall, environmentRecall⟩
+  rintro ⟨application, network, receipts, logs, environmentRecall⟩
   change (⟨(application.swap swap).swap swap, network, receipts,
-    fun who => ((recall who).map swap.entry).map swap.entry, environmentRecall⟩ :
+    fun who => ((logs who).map swap.entry).map swap.entry, environmentRecall⟩ :
       (runtime.reactiveApplication leaks).Execution) = _
   rw [State.swap_involutive swap application]
   congr 1
   funext who
   rw [List.map_map]
-  conv_rhs => rw [← List.map_id (recall who)]
+  conv_rhs => rw [← List.map_id (logs who)]
   exact List.map_congr_left fun recalled _ => swap.entry_involutive recalled
 
 /-- A player's view of the swapped execution is the swap of its view. -/
@@ -215,13 +215,13 @@ theorem respond_execution (current : (runtime.reactiveApplication leaks).Executi
   cases transmission with
   | none =>
       change (⟨current.application.swap swap, current.network, current.receipts,
-          fun observer => if observer = who then (current.recall who).map swap.entry ++
+          fun observer => if observer = who then (current.logs who).map swap.entry ++
             [⟨(swap.execution current).observe app who, ⟨none⟩, none⟩]
-          else (current.recall observer).map swap.entry, current.environmentRecall⟩ :
+          else (current.logs observer).map swap.entry, current.environmentRecall⟩ :
             app.Execution) =
         swap.execution ⟨current.application, current.network, current.receipts,
-          fun observer => if observer = who then current.recall who ++
-            [⟨current.observe app who, ⟨none⟩, none⟩] else current.recall observer,
+          fun observer => if observer = who then current.logs who ++
+            [⟨current.observe app who, ⟨none⟩, none⟩] else current.logs observer,
           current.environmentRecall⟩
       rw [observe_execution]
       change ReactiveApplication.Execution.mk _ _ _ _ _ = ReactiveApplication.Execution.mk _ _ _ _ _
@@ -246,18 +246,18 @@ theorem respond_execution (current : (runtime.reactiveApplication leaks).Executi
             (submitStep ((submission.swap swap).call.register (current.application.swap swap)
               who) who (submission.swap swap).call.packet) who (current.network.known who))).2,
           current.receipts,
-          fun observer => if observer = who then (current.recall who).map swap.entry ++
+          fun observer => if observer = who then (current.logs who).map swap.entry ++
             [⟨(swap.execution current).observe app who, ⟨some (submission.swap swap)⟩,
               some (current.network.submit who ((submission.swap swap).emit
                 (submitStep ((submission.swap swap).call.register
                   (current.application.swap swap) who) who (submission.swap swap).call.packet)
                   who (current.network.known who))).1⟩]
-          else (current.recall observer).map swap.entry, current.environmentRecall⟩ :
+          else (current.logs observer).map swap.entry, current.environmentRecall⟩ :
             app.Execution) =
         swap.execution ⟨after, sent.2, current.receipts,
-          fun observer => if observer = who then current.recall who ++
+          fun observer => if observer = who then current.logs who ++
             [⟨current.observe app who, ⟨some submission⟩, some sent.1⟩]
-          else current.recall observer,
+          else current.logs observer,
           current.environmentRecall⟩
       rw [submitted, emitted, observe_execution]
       change ReactiveApplication.Execution.mk _ _ _ _ _ = ReactiveApplication.Execution.mk _ _ _ _ _

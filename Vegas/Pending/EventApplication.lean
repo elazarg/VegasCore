@@ -472,11 +472,9 @@ theorem submitStep_lookup_of_not_fresh (state : State graph) (who : Player)
     (submitStep state who packet).candidates.lookup candidate =
       state.candidates.lookup candidate := by
   cases packet <;> simp only [submitStep]
-  all_goals first
-  | rfl
-  | split
-    · exact state.candidates.lookup_freeze_eq_of_not_fresh _ _ fixed
-    · rfl
+  split
+  · exact state.candidates.lookup_freeze_eq_of_not_fresh _ _ fixed
+  · rfl
 
 /-- Foreign packet authors cannot modify the owner's private catalogue. -/
 theorem submitStep_lookup_other (state : State graph) (who observer : Player)
@@ -484,14 +482,12 @@ theorem submitStep_lookup_other (state : State graph) (who observer : Player)
     (submitStep state who packet).candidates.lookup (observer, slot) =
       state.candidates.lookup (observer, slot) := by
   cases packet <;> simp only [submitStep]
-  all_goals first
-  | rfl
-  | split
-    · rename_i owned
-      apply state.candidates.lookup_freeze_other
-      intro same
-      exact different ((congrArg Prod.fst same).trans owned)
-    · rfl
+  split
+  · rename_i owned
+    apply state.candidates.lookup_freeze_other
+    intro same
+    exact different ((congrArg Prod.fst same).trans owned)
+  · rfl
 
 /-- Sealing sender-local resources discloses no application data to another player. -/
 theorem submitStep_playerView_other (state : State graph) (who observer : Player)

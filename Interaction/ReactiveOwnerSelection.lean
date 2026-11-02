@@ -26,7 +26,7 @@ theorem pending_iff_recalled (execution : app.Execution) (who : Principal)
     (unpublished : message.id ∉ execution.network.ledger.map Message.id)
     (origins : execution.Provenance app) (recalled : execution.InputRecall app)
     (retained : execution.network.PendingOrPublished) :
-    message ∈ execution.network.pending ↔ message ∈ app.outputs (execution.recall who) := by
+    message ∈ execution.network.pending ↔ message ∈ app.outputs (execution.logs who) := by
   constructor
   · intro pending
     obtain ⟨entry, member, _, _, emitted, _⟩ := origins.pending message pending

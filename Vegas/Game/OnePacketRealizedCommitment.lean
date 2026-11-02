@@ -64,19 +64,19 @@ theorem onePacket_commitment_realized (assessment : setup.intendedModel.Behavior
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
     (response : (application setup runtime leaks).Action)
     (member : response ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who))
     (material : (application setup runtime leaks).Submission)
     (sends : response.transmission = some material)
     (positive : 0 < contentFactor setup runtime leaks assessment who control.execution
       (control.execution.respond (application setup runtime leaks) who response) response) :
     ∃ serial value, serial < bounds.candidateCount ∧
-      response = slotResponse setup runtime leaks who (control.execution.recall who)
+      response = slotResponse setup runtime leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) event serial
         (sourceOfValue setup event outputEq value) ∧
       contentFactor setup runtime leaks assessment who control.execution
           (control.execution.respond (application setup runtime leaks) who response) response =
-        (asIfHonestProfile setup runtime leaks assessment who (some (control.execution.recall who,
+        (asIfHonestProfile setup runtime leaks assessment who (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))
             (sourceOfValue setup event outputEq value)).toReal := by
   have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
@@ -92,9 +92,9 @@ theorem onePacket_commitment_realized (assessment : setup.intendedModel.Behavior
   cases Option.some.inj turnNamed
   obtain ⟨effective, permitted⟩ := (bounds.mem_onePacketActions runtime leaks who _ _
     response).mp member
-  have verdict : CountPermits ((application setup runtime leaks).outputs (control.execution.recall
+  have verdict : CountPermits ((application setup runtime leaks).outputs (control.execution.logs
     who))
-      (runtime.localEnvelope leaks who (control.execution.recall who)
+      (runtime.localEnvelope leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) material) := by
     rcases permitted with silent | ⟨other, otherSends, counted⟩
     · rw [sends] at silent
@@ -102,7 +102,7 @@ theorem onePacket_commitment_realized (assessment : setup.intendedModel.Behavior
     · rw [sends] at otherSends
       cases Option.some.inj otherSends
       exact (countPermits_eq_true_iff _ _).mp counted
-  have callEq : (runtime.localEnvelope leaks who (control.execution.recall who)
+  have callEq : (runtime.localEnvelope leaks who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) material).payload.call =
       material.call.packet := rfl
   -- The packet commits at a prepared slot of the player.
@@ -135,7 +135,7 @@ theorem onePacket_commitment_realized (assessment : setup.intendedModel.Behavior
     refine ((preparedFresh_history (runtime := runtime) horizon scheduler rawTrace) who
       serial).mpr ?_
     rintro ⟨message, input, sender, committed, call⟩
-    have output : message ∈ (application setup runtime leaks).outputs (control.execution.recall
+    have output : message ∈ (application setup runtime leaks).outputs (control.execution.logs
       who) := by
       rw [← recalled.1 who]
       exact List.mem_filter.mpr ⟨input, by simp [sender]⟩
@@ -155,7 +155,7 @@ theorem onePacket_commitment_realized (assessment : setup.intendedModel.Behavior
       (bounds.rawMenu runtime leaks) who _ _ response effective
     have materialNormal : material.normalizeReactive who
         (control.execution.observe (application setup runtime leaks) who).application
-        (ReactiveApplication.ResponseMenu.knownPackets (control.execution.recall who)
+        (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who)) = material := by
       have transmitted := congrArg ReactiveApplication.Action.transmission normal
       rcases response with ⟨transmission⟩
@@ -164,16 +164,16 @@ theorem onePacket_commitment_realized (assessment : setup.intendedModel.Behavior
       exact Option.some.inj transmitted
     have evidence := congrArg WitnessedSubmission.evidence materialNormal
     change EvidenceRequest.canonical (ReactiveApplication.ResponseMenu.knownPackets
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who))
       (material.evidence.resolve who (material.call.candidateAfter who
         (control.execution.observe (application setup runtime leaks) who).application.candidates)
-        (ReactiveApplication.ResponseMenu.knownPackets (control.execution.recall who)
+        (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who))) = material.evidence
       at evidence
     rw [show material.evidence.resolve who (material.call.candidateAfter who
         (control.execution.observe (application setup runtime leaks) who).application.candidates)
-        (ReactiveApplication.ResponseMenu.knownPackets (control.execution.recall who)
+        (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who)) = none
       from evidenceNone] at evidence
     exact evidence.symm
@@ -191,7 +191,7 @@ theorem onePacket_commitment_realized (assessment : setup.intendedModel.Behavior
       (control.execution.respond (application setup runtime leaks) who
         ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩)
       ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩ ∈
-      (asIfHonestProfile setup runtime leaks assessment who (some (control.execution.recall who,
+      (asIfHonestProfile setup runtime leaks assessment who (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who))).support := by
     unfold contentFactor at positive
     exact (PMF.mem_support_iff _ _).mpr (ENNReal.toReal_pos_iff.mp positive).1.ne'

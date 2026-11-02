@@ -45,7 +45,7 @@ envelope; when it requested owned evidence, the envelope carries exactly that
 evidence; and the direct predecessors of the event its token names have
 completed. -/
 def OwnedRequestsEmitted (execution : (application setup runtime leaks).Execution) : Prop :=
-  ∀ who, ∀ recalled ∈ execution.recall who, ∀ submission,
+  ∀ who, ∀ recalled ∈ execution.logs who, ∀ submission,
     recalled.action.transmission = some submission →
     ∃ message, recalled.emitted = some message ∧
       (∀ fact, submission.evidence = .owned fact → message.payload.evidence = some fact) ∧
@@ -111,7 +111,7 @@ theorem ownedRequestsEmitted_respond (execution : (application setup runtime lea
     (valid : OwnedRequestsEmitted setup runtime leaks execution) (who : Player)
     (action : (application setup runtime leaks).Action)
     (member : action ∈ (bounds.onePacketMenu runtime leaks).actions who
-      (execution.recall who) (execution.observe (application setup runtime leaks) who)) :
+      (execution.logs who) (execution.observe (application setup runtime leaks) who)) :
     OwnedRequestsEmitted setup runtime leaks (execution.respond (application setup runtime leaks)
       who action) := by
   let app := application setup runtime leaks
@@ -140,7 +140,7 @@ theorem ownedRequestsEmitted_respond (execution : (application setup runtime lea
       · have request := Option.some.inj normalEvidence
         change submission.evidence.normalize observer (submission.call.candidateAfter observer
           (fun slot => execution.application.candidates.lookup (observer, slot)))
-            (ReactiveApplication.ResponseMenu.knownPackets (execution.recall observer)
+            (ReactiveApplication.ResponseMenu.knownPackets (execution.logs observer)
               (execution.observe app observer)) = submission.evidence at request
         rw [owned] at request
         have resolved := resolve_owned_of_normalize request
@@ -185,7 +185,7 @@ theorem output_mem_inputs_of_trace {horizon : Nat}
     (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (packet : Message Player (WitnessedPacket (graph setup)))
-    (output : packet ∈ (application setup runtime leaks).outputs (control.execution.recall who)) :
+    (output : packet ∈ (application setup runtime leaks).outputs (control.execution.logs who)) :
     packet ∈ control.execution.network.inputs := by
   have clean := (bounds.onePacketMenu_countClean runtime leaks scheduler).history
     (initialLaw setup) horizon (fun state _ => runtime.countClean_initial leaks state)
@@ -263,7 +263,7 @@ theorem certificate_field {horizon : Nat} {scheduler : (application setup runtim
     (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (sender : Player) (recalled : (application setup runtime leaks).PlayerEntry)
-    (member : recalled ∈ control.execution.recall sender)
+    (member : recalled ∈ control.execution.logs sender)
     (submission : (application setup runtime leaks).Submission)
     (sent : recalled.action.transmission = some submission)
     (fact : OpeningFact (graph setup)) (owned : submission.evidence = .owned fact) :

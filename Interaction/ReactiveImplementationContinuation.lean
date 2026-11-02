@@ -22,7 +22,7 @@ variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication P
 theorem realize_continuation (who : Principal) (players : Principal → app.Policy)
     (scheduler : app.Scheduler) (count : Nat) (actor : Option Principal)
     (execution : app.Execution) :
-    (implementation.posterior (execution.recall who)).bind (fun memory =>
+    (implementation.posterior (execution.logs who)).bind (fun memory =>
       (implementation.resume who players actor execution memory).bind fun result =>
         implementation.run who players scheduler count result.1 result.2) =
       (app.resume (Function.update players who implementation.policy) actor execution).bind

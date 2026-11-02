@@ -42,7 +42,7 @@ variable (setup runtime leaks) in
 def RecordsEntry (who : Player) (entry : (application setup runtime leaks).PlayerEntry) :
     (application setup runtime leaks).ProtocolState → Prop
   | none => False
-  | some control => ∃ earlier later, control.execution.recall who = earlier ++ entry :: later
+  | some control => ∃ earlier later, control.execution.logs who = earlier ++ entry :: later
 
 /-- A response records its own entry. -/
 theorem recordsEntry_respond (execution : (application setup runtime leaks).Execution) (who :
@@ -52,7 +52,7 @@ theorem recordsEntry_respond (execution : (application setup runtime leaks).Exec
     RecordsEntry setup runtime leaks who (respondEntry setup runtime leaks execution who response)
       (some ⟨remaining, actor, execution.respond (application setup runtime leaks) who response⟩)
         := by
-  refine ⟨execution.recall who, [], ?_⟩
+  refine ⟨execution.logs who, [], ?_⟩
   rw [respond_recall, ite_eq_left rfl]
   rfl
 
@@ -106,7 +106,7 @@ theorem firstActivation_inclusionFits_of_counted_opportunity
     (clear : execution.application.config.defaulted = ∅)
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
-    (never : ∀ entry ∈ execution.recall who,
+    (never : ∀ entry ∈ execution.logs who,
       ¬ ActivatedAt setup runtime leaks who event entry) :
     execution.application.publicView.InclusionFitsDeadline runtime bound event := by
   let service := scheduler

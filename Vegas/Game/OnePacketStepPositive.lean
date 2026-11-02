@@ -65,10 +65,10 @@ theorem stepResponse_pos_of_respond {slots : Nat}
     0 < stepResponse (runtime := runtime) bounds keyLaw scale (operationalState setup runtime
       leaks (some control))
       (operationalState setup runtime leaks (some next)) := by
-  set before := LateKey.ofView setup runtime leaks actor (control.execution.recall actor)
+  set before := LateKey.ofView setup runtime leaks actor (control.execution.logs actor)
     (control.execution.observe (application setup runtime leaks) actor)
   set after := LateKey.ofView setup runtime leaks actor
-    ((control.execution.respond (application setup runtime leaks) actor response).recall actor)
+    ((control.execution.respond (application setup runtime leaks) actor response).logs actor)
     ((control.execution.respond (application setup runtime leaks) actor response).observe
       (application setup runtime leaks) actor)
   have form : stepResponse (runtime := runtime) bounds keyLaw scale (operationalState setup

@@ -136,19 +136,19 @@ theorem disclosure_silent_iff (covers : bounds.CoversOutputValues)
       ((graph setup).nodes event) = .resolve owner payload binding checks}
     (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
     ((responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))
-        (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+        (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who) event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))).1.getD
           ⟨none⟩).transmission = none ↔
       ¬ ((reactiveResolutionPacket who event payload binding checks outputEq
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
           (control.execution.observe (application setup runtime leaks) who).application).isSome ∧
-        ¬ ∃ message ∈ (application setup runtime leaks).outputs (control.execution.recall who),
+        ¬ ∃ message ∈ (application setup runtime leaks).outputs (control.execution.logs who),
           message.payload.call.event? (graph setup) = some event) := by
   set disclosure := runtime.canonicalServiceDecision leaks who
-    (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+    (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
       who) event
     (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) with disclosureEq
   have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
@@ -157,25 +157,25 @@ theorem disclosure_silent_iff (covers : bounds.CoversOutputValues)
     (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
   have transmits := disclosure_transmission_isSome (runtime := runtime) (leaks := leaks) who
-    (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+    (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
       who) node
     (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
   rw [← disclosureEq] at transmits
   have decodedMember : ∀ response : (application setup runtime leaks).Action,
-      response ∈ bounds.onePacketActions runtime leaks who (control.execution.recall who)
+      response ∈ bounds.onePacketActions runtime leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) →
       (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who)) response).1.getD
             ⟨none⟩ =
         response := by
     intro response member
     simp only [responseChoice, member, ↓reduceDIte, Option.getD_some]
   have decodedSilent : ∀ response : (application setup runtime leaks).Action,
-      response ∉ bounds.onePacketActions runtime leaks who (control.execution.recall who)
+      response ∉ bounds.onePacketActions runtime leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) →
       (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who)) response).1.getD
             ⟨none⟩ =
         ⟨none⟩ := by
@@ -190,21 +190,21 @@ theorem disclosure_silent_iff (covers : bounds.CoversOutputValues)
         cases both.1
       · intro _
         by_cases member : disclosure ∈ bounds.onePacketActions runtime leaks who
-            (control.execution.recall who)
+            (control.execution.logs who)
             (control.execution.observe (application setup runtime leaks) who)
         · rw [decodedMember _ member]
           exact sends
         · rw [decodedSilent _ member]
   | some material =>
       rw [sends, Option.isSome_some] at transmits
-      by_cases unsent : runtime.eventRecorded leaks (control.execution.recall who) event =
+      by_cases unsent : runtime.eventRecorded leaks (control.execution.logs who) event =
           false
       · have member := onePacket_disclosure_offered (runtime := runtime) covers trace who event
           turn unsent node
           material sends
         rw [decodedMember _ member, sends]
         have noOutput : ¬ ∃ message ∈ (application setup runtime leaks).outputs
-            (control.execution.recall who), message.payload.call.event? (graph setup) =
+            (control.execution.logs who), message.payload.call.event? (graph setup) =
               some event := by
           intro named
           have recorded := (history_eventRecorded_iff (runtime := runtime) rawTrace who event).mpr
@@ -216,16 +216,16 @@ theorem disclosure_silent_iff (covers : bounds.CoversOutputValues)
           cases silent
         · intro claim
           exact (claim ⟨transmits.symm, noOutput⟩).elim
-      · have recorded : runtime.eventRecorded leaks (control.execution.recall who) event =
+      · have recorded : runtime.eventRecorded leaks (control.execution.logs who) event =
             true := by
-          cases value : runtime.eventRecorded leaks (control.execution.recall who) event
+          cases value : runtime.eventRecorded leaks (control.execution.logs who) event
           · exact (unsent value).elim
           · rfl
         obtain ⟨message, output, named⟩ := (history_eventRecorded_iff (runtime := runtime)
           rawTrace who event).mp
           recorded
         have notMember : disclosure ∉ bounds.onePacketActions runtime leaks who
-            (control.execution.recall who)
+            (control.execution.logs who)
             (control.execution.observe (application setup runtime leaks) who) := by
           intro member
           rcases ((bounds.mem_onePacketActions runtime leaks who _ _ disclosure).mp
@@ -245,7 +245,7 @@ theorem disclosure_silent_iff (covers : bounds.CoversOutputValues)
           apply first message earlier
           rw [named]
           rcases runtime.canonicalServiceDecision_cases leaks who
-              (control.execution.recall who)
+              (control.execution.logs who)
               (control.execution.observe (application setup runtime leaks) who) event
               (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) with
             silent | submitted
@@ -279,21 +279,21 @@ theorem disclosure_opens {control : (application setup runtime leaks).Control}
       ((graph setup).nodes event) = .resolve who payload binding checks}
     (node : nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq)
     (speaks : ((responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))
-        (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+        (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who) event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))).1.getD
           ⟨none⟩).transmission ≠ none) :
     OpensTurn (runtime := runtime) event who control.execution
       ((responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))
-        (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+        (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who) event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))).1.getD ⟨none⟩) := by
   set disclosure := runtime.canonicalServiceDecision leaks who
-    (control.execution.recall who) (control.execution.observe (application setup runtime leaks) who)
+    (control.execution.logs who) (control.execution.observe (application setup runtime leaks) who)
     event (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) with disclosureEq
   have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
@@ -301,11 +301,11 @@ theorem disclosure_opens {control : (application setup runtime leaks).Control}
     (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
   by_cases member : disclosure ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who)
   · have decoded : (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
       who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who)) disclosure).1.getD
             ⟨none⟩ =
         disclosure := by
@@ -324,7 +324,7 @@ theorem disclosure_opens {control : (application setup runtime leaks).Control}
     exact ⟨_, handle, value, rfl, rfl, accepted, stored⟩
   · have decoded : (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
       who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who)) disclosure).1.getD
             ⟨none⟩ =
         ⟨none⟩ := by
@@ -350,32 +350,32 @@ theorem lateChoice_reveal (assessment : setup.intendedModel.BehavioralAssessment
     (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
     {slots : Nat} (slot : Fin slots) :
     lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who)) (some slot) =
       PMF.pure (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))
-        (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+        (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who) event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))) := by
   rw [lateChoice_some_eq_map (runtime := runtime) (bounds := bounds) (initial := initialLaw setup)
     (horizon := horizon)
     (scheduler := scheduler) assessment who _ _ event turn slot]
   have constant : (asIfHonestProfile setup runtime leaks assessment who
-      (some (control.execution.recall who,
+      (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who))).map
       (slotChoiceOf setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (control.execution.recall who) (control.execution.observe (application setup runtime
+        (control.execution.logs who) (control.execution.observe (application setup runtime
           leaks) who)
         event slot.val) =
       (asIfHonestProfile setup runtime leaks assessment who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))).map
       (Function.const _ (responseChoice setup runtime leaks bounds (initialLaw setup) horizon
         scheduler
-        who (some (control.execution.recall who,
+        who (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))
-        (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+        (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who) event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)))) := by
     apply map_congr_on_support
@@ -440,20 +440,20 @@ theorem lateCore_silence {control : (application setup runtime leaks).Control}
     (options : PMF (LateOption slots)) :
     (lateCore (runtime := runtime) (bounds := bounds) (horizon := horizon) (scheduler :=
       scheduler) assessment scale
-        nonnegative le_one options who (some (control.execution.recall who,
+        nonnegative le_one options who (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))).map
           (choiceSilent (runtime := runtime)) =
       openingSilence scale nonnegative le_one options
         (choiceSilent (runtime := runtime) (responseChoice setup runtime leaks bounds (initialLaw
           setup) horizon scheduler who
-          (some (control.execution.recall who,
+          (some (control.execution.logs who,
             control.execution.observe (application setup runtime leaks) who))
-          (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+          (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
             (control.execution.observe (application setup runtime leaks) who) event
             (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)))) := by
   have silenceFlag : choiceSilent (runtime := runtime) (silenceChoice setup runtime leaks bounds
     (initialLaw setup) horizon
-      scheduler who (some (control.execution.recall who,
+      scheduler who (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who))) = true := by
     unfold choiceSilent
     rw [silenceChoice_val (runtime := runtime) who _ rfl]
@@ -481,8 +481,8 @@ theorem outputs_congr {first second : (application setup runtime leaks).Control}
     (same : operationalState setup runtime leaks (some first) = operationalState setup runtime
       leaks (some second))
     (who : Player) :
-    (application setup runtime leaks).outputs (first.execution.recall who) =
-      (application setup runtime leaks).outputs (second.execution.recall who) := by
+    (application setup runtime leaks).outputs (first.execution.logs who) =
+      (application setup runtime leaks).outputs (second.execution.logs who) := by
   have recalled := congrArg LateKey.recalled (ofView_congr (runtime :=
     runtime) same who)
   simp only [LateKey.ofView] at recalled
@@ -516,14 +516,14 @@ theorem disclosureSilent_congr (covers : bounds.CoversOutputValues) {remaining :
     (node : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq) :
     choiceSilent (runtime := runtime) (responseChoice setup runtime leaks bounds (initialLaw
       setup) horizon scheduler owner
-        (some (first.recall owner, first.observe (application setup runtime leaks) owner))
-        (runtime.canonicalServiceDecision leaks owner (first.recall owner)
+        (some (first.logs owner, first.observe (application setup runtime leaks) owner))
+        (runtime.canonicalServiceDecision leaks owner (first.logs owner)
           (first.observe (application setup runtime leaks) owner) event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))) =
       choiceSilent (runtime := runtime) (responseChoice setup runtime leaks bounds (initialLaw
         setup) horizon scheduler owner
-        (some (second.recall owner, second.observe (application setup runtime leaks) owner))
-        (runtime.canonicalServiceDecision leaks owner (second.recall owner)
+        (some (second.logs owner, second.observe (application setup runtime leaks) owner))
+        (runtime.canonicalServiceDecision leaks owner (second.logs owner)
           (second.observe (application setup runtime leaks) owner) event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))) := by
   have ready' : second.application.config.cut.Ready event :=
@@ -548,8 +548,8 @@ theorem disclosureSilent_congr (covers : bounds.CoversOutputValues) {remaining :
     ¬ ((reactiveResolutionPacket owner event payload binding checks outputEq _
       (second.observe (application setup runtime leaks) owner).application).isSome ∧ _)
   rw [packets]
-  change ¬ (_ ∧ ¬ ∃ message ∈ (application setup runtime leaks).outputs (first.recall owner), _) ↔
-    ¬ (_ ∧ ¬ ∃ message ∈ (application setup runtime leaks).outputs (second.recall owner), _)
+  change ¬ (_ ∧ ¬ ∃ message ∈ (application setup runtime leaks).outputs (first.logs owner), _) ↔
+    ¬ (_ ∧ ¬ ∃ message ∈ (application setup runtime leaks).outputs (second.logs owner), _)
   rw [outputs]
 
 variable (bounds horizon scheduler) in
@@ -575,9 +575,9 @@ def lateOpeningSilence (assessment : setup.intendedModel.BehavioralAssessment) (
         (lateCore (runtime := runtime) (bounds := bounds) (horizon := horizon) (scheduler :=
           scheduler) assessment
           scale nonnegative le_one (options (LateKey.ofView setup runtime leaks key.owner
-            (represented.choose.2.2.recall key.owner)
+            (represented.choose.2.2.logs key.owner)
             (represented.choose.2.2.observe (application setup runtime leaks) key.owner))) key.owner
-          (some (represented.choose.2.2.recall key.owner,
+          (some (represented.choose.2.2.logs key.owner,
             represented.choose.2.2.observe (application setup runtime leaks) key.owner))).map
           (choiceSilent (runtime := runtime))
       else PMF.pure true
@@ -607,22 +607,22 @@ theorem ownerOpeningLaw_of_lateComponents {LateOption' : Type}
         allowed history.state →
         ForcedState setup runtime leaks key.owner history.state →
         execution.application.config.cut.Ready event →
-        profile key.owner (some (execution.recall key.owner,
+        profile key.owner (some (execution.logs key.owner,
             execution.observe (application setup runtime leaks) key.owner)) =
           slotTrembledChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler scale
-            nonnegative le_one key.owner (some (execution.recall key.owner,
+            nonnegative le_one key.owner (some (execution.logs key.owner,
               execution.observe (application setup runtime leaks) key.owner))
             ((options key option (LateKey.ofView setup runtime leaks key.owner
-                (execution.recall key.owner)
+                (execution.logs key.owner)
                 (execution.observe (application setup runtime leaks) key.owner))).bind
               (lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment
-                key.owner (some (execution.recall key.owner,
+                key.owner (some (execution.logs key.owner,
                   execution.observe (application setup runtime leaks) key.owner))))
             (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
-              key.owner (some (execution.recall key.owner,
+              key.owner (some (execution.logs key.owner,
                 execution.observe (application setup runtime leaks) key.owner))))
             (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment
-              key.owner (some (execution.recall key.owner,
+              key.owner (some (execution.logs key.owner,
                 execution.observe (application setup runtime leaks) key.owner)))) :
     OwnerOpeningLaw (runtime := runtime) bounds horizon scheduler
       (fun key option => lateOpeningSilence (runtime := runtime) bounds horizon scheduler
@@ -640,13 +640,13 @@ theorem ownerOpeningLaw_of_lateComponents {LateOption' : Type}
   have turnOwn : execution.application.publicView.ownTurn? key.owner = some
     event :=
     ownTurn?_of_ready setup _ ready (nodeView_resolve_actor outputEq codeEq)
-  set info : (application setup runtime leaks).Info := some (execution.recall key.owner,
+  set info : (application setup runtime leaks).Info := some (execution.logs key.owner,
     execution.observe (application setup runtime leaks) key.owner) with infoEq
   set core := lateCore (runtime := runtime) (bounds := bounds) (horizon := horizon) (scheduler :=
     scheduler)
     assessment scale nonnegative le_one (options key option (LateKey.ofView setup runtime leaks
       key.owner
-      (execution.recall key.owner) (execution.observe (application setup
+      (execution.logs key.owner) (execution.observe (application setup
         runtime leaks) key.owner)))
     key.owner info with coreEq
   have profileEq : profile key.owner info = mix (scale ^ 3) (pow_nonneg
@@ -742,7 +742,7 @@ theorem ownerOpeningLaw_of_lateComponents {LateOption' : Type}
       horizon
         scheduler key.owner info (runtime.canonicalServiceDecision leaks
           key.owner
-          (execution.recall key.owner) (execution.observe (application setup
+          (execution.logs key.owner) (execution.observe (application setup
             runtime leaks) key.owner)
           event (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))).1.getD
           ⟨none⟩) = 0 := by
@@ -751,7 +751,7 @@ theorem ownerOpeningLaw_of_lateComponents {LateOption' : Type}
       by_cases silent : ((responseChoice setup runtime leaks bounds (initialLaw setup) horizon
         scheduler
           key.owner info (runtime.canonicalServiceDecision leaks key.owner
-            (execution.recall key.owner) (execution.observe (application
+            (execution.logs key.owner) (execution.observe (application
               setup runtime leaks) key.owner)
             event (cast (congrArg EventGraph.EventField.Action outputEq.symm) true))).1.getD
             ⟨none⟩).transmission = none
@@ -831,22 +831,22 @@ def LateComponentShape (assessment : setup.intendedModel.BehavioralAssessment) (
       allowed history.state →
       ForcedState setup runtime leaks key.owner history.state →
       execution.application.config.cut.Ready event →
-      profile key.owner (some (execution.recall key.owner,
+      profile key.owner (some (execution.logs key.owner,
           execution.observe (application setup runtime leaks) key.owner)) =
         slotTrembledChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler scale
-          nonnegative le_one key.owner (some (execution.recall key.owner,
+          nonnegative le_one key.owner (some (execution.logs key.owner,
             execution.observe (application setup runtime leaks) key.owner))
           ((options (LateKey.ofView setup runtime leaks key.owner
-            (execution.recall key.owner)
+            (execution.logs key.owner)
               (execution.observe (application setup runtime leaks) key.owner))).bind
             (lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment
-              key.owner (some (execution.recall key.owner,
+              key.owner (some (execution.logs key.owner,
                 execution.observe (application setup runtime leaks) key.owner))))
           (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
-            key.owner (some (execution.recall key.owner,
+            key.owner (some (execution.logs key.owner,
               execution.observe (application setup runtime leaks) key.owner))))
           (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment
-            key.owner (some (execution.recall key.owner,
+            key.owner (some (execution.logs key.owner,
               execution.observe (application setup runtime leaks) key.owner)))
 
 end Vegas

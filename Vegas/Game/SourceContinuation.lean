@@ -23,12 +23,11 @@ namespace Vegas.SourceProgram.Setup
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability
 
-variable {Player : Type} [DecidableEq Player] [Fintype Player]
+variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
   (admission : CommitmentInterface setup.program)
 
-omit [Fintype Player] in
 /-- A payoff spread bound on terminal legal histories. Values on impossible
 public default records and unsupported initial parameters are unrestricted. -/
 def TerminalPayoffSpread {Parameter : Type}
@@ -50,7 +49,6 @@ def decodeBehavioralProfile
     BehavioralProfile setup.program :=
   fun who => ((setup.behavioralPolicyEquiv admission who).symm (profile who)).1
 
-omit [Fintype Player] in
 /-- Decoding a unilateral deviation decodes the deviating coordinate alone. -/
 theorem decodeBehavioralProfile_update
     (profile : Profile (setup.informationModel admission).behavioralSignature) (who : Player)
@@ -70,7 +68,7 @@ theorem decodeBehavioralProfile_update
 open Classical in
 /-- The state law of one actual protocol step, with its ordinary terminal
 absorption. It uses the protocol's existing observations and transition. -/
-def behavioralStateStep
+def behavioralStateStep [Fintype Player]
     (profile : Profile (setup.informationModel admission).behavioralSignature)
     (state : setup.ProtocolState) : PMF setup.ProtocolState :=
   if state.elim False (SourceProgram.ProtocolState.terminal setup.program) then
@@ -81,7 +79,7 @@ def behavioralStateStep
 
 /-- Forgetting history commutes with ordinary iteration of the actual source
 step law. The history runner remains the defining execution semantics. -/
-theorem runBehavioralFrom_state
+theorem runBehavioralFrom_state [Fintype Player]
     (profile : Profile (setup.informationModel admission).behavioralSignature)
     (fuel : Nat) (history : (setup.executionProtocol admission).History) :
     ((setup.informationModel admission).runBehavioralFrom profile fuel history).map History.state =
@@ -93,7 +91,7 @@ theorem runBehavioralFrom_state
   · intro current running
     change ((setup.informationModel admission).behavioralJoint profile current.trace running).bind
       ((setup.executionProtocol admission).step current.state) = _
-    rw [InformationModel.behavioralJoint, PMF.bind_map]
+    rw [InformationModel.behavioralJoint_eq_independentProduct, PMF.bind_map]
     unfold behavioralStateStep
     have active : ¬ current.state.elim False
         (SourceProgram.ProtocolState.terminal setup.program) := running
@@ -109,7 +107,7 @@ theorem runBehavioralFrom_state
       (independentProduct fun who => profile who (infos who)).bind fun choices =>
         setup.protocolStep current.state (fun who => (choices who).1)) infos
 
-theorem runBehavioralFrom_readout
+theorem runBehavioralFrom_readout [Finite Player]
     (profile : Profile (setup.informationModel admission).behavioralSignature)
     (fuel : Nat) (history : (setup.executionProtocol admission).History)
     (enough : setup.protocolRemaining history.state ≤ fuel) :

@@ -44,7 +44,7 @@ theorem response_trace
       operationalRecord setup runtime leaks bounds horizon scheduler imagePrior)
     (response : (application setup runtime leaks).Action)
     (available : response ∈ bounds.onePacketActions runtime leaks actor
-      (original.recall actor) (original.observe (application setup runtime leaks) actor))
+      (original.logs actor) (original.observe (application setup runtime leaks) actor))
     (covered : bounds.CoversOutputValues)
     {focal : Player} (other : owner ≠ focal)
     {info : (onePacketInformation setup runtime leaks bounds horizon scheduler).InfoState focal}
@@ -110,12 +110,12 @@ theorem response_trace
       have parts := (bounds.mem_onePacketActions runtime leaks owner _ _ _).mp available
       have normal := ((bounds.menu_mem runtime leaks owner _ _ _).mp parts.1).2
       change (⟨some (material.normalizeReactive owner (original.observe app owner).application
-        (ReactiveApplication.ResponseMenu.knownPackets (original.recall owner)
+        (ReactiveApplication.ResponseMenu.knownPackets (original.logs owner)
           (original.observe app owner)))⟩ : app.Action) = ⟨some material⟩ at normal
       have materialNormal := Option.some.inj
         (congrArg ReactiveApplication.Action.transmission normal)
-      have permitted : countPermits (app.outputs (original.recall owner))
-          (runtime.localEnvelope leaks owner (original.recall owner)
+      have permitted : countPermits (app.outputs (original.logs owner))
+          (runtime.localEnvelope leaks owner (original.logs owner)
             (original.observe app owner) material) = true := by
         rcases parts.2 with impossible | ⟨supplied, same, verdict⟩
         · cases impossible
@@ -127,14 +127,14 @@ theorem response_trace
           simp only [CountCallCorrect, localEnvelope, packet] at correct
       | commitment event candidate =>
           simp only [CountCallCorrect, localEnvelope, packet] at correct
-          have absent : (runtime.localEnvelope leaks owner (original.recall owner)
+          have absent : (runtime.localEnvelope leaks owner (original.logs owner)
               (original.observe app owner) material).payload.evidence = none := correct.2.1
           have owned : candidate.1 = owner := correct.2.2.1
           obtain ⟨serial, slot⟩ := correct.2.2.2.1
           have candidateEq : candidate = (owner, .prepared serial) := Prod.ext owned slot
           subst candidate
           have shape := runtime.normal_binding_of_absent_evidence leaks owner
-            (original.recall owner) (original.observe app owner) material event
+            (original.logs owner) (original.observe app owner) material event
             (owner, .prepared serial) materialNormal packet absent
           generalize openingEq : material.call.opening = opening at shape
           subst material
@@ -210,8 +210,8 @@ theorem response_trace
           | resolve actor payload binding checks outputEq codeEq =>
               have details : owner = actor ∧ raw.ty = payload ∧
                   SignedBinding
-                    (EarlierOwnPacket (app.outputs (original.recall owner))
-                      (runtime.localEnvelope leaks owner (original.recall owner)
+                    (EarlierOwnPacket (app.outputs (original.logs owner))
+                      (runtime.localEnvelope leaks owner (original.logs owner)
                         (original.observe app owner) material))
                     owner candidate binding.field := by
                 simpa only [localEnvelope, packet, node, Message.sender] using correct.2
@@ -231,9 +231,9 @@ theorem response_trace
                   .openable ⟨payload, value⟩
                 simpa only [← owned, Prod.mk.eta] using leftFixed
               have shape := runtime.normal_opening_of_owned_evidence leaks owner
-                (original.recall owner) (original.observe app owner) material event candidate
+                (original.logs owner) (original.observe app owner) material event candidate
                 ⟨payload, value⟩ materialNormal packet certified owned localFixed
-              have known : ReactiveApplication.ResponseMenu.knownPackets (original.recall owner)
+              have known : ReactiveApplication.ResponseMenu.knownPackets (original.logs owner)
                   (original.observe app owner) = original.network.known owner :=
                 (app.known_from_recall original owner count.1).symm
               rw [known] at shape

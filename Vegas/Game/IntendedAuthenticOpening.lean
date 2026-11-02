@@ -153,7 +153,7 @@ theorem intendedOpeningProfile_extends (wellFormed : setup.WellFormed)
 /-- **The intended law through authentic openings.** For a well-formed setup,
 the source run of the intended authentic opening reads out exactly the intended
 law of typed readouts. -/
-theorem intendedOpeningProfile_run [Fintype Player] (wellFormed : setup.WellFormed)
+theorem intendedOpeningProfile_run [Finite Player] (wellFormed : setup.WellFormed)
     (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) :
     (setup.intendedModel.runBehavioral intended (instructionCount setup.program + 1)).map
         (fun final => setup.protocolReadout final.state) =
@@ -174,7 +174,7 @@ theorem intendedOpeningProfile_run [Fintype Player] (wellFormed : setup.WellForm
 For a well-formed setup, from every history of the intended game, play of an
 intended profile for enough steps reads out the continuation of its intended
 authentic opening from the history's state. -/
-theorem intendedOpeningProfile_runFrom [Fintype Player] (wellFormed : setup.WellFormed)
+theorem intendedOpeningProfile_runFrom [Finite Player] (wellFormed : setup.WellFormed)
     (intended : ∀ who, setup.intendedModel.BehavioralPolicy who) (fuel : Nat)
     (history : setup.intendedProtocol.History)
     (enough : setup.protocolRemaining history.state ≤ fuel) :

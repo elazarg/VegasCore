@@ -152,9 +152,9 @@ theorem exists_bindingRepairs_preserving_responder [DecidableEq (CellTy Player L
           some (past, view) ∧
         operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace =
           operationalRecord setup runtime leaks bounds horizon scheduler image ∧
-        (original.execution.recall responder,
+        (original.execution.logs responder,
           original.execution.observe (application setup runtime leaks) responder) =
-        (repaired.execution.recall responder,
+        (repaired.execution.logs responder,
           repaired.execution.observe (application setup runtime leaks) responder) ∧
         original.execution.application.config.store.BindingRefines
           repaired.execution.application.config.store ∧

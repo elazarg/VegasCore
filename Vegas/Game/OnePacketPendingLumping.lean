@@ -1152,7 +1152,7 @@ theorem controlStep_other_of_pending
         execution := control.execution.respond (application setup runtime leaks) other ⟨none⟩ })
           := by
   have silent : ((bounds.onePacketMenu runtime leaks).decodeProfile (initialLaw setup)
-      horizon scheduler profile other (control.execution.recall other)
+      horizon scheduler profile other (control.execution.logs other)
       (control.execution.observe (application setup runtime leaks) other)) = PMF.pure ⟨none⟩ := by
     apply pmf_eq_pure_of_support_subset_singleton
     intro action chosen

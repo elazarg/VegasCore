@@ -15,7 +15,7 @@ variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication P
 
 /-- Including pending traffic leaves every player's recorded responses fixed. -/
 theorem Execution.includePending_recall (execution : app.Execution) (id : MessageId Principal) :
-    (execution.includePending app id).recall = execution.recall := by
+    (execution.includePending app id).logs = execution.logs := by
   unfold Execution.includePending
   generalize execution.network.includePending id = pair
   rcases pair with ⟨_ | _, _⟩ <;> rfl
@@ -24,7 +24,7 @@ theorem Execution.includePending_recall (execution : app.Execution) (id : Messag
 theorem Execution.environmentStep_map_pair_of_recall {Value Auxiliary : Type*}
     (execution : app.Execution) (command : app.Command)
     (read : app.Execution → Value) (auxiliary : app.Execution → Auxiliary)
-    (kept : ∀ next, next.recall = execution.recall → auxiliary next = auxiliary execution) :
+    (kept : ∀ next, next.logs = execution.logs → auxiliary next = auxiliary execution) :
     (execution.environmentStep app command).map (fun next => (read next, auxiliary next)) =
       ((execution.environmentStep app command).map read).map
         (fun value => (value, auxiliary execution)) := by
@@ -38,7 +38,7 @@ sample, and the remaining environment kernels determine the mapped round law. -/
 theorem round_map_congr {Value : Type*} (scheduler : app.Scheduler)
     (first second : Principal → app.Policy) (left right : app.Execution)
     (read : app.Execution → Value)
-    (recall : left.environmentRecall = right.environmentRecall)
+    (logs : left.environmentRecall = right.environmentRecall)
     (observed : left.observeEnvironment app = right.observeEnvironment app)
     (networks : left.network = right.network)
     (activation : ∀ actor,
@@ -47,9 +47,9 @@ theorem round_map_congr {Value : Type*} (scheduler : app.Scheduler)
       ∀ sample ∈ (app.observePending actor right.network.pending).support,
         let leftActive := left.sampledActivation app actor sample
         let rightActive := right.sampledActivation app actor sample
-        ((first actor (leftActive.recall actor) (leftActive.observe app actor)).map
+        ((first actor (leftActive.logs actor) (leftActive.observe app actor)).map
           (leftActive.respond app actor)).map read =
-        ((second actor (rightActive.recall actor) (rightActive.observe app actor)).map
+        ((second actor (rightActive.logs actor) (rightActive.observe app actor)).map
           (rightActive.respond app actor)).map read)
     (environment : ∀ command ∈
       (scheduler right.environmentRecall (right.observeEnvironment app)).support,
@@ -58,7 +58,7 @@ theorem round_map_congr {Value : Type*} (scheduler : app.Scheduler)
         (right.environmentStep app command).map read) :
     (app.round scheduler first left).map read = (app.round scheduler second right).map read := by
   unfold round
-  rw [recall, observed, PMF.map_bind, PMF.map_bind]
+  rw [logs, observed, PMF.map_bind, PMF.map_bind]
   apply bind_congr_on_support _
   intro command selected
   cases command with

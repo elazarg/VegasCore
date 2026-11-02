@@ -17,7 +17,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 section Reach
 
-variable {ι : Type*} [Fintype ι] {E : ExecutionProtocol ι} (M : InformationModel E)
+variable {ι : Type*} {E : ExecutionProtocol ι} [E.FiniteMovers] (M : InformationModel E)
 
 /-- **Play until a stopping set stays in the start's cone.** Every history play
 until a stopping set ends at is reached from the start. -/

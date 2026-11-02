@@ -43,8 +43,8 @@ local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw
 
 private def ReadyTurnsRecorded (execution : (application setup runtime leaks).Execution) : Prop :=
   ∀ event : (graph setup).EventId, event ∉ execution.application.config.cut.completed →
-    ∀ who entry, entry ∈ execution.recall who → ActivatedAt setup runtime leaks who event entry →
-      runtime.eventRecorded leaks (execution.recall who) event = true
+    ∀ who entry, entry ∈ execution.logs who → ActivatedAt setup runtime leaks who event entry →
+      runtime.eventRecorded leaks (execution.logs who) event = true
 
 include opportunity timely in
 private theorem readyTurnsRecorded_transition
@@ -125,7 +125,7 @@ private theorem readyTurnsRecorded_transition
           exact recorded event (fun done => unfinished (completed done))
             player entry member activated
   | some actor =>
-      have observed : (N).infoOf actor history.trace = some (execution.recall actor,
+      have observed : (N).infoOf actor history.trace = some (execution.logs actor,
           execution.observe (application setup runtime leaks) actor) := by
         have observes := (menu).info (initialLaw setup) horizon scheduler actor history.trace
         change (N).infoOf actor history.trace =
@@ -161,16 +161,16 @@ private theorem readyTurnsRecorded_transition
           rw [sameView] at activated
           change execution.application.publicView.ownTurn? actor = some event at activated
           exact activated
-        cases old : runtime.eventRecorded leaks (execution.recall actor) event with
+        cases old : runtime.eventRecorded leaks (execution.logs actor) event with
         | true =>
             exact runtime.eventRecorded_respond_of_recorded leaks execution actor actor
               response event old
         | false =>
             have pending := pendingEvent_of_spec (runtime := runtime) (setup := setup) (leaks :=
               leaks) (who := actor)
-              (past := execution.recall actor)
+              (past := execution.logs actor)
               (view := execution.observe (application setup runtime leaks) actor) turn old
-            have never : ∀ earlier ∈ execution.recall actor,
+            have never : ∀ earlier ∈ execution.logs actor,
                 ¬ ActivatedAt setup runtime leaks actor event earlier := by
               intro earlier remembered previous
               have yes := recorded event unfinished actor earlier remembered
@@ -183,7 +183,7 @@ private theorem readyTurnsRecorded_transition
             have rawSupported : (choices actor).1 ∈
                 ((honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
                   source actor
-                  (some (execution.recall actor,
+                  (some (execution.logs actor,
                     execution.observe (application setup runtime leaks) actor))).map
                       Subtype.val).support := by
               let rawLaw : (application setup runtime leaks).Info →
@@ -206,7 +206,7 @@ private theorem readyTurnsRecorded_transition
             subst response
             apply runtime.eventRecorded_respond
             rcases runtime.canonicalServiceDecision_cases leaks actor
-                (execution.recall actor) (execution.observe (application setup runtime leaks) actor)
+                (execution.logs actor) (execution.observe (application setup runtime leaks) actor)
                 event action with silent | named
             · rw [silent] at transmits
               cases transmits
@@ -298,13 +298,13 @@ theorem counted_honest_reached_not_late
     simp only [ReactiveApplication.observe, ↓reduceIte, Option.some.injEq, Prod.mk.injEq]
       at actual
     obtain ⟨pastEq, viewEq⟩ := actual
-    have pendingAt : pendingEvent setup runtime leaks who (some (execution.recall who,
+    have pendingAt : pendingEvent setup runtime leaks who (some (execution.logs who,
         execution.observe (application setup runtime leaks) who)) = some event := by
       rw [pastEq, viewEq]
       exact pending
     obtain ⟨_, ready, _, unsent⟩ := pendingEvent_spec (runtime := runtime) pendingAt
     have unfinished := ((execution.application.publicView_eventReady event).mp ready).1
-    have remembered : entry ∈ execution.recall who := pastEq.symm ▸ member
+    have remembered : entry ∈ execution.logs who := pastEq.symm ▸ member
     have yes := recorded event unfinished who entry remembered activated
     rw [unsent] at yes
     cases yes

@@ -67,7 +67,7 @@ and every scheduler decision have finite support. -/
 class FiniteNature (initial : PMF app.State) (scheduler : app.Scheduler) : Prop
     extends app.FiniteEnvironment where
   initial_finite : initial.support.Finite
-  scheduler_finite : ∀ recall view, (scheduler recall view).support.Finite
+  scheduler_finite : ∀ logs view, (scheduler logs view).support.Finite
 
 theorem environmentStep_support_finite [app.FiniteEnvironment]
     (execution : app.Execution) (command : app.Command) :
@@ -120,7 +120,7 @@ def observe (who : Principal) (state : app.ProtocolState) : app.Info :=
   match state with
   | none => none
   | some control => if control.actor = some who then
-      some (control.execution.recall who, control.execution.observe app who) else none
+      some (control.execution.logs who, control.execution.observe app who) else none
 
 theorem observe_isSome (who : Principal) (state : app.ProtocolState) :
     (app.observe who state).isSome ↔ app.actor state = some who := by

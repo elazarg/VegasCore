@@ -108,7 +108,7 @@ def afterDefaultPolicy {who : Player} (baseline alternative : (N).BehavioralPoli
     (N).BehavioralPolicy who := fun input =>
   if runtime.PublicDefaultInput leaks input then alternative input else baseline input
 
-variable [Fintype Player]
+variable [Finite Player]
 
 /-- After public default, restricting an arbitrary whole deviation to that
 region retains its complete actual terminal continuation law. -/

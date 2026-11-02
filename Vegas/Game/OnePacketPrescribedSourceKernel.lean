@@ -65,9 +65,9 @@ theorem counted_canonical_source_continuation
     (clear : execution.application.config.defaulted = ∅)
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
-    (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup runtime leaks who event entry)
+    (never : ∀ entry ∈ execution.logs who, ¬ ActivatedAt setup runtime leaks who event entry)
     (action : (graph setup).Action event) (material : (application setup runtime leaks).Submission)
-    (submits : (runtime.canonicalServiceDecision leaks who (execution.recall who)
+    (submits : (runtime.canonicalServiceDecision leaks who (execution.logs who)
       (execution.observe (application setup runtime leaks) who) event action).transmission =
         some material)
     {rank : Nat} (residual : SourceResidual setup source rank execution.application.config)
@@ -76,7 +76,7 @@ theorem counted_canonical_source_continuation
     (start : (E).History)
     (current : start.state = some ⟨remaining, none,
       execution.respond (application setup runtime leaks) who
-        (runtime.canonicalServiceDecision leaks who (execution.recall who)
+        (runtime.canonicalServiceDecision leaks who (execution.logs who)
           (execution.observe (application setup runtime leaks) who) event action)⟩) :
     let plan := (graph setup).policyPlan (compileEventProfile setup.program source)
       (graph setup).canonicalScheduler
@@ -94,7 +94,7 @@ theorem counted_canonical_source_continuation
       (ProtocolState.step setup.program point
         (fun _ => decodeEventAction setup.program event action)).bind fun target =>
           (ProtocolState.continuationLaw setup.program source target).map some := by
-  let response := runtime.canonicalServiceDecision leaks who (execution.recall who)
+  let response := runtime.canonicalServiceDecision leaks who (execution.logs who)
     (execution.observe (application setup runtime leaks) who) event action
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
   have ready := (execution.application.publicView_eventReady event).mp
@@ -178,9 +178,9 @@ theorem counted_canonical_intended_sourceLaw
     (clear : execution.application.config.defaulted = ∅)
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
-    (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup runtime leaks who event entry)
+    (never : ∀ entry ∈ execution.logs who, ¬ ActivatedAt setup runtime leaks who event entry)
     (action : (graph setup).Action event) (material : (application setup runtime leaks).Submission)
-    (submits : (runtime.canonicalServiceDecision leaks who (execution.recall who)
+    (submits : (runtime.canonicalServiceDecision leaks who (execution.logs who)
       (execution.observe (application setup runtime leaks) who) event action).transmission =
         some material)
     {rank : Nat} (residual : SourceResidual setup source rank execution.application.config)
@@ -192,7 +192,7 @@ theorem counted_canonical_intended_sourceLaw
     (start : (E).History)
     (current : start.state = some ⟨remaining, none,
       execution.respond (application setup runtime leaks) who
-        (runtime.canonicalServiceDecision leaks who (execution.recall who)
+        (runtime.canonicalServiceDecision leaks who (execution.logs who)
           (execution.observe (application setup runtime leaks) who) event action)⟩) :
     ((N).runBehavioralUntil certificate players
       (fun history => (∃ final, history.state = some final ∧
@@ -200,7 +200,7 @@ theorem counted_canonical_intended_sourceLaw
       start).map (fun history => nativeDecodedState setup runtime leaks history.state) =
       (ProtocolState.step setup.program point
         (fun _ => decodeEventAction setup.program event action)).map some := by
-  let response := runtime.canonicalServiceDecision leaks who (execution.recall who)
+  let response := runtime.canonicalServiceDecision leaks who (execution.logs who)
     (execution.observe (application setup runtime leaks) who) event action
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
   have ready := (execution.application.publicView_eventReady event).mp
@@ -341,9 +341,9 @@ theorem counted_firstActivation_honest_sourceLaw
     (current : history.state = some ⟨remaining, some who, execution⟩)
     (clear : execution.application.config.defaulted = ∅)
     (event : (graph setup).EventId)
-    (pending : pendingEvent setup runtime leaks who (some (execution.recall who,
+    (pending : pendingEvent setup runtime leaks who (some (execution.logs who,
       execution.observe (application setup runtime leaks) who)) = some event)
-    (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup runtime leaks who event entry)
+    (never : ∀ entry ∈ execution.logs who, ¬ ActivatedAt setup runtime leaks who event entry)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
@@ -361,7 +361,7 @@ theorem counted_firstActivation_honest_sourceLaw
         (setup.intendedOpeningProfile source.strategy) point).map some := by
   classical
   have infoEq : (N).infoOf who history.trace =
-      some (execution.recall who, execution.observe (application setup runtime leaks) who) := by
+      some (execution.logs who, execution.observe (application setup runtime leaks) who) := by
     refine ((menu).info (initialLaw setup) horizon scheduler who history.trace).trans ?_
     rw [current]
     simp only [ReactiveApplication.observe, ite_true]
@@ -385,7 +385,7 @@ theorem counted_firstActivation_honest_sourceLaw
   have decodedHere : decodedPoint setup execution.application.config = some point := by
     rw [decodedPoint_eq residual, pointEq]
   have mixture := asIfHonest_bind_step_eq_behavioralStateStep (runtime := runtime) source who
-    execution ordered decoded intendedPoint turn active (execution.recall who)
+    execution ordered decoded intendedPoint turn active (execution.logs who)
   have fits := firstActivation_inclusionFits_of_counted_opportunity setup runtime leaks bounds
     horizon scheduler delay bound opportunity timely trace rfl clear event turn never
   have retains : RetainsCoveredCanonical setup runtime leaks bounds horizon scheduler bound :=
@@ -420,10 +420,10 @@ theorem counted_firstActivation_honest_sourceLaw
     ((menu).decisionRecall (initialLaw setup) horizon scheduler).actsOnceWhereItMatters
   rw [← mixture, (N).runBehavioralUntil_update_withLaw_eq_bind certificate actsOnce players who
     (players who) _ _ _ history observed going running acting, PMF.map_bind]
-  change ((honestResponse setup runtime leaks source who (execution.recall who)
+  change ((honestResponse setup runtime leaks source who (execution.logs who)
       (execution.observe (application setup runtime leaks) who)).map
         (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-          (some (execution.recall who,
+          (some (execution.logs who,
             execution.observe (application setup runtime leaks) who)))).bind _ = _
   unfold honestResponse
   rw [turn]
@@ -431,7 +431,7 @@ theorem counted_firstActivation_honest_sourceLaw
   rw [PMF.bind_map, PMF.bind_map, PMF.map_bind]
   refine bind_congr_on_support _ fun choice supported => ?_
   have encodes := asIfHonestProfile_encodes (runtime := runtime) source who execution rank
-    ordered point decoded (execution.recall who) event turn active choice supported
+    ordered point decoded (execution.logs who) event turn active choice supported
   rcases choice with _ | action
   · simp at encodes
   cases encoded : encodeEventAction? setup.program event action with
@@ -463,7 +463,7 @@ theorem counted_firstActivation_honest_sourceLaw
         stepped)
       have effective := clear_step_effective ready graphAction graphSupport afterClear
       have success := asIfHonestProfile_success (runtime := runtime) source who execution rank
-        ordered point decoded (execution.recall who) action supported
+        ordered point decoded (execution.logs who) action supported
       have bindSuccess : ∀ owner payload outputEq codeEq,
           nodeView (graph setup) event = .bind owner payload outputEq codeEq →
             ∃ value, graphAction = cast (congrArg EventGraph.EventField.Action outputEq.symm)
@@ -498,22 +498,22 @@ theorem counted_firstActivation_honest_sourceLaw
         (retains trace who event graphAction turn (pendingEvent_spec (runtime := runtime)
           pending).2.2.2 fits bindingEffective (by rw [submits]; simp))
       have selected : (responseChoice setup runtime leaks bounds (initialLaw setup) horizon
-          scheduler who (some (execution.recall who,
+          scheduler who (some (execution.logs who,
             execution.observe (application setup runtime leaks) who))
-          (runtime.canonicalServiceDecision leaks who (execution.recall who)
+          (runtime.canonicalServiceDecision leaks who (execution.logs who)
             (execution.observe (application setup runtime leaks) who) event graphAction)).1 =
-          some (runtime.canonicalServiceDecision leaks who (execution.recall who)
+          some (runtime.canonicalServiceDecision leaks who (execution.logs who)
             (execution.observe (application setup runtime leaks) who) event graphAction) := by
         simp only [responseChoice, dite_eq_left offered]
       have committed : ((N).runBehavioralUntil certificate
           (Profile.update (sig := (N).behavioralSignature) players who
-            ((players who).commit (some (execution.recall who,
+            ((players who).commit (some (execution.logs who,
               execution.observe (application setup runtime leaks) who))
               (responseChoice setup runtime leaks bounds (initialLaw setup)
-              horizon scheduler who (some (execution.recall who,
+              horizon scheduler who (some (execution.logs who,
                 execution.observe (application setup runtime leaks) who))
                 (runtime.canonicalServiceDecision leaks who
-                (execution.recall who) (execution.observe (application setup runtime leaks) who)
+                (execution.logs who) (execution.observe (application setup runtime leaks) who)
                   event graphAction))))
           (fun stop => LateStopped setup runtime leaks bounds horizon scheduler rank stop ∨
             ¬ Clear stop.state) history).map
@@ -537,11 +537,11 @@ theorem counted_firstActivation_honest_sourceLaw
             rw [← commitDecidable] at committedStep
             have nextState : next.state = some ⟨remaining, none, execution.respond
                 (application setup runtime leaks) who (runtime.canonicalServiceDecision leaks who
-                  (execution.recall who) (execution.observe (application setup runtime leaks) who)
+                  (execution.logs who) (execution.observe (application setup runtime leaks) who)
                     event graphAction)⟩ := by
               have inLaw : next.state ∈ (PMF.pure
                   (some ⟨remaining, none, execution.respond (application setup runtime leaks) who
-                    (runtime.canonicalServiceDecision leaks who (execution.recall who)
+                    (runtime.canonicalServiceDecision leaks who (execution.logs who)
                       (execution.observe (application setup runtime leaks) who) event
                         graphAction)⟩)).support := by
                 rw [← committedStep, PMF.support_map]

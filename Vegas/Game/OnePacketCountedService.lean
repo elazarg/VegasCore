@@ -121,7 +121,7 @@ theorem prescribed_packet_counted_clear_settles
     (owned : (graph setup).actor? event = some owner)
     (earlier later : List (N).PlayerEntry) (entry : (N).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup)))
-    (split : control.execution.recall owner = earlier ++ entry :: later)
+    (split : control.execution.logs owner = earlier ++ entry :: later)
     (call : FreshCall setup leaks owner event bound entry message)
     (sole : ∀ other ∈ earlier ++ later,
       ¬ EmitsOtherFor runtime leaks other event message.id) :

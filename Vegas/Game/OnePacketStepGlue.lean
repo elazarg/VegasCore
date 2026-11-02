@@ -41,11 +41,11 @@ theorem onePacket_response_step {before after : (application setup runtime leaks
     (acting : control.actor = some actor) :
     ∃ response, joint actor = some response ∧
       response ∈ bounds.onePacketActions runtime leaks actor
-        (control.execution.recall actor)
+        (control.execution.logs actor)
         (control.execution.observe (application setup runtime leaks) actor) ∧
       next.execution = control.execution.respond (application setup runtime leaks) actor response ∧
       (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf actor prior =
-        some (control.execution.recall actor,
+        some (control.execution.logs actor,
           control.execution.observe (application setup runtime leaks) actor) := by
   subst initialized reached
   have localLegal := legal.2 actor

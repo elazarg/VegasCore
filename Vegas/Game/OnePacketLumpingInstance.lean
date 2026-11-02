@@ -185,7 +185,7 @@ theorem lateKey_of_history {who : Player}
     {control : (application setup runtime leaks).Control} (current : history.1.state = some
       control) :
     control.actor = some who ∧
-      lateKey setup runtime leaks who (some (control.execution.recall who,
+      lateKey setup runtime leaks who (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who)) = some key := by
   have info := history.2
   rw [onePacket_infoOf, current] at info

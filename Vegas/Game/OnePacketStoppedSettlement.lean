@@ -65,7 +65,7 @@ theorem counted_stopped_freshCall_receipt
     state clear stopped supported
   have trace := finalState ▸ stopped.trace
   obtain ⟨earlier, later, split⟩ := records
-  have member : message ∈ (application setup runtime leaks).outputs (final.execution.recall who)
+  have member : message ∈ (application setup runtime leaks).outputs (final.execution.logs who)
     := by
     rw [split]
     exact List.mem_filterMap.mpr ⟨entry, by simp, call.emitted⟩

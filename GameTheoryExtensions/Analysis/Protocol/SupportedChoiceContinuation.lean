@@ -74,7 +74,8 @@ theorem runBehavioralFrom_one_domination_of_active_choices
           M.behavioral_eq_of_not_active (source who) (target who) history.trace active]) next
   simpa only [Finset.prod_ite, Finset.prod_const, one_pow, mul_one] using bound
 
-private theorem runBehavioralFrom_domination_of_supported_steps
+omit [Fintype Player] in
+private theorem runBehavioralFrom_domination_of_supported_steps [E.FiniteMovers]
     (source target : ∀ who, M.BehavioralPolicy who)
     (factor : ℝ) (nonnegative : 0 ≤ factor) (start : E.History)
     (lower : ∀ fuel history,

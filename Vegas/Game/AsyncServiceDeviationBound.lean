@@ -50,7 +50,7 @@ variable {Player : Type} [DecidableEq Player]
 
 namespace AsyncServiceSpec
 
-variable [Fintype Player] (service : AsyncServiceSpec Player L)
+variable [Finite Player] (service : AsyncServiceSpec Player L)
   (admission : CommitmentInterface service.setup.program)
 
 /-- **The first-turn deviation bound.** Under the asynchronous contract, for
@@ -93,6 +93,7 @@ theorem firstTurn_deviation_bound {Parameter : Type}
         (instructionCount service.setup.program + 1))
         (fun final => (service.setup.protocolReadout final.state).elim 0
           (fun config => utility (service.setup.parameterOutcome parameter config) who)) := by
+  let : Fintype Player := Fintype.ofFinite Player
   intro base payoff clients
   classical
   let app := serviceApplication service.setup service.mode service.deadline service.leaks
@@ -234,6 +235,7 @@ theorem isεNash_clientProfile {Parameter : Type}
         (fun history who => payoff history.state who)
         (ε + 2 * timing.deferralError * range)
         (service.clientProfile admission menu timing source) := by
+  let : Fintype Player := Fintype.ofFinite Player
   intro base payoff equilibrium
   apply (isεNash_iff_εBestResponse _ _).mpr
   exact service.isεBestResponse_clientProfile_of_firstTurn_bounds admission parameter utility sample

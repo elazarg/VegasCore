@@ -219,7 +219,7 @@ theorem recall_swap_of_fixes (swap : HiddenSwap (graph setup)) {who : Player}
     cases info
   · rw [stateEq] at info
     change some (past, observed) = (if control.actor = some who then
-      some (control.execution.recall who, control.execution.observe _ who) else none) at info
+      some (control.execution.logs who, control.execution.observe _ who) else none) at info
     split at info
     · cases info
       have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace initial horizon
@@ -230,7 +230,7 @@ theorem recall_swap_of_fixes (swap : HiddenSwap (graph setup)) {who : Player}
       change (⟨swap.view _, swap.action _, _⟩ : (application setup runtime leaks).PlayerEntry) = _
       rw [swap.action_eq_of_onePacket fixes legal, viewed,
         swap.view_observe_of_fixes fixes]
-      rcases recalledEq : (control.execution.recall who)[index] with ⟨beforeView, action, emitted⟩
+      rcases recalledEq : (control.execution.logs who)[index] with ⟨beforeView, action, emitted⟩
       rw [recalledEq] at viewed
       simp only at viewed ⊢
       rw [viewed]
@@ -274,15 +274,15 @@ theorem infoOf_mapTrace_of_fixes (swap : HiddenSwap (graph setup))
   | none => rfl
   | some control =>
       change (if control.actor = some who then
-          some ((control.execution.recall who).map swap.entry,
+          some ((control.execution.logs who).map swap.entry,
             (swap.execution control.execution).observe _ who) else none) =
         (if control.actor = some who then
-          some (control.execution.recall who, control.execution.observe _ who) else none)
+          some (control.execution.logs who, control.execution.observe _ who) else none)
       split
       · rename_i active
         rw [info] at decision
         change (if control.actor = some who then
-          some (control.execution.recall who, control.execution.observe _ who) else none) = _
+          some (control.execution.logs who, control.execution.observe _ who) else none) = _
           at decision
         simp only [active, ↓reduceIte] at decision
         cases decision

@@ -19,8 +19,8 @@ namespace GameTheory.Protocol.InformationModel
 
 open GameTheory.Math.Probability ExecutionProtocol
 
-variable {Player : Type} [Fintype Player] [DecidableEq Player]
-  {E : ExecutionProtocol Player} (M : InformationModel E)
+variable {Player : Type} [DecidableEq Player]
+  {E : ExecutionProtocol Player} [E.FiniteMovers] (M : InformationModel E)
 
 omit [DecidableEq Player] in
 /-- Terminal play stays in every set of states closed under legal steps. -/
@@ -109,7 +109,8 @@ theorem BehavioralAssessment.isSequentialEquilibrium_iff_truncated_of_bounded
 
 namespace ActionRestriction
 
-variable {E T : ExecutionProtocol Player} {M : InformationModel E} {N : InformationModel T}
+variable {E T : ExecutionProtocol Player} [E.FiniteMovers]
+  {M : InformationModel E} {N : InformationModel T}
   (restriction : M.ActionRestriction N)
 
 omit [DecidableEq Player] in

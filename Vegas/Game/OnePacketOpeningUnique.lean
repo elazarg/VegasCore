@@ -41,7 +41,7 @@ theorem disclosure_transmits_form {control : (application setup runtime leaks).C
       ((graph setup).nodes event) = .resolve who payload binding checks}
     (node : nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq)
     (material : (application setup runtime leaks).Submission)
-    (sends : (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+    (sends : (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)).transmission =
         some material) :
@@ -54,7 +54,7 @@ theorem disclosure_transmits_form {control : (application setup runtime leaks).C
           some (.opening event handle ⟨payload, value⟩) := by
   have facts := legalFacts setup leaks horizon scheduler control trace
   have active := runtime.canonicalServiceDecision_active leaks who
-    (control.execution.recall who) (control.execution.observe (application setup runtime leaks) who)
+    (control.execution.logs who) (control.execution.observe (application setup runtime leaks) who)
     event _ material sends
   rcases reactiveResolutionPacket_shape who event payload binding checks outputEq
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)
@@ -88,7 +88,7 @@ theorem resolved_fact_holds {control : (application setup runtime leaks).Control
     (who : Player) (request : EvidenceRequest (graph setup)) (fact : OpeningFact (graph setup))
     (resolved : request.resolve who
       (control.execution.observe (application setup runtime leaks) who).application.candidates
-      (ReactiveApplication.ResponseMenu.knownPackets (control.execution.recall who)
+      (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who)) = some fact) :
     control.execution.application.candidates.lookup fact.handle = .openable fact.raw := by
   classical
@@ -107,10 +107,10 @@ theorem resolved_fact_holds {control : (application setup runtime leaks).Control
       simp only [EvidenceRequest.resolve, EvidenceRequest.forwardedEvidence] at resolved
       obtain ⟨message, found, carried⟩ := Option.bind_eq_some_iff.mp resolved
       have member : message ∈ ReactiveApplication.ResponseMenu.knownPackets
-          (control.execution.recall who)
+          (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who) :=
         List.mem_of_find?_eq_some found
-      have knownEq : ReactiveApplication.ResponseMenu.knownPackets (control.execution.recall who)
+      have knownEq : ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who) =
           control.execution.network.known who :=
         ((application setup runtime leaks).known_from_recall control.execution who
@@ -141,24 +141,24 @@ theorem disclosure_normal_form {control : (application setup runtime leaks).Cont
       ((graph setup).nodes event) = .resolve who payload binding checks}
     (node : nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq)
     (material : (application setup runtime leaks).Submission)
-    (sends : (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+    (sends : (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)).transmission =
         some material) :
     ∃ (handle : Handle (graph setup)) (value : L.Val payload),
       control.execution.application.accepted binding.field = some handle ∧ handle.1 = who ∧
       control.execution.application.candidates.lookup handle = .openable ⟨payload, value⟩ ∧
-      runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+      runtime.canonicalServiceDecision leaks who (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who) event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) =
         ⟨some ⟨⟨.opening event handle ⟨payload, value⟩, none⟩,
           EvidenceRequest.canonical (ReactiveApplication.ResponseMenu.knownPackets
-            (control.execution.recall who)
+            (control.execution.logs who)
             (control.execution.observe (application setup runtime leaks) who))
             (some ⟨handle, ⟨payload, value⟩⟩)⟩⟩ := by
   classical
   have active := runtime.canonicalServiceDecision_active leaks who
-    (control.execution.recall who) (control.execution.observe (application setup runtime leaks) who)
+    (control.execution.logs who) (control.execution.observe (application setup runtime leaks) who)
     event _ material sends
   obtain ⟨handle, value, accepted, owner, openable, packetEq⟩ :=
     disclosure_transmits_form (runtime := runtime) trace who event node material sends
@@ -200,18 +200,18 @@ theorem onePacket_opening_eq_disclosure {control : (application setup runtime le
     (node : nodeView (graph setup) event = .resolve who payload binding checks outputEq codeEq)
     (disclosed : (application setup runtime leaks).Submission)
     (sendsDisclosure : (runtime.canonicalServiceDecision leaks who
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who)
       event (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)).transmission =
         some disclosed)
     (response : (application setup runtime leaks).Action)
     (member : response ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who))
     (material : (application setup runtime leaks).Submission)
     (sends : response.transmission = some material)
     (named : material.call.packet.event? (graph setup) = some event) :
-    response = runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+    response = runtime.canonicalServiceDecision leaks who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) event
       (cast (congrArg EventGraph.EventField.Action outputEq.symm) true) := by
   classical
@@ -233,9 +233,9 @@ theorem onePacket_opening_eq_disclosure {control : (application setup runtime le
     response).mp member
   have normal := (runtime.reactiveNormalization leaks).menu_normal
     (bounds.rawMenu runtime leaks) who _ _ response effective
-  have verdict : CountPermits ((application setup runtime leaks).outputs (control.execution.recall
+  have verdict : CountPermits ((application setup runtime leaks).outputs (control.execution.logs
     who))
-      (runtime.localEnvelope leaks who (control.execution.recall who)
+      (runtime.localEnvelope leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) material) := by
     rcases permitted with silent | ⟨other, otherSends, counted⟩
     · rw [sends] at silent
@@ -245,7 +245,7 @@ theorem onePacket_opening_eq_disclosure {control : (application setup runtime le
       exact (countPermits_eq_true_iff _ _).mp counted
   have correct := verdict.2.1
   unfold CountCallCorrect at correct
-  have callEq : (runtime.localEnvelope leaks who (control.execution.recall who)
+  have callEq : (runtime.localEnvelope leaks who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) material).payload.call =
       material.call.packet := rfl
   rw [callEq] at correct
@@ -275,7 +275,7 @@ theorem onePacket_opening_eq_disclosure {control : (application setup runtime le
   have resolvedEq : material.evidence.resolve who
       (material.call.candidateAfter who
         (control.execution.observe (application setup runtime leaks) who).application.candidates)
-      (ReactiveApplication.ResponseMenu.knownPackets (control.execution.recall who)
+      (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who)) = some ⟨candidate, raw⟩
           := by
     have evidence := congrArg WitnessedPacket.evidence envelopeEq
@@ -349,7 +349,7 @@ theorem onePacket_opening_eq_disclosure {control : (application setup runtime le
   have materialNormal := congrArg ReactiveApplication.Action.transmission normal
   change some (material.normalizeReactive who
     (control.execution.observe (application setup runtime leaks) who).application
-    (ReactiveApplication.ResponseMenu.knownPackets (control.execution.recall who)
+    (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who))) = some material
     at materialNormal
   rw [← Option.some.inj materialNormal]
@@ -363,9 +363,9 @@ theorem disclosureCanonical_of_resolves {control : (application setup runtime le
     (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player)
-    (resolves : DisclosureResolves setup runtime leaks who (control.execution.recall who)
+    (resolves : DisclosureResolves setup runtime leaks who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who)) :
-    DisclosureCanonical setup runtime leaks bounds who (control.execution.recall who)
+    DisclosureCanonical setup runtime leaks bounds who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) := by
   intro event pending owner payload binding checks outputEq codeEq node
   have transmits := resolves event pending owner payload binding checks outputEq codeEq node

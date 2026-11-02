@@ -30,7 +30,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- The owner's recorded turns at `event`. -/
 def ownerTurns (owner : Player) (event : (serviceGraph setup mode).EventId)
     (execution : (serviceApplication setup mode deadline leaks).Execution) : Nat :=
-  (execution.recall owner).countP fun entry =>
+  (execution.logs owner).countP fun entry =>
     decide (entry.beforeView.application.publicView.ownTurn? owner = some event)
 
 /-- While `event` is ready, an input of its owner is its turn there, counted
@@ -39,7 +39,7 @@ theorem serviceTurn_of_ready {owner : Player} {event : (serviceGraph setup mode)
     (execution : (serviceApplication setup mode deadline leaks).Execution)
     (ready : execution.application.config.cut.Ready event)
     (owned : (serviceGraph setup mode).actor? event = some owner) :
-    serviceTurn setup mode deadline leaks owner event (execution.recall owner)
+    serviceTurn setup mode deadline leaks owner event (execution.logs owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner) =
       some (ownerTurns owner event execution) := by
   unfold serviceTurn ownerTurns
@@ -75,7 +75,7 @@ theorem bindingTraffic_respond_other {who actor : Player} (different : who ≠ a
   have receipts : left.receipts = right.receipts := congrArg (fun value => value.2.1) same
   have environments : left.environmentRecall = right.environmentRecall :=
     congrArg (fun value => value.2.2.1) same
-  have recalled : left.recall who = right.recall who := congrArg (fun value => value.2.2.2.1) same
+  have recalled : left.logs who = right.logs who := congrArg (fun value => value.2.2.2.1) same
   have views : left.application.playerView who = right.application.playerView who :=
     congrArg (fun value => value.2.2.2.2.1) same
   have kept (execution : app.Execution) (response : app.Action) :
@@ -106,8 +106,8 @@ theorem bindingTraffic_respond_other {who actor : Player} (different : who ≠ a
     (Prod.ext afterViews (congrArg PlayerView.publicView afterViews)))))
   · exact receipts
   · exact environments
-  · change (left.respond app actor leftResponse).recall who =
-      (right.respond app actor rightResponse).recall who
+  · change (left.respond app actor leftResponse).logs who =
+      (right.respond app actor rightResponse).logs who
     rw [app.respond_recall_other left actor who different,
       app.respond_recall_other right actor who different, recalled]
 
@@ -121,7 +121,7 @@ def foreignReadout (who owner : Player) (event : (serviceGraph setup mode).Event
     (execution : (serviceApplication setup mode deadline leaks).Execution) :=
   ((serviceRuntime setup mode deadline).bindingTraffic leaks who execution,
       ownerTurns owner event execution,
-    (serviceRuntime setup mode deadline).eventRecorded leaks (execution.recall owner) event)
+    (serviceRuntime setup mode deadline).eventRecorded leaks (execution.logs owner) event)
 
 /-- A law on which the owner's recall stays that of `execution` has the
 compared readout of its traffic. -/
@@ -129,12 +129,12 @@ theorem map_foreignReadout_of_recall (who owner : Player) (event :
     (serviceGraph setup mode).EventId)
     (execution : (serviceApplication setup mode deadline leaks).Execution)
     (law : PMF (serviceApplication setup mode deadline leaks).Execution)
-    (kept : ∀ next ∈ law.support, next.recall owner = execution.recall owner) :
+    (kept : ∀ next ∈ law.support, next.logs owner = execution.logs owner) :
     law.map (foreignReadout (leaks := leaks) who owner event) =
       (law.map ((serviceRuntime setup mode deadline).bindingTraffic leaks who)).map fun traffic =>
         (traffic, ownerTurns owner event execution,
           (serviceRuntime setup mode deadline).eventRecorded leaks
-              (execution.recall owner) event) := by
+              (execution.logs owner) event) := by
   rw [PMF.map_comp]
   apply map_congr_on_support _
   intro next member
@@ -170,10 +170,10 @@ theorem foreignRound_readout_congr (scheduler :
       let rightActive := right.sampledActivation
           (serviceApplication setup mode deadline leaks) owner sample
       ∃ leftResponse rightResponse,
-        first (leftActive.recall owner)
+        first (leftActive.logs owner)
             (leftActive.observe
                 (serviceApplication setup mode deadline leaks) owner) = PMF.pure leftResponse ∧
-        second (rightActive.recall owner)
+        second (rightActive.logs owner)
             (rightActive.observe
                 (serviceApplication setup mode deadline leaks) owner) = PMF.pure rightResponse ∧
         (serviceRuntime setup mode deadline).submittedEvent? leaks leftResponse =
@@ -205,8 +205,8 @@ theorem foreignRound_readout_congr (scheduler :
   have sameTurns : ownerTurns owner event left = ownerTurns owner event right :=
     congrArg (fun value => value.2.1) same
   have sameRecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-      (left.recall owner) event =
-      (serviceRuntime setup mode deadline).eventRecorded leaks (right.recall owner) event :=
+      (left.logs owner) event =
+      (serviceRuntime setup mode deadline).eventRecorded leaks (right.logs owner) event :=
     congrArg (fun value => value.2.2) same
   have environments : left.environmentRecall = right.environmentRecall :=
     congrArg (fun value => value.2.2.1) sameTraffic
@@ -218,7 +218,7 @@ theorem foreignRound_readout_congr (scheduler :
     congrArg (fun value => value.2.2.2.2.1) sameTraffic
   have whoOwner : who ≠ owner := fun equal => foreign equal.symm
   have kept (execution : app.Execution) (law : PMF app.Execution)
-      (unchanged : ∀ next ∈ law.support, next.recall owner = execution.recall owner) :=
+      (unchanged : ∀ next ∈ law.support, next.logs owner = execution.logs owner) :=
     map_foreignReadout_of_recall (leaks := leaks) who owner event execution law unchanged
   -- Including a pending packet keeps equal deviator traffic.
   have includeTraffic (id : MessageId Player) :
@@ -250,11 +250,11 @@ theorem foreignRound_readout_congr (scheduler :
         (serviceRuntime setup mode deadline).bindingTraffic leaks who rightActive :=
       bindingTraffic_activation
           (serviceRuntime setup mode deadline) leaks left right who actor sameTraffic sample
-    have leftRecall : leftActive.recall = left.recall := rfl
-    have rightRecall : rightActive.recall = right.recall := rfl
-    change ((players first actor (leftActive.recall actor)
+    have leftRecall : leftActive.logs = left.logs := rfl
+    have rightRecall : rightActive.logs = right.logs := rfl
+    change ((players first actor (leftActive.logs actor)
         (leftActive.observe app actor)).map (leftActive.respond app actor)).map _ =
-      ((players second actor (rightActive.recall actor)
+      ((players second actor (rightActive.logs actor)
         (rightActive.observe app actor)).map (rightActive.respond app actor)).map _
     by_cases isOwner : actor = owner
     · subst actor
@@ -286,9 +286,9 @@ theorem foreignRound_readout_congr (scheduler :
         simp only [List.countP_singleton]
         rw [activeViews]
       · change (serviceRuntime setup mode deadline).eventRecorded leaks
-            ((leftActive.respond app owner leftResponse).recall owner) event =
+            ((leftActive.respond app owner leftResponse).logs owner) event =
           (serviceRuntime setup mode deadline).eventRecorded leaks
-            ((rightActive.respond app owner rightResponse).recall owner) event
+            ((rightActive.respond app owner rightResponse).logs owner) event
         unfold EventGraphRuntime.eventRecorded
         rw [leftRecalled, rightRecalled, leftRecall, rightRecall, List.any_append,
           List.any_append]
@@ -297,7 +297,7 @@ theorem foreignRound_readout_congr (scheduler :
         simp only [List.any_cons, List.any_nil, Bool.or_false, submitted]
     · by_cases isWho : actor = who
       · subst actor
-        have recalled : leftActive.recall who = rightActive.recall who :=
+        have recalled : leftActive.logs who = rightActive.logs who :=
           congrArg (fun value => value.2.2.2.1) activated
         simp only [players, Function.update_of_ne isOwner, focalPlayers, Function.update_self]
         rw [recalled, observe_eq_of_bindingTraffic who activated, PMF.map_comp, PMF.map_comp]
@@ -308,10 +308,10 @@ theorem foreignRound_readout_congr (scheduler :
           rightActive who activated response) ?_
         change (ownerTurns owner event (leftActive.respond app who response),
             (serviceRuntime setup mode deadline).eventRecorded leaks
-              ((leftActive.respond app who response).recall owner) event) =
+              ((leftActive.respond app who response).logs owner) event) =
           (ownerTurns owner event (rightActive.respond app who response),
             (serviceRuntime setup mode deadline).eventRecorded leaks
-              ((rightActive.respond app who response).recall owner) event)
+              ((rightActive.respond app who response).logs owner) event)
         unfold ownerTurns
         rw [app.respond_recall_other leftActive who owner (Ne.symm isOwner) response,
           app.respond_recall_other rightActive who owner (Ne.symm isOwner) response,
@@ -326,10 +326,10 @@ theorem foreignRound_readout_congr (scheduler :
           actor activated ⟨none⟩ rfl) ?_
         change (ownerTurns owner event (leftActive.respond app actor ⟨none⟩),
             (serviceRuntime setup mode deadline).eventRecorded leaks
-              ((leftActive.respond app actor ⟨none⟩).recall owner) event) =
+              ((leftActive.respond app actor ⟨none⟩).logs owner) event) =
           (ownerTurns owner event (rightActive.respond app actor ⟨none⟩),
             (serviceRuntime setup mode deadline).eventRecorded leaks
-              ((rightActive.respond app actor ⟨none⟩).recall owner) event)
+              ((rightActive.respond app actor ⟨none⟩).logs owner) event)
         unfold ownerTurns
         rw [app.respond_recall_other leftActive actor owner (Ne.symm isOwner) _,
           app.respond_recall_other rightActive actor owner (Ne.symm isOwner) _,
@@ -355,14 +355,14 @@ theorem foreignRound_readout_congr (scheduler :
         · change ownerTurns owner event { left.includePending app id with environmentRecall := _ } =
             ownerTurns owner event { right.includePending app id with environmentRecall := _ }
           unfold ownerTurns
-          change ((left.includePending app id).recall owner).countP _ =
-            ((right.includePending app id).recall owner).countP _
+          change ((left.includePending app id).logs owner).countP _ =
+            ((right.includePending app id).logs owner).countP _
           rw [leftKeeps, rightKeeps]
           exact sameTurns
         · change (serviceRuntime setup mode deadline).eventRecorded leaks
-            ((left.includePending app id).recall owner)
+            ((left.includePending app id).logs owner)
               event = (serviceRuntime setup mode deadline).eventRecorded leaks
-              ((right.includePending app id).recall owner) event
+              ((right.includePending app id).logs owner) event
           rw [leftKeeps, rightKeeps]
           exact sameRecorded
     | application command =>
@@ -379,9 +379,9 @@ theorem foreignRound_readout_congr (scheduler :
         refine Prod.ext (bindingTraffic_record (leaks := leaks) who sameTraffic .wait) ?_
         change (ownerTurns owner event left,
           (serviceRuntime setup mode deadline).eventRecorded leaks
-            (left.recall owner) event) =
+            (left.logs owner) event) =
           (ownerTurns owner event right, (serviceRuntime setup mode deadline).eventRecorded leaks
-            (right.recall owner) event)
+            (right.logs owner) event)
         rw [sameTurns, sameRecorded]
 
 end Round
@@ -572,11 +572,11 @@ theorem decidedTurnPolicy_closed {bound : (serviceGraph setup mode).EventId → 
     (ready : execution.application.config.cut.Ready event)
     (owned : (serviceGraph setup mode).actor? event = some owner)
     (closed : ¬ (ownerTurns owner event execution = 0 ∧
-      (serviceRuntime setup mode deadline).eventRecorded leaks (execution.recall owner) event =
+      (serviceRuntime setup mode deadline).eventRecorded leaks (execution.logs owner) event =
         false ∧
       execution.application.publicView.InclusionFitsDeadline (serviceRuntime setup mode deadline)
         bound event)) :
-    decidedTurnPolicy setup leaks bound owner event action (execution.recall owner)
+    decidedTurnPolicy setup leaks bound owner event action (execution.logs owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner) =
       PMF.pure ⟨none⟩ := by
   have turn := serviceTurn_of_ready execution ready owned
@@ -586,10 +586,10 @@ theorem decidedTurnPolicy_closed {bound : (serviceGraph setup mode).EventId → 
       _ _ _ _ (by rw [turn, first]; rfl)]
     unfold decidedOpportunity
     by_cases recorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-        (execution.recall owner) event = true
+        (execution.logs owner) event = true
     · simp only [recorded, ↓reduceIte, ReactiveApplication.silentPolicy_apply]
     · have unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-          (execution.recall owner) event = false := by simpa using recorded
+          (execution.logs owner) event = false := by simpa using recorded
       have late : ¬ execution.application.publicView.InclusionFitsDeadline
           (serviceRuntime setup mode deadline) bound event := fun fits =>
         closed ⟨first, unrecorded, fits⟩
@@ -615,9 +615,9 @@ theorem decidedTurnPolicy_open {bound : (serviceGraph setup mode).EventId → Na
     (ready : execution.application.config.cut.Ready event)
     (owned : (serviceGraph setup mode).actor? event = some owner)
     (first : ownerTurns owner event execution = 0) :
-    decidedTurnPolicy setup leaks bound owner event action (execution.recall owner)
+    decidedTurnPolicy setup leaks bound owner event action (execution.logs owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner) =
-      decidedOpportunity setup leaks bound owner event action (execution.recall owner)
+      decidedOpportunity setup leaks bound owner event action (execution.logs owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner) := by
   have turn := serviceTurn_of_ready execution ready owned
   unfold decidedTurnPolicy
@@ -630,14 +630,14 @@ theorem decidedOpportunity_transmits {bound : (serviceGraph setup mode).EventId 
     (action : (serviceGraph setup mode).Action event)
     (execution : (serviceApplication setup mode deadline leaks).Execution)
     (unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-      (execution.recall owner) event = false)
+      (execution.logs owner) event = false)
     (fits : execution.application.publicView.InclusionFitsDeadline
       (serviceRuntime setup mode deadline) bound event)
     (material : (serviceApplication setup mode deadline leaks).Submission)
     (decision : (serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner
-      (execution.recall owner) (execution.observe (serviceApplication setup mode deadline leaks)
+      (execution.logs owner) (execution.observe (serviceApplication setup mode deadline leaks)
         owner) event action = ⟨some material⟩) :
-    decidedOpportunity setup leaks bound owner event action (execution.recall owner)
+    decidedOpportunity setup leaks bound owner event action (execution.logs owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner) =
       PMF.pure ⟨some material⟩ := by
   have fitsView : (execution.observe (serviceApplication setup mode deadline leaks)
@@ -673,14 +673,14 @@ private theorem decided_binding_response
       current.network.pending).support)
     (first : ownerTurns owner event current = 0)
     (unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-      (current.recall owner) event = false)
+      (current.logs owner) event = false)
     (fits : current.application.publicView.InclusionFitsDeadline
       (serviceRuntime setup mode deadline) bound event) :
     let active := current.sampledActivation (serviceApplication setup mode deadline leaks) owner
       sample
     decidedTurnPolicy setup leaks bound owner event
         (cast (congrArg EventField.Action outputEq.symm) (some result))
-        (active.recall owner) (active.observe (serviceApplication setup mode deadline leaks)
+        (active.logs owner) (active.observe (serviceApplication setup mode deadline leaks)
           owner) =
       PMF.pure ((serviceRuntime setup mode deadline).reactiveBinding leaks owner event payload
         result (current.application.publicView.bindingCount owner)) := by
@@ -701,7 +701,7 @@ private theorem decided_binding_response
     active.application.active_of_ready_owned
       (legalFacts setup leaks horizon scheduler _ activeTrace).quiescent ready owned
   have decision := (serviceRuntime setup mode deadline).canonicalServiceDecision_binding leaks
-    owner (active.recall owner) (active.observe app owner) event payload outputEq codeEq node
+    owner (active.logs owner) (active.observe app owner) event payload outputEq codeEq node
       activeOwner _ canonical result
   rw [decidedTurnPolicy_open _ active ready owned first,
     decidedOpportunity_transmits _ active unrecorded fits _ decision]
@@ -747,11 +747,11 @@ private theorem binding_response_matched
     ∃ leftResponse rightResponse,
       decidedTurnPolicy setup leaks bound owner event
         (cast (congrArg EventField.Action outputEq.symm) leftChoice)
-        (leftActive.recall owner) (leftActive.observe
+        (leftActive.logs owner) (leftActive.observe
           (serviceApplication setup mode deadline leaks) owner) = PMF.pure leftResponse ∧
       decidedTurnPolicy setup leaks bound owner event
         (cast (congrArg EventField.Action outputEq.symm) rightChoice)
-        (rightActive.recall owner) (rightActive.observe
+        (rightActive.logs owner) (rightActive.observe
           (serviceApplication setup mode deadline leaks) owner) = PMF.pure rightResponse ∧
       (serviceRuntime setup mode deadline).submittedEvent? leaks leftResponse =
         (serviceRuntime setup mode deadline).submittedEvent? leaks rightResponse ∧
@@ -768,8 +768,8 @@ private theorem binding_response_matched
   have sameTurns : ownerTurns owner event left = ownerTurns owner event right :=
     congrArg (fun value => value.2.1) same
   have sameRecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-      (left.recall owner) event =
-      (serviceRuntime setup mode deadline).eventRecorded leaks (right.recall owner) event :=
+      (left.logs owner) event =
+      (serviceRuntime setup mode deadline).eventRecorded leaks (right.logs owner) event :=
     congrArg (fun value => value.2.2) same
   have publics : left.application.publicView = right.application.publicView :=
     congrArg (fun value => value.2.2.2.2.2) sameTraffic
@@ -799,13 +799,13 @@ private theorem binding_response_matched
       | none => cases admitted
       | some rightResult =>
           by_cases opened : ownerTurns owner event left = 0 ∧
-              (serviceRuntime setup mode deadline).eventRecorded leaks (left.recall owner) event =
+              (serviceRuntime setup mode deadline).eventRecorded leaks (left.logs owner) event =
                 false ∧ left.application.publicView.InclusionFitsDeadline
                   (serviceRuntime setup mode deadline) bound event
           · obtain ⟨first, unrecorded, fits⟩ := opened
             have rightFirst : ownerTurns owner event right = 0 := sameTurns ▸ first
             have rightUnrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-                (right.recall owner) event = false := sameRecorded ▸ unrecorded
+                (right.logs owner) event = false := sameRecorded ▸ unrecorded
             have rightFits : right.application.publicView.InclusionFitsDeadline
                 (serviceRuntime setup mode deadline) bound event := publics ▸ fits
             have counts : left.application.publicView.bindingCount owner =
@@ -828,7 +828,7 @@ private theorem binding_response_matched
               rw [reactiveApplication_packet_none, reactiveApplication_packet_none, counts,
                 activePublics]
           · have rightClosed : ¬ (ownerTurns owner event right = 0 ∧
-                (serviceRuntime setup mode deadline).eventRecorded leaks (right.recall owner)
+                (serviceRuntime setup mode deadline).eventRecorded leaks (right.logs owner)
                   event = false ∧ right.application.publicView.InclusionFitsDeadline
                     (serviceRuntime setup mode deadline) bound event) := by
               rw [← sameTurns, ← sameRecorded, ← publics]
@@ -1023,12 +1023,12 @@ theorem sourceService_binding_traffic_congr
       OwnSubmissionsAtTurn setup leaks current owner ∧
       CanonicalSlotsUsed setup leaks current owner ∧
       ownerTurns owner event current = 0 ∧
-      runtime.eventRecorded leaks (current.recall owner) event = false := by
+      runtime.eventRecorded leaks (current.logs owner) event = false := by
     obtain ⟨own, slots⟩ := canonicalSlots_roundsFrom (setup := setup) (leaks := leaks) scheduler
       players owner
       (firstTurnTiming setup turns) wholeProfile follows current.environmentRecall.length current
       boundary.supported
-    have never : ∀ entry ∈ current.recall owner,
+    have never : ∀ entry ∈ current.logs owner,
         entry.beforeView.application.publicView.ownTurn? owner ≠ some event := by
       intro entry member turn
       exact boundary.untouched event le_rfl owner entry member
@@ -1130,7 +1130,7 @@ theorem sourceService_foreign_fixedRun
       dsimp only [member, first, decidedTurnPolicy, ReactiveApplication.turnScheduledPolicy]
       simp only [Fin.val_zero]
       by_cases selected : serviceTurn setup .sequential runtime.deadline leaks owner event
-          (middle.recall owner) (middle.observe app owner) = some 0
+          (middle.logs owner) (middle.observe app owner) = some 0
       · simp only [selected, ite_true]
       · simp only [selected, ite_false]
         exact sourceServiceTurnPolicy_laterTurn owned serving selected
@@ -1169,9 +1169,9 @@ theorem sourceService_foreign_mixture
     (law : PMF ((graph setup).Action event))
     (callback : ∀ current : (application setup runtime leaks).Execution,
       current.application.config = execution.application.config →
-      sourceServiceCanonicalPolicy setup runtime leaks profile owner (current.recall owner)
+      sourceServiceCanonicalPolicy setup runtime leaks profile owner (current.logs owner)
         (current.observe (application setup runtime leaks) owner) =
-      law.map (fun action => runtime.canonicalServiceDecision leaks owner (current.recall owner)
+      law.map (fun action => runtime.canonicalServiceDecision leaks owner (current.logs owner)
         (current.observe (application setup runtime leaks) owner) event action)) :
     let players := Function.update
       (serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
@@ -1223,7 +1223,7 @@ theorem sourceService_foreign_mixture
       dsimp only [member, first, decidedTurnPolicy, ReactiveApplication.turnScheduledPolicy]
       simp only [Fin.val_zero]
       by_cases selected : serviceTurn setup .sequential runtime.deadline leaks owner event
-          (middle.recall owner) (middle.observe app owner) = some 0
+          (middle.logs owner) (middle.observe app owner) = some 0
       · simp only [selected, ite_true]
       · simp only [selected, ite_false]
         exact sourceServiceTurnPolicy_laterTurn owned serving selected
@@ -1260,14 +1260,14 @@ private theorem canonical_opening_exact
     (active : owner ∉ execution.application.config.defaulted)
     (stored : binding.get? execution.application.config.store = some (.success value)) :
     (serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner
-      (execution.recall owner) (execution.observe
+      (execution.logs owner) (execution.observe
         (serviceApplication setup mode deadline leaks) owner) event
       (cast (congrArg EventField.Action outputEq.symm) true) =
       ⟨some ((disclosureSubmission (.opening event candidate ⟨payload, value⟩)).normalizeReactive
         owner ((serviceApplication setup mode deadline leaks).observePlayer
           execution.application owner) (execution.network.known owner))⟩ := by
   rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_eq_of_not_bind leaks owner
-    (execution.recall owner) (execution.observe
+    (execution.logs owner) (execution.observe
       (serviceApplication setup mode deadline leaks) owner) event _ (by
         intro other otherPayload otherEq otherCode same
         rw [node] at same
@@ -1346,11 +1346,11 @@ private theorem opening_response_matched
     ∃ leftResponse rightResponse,
       decidedTurnPolicy setup leaks bound owner event
         (cast (congrArg EventField.Action outputEq.symm) true)
-        (leftActive.recall owner) (leftActive.observe
+        (leftActive.logs owner) (leftActive.observe
           (serviceApplication setup mode deadline leaks) owner) = PMF.pure leftResponse ∧
       decidedTurnPolicy setup leaks bound owner event
         (cast (congrArg EventField.Action outputEq.symm) true)
-        (rightActive.recall owner) (rightActive.observe
+        (rightActive.logs owner) (rightActive.observe
           (serviceApplication setup mode deadline leaks) owner) = PMF.pure rightResponse ∧
       (serviceRuntime setup mode deadline).submittedEvent? leaks leftResponse =
         (serviceRuntime setup mode deadline).submittedEvent? leaks rightResponse ∧
@@ -1367,8 +1367,8 @@ private theorem opening_response_matched
       runtime.bindingTraffic leaks focal right := congrArg Prod.fst same
   have sameTurns : ownerTurns owner event left = ownerTurns owner event right :=
     congrArg (fun value => value.2.1) same
-  have sameRecorded : runtime.eventRecorded leaks (left.recall owner) event =
-      runtime.eventRecorded leaks (right.recall owner) event :=
+  have sameRecorded : runtime.eventRecorded leaks (left.logs owner) event =
+      runtime.eventRecorded leaks (right.logs owner) event :=
     congrArg (fun value => value.2.2) same
   have publics : left.application.publicView = right.application.publicView :=
     congrArg (fun value => value.2.2.2.2.2) sameTraffic
@@ -1380,11 +1380,11 @@ private theorem opening_response_matched
   have owned : (serviceGraph setup mode).actor? event = some owner :=
     nodeView_resolve_actor outputEq codeEq
   by_cases opened : ownerTurns owner event left = 0 ∧
-      runtime.eventRecorded leaks (left.recall owner) event = false ∧
+      runtime.eventRecorded leaks (left.logs owner) event = false ∧
       left.application.publicView.InclusionFitsDeadline runtime bound event
   · obtain ⟨first, unrecorded, fits⟩ := opened
     have rightFirst : ownerTurns owner event right = 0 := sameTurns ▸ first
-    have rightUnrecorded : runtime.eventRecorded leaks (right.recall owner) event = false :=
+    have rightUnrecorded : runtime.eventRecorded leaks (right.logs owner) event = false :=
       sameRecorded ▸ unrecorded
     have rightFits : right.application.publicView.InclusionFitsDeadline runtime bound event :=
       publics ▸ fits
@@ -1423,11 +1423,11 @@ private theorem opening_response_matched
     let rightMaterial :=
       (disclosureSubmission (.opening event candidate ⟨payload, value⟩)).normalizeReactive
       owner (app.observePlayer rightActive.application owner) (rightActive.network.known owner)
-    have leftDecision : runtime.canonicalServiceDecision leaks owner (leftActive.recall owner)
+    have leftDecision : runtime.canonicalServiceDecision leaks owner (leftActive.logs owner)
         (leftActive.observe app owner) event action = ⟨some leftMaterial⟩ :=
       canonical_opening_exact outputEq codeEq node leftActive leftFacts.inputs candidate value
         leftAccepted candidateOwner leftFixed leftActiveOwner leftStored
-    have rightDecision : runtime.canonicalServiceDecision leaks owner (rightActive.recall owner)
+    have rightDecision : runtime.canonicalServiceDecision leaks owner (rightActive.logs owner)
         (rightActive.observe app owner) event action = ⟨some rightMaterial⟩ :=
       canonical_opening_exact outputEq codeEq node rightActive rightFacts.inputs candidate value
         rightAccepted candidateOwner rightFixed rightActiveOwner rightStored
@@ -1446,7 +1446,7 @@ private theorem opening_response_matched
           rightActive.application.publicView := publics
       rw [activePublics]
   · have rightClosed : ¬ (ownerTurns owner event right = 0 ∧
-        runtime.eventRecorded leaks (right.recall owner) event = false ∧
+        runtime.eventRecorded leaks (right.logs owner) event = false ∧
         right.application.publicView.InclusionFitsDeadline runtime bound event) := by
       rw [← sameTurns, ← sameRecorded, ← publics]
       exact opened
@@ -1671,7 +1671,7 @@ theorem sourceService_opening_traffic_congr
       Nonempty ((app.protocol (initialLaw setup) horizon scheduler).Trace
         (some ⟨horizon - current.environmentRecall.length, none, current⟩)) ∧
       ownerTurns owner event current = 0 ∧
-      runtime.eventRecorded leaks (current.recall owner) event = false := by
+      runtime.eventRecorded leaks (current.logs owner) event = false := by
     have atTurn : SubmitsAtTurn setup leaks (players owner) owner := by
       rw [follows]
       exact sourceServiceTurnPolicy_submitsAtTurn setup leaks bound turns
@@ -1679,7 +1679,7 @@ theorem sourceService_opening_traffic_congr
     have own := SubmitsAtTurn.roundsFrom setup leaks atTurn (initialLaw setup)
       current.environmentRecall.length current
       boundary.supported
-    have never : ∀ entry ∈ current.recall owner,
+    have never : ∀ entry ∈ current.logs owner,
         entry.beforeView.application.publicView.ownTurn? owner ≠ some event := by
       intro entry member turn
       exact boundary.untouched event le_rfl owner entry member
@@ -1723,16 +1723,16 @@ private theorem recorded_false_round
     {event : (serviceGraph setup mode).EventId}
     {before after : (serviceApplication setup mode deadline leaks).Execution}
     (unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-      (before.recall owner) event = false)
+      (before.logs owner) event = false)
     (reached : after ∈ ((serviceApplication setup mode deadline leaks).round scheduler players
       before).support) :
-    (serviceRuntime setup mode deadline).eventRecorded leaks (after.recall owner) event =
+    (serviceRuntime setup mode deadline).eventRecorded leaks (after.logs owner) event =
       false := by
   let app := serviceApplication setup mode deadline leaks
   obtain ⟨command, _, middle, moved, cases⟩ := round_cases setup leaks reached
   have recallEq := app.environmentStep_recall before middle command moved
   have kept : (serviceRuntime setup mode deadline).eventRecorded leaks
-      (middle.recall owner) event = false := by rw [recallEq]; exact unrecorded
+      (middle.logs owner) event = false := by rw [recallEq]; exact unrecorded
   rcases cases with ⟨_, rfl⟩ | ⟨actor, _, response, chosen, rfl⟩
   · exact kept
   · by_cases same : actor = owner
@@ -1753,7 +1753,7 @@ private theorem unrecorded_ready_handler
     (trace : ((serviceApplication setup mode deadline leaks).protocol
       (serviceInitialLaw setup mode) horizon scheduler).Trace (some ⟨remaining, none, left⟩))
     (unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-      (left.recall owner) event = false)
+      (left.logs owner) event = false)
     (leftReady : left.application.config.cut.Ready event)
     (rightReady : right.application.config.cut.Ready event)
     (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
@@ -1768,7 +1768,7 @@ private theorem unrecorded_ready_handler
     intro named
     obtain ⟨entry, present, material, transmitted, _emitted, state, known, packet⟩ :=
       (legalFacts setup leaks horizon scheduler _ trace).provenance.lookup id message found
-    have old : entry ∈ left.recall owner := sender ▸ present
+    have old : entry ∈ left.logs owner := sender ▸ present
     have call : material.call.packet = message.payload.call :=
       congrArg (fun value => value.call) packet
     have submitted : (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action =
@@ -1814,9 +1814,9 @@ private theorem silent_foreign_stopped_readout_congr
     (leftReady : leftStart.application.config.cut.Ready event)
     (rightReady : rightStart.application.config.cut.Ready event)
     (leftUnrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-      (leftStart.recall owner) event = false)
+      (leftStart.logs owner) event = false)
     (rightUnrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks
-      (rightStart.recall owner) event = false)
+      (rightStart.logs owner) event = false)
     (same : foreignReadout (leaks := leaks) focal owner event leftStart =
       foreignReadout (leaks := leaks) focal owner event rightStart) :
     let app := serviceApplication setup mode deadline leaks
@@ -1831,7 +1831,7 @@ private theorem silent_foreign_stopped_readout_congr
       (some ⟨remaining + count, none, current⟩))) ∧
     (event ∉ current.application.config.cut.completed →
       current.application.config = start.application.config) ∧
-    (serviceRuntime setup mode deadline).eventRecorded leaks (current.recall owner) event = false
+    (serviceRuntime setup mode deadline).eventRecorded leaks (current.logs owner) event = false
   have advance (start : app.Execution) (startReady : start.application.config.cut.Ready event)
       (n : Nat) (current : app.Execution) (valid : invariant start (n + 1) current)
       (running : event ∉ current.application.config.cut.completed) (next : app.Execution)
@@ -1965,14 +1965,14 @@ theorem sourceService_withholding_traffic_congr
       Nonempty ((app.protocol (initialLaw setup) horizon scheduler).Trace
         (some ⟨horizon - current.environmentRecall.length, none, current⟩)) ∧
       ownerTurns owner event current = 0 ∧
-      runtime.eventRecorded leaks (current.recall owner) event = false := by
+      runtime.eventRecorded leaks (current.logs owner) event = false := by
     have atTurn : SubmitsAtTurn setup leaks (players owner) owner := by
       rw [follows]
       exact sourceServiceTurnPolicy_submitsAtTurn setup leaks bound turns
         (firstTurnTiming setup turns) wholeProfile owner
     have own := SubmitsAtTurn.roundsFrom setup leaks atTurn (initialLaw setup)
       current.environmentRecall.length current boundary.supported
-    have never : ∀ entry ∈ current.recall owner,
+    have never : ∀ entry ∈ current.logs owner,
         entry.beforeView.application.publicView.ownTurn? owner ≠ some event := by
       intro entry member turn
       exact boundary.untouched event le_rfl owner entry member

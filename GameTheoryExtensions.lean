@@ -5,7 +5,6 @@ import GameTheoryExtensions.Analysis.ObservableEnforcement
 import GameTheoryExtensions.Analysis.Protocol.AffineKeyedPools
 import GameTheoryExtensions.Analysis.Protocol.Bayes
 import GameTheoryExtensions.Analysis.Protocol.BehavioralContinuity
-import GameTheoryExtensions.Analysis.Protocol.ComponentCompletion
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheoryExtensions.Analysis.Protocol.ContinuationDecision
 import GameTheoryExtensions.Analysis.Protocol.CopiedSiteLimit
@@ -17,7 +16,6 @@ import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
 import GameTheoryExtensions.Analysis.Protocol.LocalizedEnforcement
 import GameTheoryExtensions.Analysis.Protocol.OneShotDeviation
 import GameTheoryExtensions.Analysis.Protocol.OwnPlayReach
-import GameTheoryExtensions.Analysis.Protocol.PassageBayes
 import GameTheoryExtensions.Analysis.Protocol.PassageRestrictionExtension
 import GameTheoryExtensions.Analysis.Protocol.Perturbation
 import GameTheoryExtensions.Analysis.Protocol.ProjectedBeliefTransport
@@ -60,6 +58,7 @@ import GameTheoryExtensions.Math.Probability.TotalVariation
 import GameTheoryExtensions.Math.Probability.Uniform
 import GameTheoryExtensions.Math.Transfers
 import GameTheoryExtensions.Protocol.ContinuationHorizon
+import GameTheoryExtensions.Protocol.JointDistribution
 import GameTheoryExtensions.Protocol.MenuRestriction
 import GameTheoryExtensions.Protocol.OwnPlayPrefix
 import GameTheoryExtensions.Protocol.StateSymmetry

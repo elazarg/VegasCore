@@ -43,7 +43,7 @@ theorem canonicalServiceDecision_freshServiceAcceptable {horizon : Nat}
     (action : (serviceGraph setup mode).Action event)
     (material : (serviceApplication setup mode deadline leaks).Submission)
     (submits : ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
-      (control.execution.recall who)
+      (control.execution.logs who)
       (control.execution.observe (serviceApplication setup mode deadline leaks) who) event
       action).transmission = some material) :
     (serviceRuntime setup mode deadline).freshServiceAcceptable
@@ -62,7 +62,7 @@ theorem canonicalServiceDecision_freshServiceAcceptable {horizon : Nat}
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
   have ready := (control.execution.application.publicView_eventReady event).mp readyView
   have activeView := (serviceRuntime setup mode deadline).canonicalServiceDecision_active leaks
-    who (control.execution.recall who)
+    who (control.execution.logs who)
     (control.execution.observe (serviceApplication setup mode deadline leaks) who)
     event action material submits
   have active : who ∉ control.execution.application.config.defaulted := activeView
@@ -100,7 +100,7 @@ theorem canonicalServiceDecision_freshServiceAcceptable {horizon : Nat}
         | some serial =>
             have fresh := canonicalFreshSlot_spec actor _ serial selected
             rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_binding leaks actor
-              (control.execution.recall actor)
+              (control.execution.logs actor)
               (control.execution.observe (serviceApplication setup mode deadline leaks) actor) event
               payload outputEq codeEq node activeView serial selected choice] at submits
             cases Option.some.inj submits
@@ -124,7 +124,7 @@ theorem canonicalServiceDecision_freshServiceAcceptable {horizon : Nat}
         Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
       subst actorEq
       rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_eq_of_not_bind leaks actor
-        (control.execution.recall actor)
+        (control.execution.logs actor)
         (control.execution.observe (serviceApplication setup mode deadline leaks) actor) event
         action (fun _ _ _ _ bind => by rw [node] at bind; cases bind)] at submits
       unfold EventGraphRuntime.serviceDecision EventGraphRuntime.reactiveDecision at submits
@@ -221,13 +221,13 @@ theorem canonical_freshCall {horizon : Nat}
     (action : (serviceGraph setup mode).Action event)
     (material : (serviceApplication setup mode deadline leaks).Submission)
     (submits : ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
-      (control.execution.recall who)
+      (control.execution.logs who)
       (control.execution.observe (serviceApplication setup mode deadline leaks) who) event
       action).transmission = some material) :
     FreshCall setup leaks who event bound
       ⟨control.execution.observe (serviceApplication setup mode deadline leaks) who,
         (serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
-          (control.execution.recall who)
+          (control.execution.logs who)
           (control.execution.observe (serviceApplication setup mode deadline leaks) who) event
           action,
         some ⟨(who, control.execution.network.nextSerial who),
@@ -240,7 +240,7 @@ theorem canonical_freshCall {horizon : Nat}
             who material) who (control.execution.network.known who) material⟩ := by
   have named : material.call.packet.event? (serviceGraph setup mode) = some event := by
     rcases (serviceRuntime setup mode deadline).canonicalServiceDecision_cases leaks who
-        (control.execution.recall who)
+        (control.execution.logs who)
         (control.execution.observe (serviceApplication setup mode deadline leaks) who) event
         action with silent | submitted
     · rw [silent] at submits
@@ -270,13 +270,13 @@ theorem canonical_response_witness
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (action : (graph setup).Action event) (material : (application setup runtime leaks).Submission)
-    (submits : (runtime.canonicalServiceDecision leaks who (execution.recall who)
+    (submits : (runtime.canonicalServiceDecision leaks who (execution.logs who)
       (execution.observe (application setup runtime leaks) who) event action).transmission =
         some material) :
     ∃ output, AcceptanceWitness event (sentEnvelope setup runtime leaks execution who material)
       execution.application.config action output
       ((application setup runtime leaks).submit execution.application who material) := by
-  have activeView := runtime.canonicalServiceDecision_active leaks who (execution.recall who)
+  have activeView := runtime.canonicalServiceDecision_active leaks who (execution.logs who)
     (execution.observe (application setup runtime leaks) who) event action material submits
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
   have ready := (execution.application.publicView_eventReady event).mp
@@ -309,7 +309,7 @@ theorem canonical_response_witness
               cases submits
           | some serial =>
               have fresh := canonicalFreshSlot_spec actor _ serial selected
-              rw [runtime.canonicalServiceDecision_binding leaks actor (execution.recall actor)
+              rw [runtime.canonicalServiceDecision_binding leaks actor (execution.logs actor)
                 (execution.observe (application setup runtime leaks) actor) event payload
                 outputEq codeEq node activeView serial selected choice] at submits
               cases Option.some.inj submits
@@ -328,7 +328,7 @@ theorem canonical_response_witness
       have actorEq : actor = who :=
         Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
       subst actorEq
-      rw [runtime.canonicalServiceDecision_eq_of_not_bind leaks actor (execution.recall actor)
+      rw [runtime.canonicalServiceDecision_eq_of_not_bind leaks actor (execution.logs actor)
         (execution.observe (application setup runtime leaks) actor) event action
         (fun _ _ _ _ bind => by rw [node] at bind; cases bind)] at submits
       unfold EventGraphRuntime.serviceDecision EventGraphRuntime.reactiveDecision at submits

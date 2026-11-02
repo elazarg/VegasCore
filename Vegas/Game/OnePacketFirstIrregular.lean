@@ -127,7 +127,7 @@ theorem certificate_responseMass_le_cube
   rw [infoEq] at played
   have observed : (application setup runtime leaks).observe actor
       (some ⟨remaining, some actor, execution⟩) =
-      some (execution.recall actor, execution.observe (application setup runtime leaks) actor) := by
+      some (execution.logs actor, execution.observe (application setup runtime leaks) actor) := by
     simp [ReactiveApplication.observe]
   rw [observed] at forcedActor clear
   obtain ⟨main, mainForm, profileEq⟩ := certificateProfile_eq_slotTrembled (runtime := runtime)

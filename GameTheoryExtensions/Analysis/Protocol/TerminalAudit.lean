@@ -166,7 +166,7 @@ namespace GameTheory.Protocol.InformationModel.ActionRestriction
 
 open GameTheory.Math.Probability ExecutionProtocol Enforcement.TerminalAudit
 
-variable {Player Observation : Type} [Fintype Player] [DecidableEq Player]
+variable {Player Observation : Type} [Finite Player] [DecidableEq Player]
   {E T : ExecutionProtocol Player} {M : InformationModel E} {N : InformationModel T}
   [Finite T.History]
   [∀ who, DecidableEq (N.InfoState who)]

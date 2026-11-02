@@ -137,7 +137,7 @@ theorem CompletionBoundary.no_pending_of_ownSubmissions (runtime : EventGraphRun
   intro message pending sender named
   obtain ⟨entry, entryPresent, material, transmitted, _emitted, state, known, packet⟩ :=
     facts.provenance.pending message pending
-  have old : entry ∈ execution.recall owner := sender ▸ entryPresent
+  have old : entry ∈ execution.logs owner := sender ▸ entryPresent
   have call : material.call.packet = message.payload.call :=
     congrArg (fun value => value.call) packet
   have submitted : runtime.submittedEvent? leaks entry.action = some event := by

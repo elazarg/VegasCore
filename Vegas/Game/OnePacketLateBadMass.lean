@@ -65,7 +65,7 @@ theorem lateBinding_badMass
       ((graph setup).nodes event) = .bind who payload}
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
     (turn : execution.application.publicView.ownTurn? who = some event)
-    (unrecorded : runtime.eventRecorded leaks (execution.recall who) event = false)
+    (unrecorded : runtime.eventRecorded leaks (execution.logs who) event = false)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
@@ -99,24 +99,24 @@ theorem lateBinding_badMass
   have committed : ∀ (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
       (later : Nat) (reached : (application setup runtime leaks).Execution),
       history.state = some ⟨later, some who, reached⟩ →
-      LateUnsent setup runtime leaks who event execution.application.config (execution.recall who)
+      LateUnsent setup runtime leaks who event execution.application.config (execution.logs who)
         history.state →
-      (reached.recall who = execution.recall who →
+      (reached.logs who = execution.logs who →
         reached.observe (application setup runtime leaks) who =
           execution.observe (application setup runtime leaks) who) →
-      (reached.recall who ≠ execution.recall who → ∃ response,
-        execution.recall who ++ [respondEntry setup runtime leaks execution who response] <+:
-          reached.recall who) →
+      (reached.logs who ≠ execution.logs who → ∃ response,
+        execution.logs who ++ [respondEntry setup runtime leaks execution who response] <+:
+          reached.logs who) →
       ∀ slot < bounds.candidateCount,
-        countPermits ((application setup runtime leaks).outputs (reached.recall who))
-          (slotEnvelope setup runtime leaks who (reached.recall who)
+        countPermits ((application setup runtime leaks).outputs (reached.logs who))
+          (slotEnvelope setup runtime leaks who (reached.logs who)
             (reached.observe (application setup runtime leaks) who) event slot) = true →
         ∃ factor : ℝ, ∀ choice ∈ (asIfHonestProfile setup runtime leaks assessment who
-            (some (reached.recall who, reached.observe (application setup runtime leaks)
+            (some (reached.logs who, reached.observe (application setup runtime leaks)
               who))).support,
           ∀ next : (menu.protocol (initialLaw setup) horizon scheduler).History,
             next.state = some ⟨later, none, reached.respond (application setup runtime leaks) who
-              (slotResponse setup runtime leaks who (reached.recall who)
+              (slotResponse setup runtime leaks who (reached.logs who)
                 (reached.observe (application setup runtime leaks) who) event slot choice)⟩ →
             |expect (model.runBehavioralUntil certificate installed
                 (LateStopped setup runtime leaks bounds horizon scheduler rank) next) bad -
@@ -167,7 +167,7 @@ theorem lateBinding_badMass
       exact stepEq
     obtain ⟨intended, _, same⟩ := (mem_support_asIfHonestProfile_observe setup runtime leaks
       assessment
-      who reached rank orderedHere point decodedHere (reached.recall who) _).mp member
+      who reached rank orderedHere point decodedHere (reached.logs who) _).mp member
     have legal := intended.2
     change ProtocolView.intendedMenu who setup.program
       (ProtocolState.observe who setup.program point) intended.1 at legal

@@ -29,7 +29,7 @@ open GameTheory.Math.Probability
 
 universe uι
 
-variable {ι : Type uι} [Fintype ι] {E : ExecutionProtocol ι}
+variable {ι : Type uι} {E : ExecutionProtocol ι} [E.FiniteMovers]
 
 namespace InformationModel
 
@@ -118,7 +118,7 @@ theorem mem_support_runBehavioralUntil (certificate : E.WellFoundedHistories)
   obtain ⟨next, nextMember, reached⟩ := member
   exact ih next (M.mem_support_runBehavioralFrom_one policies ended nextMember).1 stop reached
 
-omit [Fintype ι] in
+omit [E.FiniteMovers] in
 /-- A bind after a support-dependent bind distributes into its branches. -/
 private theorem bindOnSupport_bind {α β γ : Type*} (law : PMF α)
     (first : ∀ a ∈ law.support, PMF β) (second : β → PMF γ) :

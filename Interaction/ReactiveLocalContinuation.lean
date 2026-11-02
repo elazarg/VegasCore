@@ -19,7 +19,7 @@ namespace Interaction.ReactiveApplication.ResponseMenu
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Math.Probability
 
-variable {Principal : Type} [DecidableEq Principal] [Fintype Principal]
+variable {Principal : Type} [DecidableEq Principal] [Finite Principal]
   {app : ReactiveApplication Principal} (menu : app.ResponseMenu)
   (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
@@ -57,7 +57,7 @@ theorem run_one_response
     ((menu.information initial horizon scheduler).runBehavioralFrom profile 1 history).map
         History.state =
       (menu.decodeProfile initial horizon scheduler profile who
-        (execution.recall who) (execution.observe app who)).map fun response =>
+        (execution.logs who) (execution.observe app who)).map fun response =>
           some ⟨remaining, none, execution.respond app who response⟩ := by
   rw [menu.run_map_controlSteps]
   simp only [Function.iterate_one, PMF.pure_bind, current, controlStep,
@@ -83,7 +83,7 @@ theorem run_commit_response
         PMF.pure (some ⟨remaining, none, execution.respond app who response⟩) := by
   classical
   have observed : (menu.information initial horizon scheduler).infoOf who history.trace =
-      some (execution.recall who, execution.observe app who) := by
+      some (execution.logs who, execution.observe app who) := by
     change (menu.signals initial horizon scheduler).infoOf who history.trace = _
     rw [menu.info, current]
     simp [observe]
@@ -121,12 +121,12 @@ theorem run_local_law_finish
     rw [current]
     rfl
   have observed : model.infoOf who history.trace =
-      some (execution.recall who, execution.observe app who) := by
+      some (execution.logs who, execution.observe app who) := by
     change (menu.signals initial horizon scheduler).infoOf who history.trace = _
     rw [menu.info, current]
     simp [observe]
   have decoded : menu.decodeProfile initial horizon scheduler updated who
-      (execution.recall who) (execution.observe app who) =
+      (execution.logs who) (execution.observe app who) =
         law.map (fun choice => choice.1.getD ⟨none⟩) := by
     simp only [decodeProfile, decodePolicy, embedPolicy, updated, Profile.update_same,
       PMF.map_comp]

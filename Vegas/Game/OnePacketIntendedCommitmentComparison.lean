@@ -71,16 +71,16 @@ theorem assembled_firstActivation_commitment_gain_le
     (history : (N).InformationHistory who site.1)
     {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
-    (atSite : site.1 = some (execution.recall who,
+    (atSite : site.1 = some (execution.logs who,
       execution.observe (application setup runtime leaks) who))
     (member : response ∈ bounds.onePacketActions runtime leaks who
-      (execution.recall who) (execution.observe (application setup runtime leaks) who))
+      (execution.logs who) (execution.observe (application setup runtime leaks) who))
     (material : (application setup runtime leaks).Submission)
     (sends : response.transmission = some material)
     (event : (graph setup).EventId) {serial : Nat}
     (packet : material.call.packet = .commitment event (who, .prepared serial))
     (pending : pendingEvent setup runtime leaks who site.1 = some event)
-    (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup runtime leaks who event entry)
+    (never : ∀ entry ∈ execution.logs who, ¬ ActivatedAt setup runtime leaks who event entry)
     (key : LateKey setup runtime leaks) (decided : decidedEvent (runtime := runtime) key = some
       event)
     {payload : L.Ty} (outputEq : (graph setup).outputLayout event = .binding who payload)

@@ -95,7 +95,7 @@ forfeit no smaller than the payoff range, every source profile that extends an
 source game under the forfeit pass, with the same `ε`. It has the intended joint
 law of terminal store and payoff, and no reveal fails on any history it
 reaches. -/
-theorem intended_forfeit_isεNash_preserved [Fintype Player]
+theorem intended_forfeit_isεNash_preserved [Finite Player]
     (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (wellFormed : setup.WellFormed) {Parameter : Type}
     (parameter : State L setup.context → Parameter)
@@ -241,7 +241,7 @@ source profile with fixed exit utility, under any binding admission interface.
 The exit payoff is compared only with intended terminal readouts; equilibrium
 paths preserve the joint typed-readout/payoff law and have no public defaults
 or failed reveals. -/
-theorem intended_isεNash_preserved [Fintype Player]
+theorem intended_isεNash_preserved [Finite Player]
     (admission : CommitmentInterface setup.program)
     (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (wellFormed : setup.WellFormed) {Parameter : Type}

@@ -302,7 +302,7 @@ theorem pendingBinding_sourceKernel
     (history : (onePacketN).InformationHistory who site.1)
     {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
-    (atSite : site.1 = some (execution.recall who,
+    (atSite : site.1 = some (execution.logs who,
       execution.observe (application setup runtime leaks) who))
     (forced : ForcedState setup runtime leaks who history.1.state)
     {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
@@ -411,7 +411,7 @@ theorem pendingBinding_sourceValue
     (history : (onePacketN).InformationHistory who site.1)
     {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
-    (atSite : site.1 = some (execution.recall who,
+    (atSite : site.1 = some (execution.logs who,
       execution.observe (application setup runtime leaks) who))
     (forced : ForcedState setup runtime leaks who history.1.state)
     {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
@@ -527,10 +527,10 @@ theorem committed_sourceKernel
       scheduler).InformationHistory who site.1)
     {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
-    (atSite : site.1 = some (execution.recall who,
+    (atSite : site.1 = some (execution.logs who,
       execution.observe (application setup runtime leaks) who))
     (member : response ∈ bounds.onePacketActions runtime leaks who
-      (execution.recall who) (execution.observe (application setup runtime leaks) who))
+      (execution.logs who) (execution.observe (application setup runtime leaks) who))
     (material : (application setup runtime leaks).Submission)
     (sends : response.transmission = some material) {serial : Nat}
     (packet : material.call.packet = .commitment event (who, .prepared serial))
@@ -631,7 +631,7 @@ theorem committed_sourceKernel
   have infoEq : model.infoOf who history.1.trace = site.1 := history.2
   have stepStates := menu.run_one_response (initialLaw setup) horizon scheduler installed
     history.1 who remaining execution current
-  have responseLaw : (installed who (some (execution.recall who,
+  have responseLaw : (installed who (some (execution.logs who,
       execution.observe (application setup runtime leaks) who))).map
         (fun choice => choice.1.getD ⟨none⟩) = PMF.pure response := by
     rw [← atSite]
@@ -732,10 +732,10 @@ theorem committed_sourceValue
       scheduler).InformationHistory who site.1)
     {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
-    (atSite : site.1 = some (execution.recall who,
+    (atSite : site.1 = some (execution.logs who,
       execution.observe (application setup runtime leaks) who))
     (member : response ∈ bounds.onePacketActions runtime leaks who
-      (execution.recall who) (execution.observe (application setup runtime leaks) who))
+      (execution.logs who) (execution.observe (application setup runtime leaks) who))
     (material : (application setup runtime leaks).Submission)
     (sends : response.transmission = some material) {serial : Nat}
     (packet : material.call.packet = .commitment event (who, .prepared serial))

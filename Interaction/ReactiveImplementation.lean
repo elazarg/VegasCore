@@ -74,9 +74,9 @@ theorem policy_eq (past : List app.PlayerEntry) (view : app.PlayerView) :
 variable [DecidableEq Principal]
 
 theorem posterior_respond (execution : app.Execution) (who : Principal) (action : app.Action) :
-    implementation.posterior ((execution.respond app who action).recall who) =
-      (fiberPosterior ((implementation.posterior (execution.recall who)).bind fun memory =>
-        implementation.respond memory (execution.recall who, execution.observe app who))
+    implementation.posterior ((execution.respond app who action).logs who) =
+      (fiberPosterior ((implementation.posterior (execution.logs who)).bind fun memory =>
+        implementation.respond memory (execution.logs who, execution.observe app who))
           Prod.fst action).map Prod.snd := by
   rcases action with ⟨transmission⟩
   cases transmission with
@@ -88,15 +88,15 @@ theorem posterior_respond (execution : app.Execution) (who : Principal) (action 
 continuation may inspect the complete external execution and private state. -/
 theorem response_disintegrate {Result : Type} (execution : app.Execution) (who : Principal)
     (next : app.Execution → Memory → PMF Result) :
-    (implementation.posterior (execution.recall who)).bind (fun memory =>
-      (implementation.respond memory (execution.recall who, execution.observe app who)).bind
+    (implementation.posterior (execution.logs who)).bind (fun memory =>
+      (implementation.respond memory (execution.logs who, execution.observe app who)).bind
         fun response => next (execution.respond app who response.1) response.2) =
-      (implementation.policy (execution.recall who) (execution.observe app who)).bind
+      (implementation.policy (execution.logs who) (execution.observe app who)).bind
         (fun action =>
-          (implementation.posterior ((execution.respond app who action).recall who)).bind
+          (implementation.posterior ((execution.respond app who action).logs who)).bind
             (next (execution.respond app who action))) := by
-  let law := (implementation.posterior (execution.recall who)).bind fun memory =>
-    implementation.respond memory (execution.recall who, execution.observe app who)
+  let law := (implementation.posterior (execution.logs who)).bind fun memory =>
+    implementation.respond memory (execution.logs who, execution.observe app who)
   rw [← PMF.bind_bind]
   change law.bind (fun response => next (execution.respond app who response.1) response.2) = _
   conv_lhs => arg 1; rw [eq_bind_fst_fiberPosterior_snd law]
@@ -108,7 +108,7 @@ def resume (who : Principal) (players : Principal → app.Policy) (actor : Optio
   match actor with
   | none => PMF.pure (execution, memory)
   | some owner => if owner = who then
-      (implementation.respond memory (execution.recall who, execution.observe app who)).map
+      (implementation.respond memory (execution.logs who, execution.observe app who)).map
         fun response => (execution.respond app who response.1, response.2)
     else (app.invoke players owner execution).map fun next => (next, memory)
 
@@ -173,11 +173,11 @@ external execution, using the posterior of its complete actual response recall. 
 theorem realizeJoint
     (who : Principal) (players : Principal → app.Policy) (scheduler : app.Scheduler)
     (count : Nat) (execution : app.Execution) :
-    (implementation.posterior (execution.recall who)).bind
+    (implementation.posterior (execution.logs who)).bind
         (implementation.runJoint who players scheduler count execution) =
       (app.runRounds scheduler (Function.update players who implementation.policy)
         count execution).bind fun next =>
-          (implementation.posterior (next.recall who)).map (Prod.mk next) := by
+          (implementation.posterior (next.logs who)).map (Prod.mk next) := by
   induction count generalizing execution with
   | zero =>
       simp only [Implementation.runJoint, runRounds, PMF.pure_bind]
@@ -185,14 +185,14 @@ theorem realizeJoint
   | succ count ih =>
       let next := implementation.runJoint who players scheduler count
       have resumed (current : app.Execution) (actor : Option Principal) :
-          (implementation.posterior (current.recall who)).bind (fun memory =>
+          (implementation.posterior (current.logs who)).bind (fun memory =>
             (implementation.resume who players actor current memory).bind
               fun result => next result.1 result.2) =
           (app.resume (Function.update players who implementation.policy) actor current).bind
             (fun middle =>
               (app.runRounds scheduler (Function.update players who implementation.policy)
                 count middle).bind fun final =>
-                  (implementation.posterior (final.recall who)).map (Prod.mk final)) := by
+                  (implementation.posterior (final.logs who)).map (Prod.mk final)) := by
         cases actor with
         | none =>
             simpa only [next, Implementation.resume, ReactiveApplication.resume,
@@ -211,7 +211,7 @@ theorem realizeJoint
               intro action _
               rw [← app.respond_recall_other current owner who (Ne.symm same) action]
               exact ih _
-      change (implementation.posterior (execution.recall who)).bind
+      change (implementation.posterior (execution.logs who)).bind
         (fun memory => implementation.runJoint who players scheduler
           (count + 1) execution memory) = _
       simp only [Implementation.runJoint, Implementation.round, runRounds,
@@ -229,12 +229,12 @@ theorem realizeJoint
 execution law against arbitrary opponents and observation-local scheduling. -/
 theorem realize (who : Principal) (players : Principal → app.Policy) (scheduler : app.Scheduler)
     (count : Nat) (execution : app.Execution) :
-    (implementation.posterior (execution.recall who)).bind
+    (implementation.posterior (execution.logs who)).bind
         (implementation.run who players scheduler count execution) =
       app.runRounds scheduler (Function.update players who implementation.policy)
         count execution := by
   calc
-    _ = ((implementation.posterior (execution.recall who)).bind
+    _ = ((implementation.posterior (execution.logs who)).bind
         (implementation.runJoint who players scheduler count execution)).map Prod.fst := by
       rw [PMF.map_bind]
       rfl

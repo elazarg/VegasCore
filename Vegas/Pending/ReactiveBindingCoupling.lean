@@ -44,8 +44,8 @@ namespace BindingMemory
 /-- Silence keeps the reconstructed own history exactly. -/
 theorem transport_response (memory : BindingMemory runtime leaks)
     (left right : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (lengths : (right.recall who).length = memory.responses.length)
-    (past : memory.restoreRecall runtime leaks (right.recall who) = left.recall who)
+    (lengths : (right.logs who).length = memory.responses.length)
+    (past : memory.restoreRecall runtime leaks (right.logs who) = left.logs who)
     (observed : memory.shadow.inputView runtime leaks
       (right.observe (runtime.reactiveApplication leaks) who) =
         left.observe (runtime.reactiveApplication leaks) who)
@@ -56,9 +56,9 @@ theorem transport_response (memory : BindingMemory runtime leaks)
       (memory.shadow.inputView runtime leaks (right.observe app who)) response
     let before := left.respond app who response
     let after := right.respond app who response
-    remembered.restoreRecall runtime leaks (after.recall who) = before.recall who ∧
+    remembered.restoreRecall runtime leaks (after.logs who) = before.logs who ∧
       remembered.shadow.inputView runtime leaks (after.observe app who) = before.observe app who ∧
-      (after.recall who).length = remembered.responses.length := by
+      (after.logs who).length = remembered.responses.length := by
   let app := runtime.reactiveApplication leaks
   have receipts : left.receipts = right.receipts :=
     (congrArg ReactiveApplication.PlayerView.receipts observed).symm
@@ -79,35 +79,35 @@ not treat network observations merely by separate marginal equality. -/
 theorem foreign_response (memory : BindingMemory runtime leaks)
     (left right : (runtime.reactiveApplication leaks).Execution) (who actor : Player)
     (foreign : actor ≠ who)
-    (past : memory.restoreRecall runtime leaks (right.recall who) = left.recall who)
+    (past : memory.restoreRecall runtime leaks (right.logs who) = left.logs who)
     (observed : memory.shadow.inputView runtime leaks
       (right.observe (runtime.reactiveApplication leaks) who) =
         left.observe (runtime.reactiveApplication leaks) who)
     (network : left.network = right.network)
     (views : ∀ other, other ≠ who →
       left.application.playerView other = right.application.playerView other)
-    (recall : ∀ other, other ≠ who → left.recall other = right.recall other)
+    (logs : ∀ other, other ≠ who → left.logs other = right.logs other)
     (response : (runtime.reactiveApplication leaks).Action) :
     let app := runtime.reactiveApplication leaks
     let before := left.respond app actor response
     let after := right.respond app actor response
-    memory.restoreRecall runtime leaks (after.recall who) = before.recall who ∧
+    memory.restoreRecall runtime leaks (after.logs who) = before.logs who ∧
       memory.shadow.inputView runtime leaks (after.observe app who) = before.observe app who ∧
       before.network = after.network ∧ before.receipts = after.receipts ∧
       (∀ other, other ≠ who → before.application.playerView other =
         after.application.playerView other) ∧
-      (∀ other, other ≠ who → before.recall other = after.recall other) := by
+      (∀ other, other ≠ who → before.logs other = after.logs other) := by
   let app := runtime.reactiveApplication leaks
   let before := left.respond app actor response
   let after := right.respond app actor response
   have receipts : left.receipts = right.receipts :=
     (congrArg ReactiveApplication.PlayerView.receipts observed).symm
   have others := runtime.reactive_respond_hidden_congr leaks left right who actor foreign network
-    receipts views recall response
+    receipts views logs response
   have leftView := response_other_observation runtime leaks left actor who foreign.symm response
   have rightView := response_other_observation runtime leaks right actor who foreign.symm response
   have application := congrArg ReactiveApplication.PlayerView.application observed
-  change memory.restoreRecall runtime leaks (after.recall who) = before.recall who ∧
+  change memory.restoreRecall runtime leaks (after.logs who) = before.logs who ∧
     memory.shadow.inputView runtime leaks (after.observe app who) = before.observe app who ∧ _
   refine ⟨?_, ?_, others⟩
   · rw [app.respond_recall_other right actor who foreign.symm response,

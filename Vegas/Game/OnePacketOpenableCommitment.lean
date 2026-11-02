@@ -372,30 +372,30 @@ theorem openableCommitmentInvariant_slot {remaining : Nat} {who : Player}
     {value : L.Val payload}
     (successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
       Option (PublicationResult (L.Val payload))) = some (.success value))
-    (permitted : countPermits ((application setup runtime leaks).outputs (execution.recall who))
-      (slotEnvelope setup runtime leaks who (execution.recall who)
+    (permitted : countPermits ((application setup runtime leaks).outputs (execution.logs who))
+      (slotEnvelope setup runtime leaks who (execution.logs who)
         (execution.observe (application setup runtime leaks) who) event slot) = true)
     (afterTrace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
       horizon scheduler).Trace (some ⟨remaining, none, execution.respond (application setup
         runtime leaks)
-        who (slotResponse setup runtime leaks who (execution.recall who)
+        who (slotResponse setup runtime leaks who (execution.logs who)
           (execution.observe (application setup runtime leaks) who) event slot choice)⟩)) :
     ∃ entry message, OpenableCommitmentInvariant setup runtime leaks bounds horizon scheduler who
       entry
       message event (who, .prepared slot) outputEq value execution.application.config ready
       action (some ⟨remaining, none, execution.respond (application setup runtime leaks) who
-        (slotResponse setup runtime leaks who (execution.recall who)
+        (slotResponse setup runtime leaks who (execution.logs who)
           (execution.observe (application setup runtime leaks) who) event slot choice)⟩) := by
-  let response := slotResponse setup runtime leaks who (execution.recall who)
+  let response := slotResponse setup runtime leaks who (execution.logs who)
     (execution.observe (application setup runtime leaks) who) event slot choice
   obtain ⟨material, transmits, envelope⟩ := slotResponse_transmission setup runtime leaks who
-    (execution.recall who) (execution.observe (application setup runtime leaks) who) event node slot
+    (execution.logs who) (execution.observe (application setup runtime leaks) who) event node slot
     choice action encoded (by rw [successful]; rfl)
   have call : material.call.packet = .commitment event (who, .prepared slot) :=
     congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
       message.payload.call) envelope
   have sends : response.transmission = some material := transmits
-  have bound := slotResponse_of_bind setup runtime leaks who (execution.recall who)
+  have bound := slotResponse_of_bind setup runtime leaks who (execution.logs who)
     (execution.observe (application setup runtime leaks) who) event node slot choice action encoded
   rw [successful] at bound
   rw [bound] at transmits
@@ -408,7 +408,7 @@ theorem openableCommitmentInvariant_slot {remaining : Nat} {who : Player}
     change (application setup runtime leaks).submit execution.application who
       ((runtime.reactiveNormalization leaks).normalize who
         ((application setup runtime leaks).observePlayer execution.application who)
-        (ReactiveApplication.ResponseMenu.knownPackets (execution.recall who)
+        (ReactiveApplication.ResponseMenu.knownPackets (execution.logs who)
           (execution.observe (application setup runtime leaks) who))
         ⟨⟨.commitment event (who, .prepared slot), some ⟨payload, value⟩⟩, .none⟩) = _
     rw [(runtime.reactiveNormalization leaks).submit]

@@ -22,26 +22,26 @@ variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication P
 theorem respond_focal_recall_eq (left right : app.Execution) (who focal : Principal)
     (action : app.Action) (networks : left.network = right.network)
     (before : left.observe app focal = right.observe app focal)
-    (recall : left.recall focal = right.recall focal)
+    (logs : left.logs focal = right.logs focal)
     (packet : ∀ submission, action.transmission = some submission →
       app.packet (app.submit left.application who submission) who
         (left.network.known who) submission =
       app.packet (app.submit right.application who submission) who
         (right.network.known who) submission) :
-    (left.respond app who action).recall focal =
-      (right.respond app who action).recall focal := by
+    (left.respond app who action).logs focal =
+      (right.respond app who action).logs focal := by
   by_cases active : focal = who
   · subst focal
     rcases action with ⟨transmission⟩
     cases transmission with
-    | none => simp only [Execution.respond, ↓reduceIte, recall, before]
+    | none => simp only [Execution.respond, ↓reduceIte, logs, before]
     | some submission =>
         have payload := packet submission rfl
         rw [networks] at payload
-        simp only [Execution.respond, ↓reduceIte, recall, before,
+        simp only [Execution.respond, ↓reduceIte, logs, before,
           MessageNetwork.submit, payload, networks]
   · rw [app.respond_recall_other left who focal active action,
-      app.respond_recall_other right who focal active action, recall]
+      app.respond_recall_other right who focal active action, logs]
 
 /-- The deterministic branch of the existing activation transition for one
 sample of pending identifiers. -/

@@ -64,7 +64,7 @@ structure RosterCalendarPhase (setup : Setup (Player := Player) (L := L))
       control.execution.application.activatedAt event = some entered →
       OwnerActivatedSince (runtime setup) leaks control.execution.environmentRecall event
         owner entered
-  responses : ∀ who, ∀ entry ∈ control.execution.recall who, ∀ query : (graph setup).EventId,
+  responses : ∀ who, ∀ entry ∈ control.execution.logs who, ∀ query : (graph setup).EventId,
     entry.beforeView.application.publicView.EventReady query →
     query ∉ control.execution.application.config.cut.completed →
     entry.beforeView.application.publicView.clock = entryClock ∧
@@ -75,7 +75,7 @@ structure RosterCalendarPhase (setup : Setup (Player := Player) (L := L))
       (graph setup).actor? event = some owner →
       ∀ (earlier later : List (application setup (Vegas.runtime setup) leaks).PlayerEntry)
         entry message,
-        control.execution.recall owner = earlier ++ entry :: later →
+        control.execution.logs owner = earlier ++ entry :: later →
         entry.emitted = some message → message.sender = owner →
         message.payload.call.event? (graph setup) = some event →
         (∀ other ∈ earlier ++ later,
@@ -295,7 +295,7 @@ theorem RosterCalendarPhase.activate_step
   have effects : next.application = control.execution.application ∧
       next.environmentRecall = control.execution.environmentRecall ++
         [⟨control.execution.observeEnvironment _, .activate who⟩] ∧
-      next.recall = control.execution.recall := by
+      next.logs = control.execution.logs := by
     obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
     obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
     exact ⟨rfl, rfl, rfl⟩
@@ -374,7 +374,7 @@ theorem RosterCalendarPhase.activate_step
           List.mem_append_right _ (List.mem_singleton_self _), rfl, activated, ?_⟩
         exact (State.publicView_eventReady _ event).mpr ready
     responses := by
-      change ∀ observer, ∀ entry ∈ next.recall observer, ∀ query, _ →
+      change ∀ observer, ∀ entry ∈ next.logs observer, ∀ query, _ →
         query ∉ next.application.config.cut.completed → _
       rw [recallEq, applicationEq]
       exact phase.responses
@@ -407,7 +407,7 @@ theorem RosterCalendarPhase.ending_step
     (receipts : ∀ owner, (graph setup).actor? event = some owner →
       ∀ (earlier later : List (application setup (Vegas.runtime setup) leaks).PlayerEntry)
         entry message,
-        next.recall owner = earlier ++ entry :: later →
+        next.logs owner = earlier ++ entry :: later →
         entry.emitted = some message → message.sender = owner →
         message.payload.call.event? (graph setup) = some event →
         (∀ other ∈ earlier ++ later,
@@ -524,7 +524,7 @@ theorem RosterCalendarPhase.ending_step
       exact ⟨entry, List.mem_append_left _ inside, selected, started, seen⟩
     responses := by
       intro observer entry member query ready unfinished
-      change entry ∈ next.recall observer at member
+      change entry ∈ next.logs observer at member
       rw [recallEq] at member
       exact phase.responses observer entry member query ready
         (fun done => unfinished (progress.completed done))
@@ -640,7 +640,7 @@ theorem RosterCalendarPhase.include_step
     reachedCommand
   have receipts : ∀ responder, (graph setup).actor? event = some responder →
       ∀ (earlier later : List app.PlayerEntry) entry message,
-      next.recall responder = earlier ++ entry :: later →
+      next.logs responder = earlier ++ entry :: later →
       entry.emitted = some message → message.sender = responder →
       message.payload.call.event? (graph setup) = some event →
       (∀ other ∈ earlier ++ later,
@@ -775,7 +775,7 @@ theorem RosterCalendarPhase.expire_boundary
         simp at member
       responses := by
         intro who entry member query ready unfinished
-        change entry ∈ next.recall who at member
+        change entry ∈ next.logs who at member
         rw [recallEq] at member
         have unfinishedBefore : query ∉ control.execution.application.config.cut.completed :=
           fun completed => unfinished (progress.completed completed)

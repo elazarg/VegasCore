@@ -1,5 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
+import GameTheory.Protocol.FiniteInformation
 import GameTheory.Analysis.Protocol.CounterfactualReach
 import GameTheory.Math.Probability.Convergence
 import GameTheory.Analysis.Protocol.BeliefTransport
@@ -64,9 +65,9 @@ namespace GameTheory.Protocol.InformationModel
 
 open GameTheory.Math.Probability ExecutionProtocol Filter
 
-variable {ι : Type} [Fintype ι] {E : ExecutionProtocol ι} {M : InformationModel E}
+variable {ι : Type} [Finite ι] {E : ExecutionProtocol ι} {M : InformationModel E}
 
-omit [Fintype ι] in
+omit [Finite ι] in
 /-- Finite decision menus make every current menu finite: a player that is not
 active has only the empty choice. -/
 theorem finite_current_choice [∀ who (site : M.InformationSite who), Finite (M.Choice who site.1)]
@@ -87,6 +88,8 @@ theorem runBehavioralFrom_support_finite_of_choices (transitions : E.FiniteTrans
       (profile who (M.infoOf who current.trace)).support.Finite)
     (fuel : ℕ) (history : E.History) :
     (M.runBehavioralFrom profile fuel history).support.Finite := by
+  classical
+  let : Fintype ι := Fintype.ofFinite ι
   induction fuel generalizing history with
   | zero =>
       simpa only [InformationModel.runBehavioralFrom, ExecutionProtocol.runRandomizedFor_zero,
@@ -97,7 +100,7 @@ theorem runBehavioralFrom_support_finite_of_choices (transitions : E.FiniteTrans
         simpa only [PMF.support_pure] using Set.finite_singleton history
       · rw [M.runBehavioralFrom_succ_of_not_terminal _ fuel terminal, PMF.support_bind]
         have joint : (M.behavioralJoint profile history.trace terminal).support.Finite := by
-          unfold InformationModel.behavioralJoint
+          rw [M.behavioralJoint_eq_independentProduct]
           rw [PMF.support_map]
           exact ((Set.Finite.pi' fun who => choices history terminal who).subset
             fun draws supported => (independentProduct_support_iff _ draws).1 supported).image _
@@ -120,7 +123,7 @@ theorem runBehavioralFrom_support_finite
       exact Set.toFinite _)
     fuel history
 
-omit [Fintype ι] in
+omit [Finite ι] in
 /-- Pure policies need only finitely supported transitions for a finite-horizon
 run to have finite support. -/
 theorem runFrom_support_finite [Finite ι] (transitions : E.FiniteTransitions)
@@ -143,6 +146,8 @@ theorem runBehavioralFrom_expect_tendsto
     Tendsto (fun n => expect (M.runBehavioralFrom (sequence n) fuel history) payoff) atTop
       (nhds (expect (M.runBehavioralFrom profile fuel history) payoff)) := by
   classical
+  classical
+  let : Fintype ι := Fintype.ofFinite ι
   induction fuel generalizing history with
   | zero => exact tendsto_const_nhds
   | succ fuel induction =>
@@ -184,7 +189,8 @@ theorem runBehavioralFrom_expect_tendsto
           have integrable := payoffIntegrable_of_finite_support _ payoff
             (runBehavioralFrom_support_finite transitions policies (fuel + 1) history)
           rw [M.runBehavioralFrom_succ_of_not_terminal _ fuel terminal] at integrable ⊢
-          rw [expect_bind_tower _ _ _ integrable, behavioralJoint, expect_map]
+          rw [expect_bind_tower _ _ _ integrable, M.behavioralJoint_eq_independentProduct,
+            expect_map]
           rfl
         simp_rw [factor]
         apply (PMFConvergesPointwise.independentProduct current).expect_varying_finite
@@ -199,9 +205,9 @@ theorem runBehavioralFrom_expect_tendsto
 
 variable [DecidableEq ι]
 
-omit [Fintype ι] in
+omit [Finite ι] in
 theorem truncatedContinuationContext_integrableAt_of_finite
-    [Fintype ι] [∀ who (site : M.InformationSite who), Finite (M.Choice who site.1)]
+    [Finite ι] [∀ who (site : M.InformationSite who), Finite (M.Choice who site.1)]
     (transitions : E.FiniteTransitions)
     (assessment : M.BehavioralAssessment) {who : ι} (site : M.InformationSite who)
     [Finite (M.InformationHistory who site.1)]

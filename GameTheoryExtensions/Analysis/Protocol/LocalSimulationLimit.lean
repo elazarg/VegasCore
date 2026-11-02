@@ -30,7 +30,7 @@ namespace GameTheory.Protocol.InformationModel
 
 open ExecutionProtocol Math.Probability Filter
 
-variable {Player : Type} [Fintype Player] [DecidableEq Player]
+variable {Player : Type} [Finite Player] [DecidableEq Player]
   {E T : ExecutionProtocol Player} {M : InformationModel E} {N : InformationModel T}
   [Finite E.History] [Finite T.History]
   [∀ who, DecidableEq (N.InfoState who)]

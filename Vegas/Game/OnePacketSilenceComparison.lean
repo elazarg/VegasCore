@@ -126,11 +126,11 @@ theorem assembled_silence_history_comparison
   obtain ⟨remaining, execution, point, current, actualAt, never, ordered, decoded, intended,
     reached⟩ := firstActivation_history_facts setup runtime leaks bounds horizon scheduler
       wellFormed site pending nonlate history stateForced allDebtFree
-  let key := LateKey.ofView setup runtime leaks who (execution.recall who)
+  let key := LateKey.ofView setup runtime leaks who (execution.logs who)
     (execution.observe (application setup runtime leaks) who)
   have siteKey : lateKey setup runtime leaks who site.1 = some key := by
     rw [actualAt]
-    exact lateKey_some (runtime := runtime) who (execution.recall who)
+    exact lateKey_some (runtime := runtime) who (execution.logs who)
       (execution.observe (application setup runtime leaks) who)
   have pendingHere := pending
   rw [actualAt] at pendingHere
@@ -143,7 +143,7 @@ theorem assembled_silence_history_comparison
   have decided := decidedEvent_eq_of_pending setup runtime leaks horizon scheduler
     pendingHere
     ((Menu).toRawTrace (initialLaw setup) horizon scheduler (current ▸ history.1.trace)) rfl
-    (lateKey_some (runtime := runtime) who (execution.recall who)
+    (lateKey_some (runtime := runtime) who (execution.logs who)
       (execution.observe (application setup runtime leaks) who))
   have choiceEq : choice = silenceChoice setup runtime leaks bounds (initialLaw setup) horizon
       scheduler who site.1 := by

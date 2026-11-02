@@ -51,7 +51,7 @@ theorem onePacket_transition_cases {current next : (application setup runtime le
     (reached : some next ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
       scheduler (some current) joint).support) :
     (∃ who action, action ∈ bounds.onePacketActions runtime leaks who
-        (current.execution.recall who) (current.execution.observe (application setup runtime
+        (current.execution.logs who) (current.execution.observe (application setup runtime
           leaks) who) ∧
       next.execution = current.execution.respond (application setup runtime leaks) who action) ∨
     (∃ command, next.execution ∈
@@ -138,7 +138,7 @@ private theorem register_lookup_initial (submission : Submission (graph setup))
 theorem respond_lookup_initial (execution : (application setup runtime leaks).Execution) (who :
   Player)
     (action : (application setup runtime leaks).Action)
-    (member : action ∈ bounds.onePacketActions runtime leaks who (execution.recall who)
+    (member : action ∈ bounds.onePacketActions runtime leaks who (execution.logs who)
       (execution.observe (application setup runtime leaks) who))
     (player : Player) (input : (graph setup).InputId) :
     (execution.respond (application setup runtime leaks) who action).application.candidates.lookup
@@ -390,7 +390,7 @@ theorem freshExact_of_trace {control : (application setup runtime leaks).Control
     (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     (player : Player) (serial : Nat) :
     control.execution.application.candidates.lookup (player, .prepared serial) = .fresh ↔
-      ¬ NamedSlot player ((application setup runtime leaks).outputs (control.execution.recall
+      ¬ NamedSlot player ((application setup runtime leaks).outputs (control.execution.logs
         player))
         serial := by
   have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
@@ -411,7 +411,7 @@ theorem onePacket_commitment_slotFresh {control : (application setup runtime lea
     (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     (who : Player) (response : (application setup runtime leaks).Action)
     (member : response ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who))
     (material : (application setup runtime leaks).Submission)
     (sends : response.transmission = some material) {event : (graph setup).EventId}
@@ -425,9 +425,9 @@ theorem onePacket_commitment_slotFresh {control : (application setup runtime lea
   have recalled := runtime.countRecall_history leaks rawTrace
   obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions runtime leaks who _ _
     response).mp member
-  have verdict : CountPermits ((application setup runtime leaks).outputs (control.execution.recall
+  have verdict : CountPermits ((application setup runtime leaks).outputs (control.execution.logs
     who))
-      (runtime.localEnvelope leaks who (control.execution.recall who)
+      (runtime.localEnvelope leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) material) := by
     rcases permitted with silent | ⟨other, otherSends, counted⟩
     · rw [sends] at silent
@@ -435,7 +435,7 @@ theorem onePacket_commitment_slotFresh {control : (application setup runtime lea
     · rw [sends] at otherSends
       cases Option.some.inj otherSends
       exact (countPermits_eq_true_iff _ _).mp counted
-  have callEq : (runtime.localEnvelope leaks who (control.execution.recall who)
+  have callEq : (runtime.localEnvelope leaks who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) material).payload.call =
       material.call.packet := rfl
   have correct := verdict.2.1
@@ -458,12 +458,12 @@ theorem recordedResponse_respond {control : (application setup runtime leaks).Co
     (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     (who : Player) (action : (application setup runtime leaks).Action)
     (member : action ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who)) :
     RecordedResponse (runtime := runtime) who (control.execution.respond (application setup
       runtime leaks) who
         action).application
-      (ReactiveApplication.ResponseMenu.knownPackets (control.execution.recall who)
+      (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who))
       ⟨control.execution.observe (application setup runtime leaks) who, action,
         action.transmission.map fun material =>
@@ -484,11 +484,11 @@ theorem recordedResponse_respond {control : (application setup runtime leaks).Co
   | some material =>
       have materialNormal : material.normalizeReactive who
           (control.execution.observe (application setup runtime leaks) who).application
-          (ReactiveApplication.ResponseMenu.knownPackets (control.execution.recall who)
+          (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
             (control.execution.observe (application setup runtime leaks) who)) = material :=
         Option.some.inj (congrArg ReactiveApplication.Action.transmission normal)
       have known : control.execution.network.known who =
-          ReactiveApplication.ResponseMenu.knownPackets (control.execution.recall who)
+          ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
             (control.execution.observe (application setup runtime leaks) who) :=
         (application setup runtime leaks).known_from_recall control.execution who recalled.1
       have candidates : (fun slot => ((application setup runtime leaks).submit
@@ -593,9 +593,9 @@ game. -/
 theorem recallRecord_of_trace {state}
     (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state) :
     ∀ control : (application setup runtime leaks).Control, state = some control →
-      ∀ player k (inside : k < (control.execution.recall player).length),
-        RecalledAt setup runtime leaks player ((control.execution.recall player).take k)
-          (control.execution.recall player)[k] control.execution.application := by
+      ∀ player k (inside : k < (control.execution.logs player).length),
+        RecalledAt setup runtime leaks player ((control.execution.logs player).take k)
+          (control.execution.logs player)[k] control.execution.application := by
   induction trace with
   | start => intro _ initialized; cases initialized
   | @extend before after prior joint legal realized ih =>
@@ -613,9 +613,9 @@ theorem recallRecord_of_trace {state}
       | some current =>
           have previous := ih current rfl
           have grows := stateGrows_transition (runtime := runtime) (horizon := horizon) realized
-          have kept : ∀ player k (inside : k < (current.execution.recall player).length),
-              RecalledAt setup runtime leaks player ((current.execution.recall player).take k)
-                (current.execution.recall player)[k] control.execution.application :=
+          have kept : ∀ player k (inside : k < (current.execution.logs player).length),
+              RecalledAt setup runtime leaks player ((current.execution.logs player).take k)
+                (current.execution.logs player)[k] control.execution.application :=
             fun player k inside => (previous player k inside).grow grows
           rcases onePacket_transition_cases (runtime := runtime) legal realized with
             ⟨who, action, member, nextEq⟩ | ⟨command, moved⟩ | same

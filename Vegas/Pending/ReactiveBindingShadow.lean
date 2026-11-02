@@ -343,8 +343,8 @@ equal packet payloads suffice even when the submitted private openings differ. -
 theorem restoreRecall_submit (memory : BindingMemory runtime leaks)
     (left right : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (original repaired : WitnessedSubmission graph)
-    (lengths : (right.recall who).length = memory.responses.length)
-    (past : memory.restoreRecall runtime leaks (right.recall who) = left.recall who)
+    (lengths : (right.logs who).length = memory.responses.length)
+    (past : memory.restoreRecall runtime leaks (right.logs who) = left.logs who)
     (observed : memory.shadow.inputView runtime leaks
       (right.observe (runtime.reactiveApplication leaks) who) =
         left.observe (runtime.reactiveApplication leaks) who)
@@ -359,9 +359,9 @@ theorem restoreRecall_submit (memory : BindingMemory runtime leaks)
         (right.observe (runtime.reactiveApplication leaks) who))
       ⟨some original⟩).restoreRecall runtime leaks
         ((right.respond (runtime.reactiveApplication leaks) who
-          ⟨some repaired⟩).recall who) =
+          ⟨some repaired⟩).logs who) =
       (left.respond (runtime.reactiveApplication leaks) who
-        ⟨some original⟩).recall who := by
+        ⟨some original⟩).logs who := by
   simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
   rw [restoreRecall_record runtime leaks memory _ lengths, past, observed]
   congr 3

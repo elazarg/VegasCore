@@ -114,7 +114,7 @@ theorem firstActivation_response_prefix_of_recall
     {control : (application setup runtime leaks).Control}
     (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
     (owner : Player) (event : (graph setup).EventId)
-    (occurs : ∃ entry ∈ control.execution.recall owner, ActivatedAt setup runtime leaks owner
+    (occurs : ∃ entry ∈ control.execution.logs owner, ActivatedAt setup runtime leaks owner
       event entry)
     (submissions : OwnSubmissionsAtTurn setup leaks control.execution owner) :
     ∃ (before : (application setup runtime leaks).Control)
@@ -129,12 +129,12 @@ theorem firstActivation_response_prefix_of_recall
           ⟨joint, legal⟩).support),
       TracePrefix (prior.extend joint legal realized) trace ∧
       before.actor = some owner ∧ joint owner = some response ∧
-      pendingEvent setup runtime leaks owner (some (before.execution.recall owner,
+      pendingEvent setup runtime leaks owner (some (before.execution.logs owner,
         before.execution.observe (application setup runtime leaks) owner)) = some event ∧
-      ∀ previous ∈ before.execution.recall owner,
+      ∀ previous ∈ before.execution.logs owner,
         ¬ ActivatedAt setup runtime leaks owner event previous := by
   obtain ⟨earlier, entry, later, split, activated, quiet⟩ :=
-    first_activated_recall_split (runtime := runtime) owner event (control.execution.recall owner)
+    first_activated_recall_split (runtime := runtime) owner event (control.execution.logs owner)
       occurs
   have unrecorded : runtime.eventRecorded leaks earlier event = false := by
     cases recorded : runtime.eventRecorded leaks earlier event with
@@ -142,7 +142,7 @@ theorem firstActivation_response_prefix_of_recall
     | true =>
         obtain ⟨previous, recalled, submitted⟩ :=
           (runtime.eventRecorded_iff leaks _ event).mp recorded
-        have finalMember : previous ∈ control.execution.recall owner := by
+        have finalMember : previous ∈ control.execution.logs owner := by
           rw [split]
           exact List.mem_append_left _ recalled
         exact (quiet previous recalled (submissions previous finalMember event submitted)).elim
@@ -150,7 +150,7 @@ theorem firstActivation_response_prefix_of_recall
       (onePacketInformation setup runtime leaks bounds horizon scheduler).ownPlay owner trace := by
     rw [onePacket_ownPlay_recall]
     change (some (earlier, entry.beforeView), entry.action) ∈
-      (application setup runtime leaks).recallOwnPlay (control.execution.recall owner)
+      (application setup runtime leaks).recallOwnPlay (control.execution.logs owner)
     rw [split]
     simpa only [ReactiveApplication.recallOwnPlay, List.nil_append] using
       mem_ownPlayFrom (application setup runtime leaks) [] earlier entry later
@@ -170,7 +170,7 @@ theorem firstActivation_response_prefix_of_recall
       have active : before.actor = some owner := acting
       rw [onePacket_infoOf] at observed
       simp only [ReactiveApplication.observe, active, ↓reduceIte] at observed
-      have sameRecall : before.execution.recall owner = earlier :=
+      have sameRecall : before.execution.logs owner = earlier :=
         congrArg Prod.fst (Option.some.inj observed)
       have sameView : before.execution.observe (application setup runtime leaks) owner =
         entry.beforeView :=
@@ -178,10 +178,10 @@ theorem firstActivation_response_prefix_of_recall
       have pending := pendingEvent_of_spec (runtime := runtime) (setup := setup) (leaks := leaks)
         activated unrecorded
       have pendingBefore : pendingEvent setup runtime leaks owner
-          (some (before.execution.recall owner,
+          (some (before.execution.logs owner,
             before.execution.observe (application setup runtime leaks) owner)) = some event := by
         simpa only [sameRecall, sameView] using pending
-      have quietBefore : ∀ previous ∈ before.execution.recall owner,
+      have quietBefore : ∀ previous ∈ before.execution.logs owner,
           ¬ ActivatedAt setup runtime leaks owner event previous := by
         simpa only [sameRecall] using quiet
       have afterEq : after = some ⟨before.remaining, none,

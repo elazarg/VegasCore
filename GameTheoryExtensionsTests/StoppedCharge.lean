@@ -2,6 +2,9 @@
 
 import GameTheoryExtensions.Analysis.Protocol.StoppedCharge
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # Distinct conditional charge potentials at a merging state
 
@@ -41,7 +44,7 @@ def depth : Stage → Nat
   available _ _ := ∅
   terminal state := state = .done
   step state _ := match state with
-    | .initial => (PMF.uniformOfFintype Bool).map Stage.fork
+    | .initial => (uniformLaw Bool).map Stage.fork
     | .fork _ => PMF.pure .merged
     | _ => PMF.pure .done
   progress _ _ := ⟨fun _ => none, fun _ => by simp⟩
@@ -92,8 +95,8 @@ theorem bounded : arena.BoundedHorizon 3 := by
 def forkHistory (bit : Bool) : arena.History :=
   arena.initHistory.extend (joint := fun _ => none)
     ⟨by decide, fun _ => by simp⟩ (by
-      change Stage.fork bit ∈ ((PMF.uniformOfFintype Bool).map Stage.fork).support
-      exact PMF.support_map .. ▸ ⟨bit, PMF.mem_support_uniformOfFintype bit, rfl⟩)
+      change Stage.fork bit ∈ ((uniformLaw Bool).map Stage.fork).support
+      exact PMF.support_map .. ▸ ⟨bit, mem_support_uniformLaw bit, rfl⟩)
 
 def mergedHistory (bit : Bool) : arena.History :=
   (forkHistory bit).extend (joint := fun _ => none)

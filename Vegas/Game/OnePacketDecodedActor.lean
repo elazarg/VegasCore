@@ -129,7 +129,7 @@ theorem defaulted_or_not_failing_of_legal {history : setup.intendedProtocol.Hist
 
 /-- The opponent factor is one at automatic steps; at an active owned step it is
 one for the owner and the owner's action mass for every other player. -/
-theorem opponentsStepProb_actingJoint [Fintype Player]
+theorem opponentsStepProb_actingJoint [Finite Player]
     (assessment : setup.intendedModel.BehavioralAssessment)
     (who : Player) (history : setup.intendedProtocol.History) {config : (graph setup).Config}
     {event : (graph setup).EventId} (ready : config.cut.Ready event) {actor : Player}

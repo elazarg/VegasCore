@@ -74,10 +74,10 @@ theorem regularStep_of_clear_regular_main (wellFormed : setup.WellFormed)
     (realized : some next ∈ ((onePacketProtocol setup runtime leaks bounds horizon scheduler).step
       (some ⟨remaining, some actor, execution⟩) ⟨joint, legal⟩).support)
     (main : responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler actor
-      (some (execution.recall actor, execution.observe (application setup runtime leaks) actor))
+      (some (execution.logs actor, execution.observe (application setup runtime leaks) actor))
       ((joint actor).getD ⟨none⟩) ∈
       (honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler source actor
-        (some (execution.recall actor,
+        (some (execution.logs actor,
           execution.observe (application setup runtime leaks) actor))).support) :
     RegularStep setup runtime leaks bounds horizon scheduler source focal
       (some ⟨remaining, some actor, execution⟩) joint (some next) := by
@@ -92,7 +92,7 @@ theorem regularStep_of_clear_regular_main (wellFormed : setup.WellFormed)
     onePacket_response_step (runtime := runtime) prior joint legal realized _ next rfl rfl rfl
   have selected : (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
     actor
-      (some (execution.recall actor, execution.observe (application setup runtime leaks) actor))
+      (some (execution.logs actor, execution.observe (application setup runtime leaks) actor))
       response).1 = some response := by
     simp only [responseChoice, member, ↓reduceDIte]
   rw [chosen, Option.getD_some] at main

@@ -17,7 +17,7 @@ namespace Vegas.SourceProgram.Setup
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 open scoped ENNReal
 
-variable {Player : Type} [DecidableEq Player] [Fintype Player]
+variable {Player : Type} [DecidableEq Player] [Finite Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
   {Signal : Type*} (signal : State L setup.context → Signal) (value : Signal)
@@ -124,7 +124,7 @@ theorem conditionInitial_bayesBelief
         (setup.conditionInitial_informationSite signal value supported site)
           globalAntichain globalPositive := by
   classical
-  exact InformationModel.bayesBelief_projection_of_proportional_reach
+  exact InformationModel.bayesBelief_projection_of_positive_reach
     (setup.conditionInitial signal value).intendedModel setup.intendedModel
     (fun who => setup.conditionInitial_policy signal value who (policies who)) policies
     (setup.conditionInitial_history signal value supported) who site

@@ -30,7 +30,7 @@ private theorem submission_atTurn_or_unsent {remaining : Nat} {who : Player}
     (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩))
     (action : (application setup runtime leaks).Action)
-    (member : action ∈ bounds.onePacketActions runtime leaks who (execution.recall who)
+    (member : action ∈ bounds.onePacketActions runtime leaks who (execution.logs who)
       (execution.observe (application setup runtime leaks) who))
     (event : (graph setup).EventId)
     (submitted : runtime.submittedEvent? leaks action = some event) :
@@ -51,7 +51,7 @@ private theorem submission_atTurn_or_unsent {remaining : Nat} {who : Player}
     exact submitted
   obtain ⟨inputRecall, serialRecall, _⟩ := runtime.countRecall_history leaks trace
   have facts := legalFacts setup leaks horizon scheduler ⟨remaining, some who, execution⟩ trace
-  set envelope := runtime.localEnvelope leaks who (execution.recall who)
+  set envelope := runtime.localEnvelope leaks who (execution.logs who)
     (execution.observe app who) material with envelopeEq
   obtain ⟨tokenValid, correct, first⟩ := (countPermits_eq_true_iff _ _).mp permitted
   obtain ⟨named, namedEvent, tokenEq⟩ := (WitnessedPacket.tokenValid_iff _).mp tokenValid
@@ -77,7 +77,7 @@ private theorem submission_atTurn_or_unsent {remaining : Nat} {who : Player}
   · refine Or.inr ⟨completed, actor, fun message onLedger messageSender messageNamed => ?_⟩
     obtain ⟨entry, recorded, material, _transmission, emitted, _packet⟩ :=
       facts.provenance.ledger message onLedger
-    have recalled : message ∈ app.outputs (execution.recall who) := by
+    have recalled : message ∈ app.outputs (execution.logs who) := by
       exact List.mem_filterMap.mpr ⟨entry, messageSender ▸ recorded, emitted⟩
     have emitted : message ∈ execution.network.inputs := by
       rw [← inputRecall who] at recalled
@@ -101,7 +101,7 @@ private theorem submission_atTurn_or_unsent {remaining : Nat} {who : Player}
 private theorem submissions_at_turn_or_defaulted : ∀ {state}
     (_ : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
     (control : (application setup runtime leaks).Control), state = some control →
-    ∀ player, ∀ entry ∈ control.execution.recall player, ∀ event,
+    ∀ player, ∀ entry ∈ control.execution.logs player, ∀ event,
       runtime.submittedEvent? leaks entry.action = some event →
         entry.beforeView.application.publicView.ownTurn? player = some event ∨
           player ∈ control.execution.application.config.defaulted
@@ -144,7 +144,7 @@ private theorem submissions_at_turn_or_defaulted : ∀ {state}
               | some action =>
                   rw [selected] at localLegal
                   have chosen : action ∈ bounds.onePacketActions runtime leaks responder
-                      (execution.recall responder)
+                      (execution.logs responder)
                       (execution.observe (application setup runtime leaks) responder) :=
                         localLegal.2
                   have responded : some control = some (⟨remaining, none,
@@ -159,7 +159,7 @@ private theorem submissions_at_turn_or_defaulted : ∀ {state}
                   cases Option.some.inj responded
                   intro player entry entryMember event submitted
                   change entry ∈ (execution.respond (application setup runtime leaks) responder
-                    action).recall player at entryMember
+                    action).logs player at entryMember
                   rw [runtime.respond_recall leaks execution responder player action]
                     at entryMember
                   split at entryMember
@@ -224,7 +224,7 @@ theorem submittedAtTurn_of_forcedSite {who : Player}
       info)
     {control : (application setup runtime leaks).Control} (current : history.1.state = some control)
     {player : Player} (other : player ≠ who) :
-    ∀ entry ∈ control.execution.recall player, ∀ event,
+    ∀ entry ∈ control.execution.logs player, ∀ event,
       runtime.submittedEvent? leaks entry.action = some event →
         entry.beforeView.application.publicView.ownTurn? player = some event := by
   subst decision

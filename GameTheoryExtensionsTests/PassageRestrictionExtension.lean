@@ -16,7 +16,7 @@ namespace GameTheoryExtensionsTests.PassageRestrictionExtension
 open GameTheory GameTheory.Math.Probability GameTheory.Protocol GameTheory.Protocol.InformationModel
   GameTheory.Protocol.ExecutionProtocol
 
-variable {ι : Type*} [Fintype ι] [DecidableEq ι]
+variable {ι : Type*} [Finite ι] [DecidableEq ι]
   {E T : ExecutionProtocol ι} {M : InformationModel E} {N : InformationModel T}
   [Finite T.History] [∀ i, DecidableEq (N.InfoState i)]
   (restriction : M.ActionRestriction N)

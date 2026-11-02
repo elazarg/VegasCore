@@ -22,7 +22,7 @@ variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication P
 structure ServiceInvariant (scheduler : app.Scheduler)
     (predicate : app.Execution → Prop) : Prop where
   respond : ∀ execution who action, predicate execution →
-    action ∈ menu.actions who (execution.recall who) (execution.observe app who) →
+    action ∈ menu.actions who (execution.logs who) (execution.observe app who) →
     predicate (execution.respond app who action)
   environment : ∀ execution next command, predicate execution →
     command ∈ (scheduler execution.environmentRecall

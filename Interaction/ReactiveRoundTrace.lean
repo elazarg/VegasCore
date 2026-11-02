@@ -23,7 +23,7 @@ theorem trace_respond (remaining : Nat) (execution : app.Execution) (who : Princ
     (response : app.Action)
     (trace : (menu.protocol initial horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩))
-    (available : response ∈ menu.actions who (execution.recall who) (execution.observe app who)) :
+    (available : response ∈ menu.actions who (execution.logs who) (execution.observe app who)) :
     Nonempty ((menu.protocol initial horizon scheduler).Trace
       (some ⟨remaining, none, execution.respond app who response⟩)) := by
   refine ⟨trace.extend (fun actor => if actor = who then some response else none) ?_ ?_⟩

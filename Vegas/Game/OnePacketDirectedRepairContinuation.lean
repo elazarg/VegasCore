@@ -80,14 +80,14 @@ theorem pending_binding_inclusion
     sender owned found ready timely vacant unused leftFixed rightFixed rememberedAction
     rememberedValue successful, ?_⟩
   have unchanged (execution : (application setup runtime leaks).Execution) :
-      (execution.includePending (application setup runtime leaks) id).recall = execution.recall :=
+      (execution.includePending (application setup runtime leaks) id).logs = execution.logs :=
         by
     simp only [ReactiveApplication.Execution.includePending]
     split <;> rfl
   change operationalRecall (runtime := runtime)
-      ((original.includePending (application setup runtime leaks) id).recall owner) =
+      ((original.includePending (application setup runtime leaks) id).logs owner) =
     operationalRecall (runtime := runtime) ((repaired.includePending (application setup runtime
-      leaks) id).recall owner)
+      leaks) id).logs owner)
   rw [unchanged original, unchanged repaired]
   exact frame.recalled
 

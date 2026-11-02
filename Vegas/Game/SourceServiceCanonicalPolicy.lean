@@ -97,7 +97,7 @@ theorem sourceServiceCanonicalPolicy_at_event (profile : BehavioralProfile setup
     (event : (serviceGraph setup mode).EventId)
     (selected : execution.application.publicView.ownTurn? who = some event)
     (owned : (serviceGraph setup mode).actor? event = some who) :
-    serviceCanonicalPolicy setup mode deadline leaks profile who (execution.recall who)
+    serviceCanonicalPolicy setup mode deadline leaks profile who (execution.logs who)
         (execution.observe (serviceApplication setup mode deadline leaks) who) =
       if inactive : who ∈ execution.application.config.defaulted then PMF.pure ⟨none⟩ else
         ((compileEventProfile setup.program profile) who event owned
@@ -105,7 +105,7 @@ theorem sourceServiceCanonicalPolicy_at_event (profile : BehavioralProfile setup
             ((serviceGraph setup mode).playerObserve who execution.application.config))
           inactive).map
           ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
-            (execution.recall who)
+            (execution.logs who)
             (execution.observe (serviceApplication setup mode deadline leaks) who) event) := by
   unfold serviceCanonicalPolicy
   rw [dite_eq_left
@@ -130,14 +130,14 @@ theorem sourceServiceCanonicalPolicy_at_event_history
     (selected : control.execution.application.publicView.ownTurn? who = some event)
     (owned : (serviceGraph setup mode).actor? event = some who) :
     ∃ active : who ∉ control.execution.application.config.defaulted,
-      serviceCanonicalPolicy setup mode deadline leaks profile who (control.execution.recall who)
+      serviceCanonicalPolicy setup mode deadline leaks profile who (control.execution.logs who)
           (control.execution.observe (serviceApplication setup mode deadline leaks) who) =
         ((compileEventProfile setup.program profile) who event owned
           (id
             ((serviceGraph setup mode).playerObserve who control.execution.application.config))
           active).map
           ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
-            (control.execution.recall who)
+            (control.execution.logs who)
             (control.execution.observe (serviceApplication setup mode deadline leaks) who)
             event) := by
   have facts := legalFacts setup leaks horizon scheduler control trace
@@ -184,12 +184,12 @@ theorem serviceCanonicalPolicy_commit_of_observation {Γ : SourceCtx Player L}
         .binding owner payload := by
       change outputLayout setup.program (embedding.event headIndex) = _
       simpa [headIndex, outputLayout, eventCount] using embedding.layout_eq headIndex
-    serviceCanonicalPolicy setup mode deadline leaks wholeProfile owner (execution.recall owner)
+    serviceCanonicalPolicy setup mode deadline leaks wholeProfile owner (execution.logs owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner) =
       (if inactive : owner ∈ source.defaulted then PMF.pure none
         else commitKernel profile (source.view owner) inactive).map fun binding =>
         (serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner
-        (execution.recall owner)
+        (execution.logs owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner)
         (embedding.event headIndex)
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) binding) := by
@@ -211,7 +211,7 @@ theorem serviceCanonicalPolicy_commit_of_observation {Γ : SourceCtx Player L}
       exact inactive
     rw [dite_eq_left nativeInactive, dite_eq_left inactive, PMF.pure_map]
     rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_defaulted leaks owner
-      (execution.recall owner)
+      (execution.logs owner)
       (execution.observe (serviceApplication setup mode deadline leaks) owner) event _
       nativeInactive]
   · have nativeActive : owner ∉ execution.application.config.defaulted := by
@@ -263,12 +263,12 @@ theorem sourceServiceCanonicalPolicy_commit {Γ : SourceCtx Player L}
         .binding owner payload := by
       change outputLayout setup.program (embedding.event headIndex) = _
       simpa [headIndex, outputLayout, eventCount] using embedding.layout_eq headIndex
-    serviceCanonicalPolicy setup mode deadline leaks wholeProfile owner (execution.recall owner)
+    serviceCanonicalPolicy setup mode deadline leaks wholeProfile owner (execution.logs owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner) =
       (if inactive : owner ∈ source.defaulted then PMF.pure none
         else commitKernel profile (source.view owner) inactive).map fun binding =>
         (serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner
-        (execution.recall owner)
+        (execution.logs owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner)
         (embedding.event headIndex)
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) binding) := by
@@ -312,12 +312,12 @@ theorem sourceServiceCanonicalPolicy_reveal {Γ : SourceCtx Player L}
         .publication payload := by
       change outputLayout setup.program (embedding.event headIndex) = _
       simpa [headIndex, outputLayout, eventCount] using embedding.layout_eq headIndex
-    serviceCanonicalPolicy setup mode deadline leaks wholeProfile owner (execution.recall owner)
+    serviceCanonicalPolicy setup mode deadline leaks wholeProfile owner (execution.logs owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner) =
       (if inactive : owner ∈ source.defaulted then PMF.pure false
         else revealKernel profile (source.view owner) inactive).map fun disclose =>
         (serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner
-        (execution.recall owner)
+        (execution.logs owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner)
         (embedding.event headIndex)
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose) := by
@@ -339,7 +339,7 @@ theorem sourceServiceCanonicalPolicy_reveal {Γ : SourceCtx Player L}
       exact inactive
     rw [dite_eq_left nativeInactive, dite_eq_left inactive, PMF.pure_map]
     rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_defaulted leaks owner
-      (execution.recall owner)
+      (execution.logs owner)
       (execution.observe (serviceApplication setup mode deadline leaks) owner) event _
       nativeInactive]
   · have nativeActive : owner ∉ execution.application.config.defaulted := by

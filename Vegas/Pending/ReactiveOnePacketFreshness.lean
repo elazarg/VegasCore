@@ -28,13 +28,13 @@ private theorem recalled_submission_emitted
     (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
       (some control)) (who : Player)
     (entry : (runtime.reactiveApplication leaks).PlayerEntry)
-    (recorded : entry ∈ control.execution.recall who)
+    (recorded : entry ∈ control.execution.logs who)
     (material : (runtime.reactiveApplication leaks).Submission)
     (sent : entry.action.transmission = some material) :
     ∃ message, entry.emitted = some message ∧ message.sender = who ∧
       message.payload.call = material.call.packet := by
   let app := runtime.reactiveApplication leaks
-  let property := fun execution : app.Execution => ∀ who, ∀ entry ∈ execution.recall who,
+  let property := fun execution : app.Execution => ∀ who, ∀ entry ∈ execution.logs who,
     ∀ material, entry.action.transmission = some material →
       ∃ message, entry.emitted = some message ∧ message.sender = who ∧
         message.payload.call = material.call.packet
@@ -96,8 +96,8 @@ theorem MessageBounds.onePacket_permitted_binding_fresh
       scheduler).Trace (some control))
     (who : Player) (event : graph.EventId) (serial : Nat) (opening : Option (Raw L))
     (permitted : countPermits
-      ((runtime.reactiveApplication leaks).outputs (control.execution.recall who))
-      (runtime.localEnvelope leaks who (control.execution.recall who)
+      ((runtime.reactiveApplication leaks).outputs (control.execution.logs who))
+      (runtime.localEnvelope leaks who (control.execution.logs who)
         (control.execution.observe (runtime.reactiveApplication leaks) who)
         ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩) = true) :
     control.execution.application.candidates.lookup (who, .prepared serial) = .fresh := by
@@ -119,7 +119,7 @@ theorem MessageBounds.onePacket_permitted_binding_fresh
     responseCandidateSlot_spec runtime leaks entry.action selected
   obtain ⟨message, emitted, sender, call⟩ := recalled_submission_emitted runtime leaks
     (inputs.map State.initial) horizon scheduler rawTrace who entry recorded material sent
-  have output : message ∈ app.outputs (control.execution.recall who) :=
+  have output : message ∈ app.outputs (control.execution.logs who) :=
     List.mem_filterMap.mpr ⟨entry, recorded, emitted⟩
   have input : message ∈ control.execution.network.inputs := by
     have present := output
@@ -130,12 +130,12 @@ theorem MessageBounds.onePacket_permitted_binding_fresh
   rw [call, packet] at previous
   have owns : owner = who := previous.2.2.1.trans sender
   subst owner
-  have earlier : EarlierOwnPacket (app.outputs (control.execution.recall who))
-      (runtime.localEnvelope leaks who (control.execution.recall who)
+  have earlier : EarlierOwnPacket (app.outputs (control.execution.logs who))
+      (runtime.localEnvelope leaks who (control.execution.logs who)
         (control.execution.observe app who)
         ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩) message := by
     refine ⟨output, sender, ?_⟩
-    change message.id.2 < app.submissionCount (control.execution.recall who)
+    change message.id.2 < app.submissionCount (control.execution.logs who)
     rw [← count.2.1 who, ← sender]
     exact count.2.2.serial_lt input
   exact correct.2.2.2.2 message earlier earlierEvent (call.trans packet)
@@ -151,11 +151,11 @@ theorem MessageBounds.onePacket_binding_fresh
     (who : Player) (event : graph.EventId) (serial : Nat) (opening : Option (Raw L))
     (member : (⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩ :
       (runtime.reactiveApplication leaks).Action) ∈ bounds.onePacketActions runtime leaks who
-        (control.execution.recall who)
+        (control.execution.logs who)
         (control.execution.observe (runtime.reactiveApplication leaks) who)) :
     control.execution.application.candidates.lookup (who, .prepared serial) = .fresh := by
   obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions runtime leaks who
-    (control.execution.recall who)
+    (control.execution.logs who)
     (control.execution.observe (runtime.reactiveApplication leaks) who) _).mp member
   apply bounds.onePacket_permitted_binding_fresh runtime leaks inputs horizon scheduler trace
     who event serial opening

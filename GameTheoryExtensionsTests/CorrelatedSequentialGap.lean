@@ -6,6 +6,9 @@ import GameTheory.Core.Equilibrium
 import GameTheory.Core.Utility
 import GameTheoryExtensions.Math.Probability.Uniform
 import GameTheoryExtensions.Math.Probability.Expectation
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # Normal-form correlation does not record credible continuations
 
@@ -117,11 +120,11 @@ instance (sequential who : Bool) (state : State) :
   ⟨((canonical sequential fun _ => false) who state).support_nonempty.choose⟩
 
 def reference (sequential : Bool) : (model sequential).BehavioralAssessment :=
-  .ofStrategy (fun _ _ => (PMF.uniformOfFintype _))
+  .ofStrategy (fun _ _ => (uniformLaw _))
 
 theorem reference_mixed (sequential : Bool) : (reference sequential).IsFullyMixed := by
   intro who site choice
-  exact PMF.mem_support_uniformOfFintype choice
+  exact mem_support_uniformLaw choice
 
 instance (sequential : Bool) : Finite (arena sequential).History :=
   (reference_mixed sequential).finite_history (bounded sequential) (fun _ _ => Set.toFinite _)
@@ -158,7 +161,9 @@ theorem chooser_kernel {sequential : Bool}
   have runs : running sequential history.state := not_not.mp live
   rcases history with ⟨state, trace⟩
   cases trace <;>
-    simp [InformationModel.randomizedChooser, InformationModel.behavioralJoint,
+    simp [InformationModel.randomizedChooser,
+      InformationModel.behavioralJoint_eq_independentProduct,
+      InformationModel.legalJointOfChoices,
       arena, kernel, runs, ← PMF.bind_pure_comp, Function.comp_def, InfoSignals.infoOf, signals]
 
 theorem run_states {sequential : Bool}

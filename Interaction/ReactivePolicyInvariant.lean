@@ -22,7 +22,7 @@ variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication P
 structure PolicyInvariant (players : Principal → app.Policy)
     (predicate : app.Execution → Prop) : Prop where
   respond : ∀ execution who action, predicate execution →
-    action ∈ (players who (execution.recall who) (execution.observe app who)).support →
+    action ∈ (players who (execution.logs who) (execution.observe app who)).support →
       predicate (execution.respond app who action)
   environment : ∀ execution next command, predicate execution →
     next ∈ (execution.environmentStep app command).support → predicate next

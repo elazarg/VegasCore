@@ -60,7 +60,7 @@ theorem SettlesFreshCalls.environment
   intro earlier entry later message split call sole
   rw [recallEq] at split
   have before := valid earlier entry later message split call sole
-  have member : entry ∈ execution.recall owner := by rw [split]; simp
+  have member : entry ∈ execution.logs owner := by rw [split]; simp
   obtain ⟨entered, activated, early⟩ := call.fits.exists
   change entry.beforeView.application.publicView.clock - entered + bound event <
     deadline event at early
@@ -136,7 +136,7 @@ theorem SettlesFreshCalls.environment
             have envelopeId : envelope.id = id := by simpa using List.find?_some found
             dsimp only
             by_cases sameId : id = message.id
-            · have output : message ∈ app.outputs (execution.recall owner) :=
+            · have output : message ∈ app.outputs (execution.logs owner) :=
                 List.mem_filterMap.mpr ⟨entry, member, call.emitted⟩
               rw [← facts.inputs owner] at output
               have inputMember := (List.mem_filter.mp output).1
@@ -346,7 +346,7 @@ theorem prescribed_packet_settles {horizon : Nat}
     (earlier later : List (serviceApplication setup mode deadline leaks).PlayerEntry)
     (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
-    (split : control.execution.recall owner = earlier ++ entry :: later)
+    (split : control.execution.logs owner = earlier ++ entry :: later)
     (call : FreshCall setup leaks owner event bound entry message)
     (sole : ∀ other ∈ earlier ++ later,
       ¬ EmitsOtherFor (serviceRuntime setup mode deadline) leaks other event message.id) :

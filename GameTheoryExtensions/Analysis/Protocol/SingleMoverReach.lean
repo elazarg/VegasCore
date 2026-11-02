@@ -48,7 +48,7 @@ theorem choicesOfLegal_mass_eq_one_of_none (policies : (player : ι) → M.Behav
 /-- **The other players' factor at a single-mover joint.** If every player but
 `mover` chooses nothing, the factor of the players other than `who` is one when
 `mover` is `who`, and `mover`'s mass otherwise. -/
-theorem opponentsStepProb_eq_of_single [Fintype ι] [DecidableEq ι]
+theorem opponentsStepProb_eq_of_single [E.FiniteMovers] [DecidableEq ι]
     (policies : (player : ι) → M.BehavioralPolicy player) (who : ι) {state : E.State}
     (trace : E.Trace state)
     (joint : { action : ∀ i, Option (E.Action i) // E.Legal state action }) (mover : ι)
@@ -65,11 +65,13 @@ theorem opponentsStepProb_eq_of_single [Fintype ι] [DecidableEq ι]
     · intro player _ different
       exact M.choicesOfLegal_mass_eq_one_of_none policies trace joint (others player different)
     · intro absent
-      exact (absent (Finset.mem_erase.mpr ⟨same, Finset.mem_univ _⟩)).elim
+      apply M.choiceProb_eq_one_of_not_active policies trace joint
+      intro active
+      exact absent (Finset.mem_erase.mpr ⟨same, E.mem_movers.mpr active⟩)
 
 /-- At a joint where nobody chooses anything, the other players' factor is
 one. -/
-theorem opponentsStepProb_eq_one_of_none [Fintype ι] [DecidableEq ι]
+theorem opponentsStepProb_eq_one_of_none [E.FiniteMovers] [DecidableEq ι]
     (policies : (player : ι) → M.BehavioralPolicy player) (who : ι) {state : E.State}
     (trace : E.Trace state)
     (joint : { action : ∀ i, Option (E.Action i) // E.Legal state action })

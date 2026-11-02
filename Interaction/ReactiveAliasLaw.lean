@@ -3,6 +3,7 @@
 import Interaction.ReactiveAliasStrategy
 import GameTheory.Protocol.Randomized
 import GameTheory.Protocol.Information
+import GameTheoryExtensions.Protocol.JointDistribution
 
 /-! # Exact history laws for response normalization
 
@@ -20,7 +21,7 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.P
 variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication Principal}
   (normal : app.SubmissionNormalization) (raw : app.ResponseMenu)
   (stable : ∀ who past view,
-    raw.actions who (normal.recall who past) view = raw.actions who past view)
+    raw.actions who (normal.logs who past) view = raw.actions who past view)
   (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
 def optionChoice (who : Principal) (observed : app.Info) (chosen : Option app.Action) :
@@ -94,7 +95,7 @@ def legalJoint (before : app.ProtocolState)
   ⟨normal.joint before choices.1,
     normal.legal_joint raw stable initial horizon scheduler before choices.1 choices.2⟩
 
-variable [Fintype Principal]
+variable [Finite Principal]
 
 include projects in
 theorem behavioralJoint_projection {before}
@@ -105,8 +106,9 @@ theorem behavioralJoint_projection {before}
       ((normal.menu raw).information initial horizon scheduler).behavioralJoint source
         (normal.trace raw stable initial horizon scheduler prior)
         ((normal.state_terminal before).not.mpr running) := by
+  let : Fintype Principal := Fintype.ofFinite Principal
   apply pmf_map_injective Subtype.val_injective
-  rw [PMF.map_comp, InformationModel.behavioralJoint_map_val]
+  rw [PMF.map_comp, InformationModel.behavioralJoint_map_val_eq_product]
   change (((raw.information initial horizon scheduler).behavioralJoint native prior running).map
       (fun choices => normal.joint before choices.1)) = _
   calc
@@ -115,7 +117,7 @@ theorem behavioralJoint_projection {before}
     _ = (independentProduct fun who =>
         (native who ((raw.information initial horizon scheduler).infoOf who prior)).map
           Subtype.val).map (normal.joint before) := by
-      rw [InformationModel.behavioralJoint_map_val]
+      rw [InformationModel.behavioralJoint_map_val_eq_product]
     _ = independentProduct (fun who =>
         ((native who ((raw.information initial horizon scheduler).infoOf who prior)).map
           Subtype.val).map (fun action => normal.joint before (fun _ => action) who)) := by
@@ -127,7 +129,7 @@ theorem behavioralJoint_projection {before}
       normal.joint_marginal_projection raw stable initial horizon scheduler native source
         projects prior who)
 
-omit [Fintype Principal] in
+omit [Finite Principal] in
 theorem extension_projection
     (current : (raw.protocol initial horizon scheduler).History)
     (choices : {choices // (raw.protocol initial horizon scheduler).Legal current.state choices}) :

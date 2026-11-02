@@ -286,7 +286,7 @@ theorem completion_choice_pos (assessment : setup.intendedModel.BehavioralAssess
     obtain ⟨entry, entryPresent, material, _transmission, emitted, _packet⟩ :=
       facts.provenance.ledger message onLedger
     have recalled : message ∈ (application setup runtime leaks).outputs
-        (next.execution.recall message.sender) :=
+        (next.execution.logs message.sender) :=
       List.mem_filterMap.mpr ⟨entry, entryPresent, emitted⟩
     rw [← facts.inputs message.sender] at recalled
     exact (List.mem_filter.mp recalled).1

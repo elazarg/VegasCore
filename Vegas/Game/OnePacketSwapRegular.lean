@@ -263,10 +263,11 @@ theorem othersSourceWeight_mapTrace (assessment : setup.intendedModel.Behavioral
     (replayMatches_of_actorCompletions (runtime := runtime) assessment who _ matching), settled,
       mul_one]
 
-omit [DecidableEq (CellTy Player L)] in
+omit [Fintype Player] [DecidableEq (CellTy Player L)] in
 /-- Under a fully mixed assessment every intended history has positive
 counterfactual reach. -/
-theorem counterfactualReach_pos_of_mixed {assessment : setup.intendedModel.BehavioralAssessment}
+theorem counterfactualReach_pos_of_mixed [Finite Player]
+    {assessment : setup.intendedModel.BehavioralAssessment}
     (mixed : assessment.IsFullyMixed) (who : Player) (history : setup.intendedProtocol.History) :
     0 < setup.intendedModel.counterfactualReachProbability assessment.strategy who
       history.trace := by

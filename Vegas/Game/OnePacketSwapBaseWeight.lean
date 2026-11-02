@@ -111,7 +111,7 @@ theorem contentFactor_swap (swap : HiddenSwap (graph setup))
     (fixes : swap.Fixes actor) (before after : (application setup runtime leaks).Execution)
     {response : (application setup runtime leaks).Action}
     (member : response ∈ bounds.onePacketActions runtime leaks actor
-      (before.recall actor) (before.observe (application setup runtime leaks) actor)) :
+      (before.logs actor) (before.observe (application setup runtime leaks) actor)) :
     contentFactor setup runtime leaks assessment actor (swap.execution before) (swap.execution
       after)
         (swap.action response) =
@@ -134,7 +134,7 @@ private theorem response_of_legal {control : (application setup runtime leaks).C
     {actor : Player} (acting : control.actor = some actor) :
     ∃ response, joint actor = some response ∧
       response ∈ bounds.onePacketActions runtime leaks actor
-        (control.execution.recall actor) (control.execution.observe (application setup runtime
+        (control.execution.logs actor) (control.execution.observe (application setup runtime
           leaks)
           actor) := by
   have localLegal := legal.2 actor

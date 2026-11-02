@@ -5,6 +5,9 @@ import GameTheory.Math.Probability.ExpectationConditioning
 import GameTheoryExtensions.Math.Probability.Uniform
 import GameTheory.Math.Probability.Convergence
 import GameTheoryExtensions.Math.Probability.Support
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # Fully mixed splitting of finite private action aliases
 
@@ -31,7 +34,7 @@ variable {Raw Normal : Type} [Fintype Raw]
 def fiberUniform (action : Normal) : PMF Raw := by
   classical
   letI : Nonempty {raw : Raw // project raw = action} := ⟨⟨canonical action, retract action⟩⟩
-  exact (PMF.uniformOfFintype {raw : Raw // project raw = action}).map Subtype.val
+  exact (uniformLaw {raw : Raw // project raw = action}).map Subtype.val
 
 theorem fiberUniform_supported (action : Normal) (raw : Raw) :
     raw ∈ (fiberUniform project canonical retract action).support ↔ project raw = action := by
@@ -43,7 +46,7 @@ theorem fiberUniform_supported (action : Normal) (raw : Raw) :
   · rintro ⟨candidate, _, rfl⟩
     exact candidate.2
   · intro member
-    exact ⟨⟨raw, member⟩, mem_support_uniformOfFintype _, rfl⟩
+    exact ⟨⟨raw, member⟩, mem_support_uniformLaw _, rfl⟩
 
 theorem fiberUniform_project (action : Normal) :
     (fiberUniform project canonical retract action).map project = pure action := by

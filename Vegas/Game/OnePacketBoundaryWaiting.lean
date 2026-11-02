@@ -52,7 +52,7 @@ theorem counted_waiting_environment
     (owner : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner)
     (ready : execution.application.config.cut.Ready event)
-    (never : ∀ entry ∈ execution.recall owner, ¬ ActivatedAt setup runtime leaks owner event entry)
+    (never : ∀ entry ∈ execution.logs owner, ¬ ActivatedAt setup runtime leaks owner event entry)
     (command : (application setup runtime leaks).Command) (next : (application setup runtime
       leaks).Execution)
     (reached : next ∈ (execution.environmentStep (application setup runtime leaks)
@@ -67,7 +67,7 @@ theorem counted_waiting_environment
     have recorded := eventRecorded_of_pending setup leaks rawTrace owner event message
       pending sender named
     obtain ⟨entry, remembered, submitted⟩ :=
-      (runtime.eventRecorded_iff leaks (execution.recall owner) event).mp recorded
+      (runtime.eventRecorded_iff leaks (execution.logs owner) event).mp recorded
     have submissions := onePacket_ownSubmissionsAtTurn (runtime := runtime) bounds trace ordered
       point decoded intendedPoint owner
     exact never entry remembered (submissions entry remembered event submitted)
@@ -108,7 +108,7 @@ private theorem counted_waiting_transition
     (owner : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner)
     (ready : control.execution.application.config.cut.Ready event)
-    (never : ∀ entry ∈ control.execution.recall owner,
+    (never : ∀ entry ∈ control.execution.logs owner,
       ¬ ActivatedAt setup runtime leaks owner event entry)
     (going : control.actor ≠ some owner)
     (joint : Player → Option (application setup runtime leaks).Action)
@@ -118,7 +118,7 @@ private theorem counted_waiting_transition
     ∃ next, target = some next ∧
       next.execution.application.config = control.execution.application.config ∧
       next.execution.application.config.defaulted = ∅ ∧
-      next.execution.recall owner = control.execution.recall owner := by
+      next.execution.logs owner = control.execution.logs owner := by
   let app := application setup runtime leaks
   rcases control with ⟨remaining, active, execution⟩
   cases active with
@@ -178,7 +178,7 @@ theorem counted_waiting_until_firstActivation
     (owner : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some owner)
     (ready : execution.application.config.cut.Ready event)
-    (never : ∀ entry ∈ execution.recall owner, ¬ ActivatedAt setup runtime leaks owner event
+    (never : ∀ entry ∈ execution.logs owner, ¬ ActivatedAt setup runtime leaks owner event
       entry) :
     ∀ stopped ∈ (((Menu).information (initialLaw setup) horizon
       scheduler).runBehavioralUntil certificate players
@@ -187,7 +187,7 @@ theorem counted_waiting_until_firstActivation
       ∃ control, stopped.state = some control ∧ control.actor = some owner ∧
         control.execution.application.config = execution.application.config ∧
         control.execution.application.config.defaulted = ∅ ∧
-        control.execution.recall owner = execution.recall owner := by
+        control.execution.logs owner = execution.logs owner := by
   classical
   let model := (Menu).information (initialLaw setup) horizon scheduler
   let protocol := (Menu).protocol (initialLaw setup) horizon scheduler
@@ -197,7 +197,7 @@ theorem counted_waiting_until_firstActivation
     ∃ control, history.state = some control ∧
       control.execution.application.config = execution.application.config ∧
       control.execution.application.config.defaulted = ∅ ∧
-      control.execution.recall owner = execution.recall owner
+      control.execution.logs owner = execution.logs owner
   have initialProperty : property start := ⟨_, current, rfl, clear, rfl⟩
   have preserved : ∀ history, ¬ stopped history → ¬ protocol.terminal history.state →
       property history → ∀ next ∈ (model.runBehavioralFrom players 1 history).support,
@@ -277,13 +277,13 @@ theorem counted_boundary_firstActivation
         stopped.state = some ⟨remaining, some owner, anchor⟩ ∧
         anchor.application.config = execution.application.config ∧
         anchor.application.config.defaulted = ∅ ∧
-        anchor.recall owner = execution.recall owner ∧
+        anchor.logs owner = execution.logs owner ∧
         pendingEvent setup runtime leaks owner
-          (some (anchor.recall owner,
+          (some (anchor.logs owner,
             anchor.observe (application setup runtime leaks) owner)) = some event ∧
-        ∀ entry ∈ anchor.recall owner, ¬ ActivatedAt setup runtime leaks owner event entry := by
+        ∀ entry ∈ anchor.logs owner, ¬ ActivatedAt setup runtime leaks owner event entry := by
   have ready := (ready_iff_rank setup _ rank boundary.ordered event).mpr atRank
-  have never : ∀ entry ∈ execution.recall owner, ¬ ActivatedAt setup runtime leaks owner event
+  have never : ∀ entry ∈ execution.logs owner, ¬ ActivatedAt setup runtime leaks owner event
     entry := by
     intro entry remembered activated
     exact boundary.untouched event (by omega) owner entry remembered
@@ -302,16 +302,16 @@ theorem counted_boundary_firstActivation
     apply PublicView.ownTurn?_of_ownTurn
     exact State.ownTurn_of_ready _ (serviceGraph_revealRelaxedOrdered setup .sequential) owner event
       ((anchor.application.publicView_eventReady event).mpr (same ▸ ready)) owned
-  have finalNever : ∀ entry ∈ anchor.recall owner,
+  have finalNever : ∀ entry ∈ anchor.logs owner,
       ¬ ActivatedAt setup runtime leaks owner event entry := by
     rw [recalledEq]
     exact never
-  have unrecorded : runtime.eventRecorded leaks (anchor.recall owner) event = false := by
-    cases recorded : runtime.eventRecorded leaks (anchor.recall owner) event with
+  have unrecorded : runtime.eventRecorded leaks (anchor.logs owner) event = false := by
+    cases recorded : runtime.eventRecorded leaks (anchor.logs owner) event with
     | false => rfl
     | true =>
         obtain ⟨entry, remembered, submitted⟩ :=
-          (runtime.eventRecorded_iff leaks (anchor.recall owner) event).mp recorded
+          (runtime.eventRecorded_iff leaks (anchor.logs owner) event).mp recorded
         have submissions := onePacket_ownSubmissionsAtTurn (runtime := runtime) bounds trace (same
           ▸ boundary.ordered)
           point (same ▸ decoded) intendedPoint owner

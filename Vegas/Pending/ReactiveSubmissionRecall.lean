@@ -52,8 +52,8 @@ theorem submissionRecall_respond
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (response : (runtime.reactiveApplication leaks).Action) :
     runtime.submissionRecall leaks
-      ((execution.respond (runtime.reactiveApplication leaks) who response).recall who) =
-      runtime.submissionRecall leaks (execution.recall who) ++
+      ((execution.respond (runtime.reactiveApplication leaks) who response).logs who) =
+      runtime.submissionRecall leaks (execution.logs who) ++
         [runtime.submittedEvent? leaks response] := by
   simp only [submissionRecall, ReactiveApplication.Execution.respond, ↓reduceIte, List.map_append,
     List.map_cons, List.map_nil]
@@ -93,7 +93,7 @@ theorem eventRecorded_respond
     (response : (runtime.reactiveApplication leaks).Action) (event : graph.EventId)
     (submitted : runtime.submittedEvent? leaks response = some event) :
     runtime.eventRecorded leaks
-      ((execution.respond (runtime.reactiveApplication leaks) who response).recall who) event =
+      ((execution.respond (runtime.reactiveApplication leaks) who response).logs who) event =
         true := by
   apply (runtime.eventRecorded_iff leaks _ event).mpr
   simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
@@ -103,9 +103,9 @@ theorem eventRecorded_respond
 theorem eventRecorded_respond_of_recorded
     (execution : (runtime.reactiveApplication leaks).Execution) (who observer : Player)
     (response : (runtime.reactiveApplication leaks).Action) (event : graph.EventId)
-    (recorded : runtime.eventRecorded leaks (execution.recall observer) event = true) :
+    (recorded : runtime.eventRecorded leaks (execution.logs observer) event = true) :
     runtime.eventRecorded leaks
-      ((execution.respond (runtime.reactiveApplication leaks) who response).recall observer)
+      ((execution.respond (runtime.reactiveApplication leaks) who response).logs observer)
         event = true := by
   obtain ⟨entry, member, submitted⟩ := (runtime.eventRecorded_iff leaks _ event).mp recorded
   apply (runtime.eventRecorded_iff leaks _ event).mpr

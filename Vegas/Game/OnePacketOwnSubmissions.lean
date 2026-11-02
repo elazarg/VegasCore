@@ -48,7 +48,7 @@ owes a failure at the decoded point. -/
 def OwnTurnRecord (profile : BehavioralProfile setup.program)
     (execution : (application setup runtime leaks).Execution) : Prop :=
   ∃ rank, Nonempty (SourceResidual setup profile rank execution.application.config) ∧
-    ∀ who, ∀ entry ∈ execution.recall who, ∀ event,
+    ∀ who, ∀ entry ∈ execution.logs who, ∀ event,
       runtime.submittedEvent? leaks entry.action = some event →
         entry.beforeView.application.publicView.ownTurn? who = some event ∨
         DecodedHolds (ProtocolState.OwesFailure who setup.program) rank
@@ -68,7 +68,7 @@ theorem onePacket_submission_atTurn {horizon : Nat}
       (some ⟨remaining, some who, execution⟩))
     (residual : SourceResidual setup profile rank execution.application.config)
     (action : (application setup runtime leaks).Action)
-    (member : action ∈ bounds.onePacketActions runtime leaks who (execution.recall who)
+    (member : action ∈ bounds.onePacketActions runtime leaks who (execution.logs who)
       (execution.observe (application setup runtime leaks) who))
     (event : (graph setup).EventId)
     (submitted : runtime.submittedEvent? leaks action = some event) :
@@ -87,7 +87,7 @@ theorem onePacket_submission_atTurn {horizon : Nat}
     exact submitted
   obtain ⟨inputRecall, serialRecall, _⟩ := runtime.countRecall_history leaks trace
   have facts := legalFacts setup leaks horizon scheduler ⟨remaining, some who, execution⟩ trace
-  set envelope := runtime.localEnvelope leaks who (execution.recall who)
+  set envelope := runtime.localEnvelope leaks who (execution.logs who)
     (execution.observe app who) material with envelopeEq
   obtain ⟨tokenValid, correct, first⟩ := (countPermits_eq_true_iff _ _).mp permitted
   obtain ⟨named, namedEvent, tokenEq⟩ := (WitnessedPacket.tokenValid_iff _).mp tokenValid
@@ -119,7 +119,7 @@ theorem onePacket_submission_atTurn {horizon : Nat}
     · exfalso
       obtain ⟨entry, recorded, material, _transmission, emitted, _packet⟩ :=
         facts.provenance.ledger message onLedger
-      have recalled : message ∈ app.outputs (execution.recall who) := by
+      have recalled : message ∈ app.outputs (execution.logs who) := by
         exact List.mem_filterMap.mpr ⟨entry, messageSender ▸ recorded, emitted⟩
       have emitted : message ∈ execution.network.inputs := by
         rw [← inputRecall who] at recalled
@@ -181,7 +181,7 @@ theorem ownTurnRecord_history (profile : BehavioralProfile setup.program) (horiz
               | some action =>
                   rw [selected] at localLegal
                   have chosen : action ∈ bounds.onePacketActions runtime leaks who
-                      (execution.recall who) (execution.observe app who) := localLegal.2
+                      (execution.logs who) (execution.observe app who) := localLegal.2
                   have responded : some control = some (⟨remaining, none,
                       execution.respond app who action⟩ : app.Control) := by
                     change some control ∈ (PMF.pure (some (⟨remaining, none,
@@ -194,7 +194,7 @@ theorem ownTurnRecord_history (profile : BehavioralProfile setup.program) (horiz
                     (runtime.reactive_respond_application leaks execution who action).1
                   refine ⟨rank, ⟨configEq ▸ residual⟩, fun observer entry entryMember event
                     submitted => ?_⟩
-                  change entry ∈ (execution.respond app who action).recall observer at entryMember
+                  change entry ∈ (execution.respond app who action).logs observer at entryMember
                   change _ ∨ DecodedHolds _ rank
                     (execution.respond app who action).application.config
                   rw [configEq]
@@ -226,7 +226,7 @@ theorem ownTurnRecord_history (profile : BehavioralProfile setup.program) (horiz
                   obtain ⟨nextRank, ⟨nextResidual⟩⟩ := residual.path path
                   refine ⟨nextRank, ⟨nextResidual⟩, fun who entry entryMember event submitted =>
                     ?_⟩
-                  change entry ∈ next.recall who at entryMember
+                  change entry ∈ next.logs who at entryMember
                   rw [recallEq] at entryMember
                   rcases record who entry entryMember event submitted with turn | owed
                   · exact Or.inl turn

@@ -26,14 +26,14 @@ theorem activated_owner_response_prefix (runtime : EventGraphRuntime graph)
     ∃ before : (runtime.reactiveApplication leaks).Control,
       Nonempty (((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
         (some before)) ∧ before.actor = some owner ∧
-      ∃ response ∈ control.execution.recall owner,
+      ∃ response ∈ control.execution.logs owner,
         response.beforeView = before.execution.observe (runtime.reactiveApplication leaks) owner ∧
         response.beforeView.application.publicView = activation.beforeView.application := by
   let app := runtime.reactiveApplication leaks
   let paired (current : app.Control) (entry : app.EnvironmentEntry) (who : Player) : Prop :=
     ∃ before : app.Control,
       Nonempty ((app.protocol initial horizon scheduler).Trace (some before)) ∧
-        before.actor = some who ∧ ∃ response ∈ current.execution.recall who,
+        before.actor = some who ∧ ∃ response ∈ current.execution.logs who,
           response.beforeView = before.execution.observe app who ∧
           response.beforeView.application.publicView = entry.beforeView.application
   have provenance : ∀ {state} (_history : (app.protocol initial horizon scheduler).Trace state),
@@ -70,7 +70,7 @@ theorem activated_owner_response_prefix (runtime : EventGraphRuntime graph)
                   subst acting
                   left
                   have fresh : ∃ response ∈
-                      (execution.respond app who ((joint who).getD ⟨none⟩)).recall who,
+                      (execution.respond app who ((joint who).getD ⟨none⟩)).logs who,
                       response.beforeView = execution.observe app who := by
                     cases action : (joint who).getD ⟨none⟩ with
                     | mk transmission =>
@@ -90,7 +90,7 @@ theorem activated_owner_response_prefix (runtime : EventGraphRuntime graph)
                     obtain ⟨command, _, moved⟩ :=
                       Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
                     obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
-                    have recall := app.environmentStep_recall execution next command supported
+                    have logs := app.environmentStep_recall execution next command supported
                     have entries : next.environmentRecall = execution.environmentRecall ++
                         [⟨execution.observeEnvironment app, command⟩] := by
                       unfold ReactiveApplication.Execution.environmentStep at supported
@@ -104,7 +104,7 @@ theorem activated_owner_response_prefix (runtime : EventGraphRuntime graph)
                         obtain ⟨before, prefixTrace, actor, response, responded, viewed,
                     publicEqual⟩ :=
                     pairedBefore
-                        exact ⟨before, prefixTrace, actor, response, recall ▸ responded,
+                        exact ⟨before, prefixTrace, actor, response, logs ▸ responded,
                           viewed, publicEqual⟩
                       · cases waiting.1
                     · right

@@ -68,16 +68,16 @@ theorem ledgerPolicy_eq_at_history (initial : PMF app.State) (horizon : Nat)
     (scheduler : app.Scheduler) (control : app.Control)
     (trace : (app.protocol initial horizon scheduler).Trace (some control))
     (who : Principal) (policy : app.Policy) :
-    app.ledgerPolicy policy (control.execution.recall who) (control.execution.observe app who) =
-      policy (control.execution.recall who) (control.execution.observe app who) := by
+    app.ledgerPolicy policy (control.execution.logs who) (control.execution.observe app who) =
+      policy (control.execution.logs who) (control.execution.observe app who) := by
   have current : (control.execution.observe app who).ledgerOnly app =
       control.execution.observe app who :=
     PlayerView.ledgerOnly_eq_self app _
       (app.pendingKnowledge_empty unobserved initial horizon scheduler control trace who)
-  have past : (control.execution.recall who).map (PlayerEntry.ledgerOnly app) =
-      control.execution.recall who := by
+  have past : (control.execution.logs who).map (PlayerEntry.ledgerOnly app) =
+      control.execution.logs who := by
     calc
-      _ = (control.execution.recall who).map id := by
+      _ = (control.execution.logs who).map id := by
         apply List.map_congr_left
         intro entry member
         obtain ⟨before, ⟨earlier⟩, _active, seen⟩ :=

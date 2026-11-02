@@ -26,7 +26,7 @@ This is a proof readout; it is not a player's observation or extra state. -/
 def bindingTraffic (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (focal : Player) (execution : (runtime.reactiveApplication leaks).Execution) :=
-  (execution.network, execution.receipts, execution.environmentRecall, execution.recall focal,
+  (execution.network, execution.receipts, execution.environmentRecall, execution.logs focal,
     execution.application.playerView focal, execution.application.publicView)
 
 /-- Automatic completion preserves equality of the existing native traffic readout. -/

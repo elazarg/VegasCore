@@ -177,14 +177,14 @@ theorem assembled_intendedCommitment_history_comparisons
   have code : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload := by
     exact codeEq
-  let key := LateKey.ofView setup runtime leaks who (execution.recall who)
+  let key := LateKey.ofView setup runtime leaks who (execution.logs who)
     (execution.observe (application setup runtime leaks) who)
   have pendingHere := pending
   rw [actualAt] at pendingHere
   have decided := decidedEvent_eq_of_pending setup runtime leaks horizon scheduler
     pendingHere
     ((Menu).toRawTrace (initialLaw setup) horizon scheduler (current ▸ history.1.trace)) rfl
-    (lateKey_some (runtime := runtime) who (execution.recall who)
+    (lateKey_some (runtime := runtime) who (execution.logs who)
       (execution.observe (application setup runtime leaks) who))
   obtain ⟨replay, replayed⟩ := intendedHistory?_isSome_of_debtFree (runtime := runtime) wellFormed
     history.1.trace

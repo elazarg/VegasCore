@@ -4,6 +4,9 @@ import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 import GameTheory.Protocol.SingleMover
 import GameTheory.Protocol.StateKernel
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # Coalescing distinguishes outcome implementation from a fixed compiler
 
@@ -105,11 +108,11 @@ instance (split : Bool) (who : Unit) (state : State) :
   ⟨((canonical split false) who state).support_nonempty.choose⟩
 
 def reference (split : Bool) : (model split).BehavioralAssessment :=
-  .ofStrategy (fun _ _ => (PMF.uniformOfFintype _))
+  .ofStrategy (fun _ _ => (uniformLaw _))
 
 theorem reference_mixed (split : Bool) : (reference split).IsFullyMixed := by
   intro who site choice
-  exact PMF.mem_support_uniformOfFintype choice
+  exact mem_support_uniformLaw choice
 
 instance (split : Bool) : Finite (arena split).History :=
   (reference_mixed split).finite_history (bounded split) (fun _ _ => Set.toFinite _)

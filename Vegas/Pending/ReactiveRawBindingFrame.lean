@@ -28,7 +28,7 @@ theorem rawBinding_submit_hidden_congr
     (publicEq : left.application.publicView = right.application.publicView)
     (views : ∀ who, who ≠ owner →
       left.application.playerView who = right.application.playerView who)
-    (recall : ∀ who, who ≠ owner → left.recall who = right.recall who)
+    (logs : ∀ who, who ≠ owner → left.logs who = right.logs who)
     (event : graph.EventId) (serial : Nat) (first second : Option (Raw L)) :
     let app := runtime.reactiveApplication leaks
     let before := left.respond app owner
@@ -39,7 +39,7 @@ theorem rawBinding_submit_hidden_congr
       before.application.publicView = after.application.publicView ∧
       (∀ who, who ≠ owner →
         before.application.playerView who = after.application.playerView who) ∧
-      (∀ who, who ≠ owner → before.recall who = after.recall who) := by
+      (∀ who, who ≠ owner → before.logs who = after.logs who) := by
   let app := runtime.reactiveApplication leaks
   have foreign (execution : app.Execution) (who : Player) (different : who ≠ owner)
       (opening : Option (Raw L)) :
@@ -59,6 +59,6 @@ theorem rawBinding_submit_hidden_congr
       ((views who different).trans (foreign right who different second).symm)
   · intro who different
     exact (app.respond_recall_other left owner who different _).trans
-      ((recall who different).trans (app.respond_recall_other right owner who different _).symm)
+      ((logs who different).trans (app.respond_recall_other right owner who different _).symm)
 
 end Vegas.EventGraphRuntime

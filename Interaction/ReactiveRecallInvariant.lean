@@ -21,8 +21,8 @@ variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication P
 
 theorem respond_entry_origin (execution : app.Execution) (who observer : Principal)
     (action : app.Action) (entry : app.PlayerEntry)
-    (member : entry ∈ (execution.respond app who action).recall observer) :
-    entry ∈ execution.recall observer ∨
+    (member : entry ∈ (execution.respond app who action).logs observer) :
+    entry ∈ execution.logs observer ∨
       (observer = who ∧ entry.beforeView = execution.observe app who) := by
   by_cases same : observer = who
   · subst observer
@@ -45,12 +45,12 @@ theorem recorded_response_prefix
     (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (control : app.Control)
     (trace : (app.protocol initial horizon scheduler).Trace (some control))
-    (who : Principal) (entry : app.PlayerEntry) (recorded : entry ∈ control.execution.recall who) :
+    (who : Principal) (entry : app.PlayerEntry) (recorded : entry ∈ control.execution.logs who) :
     ∃ before : app.Control,
       Nonempty ((app.protocol initial horizon scheduler).Trace (some before)) ∧
       before.actor = some who ∧ entry.beforeView = before.execution.observe app who := by
   have origin : ∀ {state} (_history : (app.protocol initial horizon scheduler).Trace state),
-      state.elim True (fun current => ∀ who entry, entry ∈ current.execution.recall who →
+      state.elim True (fun current => ∀ who entry, entry ∈ current.execution.logs who →
         ∃ before : app.Control,
           Nonempty ((app.protocol initial horizon scheduler).Trace (some before)) ∧
           before.actor = some who ∧ entry.beforeView = before.execution.observe app who) := by
@@ -92,7 +92,7 @@ variable {Value : Type*} [Preorder Value]
 
 def Execution.RecallBound (observed : app.LocalObservation → Value) (value : app.State → Value)
     (execution : app.Execution) : Prop :=
-  ∀ who entry, entry ∈ execution.recall who →
+  ∀ who entry, entry ∈ execution.logs who →
     observed entry.beforeView.application ≤ value execution.application
 
 theorem recallBoundInvariant (observed : app.LocalObservation → Value) (value : app.State → Value)

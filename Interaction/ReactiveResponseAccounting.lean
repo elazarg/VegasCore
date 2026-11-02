@@ -43,7 +43,7 @@ private def Accounted (state : app.ProtocolState) : Prop :=
   match state with
   | none => True
   | some control =>
-      (∀ who, (control.execution.recall who).length +
+      (∀ who, (control.execution.logs who).length +
         (if control.actor = some who then 1 else 0) =
           (app.activationHistory control.execution).count who) ∧
       (∀ who, control.actor = some who → ∃ past view command,

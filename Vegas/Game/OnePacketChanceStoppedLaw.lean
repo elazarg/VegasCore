@@ -242,7 +242,7 @@ private theorem chance_control_harmonic [Fintype Player]
       simp only [ReactiveApplication.controlStep, ReactiveApplication.actor, Option.bind_some,
         ReactiveApplication.transition, ↓reduceIte, Option.getD_some, PMF.bind_bind,
         PMF.pure_bind, Option.map_some]
-      calc _ = (policies who (execution.recall who) (execution.observe app who)).bind
+      calc _ = (policies who (execution.logs who) (execution.observe app who)).bind
             (fun _ => (execution.application.config.step event ready action).map some) :=
             bind_congr_on_support _ fun response _ => by
               rw [(runtime.reactive_respond_application leaks execution who response).1]

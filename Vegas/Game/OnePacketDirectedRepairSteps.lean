@@ -31,8 +31,8 @@ structure DirectedBindingFrame (memory : BindingMemory runtime leaks) (owner : P
     extends BindingMemory.Frame runtime leaks memory owner original repaired where
   /-- Erasing private material from both actual recalls gives the same record. -/
   recalled : operationalRecall (runtime := runtime) (setup := setup) (leaks := leaks)
-    (original.recall owner) =
-    operationalRecall (runtime := runtime) (repaired.recall owner)
+    (original.logs owner) =
+    operationalRecall (runtime := runtime) (repaired.logs owner)
 
 namespace DirectedBindingFrame
 
@@ -42,7 +42,7 @@ variable {memory : BindingMemory runtime leaks} {owner : Player}
 /-- The repair starts from the actual execution and its actual recall. -/
 theorem atRecall (owner : Player) (execution : (application setup runtime leaks).Execution) :
     DirectedBindingFrame (runtime := runtime) (BindingMemory.atRecall runtime leaks
-      (execution.recall owner)) owner execution execution :=
+      (execution.logs owner)) owner execution execution :=
   ⟨BindingMemory.frame_atRecall runtime leaks owner execution, rfl⟩
 
 /-- Private unusability is repaired at the actual response, before any receipt

@@ -300,8 +300,8 @@ contains the earlier likelihood, coupling and observable-gain directions.
 ## Reuse boundary for formalization
 
 The word “component” has two different meanings here. In
-[ComponentCompletion](../GameTheoryExtensions/Analysis/Protocol/ComponentCompletion.lean),
-`GameTheory.Protocol.InformationModel.exists_consistent_pooled_completion` and
+[ComponentCompletion](../GameTheory/GameTheory/Analysis/Protocol/ComponentCompletion.lean),
+`GameTheory.Protocol.InformationModel.exists_consistent_completion_with_shared_mixture_weights` and
 `GameTheory.Protocol.InformationModel.exists_consistent_component_completion`
 construct equilibrating mixtures of each information agent's local action
 laws, optionally with weights pooled across agents. They do not assemble
@@ -345,7 +345,7 @@ The smaller foundation APIs are closer to the required proof:
 * `GameTheory.Protocol.InformationModel.informationMass_projection_of_proportional_reach`
   and
   `GameTheory.Protocol.InformationModel.bayesBelief_projection_of_proportional_reach`
-  in [ProportionalBeliefTransport](../GameTheoryExtensions/Analysis/Protocol/ProportionalBeliefTransport.lean)
+  in [BeliefTransport](../GameTheory/GameTheory/Analysis/Protocol/BeliefTransport.lean)
   provide the scalar generalization and are used by the actual source Bayes
   consumer. Their fiber-sum premise is
   `scale * target reach = summed raw reach`. The positive finite multiplier

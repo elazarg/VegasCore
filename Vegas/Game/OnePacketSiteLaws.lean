@@ -60,46 +60,46 @@ def SiteComponentShape (assessment : setup.intendedModel.BehavioralAssessment) (
       allowed history.state →
       ForcedState setup runtime leaks key.owner history.state →
       execution.application.config.cut.Ready event →
-      (runtime.eventRecorded leaks (execution.recall key.owner) event = false →
-        profile key.owner (some (execution.recall key.owner,
+      (runtime.eventRecorded leaks (execution.logs key.owner) event = false →
+        profile key.owner (some (execution.logs key.owner,
             execution.observe (application setup runtime leaks) key.owner)) =
           slotTrembledChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler scale
-            nonnegative le_one key.owner (some (execution.recall key.owner,
+            nonnegative le_one key.owner (some (execution.logs key.owner,
               execution.observe (application setup runtime leaks) key.owner))
             ((options (LateKey.ofView setup runtime leaks key.owner
-              (execution.recall key.owner)
+              (execution.logs key.owner)
                 (execution.observe (application setup runtime leaks) key.owner))).bind
               (lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment
-                key.owner (some (execution.recall key.owner,
+                key.owner (some (execution.logs key.owner,
                   execution.observe (application setup runtime leaks) key.owner))))
             (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
-              key.owner (some (execution.recall key.owner,
+              key.owner (some (execution.logs key.owner,
                 execution.observe (application setup runtime leaks) key.owner))))
             (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment
-              key.owner (some (execution.recall key.owner,
+              key.owner (some (execution.logs key.owner,
                 execution.observe (application setup runtime leaks) key.owner)))) ∧
-      (runtime.eventRecorded leaks (execution.recall key.owner) event = true →
+      (runtime.eventRecorded leaks (execution.logs key.owner) event = true →
         ∃ main : PMF ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-            scheduler).Choice key.owner (some (execution.recall key.owner,
+            scheduler).Choice key.owner (some (execution.logs key.owner,
               execution.observe (application setup runtime leaks) key.owner))),
           (main = honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
-              assessment key.owner (some (execution.recall key.owner,
+              assessment key.owner (some (execution.logs key.owner,
                 execution.observe (application setup runtime leaks) key.owner)) ∨
             ∃ others : PMF (LateOption slots), main = others.bind
               (lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment
-                key.owner (some (execution.recall key.owner,
+                key.owner (some (execution.logs key.owner,
                   execution.observe (application setup runtime leaks) key.owner)))) ∧
-          profile key.owner (some (execution.recall key.owner,
+          profile key.owner (some (execution.logs key.owner,
               execution.observe (application setup runtime leaks) key.owner)) =
             slotTrembledChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler scale
-              nonnegative le_one key.owner (some (execution.recall key.owner,
+              nonnegative le_one key.owner (some (execution.logs key.owner,
                 execution.observe (application setup runtime leaks) key.owner)) main
               (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon
                 scheduler
-                key.owner (some (execution.recall key.owner,
+                key.owner (some (execution.logs key.owner,
                   execution.observe (application setup runtime leaks) key.owner))))
               (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment
-                key.owner (some (execution.recall key.owner,
+                key.owner (some (execution.logs key.owner,
                   execution.observe (application setup runtime leaks) key.owner))))
 
 omit [Fintype Player] in
@@ -125,7 +125,7 @@ def OwnerUnsent (key : LateKey setup runtime leaks) : (application setup runtime
   | none => True
   | some control => ∀ event, (PublicationTurn (runtime := runtime) key event ∨ ∃ payload,
     BindingTurn (runtime := runtime) key event
-      payload) → runtime.eventRecorded leaks (control.execution.recall key.owner) event =
+      payload) → runtime.eventRecorded leaks (control.execution.logs key.owner) event =
         false
 
 /-- **The site shape restricted to unsent states is the late shape.** -/
@@ -153,7 +153,7 @@ theorem slotMove_of_recorded {control : (application setup runtime leaks).Contro
     (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
-    (recorded : runtime.eventRecorded leaks (control.execution.recall who) event = true)
+    (recorded : runtime.eventRecorded leaks (control.execution.logs who) event = true)
     (slot : Nat) :
     slotMove (runtime := runtime) control.execution who event slot = none := by
   have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
@@ -170,14 +170,14 @@ theorem slotMove_of_recorded {control : (application setup runtime leaks).Contro
     exfalso
     have first := ((countPermits_eq_true_iff _ _).mp permitted).2.2
     obtain ⟨inOutputs, owner, lower⟩ := earlierOwnPacket_of_output rawTrace who
-      (slotEnvelope setup runtime leaks who (control.execution.recall who)
+      (slotEnvelope setup runtime leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) event slot).payload
       message output
     apply first message ⟨inOutputs, owner, ?_⟩
     · rw [named]
       rfl
     · change message.id.2 < (application setup runtime leaks).submissionCount
-        (control.execution.recall who)
+        (control.execution.logs who)
       rw [← recalled.2.1 who]
       exact lower
   · rfl
@@ -209,27 +209,27 @@ theorem core_silent (assessment : setup.intendedModel.BehavioralAssessment)
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (recorded : runtime.eventRecorded leaks (control.execution.recall who) event = true)
+    (recorded : runtime.eventRecorded leaks (control.execution.logs who) event = true)
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) {slots : Nat}
     (main : PMF ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
       scheduler).Choice
-      who (some (control.execution.recall who,
+      who (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who))))
     (mainCases : main = honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
-        assessment who (some (control.execution.recall who,
+        assessment who (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who)) ∨
       ∃ others : PMF (LateOption slots), main = others.bind
         (lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who
-          (some (control.execution.recall who,
+          (some (control.execution.logs who,
             control.execution.observe (application setup runtime leaks) who)))) :
     ∀ choice ∈ (mix (scale ^ 2) (sq_nonneg _) (pow_le_one₀ nonnegative le_one)
         (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who
-          (some (control.execution.recall who,
+          (some (control.execution.logs who,
             control.execution.observe (application setup runtime leaks) who)))
         (mix scale nonnegative le_one
           (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
             who
-            (some (control.execution.recall who,
+            (some (control.execution.logs who,
               control.execution.observe (application setup runtime leaks) who))))
           main)).support,
       choice.1.getD ⟨none⟩ = ⟨none⟩ := by
@@ -255,12 +255,12 @@ theorem lateCore_silent (assessment : setup.intendedModel.BehavioralAssessment)
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (recorded : runtime.eventRecorded leaks (control.execution.recall who) event = true)
+    (recorded : runtime.eventRecorded leaks (control.execution.logs who) event = true)
     (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) {slots : Nat}
     (options : PMF (LateOption slots)) :
     ∀ choice ∈ (lateCore (runtime := runtime) (bounds := bounds) (horizon := horizon) (scheduler
       := scheduler)
-        assessment scale nonnegative le_one options who (some (control.execution.recall who,
+        assessment scale nonnegative le_one options who (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))).support,
       choice.1.getD ⟨none⟩ = ⟨none⟩ := by
   obtain ⟨_, slot, late, silence⟩ :=
@@ -287,8 +287,8 @@ theorem recorded_congr {remaining : Nat} {actor : Option Player}
     (same : operationalState setup runtime leaks (some ⟨remaining, actor, first⟩) =
       operationalState setup runtime leaks (some ⟨remaining, actor, second⟩))
     (who : Player) (event : (graph setup).EventId) :
-    runtime.eventRecorded leaks (first.recall who) event =
-      runtime.eventRecorded leaks (second.recall who) event := by
+    runtime.eventRecorded leaks (first.logs who) event =
+      runtime.eventRecorded leaks (second.logs who) event := by
   have firstRaw : ((application setup runtime leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
       (some ⟨remaining, actor, first⟩) :=
@@ -303,8 +303,8 @@ theorem recorded_congr {remaining : Nat} {actor : Option Player}
   apply Bool.eq_iff_iff.mpr
   rw [history_eventRecorded_iff (runtime := runtime) firstRaw who event, history_eventRecorded_iff
     (runtime := runtime) secondRaw who event]
-  change (∃ message ∈ (application setup runtime leaks).outputs (first.recall who), _) ↔
-    (∃ message ∈ (application setup runtime leaks).outputs (second.recall who), _)
+  change (∃ message ∈ (application setup runtime leaks).outputs (first.logs who), _) ↔
+    (∃ message ∈ (application setup runtime leaks).outputs (second.logs who), _)
   rw [outputs]
 
 /-- **The owner's binding law for the certificate's components.** -/
@@ -330,7 +330,7 @@ theorem ownerBindingLaw_of_siteComponents {LateOption' : Type}
   have turnBoth : PublicationTurn (runtime := runtime) key event ∨ ∃ payload, BindingTurn (runtime
     := runtime) key event payload :=
     Or.inr ⟨payload, turn⟩
-  by_cases recorded : runtime.eventRecorded leaks (execution.recall key.owner) event =
+  by_cases recorded : runtime.eventRecorded leaks (execution.logs key.owner) event =
       true
   · have decided := bindingTurn_of_bindingTurn (runtime := runtime) turn
     obtain ⟨_, ⟨outputEq, codeEq, node⟩, _⟩ := turn
@@ -352,16 +352,16 @@ theorem ownerBindingLaw_of_siteComponents {LateOption' : Type}
     have coreEq : PMF.map (commitMove (runtime := runtime) event key.owner
       payload execution ∘
         fun choice : (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
-          scheduler).Choice key.owner (some (execution.recall key.owner,
+          scheduler).Choice key.owner (some (execution.logs key.owner,
             execution.observe (application setup runtime leaks) key.owner))
               => choice.1.getD ⟨none⟩)
         (mix (scale ^ 2) (sq_nonneg _) (pow_le_one₀ nonnegative le_one)
           (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment
-            key.owner (some (execution.recall key.owner,
+            key.owner (some (execution.logs key.owner,
               execution.observe (application setup runtime leaks) key.owner)))
           (mix scale nonnegative le_one
             (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
-              key.owner (some (execution.recall key.owner,
+              key.owner (some (execution.logs key.owner,
                 execution.observe (application setup runtime leaks) key.owner)))) main)) =
         PMF.pure (some none) := by
       rw [map_congr_on_support (g := Function.const _ (some none)) _ fun choice supported => by
@@ -402,7 +402,7 @@ theorem ownerBindingLaw_of_siteComponents {LateOption' : Type}
           (some ⟨chosenRemaining, some key.owner, chosenExecution⟩) :=
         chosenCurrent ▸ chosenHistory.trace
       have chosenRecorded : runtime.eventRecorded leaks
-          (chosenExecution.recall key.owner) event = true := by
+          (chosenExecution.logs key.owner) event = true := by
         rw [recorded_congr (runtime := runtime) chosenHistory history chosenCurrent current same
           key.owner event]
         exact recorded
@@ -412,10 +412,10 @@ theorem ownerBindingLaw_of_siteComponents {LateOption' : Type}
     beta_reduce
     rw [coreEq, movesEq, PMF.pure_map]
     exact PMF.WithinTV.mix_right _ _ _ _ _
-  · have unsent : runtime.eventRecorded leaks (execution.recall key.owner)
+  · have unsent : runtime.eventRecorded leaks (execution.logs key.owner)
       event =
         false := by
-      cases value : runtime.eventRecorded leaks (execution.recall key.owner)
+      cases value : runtime.eventRecorded leaks (execution.logs key.owner)
         event
       · rfl
       · exact (recorded value).elim
@@ -461,7 +461,7 @@ theorem ownerOpeningLaw_of_siteComponents {LateOption' : Type}
   rcases control with ⟨remaining, actor, execution⟩
   change actor = some key.owner at acting
   subst acting
-  by_cases recorded : runtime.eventRecorded leaks (execution.recall key.owner) event =
+  by_cases recorded : runtime.eventRecorded leaks (execution.logs key.owner) event =
       true
   · obtain ⟨_, payload, binding, checks, outputEq, codeEq, view⟩ := turn
     have trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
@@ -502,7 +502,7 @@ theorem ownerOpeningLaw_of_siteComponents {LateOption' : Type}
           (some ⟨chosenRemaining, some key.owner, chosenExecution⟩) :=
         chosenCurrent ▸ chosenHistory.trace
       have chosenRecorded : runtime.eventRecorded leaks
-          (chosenExecution.recall key.owner) event = true := by
+          (chosenExecution.logs key.owner) event = true := by
         rw [recorded_congr (runtime := runtime) chosenHistory history chosenCurrent current
           chosenSame key.owner
           event]
@@ -513,7 +513,7 @@ theorem ownerOpeningLaw_of_siteComponents {LateOption' : Type}
         (ownTurn?_of_ready setup _ chosenReady (nodeView_resolve_actor outputEq codeEq))
         chosenRecorded scale nonnegative le_one (options key option (LateKey.ofView setup runtime
           leaks
-          key.owner (chosenExecution.recall key.owner)
+          key.owner (chosenExecution.logs key.owner)
           (chosenExecution.observe (application setup runtime leaks) key.owner)))
       simp only
       rw [map_congr_on_support (g := Function.const _ true) _ fun choice supported => by
@@ -527,30 +527,30 @@ theorem ownerOpeningLaw_of_siteComponents {LateOption' : Type}
     set core := mix (scale ^ 2) (sq_nonneg _) (pow_le_one₀ nonnegative le_one)
       (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment
         key.owner
-        (some (execution.recall key.owner,
+        (some (execution.logs key.owner,
           execution.observe (application setup runtime leaks) key.owner)))
       (mix scale nonnegative le_one
         (PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
-          key.owner (some (execution.recall key.owner,
+          key.owner (some (execution.logs key.owner,
             execution.observe (application setup runtime leaks) key.owner))))
               main) with coreEq
     have close := PMF.WithinTV.mix_right (scale ^ 3) (pow_nonneg nonnegative 3)
       (pow_le_one₀ nonnegative le_one)
       ((bounds.onePacketMenu runtime leaks).uniformPolicy (initialLaw setup) horizon
-        scheduler key.owner (some (execution.recall key.owner,
+        scheduler key.owner (some (execution.logs key.owner,
           execution.observe (application setup runtime leaks) key.owner))) core
     constructor
     · have unit : ∀ choice, 0 ≤ ((fun action : (application setup runtime leaks).Action =>
           if action.transmission = none then (1 : ℝ) else 0) ∘ fun choice :
             (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler).Choice
-              key.owner (some (execution.recall key.owner,
+              key.owner (some (execution.logs key.owner,
                 execution.observe (application setup runtime leaks) key.owner)) =>
             choice.1.getD ⟨none⟩) choice ∧
           ((fun action : (application setup runtime leaks).Action =>
             if action.transmission = none then (1 : ℝ) else 0) ∘ fun choice :
               (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
                 scheduler).Choice
-                key.owner (some (execution.recall key.owner,
+                key.owner (some (execution.logs key.owner,
                   execution.observe (application setup runtime leaks) key.owner)) =>
               choice.1.getD ⟨none⟩) choice ≤ 1 := fun choice => by
         simp only [Function.comp]
@@ -558,7 +558,7 @@ theorem ownerOpeningLaw_of_siteComponents {LateOption' : Type}
       have coreOne : expect core ((fun action : (application setup runtime leaks).Action =>
           if action.transmission = none then (1 : ℝ) else 0) ∘ fun choice :
             (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler).Choice
-              key.owner (some (execution.recall key.owner,
+              key.owner (some (execution.logs key.owner,
                 execution.observe (application setup runtime leaks) key.owner)) =>
             choice.1.getD ⟨none⟩) = 1 := by
         rw [expect_congr_on_support (g := fun _ => (1 : ℝ)) fun choice supported => by
@@ -575,19 +575,19 @@ theorem ownerOpeningLaw_of_siteComponents {LateOption' : Type}
         with restEq
       have unit : ∀ choice, 0 ≤ (rest ∘ fun choice :
             (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler).Choice
-              key.owner (some (execution.recall key.owner,
+              key.owner (some (execution.logs key.owner,
                 execution.observe (application setup runtime leaks) key.owner)) =>
             choice.1.getD ⟨none⟩) choice ∧
           (rest ∘ fun choice :
             (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler).Choice
-              key.owner (some (execution.recall key.owner,
+              key.owner (some (execution.logs key.owner,
                 execution.observe (application setup runtime leaks) key.owner)) =>
             choice.1.getD ⟨none⟩) choice ≤ 1 := fun choice => by
         simp only [Function.comp, restEq]
         split <;> norm_num
       have coreZero : expect core (rest ∘ fun choice :
             (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler).Choice
-              key.owner (some (execution.recall key.owner,
+              key.owner (some (execution.logs key.owner,
                 execution.observe (application setup runtime leaks) key.owner)) =>
             choice.1.getD ⟨none⟩) = 0 := by
         rw [expect_congr_on_support (g := fun _ => (0 : ℝ)) fun choice supported => by
@@ -598,10 +598,10 @@ theorem ownerOpeningLaw_of_siteComponents {LateOption' : Type}
       simp only [mul_one] at near
       rw [coreZero, sub_zero] at near
       exact (abs_le.mp near).2
-  · have unsent : runtime.eventRecorded leaks (execution.recall key.owner)
+  · have unsent : runtime.eventRecorded leaks (execution.logs key.owner)
       event =
         false := by
-      cases value : runtime.eventRecorded leaks (execution.recall key.owner)
+      cases value : runtime.eventRecorded leaks (execution.logs key.owner)
         event
       · rfl
       · exact (recorded value).elim

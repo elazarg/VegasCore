@@ -74,7 +74,8 @@ structure Execution where
   application : app.State
   network : MessageNetwork Principal app.Payload
   receipts : List (MessageId Principal × Bool)
-  recall : Principal → List app.PlayerEntry
+  /-- Each player's private record of observations, responses and emitted packets. -/
+  logs : Principal → List app.PlayerEntry
   environmentRecall : List app.EnvironmentEntry
 
 def Execution.initial (state : app.State) : app.Execution :=
@@ -121,8 +122,8 @@ def Execution.respond (execution : app.Execution) (who : Principal) (action : ap
   { execution with
     application := state
     network := network
-    recall := fun observer => if observer = who then execution.recall who ++
-      [⟨execution.observe app who, action, emitted⟩] else execution.recall observer }
+    logs := fun observer => if observer = who then execution.logs who ++
+      [⟨execution.observe app who, action, emitted⟩] else execution.logs observer }
 
 def Execution.includePending (execution : app.Execution) (id : MessageId Principal) :
     app.Execution :=

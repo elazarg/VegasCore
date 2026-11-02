@@ -27,7 +27,7 @@ private theorem include_hidden_congr
     (network : left.network = right.network) (receipts : left.receipts = right.receipts)
     (views : ∀ who, who ≠ hidden →
       left.application.playerView who = right.application.playerView who)
-    (recall : ∀ who, who ≠ hidden → left.recall who = right.recall who)
+    (logs : ∀ who, who ≠ hidden → left.logs who = right.logs who)
     (id : MessageId Player) (packet : WitnessedPacket graph)
     (found : left.network.lookup id = some ⟨id, packet⟩)
     (decision : (handle runtime left.application ⟨id, packet.call⟩).isSome =
@@ -41,7 +41,7 @@ private theorem include_hidden_congr
     first.network = second.network ∧ first.receipts = second.receipts ∧
       (∀ who, who ≠ hidden →
         first.application.playerView who = second.application.playerView who) ∧
-      (∀ who, who ≠ hidden → first.recall who = second.recall who) := by
+      (∀ who, who ≠ hidden → first.logs who = second.logs who) := by
   have rightFound : right.network.lookup id = some ⟨id, packet⟩ := network ▸ found
   dsimp only
   simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
@@ -53,14 +53,14 @@ private theorem include_hidden_congr
       reactiveApplication_handle_of_not_tokenValid runtime leaks state ⟨id, packet⟩
         (Bool.eq_false_iff.mpr valid)
     simp only [rejected, Option.getD_none, Option.isSome_none]
-    exact ⟨by rw [network], by rw [receipts], views, recall⟩
+    exact ⟨by rw [network], by rw [receipts], views, logs⟩
   have handler (state : State graph) :
       (runtime.reactiveApplication leaks).handle state ⟨id, packet⟩ =
         (handle runtime state ⟨id, packet.call⟩).map State.drain :=
     reactiveApplication_handle_of_tokenValid runtime leaks state ⟨id, packet⟩ valid
   simp only [handler]
   simp only [Option.isSome_map]
-  refine ⟨by rw [network], by rw [receipts, decision], ?_, recall⟩
+  refine ⟨by rw [network], by rw [receipts, decision], ?_, logs⟩
   intro who different
   have same := handled who different
   cases first : handle runtime left.application ⟨id, packet.call⟩ <;>
@@ -80,7 +80,7 @@ theorem reactive_include_binding_hidden_congr
     (publicEq : left.application.publicView = right.application.publicView)
     (views : ∀ who, who ≠ hidden →
       left.application.playerView who = right.application.playerView who)
-    (recall : ∀ who, who ≠ hidden → left.recall who = right.recall who)
+    (logs : ∀ who, who ≠ hidden → left.logs who = right.logs who)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
     (evidence : Option (OpeningFact graph)) {token : Option (ReadinessToken graph)}
     (found : left.network.lookup id =
@@ -90,14 +90,14 @@ theorem reactive_include_binding_hidden_congr
     first.network = second.network ∧ first.receipts = second.receipts ∧
       (∀ who, who ≠ hidden →
         first.application.playerView who = second.application.playerView who) ∧
-      (∀ who, who ≠ hidden → first.recall who = second.recall who) := by
+      (∀ who, who ≠ hidden → first.logs who = second.logs who) := by
   have decision : (handle runtime left.application ⟨id, .commitment event candidate⟩).isSome =
       (handle runtime right.application ⟨id, .commitment event candidate⟩).isSome := by
     apply Bool.eq_iff_iff.mpr
     rw [← State.publicView_bindingIncludable runtime left.application id event candidate,
       ← State.publicView_bindingIncludable runtime right.application id event candidate, publicEq]
   apply include_hidden_congr runtime leaks left right hidden network receipts
-    views recall id ⟨.commitment event candidate, evidence, token⟩ found decision
+    views logs id ⟨.commitment event candidate, evidence, token⟩ found decision
   intro who different
   exact handle_commitment_playerView_congr runtime left.application right.application who
     id event candidate (views who different)

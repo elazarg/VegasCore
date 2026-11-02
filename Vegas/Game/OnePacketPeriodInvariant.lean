@@ -213,7 +213,7 @@ theorem sourceViewOf_eq_decodedPoint (who : Player)
   rw [decodedPoint_eq residual]
   exact projectView_observe setup runtime leaks who control.execution rank
     residual.checkpoint.ordered _
-    residual.decode (control.execution.recall who)
+    residual.decode (control.execution.logs who)
 
 /-- **The period invariant** holds at every state of a native history of the
 one-packet game ending in a forced state of `who`. -/
@@ -266,7 +266,7 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
               rw [picked] at localLegal
               simp only [picked, Option.getD_some] at keep ⊢
               have member : response ∈ bounds.onePacketActions runtime leaks actor
-                  (current.execution.recall actor)
+                  (current.execution.logs actor)
                   (current.execution.observe (application setup runtime leaks) actor) :=
                     localLegal.2
               have configEq := (runtime.reactive_respond_application leaks

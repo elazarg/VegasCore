@@ -48,7 +48,7 @@ theorem unpending_cases {who : Player} {site : (onePacketN).InformationSite who}
     (unpending : pendingEvent setup runtime leaks who site.1 = none)
     (history : (onePacketN).InformationHistory who site.1) :
     ∃ control : (application setup runtime leaks).Control, history.1.state = some control ∧
-      control.execution.recall who = past ∧
+      control.execution.logs who = past ∧
       control.execution.observe (application setup runtime leaks) who = view ∧
       (view.application.publicView.ownTurn? who = none ∨
         ∃ event, view.application.publicView.ownTurn? who = some event ∧

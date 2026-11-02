@@ -27,14 +27,14 @@ def restoreActions (past : List app.PlayerEntry) (actions : List app.Action) :
   List.zipWith (fun entry action => { entry with action := action }) past actions
 
 private theorem normalized_length (who : Principal) (past : List app.PlayerEntry) :
-    (normal.recall who past).length = past.length := by
+    (normal.logs who past).length = past.length := by
   induction past using List.reverseRecOn with
   | nil => rfl
   | append_singleton past entry ih =>
       simp only [normal.recall_append_action, List.length_append, List.length_singleton, ih]
 
 theorem restoreActions_recall (who : Principal) (past : List app.PlayerEntry) :
-    restoreActions (normal.recall who past) (past.map PlayerEntry.action) = past := by
+    restoreActions (normal.logs who past) (past.map PlayerEntry.action) = past := by
   induction past using List.reverseRecOn with
   | nil => rfl
   | append_singleton past entry ih =>
@@ -52,7 +52,7 @@ def aliasImplementation (who : Principal) (reference : List app.PlayerEntry)
   initial := PMF.pure (reference.map PlayerEntry.action)
   respond names input :=
     let restored := restoreActions input.1 names
-    let past := if names.length = input.1.length ∧ normal.recall who restored = input.1
+    let past := if names.length = input.1.length ∧ normal.logs who restored = input.1
       then restored else input.1
     (policy past input.2).map fun response =>
       (normal.action who past input.2 response,
@@ -61,7 +61,7 @@ def aliasImplementation (who : Principal) (reference : List app.PlayerEntry)
 theorem aliasImplementation_respond (who : Principal) (reference past : List app.PlayerEntry)
     (policy : app.Policy) (view : app.PlayerView) :
     (normal.aliasImplementation who reference policy).respond
-        (past.map PlayerEntry.action) (normal.recall who past, view) =
+        (past.map PlayerEntry.action) (normal.logs who past, view) =
       (policy past view).map fun response =>
         (normal.action who past view response, past.map PlayerEntry.action ++ [response]) := by
   simp only [aliasImplementation, restoreActions_recall, List.length_map,
@@ -100,7 +100,7 @@ theorem aliasImplementation_posterior_prefix (who : Principal)
 
 theorem aliasImplementation_posterior_reference (who : Principal)
     (reference : List app.PlayerEntry) (policy : app.Policy) :
-    (normal.aliasImplementation who reference policy).posterior (normal.recall who reference) =
+    (normal.aliasImplementation who reference policy).posterior (normal.logs who reference) =
       PMF.pure (reference.map PlayerEntry.action) :=
   normal.aliasImplementation_posterior_prefix who reference _ policy
     (normal.normalized_length who reference).le
@@ -109,8 +109,8 @@ variable [DecidableEq Principal]
 
 private theorem respond_action_names (execution : app.Execution) (who : Principal)
     (response : app.Action) :
-    ((execution.respond app who response).recall who).map PlayerEntry.action =
-      (execution.recall who).map PlayerEntry.action ++ [response] := by
+    ((execution.respond app who response).logs who).map PlayerEntry.action =
+      (execution.logs who).map PlayerEntry.action ++ [response] := by
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => simp only [Execution.respond, ↓reduceIte, List.map_append]; rfl
@@ -126,11 +126,11 @@ theorem aliasImplementation_resume (who : Principal) (reference : List app.Playe
       normal.action other past view response = response)
     (actor : Option Principal) (execution : app.Execution) (valid : execution.InputRecall app) :
     (normal.aliasImplementation who reference policy).resume who players actor
-        (normal.execution execution) ((execution.recall who).map PlayerEntry.action) =
+        (normal.execution execution) ((execution.logs who).map PlayerEntry.action) =
       (app.resume (Function.update
-        (fun other past view => players other (normal.recall other past) view) who policy)
+        (fun other past view => players other (normal.logs other past) view) who policy)
           actor execution).map (fun next =>
-            (normal.execution next, (next.recall who).map PlayerEntry.action)) := by
+            (normal.execution next, (next.logs who).map PlayerEntry.action)) := by
   cases actor with
   | none => simp only [Implementation.resume, ReactiveApplication.resume, PMF.pure_map]
   | some owner =>
@@ -139,7 +139,7 @@ theorem aliasImplementation_resume (who : Principal) (reference : List app.Playe
         simp only [Implementation.resume, ↓reduceIte, execution_observe,
           ReactiveApplication.resume, invoke, Function.update_self]
         change ((normal.aliasImplementation who reference policy).respond _
-          (normal.recall who (execution.recall who), execution.observe app who)).map _ = _
+          (normal.logs who (execution.logs who), execution.observe app who)).map _ = _
         rw [normal.aliasImplementation_respond, PMF.map_comp, PMF.map_comp]
         apply map_congr_on_support _
         intro response _
@@ -148,11 +148,11 @@ theorem aliasImplementation_resume (who : Principal) (reference : List app.Playe
           respond_action_names]
       · simp only [Implementation.resume, same, ↓reduceIte, execution_observe,
           ReactiveApplication.resume, invoke, Function.update_of_ne same, PMF.map_comp]
-        change (players owner (normal.recall owner (execution.recall owner))
+        change (players owner (normal.logs owner (execution.logs owner))
           (execution.observe app owner)).map _ = _
         apply map_congr_on_support _
         intro response supported
-        have unchanged : normal.action owner (execution.recall owner)
+        have unchanged : normal.action owner (execution.logs owner)
             (execution.observe app owner) response = response := by
           rw [← normal.action_recall]
           exact fixed owner _ _ response supported
@@ -168,11 +168,11 @@ theorem aliasImplementation_round (who : Principal) (reference : List app.Player
       normal.action other past view response = response)
     (scheduler : app.Scheduler) (execution : app.Execution) (valid : execution.InputRecall app) :
     (normal.aliasImplementation who reference policy).round who players scheduler
-        (normal.execution execution) ((execution.recall who).map PlayerEntry.action) =
+        (normal.execution execution) ((execution.logs who).map PlayerEntry.action) =
       (app.round scheduler (Function.update
-        (fun other past view => players other (normal.recall other past) view) who policy)
+        (fun other past view => players other (normal.logs other past) view) who policy)
           execution).map (fun next =>
-            (normal.execution next, (next.recall who).map PlayerEntry.action)) := by
+            (normal.execution next, (next.logs who).map PlayerEntry.action)) := by
   simp only [Implementation.round, ReactiveApplication.round, dispatch, PMF.map_bind]
   change (scheduler execution.environmentRecall (execution.observeEnvironment app)).bind _ = _
   apply bind_congr_on_support _
@@ -210,9 +210,9 @@ theorem aliasImplementation_run (who : Principal) (reference : List app.PlayerEn
     (scheduler : app.Scheduler) (count : Nat)
     (execution : app.Execution) (valid : execution.InputRecall app) :
     (normal.aliasImplementation who reference policy).run who players scheduler count
-        (normal.execution execution) ((execution.recall who).map PlayerEntry.action) =
+        (normal.execution execution) ((execution.logs who).map PlayerEntry.action) =
       (app.runRounds scheduler (Function.update
-        (fun other past view => players other (normal.recall other past) view) who policy)
+        (fun other past view => players other (normal.logs other past) view) who policy)
           count execution).map normal.execution := by
   induction count generalizing execution with
   | zero => simp only [Implementation.run_zero, runRounds, PMF.pure_map]
@@ -232,18 +232,18 @@ theorem aliasImplementation_behavioral_continuation (who : Principal) (policy : 
     (scheduler : app.Scheduler) (count : Nat) (actor : Option Principal)
     (execution : app.Execution) (valid : execution.InputRecall app) :
     (app.resume (Function.update players who
-        (normal.aliasImplementation who (execution.recall who) policy).policy)
+        (normal.aliasImplementation who (execution.logs who) policy).policy)
         actor (normal.execution execution)).bind
       (app.runRounds scheduler (Function.update players who
-        (normal.aliasImplementation who (execution.recall who) policy).policy) count) =
+        (normal.aliasImplementation who (execution.logs who) policy).policy) count) =
       ((app.resume (Function.update
-        (fun other past view => players other (normal.recall other past) view) who policy)
+        (fun other past view => players other (normal.logs other past) view) who policy)
           actor execution).bind (app.runRounds scheduler (Function.update
-            (fun other past view => players other (normal.recall other past) view) who policy)
+            (fun other past view => players other (normal.logs other past) view) who policy)
               count)).map normal.execution := by
   rw [← Implementation.realize_continuation]
-  change ((normal.aliasImplementation who (execution.recall who) policy).posterior
-    (normal.recall who (execution.recall who))).bind _ = _
+  change ((normal.aliasImplementation who (execution.logs who) policy).posterior
+    (normal.logs who (execution.logs who))).bind _ = _
   rw [normal.aliasImplementation_posterior_reference, PMF.pure_bind,
     normal.aliasImplementation_resume who _ policy players fixed actor execution valid,
     PMF.bind_map, PMF.map_bind]

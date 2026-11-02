@@ -135,9 +135,9 @@ theorem recalledBindingOpportunityRisk_respond
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (response : (runtime.reactiveApplication leaks).Action) :
     runtime.recalledBindingOpportunityRisk leaks bound who
-        ((execution.respond (runtime.reactiveApplication leaks) who response).recall who) =
-      (runtime.recalledBindingOpportunityRisk leaks bound who (execution.recall who) ||
-        runtime.firstUnprotectedBindingOpportunity leaks bound who (execution.recall who)
+        ((execution.respond (runtime.reactiveApplication leaks) who response).logs who) =
+      (runtime.recalledBindingOpportunityRisk leaks bound who (execution.logs who) ||
+        runtime.firstUnprotectedBindingOpportunity leaks bound who (execution.logs who)
           (execution.observe (runtime.reactiveApplication leaks) who)) := by
   simp only [ReactiveApplication.Execution.respond, ↓reduceIte,
     runtime.recalledBindingOpportunityRisk_append, recalledBindingOpportunityRiskFrom,
@@ -146,11 +146,11 @@ theorem recalledBindingOpportunityRisk_respond
 theorem recalledBindingOpportunityRisk_respond_clear
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (response : (runtime.reactiveApplication leaks).Action)
-    (clear : runtime.firstUnprotectedBindingOpportunity leaks bound who (execution.recall who)
+    (clear : runtime.firstUnprotectedBindingOpportunity leaks bound who (execution.logs who)
       (execution.observe (runtime.reactiveApplication leaks) who) = false) :
     runtime.recalledBindingOpportunityRisk leaks bound who
-        ((execution.respond (runtime.reactiveApplication leaks) who response).recall who) =
-      runtime.recalledBindingOpportunityRisk leaks bound who (execution.recall who) := by
+        ((execution.respond (runtime.reactiveApplication leaks) who response).logs who) =
+      runtime.recalledBindingOpportunityRisk leaks bound who (execution.logs who) := by
   rw [runtime.recalledBindingOpportunityRisk_respond, clear, Bool.or_false]
 
 /-- The signed envelope a submission would carry, computed from the owner's

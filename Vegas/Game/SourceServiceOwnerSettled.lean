@@ -52,7 +52,7 @@ theorem owner_packet_accepted {horizon : Nat}
   have facts := legalFacts setup leaks _ _ control trace
   obtain ⟨entry, entryMember, material, transmission, entryEmitted, state, known, packet⟩ :=
     facts.provenance.inputs message emitted
-  change entry ∈ control.execution.recall message.id.1 at entryMember
+  change entry ∈ control.execution.logs message.id.1 at entryMember
   change message.id.1 = who at authored
   rw [authored] at entryMember
   have fresh := conform entry entryMember material message transmission entryEmitted
@@ -84,18 +84,18 @@ theorem owner_packet_accepted {horizon : Nat}
       ¬ EmitsOtherFor (serviceRuntime setup mode deadline) leaks other event message.id := by
     intro other otherMember ⟨second, emittedOther, secondAuthor, secondAddressed,
       differentId⟩
-    have otherRecall : other ∈ control.execution.recall who := by
+    have otherRecall : other ∈ control.execution.logs who := by
       rw [split]
       rcases List.mem_append.mp otherMember with inside | inside
       · exact List.mem_append_left _ inside
       · exact List.mem_append_right _ (List.mem_cons_of_mem _ inside)
-    have output : second ∈ app.outputs (control.execution.recall who) :=
+    have output : second ∈ app.outputs (control.execution.logs who) :=
       List.mem_filterMap.mpr ⟨other, otherRecall, emittedOther⟩
     rw [← facts.inputs who] at output
     have secondMember := (List.mem_filter.mp output).1
     obtain ⟨issuer, issuerMember, _, issuerTransmission, issuerEmitted, _, _, issuerPacket⟩ :=
       facts.provenance.inputs second secondMember
-    change issuer ∈ control.execution.recall second.id.1 at issuerMember
+    change issuer ∈ control.execution.logs second.id.1 at issuerMember
     change second.id.1 = message.id.1 at secondAuthor
     rw [secondAuthor, authored] at issuerMember
     have issuerEvent : (serviceRuntime setup mode deadline).submittedEvent? leaks issuer.action =
@@ -314,7 +314,7 @@ theorem sourceServiceTurnPolicy_settledGood {horizon : Nat}
             app.packet (app.submit middle.application who material) who
               (middle.network.known who) material⟩
         let entry : app.PlayerEntry := ⟨middle.observe app who, response, some message⟩
-        have entryMember : entry ∈ (middle.respond app who response).recall who := by
+        have entryMember : entry ∈ (middle.respond app who response).logs who := by
           cases response
           cases submitted
           simp only [ReactiveApplication.Execution.respond, ↓reduceIte]

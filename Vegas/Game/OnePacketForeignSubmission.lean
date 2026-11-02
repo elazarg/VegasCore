@@ -40,7 +40,7 @@ theorem foreign_firstActivation_prefix_of_recorded
       ¬ ProtocolState.OwesFailure focal setup.program point)
     (owned : (graph setup).actor? event = some owner)
     (ready : control.execution.application.config.cut.Ready event)
-    (recorded : runtime.eventRecorded leaks (control.execution.recall owner) event = true) :
+    (recorded : runtime.eventRecorded leaks (control.execution.logs owner) event = true) :
     ∃ (before : (application setup runtime leaks).Control)
       (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some before))
       (response : (application setup runtime leaks).Action)
@@ -53,9 +53,9 @@ theorem foreign_firstActivation_prefix_of_recorded
           (some before) ⟨joint, legal⟩).support),
       TracePrefix startTrace prior ∧ TracePrefix (prior.extend joint legal realized) trace ∧
       before.actor = some owner ∧ joint owner = some response ∧
-      pendingEvent setup runtime leaks owner (some (before.execution.recall owner,
+      pendingEvent setup runtime leaks owner (some (before.execution.logs owner,
         before.execution.observe (application setup runtime leaks) owner)) = some event ∧
-      ∀ previous ∈ before.execution.recall owner,
+      ∀ previous ∈ before.execution.logs owner,
         ¬ ActivatedAt setup runtime leaks owner event previous := by
   obtain ⟨point, decoded, intended⟩ :=
     intended_of_clear_regular_notOwes (runtime := runtime) wellFormed source focal trace clear
@@ -69,8 +69,8 @@ theorem foreign_firstActivation_prefix_of_recorded
     residual.checkpoint.ordered _
     residual.decode intended owner
   obtain ⟨entry, remembered, submitted⟩ :=
-    (runtime.eventRecorded_iff leaks (control.execution.recall owner) event).mp recorded
-  have occurs : ∃ entry ∈ control.execution.recall owner,
+    (runtime.eventRecorded_iff leaks (control.execution.logs owner) event).mp recorded
+  have occurs : ∃ entry ∈ control.execution.logs owner,
       ActivatedAt setup runtime leaks owner event entry :=
     ⟨entry, remembered, submissions entry remembered event submitted⟩
   obtain ⟨before, prior, response, joint, legal, realized, isPrefix, acting, chosen, pending,

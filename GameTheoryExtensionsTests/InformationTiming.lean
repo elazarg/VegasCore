@@ -3,6 +3,9 @@
 import GameTheory.Core.Equilibrium
 import GameTheory.Math.Probability.ExpectationBind
 import GameTheoryExtensions.Math.Probability.Uniform
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # The same exogenous law with different decision information
 
@@ -18,7 +21,7 @@ namespace GameTheoryExtensionsTests.InformationTiming
 
 open GameTheory GameTheory.Math.Probability
 
-def fair : PMF Bool := PMF.uniformOfFintype Bool
+def fair : PMF Bool := uniformLaw Bool
 
 def reward (outcome : Bool × Bool) : ℝ := if outcome.1 = outcome.2 then 1 else 0
 
@@ -54,7 +57,7 @@ private theorem fixed_guess_value (action : Bool) :
     expect fair (fun bit => reward (bit, action)) = 1 / 2 := by
   rw [expect_eq_sum]
   cases action <;> norm_num [fair, reward, Fintype.sum_bool,
-    toReal_uniformOfFintype_apply]
+    toReal_uniformLaw_apply]
 
 /-- Even randomized hidden policies cannot improve on guessing. -/
 theorem hidden_value (profile : Profile hiddenForm.sig) :

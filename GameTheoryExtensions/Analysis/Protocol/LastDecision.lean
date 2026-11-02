@@ -20,8 +20,8 @@ namespace GameTheory.Protocol.InformationModel
 
 open GameTheory.Math.Probability ExecutionProtocol Filter
 
-variable {ι : Type} [Fintype ι] [DecidableEq ι]
-  {E : ExecutionProtocol ι} {M : InformationModel E}
+variable {ι : Type} [DecidableEq ι]
+  {E : ExecutionProtocol ι} [E.FiniteMovers] {M : InformationModel E}
 
 /-- A structural property of legal continuations, independent of strategies. -/
 def LastDecision (who : ι) : Prop :=

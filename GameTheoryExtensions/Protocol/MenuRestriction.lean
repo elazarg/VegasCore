@@ -252,19 +252,19 @@ theorem restrictMenu_ownPlay (who : ι) :
       cases joint who <;> rfl
 
 /-- Restricting menus preserves perfect recall. -/
-theorem restrictMenu_perfectRecall (recall : M.PerfectRecall) :
+theorem restrictMenu_perfectRecall (logs : M.PerfectRecall) :
     (M.restrictMenu menu adequate).PerfectRecall := by
   intro who first second firstTrace secondTrace same
   rw [restrictMenu_infoOf, restrictMenu_infoOf] at same
   rw [restrictMenu_ownPlay, restrictMenu_ownPlay]
-  exact recall who _ _ same
+  exact logs who _ _ same
 
 /-- Restricting menus preserves the decision antichain obtained from perfect
 recall. -/
-theorem restrictMenu_decisionInformationAntichain (recall : M.PerfectRecall) :
+theorem restrictMenu_decisionInformationAntichain (logs : M.PerfectRecall) :
     (M.restrictMenu menu adequate).DecisionInformationAntichain :=
   (M.restrictMenu menu adequate).decisionInformationAntichain_of_perfectRecall
-    (M.restrictMenu_perfectRecall menu adequate recall)
+    (M.restrictMenu_perfectRecall menu adequate logs)
 
 /-- **Menu restriction.** A model with fewer available actions and an adequate
 smaller menu embeds into the original one: identity on information values,

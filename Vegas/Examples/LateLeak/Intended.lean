@@ -2,7 +2,9 @@
 
 import Vegas.Examples.LateLeak.Impossibility
 import GameTheoryExtensions.Analysis.Protocol.LastDecision
-import Mathlib.Probability.Distributions.Uniform
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # The intended game
 
@@ -258,14 +260,14 @@ instance (late : Bool) (who : LateLeakRole) (info : LateLeakView) :
 def lateLeakUniformProfile (G : LateLeakParameters)
     (late : Bool) : LateLeakProfile G late := fun _ _ =>
   letI := Fintype.ofFinite
-  PMF.uniformOfFintype _
+  uniformLaw _
 
 theorem lateLeakUniformProfile_mixed (G : LateLeakParameters) (late : Bool) (who : LateLeakRole)
     (site : (lateLeakModel G late).InformationSite who)
     (choice : (lateLeakModel G late).Choice who site.1) :
     choice ∈ (lateLeakUniformProfile G late who site.1).support := by
   let _ := Fintype.ofFinite ((lateLeakModel G late).Choice who site.1)
-  exact PMF.mem_support_uniformOfFintype choice
+  exact mem_support_uniformLaw choice
 
 /-- The listener's safe answer after every success. -/
 def lateLeakSafePolicy (G : LateLeakParameters) (late : Bool) :

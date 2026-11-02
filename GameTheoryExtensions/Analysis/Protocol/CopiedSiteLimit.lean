@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import GameTheory.Analysis.Protocol.RestrictionIncentives
-import GameTheoryExtensions.Analysis.Protocol.ComponentCompletion
+import GameTheory.Analysis.Protocol.ComponentCompletion
 import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
 
 /-! # Sequential equilibrium from comparisons at copied sites
@@ -47,7 +47,7 @@ open Classical in
 /-- **Sequential equilibrium with pooled component agents.** Every agent plays a
 mixture of its fully supported components with the common weights of its pool,
 the weights of all pools being chosen by pooled rational completion
-(`exists_consistent_pooled_completion`): no common replacement of a pool's
+(`exists_consistent_completion_with_shared_mixture_weights`): no common replacement of a pool's
 weights raises the sum of its members' local continuation gains.
 Pooling the agents that differ only in what a cheap-talk move should not reveal
 makes those moves uninformative: all members move with one law.
@@ -197,7 +197,8 @@ theorem exists_sequentialEquilibrium_limit_of_pooled_comparisons_of_lawError
   let payoff (who : Player) (history : T.History) : ℝ := utility (targetObserve history) who
   obtain ⟨weights, sequence, target, index, played, mixed, bayes, increasing, converges,
       consistent, pooledValue, limitFacts⟩ :=
-    N.exists_consistent_pooled_completion targetRecall fallback certificate payoff pool component
+    N.exists_consistent_completion_with_shared_mixture_weights targetRecall fallback certificate
+      payoff pool component
       componentFull
   have gainEq (n : ℕ) (who : Player) (site : N.InformationSite who)
       (law : PMF (N.Choice who site.1)) :

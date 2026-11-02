@@ -167,7 +167,7 @@ theorem emittedEnvelope_of_opening {horizon : Nat} {scheduler : (application set
     {control : (application setup runtime leaks).Control} (current : history.state = some control)
     (who : Player) (action : (application setup runtime leaks).Action)
     (member : action ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who))
     {submission : (application setup runtime leaks).Submission}
     (sent : action.transmission = some submission)
@@ -273,9 +273,9 @@ theorem opensBinding_image_congr {horizon : Nat} {scheduler : (application setup
     (view : nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq)
     (firstAction secondAction : (application setup runtime leaks).Action)
     (firstMember : firstAction ∈ bounds.onePacketActions runtime leaks owner
-      (first.recall owner) (first.observe (application setup runtime leaks) owner))
+      (first.logs owner) (first.observe (application setup runtime leaks) owner))
     (secondMember : secondAction ∈ bounds.onePacketActions runtime leaks owner
-      (second.recall owner) (second.observe (application setup runtime leaks) owner))
+      (second.logs owner) (second.observe (application setup runtime leaks) owner))
     (firstOpens : OpensBinding (runtime := runtime) first event binding firstAction)
     (secondOpens : OpensBinding (runtime := runtime) second event binding secondAction) :
     pendingImage (runtime := runtime) event (some ⟨remaining, none, first.respond (application
@@ -344,7 +344,7 @@ def openedImage (key : LateKey setup runtime leaks) (state : Option (Operational
           operationalState setup runtime leaks (some ⟨witness.2.1, some key.owner, witness.2.2.1⟩) =
             state ∧
           witness.2.2.2 ∈ bounds.onePacketActions runtime leaks key.owner
-            (witness.2.2.1.recall key.owner)
+            (witness.2.2.1.logs key.owner)
             (witness.2.2.1.observe (application setup runtime leaks) key.owner) ∧
           OpensTurn (runtime := runtime) event key.owner witness.2.2.1
             witness.2.2.2 then
@@ -389,14 +389,14 @@ def OwnerOpeningLaw {LateOption : Type}
       control.execution.application.config.cut.Ready event →
       control.actor = some key.owner →
       |expect ((bounds.onePacketMenu runtime leaks).decodeProfile (initialLaw setup)
-          horizon scheduler profile key.owner (control.execution.recall
+          horizon scheduler profile key.owner (control.execution.logs
             key.owner)
           (control.execution.observe (application setup runtime leaks) key.owner))
           (fun action => if action.transmission = none then 1 else 0) -
         expect (silence key option (operationalState setup runtime leaks (some control)))
           (fun silent => if silent then 1 else 0)| ≤ δ₁ ∧
       expect ((bounds.onePacketMenu runtime leaks).decodeProfile (initialLaw setup)
-          horizon scheduler profile key.owner (control.execution.recall
+          horizon scheduler profile key.owner (control.execution.logs
             key.owner)
           (control.execution.observe (application setup runtime leaks) key.owner))
           (fun action => if action.transmission = none ∨
@@ -412,7 +412,7 @@ theorem controlStep_owner (players : Player → (application setup runtime leaks
     (remaining : Nat) (owner : Player) (execution : (application setup runtime leaks).Execution) :
     (application setup runtime leaks).controlStep (initialLaw setup) horizon scheduler players
         (some ⟨remaining, some owner, execution⟩) =
-      (players owner (execution.recall owner) (execution.observe (application setup runtime leaks)
+      (players owner (execution.logs owner) (execution.observe (application setup runtime leaks)
         owner)).map fun action =>
           some ⟨remaining, none, execution.respond (application setup runtime leaks) owner action⟩
             := by
@@ -470,7 +470,7 @@ theorem ownerStepClose_of_openingLaw {LateOption : Type}
         operationalState setup runtime leaks (some ⟨witness.2.1, some key.owner, witness.2.2.1⟩) =
           operationalState setup runtime leaks (some ⟨remaining, some key.owner, execution⟩) ∧
         witness.2.2.2 ∈ bounds.onePacketActions runtime leaks key.owner
-          (witness.2.2.1.recall key.owner)
+          (witness.2.2.1.logs key.owner)
           (witness.2.2.1.observe (application setup runtime leaks) key.owner) ∧
         OpensTurn (runtime := runtime) event key.owner witness.2.2.1
           witness.2.2.2 :=

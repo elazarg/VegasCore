@@ -21,7 +21,7 @@ namespace Interaction.ReactiveApplication.ResponseMenu
 
 open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability
 
-variable {Principal : Type} [DecidableEq Principal] [Fintype Principal]
+variable {Principal : Type} [DecidableEq Principal] [Finite Principal]
   {app : ReactiveApplication Principal} (menu : app.ResponseMenu)
   (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
@@ -39,6 +39,7 @@ theorem run_map_withinTV {Y : Type*}
       (((menu.information initial horizon scheduler).runBehavioralFrom profile fuel history).map
         fun final => φ final.state)
       ((fun law => law.bind image)^[fuel] (PMF.pure (φ history.state))) := by
+  let : Fintype Principal := Fintype.ofFinite Principal
   have stateLaw := menu.run_map_controlSteps initial horizon scheduler profile fuel history
   have lumped := (iterate_bind_map_withinTV _ φ image keep δ kept close fuel history.state
     start).2

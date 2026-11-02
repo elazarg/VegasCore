@@ -104,19 +104,19 @@ application state, receipts, scheduler recall and other players' recall agree. -
 theorem effects (execution : app.Execution) (who : Principal) (response : app.Action)
     (valid : execution.InputRecall app) :
     let normalized := execution.respond app who
-      (normal.action who (execution.recall who) (execution.observe app who) response)
+      (normal.action who (execution.logs who) (execution.observe app who) response)
     let original := execution.respond app who response
     normalized.application = original.application ∧ normalized.network = original.network ∧
       normalized.receipts = original.receipts ∧
       normalized.environmentRecall = original.environmentRecall ∧
-      ∀ observer, observer ≠ who → normalized.recall observer = original.recall observer := by
+      ∀ observer, observer ≠ who → normalized.logs observer = original.logs observer := by
   have others (first second : app.Action) : ∀ observer, observer ≠ who →
-      (execution.respond app who first).recall observer =
-        (execution.respond app who second).recall observer := by
+      (execution.respond app who first).logs observer =
+        (execution.respond app who second).logs observer := by
     intro observer different
     rw [app.respond_recall_other execution who observer different,
       app.respond_recall_other execution who observer different]
-  have known : ResponseMenu.knownPackets (execution.recall who) (execution.observe app who) =
+  have known : ResponseMenu.knownPackets (execution.logs who) (execution.observe app who) =
       execution.network.known who := (app.known_from_recall execution who valid).symm
   rcases response with ⟨transmission⟩
   cases transmission with

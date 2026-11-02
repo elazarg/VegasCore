@@ -38,17 +38,17 @@ theorem localEnvelope_eq_of_recall (execution : (runtime.reactiveApplication lea
     (input : execution.InputRecall (runtime.reactiveApplication leaks))
     (serial : execution.SerialRecall (runtime.reactiveApplication leaks)) (who : Player)
     (material : (runtime.reactiveApplication leaks).Submission) :
-    runtime.localEnvelope leaks who (execution.recall who)
+    runtime.localEnvelope leaks who (execution.logs who)
         (execution.observe (runtime.reactiveApplication leaks) who) material =
       ⟨(who, execution.network.nextSerial who), (runtime.reactiveApplication leaks).packet
         ((runtime.reactiveApplication leaks).submit execution.application who material) who
           (execution.network.known who) material⟩ := by
   let app := runtime.reactiveApplication leaks
-  have known : ReactiveApplication.ResponseMenu.knownPackets (execution.recall who)
+  have known : ReactiveApplication.ResponseMenu.knownPackets (execution.logs who)
       (execution.observe app who) = execution.network.known who :=
     (app.known_from_recall execution who input).symm
   unfold localEnvelope
-  change Message.mk (who, app.submissionCount (execution.recall who)) _ = _
+  change Message.mk (who, app.submissionCount (execution.logs who)) _ = _
   rw [← serial who, known]
   apply congrArg (Message.mk (who, execution.network.nextSerial who))
   change WitnessedPacket.mk _ _ _ = material.emit
@@ -97,11 +97,11 @@ theorem countPermits_respond (execution : (runtime.reactiveApplication leaks).Ex
     (material : (runtime.reactiveApplication leaks).Submission) :
     let next := execution.respond (runtime.reactiveApplication leaks) who ⟨some material⟩
     let message : Message Player (runtime.reactiveApplication leaks).Payload :=
-      runtime.localEnvelope leaks who (execution.recall who)
+      runtime.localEnvelope leaks who (execution.logs who)
         (execution.observe (runtime.reactiveApplication leaks) who) material
     next.network.inputs = execution.network.inputs ++ [message] ∧
       countPermits next.network.inputs message =
-        countPermits ((runtime.reactiveApplication leaks).outputs (execution.recall who))
+        countPermits ((runtime.reactiveApplication leaks).outputs (execution.logs who))
           message ∧
       ∀ other ∈ execution.network.inputs,
         countPermits next.network.inputs other = countPermits execution.network.inputs other := by
@@ -112,7 +112,7 @@ theorem countPermits_respond (execution : (runtime.reactiveApplication leaks).Ex
   have inputs : next.network.inputs = execution.network.inputs ++ [message] := by
     change (execution.respond app who ⟨some material⟩).network.inputs =
       List.append execution.network.inputs [runtime.localEnvelope leaks who
-        (execution.recall who) (execution.observe app who) material]
+        (execution.logs who) (execution.observe app who) material]
     rw [envelope]
     rfl
   have senderEq : message.sender = who := rfl
@@ -148,7 +148,7 @@ theorem countClean_respond (execution : (runtime.reactiveApplication leaks).Exec
     (clean : runtime.CountClean leaks execution) (who : Player)
     (action : (runtime.reactiveApplication leaks).Action)
     (allowed : action.transmission = none ∨
-      runtime.OnePacketResponse leaks who (execution.recall who)
+      runtime.OnePacketResponse leaks who (execution.logs who)
         (execution.observe (runtime.reactiveApplication leaks) who) action) :
     runtime.CountClean leaks
       (execution.respond (runtime.reactiveApplication leaks) who action) := by

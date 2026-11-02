@@ -96,8 +96,8 @@ theorem forcedAgent_of_responder_preserving_repair (wellFormed : setup.WellForme
         (onePacketInformation setup runtime leaks bounds horizon scheduler).ownPlay responder
           image := by
     rw [onePacket_ownPlay_recall, onePacket_ownPlay_recall]
-    change (application setup runtime leaks).recallOwnPlay (original.execution.recall responder) =
-      (application setup runtime leaks).recallOwnPlay (repaired.execution.recall responder)
+    change (application setup runtime leaks).recallOwnPlay (original.execution.logs responder) =
+      (application setup runtime leaks).recallOwnPlay (repaired.execution.logs responder)
     exact congrArg _ (congrArg Prod.fst sameInput)
   have active : (onePacketProtocol setup runtime leaks bounds horizon scheduler).active (some
     control)

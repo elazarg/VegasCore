@@ -117,7 +117,7 @@ theorem certificate_responseMass_le_of_operationally_equal (who : Player) (n : �
     (forcedActor : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks)
       (initialLaw setup)
       horizon scheduler actor ((application setup runtime leaks).observe actor (some control)))
-    (canonical : DisclosureCanonical setup runtime leaks bounds actor (control.execution.recall
+    (canonical : DisclosureCanonical setup runtime leaks bounds actor (control.execution.logs
       actor)
       (control.execution.observe (application setup runtime leaks) actor))
     (atTurn : ∀ response named, joint actor = some response →

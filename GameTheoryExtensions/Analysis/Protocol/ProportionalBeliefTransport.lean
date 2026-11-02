@@ -20,7 +20,7 @@ namespace GameTheory.Protocol.InformationModel
 
 open scoped ENNReal
 
-variable {ι : Type*} [Fintype ι] {E T : ExecutionProtocol ι}
+variable {ι : Type*} {E T : ExecutionProtocol ι} [E.FiniteMovers] [T.FiniteMovers]
   (M : InformationModel E) (N : InformationModel T)
   (raw : (i : ι) → M.BehavioralPolicy i) (source : (i : ι) → N.BehavioralPolicy i)
   (project : E.History → T.History) [DecidableEq T.History]
@@ -33,30 +33,11 @@ variable {ι : Type*} [Fintype ι] {E T : ExecutionProtocol ι}
       ∑' original : M.InformationHistory who rawSite.1,
         if project original.1 = history.1 then M.historyReachWeight raw original.1 else 0)
 
-include maps fiber in
-/-- Proportional fiber sums scale the site's mass by the same multiplier. -/
-theorem informationMass_projection_of_proportional_reach :
-    M.informationMass raw who rawSite = scale * N.informationMass source who sourceSite := by
-  classical
-  unfold informationMass
-  rw [← ENNReal.tsum_mul_left]
-  simp_rw [fiber]
-  rw [ENNReal.tsum_comm]
-  apply tsum_congr
-  intro original
-  let image : N.InformationHistory who sourceSite.1 :=
-    ⟨project original.1, maps original.1 original.2⟩
-  have equal (target : N.InformationHistory who sourceSite.1) :
-      project original.1 = target.1 ↔ target = image := by
-    change image.1 = target.1 ↔ target = image
-    exact ⟨fun same => (Subtype.ext same).symm, fun same => by rw [same]⟩
-  simp only [equal, tsum_ite_eq]
-
 include fiber in
 /-- **Proportional Bayes projection.** A history map whose fiber sums of reach
 weights are a fixed positive finite multiple of the target reach weights
 transports the Bayes belief. -/
-theorem bayesBelief_projection_of_proportional_reach
+theorem bayesBelief_projection_of_positive_reach
     (scaleNonzero : scale ≠ 0)
     (rawAntichain : rawSite.IsHistoryAntichain)
     (sourceAntichain : sourceSite.IsHistoryAntichain)
@@ -77,21 +58,8 @@ theorem bayesBelief_projection_of_proportional_reach
       rw [← mass]
       exact ne_top_of_le_ne_top ENNReal.one_ne_top
         (M.informationMass_le_one raw who rawSite rawAntichain)) sourcePositive.ne').ne
-  ext history
-  rw [PMF.map_apply, N.bayesBelief_apply]
-  simp_rw [M.bayesBelief_apply]
-  rw [
-    ← ENNReal.mul_div_mul_left (N.historyReachWeight source history.1)
-      (N.informationMass source who sourceSite) scaleNonzero scaleFinite,
-    fiber history, ← mass, div_eq_mul_inv, ← ENNReal.tsum_mul_right]
-  apply tsum_congr
-  intro original
-  by_cases same : project original.1 = history.1
-  · have equal : history = ⟨project original.1, maps original.1 original.2⟩ :=
-      Subtype.ext same.symm
-    rw [ite_eq_left equal, ite_eq_left same, div_eq_mul_inv]
-  · have different : history ≠ ⟨project original.1, maps original.1 original.2⟩ :=
-      fun equal => same (congrArg Subtype.val equal).symm
-    rw [ite_eq_right different, ite_eq_right same, zero_mul]
+  exact M.bayesBelief_projection_of_proportional_reach N raw source project who
+    rawSite sourceSite maps scale fiber scaleNonzero scaleFinite rawAntichain
+    sourceAntichain sourcePositive
 
 end GameTheory.Protocol.InformationModel

@@ -4,7 +4,9 @@ import Vegas.Examples.LateLeak.SettleLateOutcome
 import Vegas.Examples.LateLeak.SettleLateListener
 import Vegas.Examples.LateLeak.SettleLateTurns
 import GameTheoryExtensions.Analysis.Protocol.LastDecision
-import Mathlib.Probability.Distributions.Uniform
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # The intended game of the settle-late game
 
@@ -366,14 +368,14 @@ instance (late : Bool) (who : LateLeakRole) (info : SettleLateView) :
 def settleLateUniformProfile (G : SettleLateParameters) (late : Bool) :
     SettleLateProfile G late := fun _ _ =>
   letI := Fintype.ofFinite
-  PMF.uniformOfFintype _
+  uniformLaw _
 
 theorem settleLateUniformProfile_mixed (G : SettleLateParameters) (late : Bool)
     (who : LateLeakRole) (site : (settleLateModel G late).InformationSite who)
     (choice : (settleLateModel G late).Choice who site.1) :
     choice ∈ (settleLateUniformProfile G late who site.1).support := by
   let _ := Fintype.ofFinite ((settleLateModel G late).Choice who site.1)
-  exact PMF.mem_support_uniformOfFintype choice
+  exact mem_support_uniformLaw choice
 
 /-- The listener's safe answer after every protected opening. -/
 def settleLateSafePolicy (G : SettleLateParameters) (late : Bool) :

@@ -507,10 +507,10 @@ private theorem foreign_binding_callback
       simpa [index, outputLayout, eventCount] using embedding.layout_eq index
     ∀ current : (application setup runtime leaks).Execution,
       current.application.config = execution.application.config →
-      sourceServiceCanonicalPolicy setup runtime leaks wholeProfile owner (current.recall owner)
+      sourceServiceCanonicalPolicy setup runtime leaks wholeProfile owner (current.logs owner)
           (current.observe (application setup runtime leaks) owner) =
         (commitKernel profile (source.view owner) active).map (fun choice =>
-          runtime.canonicalServiceDecision leaks owner (current.recall owner)
+          runtime.canonicalServiceDecision leaks owner (current.logs owner)
             (current.observe (application setup runtime leaks) owner) event
               (cast (congrArg EventField.Action outputEq.symm) choice)) := by
   intro index event outputEq current same
@@ -1132,10 +1132,10 @@ private theorem foreign_reveal_callback
       simpa [index, outputLayout, eventCount] using embedding.layout_eq index
     ∀ current : (application setup runtime leaks).Execution,
       current.application.config = execution.application.config →
-      sourceServiceCanonicalPolicy setup runtime leaks wholeProfile owner (current.recall owner)
+      sourceServiceCanonicalPolicy setup runtime leaks wholeProfile owner (current.logs owner)
           (current.observe (application setup runtime leaks) owner) =
         (revealKernel profile (source.view owner) active).map (fun choice =>
-          runtime.canonicalServiceDecision leaks owner (current.recall owner)
+          runtime.canonicalServiceDecision leaks owner (current.logs owner)
             (current.observe (application setup runtime leaks) owner) event
               (cast (congrArg EventField.Action outputEq.symm) choice)) := by
   intro index event outputEq current same

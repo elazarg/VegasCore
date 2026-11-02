@@ -33,7 +33,7 @@ variable {app} (menu : app.ResponseMenu) [DecidableEq Principal]
 def available (state : app.ProtocolState) (who : Principal) : Set app.Action :=
   match state with
   | none => Set.univ
-  | some control => menu.actions who (control.execution.recall who)
+  | some control => menu.actions who (control.execution.logs who)
       (control.execution.observe app who)
 
 /-- Only availability changes. Every realized transition is the original one. -/
@@ -51,14 +51,14 @@ def protocol (initial : PMF app.State) (horizon : Nat) (scheduler : app.Schedule
     cases state with
     | none => exact ⟨fun _ => none, fun _ => by simp [actor]⟩
     | some control =>
-        let action := fun who => (menu.nonempty who (control.execution.recall who)
+        let action := fun who => (menu.nonempty who (control.execution.logs who)
           (control.execution.observe app who)).choose
         refine ⟨fun who => if control.actor = some who then some (action who) else none, ?_⟩
         intro who
         by_cases active : control.actor = some who
         · simpa only [active, ↓reduceIte, actor, Option.bind_some, available,
             Finset.mem_coe] using
-            And.intro active (menu.nonempty who (control.execution.recall who)
+            And.intro active (menu.nonempty who (control.execution.logs who)
               (control.execution.observe app who)).choose_spec
         · simp [active, actor]
 

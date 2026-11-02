@@ -1,6 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketTrembles
+import GameTheory.Math.Probability.FiniteUniform
+import GameTheoryExtensions.Math.Probability.Uniform
+
+open GameTheory.Math.Probability
 
 /-! # Value-preserving slot trembles
 
@@ -100,7 +104,7 @@ def slotPairs (assessment : setup.intendedModel.BehavioralAssessment) (who : Pla
     (past : List (application setup runtime leaks).PlayerEntry)
     (view : (application setup runtime leaks).PlayerView) : PMF (Nat × Option (OwnAction Player
       L)) :=
-  (PMF.uniformOfFinset (trembleSlots setup bounds)
+  (uniformOn (trembleSlots setup bounds)
       (trembleSlots_nonempty setup bounds)).bind fun slot =>
     (asIfHonestProfile setup runtime leaks assessment who (some (past, view))).map (Prod.mk slot)
 
@@ -112,7 +116,7 @@ theorem slotPairs_apply (assessment : setup.intendedModel.BehavioralAssessment) 
     (view : (application setup runtime leaks).PlayerView) (slot : Nat)
     (choice : Option (OwnAction Player L)) :
     slotPairs setup runtime leaks bounds assessment who past view (slot, choice) =
-      PMF.uniformOfFinset (trembleSlots setup bounds) (trembleSlots_nonempty setup bounds) slot *
+      uniformOn (trembleSlots setup bounds) (trembleSlots_nonempty setup bounds) slot *
         asIfHonestProfile setup runtime leaks assessment who (some (past, view)) choice :=
   bind_map_pair_apply _ _ slot choice
 
@@ -188,7 +192,7 @@ theorem slotTrembledChoice_fullSupport {scale : ℝ} (positive : 0 < scale) (le_
   intro choice
   let := Fintype.ofFinite
     ((onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info)
-  exact mem_support_mix_left _ _ _ (pow_pos positive 3) (PMF.mem_support_uniformOfFintype choice)
+  exact mem_support_mix_left _ _ _ (pow_pos positive 3) (mem_support_uniformLaw choice)
 
 private theorem unit_mass {α : Type} (law : PMF α) (a : α) :
     0 ≤ (law a).toReal ∧ (law a).toReal ≤ 1 :=

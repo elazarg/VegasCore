@@ -39,7 +39,7 @@ theorem serviceDecision_authentic_opening
     (active : owner ∉ execution.application.config.defaulted)
     (stored : binding.get? execution.application.config.store = some (.success value)) :
     let app := runtime.reactiveApplication leaks
-    runtime.serviceDecision leaks owner (execution.recall owner) (execution.observe app owner)
+    runtime.serviceDecision leaks owner (execution.logs owner) (execution.observe app owner)
       event (cast (congrArg EventField.Action outputEq.symm) true) =
       ⟨some ((disclosureSubmission (.opening event candidate ⟨payload, value⟩)).normalizeReactive
           owner
@@ -64,7 +64,7 @@ theorem serviceDecision_authentic_opening
       owned localFixed
   have known := app.known_from_recall execution owner recalled
   change execution.network.known owner = ReactiveApplication.ResponseMenu.knownPackets
-    (execution.recall owner) (execution.observe app owner) at known
+    (execution.logs owner) (execution.observe app owner) at known
   have view : (execution.observe app owner).application =
       app.observePlayer execution.application owner := rfl
   have activeView : owner ∉
@@ -75,7 +75,7 @@ theorem serviceDecision_authentic_opening
       ⟨payload, value⟩)).normalizeReactive
           owner
       (app.observePlayer execution.application owner)
-      (ReactiveApplication.ResponseMenu.knownPackets (execution.recall owner)
+      (ReactiveApplication.ResponseMenu.knownPackets (execution.logs owner)
         (execution.observe app owner)))⟩ : app.Action) = _
   rw [← known]
 

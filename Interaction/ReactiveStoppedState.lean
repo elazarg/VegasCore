@@ -20,7 +20,7 @@ namespace Interaction.ReactiveApplication.ResponseMenu
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Math.Probability
 
-variable {Principal : Type} [DecidableEq Principal] [Fintype Principal]
+variable {Principal : Type} [DecidableEq Principal] [Finite Principal]
   {app : ReactiveApplication Principal} (menu : app.ResponseMenu)
   (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
 
@@ -34,6 +34,7 @@ theorem run_one_map_state_eq_of_state_eq
         History.state =
       ((menu.information initial horizon scheduler).runBehavioralFrom profile 1 second).map
         History.state := by
+  let : Fintype Principal := Fintype.ofFinite Principal
   rw [menu.run_map_controlSteps, menu.run_map_controlSteps, same]
 
 open Classical in
@@ -54,6 +55,7 @@ theorem expect_runBehavioralUntil_eq_of_state_eq
           profile stopped first) (fun stop => payoff stop.state) =
         expect ((menu.information initial horizon scheduler).runBehavioralUntil certificate
           profile stopped second) (fun stop => payoff stop.state) := by
+  let : Fintype Principal := Fintype.ofFinite Principal
   let model := menu.information initial horizon scheduler
   have boundNonneg : 0 ≤ bound := (abs_nonneg _).trans (bounded none)
   have stopBounded : ∀ stop : (menu.protocol initial horizon scheduler).History,

@@ -263,9 +263,9 @@ theorem counted_firstActivation_honest_successorBoundary
     (current : history.state = some ⟨remaining, some who, execution⟩)
     (clear : execution.application.config.defaulted = ∅)
     (event : (graph setup).EventId)
-    (pending : pendingEvent setup runtime leaks who (some (execution.recall who,
+    (pending : pendingEvent setup runtime leaks who (some (execution.logs who,
       execution.observe (application setup runtime leaks) who)) = some event)
-    (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup runtime leaks who event entry)
+    (never : ∀ entry ∈ execution.logs who, ¬ ActivatedAt setup runtime leaks who event entry)
     {rank : Nat} (ordered : execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)

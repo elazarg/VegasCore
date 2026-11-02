@@ -70,11 +70,11 @@ theorem assembled_firstActivation_disclosure_gain_le
     (history : (N).InformationHistory who site.1)
     {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
-    (atSite : site.1 = some (execution.recall who,
+    (atSite : site.1 = some (execution.logs who,
       execution.observe (application setup runtime leaks) who))
     (event : (graph setup).EventId)
     (pending : pendingEvent setup runtime leaks who site.1 = some event)
-    (never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup runtime leaks who event entry)
+    (never : ∀ entry ∈ execution.logs who, ¬ ActivatedAt setup runtime leaks who event entry)
     (key : LateKey setup runtime leaks) (decided : decidedEvent (runtime := runtime) key = some
       event)
     {payload : L.Ty} {binding : EventGraph.FieldRef (graph setup).layout (.binding who payload)}

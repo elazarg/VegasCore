@@ -33,21 +33,21 @@ theorem action_eq_of_outputs (who : Principal) (first second : List app.PlayerEn
         simp only [ResponseMenu.knownPackets, same]
       simp only [action, known]
 
-def recall (who : Principal) (past : List app.PlayerEntry) : List app.PlayerEntry :=
+def logs (who : Principal) (past : List app.PlayerEntry) : List app.PlayerEntry :=
   past.foldl (fun normalized entry => normalized ++
     [{ entry with action := normal.action who normalized entry.beforeView entry.action }]) []
 
-@[simp] theorem recall_nil (who : Principal) : normal.recall who [] = [] := rfl
+@[simp] theorem recall_nil (who : Principal) : normal.logs who [] = [] := rfl
 
 theorem recall_append (who : Principal) (past : List app.PlayerEntry) (entry : app.PlayerEntry) :
-    normal.recall who (past ++ [entry]) = normal.recall who past ++
+    normal.logs who (past ++ [entry]) = normal.logs who past ++
       [{ entry with
-          action := normal.action who (normal.recall who past)
+          action := normal.action who (normal.logs who past)
             entry.beforeView entry.action }] := by
-  simp only [recall, List.foldl_append, List.foldl_cons, List.foldl_nil]
+  simp only [logs, List.foldl_append, List.foldl_cons, List.foldl_nil]
 
 @[simp] theorem recall_outputs (who : Principal) (past : List app.PlayerEntry) :
-    app.outputs (normal.recall who past) = app.outputs past := by
+    app.outputs (normal.logs who past) = app.outputs past := by
   induction past using List.reverseRecOn with
   | nil => rfl
   | append_singleton past entry ih =>
@@ -59,18 +59,18 @@ theorem recall_append (who : Principal) (past : List app.PlayerEntry) (entry : a
 
 @[simp] theorem action_recall (who : Principal) (past : List app.PlayerEntry)
     (view : app.PlayerView) (response : app.Action) :
-    normal.action who (normal.recall who past) view response =
+    normal.action who (normal.logs who past) view response =
       normal.action who past view response :=
   normal.action_eq_of_outputs who _ _ view (normal.recall_outputs who past) response
 
 theorem recall_append_action (who : Principal) (past : List app.PlayerEntry)
     (entry : app.PlayerEntry) :
-    normal.recall who (past ++ [entry]) = normal.recall who past ++
+    normal.logs who (past ++ [entry]) = normal.logs who past ++
       [{ entry with action := normal.action who past entry.beforeView entry.action }] := by
   rw [recall_append, action_recall]
 
 def execution (original : app.Execution) : app.Execution :=
-  { original with recall := fun who => normal.recall who (original.recall who) }
+  { original with logs := fun who => normal.logs who (original.logs who) }
 
 @[simp] theorem execution_observe
     (original : app.Execution) (who : Principal) :
@@ -103,9 +103,9 @@ theorem execution_respond (original : app.Execution) (who : Principal) (response
     (valid : original.InputRecall app) :
     normal.execution (original.respond app who response) =
       (normal.execution original).respond app who
-        (normal.action who (original.recall who) (original.observe app who) response) := by
+        (normal.action who (original.logs who) (original.observe app who) response) := by
   have known : ResponseMenu.knownPackets (app := app)
-      (original.recall who) (original.observe app who) =
+      (original.logs who) (original.observe app who) =
       original.network.known who := (app.known_from_recall original who valid).symm
   rcases response with ⟨transmission⟩
   cases transmission with

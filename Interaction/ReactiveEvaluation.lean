@@ -25,7 +25,7 @@ def controlStep (initial : PMF app.State) (horizon : Nat) (scheduler : app.Sched
   | none => app.transition initial horizon scheduler state (fun _ => none)
   | some who => match state with
     | none => PMF.pure none
-    | some control => (players who (control.execution.recall who)
+    | some control => (players who (control.execution.logs who)
         (control.execution.observe app who)).bind fun action =>
           app.transition initial horizon scheduler state (fun observer =>
             if observer = who then some action else none)
@@ -54,7 +54,7 @@ theorem controlStep_marginals (initial : PMF app.State) (horizon : Nat)
       | some who =>
           have law := marginal who
           have observed : app.observe who (some ⟨remaining, some who, execution⟩) =
-              some (execution.recall who, execution.observe app who) := by simp [observe]
+              some (execution.logs who, execution.observe app who) := by simp [observe]
           rw [observed, encodePolicy, PMF.map_comp] at law
           have selected := congrArg (fun law => law.bind fun action =>
             PMF.pure (some (Control.mk remaining none

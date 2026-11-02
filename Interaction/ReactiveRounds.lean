@@ -23,7 +23,7 @@ variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication P
 
 def invoke (players : Principal → app.Policy) (who : Principal)
     (execution : app.Execution) : PMF app.Execution :=
-  (players who (execution.recall who) (execution.observe app who)).map
+  (players who (execution.logs who) (execution.observe app who)).map
     (execution.respond app who)
 
 def resume (players : Principal → app.Policy) (actor : Option Principal)

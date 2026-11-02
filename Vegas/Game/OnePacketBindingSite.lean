@@ -40,9 +40,9 @@ theorem onePacket_permitted_fresh {control : (application setup runtime leaks).C
     (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId) (slot : Nat)
-    (permitted : countPermits ((application setup runtime leaks).outputs (control.execution.recall
+    (permitted : countPermits ((application setup runtime leaks).outputs (control.execution.logs
       who))
-      (slotEnvelope setup runtime leaks who (control.execution.recall who)
+      (slotEnvelope setup runtime leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) event slot) = true) :
     (control.execution.observe (application setup runtime leaks) who).application.candidates
       (.prepared slot) = .fresh := by
@@ -82,7 +82,7 @@ theorem onePacket_honest_covered (assessment : setup.intendedModel.BehavioralAss
     (turn : control.execution.application.publicView.ownTurn? who = some event)
     (choice : Option (OwnAction Player L))
     (supported : choice ∈ (asIfHonestProfile setup runtime leaks assessment who
-      (some (control.execution.recall who,
+      (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who))).support) :
     CoveredBinding setup bounds event choice := by
   have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
@@ -126,7 +126,7 @@ theorem onePacket_coveredPendingBinding (assessment : setup.intendedModel.Behavi
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq) :
-    CoveredPendingBinding setup runtime leaks bounds assessment who (control.execution.recall who)
+    CoveredPendingBinding setup runtime leaks bounds assessment who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) event payload outputEq
       codeEq where
   turn := turn

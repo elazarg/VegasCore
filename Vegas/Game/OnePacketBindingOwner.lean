@@ -58,7 +58,7 @@ theorem emittedEnvelope_of_commitment {horizon : Nat}
     {control : (application setup runtime leaks).Control} (current : history.state = some control)
     (who : Player) (action : (application setup runtime leaks).Action)
     (member : action ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who))
     {submission : (application setup runtime leaks).Submission}
     (sent : action.transmission = some submission)
@@ -169,7 +169,7 @@ theorem committed_bindingImage {horizon : Nat} {scheduler : (application setup r
       [])
     (action : (application setup runtime leaks).Action)
     (member : action ∈ bounds.onePacketActions runtime leaks owner
-      (execution.recall owner) (execution.observe (application setup runtime leaks) owner))
+      (execution.logs owner) (execution.observe (application setup runtime leaks) owner))
     {submission : (application setup runtime leaks).Submission}
     (sent : action.transmission = some submission) {candidate : Handle (graph setup)}
     (call : submission.call.packet = .commitment event candidate)
@@ -258,7 +258,7 @@ theorem ownerBindingStep_close {horizon : Nat} {scheduler : (application setup r
     (pending : event ∉ execution.application.config.cut.completed)
     (moves : PMF (Option (Handle (graph setup)))) {δ : ℝ}
     (close : PMF.WithinTV δ (((bounds.onePacketMenu runtime leaks).decodeProfile
-        (initialLaw setup) horizon scheduler profile owner (execution.recall owner)
+        (initialLaw setup) horizon scheduler profile owner (execution.logs owner)
         (execution.observe (application setup runtime leaks) owner)).map
           (commitMove (runtime := runtime) event owner payload execution)) (moves.map some)) :
     PMF.WithinTV δ (((application setup runtime leaks).controlStep (initialLaw setup) horizon

@@ -2,6 +2,9 @@
 
 import Vegas.Examples.OddsEvensEquilibrium
 import GameTheory.Analysis.Protocol.BehavioralBayes
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # The uniform-bit profile and its Bayesian assessment in Odds–Evens -/
 
@@ -88,11 +91,11 @@ theorem intendedBitChoice_surjective (who : Player) (view : setup.ProtocolView w
   all_goals exact Eq.symm (by assumption)
 
 def uniformProfile : ∀ who, setup.intendedModel.BehavioralPolicy who :=
-  fun who view => (PMF.uniformOfFintype Bool).map (fun bit => intendedBitChoice bit who view)
+  fun who view => (uniformLaw Bool).map (fun bit => intendedBitChoice bit who view)
 
 theorem uniformProfile_map_val (who : Player) (view : setup.ProtocolView who) :
     (uniformProfile who view).map Subtype.val =
-      (PMF.uniformOfFintype Bool).map (fun bit => intendedBitAction bit who view) := by
+      (uniformLaw Bool).map (fun bit => intendedBitAction bit who view) := by
   rw [uniformProfile, PMF.map_comp]
   rfl
 
@@ -101,7 +104,7 @@ theorem uniformProfile_fullSupport (who : Player) (view : setup.ProtocolView who
     choice ∈ (uniformProfile who view).support := by
   obtain ⟨bit, rfl⟩ := intendedBitChoice_surjective who view choice
   rw [uniformProfile, PMF.support_map]
-  exact ⟨bit, PMF.mem_support_uniformOfFintype bit, rfl⟩
+  exact ⟨bit, mem_support_uniformLaw bit, rfl⟩
 
 def uniformAssessment : setup.intendedModel.BehavioralAssessment :=
   setup.intendedModel.bayesAssessment uniformProfile

@@ -176,7 +176,7 @@ theorem disclosureResolves_of_forced (wellFormed : setup.WellFormed)
       scheduler).Trace (some control))
     (who actor : Player) (forced : ForcedState setup runtime leaks who (some control))
     (other : actor ≠ who) :
-    DisclosureResolves setup runtime leaks actor (control.execution.recall actor)
+    DisclosureResolves setup runtime leaks actor (control.execution.logs actor)
       (control.execution.observe (application setup runtime leaks) actor) := by
   intro event pending owner payload binding checks outputEq codeEq node
   obtain ⟨turn, _, owned, _⟩ := pendingEvent_spec (runtime := runtime) (setup := setup) pending
@@ -213,7 +213,7 @@ theorem disclosureResolves_of_forced (wellFormed : setup.WellFormed)
           control.execution.application facts.binding owner event payload binding checks outputEq
           _ active discloses value stored
       apply runtime.canonicalServiceDecision_openable leaks owner
-        (control.execution.recall owner)
+        (control.execution.logs owner)
         (control.execution.observe (application setup runtime leaks) owner) event owner payload
           binding checks outputEq codeEq node active value _ candidate accepted candidateOwner
       change binding.get? ((graph setup).playerStore owner

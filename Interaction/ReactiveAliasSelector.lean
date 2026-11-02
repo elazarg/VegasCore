@@ -21,7 +21,7 @@ open GameTheory.Protocol GameTheory.Math.Probability
 variable {Principal : Type} [DecidableEq Principal] {app : ReactiveApplication Principal}
   (normal : app.SubmissionNormalization) (raw : app.ResponseMenu)
   (stable : ∀ who past view,
-    raw.actions who (normal.recall who past) view = raw.actions who past view)
+    raw.actions who (normal.logs who past) view = raw.actions who past view)
   (closed : ∀ who past view response, response ∈ raw.actions who past view →
     normal.action who past view response ∈ raw.actions who past view)
   (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
@@ -124,7 +124,7 @@ theorem selectorPolicy_supported_reference (who : Principal)
 
 omit [DecidableEq Principal] in
 @[simp] theorem recall_length (who : Principal) (past : List app.PlayerEntry) :
-    (normal.recall who past).length = past.length := by
+    (normal.logs who past).length = past.length := by
   induction past using List.reverseRecOn with
   | nil => rfl
   | append_singleton past entry ih =>
@@ -132,7 +132,7 @@ omit [DecidableEq Principal] in
 
 omit [DecidableEq Principal] in
 theorem recall_getElem? (who : Principal) (past : List app.PlayerEntry) (index : Nat) :
-    (normal.recall who past)[index]? = past[index]?.map (fun entry =>
+    (normal.logs who past)[index]? = past[index]?.map (fun entry =>
       { entry with action := normal.action who (past.take index) entry.beforeView entry.action }) :=
     by
   induction past using List.reverseRecOn with
@@ -158,7 +158,7 @@ the reference entry. The test for legal aliases is discharged at each recorded
 view; no source-compatible hidden history is singled out. -/
 theorem selector_reconstructs_recall (who : Principal) (reference past : List app.PlayerEntry)
     (source : ((normal.menu raw).information initial horizon scheduler).BehavioralPolicy who)
-    (normalized : normal.recall who past = normal.recall who reference)
+    (normalized : normal.logs who past = normal.logs who reference)
     (legal : ∀ index (inside : index < reference.length),
       reference[index].action ∈ raw.actions who (reference.take index) reference[index].beforeView)
     (played : ∀ index (inside : index < past.length), some past[index].action ∈
@@ -218,7 +218,7 @@ theorem selector_reconstructs_recall (who : Principal) (reference past : List ap
 /-- A positive selector history in the projected information fiber has the
 exact reference recall. The source fiber is therefore not narrowed by fixing
 the focal player's private alias choices. -/
-theorem selector_information_fiber [Fintype Principal]
+theorem selector_information_fiber [Finite Principal]
     (who : Principal) (reference : (raw.protocol initial horizon scheduler).History)
     (past : List app.PlayerEntry) (view : app.PlayerView)
     (referenceInfo : (raw.information initial horizon scheduler).infoOf who reference.trace =

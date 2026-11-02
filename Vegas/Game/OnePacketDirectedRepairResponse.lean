@@ -47,8 +47,8 @@ theorem respond (frame : DirectedBindingFrame (runtime := runtime) memory owner 
       | none =>
           simp only [ReactiveApplication.Execution.respond, operationalRecall,
             List.map_append, List.map_cons, List.map_nil, ite_true]
-          change operationalRecall (runtime := runtime) (original.recall owner) ++ [_] =
-            operationalRecall (runtime := runtime) (repaired.recall owner) ++ [_]
+          change operationalRecall (runtime := runtime) (original.logs owner) ++ [_] =
+            operationalRecall (runtime := runtime) (repaired.logs owner) ++ [_]
           rw [frame.recalled, frame.toFrame.operationalView]
       | some material =>
           change original.network.inputs = repaired.network.inputs ++ [_] at inputs
@@ -70,8 +70,8 @@ theorem respond (frame : DirectedBindingFrame (runtime := runtime) memory owner 
           have emitted := List.singleton_inj.mp (List.append_cancel_left inputs)
           simp only [ReactiveApplication.Execution.respond, operationalRecall,
             List.map_append, List.map_cons, List.map_nil, ite_true]
-          change operationalRecall (runtime := runtime) (original.recall owner) ++ [_] =
-            operationalRecall (runtime := runtime) (repaired.recall owner) ++ [_]
+          change operationalRecall (runtime := runtime) (original.logs owner) ++ [_] =
+            operationalRecall (runtime := runtime) (repaired.logs owner) ++ [_]
           rw [frame.recalled]
           congr 1
           apply congrArg List.singleton

@@ -83,11 +83,11 @@ theorem binding_submission
   have restored := memory.repairResponse_submit_input runtime leaks owner original repaired
     frame.lengths frame.past frame.observed frame.network event payload outputEq codeEq node
       serial opening fresh actualFresh rightReady
-  change remembered.restoreRecall runtime leaks (right.recall owner) = left.recall owner ∧
+  change remembered.restoreRecall runtime leaks (right.logs owner) = left.logs owner ∧
     remembered.shadow.inputView runtime leaks (right.observe app owner) =
-      left.observe app owner ∧ (right.recall owner).length = remembered.responses.length at restored
+      left.observe app owner ∧ (right.logs owner).length = remembered.responses.length at restored
   have paired := runtime.rawBinding_submit_hidden_congr leaks original repaired owner
-    frame.network frame.receipts frame.publicView frame.views frame.recall event serial
+    frame.network frame.receipts frame.publicView frame.views frame.logs event serial
       opening replacementOpening
   have physical : right = repaired.respond app owner
       ⟨some ⟨⟨.commitment event (owner, .prepared serial), replacementOpening⟩, .none⟩⟩ := by
@@ -95,7 +95,7 @@ theorem binding_submission
     rw [changed]
   change left.network = _ ∧ left.receipts = _ ∧ left.application.publicView = _ ∧
     (∀ who, who ≠ owner → left.application.playerView who = _) ∧
-    (∀ who, who ≠ owner → left.recall who = _) at paired
+    (∀ who, who ≠ owner → left.logs who = _) at paired
   rw [← physical] at paired
   change Frame runtime leaks remembered owner left right
   refine ⟨restored.1, restored.2.1, restored.2.2, paired.1, frame.service,
@@ -112,8 +112,8 @@ theorem binding_submission
     rw [(runtime.reactive_respond_application leaks original owner response).1,
       (runtime.reactive_respond_application leaks repaired owner change.1).1]
     exact frame.successful
-  · change runtime.submissionRecall leaks ((original.respond app owner response).recall owner) =
-      runtime.submissionRecall leaks ((repaired.respond app owner change.1).recall owner)
+  · change runtime.submissionRecall leaks ((original.respond app owner response).logs owner) =
+      runtime.submissionRecall leaks ((repaired.respond app owner change.1).logs owner)
     rw [runtime.submissionRecall_respond, runtime.submissionRecall_respond,
       frame.submissions, changed]
     rfl
@@ -156,25 +156,25 @@ theorem pending_binding_inclusion
         [⟨repaired.observeEnvironment app, .include id⟩] } := by
   let app := runtime.reactiveApplication leaks
   have paired := runtime.reactive_include_binding_hidden_congr leaks original repaired owner
-    frame.network frame.receipts frame.publicView frame.views frame.recall id event candidate
+    frame.network frame.receipts frame.publicView frame.views frame.logs id event candidate
       none found
   have own := memory.shadow.include_binding_input runtime leaks original repaired owner
     frame.observed frame.network clear event payload outputEq codeEq node id candidate sender owned
       found ready timely vacant unused leftFixed rightFixed rememberedAction rememberedValue
-  have recall (execution : app.Execution) :
-      (execution.includePending app id).recall = execution.recall := by
+  have logs (execution : app.Execution) :
+      (execution.includePending app id).logs = execution.logs := by
     simp only [ReactiveApplication.Execution.includePending]
     split <;> rfl
   have foundRight : repaired.network.lookup id =
       some ⟨id, ⟨.commitment event candidate, none, some ⟨event⟩⟩⟩ := frame.network ▸ found
   refine ⟨?_, own, ?_, paired.1, ?_, paired.2.2.1, paired.2.2.2, ?_, ?_, ?_⟩
   · change memory.restoreRecall runtime leaks
-      ((repaired.includePending app id).recall owner) =
-        (original.includePending app id).recall owner
-    rw [recall original, recall repaired]
+      ((repaired.includePending app id).logs owner) =
+        (original.includePending app id).logs owner
+    rw [logs original, logs repaired]
     exact frame.past
-  · change ((repaired.includePending app id).recall owner).length = memory.responses.length
-    rw [recall repaired]
+  · change ((repaired.includePending app id).logs owner).length = memory.responses.length
+    rw [logs repaired]
     exact frame.lengths
   · rw [frame.service, frame.environment]
   · intro query
@@ -230,9 +230,9 @@ theorem pending_binding_inclusion
         original.application.config.completion_bind_some_defaultEvent event owner payload outputEq
           codeEq, DefaultHistory.defaulted_record_none]
       exact clear
-  · change runtime.submissionRecall leaks ((original.includePending app id).recall owner) =
-      runtime.submissionRecall leaks ((repaired.includePending app id).recall owner)
-    rw [recall original, recall repaired]
+  · change runtime.submissionRecall leaks ((original.includePending app id).logs owner) =
+      runtime.submissionRecall leaks ((repaired.includePending app id).logs owner)
+    rw [logs original, logs repaired]
     exact frame.submissions
 
 end Vegas.EventGraphRuntime.BindingMemory.Frame

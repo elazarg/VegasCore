@@ -8,6 +8,7 @@ import Vegas.Game.OnePacketSequentialPreservation
 import Vegas.Pending.ExclusionStoppedBoundary
 import Vegas.Pending.ExclusionEvidence
 import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
+import GameTheoryExtensions.Protocol.JointDistribution
 
 /-! # Rare foreign first failures under actual assembled native counted play
 
@@ -154,10 +155,10 @@ theorem assembled_joint_mainActivation_failure_le
       focal (some control) draw.1}
   change (jointLaw.toOuterMeasure bad).toReal ≤ _
   by_cases eligible : ∃ owner, control.actor = some owner ∧ owner ≠ focal ∧
-      FirstActivation setup runtime leaks owner (some (control.execution.recall owner,
+      FirstActivation setup runtime leaks owner (some (control.execution.logs owner,
         control.execution.observe (application setup runtime leaks) owner))
   · obtain ⟨owner, active, different, first⟩ := eligible
-    let info := some (control.execution.recall owner,
+    let info := some (control.execution.logs owner,
       control.execution.observe (application setup runtime leaks) owner)
     let main := honestChoice setup runtime leaks bounds (initialLaw setup) horizon (NativeScheduler)
       (sequence n) owner info
@@ -171,11 +172,8 @@ theorem assembled_joint_mainActivation_failure_le
     have marginal : jointLaw.map (fun draw => draw.1 owner) =
         ((targetSequence n).strategy owner info).map Subtype.val := by
       calc
-        jointLaw.map (fun draw => draw.1 owner) =
-            (jointLaw.map Subtype.val).map (fun actions => actions owner) :=
-          by simp only [PMF.map_comp, Function.comp_def]
-        _ = (profile owner ((N).infoOf owner trace)).map Subtype.val := by
-          rw [(N).behavioralJoint_map_val, independentProduct_map_eval]
+        _ = (profile owner ((N).infoOf owner trace)).map Subtype.val :=
+          (N).behavioralJoint_map_player profile trace running owner
         _ = _ := by
           simpa only [profile, Function.update_of_ne different] using
             congrArg (fun input => ((targetSequence n).strategy owner input).map Subtype.val) infoEq
@@ -213,7 +211,7 @@ theorem assembled_joint_mainActivation_failure_le
             (law.toOuterMeasure optionBad).toReal) marginal
         _ = _ := by rw [PMF.toOuterMeasure_map_apply, choiceEvent]
     have clearInfo : info.isSome → runtime.ClearInput leaks info := fun _ =>
-      ⟨control.execution.recall owner,
+      ⟨control.execution.logs owner,
         control.execution.observe (application setup runtime leaks) owner, rfl, clear⟩
     calc
       (jointLaw.toOuterMeasure bad).toReal = _ := massEq

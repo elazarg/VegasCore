@@ -51,7 +51,7 @@ theorem processPendingHead_dispatch (players : Principal → app.Policy)
         Command.actor?, resume, Execution.observeEnvironment, MessageNetwork.publicView]
 
 theorem processPendingHead_recall (execution : app.Execution) :
-    (app.processPendingHead execution).recall = execution.recall := by
+    (app.processPendingHead execution).logs = execution.logs := by
   cases pending : execution.network.pending with
   | nil => simp [processPendingHead, pending]
   | cons message rest =>
@@ -97,7 +97,7 @@ theorem processPendingBatch_environmentLength (count : Nat) (execution : app.Exe
       omega
 
 theorem processPendingBatch_recall (count : Nat) (execution : app.Execution) :
-    (app.processPendingBatch count execution).recall = execution.recall := by
+    (app.processPendingBatch count execution).logs = execution.logs := by
   induction count generalizing execution with
   | zero => rfl
   | succ count ih => rw [processPendingBatch, ih, processPendingHead_recall]

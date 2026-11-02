@@ -107,7 +107,7 @@ theorem inert_submission (frame : Frame runtime leaks memory owner original repa
   · intro who different
     rw [app.respond_recall_other original owner who different,
       app.respond_recall_other repaired owner who different]
-    exact frame.recall who different
+    exact frame.logs who different
   · intro slot
     rw [application original left leftInert, application repaired right rightInert]
     exact frame.slots slot
@@ -166,7 +166,7 @@ theorem include_accepted (frame : Frame runtime leaks memory owner original repa
       (handled : handle runtime execution.application ⟨id, packet.call⟩ = some after) :
       (execution.includePending app id).application = after ∧
       (execution.includePending app id).receipts = execution.receipts ++ [⟨id, true⟩] ∧
-      (execution.includePending app id).recall = execution.recall := by
+      (execution.includePending app id).logs = execution.logs := by
     simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
       located]
     rw [reactiveApplication_handle_of_tokenValid runtime leaks _ ⟨id, packet⟩ valid, handled]
@@ -176,8 +176,8 @@ theorem include_accepted (frame : Frame runtime leaks memory owner original repa
   have leftApplied := applyHandler original found leftState leftEmpty leftHandled
   have rightApplied := applyHandler repaired rightFound rightState rightEmpty rightHandled
   refine ⟨?_, ?_, ?_, nextNetwork, ?_, ?_, ?_, ?_, ?_, ?_⟩
-  · change memory.restoreRecall runtime leaks ((repaired.includePending app id).recall owner) =
-      (original.includePending app id).recall owner
+  · change memory.restoreRecall runtime leaks ((repaired.includePending app id).logs owner) =
+      (original.includePending app id).logs owner
     rw [leftApplied.2.2, rightApplied.2.2]
     exact frame.past
   · change (⟨(repaired.includePending app id).network.observe owner,
@@ -191,7 +191,7 @@ theorem include_accepted (frame : Frame runtime leaks memory owner original repa
     exact congrArg (fun view => (⟨(repaired.includePending app id).network.observe owner,
       view, repaired.receipts ++ [⟨id, true⟩]⟩ : app.PlayerView))
         (congrArg ReactiveApplication.PlayerView.application completed.observed)
-  · change ((repaired.includePending app id).recall owner).length = memory.responses.length
+  · change ((repaired.includePending app id).logs owner).length = memory.responses.length
     rw [rightApplied.2.2]
     exact frame.lengths
   · change original.environmentRecall ++ [_] = repaired.environmentRecall ++ [_]
@@ -202,10 +202,10 @@ theorem include_accepted (frame : Frame runtime leaks memory owner original repa
     rw [leftApplied.1, rightApplied.1]
     exact completed.views who different
   · intro who different
-    change (original.includePending app id).recall who =
-      (repaired.includePending app id).recall who
+    change (original.includePending app id).logs who =
+      (repaired.includePending app id).logs who
     rw [leftApplied.2.2, rightApplied.2.2]
-    exact frame.recall who different
+    exact frame.logs who different
   · intro slot
     change (original.includePending app id).application.candidates.lookup (owner, slot) = .fresh ↔
       (repaired.includePending app id).application.candidates.lookup (owner, slot) = .fresh
@@ -215,8 +215,8 @@ theorem include_accepted (frame : Frame runtime leaks memory owner original repa
       (repaired.includePending app id).application.config.store
     rw [leftApplied.1, rightApplied.1]
     exact completed.successful
-  · change runtime.submissionRecall leaks ((original.includePending app id).recall owner) =
-      runtime.submissionRecall leaks ((repaired.includePending app id).recall owner)
+  · change runtime.submissionRecall leaks ((original.includePending app id).logs owner) =
+      runtime.submissionRecall leaks ((repaired.includePending app id).logs owner)
     rw [leftApplied.2.2, rightApplied.2.2]
     exact frame.submissions
 

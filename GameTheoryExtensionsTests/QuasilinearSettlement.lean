@@ -1,6 +1,9 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import GameTheoryExtensions.Analysis.QuasilinearSettlement
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # Correlated charges with indistinguishable monetary receipts
 
@@ -16,7 +19,7 @@ namespace GameTheoryExtensionsTests.QuasilinearSettlement
 
 open GameTheory GameTheory.Enforcement.TerminalAudit
 
-private def coin : PMF Bool := PMF.uniformOfFintype Bool
+private def coin : PMF Bool := uniformLaw Bool
 
 private def chargeCoin (outcome : Bool) : PMF Bool :=
   if outcome then coin else PMF.pure false

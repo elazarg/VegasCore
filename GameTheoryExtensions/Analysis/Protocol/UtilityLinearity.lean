@@ -65,7 +65,7 @@ theorem isSequentiallyRationalWith_nonnegative_linear [DecidableEq ι] [Finite E
 
 /-- The same consistent assessment is an equilibrium for every nonnegative
 linear combination of two utilities for which it is already an equilibrium. -/
-theorem isSequentialEquilibriumFor_nonnegative_linear [Fintype ι] [DecidableEq ι]
+theorem isSequentialEquilibriumFor_nonnegative_linear [E.FiniteMovers] [DecidableEq ι]
     [Finite E.History] (assessment : M.BehavioralAssessment)
     (antichain : M.DecisionInformationAntichain) (run : M.ContinuationRunner)
     (first second : ι → E.History → ℝ) (left right : ι → ℝ)

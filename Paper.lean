@@ -131,7 +131,7 @@ theorem Vegas.Paper.terminal_guards_hold (profile : BehavioralProfile setup.prog
 
 section Forfeits
 
-variable [Fintype Player] {Parameter : Type}
+variable [Finite Player] {Parameter : Type}
   (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
 

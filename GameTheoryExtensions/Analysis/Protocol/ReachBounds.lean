@@ -18,7 +18,7 @@ namespace GameTheory.Protocol.InformationModel
 
 open scoped ENNReal
 
-variable {ι : Type*} [Fintype ι] {E : ExecutionProtocol ι} (M : InformationModel E)
+variable {ι : Type*} {E : ExecutionProtocol ι} [E.FiniteMovers] (M : InformationModel E)
   (strategy : (i : ι) → M.BehavioralPolicy i)
 
 /-- The empty history has weight one. -/

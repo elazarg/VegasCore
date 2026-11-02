@@ -22,11 +22,11 @@ def outputs (history : List app.PlayerEntry) : List (Message Principal app.Paylo
 
 def Execution.InputRecall (execution : app.Execution) : Prop := ∀ who,
   execution.network.inputs.filter (fun input => input.sender = who) =
-    app.outputs (execution.recall who)
+    app.outputs (execution.logs who)
 
 theorem respond_recall_mono (execution : app.Execution) (who observer : Principal)
     (action : app.Action) :
-    execution.recall observer ⊆ (execution.respond app who action).recall observer := by
+    execution.logs observer ⊆ (execution.respond app who action).logs observer := by
   rcases action with ⟨transmission⟩
   cases transmission with
   | none =>
@@ -45,9 +45,9 @@ theorem respond_recall_mono (execution : app.Execution) (who observer : Principa
 
 theorem environmentStep_recall (execution next : app.Execution) (command : app.Command)
     (reached : next ∈ (execution.environmentStep app command).support) :
-    next.recall = execution.recall := by
+    next.logs = execution.logs := by
   apply app.environmentStep_cases execution next command reached
-    (predicate := fun _ next => next.recall = execution.recall)
+    (predicate := fun _ next => next.logs = execution.logs)
   · rfl
   · intros; rfl
   · intro id
@@ -57,7 +57,7 @@ theorem environmentStep_recall (execution next : app.Execution) (command : app.C
 
 theorem respond_recall_other (execution : app.Execution) (who observer : Principal)
     (different : observer ≠ who) (action : app.Action) :
-    (execution.respond app who action).recall observer = execution.recall observer := by
+    (execution.respond app who action).logs observer = execution.logs observer := by
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => simp only [Execution.respond, ite_eq_right different]
@@ -106,7 +106,7 @@ theorem environment_inputRecall (execution next : app.Execution) (command : app.
 own input/output recall and the two message lists it observes. -/
 theorem known_from_recall (execution : app.Execution) (who : Principal)
     (valid : execution.InputRecall app) :
-    execution.network.known who = app.outputs (execution.recall who) ++
+    execution.network.known who = app.outputs (execution.logs who) ++
       execution.network.leaked who ++ execution.network.ledger := by
   simp only [MessageNetwork.known, valid who]
 

@@ -58,9 +58,9 @@ theorem firstActivation_history_facts (wellFormed : setup.WellFormed) {who : Pla
     ∃ (remaining : Nat) (execution : (application setup runtime leaks).Execution)
       (point : ProtocolState setup.program),
       history.1.state = some ⟨remaining, some who, execution⟩ ∧
-      site.1 = some (execution.recall who, execution.observe (application setup runtime leaks)
+      site.1 = some (execution.logs who, execution.observe (application setup runtime leaks)
         who) ∧
-      (∀ entry ∈ execution.recall who, ¬ ActivatedAt setup runtime leaks who event entry) ∧
+      (∀ entry ∈ execution.logs who, ¬ ActivatedAt setup runtime leaks who event entry) ∧
       execution.application.config.cut.IsPrefix (siteRank (runtime := runtime) site.1) ∧
       sourceServicePrefix? setup (siteRank (runtime := runtime) site.1)
         execution.application.config = some point ∧
@@ -87,12 +87,12 @@ theorem firstActivation_history_facts (wellFormed : setup.WellFormed) {who : Pla
   have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
     menu.toRawTrace (initialLaw setup) horizon scheduler trace
-  have pendingAt : pendingEvent setup runtime leaks who (some (execution.recall who,
+  have pendingAt : pendingEvent setup runtime leaks who (some (execution.logs who,
       execution.observe (application setup runtime leaks) who)) = some event := by
     rw [observedState]
     exact pending
   obtain ⟨turn, _, owned, _⟩ := pendingEvent_spec (runtime := runtime) pendingAt
-  have never : ∀ entry ∈ execution.recall who, ¬ ActivatedAt setup runtime leaks who event entry :=
+  have never : ∀ entry ∈ execution.logs who, ¬ ActivatedAt setup runtime leaks who event entry :=
     fun entry member activated => first
       ⟨_, _, event, observedState.symm, pending, entry, member, activated⟩
   -- The decoded point is intended and reached by the intended game.

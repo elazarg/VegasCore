@@ -179,7 +179,7 @@ theorem offered_packet_allowed (who : Player)
 variable (setup runtime leaks) in
 /-- Every packet a player recalls emitting is allowed by the bounds. -/
 def OutputsAllowed (execution : (application setup runtime leaks).Execution) : Prop :=
-  ∀ who, ∀ message ∈ (application setup runtime leaks).outputs (execution.recall who),
+  ∀ who, ∀ message ∈ (application setup runtime leaks).outputs (execution.logs who),
     bounds.AllowsPacket message.payload.call
 
 /-- **Emitted packets are allowed** along every history of the one-packet game,
@@ -287,15 +287,15 @@ def RetainsCoveredCanonical (horizon : Nat) (scheduler : (application setup runt
       scheduler).Trace (some control) →
     ∀ who (event : (graph setup).EventId) (action : (graph setup).Action event),
     control.execution.application.publicView.ownTurn? who = some event →
-    runtime.eventRecorded leaks (control.execution.recall who) event = false →
+    runtime.eventRecorded leaks (control.execution.logs who) event = false →
     control.execution.application.publicView.InclusionFitsDeadline runtime bound event →
     EffectiveDecision event action →
-    (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+    (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) event action).transmission ≠
         none →
-    runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+    runtime.canonicalServiceDecision leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) event action ∈
-      bounds.canonicalActions runtime leaks who (control.execution.recall who)
+      bounds.canonicalActions runtime leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who)
 
 /-- **Retention from bounds adequacy.** If every value of every binding and
@@ -313,7 +313,7 @@ theorem retainsCoveredCanonical_of_adequate (covers : bounds.CoversOutputValues)
   have active : who ∉ (control.execution.observe (application setup runtime leaks)
       who).application.publicView.observation.defaulted := by
     intro inactive
-    rw [runtime.canonicalServiceDecision_defaulted leaks who (control.execution.recall who)
+    rw [runtime.canonicalServiceDecision_defaulted leaks who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) event action inactive]
       at transmits
     exact transmits rfl

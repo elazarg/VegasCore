@@ -26,7 +26,7 @@ theorem transition_decision_predecessor
     (realized : some ⟨remaining, some who, execution⟩ ∈
       (app.transition initial horizon scheduler before joint).support) :
     ∃ previous : app.Execution, before = some ⟨remaining + 1, none, previous⟩ ∧
-      previous.application = execution.application ∧ previous.recall = execution.recall := by
+      previous.application = execution.application ∧ previous.logs = execution.logs := by
   cases before with
   | none =>
       obtain ⟨_, _, same⟩ := PMF.support_map .. ▸ realized
@@ -59,7 +59,7 @@ theorem decision_predecessor (initial : PMF app.State) (horizon : Nat) (schedule
     ∃ previous : app.Execution,
       Nonempty ((app.protocol initial horizon scheduler).Trace
         (some ⟨remaining + 1, none, previous⟩)) ∧
-      previous.application = execution.application ∧ previous.recall = execution.recall := by
+      previous.application = execution.application ∧ previous.logs = execution.logs := by
   match state, trace, current with
   | _, .start, current => cases current
   | _, .extend (source := before) prior joint _ realized, current =>
@@ -86,7 +86,7 @@ theorem decision_predecessor (initial : PMF app.State) (horizon : Nat) (schedule
     ∃ previous : app.Execution,
       Nonempty ((menu.protocol initial horizon scheduler).Trace
         (some ⟨remaining + 1, none, previous⟩)) ∧
-      previous.application = execution.application ∧ previous.recall = execution.recall := by
+      previous.application = execution.application ∧ previous.logs = execution.logs := by
   match state, trace, current with
   | _, .start, current => cases current
   | _, .extend (source := before) prior joint _ realized, current =>

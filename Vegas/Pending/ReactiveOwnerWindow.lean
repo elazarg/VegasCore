@@ -34,7 +34,7 @@ theorem bindingTraffic_owner_response (runtime : EventGraphRuntime graph)
   have receipts : left.receipts = right.receipts := congrArg (fun value => value.2.1) same
   have environments : left.environmentRecall = right.environmentRecall :=
     congrArg (fun value => value.2.2.1) same
-  have recalled : left.recall owner = right.recall owner :=
+  have recalled : left.logs owner = right.logs owner :=
     congrArg (fun value => value.2.2.2.1) same
   have views : left.application.playerView owner = right.application.playerView owner :=
     congrArg (fun value => value.2.2.2.2.1) same

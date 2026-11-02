@@ -76,7 +76,7 @@ theorem unsentFor_iff_unrecorded {who : Player}
       leaks).Control}
     (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some control))
-    (recallEq : control.execution.recall who = past) {key : LateKey setup runtime leaks}
+    (recallEq : control.execution.logs who = past) {key : LateKey setup runtime leaks}
     (siteKey : lateKey setup runtime leaks who (some (past, view)) = some key)
     (event : (graph setup).EventId) :
     UnsentFor (runtime := runtime) key event ↔ runtime.eventRecorded leaks past event = false := by
@@ -111,7 +111,7 @@ theorem decidedEvent_eq_of_pending {who : Player}
     {control : (application setup runtime leaks).Control}
     (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some control))
-    (recallEq : control.execution.recall who = past) {key : LateKey setup runtime leaks}
+    (recallEq : control.execution.logs who = past) {key : LateKey setup runtime leaks}
     (siteKey : lateKey setup runtime leaks who (some (past, view)) = some key) :
     decidedEvent (runtime := runtime) key = some event := by
   obtain ⟨turn, _, owned, unrecorded⟩ := pendingEvent_spec (runtime := runtime) pending
@@ -198,15 +198,15 @@ theorem decoded_silent_of_recorded {control : (application setup runtime leaks).
     (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
-    (recorded : runtime.eventRecorded leaks (control.execution.recall who) event = true)
+    (recorded : runtime.eventRecorded leaks (control.execution.logs who) event = true)
     (response : (application setup runtime leaks).Action) (named : SilentOrNames (runtime :=
       runtime) event response) :
     (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-      (some (control.execution.recall who,
+      (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who)) response).1.getD ⟨none⟩ =
       ⟨none⟩ := by
   by_cases member : response ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who)
   · rcases named with silent | names
     · simp only [responseChoice, member, ↓reduceDIte, Option.getD_some]
@@ -224,12 +224,12 @@ theorem map_responseChoice_silent {control : (application setup runtime leaks).C
     (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
-    (recorded : runtime.eventRecorded leaks (control.execution.recall who) event = true)
+    (recorded : runtime.eventRecorded leaks (control.execution.logs who) event = true)
     (law : PMF (application setup runtime leaks).Action)
     (named : ∀ response ∈ law.support, SilentOrNames (runtime := runtime) event response) :
     ∀ choice ∈ (law.map (responseChoice setup runtime leaks bounds (initialLaw setup) horizon
       scheduler
-      who (some (control.execution.recall who,
+      who (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who)))).support,
       choice.1.getD ⟨none⟩ = ⟨none⟩ := by
   intro choice member
@@ -246,25 +246,25 @@ theorem parts_silent_of_recorded (assessment : setup.intendedModel.BehavioralAss
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (recorded : runtime.eventRecorded leaks (control.execution.recall who) event = true) :
+    (recorded : runtime.eventRecorded leaks (control.execution.logs who) event = true) :
     (∀ choice ∈ (honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
       assessment
-        who (some (control.execution.recall who,
+        who (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))).support,
         choice.1.getD ⟨none⟩ = ⟨none⟩) ∧
     (∀ choice ∈ (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
       assessment
-        who (some (control.execution.recall who,
+        who (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))).support,
         choice.1.getD ⟨none⟩ = ⟨none⟩) ∧
     (∀ {slots : Nat} (option : LateOption slots),
       ∀ choice ∈ (lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
         assessment
-        who (some (control.execution.recall who,
+        who (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who)) option).support,
         choice.1.getD ⟨none⟩ = ⟨none⟩) ∧
     (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))).1.getD ⟨none⟩ =
       ⟨none⟩ := by
   have turnView : (control.execution.observe (application setup runtime leaks)

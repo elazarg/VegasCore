@@ -113,12 +113,12 @@ theorem firstResponse_not_main_of_publicFailure_of_settles
     (notOwed : ∀ point, decodedPoint setup execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point)
     (event : (graph setup).EventId)
-    (pending : pendingEvent setup runtime leaks who (some (execution.recall who,
+    (pending : pendingEvent setup runtime leaks who (some (execution.logs who,
       execution.observe (application setup runtime leaks) who)) = some event)
     (fits : execution.application.publicView.InclusionFitsDeadline runtime bound event)
     (choice : (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
       scheduler).Choice who
-      (some (execution.recall who, execution.observe (application setup runtime leaks) who)))
+      (some (execution.logs who, execution.observe (application setup runtime leaks) who)))
     (response : (application setup runtime leaks).Action) (selected : choice.1 = some response)
     (after : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, none,
@@ -131,7 +131,7 @@ theorem firstResponse_not_main_of_publicFailure_of_settles
     (failed : next.application.PublicFailure event) :
     choice ∉ (honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler source
       who
-      (some (execution.recall who, execution.observe (application setup runtime leaks)
+      (some (execution.logs who, execution.observe (application setup runtime leaks)
         who))).support := by
   intro supported
   obtain ⟨point, decoded, intended⟩ :=

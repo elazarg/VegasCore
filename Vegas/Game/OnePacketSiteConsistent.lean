@@ -39,7 +39,7 @@ def SiteConsistent (who : Player) (info : (application setup runtime leaks).Info
   | none => False
   | some control => (info.isSome ∧ (application setup runtime leaks).observe who (some control) =
     info) ∨
-      ∃ entry rest, control.execution.recall who = infoRecall (runtime := runtime) info ++ entry
+      ∃ entry rest, control.execution.logs who = infoRecall (runtime := runtime) info ++ entry
         :: rest
 
 /-- The control step appends one entry to the recall of an acting player and
@@ -52,10 +52,10 @@ theorem controlStep_recall {horizon : Nat} {scheduler : (application setup runti
       scheduler
       players (some control)).support) (who : Player) :
     ∃ control', next = some control' ∧
-      (control.actor = some who → ∃ entry, control'.execution.recall who =
-        control.execution.recall who ++ [entry]) ∧
+      (control.actor = some who → ∃ entry, control'.execution.logs who =
+        control.execution.logs who ++ [entry]) ∧
       (control.actor ≠ some who →
-        control'.execution.recall who = control.execution.recall who) := by
+        control'.execution.logs who = control.execution.logs who) := by
   rcases control with ⟨remaining, actor, execution⟩
   unfold ReactiveApplication.controlStep at member
   cases actor with
@@ -156,7 +156,7 @@ theorem siteConsistent_key {who : Player} {info : (application setup runtime lea
     {key : LateKey setup runtime leaks} (siteKey : lateKey setup runtime leaks who info = some key)
     {control : (application setup runtime leaks).Control}
     (consistent : SiteConsistent (runtime := runtime) who info (some control))
-    (sameKey : LateKey.ofView setup runtime leaks who (control.execution.recall who)
+    (sameKey : LateKey.ofView setup runtime leaks who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) = key) :
     (application setup runtime leaks).observe who (some control) = info := by
   rcases consistent with ⟨_, atSite⟩ | ⟨entry, rest, longer⟩

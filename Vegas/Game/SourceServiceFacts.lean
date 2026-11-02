@@ -42,7 +42,7 @@ theorem serviceInitialLaw_eq_inputs :
 
 /-- Every fresh submission of `who` was made at its own turn at its event. -/
 def OwnSubmissionsAtTurn (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (who : Player) : Prop := ∀ entry ∈ execution.recall who, ∀ event,
+    (who : Player) : Prop := ∀ entry ∈ execution.logs who, ∀ event,
     (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action = some event →
     entry.beforeView.application.publicView.ownTurn? who = some event
 
@@ -120,8 +120,8 @@ theorem no_receipt_next (execution : (serviceApplication setup mode deadline lea
 emits the author's next identifier. -/
 theorem respond_recall_self (execution : (serviceApplication setup mode deadline leaks).Execution)
     (who : Player) (action : (serviceApplication setup mode deadline leaks).Action) : ∃ emitted,
-    (execution.respond (serviceApplication setup mode deadline leaks) who action).recall who =
-    execution.recall who ++
+    (execution.respond (serviceApplication setup mode deadline leaks) who action).logs who =
+    execution.logs who ++
     [⟨execution.observe (serviceApplication setup mode deadline leaks) who, action, emitted⟩] ∧ ∀
     material, action.transmission = some material → ∀ message,
         emitted = some message → message.id = (who, execution.network.nextSerial who) := by
@@ -205,7 +205,7 @@ theorem ownTurn?_of_entry_ready
     (execution : (serviceApplication setup mode deadline leaks).Execution)
     (eventStable : EntryEventStable (serviceRuntime setup mode deadline) leaks execution)
     (who : Player) (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (member : entry ∈ execution.recall who) (event : (serviceGraph setup mode).EventId)
+    (member : entry ∈ execution.logs who) (event : (serviceGraph setup mode).EventId)
     (owned : (serviceGraph setup mode).actor? event = some who)
     (seen : entry.beforeView.application.publicView.EventReady event)
     (ready : execution.application.config.cut.Ready event) :
@@ -241,7 +241,7 @@ theorem eventRecorded_of_pending
     (sender : message.sender = owner)
     (named : message.payload.call.event? (serviceGraph setup mode) = some event) :
     (serviceRuntime setup mode deadline).eventRecorded leaks
-      (control.execution.recall owner) event = true := by
+      (control.execution.logs owner) event = true := by
   have signed := signedCommitments_history (serviceRuntime setup mode deadline) leaks
     (serviceInitialLaw setup mode) (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
@@ -251,7 +251,7 @@ theorem eventRecorded_of_pending
   rw [sender] at remembered
   obtain ⟨_, actual, sent, call⟩ := signed.emissions owner entry remembered message emitted
   apply ((serviceRuntime setup mode deadline).eventRecorded_iff leaks
-    (control.execution.recall owner) event).mpr
+    (control.execution.logs owner) event).mpr
   refine ⟨entry, remembered, ?_⟩
   unfold EventGraphRuntime.submittedEvent?
   rw [sent]

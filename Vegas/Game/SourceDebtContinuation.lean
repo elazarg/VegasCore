@@ -44,7 +44,7 @@ theorem decoded_owesFailure_exclusionBase_of_complete {Parameter : Type}
   exact decoded_owesFailure_exclusionBase_of_readout parameter utility excludedPayoff who history
     owed terminal (current ▸ readout)
 
-variable [Fintype Player]
+variable [Finite Player]
 
 /-- Under complete play, every supported terminal continuation of an initialized
 history carrying source debt pays its owner the fixed exit utility. -/

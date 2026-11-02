@@ -73,7 +73,7 @@ theorem playerObserve_complete_congr (who : Player) (left right : graph.Config)
     graph.playerObserve who (left.complete event leftReady leftAction leftValue) =
       graph.playerObserve who (right.complete event rightReady rightAction rightValue) := by
   have order := congrArg EventPlayerObservation.completionOrder observations
-  have recall := congrArg EventPlayerObservation.ownActions observations
+  have logs := congrArg EventPlayerObservation.ownActions observations
   have defaults : left.defaults = right.defaults :=
     congrArg EventPlayerObservation.defaults observations
   have status : left.defaulted = right.defaulted :=
@@ -98,7 +98,7 @@ theorem playerObserve_complete_congr (who : Player) (left right : graph.Config)
             Config.complete_output_of_ne _ _ _ _ _ _ same]
           exact store_eq_of_playerObserve_eq who left right observations _ visible
   · change graph.ownCompletions who left.history =
-      graph.ownCompletions who right.history at recall
+      graph.ownCompletions who right.history at logs
     by_cases owned : graph.actor? event = some who
     · have decision : left.actualDecision event leftAction =
           right.actualDecision event rightAction := by
@@ -113,11 +113,11 @@ theorem playerObserve_complete_congr (who : Player) (left right : graph.Config)
           [EventGraph.completion graph event (left.actualDecision event leftAction) leftValue]) =
         graph.ownCompletions who (right.history ++
           [EventGraph.completion graph event (right.actualDecision event rightAction) rightValue])
-      simp only [ownCompletions, List.filter_append] at recall ⊢
-      rw [recall, completion]
+      simp only [ownCompletions, List.filter_append] at logs ⊢
+      rw [logs, completion]
     · exact (graph.ownCompletions_complete_of_not_actor who left event
         leftReady leftAction leftValue owned).trans
-        (recall.trans (graph.ownCompletions_complete_of_not_actor who right event
+        (logs.trans (graph.ownCompletions_complete_of_not_actor who right event
           rightReady rightAction rightValue owned).symm)
   · change (left.complete event leftReady leftAction leftValue).defaults =
       (right.complete event rightReady rightAction rightValue).defaults

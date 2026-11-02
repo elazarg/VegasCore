@@ -81,7 +81,7 @@ theorem lateCommit_failure_next
         (control : (application setup runtime leaks).Control),
       history.state = some control →
       control.execution.application.config = execution.application.config →
-      (∃ entry rest, control.execution.recall who = execution.recall who ++ entry :: rest) →
+      (∃ entry rest, control.execution.logs who = execution.logs who ++ entry :: rest) →
       history.state ∈ lumping.keep site key)
     (ready : execution.application.config.cut.Ready event)
     (empty : commitStatuses (runtime := runtime) event who payload execution.application
@@ -89,7 +89,7 @@ theorem lateCommit_failure_next
       [])
     (response : (application setup runtime leaks).Action)
     (member : response ∈ bounds.onePacketActions runtime leaks who
-      (execution.recall who) (execution.observe (application setup runtime leaks) who))
+      (execution.logs who) (execution.observe (application setup runtime leaks) who))
     {material : (application setup runtime leaks).Submission}
     (sends : response.transmission = some material) {serial : Nat}
     (packet : material.call.packet = .commitment event (who, .prepared serial))
@@ -113,7 +113,7 @@ theorem lateCommit_failure_next
   have keptNext : next.state ∈ lumping.keep site key := by
     refine keptOf next _ nextState configEq ?_
     have respondRecall : ∃ emitted, (execution.respond (application setup runtime leaks) who
-        response).recall who = execution.recall who ++
+        response).logs who = execution.logs who ++
           [⟨execution.observe (application setup runtime leaks) who, response, emitted⟩] := by
       rcases response with ⟨transmission⟩
       cases transmission <;>
@@ -171,7 +171,7 @@ theorem lateCommit_historyFailure
         (control : (application setup runtime leaks).Control),
       history.state = some control →
       control.execution.application.config = execution.application.config →
-      (∃ entry rest, control.execution.recall who = execution.recall who ++ entry :: rest) →
+      (∃ entry rest, control.execution.logs who = execution.logs who ++ entry :: rest) →
       history.state ∈ lumping.keep site key)
     (ready : execution.application.config.cut.Ready event)
     (empty : commitStatuses (runtime := runtime) event who payload execution.application
@@ -182,7 +182,7 @@ theorem lateCommit_historyFailure
     (agreeLonger : ∀ history : ((bounds.onePacketMenu runtime leaks).protocol
         (initialLaw setup) horizon scheduler).History,
       (∀ control, history.state = some control →
-        (execution.recall who).length < (control.execution.recall who).length) →
+        (execution.logs who).length < (control.execution.logs who).length) →
       ∀ player, installed player
           ((onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf player
             history.trace) =
@@ -190,11 +190,11 @@ theorem lateCommit_historyFailure
           ((onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf player
             history.trace))
     (response : (application setup runtime leaks).Action)
-    (responseLaw : (installed who (some (execution.recall who,
+    (responseLaw : (installed who (some (execution.logs who,
       execution.observe (application setup runtime leaks) who))).map
         (fun choice => choice.1.getD ⟨none⟩) = PMF.pure response)
     (member : response ∈ bounds.onePacketActions runtime leaks who
-      (execution.recall who) (execution.observe (application setup runtime leaks) who))
+      (execution.logs who) (execution.observe (application setup runtime leaks) who))
     {material : (application setup runtime leaks).Submission}
     (sends : response.transmission = some material) {serial : Nat}
     (packet : material.call.packet = .commitment event (who, .prepared serial))
@@ -226,8 +226,8 @@ theorem lateCommit_historyFailure
         History.state).support := (PMF.mem_support_map_iff _ _ _).mpr ⟨next, nextMember, rfl⟩
     rw [stepStates, PMF.mem_support_pure_iff] at inStates
     exact inStates
-  have nextRecall : (execution.recall who).length <
-      ((execution.respond (application setup runtime leaks) who response).recall who).length := by
+  have nextRecall : (execution.logs who).length <
+      ((execution.respond (application setup runtime leaks) who response).logs who).length := by
     have longer := (application setup runtime leaks).respond_recall_length execution who who
       response
     simp only [↓reduceIte] at longer
@@ -325,13 +325,13 @@ theorem certificate_commit_decisionFailure
     (history : (onePacketN).InformationHistory who site.1)
     {remaining : Nat} {execution : (application setup runtime leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
-    (atSite : site.1 = some (execution.recall who,
+    (atSite : site.1 = some (execution.logs who,
       execution.observe (application setup runtime leaks) who))
     (forced : ForcedState setup runtime leaks who history.1.state)
     (choice : (onePacketN).Choice who site.1) (response : (application setup runtime leaks).Action)
     (selected : choice.1 = some response)
     (member : response ∈ bounds.onePacketActions runtime leaks who
-      (execution.recall who) (execution.observe (application setup runtime leaks) who))
+      (execution.logs who) (execution.observe (application setup runtime leaks) who))
     {material : (application setup runtime leaks).Submission}
     (sends : response.transmission = some material) {serial : Nat}
     (packet : material.call.packet = .commitment event (who, .prepared serial))
@@ -379,7 +379,7 @@ theorem certificate_commit_decisionFailure
   let installed := Profile.update (sig := (onePacketN).behavioralSignature)
     (targetSequence n).strategy who
     (((targetSequence n).strategy who).withLaw site.1 (PMF.pure choice))
-  have responseLaw : (installed who (some (execution.recall who,
+  have responseLaw : (installed who (some (execution.logs who,
       execution.observe (application setup runtime leaks) who))).map
         (fun choice => choice.1.getD ⟨none⟩) = PMF.pure response := by
     rw [← atSite]

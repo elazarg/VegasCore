@@ -10,7 +10,7 @@ namespace Interaction.ReactiveApplication
 
 open GameTheory.Protocol GameTheory.Math.Probability GameTheory.Enforcement
 
-variable {Principal : Type} [DecidableEq Principal] [Fintype Principal]
+variable {Principal : Type} [DecidableEq Principal] [Finite Principal]
     (app : ReactiveApplication Principal)
 
 /-- A per-record collection bound persists through every actual menu continuation.

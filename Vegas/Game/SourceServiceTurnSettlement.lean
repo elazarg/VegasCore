@@ -158,7 +158,7 @@ theorem sourceServiceTurnPolicy_execution_settlement_lawError
   exact serviceTurnPolicy_roundsFrom_bind_within (serviceInitialLaw setup mode) scheduler horizon
     bound timing profile _
 
-variable [Fintype Player]
+variable [Finite Player]
 
 /-- **Honest execution of the client policies, for every source profile.**
 Under the asynchronous contract, for every turn

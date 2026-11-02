@@ -163,13 +163,13 @@ theorem disclosure_sourceKernel
     (fun _ => decodeEventAction setup.program event disclose) (acts who)
   -- Every as-if-honest choice at the reveal is the disclosing one.
   have honestDiscloses : ∀ choice ∈ (asIfHonestProfile setup runtime leaks source who
-      (some (execution.recall who, execution.observe (application setup runtime leaks)
+      (some (execution.logs who, execution.observe (application setup runtime leaks)
         who))).support,
       choice = decodeEventAction setup.program event disclose := by
     intro choice member
     have encodes := asIfHonestProfile_encodes (runtime := runtime) source who execution rank
       ordered point decoded
-      (execution.recall who) event turn active choice member
+      (execution.logs who) event turn active choice member
     obtain ⟨action, encoded⟩ := Option.isSome_iff_exists.mp encodes
     cases choice with
     | none => cases encoded
@@ -178,7 +178,7 @@ theorem disclosure_sourceKernel
       action encoded
     obtain ⟨noFailure, noWithholding⟩ := asIfHonestProfile_success (runtime := runtime) source who
       execution rank
-      ordered point decoded (execution.recall who) sourceAction member
+      ordered point decoded (execution.logs who) sourceAction member
     generalize resultEq : (cast (congrArg EventGraph.EventField.Action outputEq) action :
       Bool) = result
     have actionEq : action = cast (congrArg EventGraph.EventField.Action outputEq.symm) result := by
@@ -204,15 +204,15 @@ theorem disclosure_sourceKernel
             exact noWithholding sourceOwner name rfl
   have stepLaw := asIfHonest_bind_step_eq_behavioralStateStep (runtime := runtime) source who
     execution ordered
-    decoded intendedPoint turn active (execution.recall who)
+    decoded intendedPoint turn active (execution.logs who)
   have stepPure : ProtocolState.behavioralStateStep setup.program profile point =
       PMF.pure target := by
     rw [← stepLaw, ← stepEq]
     have constant : (asIfHonestProfile setup runtime leaks source who
-        (some (execution.recall who, execution.observe (application setup runtime leaks) who))).bind
+        (some (execution.logs who, execution.observe (application setup runtime leaks) who))).bind
           (fun choice => ProtocolState.step setup.program point (fun _ => choice)) =
         (asIfHonestProfile setup runtime leaks source who
-          (some (execution.recall who, execution.observe (application setup runtime leaks)
+          (some (execution.logs who, execution.observe (application setup runtime leaks)
             who))).bind
           (fun _ => ProtocolState.step setup.program point
             (fun _ => decodeEventAction setup.program event disclose)) :=
@@ -220,11 +220,11 @@ theorem disclosure_sourceKernel
     rw [constant, PMF.bind_const]
   have targetIntended : ProtocolState.Intended setup.program target := by
     obtain ⟨choice, member⟩ := (asIfHonestProfile setup runtime leaks source who
-      (some (execution.recall who,
+      (some (execution.logs who,
         execution.observe (application setup runtime leaks) who))).support_nonempty
     obtain ⟨intended, _, same⟩ := (mem_support_asIfHonestProfile_observe setup runtime leaks
       source who
-      execution rank ordered point decoded (execution.recall who) _).mp member
+      execution rank ordered point decoded (execution.logs who) _).mp member
     have legal := intended.2
     change ProtocolView.intendedMenu who setup.program
       (ProtocolState.observe who setup.program point) intended.1 at legal

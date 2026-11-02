@@ -10,7 +10,7 @@ namespace GameTheoryExtensionsTests.ProportionalBeliefTransport
 
 open GameTheory.Protocol GameTheory.Protocol.InformationModel
 
-variable {ι : Type*} [Fintype ι] {E T : ExecutionProtocol ι}
+variable {ι : Type*} {E T : ExecutionProtocol ι} [E.FiniteMovers] [T.FiniteMovers]
   (M : InformationModel E) (N : InformationModel T)
   (raw : (i : ι) → M.BehavioralPolicy i) (source : (i : ι) → N.BehavioralPolicy i)
   (project : E.History → T.History) [DecidableEq T.History]
@@ -32,7 +32,7 @@ theorem exact_projection_of_proportional
         (⟨project original.1, maps original.1 original.2⟩ :
           N.InformationHistory who sourceSite.1)) =
       N.bayesBelief source who sourceSite sourceAntichain sourcePositive :=
-  M.bayesBelief_projection_of_proportional_reach N raw source project who rawSite sourceSite
+  M.bayesBelief_projection_of_positive_reach N raw source project who rawSite sourceSite
     maps 1 (fun history => by rw [one_mul]; exact fiber history) one_ne_zero
     rawAntichain sourceAntichain sourcePositive
 

@@ -107,15 +107,17 @@ theorem remainingResponses_le_horizon_add_one
     change control.remaining + (if control.actor.isSome then 1 else 0) ≤ horizon + 1
     split <;> omega
 
+omit [Fintype Principal] in
 /-- At every initialization or environment step the full one-step history law
 is independent of the player profile, including stochastic nature branches. -/
-theorem run_one_eq_of_no_actor
+theorem run_one_eq_of_no_actor [Finite Principal]
     (source target : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (history : (menu.protocol initial horizon scheduler).History)
     (inactive : app.actor history.state = none) :
     (menu.information initial horizon scheduler).runBehavioralFrom source 1 history =
       (menu.information initial horizon scheduler).runBehavioralFrom target 1 history := by
   classical
+  let : Fintype Principal := Fintype.ofFinite Principal
   apply PMF.WithinTV.eq_of_zero
   let model := menu.information initial horizon scheduler
   have lower := model.runBehavioralFrom_one_domination_of_active_choices

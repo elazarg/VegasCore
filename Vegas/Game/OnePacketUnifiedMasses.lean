@@ -148,17 +148,17 @@ theorem onePacket_step_masses (assessment : setup.intendedModel.BehavioralAssess
     (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player)
-    (canonical : DisclosureCanonical setup runtime leaks bounds who (control.execution.recall who)
+    (canonical : DisclosureCanonical setup runtime leaks bounds who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who))
     (response : (application setup runtime leaks).Action)
     (member : response ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who))
     (positive : 0 < contentFactor setup runtime leaks assessment who control.execution
       (control.execution.respond (application setup runtime leaks) who response) response)
     (choice : (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
       scheduler).Choice who
-      (some (control.execution.recall who,
+      (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who)))
     (chosen : choice.1 = some response) :
     (honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who _
@@ -166,10 +166,10 @@ theorem onePacket_step_masses (assessment : setup.intendedModel.BehavioralAssess
       contentFactor setup runtime leaks assessment who control.execution
           (control.execution.respond (application setup runtime leaks) who response) response *
         honestFactor (runtime := runtime)
-          (LateKey.ofView setup runtime leaks who (control.execution.recall who)
+          (LateKey.ofView setup runtime leaks who (control.execution.logs who)
             (control.execution.observe (application setup runtime leaks) who))
           (LateKey.ofView setup runtime leaks who
-            ((control.execution.respond (application setup runtime leaks) who response).recall who)
+            ((control.execution.respond (application setup runtime leaks) who response).logs who)
             ((control.execution.respond (application setup runtime leaks) who response).observe
               (application setup runtime leaks) who)) ∧
     (∀ {slots : Nat} (option : LateOption slots),
@@ -178,10 +178,10 @@ theorem onePacket_step_masses (assessment : setup.intendedModel.BehavioralAssess
         contentFactor setup runtime leaks assessment who control.execution
             (control.execution.respond (application setup runtime leaks) who response) response *
           lateOptionFactor (runtime := runtime) bounds
-            (LateKey.ofView setup runtime leaks who (control.execution.recall who)
+            (LateKey.ofView setup runtime leaks who (control.execution.logs who)
               (control.execution.observe (application setup runtime leaks) who))
             (LateKey.ofView setup runtime leaks who
-              ((control.execution.respond (application setup runtime leaks) who response).recall
+              ((control.execution.respond (application setup runtime leaks) who response).logs
                 who)
               ((control.execution.respond (application setup runtime leaks) who response).observe
                 (application setup runtime leaks) who)) option) ∧
@@ -190,7 +190,7 @@ theorem onePacket_step_masses (assessment : setup.intendedModel.BehavioralAssess
       contentFactor setup runtime leaks assessment who control.execution
           (control.execution.respond (application setup runtime leaks) who response) response *
         silenceFactor (runtime := runtime) (LateKey.ofView setup runtime leaks who
-          ((control.execution.respond (application setup runtime leaks) who response).recall who)
+          ((control.execution.respond (application setup runtime leaks) who response).logs who)
           ((control.execution.respond (application setup runtime leaks) who response).observe
             (application setup runtime leaks) who)) ∧
     (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who _
@@ -198,10 +198,10 @@ theorem onePacket_step_masses (assessment : setup.intendedModel.BehavioralAssess
       contentFactor setup runtime leaks assessment who control.execution
           (control.execution.respond (application setup runtime leaks) who response) response *
         slotTierFactor (runtime := runtime) bounds
-          (LateKey.ofView setup runtime leaks who (control.execution.recall who)
+          (LateKey.ofView setup runtime leaks who (control.execution.logs who)
             (control.execution.observe (application setup runtime leaks) who))
           (LateKey.ofView setup runtime leaks who
-            ((control.execution.respond (application setup runtime leaks) who response).recall who)
+            ((control.execution.respond (application setup runtime leaks) who response).logs who)
             ((control.execution.respond (application setup runtime leaks) who response).observe
               (application setup runtime leaks) who)) := by
   have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
@@ -210,17 +210,17 @@ theorem onePacket_step_masses (assessment : setup.intendedModel.BehavioralAssess
     (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
   have keyPending := LateKey.ofView_pending rawTrace who
-  cases pending : pendingEvent setup runtime leaks who (some (control.execution.recall who,
+  cases pending : pendingEvent setup runtime leaks who (some (control.execution.logs who,
       control.execution.observe (application setup runtime leaks) who)) with
   | none =>
       rw [pending] at keyPending
       have settled : ∀ event, control.execution.application.publicView.ownTurn? who =
-          some event → runtime.eventRecorded leaks (control.execution.recall who) event =
+          some event → runtime.eventRecorded leaks (control.execution.logs who) event =
             true := by
         intro event turn
         by_contra unrecorded
         have := pendingEvent_of_spec (runtime := runtime) (setup := setup) (leaks := leaks)
-          (past := control.execution.recall who)
+          (past := control.execution.logs who)
           (view := control.execution.observe (application setup runtime leaks) who) turn
           (Bool.eq_false_iff.mpr unrecorded)
         rw [pending] at this
@@ -233,14 +233,14 @@ theorem onePacket_step_masses (assessment : setup.intendedModel.BehavioralAssess
       have choiceEq := choice_eq_silenceChoice (runtime := runtime) who _ _ choice chosen
       subst choiceEq
       have lastNone : (LateKey.ofView setup runtime leaks who
-          ((control.execution.respond (application setup runtime leaks) who ⟨none⟩).recall who)
+          ((control.execution.respond (application setup runtime leaks) who ⟨none⟩).logs who)
           ((control.execution.respond (application setup runtime leaks) who ⟨none⟩).observe
             (application setup runtime leaks) who)).lastEmitted = none := by
         rw [LateKey.respond_lastEmitted]
         rfl
       have silenceOneFactor : silenceFactor (runtime := runtime) (LateKey.ofView setup runtime
         leaks who
-          ((control.execution.respond (application setup runtime leaks) who ⟨none⟩).recall who)
+          ((control.execution.respond (application setup runtime leaks) who ⟨none⟩).logs who)
           ((control.execution.respond (application setup runtime leaks) who ⟨none⟩).observe
             (application setup runtime leaks) who)) = 1 := by
         unfold silenceFactor

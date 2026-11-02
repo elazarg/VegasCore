@@ -18,10 +18,10 @@ namespace GameTheory.Protocol.InformationModel
 
 open GameTheory.Math.Probability Filter
 
-variable {Player : Type} [Fintype Player] [DecidableEq Player]
+variable {Player : Type} [Finite Player] [DecidableEq Player]
   {E : ExecutionProtocol Player} {M : InformationModel E} [Finite E.History]
 
-omit [Fintype Player] [DecidableEq Player] in
+omit [Finite Player] [DecidableEq Player] in
 private theorem policy_subsequence (who : Player) (policies : ℕ → M.BehavioralPolicy who) :
     ∃ policy : M.BehavioralPolicy who, ∃ index : ℕ → ℕ, StrictMono index ∧
       ∀ site : M.InformationSite who,

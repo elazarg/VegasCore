@@ -100,7 +100,7 @@ theorem intendedChoice_sourceStep_value_lower [Finite Player]
     (payoffIntegrable_constant _ _) (payoffIntegrable_of_bounded _ _ valueBounded)
   simpa only [expect_constant] using mean
 /-- Uniformly bounded source readouts bound every source continuation gain. -/
-theorem intended_historyGain_abs_le_of_readoutBounded [Fintype Player]
+theorem intended_historyGain_abs_le_of_readoutBounded [Finite Player]
     (assessment : setup.intendedModel.BehavioralAssessment)
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)

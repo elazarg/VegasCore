@@ -83,7 +83,7 @@ theorem counted_binding_inclusion (frame : Frame runtime leaks memory owner orig
             payload outputEq codeEq node id candidate sender owned found ready timely vacant unused
         · have output : (⟨id, ⟨.commitment event candidate, none, some ⟨event⟩⟩⟩ :
               Message Player (WitnessedPacket graph)) ∈
-                (runtime.reactiveApplication leaks).outputs (original.recall actor) := by
+                (runtime.reactiveApplication leaks).outputs (original.logs actor) := by
             rw [← clean.1.1 actor]
             exact List.mem_filter.mpr ⟨member, by simpa [Message.sender] using sender⟩
           have candidateEq : candidate = (actor, candidate.2) := Prod.ext owned rfl

@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketSilenceMasses
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Silence masses at a pending binding
 
@@ -84,15 +85,15 @@ theorem onePacket_canonical_permitted (assessment : setup.intendedModel.Behavior
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (unsent : runtime.eventRecorded leaks (control.execution.recall who) event = false)
+    (unsent : runtime.eventRecorded leaks (control.execution.logs who) event = false)
     {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq) (serial : Nat)
     (selected : canonicalFreshSlot who
       (control.execution.observe (application setup runtime leaks) who).application = some serial) :
-    countPermits ((application setup runtime leaks).outputs (control.execution.recall who))
-      (slotEnvelope setup runtime leaks who (control.execution.recall who)
+    countPermits ((application setup runtime leaks).outputs (control.execution.logs who))
+      (slotEnvelope setup runtime leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) event serial) = true := by
   have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
@@ -100,7 +101,7 @@ theorem onePacket_canonical_permitted (assessment : setup.intendedModel.Behavior
     (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
   obtain ⟨choice, supported⟩ := (asIfHonestProfile setup runtime leaks assessment who
-    (some (control.execution.recall who,
+    (some (control.execution.logs who,
       control.execution.observe (application setup runtime leaks) who))).support_nonempty
   obtain ⟨action, encoded, values⟩ :=
     onePacket_honest_covered (runtime := runtime) assessment covers trace who event turn choice
@@ -111,13 +112,13 @@ theorem onePacket_canonical_permitted (assessment : setup.intendedModel.Behavior
     ((control.execution.application.publicView_eventReady event).mp
       (PublicView.ownTurn?_spec _ who event turn).1)
     (PublicView.ownTurn?_spec _ who event turn).2
-  have decision := canonical_eq_slotResponse (runtime := runtime) who (control.execution.recall who)
+  have decision := canonical_eq_slotResponse (runtime := runtime) who (control.execution.logs who)
     (control.execution.observe (application setup runtime leaks) who) event node serial active
       selected
       choice
     action encoded
   obtain ⟨material, transmits, envelope⟩ := slotResponse_transmission setup runtime leaks who
-    (control.execution.recall who) (control.execution.observe (application setup runtime leaks) who)
+    (control.execution.logs who) (control.execution.observe (application setup runtime leaks) who)
     event node serial choice action encoded (by rw [successful]; rfl)
   rw [← decision] at transmits
   rw [← envelope]
@@ -135,16 +136,16 @@ theorem honestChoice_silence_of_pending (assessment : setup.intendedModel.Behavi
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (unsent : runtime.eventRecorded leaks (control.execution.recall who) event = false)
+    (unsent : runtime.eventRecorded leaks (control.execution.logs who) event = false)
     {payload : L.Ty} {outputEq : (graph setup).outputLayout event = .binding who payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq) :
     honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))
         (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-          (some (control.execution.recall who,
+          (some (control.execution.logs who,
             control.execution.observe (application setup runtime leaks) who))) = 0 := by
   obtain ⟨serial, selected⟩ := onePacket_canonicalFreshSlot_exists (runtime := runtime) trace who
   have serialCapacity : serial < bounds.candidateCount :=
@@ -170,7 +171,7 @@ theorem honestChoice_silence_of_pending (assessment : setup.intendedModel.Behavi
   obtain ⟨action, encoded, values⟩ := covered
   obtain ⟨value, successful, _⟩ := values who payload outputEq codeEq node
   obtain ⟨material, transmits, _⟩ := slotResponse_transmission setup runtime leaks who
-    (control.execution.recall who) (control.execution.observe (application setup runtime leaks) who)
+    (control.execution.logs who) (control.execution.observe (application setup runtime leaks) who)
     event node serial choice action encoded (by rw [successful]; rfl)
   have values := congrArg Subtype.val same
   change (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who _
@@ -200,14 +201,14 @@ theorem slotChoice_silence_of_pending (assessment : setup.intendedModel.Behavior
       ((graph setup).nodes event) = .bind who payload}
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq) :
     slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment who
-        (some (control.execution.recall who,
+        (some (control.execution.logs who,
           control.execution.observe (application setup runtime leaks) who))
         (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-          (some (control.execution.recall who,
+          (some (control.execution.logs who,
             control.execution.observe (application setup runtime leaks) who))) =
       ((trembleSlots setup bounds).filter fun slot =>
-          countPermits ((application setup runtime leaks).outputs (control.execution.recall who))
-            (slotEnvelope setup runtime leaks who (control.execution.recall who)
+          countPermits ((application setup runtime leaks).outputs (control.execution.logs who))
+            (slotEnvelope setup runtime leaks who (control.execution.logs who)
               (control.execution.observe (application setup runtime leaks) who) event slot) =
                 false).card /
         (trembleSlots setup bounds).card := by
@@ -216,17 +217,17 @@ theorem slotChoice_silence_of_pending (assessment : setup.intendedModel.Behavior
       have := capacity who
       omega
   let rejected : Set Nat := {slot | countPermits ((application setup runtime leaks).outputs
-    (control.execution.recall who)) (slotEnvelope setup runtime leaks who
-      (control.execution.recall who)
+    (control.execution.logs who)) (slotEnvelope setup runtime leaks who
+      (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) event slot) = false}
   let silence := silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-    (some (control.execution.recall who, control.execution.observe (application setup runtime
+    (some (control.execution.logs who, control.execution.observe (application setup runtime
       leaks) who))
-  let pairs := slotPairs setup runtime leaks bounds assessment who (control.execution.recall who)
+  let pairs := slotPairs setup runtime leaks bounds assessment who (control.execution.logs who)
     (control.execution.observe (application setup runtime leaks) who)
   let tier := fun pair : Nat × Option (OwnAction Player L) =>
     slotChoiceOf setup runtime leaks bounds (initialLaw setup) horizon scheduler who
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who)
       event pair.1 pair.2
   -- On the support, the tier is silence exactly at a rejected slot.
@@ -240,18 +241,18 @@ theorem slotChoice_silence_of_pending (assessment : setup.intendedModel.Behavior
     cases pairEq
     have slotCapacity : slot < bounds.candidateCount :=
       (mem_trembleSlots_iff setup bounds capacityOne slot).mp
-        ((PMF.mem_support_uniformOfFinset_iff _ _).mp slotDrawn)
+        ((mem_support_uniformOn_iff _ _).mp slotDrawn)
     have covered := onePacket_honest_covered (runtime := runtime) assessment covers trace who
       event turn choice
       choiceDrawn
     have offeredIff := slotResponse_mem_onePacket_iff setup runtime leaks bounds who
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who)
       event node slot slotCapacity choice covered
     obtain ⟨action, encoded, values⟩ := covered
     obtain ⟨value, successful, _⟩ := values who payload outputEq codeEq node
     obtain ⟨material, transmits, _⟩ := slotResponse_transmission setup runtime leaks who
-      (control.execution.recall who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
         who)
       event node slot choice action encoded (by rw [successful]; rfl)
     change slotChoiceOf setup runtime leaks bounds (initialLaw setup) horizon scheduler who _ _
@@ -268,9 +269,9 @@ theorem slotChoice_silence_of_pending (assessment : setup.intendedModel.Behavior
       rw [transmits] at silent
       cases silent
     · intro isRejected
-      have absent : slotResponse setup runtime leaks who (control.execution.recall who)
+      have absent : slotResponse setup runtime leaks who (control.execution.logs who)
           (control.execution.observe (application setup runtime leaks) who) event slot choice ∉
-            bounds.onePacketActions runtime leaks who (control.execution.recall who)
+            bounds.onePacketActions runtime leaks who (control.execution.logs who)
               (control.execution.observe (application setup runtime leaks) who) := fun offered => by
         rw [offeredIff.mp offered] at isRejected
         cases isRejected
@@ -282,10 +283,10 @@ theorem slotChoice_silence_of_pending (assessment : setup.intendedModel.Behavior
   rw [slotChoice_eq_map (runtime := runtime) (initialLaw setup) horizon scheduler turn]
   change (pairs.map tier) silence = _
   rw [mass]
-  have marginal : pairs.map Prod.fst = PMF.uniformOfFinset (trembleSlots setup bounds)
+  have marginal : pairs.map Prod.fst = uniformOn (trembleSlots setup bounds)
       (trembleSlots_nonempty setup bounds) :=
     bind_map_pair_map_fst_eq _ _
-  rw [marginal, PMF.toOuterMeasure_uniformOfFinset_apply]
+  rw [marginal, uniformOn_toOuterMeasure_apply]
   congr 3
   exact Finset.filter_congr_decidable _ _ _
 

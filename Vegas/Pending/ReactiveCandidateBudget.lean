@@ -40,7 +40,7 @@ def submittedCandidateSlots (runtime : EventGraphRuntime graph)
 def CandidateRecall (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
-  ∀ who serial, serial ∉ runtime.submittedCandidateSlots leaks (execution.recall who) →
+  ∀ who serial, serial ∉ runtime.submittedCandidateSlots leaks (execution.logs who) →
     execution.application.candidates.lookup (who, .prepared serial) = .fresh
 
 theorem submission_candidate_other (state : State graph) (sender observer : Player)
@@ -86,8 +86,8 @@ theorem submittedCandidateSlots_respond (runtime : EventGraphRuntime graph)
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (response : (runtime.reactiveApplication leaks).Action) :
     runtime.submittedCandidateSlots leaks
-        ((execution.respond (runtime.reactiveApplication leaks) who response).recall who) =
-      runtime.submittedCandidateSlots leaks (execution.recall who) ++
+        ((execution.respond (runtime.reactiveApplication leaks) who response).logs who) =
+      runtime.submittedCandidateSlots leaks (execution.logs who) ++
         (runtime.responseCandidateSlot leaks response).toList := by
   rw [submittedCandidateSlots, ReactiveApplication.respond_actions]
   simp only [List.filterMap_append, List.filterMap_cons, List.filterMap_nil]
@@ -101,7 +101,7 @@ theorem candidateRecall_respond (runtime : EventGraphRuntime graph)
     runtime.CandidateRecall leaks
       (execution.respond (runtime.reactiveApplication leaks) who response) := by
   intro observer serial absent
-  have old : serial ∉ runtime.submittedCandidateSlots leaks (execution.recall observer) := by
+  have old : serial ∉ runtime.submittedCandidateSlots leaks (execution.logs observer) := by
     intro present
     apply absent
     unfold submittedCandidateSlots at present ⊢
@@ -134,7 +134,7 @@ private theorem candidateRecall_handle (runtime : EventGraphRuntime graph)
     (issued : execution.Issued (runtime.reactiveApplication leaks) message)
     (accepted : handle runtime execution.application ⟨message.id, message.payload.call⟩ = some next)
     (who : Player) (serial : Nat)
-    (absent : serial ∉ runtime.submittedCandidateSlots leaks (execution.recall who)) :
+    (absent : serial ∉ runtime.submittedCandidateSlots leaks (execution.logs who)) :
     next.candidates.lookup (who, .prepared serial) = .fresh := by
   rcases message with ⟨id, packet, evidence, token⟩
   cases packet with
@@ -231,19 +231,19 @@ theorem reactiveFreshSlot_le_recall (runtime : EventGraphRuntime graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
     (valid : runtime.CandidateRecall leaks execution) :
-    ∃ serial, serial ≤ (execution.recall who).length ∧
+    ∃ serial, serial ≤ (execution.logs who).length ∧
       reactiveFreshSlot
         (execution.observe (runtime.reactiveApplication leaks) who).application = some serial := by
   classical
-  let used := runtime.submittedCandidateSlots leaks (execution.recall who)
-  have count : used.toFinset.card ≤ (execution.recall who).length := by
+  let used := runtime.submittedCandidateSlots leaks (execution.logs who)
+  have count : used.toFinset.card ≤ (execution.logs who).length := by
     exact le_trans (List.toFinset_card_le used)
       ((List.length_filterMap_le _ _).trans (List.length_map _).le)
-  have more : used.toFinset.card < (Finset.range ((execution.recall who).length + 1)).card := by
+  have more : used.toFinset.card < (Finset.range ((execution.logs who).length + 1)).card := by
     simpa only [Finset.card_range] using Nat.lt_succ_of_le count
   obtain ⟨unused, available, absent⟩ := Finset.exists_mem_notMem_of_card_lt_card more
   have fresh := valid who unused (by simpa only [List.mem_toFinset] using absent)
-  have bound : unused ≤ (execution.recall who).length :=
+  have bound : unused ≤ (execution.logs who).length :=
     Nat.lt_succ_iff.mp (Finset.mem_range.mp available)
   unfold reactiveFreshSlot
   split

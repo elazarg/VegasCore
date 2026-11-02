@@ -30,9 +30,9 @@ theorem canonicalTransmitsAt_of_debtFree (wellFormed : setup.WellFormed)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
     (event : (graph setup).EventId)
-    (pending : pendingEvent setup runtime leaks who (some (control.execution.recall who,
+    (pending : pendingEvent setup runtime leaks who (some (control.execution.logs who,
       control.execution.observe (application setup runtime leaks) who)) = some event) :
-    CanonicalTransmitsAt setup runtime leaks who (control.execution.recall who)
+    CanonicalTransmitsAt setup runtime leaks who (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who) event := by
   have owned := (pendingEvent_spec (runtime := runtime) pending).2.2.1
   cases node : nodeView (graph setup) event with
@@ -56,7 +56,7 @@ theorem canonicalTransmitsAt_of_debtFree (wellFormed : setup.WellFormed)
       have active := control.execution.application.active_of_ready_owned facts.quiescent ready owned
       obtain ⟨serial, selected⟩ := onePacket_canonicalFreshSlot_exists (runtime := runtime)
         trace who
-      rw [runtime.canonicalServiceDecision_binding leaks who (control.execution.recall who)
+      rw [runtime.canonicalServiceDecision_binding leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) event payload outputEq
         codeEq node active serial selected (.success value)]
       exact Option.some_ne_none _
@@ -80,15 +80,15 @@ theorem honestResponse_canonical_of_debtFree (wellFormed : setup.WellFormed)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
     (event : (graph setup).EventId)
-    (pending : pendingEvent setup runtime leaks who (some (control.execution.recall who,
+    (pending : pendingEvent setup runtime leaks who (some (control.execution.logs who,
       control.execution.observe (application setup runtime leaks) who)) = some event)
     (response : (application setup runtime leaks).Action)
     (supported : response ∈ (honestResponse setup runtime leaks source who
-      (control.execution.recall who)
+      (control.execution.logs who)
       (control.execution.observe (application setup runtime leaks) who)).support) :
     ∃ (action : (graph setup).Action event) (material : (application setup runtime
       leaks).Submission),
-      response = runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+      response = runtime.canonicalServiceDecision leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) event action ∧
       response.transmission = some material ∧
       ∀ owner payload outputEq codeEq,
@@ -112,7 +112,7 @@ theorem honestResponse_canonical_of_debtFree (wellFormed : setup.WellFormed)
     (pendingEvent_spec (runtime := runtime) pending).2.2.1
   have encodes := asIfHonestProfile_encodes (runtime := runtime) source who control.execution rank
     ordered point
-    decoded (control.execution.recall who) event turn active sourceChoice chosen
+    decoded (control.execution.logs who) event turn active sourceChoice chosen
   rcases sourceChoice with _ | sourceAction
   · simp at encodes
   cases encoded : encodeEventAction? setup.program event sourceAction with
@@ -120,7 +120,7 @@ theorem honestResponse_canonical_of_debtFree (wellFormed : setup.WellFormed)
   | some action =>
       have success := asIfHonestProfile_success (runtime := runtime) source who control.execution
         rank ordered
-        point decoded (control.execution.recall who) sourceAction chosen
+        point decoded (control.execution.logs who) sourceAction chosen
       have sends := transmits sourceAction action encoded success.1 success.2
       obtain ⟨material, submits⟩ := Option.ne_none_iff_exists'.mp sends
       have commits := success.1
@@ -145,26 +145,26 @@ theorem honestChoice_canonical_of_debtFree (wellFormed : setup.WellFormed)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure who setup.program point)
     (event : (graph setup).EventId)
-    (pending : pendingEvent setup runtime leaks who (some (control.execution.recall who,
+    (pending : pendingEvent setup runtime leaks who (some (control.execution.logs who,
       control.execution.observe (application setup runtime leaks) who)) = some event)
     (bound : (graph setup).EventId → Nat)
     (fits : control.execution.application.publicView.InclusionFitsDeadline runtime bound
       event)
     (choice : (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
       scheduler).Choice who
-      (some (control.execution.recall who,
+      (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who)))
     (supported : choice ∈ (honestChoice setup runtime leaks bounds (initialLaw setup) horizon
       scheduler
-      source who (some (control.execution.recall who,
+      source who (some (control.execution.logs who,
         control.execution.observe (application setup runtime leaks) who))).support) :
     ∃ (action : (graph setup).Action event) (material : (application setup runtime
       leaks).Submission),
       choice.1 = some (runtime.canonicalServiceDecision leaks who
-        (control.execution.recall who) (control.execution.observe (application setup runtime
+        (control.execution.logs who) (control.execution.observe (application setup runtime
           leaks) who)
         event action) ∧
-      (runtime.canonicalServiceDecision leaks who (control.execution.recall who)
+      (runtime.canonicalServiceDecision leaks who (control.execution.logs who)
         (control.execution.observe (application setup runtime leaks) who) event
           action).transmission =
           some material ∧

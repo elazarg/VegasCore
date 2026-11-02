@@ -81,7 +81,7 @@ variable [DecidableEq Principal]
 recall with the profile that generated it. Opponents' pasts are unchanged. -/
 theorem consistentRecall_policyInvariant (players : Principal → app.Policy) :
     app.PolicyInvariant players
-      (fun execution => ∀ who, (players who).Consistent (execution.recall who)) where
+      (fun execution => ∀ who, (players who).Consistent (execution.logs who)) where
   respond execution who action valid supported := by
     intro owner
     by_cases equal : owner = who
@@ -107,7 +107,7 @@ own supported actions enter its consistency check. -/
 theorem Policy.recover_invariant (prescribed recovery : app.Policy) (who : Principal)
     (players : Principal → app.Policy) (focal : players who = prescribed.recover recovery) :
     app.PolicyInvariant players
-      (fun execution => prescribed.Consistent (execution.recall who)) where
+      (fun execution => prescribed.Consistent (execution.logs who)) where
   respond execution actor action valid supported := by
     by_cases same : who = actor
     · subst actor
@@ -133,7 +133,7 @@ theorem PolicyInvariant.recover {players : Principal → app.Policy}
     {predicate : app.Execution → Prop} (invariant : app.PolicyInvariant players predicate)
     (who : Principal) (recovery : app.Policy) :
     app.PolicyInvariant (Function.update players who ((players who).recover recovery))
-      (fun execution => predicate execution ∧ (players who).Consistent (execution.recall who)) := by
+      (fun execution => predicate execution ∧ (players who).Consistent (execution.logs who)) := by
   let repaired := Function.update players who ((players who).recover recovery)
   have consistent := (players who).recover_invariant recovery who repaired
     (Function.update_self ..)
@@ -155,8 +155,8 @@ theorem PolicyInvariant.runRounds_congr {players : Principal → app.Policy}
     {predicate : app.Execution → Prop} (invariant : app.PolicyInvariant players predicate)
     (other : Principal → app.Policy)
     (agree : ∀ execution, predicate execution → ∀ who,
-      players who (execution.recall who) (execution.observe app who) =
-        other who (execution.recall who) (execution.observe app who))
+      players who (execution.logs who) (execution.observe app who) =
+        other who (execution.logs who) (execution.observe app who))
     (scheduler : app.Scheduler) (count : Nat) (execution : app.Execution)
     (valid : predicate execution) :
     app.runRounds scheduler players count execution =
@@ -194,7 +194,7 @@ even with arbitrary other players, scheduler, and passive observation rule. -/
 theorem Policy.recoverWhere_runRounds (players : Principal → app.Policy)
     (focal : Principal → Prop) [DecidablePred focal] (recovery : Principal → app.Policy)
     (scheduler : app.Scheduler) (count : Nat) (execution : app.Execution)
-    (valid : ∀ who, focal who → (players who).Consistent (execution.recall who)) :
+    (valid : ∀ who, focal who → (players who).Consistent (execution.logs who)) :
     app.runRounds scheduler
         (fun who => if focal who then (players who).recover (recovery who) else players who)
         count execution =
@@ -205,7 +205,7 @@ theorem Policy.recoverWhere_runRounds (players : Principal → app.Policy)
     (players who).recover_invariant (recovery who) who repaired
       (by simp only [repaired, chosen, ↓reduceIte])
   have invariant : app.PolicyInvariant repaired
-      (fun execution => ∀ who, focal who → (players who).Consistent (execution.recall who)) :=
+      (fun execution => ∀ who, focal who → (players who).Consistent (execution.logs who)) :=
     ⟨fun execution actor action consistent supported who chosen =>
       (single who chosen).respond execution actor action (consistent who chosen) supported,
      fun execution next command consistent reached who chosen =>

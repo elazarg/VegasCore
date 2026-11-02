@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OnePacketSlotMasses
+import GameTheoryExtensions.Math.Probability.Uniform
 
 /-! # Masses of the as-if-honest, slot and silence laws at offered commitments
 
@@ -348,7 +349,7 @@ theorem slotChoice_slotChoiceOf_apply {assessment : setup.intendedModel.Behavior
       view))
         (slotChoiceOf setup runtime leaks bounds initial horizon scheduler who past view event slot
           choice) =
-      PMF.uniformOfFinset (trembleSlots setup bounds) (trembleSlots_nonempty setup bounds) slot *
+      uniformOn (trembleSlots setup bounds) (trembleSlots_nonempty setup bounds) slot *
         asIfHonestProfile setup runtime leaks assessment who (some (past, view)) choice := by
   rw [slotChoice_eq_map (runtime := runtime) initial horizon scheduler site.turn]
   have injective : ∀ pair ∈ (slotPairs setup runtime leaks bounds assessment who past view).support,
@@ -362,7 +363,7 @@ theorem slotChoice_slotChoiceOf_apply {assessment : setup.intendedModel.Behavior
     dsimp only at equal
     have pairCapacity : pairSlot < bounds.candidateCount :=
       (mem_trembleSlots_iff setup bounds site.capacity pairSlot).mp
-        ((PMF.mem_support_uniformOfFinset_iff _ _).mp slotDrawn)
+        ((mem_support_uniformOn_iff _ _).mp slotDrawn)
     obtain ⟨slotEq, choiceEq⟩ := slotChoiceOf_injective setup runtime leaks bounds initial horizon
       scheduler who past view event site.node site.freshOfPermitted slotCapacity pairCapacity
       (site.covered choice supported) (site.covered

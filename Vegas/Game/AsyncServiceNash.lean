@@ -31,10 +31,10 @@ namespace Vegas
 open SourceProgram
 open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability GameTheory.Enforcement Interaction EventGraphRuntime
-variable {Player : Type} [DecidableEq Player] [Fintype Player]
+variable {Player : Type} [DecidableEq Player] [Finite Player]
   {L : IExpr} [IExpr.ResultTypes L]
 namespace AsyncServiceSpec
-omit [Fintype Player] in
+omit [Finite Player] in
 private theorem bestResponse_self_iff (form : GameForm Player)
     (utility : form.sig.Outcome → Player → ℝ) (error : ℝ)
     (profile : Profile form.sig) (who : Player) :
@@ -70,7 +70,7 @@ def SettlementRange {Parameter : Type}
     ∀ payoffs ∈ (settle (some control)).support, ∀ who,
       low who ≤ payoffs who ∧ payoffs who ≤ low who + width who
 
-omit [Fintype Player] in
+omit [Finite Player] in
 private theorem SettlementRange.expected {Parameter : Type}
     {parameter : State L service.setup.context → Parameter}
     {utility : Parameter × PublicOutcome service.setup.program → Player → ℝ}
@@ -157,6 +157,7 @@ private theorem clientProfile_value_close {Parameter : Type}
         timing.deferralError * range who ∧
       expect original sourcePayoff - expect native (fun final => payoff final.state who) ≤
         timing.deferralError * range who := by
+  let : Fintype Player := Fintype.ofFinite Player
   intro base payoff native original sourcePayoff
   classical
   let app := serviceApplication service.setup service.mode service.deadline service.leaks
@@ -324,6 +325,7 @@ theorem isεBestResponse_of_clientProfile {Parameter : Type}
         (fun final player => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) player))
         (ε + 2 * timing.deferralError * range who) who source (source who) := by
+  let : Fintype Player := Fintype.ofFinite Player
   intro base payoff native
   rw [isεNash_iff] at native
   intro who
@@ -440,6 +442,7 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds {Parameter : Type}
         (ε + 2 * timing.deferralError * range who) who
         (service.clientProfile admission menu timing source)
         (service.clientProfile admission menu timing source who) := by
+  let : Fintype Player := Fintype.ofFinite Player
   intro base payoff clients firstTurn equilibrium
   classical
   let app := serviceApplication service.setup service.mode service.deadline service.leaks

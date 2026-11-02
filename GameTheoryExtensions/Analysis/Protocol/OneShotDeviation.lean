@@ -17,8 +17,8 @@ namespace GameTheory.Protocol.InformationModel
 
 open GameTheory.Math.Probability ExecutionProtocol
 
-variable {Player : Type} [Fintype Player] [DecidableEq Player]
-  {E : ExecutionProtocol Player} (M : InformationModel E)
+variable {Player : Type} [DecidableEq Player]
+  {E : ExecutionProtocol Player} [E.FiniteMovers] (M : InformationModel E)
 
 theorem one_step_then_baseline_eq_local_law (antichain : M.DecisionInformationAntichain)
     (profile : ∀ player, M.BehavioralPolicy player) (who : Player)

@@ -63,9 +63,9 @@ theorem foreign_firstActivation_prefix_of_due
             (some before) ⟨joint, legal⟩).support),
       TracePrefix startTrace prior ∧ TracePrefix (prior.extend joint legal realized) trace ∧
       before.actor = some owner ∧ joint owner = some response ∧
-      pendingEvent setup runtime leaks owner (some (before.execution.recall owner,
+      pendingEvent setup runtime leaks owner (some (before.execution.logs owner,
         before.execution.observe (application setup runtime leaks) owner)) = some event ∧
-      ∀ previous ∈ before.execution.recall owner,
+      ∀ previous ∈ before.execution.logs owner,
         ¬ ActivatedAt setup runtime leaks owner event previous := by
   have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
     horizon scheduler trace
@@ -76,7 +76,7 @@ theorem foreign_firstActivation_prefix_of_due
   obtain ⟨entry, remembered, atTurn⟩ := recalled_turn_of_ownerActivatedSince runtime leaks
     (initialLaw setup) horizon scheduler (serviceGraph_revealRelaxedOrdered setup .sequential)
     control rawTrace idle event owner entered owned occurred
-  have occurs : ∃ entry ∈ control.execution.recall owner,
+  have occurs : ∃ entry ∈ control.execution.logs owner,
       ActivatedAt setup runtime leaks owner event entry := ⟨entry, remembered, atTurn⟩
   obtain ⟨point, decoded, intended⟩ :=
     intended_of_clear_regular_notOwes (runtime := runtime) wellFormed source focal trace clear

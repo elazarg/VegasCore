@@ -34,13 +34,13 @@ theorem canonical_firstResponse_result_of_settles
     (turn : execution.application.publicView.ownTurn? who = some event)
     (fits : execution.application.publicView.InclusionFitsDeadline runtime bound event)
     (action : (graph setup).Action event) (material : (application setup runtime leaks).Submission)
-    (submits : (runtime.canonicalServiceDecision leaks who (execution.recall who)
+    (submits : (runtime.canonicalServiceDecision leaks who (execution.logs who)
       (execution.observe (application setup runtime leaks) who) event action).transmission = some
         material)
     (after : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, none,
         execution.respond (application setup runtime leaks) who
-          (runtime.canonicalServiceDecision leaks who (execution.recall who)
+          (runtime.canonicalServiceDecision leaks who (execution.logs who)
             (execution.observe (application setup runtime leaks) who) event action)⟩))
     (control : (application setup runtime leaks).Control)
     (target : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
@@ -60,7 +60,7 @@ theorem canonical_firstResponse_result_of_settles
         scheduler).Trace state}, TracePrefix after later →
       AcceptanceInvariant setup runtime leaks bounds horizon scheduler who
         (respondEntry setup runtime leaks execution who (runtime.canonicalServiceDecision leaks who
-          (execution.recall who) (execution.observe (application setup runtime leaks) who) event
+          (execution.logs who) (execution.observe (application setup runtime leaks) who) event
             action))
         (sentEnvelope setup runtime leaks execution who material) event execution.application.config
         action output state := by
@@ -77,9 +77,9 @@ theorem canonical_firstResponse_result_of_settles
   have call := canonical_freshCall rawTrace bound who event turn fits action material submits
   obtain ⟨earlier, later, split⟩ := records
   have member : (sentEnvelope setup runtime leaks execution who material) ∈
-      (application setup runtime leaks).outputs (control.execution.recall who) :=
+      (application setup runtime leaks).outputs (control.execution.logs who) :=
     List.mem_filterMap.mpr ⟨respondEntry setup runtime leaks execution who
-      (runtime.canonicalServiceDecision leaks who (execution.recall who)
+      (runtime.canonicalServiceDecision leaks who (execution.logs who)
         (execution.observe (application setup runtime leaks) who) event action),
       by rw [split]; simp, _emitted⟩
   rw [respondEntry_of_transmission (runtime := runtime) execution who _ material submits] at split

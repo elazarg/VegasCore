@@ -6,6 +6,9 @@ import Interaction.ReactiveLedgerPolicy
 import Vegas.Examples.PrivateValueAuction
 import Vegas.Compile.EventGraphAssembly
 import GameTheory.Math.Probability.Uniform
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # Pending observation samples remain private from scheduling
 
@@ -27,7 +30,7 @@ private abbrev firstEvent : graph.EventId := ⟨0, by decide⟩
 private def runtime : EventGraphRuntime graph := ⟨fun _ => 10⟩
 
 private def leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph) :=
-  fun _ pending => (PMF.uniformOfFintype Bool).map fun seen =>
+  fun _ pending => (uniformLaw Bool).map fun seen =>
     if seen then (pending.map Message.id).toFinset else ∅
 
 private abbrev app := runtime.reactiveApplication leaks
@@ -52,19 +55,19 @@ private theorem missed_supported :
     missed ∈ (sent.environmentStep app (.activate .bob)).support := by
   rw [ReactiveApplication.Execution.activation_samples, PMF.support_map]
   refine ⟨∅, ?_, rfl⟩
-  change ∅ ∈ ((PMF.uniformOfFintype Bool).map fun seen =>
+  change ∅ ∈ ((uniformLaw Bool).map fun seen =>
     if seen then (sent.network.pending.map Message.id).toFinset else ∅).support
   rw [PMF.support_map]
-  exact ⟨false, PMF.mem_support_uniformOfFintype false, rfl⟩
+  exact ⟨false, mem_support_uniformLaw false, rfl⟩
 
 private theorem observed_supported :
     observed ∈ (sent.environmentStep app (.activate .bob)).support := by
   rw [ReactiveApplication.Execution.activation_samples, PMF.support_map]
   refine ⟨{(.alice, 0)}, ?_, rfl⟩
-  change {(.alice, 0)} ∈ ((PMF.uniformOfFintype Bool).map fun seen =>
+  change {(.alice, 0)} ∈ ((uniformLaw Bool).map fun seen =>
     if seen then (sent.network.pending.map Message.id).toFinset else ∅).support
   rw [PMF.support_map]
-  refine ⟨true, PMF.mem_support_uniformOfFintype true, ?_⟩
+  refine ⟨true, mem_support_uniformLaw true, ?_⟩
   simp [pending_nonempty]
 
 /-- The supported branches give Bob different private knowledge. -/
@@ -114,12 +117,13 @@ private def certifiedBranch (seen : Bool) : app.Execution :=
 
 theorem certified_branch_supported (seen : Bool) :
     certifiedBranch seen ∈ (certifiedSent.environmentStep app (.activate .bob)).support := by
+  unfold certifiedBranch
   rw [ReactiveApplication.Execution.activation_samples, PMF.support_map]
-  refine ⟨if seen then {(.alice, 0)} else ∅, ?_, rfl⟩
-  change _ ∈ ((PMF.uniformOfFintype Bool).map fun selected =>
+  apply Set.mem_image_of_mem
+  change _ ∈ ((uniformLaw Bool).map fun selected =>
     if selected then (certifiedSent.network.pending.map Message.id).toFinset else ∅).support
   rw [PMF.support_map]
-  refine ⟨seen, PMF.mem_support_uniformOfFintype seen, ?_⟩
+  refine ⟨seen, mem_support_uniformLaw seen, ?_⟩
   have ids : certifiedSent.network.pending.map Message.id = [(.alice, 0)] := rfl
   cases seen <;> simp [ids]
 
@@ -135,16 +139,16 @@ private def recalledEvidence (past : List app.PlayerEntry) : List (OpeningFact g
 /-- A fixed request for a guessed identifier materializes evidence only after
 private delivery. Neither branch has included a packet. -/
 theorem guessed_forward_materializes_private_evidence :
-    recalledEvidence ((forwarded false).recall .bob) = [] ∧
-      recalledEvidence ((forwarded true).recall .bob) = [certificate] ∧
+    recalledEvidence ((forwarded false).logs .bob) = [] ∧
+      recalledEvidence ((forwarded true).logs .bob) = [certificate] ∧
       (forwarded false).network.ledger = [] ∧ (forwarded true).network.ledger = [] :=
   ⟨rfl, rfl, rfl, rfl⟩
 
 /-- Erasing explicit leaked fields retains the authentic packet Bob emitted. -/
 theorem ledger_projection_retains_emitted_evidence :
-    recalledEvidence (((forwarded false).recall .bob).map
+    recalledEvidence (((forwarded false).logs .bob).map
       (ReactiveApplication.PlayerEntry.ledgerOnly app)) = [] ∧
-    recalledEvidence (((forwarded true).recall .bob).map
+    recalledEvidence (((forwarded true).logs .bob).map
       (ReactiveApplication.PlayerEntry.ledgerOnly app)) = [certificate] ∧
     ((forwarded false).observe app .bob).ledgerOnly app =
       ((forwarded true).observe app .bob).ledgerOnly app := ⟨rfl, rfl, rfl⟩
@@ -156,9 +160,9 @@ private def rememberEvidence : app.Policy := fun past _ =>
 recall can still distinguish earlier private deliveries. -/
 theorem ledger_policy_can_recall_private_evidence :
     ReactiveApplication.Policy.IgnoresLeakedFields app (app.ledgerPolicy rememberEvidence) ∧
-      app.ledgerPolicy rememberEvidence ((forwarded false).recall .bob)
+      app.ledgerPolicy rememberEvidence ((forwarded false).logs .bob)
         ((forwarded false).observe app .bob) = PMF.pure ⟨none⟩ ∧
-      app.ledgerPolicy rememberEvidence ((forwarded true).recall .bob)
+      app.ledgerPolicy rememberEvidence ((forwarded true).logs .bob)
         ((forwarded true).observe app .bob) = PMF.pure guessedForward :=
   ⟨app.ledgerPolicy_ignoresLeakedFields rememberEvidence, rfl, rfl⟩
 

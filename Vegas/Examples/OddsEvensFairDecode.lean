@@ -2,6 +2,9 @@
 
 import Vegas.Examples.OddsEvensFairProfile
 import Vegas.Game.IntendedAuthenticOpening
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # Source decoding of the actual intended Odds–Evens policies -/
 
@@ -124,7 +127,7 @@ theorem second_commit_bitLaw (profile : ∀ who, setup.intendedModel.BehavioralP
   rw [second_commit_decoded, secondBitLaw, PMF.map_comp]
   exact map_congr_on_support _ (fun choice _ => (second_binding_success choice).symm)
 
-theorem firstBitLaw_uniform : firstBitLaw uniformProfile = PMF.uniformOfFintype Bool := by
+theorem firstBitLaw_uniform : firstBitLaw uniformProfile = uniformLaw Bool := by
   rw [firstBitLaw, uniformProfile, PMF.map_comp]
   have simplified : (fun bit =>
       ((OwnAction.binding (L := simpleExpr) even 0 .bool
@@ -133,10 +136,10 @@ theorem firstBitLaw_uniform : firstBitLaw uniformProfile = PMF.uniformOfFintype 
     rw [show (intendedBitChoice bit even firstInfo).1 =
       some (.commit even 0 .bool (some (.success bit))) from rfl, OwnAction.binding_commit]
     rfl
-  exact (congrArg (fun action : Bool → Bool => (PMF.uniformOfFintype Bool).map action)
+  exact (congrArg (fun action : Bool → Bool => (uniformLaw Bool).map action)
     simplified).trans (PMF.map_id _)
 
-theorem secondBitLaw_uniform : secondBitLaw uniformProfile = PMF.uniformOfFintype Bool := by
+theorem secondBitLaw_uniform : secondBitLaw uniformProfile = uniformLaw Bool := by
   rw [secondBitLaw, uniformProfile, PMF.map_comp]
   have simplified : (fun bit =>
       ((OwnAction.binding (L := simpleExpr) odd 1 .bool
@@ -145,7 +148,7 @@ theorem secondBitLaw_uniform : secondBitLaw uniformProfile = PMF.uniformOfFintyp
     rw [show (intendedBitChoice bit odd secondInfo).1 =
       some (.commit odd 1 .bool (some (.success bit))) from rfl, OwnAction.binding_commit]
     rfl
-  exact (congrArg (fun action : Bool → Bool => (PMF.uniformOfFintype Bool).map action)
+  exact (congrArg (fun action : Bool → Bool => (uniformLaw Bool).map action)
     simplified).trans (PMF.map_id _)
 
 end Vegas.Examples.OddsEvens

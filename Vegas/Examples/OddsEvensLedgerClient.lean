@@ -3,7 +3,9 @@
 import Interaction.ReactiveLedgerPolicy
 import Vegas.Examples.OddsEvensService
 import Vegas.Pending.ReactiveCanonicalDecision
-import Mathlib.Probability.Distributions.Uniform
+import GameTheory.Math.Probability.FiniteUniform
+
+open GameTheory.Math.Probability
 
 /-! # An explicit ledger-reading Odds–Evens client
 
@@ -40,7 +42,7 @@ def acceptedBit? (view : app.PlayerView) : Option Bool := do
 /-- The second player's source choice after reading the ledger. -/
 def oddBitLaw (view : app.PlayerView) : PMF Bool :=
   match acceptedBit? view with
-  | none => PMF.uniformOfFintype Bool
+  | none => uniformLaw Bool
   | some bit => PMF.pure (!bit)
 
 /-- Feed ordinary graph choices to the existing canonical packet client. -/
@@ -58,7 +60,7 @@ private def respond (who : Player) : app.Policy := fun past view =>
             past
             event then PMF.pure ⟨none⟩
         else match event with
-        | ⟨0, _⟩ => (PMF.uniformOfFintype Bool).map fun bit =>
+        | ⟨0, _⟩ => (uniformLaw Bool).map fun bit =>
             ordinaryResponse who past view (eventId 0) (some (PublicationResult.success bit))
         | ⟨1, _⟩ => (oddBitLaw view).map fun bit =>
             ordinaryResponse who past view (eventId 1) (some (PublicationResult.success bit))
@@ -84,7 +86,7 @@ theorem oddBitLaw_of_known (view : app.PlayerView) (bit : Bool)
   simp only [oddBitLaw, known]
 
 theorem oddBitLaw_of_unknown (view : app.PlayerView)
-    (unknown : acceptedBit? view = none) : oddBitLaw view = PMF.uniformOfFintype Bool := by
+    (unknown : acceptedBit? view = none) : oddBitLaw view = uniformLaw Bool := by
   simp only [oddBitLaw, unknown]
 
 theorem acceptedBit?_ledgerOnly (view : app.PlayerView) :

@@ -18,7 +18,7 @@ variable {Principal : Type} [DecidableEq Principal] [Fintype Principal]
 commands, initialization and nature branches do not increment this count. -/
 def responseCount : app.ProtocolState → Nat
   | none => 0
-  | some control => ∑ who, (control.execution.recall who).length
+  | some control => ∑ who, (control.execution.logs who).length
 
 theorem responseCount_step (initial : PMF app.State) (horizon : Nat) (scheduler : app.Scheduler)
     (before after : app.ProtocolState) (joint : Principal → Option app.Action)
@@ -33,8 +33,8 @@ theorem responseCount_step (initial : PMF app.State) (horizon : Nat) (scheduler 
     cases actor with
     | some who =>
       cases (PMF.mem_support_pure_iff _ _).mp reached
-      change (∑ observer, ((execution.respond app who _).recall observer).length) =
-        (∑ observer, (execution.recall observer).length) + 1
+      change (∑ observer, ((execution.respond app who _).logs observer).length) =
+        (∑ observer, (execution.logs observer).length) + 1
       simp_rw [app.respond_recall_length]
       simp [Finset.sum_add_distrib]
     | none =>
@@ -45,8 +45,8 @@ theorem responseCount_step (initial : PMF app.State) (horizon : Nat) (scheduler 
       | succ remaining =>
         obtain ⟨command, _, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
         obtain ⟨next, supported, rfl⟩ := PMF.support_map .. ▸ moved
-        change (∑ observer, (next.recall observer).length) =
-          (∑ observer, (execution.recall observer).length) + 0
+        change (∑ observer, (next.logs observer).length) =
+          (∑ observer, (execution.logs observer).length) + 0
         rw [app.environmentStep_recall execution next command supported, Nat.add_zero]
 
 theorem responseCount_add_remainingResponses_step

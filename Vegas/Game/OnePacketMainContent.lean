@@ -28,18 +28,18 @@ private theorem canonical_sent_decodes
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (action : (graph setup).Action event) (material : (application setup runtime leaks).Submission)
-    (submits : (runtime.canonicalServiceDecision leaks who (execution.recall who)
+    (submits : (runtime.canonicalServiceDecision leaks who (execution.logs who)
       (execution.observe (application setup runtime leaks) who) event action).transmission =
         some material) :
     sentSourceAction setup runtime leaks
       (execution.respond (application setup runtime leaks) who
-        (runtime.canonicalServiceDecision leaks who (execution.recall who)
+        (runtime.canonicalServiceDecision leaks who (execution.logs who)
           (execution.observe (application setup runtime leaks) who) event action))
-      (runtime.canonicalServiceDecision leaks who (execution.recall who)
+      (runtime.canonicalServiceDecision leaks who (execution.logs who)
         (execution.observe (application setup runtime leaks) who) event action) =
       decodeEventAction setup.program event action := by
   have afterEq : (execution.respond (application setup runtime leaks) who
-      (runtime.canonicalServiceDecision leaks who (execution.recall who)
+      (runtime.canonicalServiceDecision leaks who (execution.logs who)
         (execution.observe (application setup runtime leaks) who) event action)).application =
       (application setup runtime leaks).submit execution.application who material := by
     unfold ReactiveApplication.Execution.respond
@@ -79,10 +79,10 @@ theorem contentFactor_pos_of_honestChoice
     (response : (application setup runtime leaks).Action)
     (choice : (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
       scheduler).Choice who
-      (some (execution.recall who, execution.observe (application setup runtime leaks) who)))
+      (some (execution.logs who, execution.observe (application setup runtime leaks) who)))
     (chosen : choice.1 = some response)
     (supported : choice ∈ (honestChoice setup runtime leaks bounds (initialLaw setup) horizon
-      scheduler source who (some (execution.recall who,
+      scheduler source who (some (execution.logs who,
         execution.observe (application setup runtime leaks) who))).support) :
     0 < contentFactor setup runtime leaks source who execution
       (execution.respond (application setup runtime leaks) who response) response := by
@@ -91,12 +91,12 @@ theorem contentFactor_pos_of_honestChoice
   | some material =>
       have nonsilent : response.transmission ≠ none := by rw [emits]; exact Option.some_ne_none _
       have responseSupport : response ∈ (honestResponse setup runtime leaks source who
-          (execution.recall who) (execution.observe (application setup runtime leaks)
+          (execution.logs who) (execution.observe (application setup runtime leaks)
             who)).support := by
         obtain ⟨original, originalSupport, same⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
         have recorded := (congrArg Subtype.val same).trans chosen
         by_cases offered : original ∈ bounds.onePacketActions runtime leaks who
-            (execution.recall who) (execution.observe (application setup runtime leaks) who)
+            (execution.logs who) (execution.observe (application setup runtime leaks) who)
         · simp only [responseChoice, dite_eq_left offered, Option.some.injEq] at recorded
           exact recorded ▸ originalSupport
         · have quiet : response = ⟨none⟩ := by
@@ -115,11 +115,11 @@ theorem contentFactor_pos_of_honestChoice
             have quiet : response = ⟨none⟩ := by simpa only [encoded] using realized.symm
             exact (nonsilent (by rw [quiet])).elim
         | some action =>
-            have responseEq : runtime.canonicalServiceDecision leaks who (execution.recall who)
+            have responseEq : runtime.canonicalServiceDecision leaks who (execution.logs who)
                 (execution.observe (application setup runtime leaks) who) event action =
                   response := by
               simpa only [encoded] using realized
-            have submits : (runtime.canonicalServiceDecision leaks who (execution.recall who)
+            have submits : (runtime.canonicalServiceDecision leaks who (execution.logs who)
                 (execution.observe (application setup runtime leaks) who) event
                   action).transmission =
                   some material := by rw [responseEq, emits]
@@ -131,13 +131,13 @@ theorem contentFactor_pos_of_honestChoice
                 encodes).trans originalEq.symm
             rw [recovered] at sent
             have positive : 0 < ((asIfHonestProfile setup runtime leaks source who
-                (some (execution.recall who,
+                (some (execution.logs who,
                   execution.observe (application setup runtime leaks) who))) sampled).toReal :=
               ENNReal.toReal_pos (PMF.mem_support_iff _ _ |>.mp sampledSupport)
                 (PMF.apply_ne_top _ _)
             rw [contentFactor, emits]
             change 0 < ((asIfHonestProfile setup runtime leaks source who
-              (some (execution.recall who,
+              (some (execution.logs who,
                 execution.observe (application setup runtime leaks) who)))
               (sentSourceAction setup runtime leaks
                 (execution.respond (application setup runtime leaks) who response) response)).toReal

@@ -58,7 +58,7 @@ theorem round_cases {scheduler : (serviceApplication setup mode deadline leaks).
               command).support,
           (command.actor? (serviceApplication setup mode deadline leaks) = none ∧ next = middle) ∨ ∃
           who, command.actor? (serviceApplication setup mode deadline leaks) = some who ∧ ∃ response
-          ∈ (players who (middle.recall who)
+          ∈ (players who (middle.logs who)
               (middle.observe (serviceApplication setup mode deadline leaks) who)).support,
               next = middle.respond (serviceApplication setup mode deadline leaks) who
                   response := by
@@ -97,7 +97,7 @@ theorem activation_application
 the scheduler saw. -/
 def ActivationsAnswered (execution : (serviceApplication setup mode deadline leaks).Execution) :
     Prop := ∀ entry ∈ execution.environmentRecall, ∀ who, entry.command = .activate who → ∃ answer ∈
-    execution.recall who, answer.beforeView.application.publicView = entry.beforeView.application
+    execution.logs who, answer.beforeView.application.publicView = entry.beforeView.application
 
 /-- Every round answers its activation at the scheduler's public view. -/
 theorem round_activationsAnswered
@@ -114,7 +114,7 @@ theorem round_activationsAnswered
   have recorded := app.dispatch_environmentRecall players command execution next dispatched
   obtain ⟨middle', moved', resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
   have recallEq := app.environmentStep_recall execution middle' command moved'
-  have grows : ∀ who, execution.recall who ⊆ next.recall who := by
+  have grows : ∀ who, execution.logs who ⊆ next.logs who := by
     intro who
     change next ∈ (app.resume players (command.actor? app) middle').support at resumed
     cases actor : command.actor? app with
@@ -177,12 +177,12 @@ theorem roundsFrom_activationsAnswered
 /-- No recorded response has seen `event` ready. -/
 def Untouched (event : (serviceGraph setup mode).EventId)
     (execution : (serviceApplication setup mode deadline leaks).Execution) : Prop :=
-  ∀ who, ∀ entry ∈ execution.recall who,
+  ∀ who, ∀ entry ∈ execution.logs who,
     ¬ entry.beforeView.application.publicView.EventReady event
 
 /-- Every recorded response saw only events of rank at most `bound` ready. -/
 def ReadySeen (bound : Nat) (execution : (serviceApplication setup mode deadline leaks).Execution) :
-    Prop := ∀ who, ∀ entry ∈ execution.recall who, ∀ event : (serviceGraph setup mode).EventId,
+    Prop := ∀ who, ∀ entry ∈ execution.logs who, ∀ event : (serviceGraph setup mode).EventId,
     entry.beforeView.application.publicView.EventReady event → event.val ≤ bound
 
 /-- An execution where the events of rank below `rank` have completed, no

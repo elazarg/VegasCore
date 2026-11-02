@@ -68,7 +68,7 @@ theorem reactiveLatest_sole
     (earlier later : List (runtime.reactiveApplication leaks).PlayerEntry)
     (entry : (runtime.reactiveApplication leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket graph))
-    (split : execution.recall owner = earlier ++ entry :: later)
+    (split : execution.logs owner = earlier ++ entry :: later)
     (emitted : entry.emitted = some message) (authored : message.sender = owner)
     (addressed : message.payload.call.event? graph = some event)
     (sole : ∀ other ∈ earlier ++ later, ¬ EmitsOtherFor runtime leaks other event message.id)
@@ -77,7 +77,7 @@ theorem reactiveLatest_sole
       runtime.reactiveLatest leaks event owner
         (execution.observeEnvironment (runtime.reactiveApplication leaks)) =
           .include message.id := by
-  have output : message ∈ (runtime.reactiveApplication leaks).outputs (execution.recall owner) :=
+  have output : message ∈ (runtime.reactiveApplication leaks).outputs (execution.logs owner) :=
     List.mem_filterMap.mpr ⟨entry, by rw [split]; simp, emitted⟩
   have pending := ((runtime.reactiveApplication leaks).pending_iff_recalled execution owner
     message authored unpublished origins recalled retained).mpr output

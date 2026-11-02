@@ -39,7 +39,8 @@ namespace GameTheory.Protocol.InformationModel
 
 open GameTheory.Math.Probability Filter Finset
 
-variable {ι : Type} [Fintype ι] {E F : ExecutionProtocol ι} {M : InformationModel E}
+variable {ι : Type} {E F : ExecutionProtocol ι} [E.FiniteMovers] [F.FiniteMovers]
+  {M : InformationModel E}
   {S : InformationModel F}
 
 section Weights

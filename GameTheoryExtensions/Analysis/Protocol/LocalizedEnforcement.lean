@@ -22,7 +22,7 @@ namespace GameTheory.Protocol.InformationModel.ActionRestriction
 
 open GameTheory.Math.Probability ExecutionProtocol
 
-variable {Player : Type} [Fintype Player] [DecidableEq Player]
+variable {Player : Type} [Finite Player] [DecidableEq Player]
   {E T : ExecutionProtocol Player} {M : InformationModel E} {N : InformationModel T}
   [Finite T.History] [∀ who, DecidableEq (N.InfoState who)]
   (restriction : M.ActionRestriction N)

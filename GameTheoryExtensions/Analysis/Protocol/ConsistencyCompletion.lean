@@ -25,7 +25,7 @@ namespace GameTheory.Protocol.InformationModel
 open GameTheory.Math.Probability Filter
 
 variable {ι : Type} {E : ExecutionProtocol ι} {M : InformationModel E}
-  [Fintype ι]
+  [Finite ι]
 
 /-- A single subsequence completes the given strategy limit, simultaneously at
 every site. The original sequence need not itself have convergent beliefs. -/

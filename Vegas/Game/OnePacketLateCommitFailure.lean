@@ -278,21 +278,21 @@ theorem certificate_lateCommit_siteDecisionFailure
       who event turn source
       sourceMember
     have inMenu := (slotResponse_mem_onePacket_iff setup runtime leaks bounds who
-      (execution.recall who)
+      (execution.logs who)
       (execution.observe (application setup runtime leaks) who) event node serial
       (lt_of_lt_of_le inRange slotsLe) source covered).mpr permitted
     have otherSelected : (responseChoice setup runtime leaks bounds (initialLaw setup) horizon
       scheduler
-        who (some (execution.recall who, execution.observe (application setup runtime leaks) who))
-        (slotResponse setup runtime leaks who (execution.recall who)
+        who (some (execution.logs who, execution.observe (application setup runtime leaks) who))
+        (slotResponse setup runtime leaks who (execution.logs who)
           (execution.observe (application setup runtime leaks) who) event serial source)).1 =
-        some (slotResponse setup runtime leaks who (execution.recall who)
+        some (slotResponse setup runtime leaks who (execution.logs who)
           (execution.observe (application setup runtime leaks) who) event serial source) := by
       simp only [responseChoice, inMenu, ↓reduceDIte]
     obtain ⟨action, encoded, values⟩ := covered
     obtain ⟨committedValue, successful, _⟩ := values who payload outputEq codeEq node
     obtain ⟨slotMaterial, transmits, envelope⟩ := slotResponse_transmission setup runtime leaks who
-      (execution.recall who) (execution.observe (application setup runtime leaks) who) event node
+      (execution.logs who) (execution.observe (application setup runtime leaks) who) event node
         serial
       source action encoded (by simp [successful])
     have call : slotMaterial.call.packet = .commitment event (who, .prepared serial) :=
@@ -305,7 +305,7 @@ theorem certificate_lateCommit_siteDecisionFailure
     have succeeds : candidateSucceeds ((application setup runtime leaks).submit
       execution.application who
         slotMaterial) (who, .prepared serial) payload = true := by
-      have bound := slotResponse_of_bind setup runtime leaks who (execution.recall who)
+      have bound := slotResponse_of_bind setup runtime leaks who (execution.logs who)
         (execution.observe (application setup runtime leaks) who) event node serial source action
           encoded
       have boundTransmits := transmits
@@ -318,7 +318,7 @@ theorem certificate_lateCommit_siteDecisionFailure
               .none⟩⟩).application := by
         rw [materialEq]
         exact (runtime.reactiveNormalization leaks).submit execution.application who
-          (ReactiveApplication.ResponseMenu.knownPackets (execution.recall who)
+          (ReactiveApplication.ResponseMenu.knownPackets (execution.logs who)
             (execution.observe (application setup runtime leaks) who))
           (⟨⟨.commitment event (who, .prepared serial), some ⟨payload, committedValue⟩⟩, .none⟩ :
             (runtime.reactiveApplication leaks).Submission)

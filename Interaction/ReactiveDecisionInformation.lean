@@ -55,7 +55,7 @@ theorem decisionInformationAntichain
   rw [app.info, app.info, firstEq, lastEq] at sameInfo
   simp only [observe, firstActive, lastActive, ↓reduceIte] at sameInfo
   have sameRecall := congrArg Prod.fst (Option.some.inj sameInfo)
-  change before.execution.recall who = after.execution.recall who at sameRecall
+  change before.execution.logs who = after.execution.logs who at sameRecall
   let action := (joint who).getD ⟨none⟩
   let middle : app.Control :=
     { before with
@@ -71,8 +71,8 @@ theorem decisionInformationAntichain
   have grows := congrArg List.length (app.respond_actions before.execution who action)
   simp only [List.length_map, List.length_append, List.length_singleton] at grows
   have ordered := retained.length_le
-  change ((before.execution.respond app who action).recall who).length ≤
-    (after.execution.recall who).length at ordered
+  change ((before.execution.respond app who action).logs who).length ≤
+    (after.execution.logs who).length at ordered
   rw [grows, sameRecall] at ordered
   omega
 
