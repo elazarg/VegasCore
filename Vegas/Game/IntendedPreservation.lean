@@ -131,6 +131,16 @@ theorem failedReveals_eq_zero_of_intendedState {state : setup.ProtocolState}
   | some state =>
       exact ProtocolState.failedReveals_eq_zero_of_intended who setup.program state intended read
 
+/-- Every terminal readout of an intended history has no failed reveal. -/
+theorem intended_no_failed_reveals (wellFormed : setup.WellFormed)
+    (history : setup.intendedProtocol.History)
+    {terminal : Config Player L setup.program.terminalCtx}
+    (read : setup.protocolReadout history.state = some terminal) :
+    ∀ who, failedReveals setup.program who (publicOutcome setup.program terminal) = 0 := by
+  intro who
+  exact setup.failedReveals_eq_zero_of_intendedState
+    (setup.intendedState_trace wellFormed history.trace) who read
+
 /-- The terminal public result of intended play has no defaulted player. -/
 theorem not_defaulted_of_intendedState {state : setup.ProtocolState}
     (intended : setup.IntendedState state) (who : Player)

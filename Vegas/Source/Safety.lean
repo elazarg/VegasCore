@@ -213,9 +213,8 @@ theorem runFrom_consistent {Γ : SourceCtx Player L} {O : Finset VarId}
             · next allAccept => exact (List.all_eq_true.mp allAccept) _ completed
             · exact failureAccepts
 
-/-- Complete execution decides every retained guard by its code: either its
-subject or an input its code reads failed to publish, or all of them were
-published and the code holds on the published values. -/
+/-- Every retained obligation accepts the terminal published subject and inputs,
+using the guard's failure-aware decision. -/
 theorem Setup.terminal_guards_hold
     (setup : Setup (Player := Player) (L := L))
     (profile : BehavioralProfile setup.program)
@@ -223,26 +222,9 @@ theorem Setup.terminal_guards_hold
     (supported : outcome ∈ (setup.run profile).support)
     (obligation : Obligation setup.program.terminalCtx)
     (member : obligation ∈ finalRegistry setup.program []) :
-    (((finalRevelations setup.program (Revelations.initial setup.context))
-        obligation.source).result outcome.state = .failure ∨
-      ∃ (x : VarId) (τ : L.Ty) (h : HasVar obligation.guard.schema x τ),
-        x ∈ L.exprDeps obligation.guard.code ∧
-          (obligation.guard.reads h).result
-            (finalRevelations setup.program (Revelations.initial setup.context))
-            outcome.state = .failure) ∨
-    ∃ (subjectValue : L.Val obligation.payload)
-      (get : (x : VarId) → (σ : L.Ty) →
-        HasVar ((obligation.subject, obligation.payload) :: obligation.guard.schema) x σ →
-          x ∈ L.exprDeps obligation.guard.code → L.Val σ),
-      ((finalRevelations setup.program (Revelations.initial setup.context))
-        obligation.source).result outcome.state = .success subjectValue ∧
-      (∀ hx, get obligation.subject obligation.payload .here hx = subjectValue) ∧
-      (∀ {x τ} (h : HasVar obligation.guard.schema x τ)
-        (hx : x ∈ L.exprDeps obligation.guard.code),
-          (obligation.guard.reads h).result
-            (finalRevelations setup.program (Revelations.initial setup.context))
-            outcome.state = .success (get x τ (.there h) hx)) ∧
-      L.toBool (L.evalDeps obligation.guard.code get) = true := by
+    obligation.accepts
+      (finalRevelations setup.program (Revelations.initial setup.context))
+      outcome.state = true := by
   have revealed : obligation.revealed
       (finalRevelations setup.program (Revelations.initial setup.context)) = true := by
     simp only [Obligation.revealed, Bool.and_eq_true, SourceGuard.readsRevealed]
@@ -257,22 +239,6 @@ theorem Setup.terminal_guards_hold
     setup.namesNodup (setup.accounts ▸ Accounted.initial setup.context) (by simp [Config.initial])
     outcome reached
     obligation member revealed
-  simp only [Config.initial, Obligation.accepts, SourceGuard.accepts] at accepts
-  by_cases failedInput : ∃ (x : VarId) (τ : L.Ty) (h : HasVar obligation.guard.schema x τ),
-      x ∈ L.exprDeps obligation.guard.code ∧
-        (obligation.guard.reads h).result
-          (finalRevelations setup.program (Revelations.initial setup.context))
-          outcome.state = .failure
-  · exact Or.inl (Or.inr failedInput)
-  cases subjectEq : ((finalRevelations setup.program (Revelations.initial setup.context))
-      obligation.source).result outcome.state with
-  | failure => exact Or.inl (Or.inl rfl)
-  | success subjectValue =>
-      obtain ⟨get, getSubject, resultsEq⟩ := obligation.guard.exists_get subjectValue _
-        (fun h read failed => failedInput ⟨_, _, h, read, failed⟩)
-      refine Or.inr ⟨subjectValue, get, rfl, getSubject, resultsEq, ?_⟩
-      rw [subjectEq, obligation.guard.accepts_success subjectValue _ get getSubject
-        resultsEq] at accepts
-      exact accepts
+  simpa only [Config.initial] using accepts
 
 end Vegas.SourceProgram

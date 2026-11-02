@@ -173,8 +173,54 @@ class LeanOptionTests(unittest.TestCase):
     def test_exact_owning_pin_passes(self):
         self.assertEqual(CHECKER.check_audit_pins(statement("source_result")), [])
 
+    def test_paper_concepts_do_not_need_axiom_pins(self):
+        concepts = (
+            "def Vegas.Paper.InRange (low high cash : ℝ) : Prop := low ≤ cash ∧ cash ≤ high\n",
+            "abbrev Vegas.Paper.Receipts (Player : Type) := Player → ℝ\n",
+            "structure Vegas.Paper.CashObservation where\n  amount : ℝ\n  defaulted : Bool\n",
+        )
+        for concept in concepts:
+            with self.subTest(concept=concept):
+                self.assertEqual(CHECKER.check_audit_pins(concept + statement()), [])
+
+    def test_paper_concept_names_are_fully_qualified(self):
+        for command in ("def InRange : Prop := True\n", "abbrev Receipts := Nat → ℝ\n",
+                        "structure CashObservation where\n  amount : ℝ\n"):
+            with self.subTest(command=command):
+                errors = CHECKER.check_audit_pins(command + statement())
+                self.assertTrue(any("fully qualified paper concept name" in e for e in errors))
+
+    def test_theorem_using_local_concept_keeps_full_statement_and_exact_pin(self):
+        concept = "def Vegas.Paper.InRange (low high cash : ℝ) : Prop := low ≤ cash ∧ cash ≤ high\n"
+        header = ("theorem Vegas.Paper.range_lower (low high cash : ℝ)\n"
+                  "    (within : Vegas.Paper.InRange low high cash)")
+        theorem = header + " : low ≤ cash := within.1\n"
+        self.assertEqual(CHECKER.check_audit_pins(concept + theorem + pin("range_lower")), [])
+        mutations = (
+            (header + " := within.1\n" + pin("range_lower"), "full explicit statement"),
+            (theorem, "missing guarded axiom pin"),
+            (theorem + pin("range_lower", guard=""), "must expect exactly"),
+            (theorem + pin("range_lower", axioms="propext"), "must expect exactly"),
+            (theorem + "abbrev Vegas.Paper.Receipts := Nat → ℝ\n" + pin("range_lower"),
+             "immediately follow"),
+        )
+        for mutation, expected_error in mutations:
+            with self.subTest(mutation=mutation):
+                errors = CHECKER.check_audit_pins(concept + mutation)
+                self.assertTrue(any(expected_error in e for e in errors))
+
+    def test_pins_cannot_target_concepts_without_local_theorems(self):
+        for concept in ("def Vegas.Paper.InRange : Prop := True\n",
+                        "abbrev Vegas.Paper.InRange := True\n",
+                        "structure Vegas.Paper.InRange where\n  lower : ℝ\n"):
+            with self.subTest(concept=concept):
+                errors = CHECKER.check_audit_pins(concept + pin("InRange") + statement())
+                self.assertTrue(any("axiom pin names no local paper theorem: Vegas.Paper.InRange"
+                                    in e for e in errors))
+
     def test_empty_or_import_only_paper_fails(self):
-        for text in ("", "import Vegas.Game.SequentialCompilation\n", "/- no pins -/\n"):
+        for text in ("", "import Vegas.Game.SequentialCompilation\n", "/- no pins -/\n",
+                     "def Vegas.Paper.InRange : Prop := True\n"):
             with self.subTest(text=text):
                 self.assertTrue(CHECKER.check_audit_pins(text))
 
@@ -215,6 +261,13 @@ class LeanOptionTests(unittest.TestCase):
     def test_inferred_statement_is_rejected(self):
         self.assertTrue(CHECKER.check_audit_pins(
             "theorem Vegas.Paper.result := Vegas.other\n" + pin("result")))
+
+    def test_empty_and_placeholder_statements_are_rejected(self):
+        for result in ("", "   ", "_", "(_)", "?result"):
+            with self.subTest(result=result):
+                errors = CHECKER.check_audit_pins(
+                    f"theorem Vegas.Paper.result : {result} := Vegas.other\n" + pin("result"))
+                self.assertTrue(any("full explicit statement" in e for e in errors))
 
     def test_pin_without_local_statement_is_rejected(self):
         self.assertTrue(CHECKER.check_audit_pins(pin("result")))

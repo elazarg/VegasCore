@@ -220,9 +220,13 @@ EXACT_PIN = re.compile(
     r"(?P<guard>#guard_msgs \(whitespace := lax\) in)\s*"
     r"(?P<print>#print\s+axioms\s+([\w'.]+))"
 )
-PAPER_OTHER_DECLARATION = re.compile(
+PAPER_UNSUPPORTED_DECLARATION = re.compile(
     r"(?m)^\s*(?:@\[[^\]\n]*\]\s*)?(?:(?:private|protected|noncomputable)\s+)*"
-    r"(?:def|abbrev|opaque|structure|class|instance)\b"
+    r"(?:opaque|class|instance)\b"
+)
+PAPER_CONCEPT = re.compile(
+    r"(?:@\[[^\]\n]*\]\s*)?(?:(?:private|protected|noncomputable)\s+)*"
+    r"(?:def|abbrev|structure)\s+([\w'.]+)"
 )
 
 THEOREM = re.compile(
@@ -232,22 +236,32 @@ THEOREM = re.compile(
 
 
 def has_explicit_statement(header: str) -> bool:
-    """Find the result colon outside binders, before the proof assignment."""
+    """Find a nonempty result type outside binders, before the proof assignment."""
     depth = 0
+    result_start = None
+    result_end = len(header)
     for index, char in enumerate(header):
         if char in "([{":
             depth += 1
         elif char in ")]}":
             depth -= 1
         elif char == ":" and depth == 0:
-            return header[index:index + 2] != ":="
-    return False
+            if header[index:index + 2] == ":=":
+                result_end = index
+                break
+            if result_start is None:
+                result_start = index + 1
+    if result_start is None:
+        return False
+    result = header[result_start:result_end].strip()
+    return bool(result) and re.fullmatch(r"[()\s]*(?:_|\?[\w']*)[()\s]*", result) is None
 
 
 def check_audit_pins(text: str) -> list[str]:
     """Require full local paper statements and adjacent exact axiom pins.
 
-    Theorems use fully qualified names so their identity is explicit locally.
+    Concepts may be defined locally without pins; only theorems are audited.
+    Concepts and theorems use fully qualified names to make their identity explicit.
     Proofs may delegate to the library. Match actual command positions so quoted
     or nested-comment imitations cannot supply a missing guard or expected list.
     Lean checks the statements, proofs and expected dependency lists together.
@@ -257,8 +271,8 @@ def check_audit_pins(text: str) -> list[str]:
     failures: list[str] = []
     if not prints:
         failures.append("Paper.lean: must contain fully stated results and guarded axiom pins")
-    if PAPER_OTHER_DECLARATION.search(clean):
-        failures.append("Paper.lean: model definitions belong in their owning modules")
+    if PAPER_UNSUPPORTED_DECLARATION.search(clean):
+        failures.append("Paper.lean: local concepts must use def, abbrev or structure")
     commands = list(re.finditer(r"#print\s+axioms\b", clean))
     if len(commands) != len(prints):
         failures.append("Paper.lean: malformed axiom print")
@@ -286,6 +300,10 @@ def check_audit_pins(text: str) -> list[str]:
     top_commands = list(re.finditer(r"(?m)^\S[^\n]*", clean))
     declarations = {}
     for index, command in enumerate(top_commands):
+        concept = PAPER_CONCEPT.match(command.group())
+        if concept and not concept.group(1).startswith("Vegas.Paper."):
+            failures.append(
+                f"Paper.lean: use a fully qualified paper concept name: {concept.group(1)}")
         declaration = THEOREM.match(command.group())
         if not declaration:
             continue
