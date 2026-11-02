@@ -87,6 +87,51 @@ class PaperAuditTests(unittest.TestCase):
             'safe_term_open': 'def Vegas.Paper.counter : Nat := 0\n' +
                 proof(result='(open Vegas.Paper in counter = counter)', body='rfl') + pin(),
             'fresh_main': 'local notation "main" => Nat\ndef Vegas.Paper.counter : main := 0\n' + base,
+            'late_open_shadow': 'def Vegas.Paper.Inner.foo : Prop := True\n'
+                'local notation "foo" => False\nopen Vegas.Paper.Inner\n'
+                + proof(result='foo → False', body='id') + pin(),
+            'late_decl_shadow': 'def Vegas.Paper.Inner.anchor : Nat := 0\n'
+                'open Vegas.Paper.Inner\nlocal notation "foo" => False\n'
+                'def Vegas.Paper.Inner.foo : Prop := True\n'
+                + proof(result='foo → False', body='id') + pin(),
+            'scoped_open_shadow': 'def Vegas.Paper.Inner.foo : Prop := True\n'
+                'local notation "foo" => False\nopen Vegas.Paper.Inner in '
+                + proof('hidden', result='foo → False', body='id') + base,
+            'expired_notation': 'def Vegas.Paper.Inner.foo : Prop := True\nsection\n'
+                'local notation "foo" => False\n' + proof('inside', result='foo → False', body='id')
+                + pin('inside') + 'end\nopen Vegas.Paper.Inner\n'
+                + proof(result='foo', body='True.intro') + pin(),
+            'where_hidden': 'def Vegas.Paper.container : Nat := 0 where\n'
+                '  _hidden : (1 : Nat) = 1 := rfl\n' + base,
+            'where_visible': 'def Vegas.Paper.container : Nat := 0 where\n'
+                '  visible : (1 : Nat) = 1 := rfl\n' + base,
+            'letrec_hidden': 'def Vegas.Paper.container : Nat :=\n'
+                '  let rec _hidden : (1 : Nat) = 1 := rfl\n  0\n' + base,
+            'letrec_visible': 'def Vegas.Paper.container : Nat :=\n'
+                '  let rec visible : (1 : Nat) = 1 := rfl\n  0\n' + base,
+            'inherited_proof_default': 'structure Vegas.Paper.Parent : Type where\n'
+                '  fact : (1 : Nat) = 1\nstructure Vegas.Paper.Child extends Vegas.Paper.Parent where\n'
+                '  fact := rfl\n' + base,
+            'inherited_data_default': 'structure Vegas.Paper.Parent : Type where\n'
+                '  value : Nat\nstructure Vegas.Paper.Child extends Vegas.Paper.Parent where\n'
+                '  value := 0\n' + base,
+            'rw_equation': 'def Vegas.Paper.f (n : Nat) : Nat := n + 1\n'
+                'theorem Vegas.Paper.result (n : Nat) : Vegas.Paper.f n = n + 1 := by\n'
+                '  rw [Vegas.Paper.f]\n' + pin(),
+            'simp_equation': 'def Vegas.Paper.f (n : Nat) : Nat := n + 1\n'
+                'theorem Vegas.Paper.result (n : Nat) : Vegas.Paper.f n = n + 1 := by\n'
+                '  simp [Vegas.Paper.f]\n' + pin(expected=
+                    "info: 'Vegas.Paper.result' depends on axioms: [propext]"),
+            'placeholder_binder': 'theorem Vegas.Paper.result (x : _) : '
+                'x = (1 : Nat) → x = 1 := id\n' + pin(),
+            'untyped_binder': 'theorem Vegas.Paper.result (x) : '
+                'x = (1 : Nat) → x = 1 := id\n' + pin(),
+            'anonymous_function': 'theorem Vegas.Paper.result (x : Nat) : '
+                '(fun _ : Nat => True) x := True.intro\n' + pin(),
+            'anonymous_binder_function': 'theorem Vegas.Paper.result '
+                '(h : (fun _ : Nat => True) 0) : True := h\n' + pin(),
+            'placeholder_lambda_type': 'theorem Vegas.Paper.result '
+                '(h : (fun (x : _) => True) (0 : Nat)) : True := h\n' + pin(),
             'empty': '',
         }
         cls.paths = {}
@@ -155,6 +200,33 @@ class PaperAuditTests(unittest.TestCase):
         for case in ('alias', 'notation3'):
             with self.subTest(case=case):
                 self.error(case, 'unsupported Paper command kind')
+
+    def test_notation_stays_fresh_as_scope_changes(self):
+        for case in ('late_open_shadow', 'late_decl_shadow', 'scoped_open_shadow'):
+            with self.subTest(case=case):
+                self.error(case, 'Paper notation shadows an existing name: foo')
+        self.assertEqual(self.reports['expired_notation']['errors'], [])
+
+    def test_local_recursive_helpers_are_rejected(self):
+        for case in ('where_hidden', 'where_visible', 'letrec_hidden', 'letrec_visible'):
+            with self.subTest(case=case):
+                self.error(case, 'cannot use where or let rec helpers')
+
+    def test_inherited_defaults_distinguish_proofs_and_data(self):
+        self.error('inherited_proof_default', 'proof-valued structure default')
+        self.assertEqual(self.reports['inherited_data_default']['errors'], [])
+
+    def test_rewriting_and_simplification_may_generate_equation_lemmas(self):
+        for case in ('rw_equation', 'simp_equation'):
+            with self.subTest(case=case):
+                self.assertEqual(self.reports[case]['errors'], [])
+
+    def test_binder_types_are_explicit_without_rejecting_anonymous_functions(self):
+        for case in ('placeholder_binder', 'untyped_binder', 'placeholder_lambda_type'):
+            with self.subTest(case=case):
+                self.error(case, 'needs explicit binder types')
+        self.assertEqual(self.reports['anonymous_function']['errors'], [])
+        self.assertEqual(self.reports['anonymous_binder_function']['errors'], [])
 
     def test_actual_paper_passes_with_its_own_import_header(self):
         report = self.reports['actual_paper']

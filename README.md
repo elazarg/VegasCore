@@ -97,7 +97,10 @@ restart guide. Those research targets are not current theorem claims.
 ## Build and validate
 
 The GameTheory foundation is a separately managed Git submodule. The pinned
-toolchain and manifest determine dependencies. Run:
+toolchain and manifest determine dependencies. The pinned foundation revision
+is anchored by the annotated tag
+[`vegascore-foundation-8bb3fc27`](https://github.com/elazarg/GameTheory/tree/vegascore-foundation-8bb3fc27).
+Run:
 
 ```powershell
 lake build
@@ -106,6 +109,7 @@ python scripts/check-module-boundaries.py
 python scripts/check-lean-options.py
 python scripts/check-doc-references.py
 python -m unittest discover -s scripts -p 'test_*.py'
+python -m unittest scripts.paper_audit_tests
 ```
 
 Required Lean options are centralized in `lakefile.toml`; warnings fail the

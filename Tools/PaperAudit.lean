@@ -6,6 +6,7 @@ open Lean Elab
 /-- State of the separate paper validator; it is never imported by the paper. -/
 structure PaperAudit where
   seen : NameSet := {}
+  notations : Array (String × Nat) := #[]
   results : NameSet := {}
   pins : NameSet := {}
   pending : Option Name := none
@@ -48,8 +49,19 @@ private partial def PaperAudit.identifiers (stx : Syntax) : Array Name :=
   if stx.isIdent then #[stx.getId]
   else stx.getArgs.foldl (fun names child => names ++ identifiers child) #[]
 
+private def PaperAudit.checkNotationName (token : String) : Command.CommandElabM Unit := do
+  let name := token.toName
+  let scope := (← get).scopes.head!
+  let resolved := Lean.ResolveName.resolveGlobalName (← getEnv) scope.opts
+    scope.currNamespace scope.openDecls name
+  unless resolved.isEmpty do
+    throwError "Paper notation shadows an existing name: {token}"
+  if scope.varDecls.any (fun vars => (identifiers vars).contains name) then
+    throwError "Paper notation shadows a section variable: {token}"
+
 /-- Permit opens only in the domain namespaces used to state paper concepts. -/
-private def PaperAudit.checkOpen (decl : Syntax) : Command.CommandElabM Unit := do
+private def PaperAudit.checkOpen (tokens : Array String) (decl : Syntax) :
+    Command.CommandElabM Unit := do
   unless decl.isOfKind ``Parser.Command.openSimple do
     throwError "only ordinary namespace opens are allowed in Paper"
   for name in identifiers decl do
@@ -57,24 +69,32 @@ private def PaperAudit.checkOpen (decl : Syntax) : Command.CommandElabM Unit := 
     unless !namespaces.isEmpty && namespaces.all (fun ns =>
         #[`Vegas, `GameTheory, `Interaction].any (·.isPrefixOf ns)) do
       throwError "Paper opens only Vegas, GameTheory and Interaction namespaces: {name}"
+  let opened ← elabOpenDecl ⟨decl⟩
+  Command.withScope (fun scope => { scope with openDecls := opened }) do
+    for token in tokens do checkNotationName token
 
-private partial def PaperAudit.checkTermOpens (stx : Syntax) : Command.CommandElabM Unit := do
+private partial def PaperAudit.checkTermOpens (tokens : Array String) (stx : Syntax) :
+    Command.CommandElabM Unit := do
   if stx.isOfKind ``Parser.Term.«open» || stx.isOfKind ``Parser.Tactic.«open» then
-    checkOpen stx[1]
-  for child in stx.getArgs do checkTermOpens child
+    checkOpen tokens stx[1]
+  for child in stx.getArgs do checkTermOpens tokens child
 
 /-- Validate actual parser nodes before the command can change the environment. -/
-private partial def PaperAudit.command (cmd : Syntax) : Command.CommandElabM (Option Syntax) := do
+private partial def PaperAudit.command (tokens : Array String) (cmd : Syntax) :
+    Command.CommandElabM (Option Syntax) := do
   let kind := cmd.getKind
-  checkTermOpens cmd
+  checkTermOpens tokens cmd
+  if (cmd.find? fun node => node.isOfKind ``Parser.Term.whereDecls ||
+      node.isOfKind ``Parser.Term.letrec || node.isOfKind ``Parser.Term.letRecDecl).isSome then
+    throwError "Paper declarations cannot use where or let rec helpers"
   if (cmd.find? (·.isOfKind ``Parser.Term.attributes)).isSome then
     throwError "Paper commands cannot install attributes or instances"
   if kind == ``Parser.Command.in then
     unless #[``Parser.Command.include, ``Parser.Command.omit, ``Parser.Command.variable,
         ``Parser.Command.open].contains cmd[0].getKind do
       throwError "unsupported scoped Paper command"
-    let _ ← command cmd[0]
-    return ← command cmd[2]
+    let _ ← command tokens cmd[0]
+    return ← command tokens cmd[2]
   if kind == ``Parser.Command.declaration then
     unless cmd[0].getArgs.toList.drop 1 |>.all (·.isNone) do
       throwError "Paper declarations cannot install attributes, instances or modifiers"
@@ -92,7 +112,7 @@ private partial def PaperAudit.command (cmd : Syntax) : Command.CommandElabM (Op
       throwError "use a fully qualified Paper declaration name: {name}"
     return some decl
   if kind == ``Parser.Command.open then
-    checkOpen cmd[1]
+    checkOpen tokens cmd[1]
     return none
   if kind == ``Parser.Command.notation then
     unless cmd[0].isNone && cmd[1].isNone &&
@@ -104,14 +124,7 @@ private partial def PaperAudit.command (cmd : Syntax) : Command.CommandElabM (Op
       throwError "Paper notation must be a fresh identifier"
     if ((Parser.getTokenTable (← getEnv)).find? token).isSome then
       throwError "Paper notation shadows a parser token: {token}"
-    let name := token.toName
-    let scope := (← get).scopes.head!
-    let resolved := Lean.ResolveName.resolveGlobalName (← getEnv) scope.opts
-      scope.currNamespace scope.openDecls name
-    unless resolved.isEmpty do
-      throwError "Paper notation shadows an existing name: {token}"
-    if scope.varDecls.any (fun vars => (identifiers vars).contains name) then
-      throwError "Paper notation shadows a section variable: {token}"
+    checkNotationName token
     return none
   if #[``Parser.Command.section, ``Parser.Command.end, ``Parser.Command.universe,
       ``Parser.Command.variable, ``Parser.Command.include, ``Parser.Command.omit,
@@ -138,6 +151,25 @@ private def PaperAudit.checkAdjacency (state : IO.Ref PaperAudit)
   unless pending == target do
     PaperAudit.fail state "exact axiom pin must immediately follow its result"
 
+private def PaperAudit.binderType? (binder : Syntax) : Option Syntax :=
+  if binder.isOfKind ``Parser.Term.instBinder then some binder[2]
+  else if #[``Parser.Term.explicitBinder, ``Parser.Term.implicitBinder,
+      ``Parser.Term.strictImplicitBinder].contains binder.getKind &&
+      binder[2].getArgs.size == 2 then some binder[2][1]
+  else none
+
+private partial def PaperAudit.typeHasHole (stx : Syntax) : Bool := Id.run do
+  if let some type := binderType? stx then return typeHasHole type
+  if stx.isOfKind ``Parser.Term.basicFun then
+    for binder in stx[0].getArgs do
+      let type? := if let some type := binderType? binder then some type
+        else match binder with
+          | `(term| ($_name : $type)) => some type.raw
+          | _ => none
+      if type?.any typeHasHole then return true
+    return stx.getArgs.toList.drop 1 |>.any typeHasHole
+  return stx.isOfKind ``Parser.Term.hole || stx.getArgs.any typeHasHole
+
 private def PaperAudit.checkExplicitStatement (state : IO.Ref PaperAudit)
     (decl : Syntax) (name : Name) : PaperAudit.Elaboration Unit := do
   let resultType := decl[2][1]
@@ -145,6 +177,10 @@ private def PaperAudit.checkExplicitStatement (state : IO.Ref PaperAudit)
     else resultType.getArgs.find? (·.isOfKind ``Parser.Term.typeSpec)
   unless type?.isSome do
     PaperAudit.fail state s!"{name} needs its full explicit statement"
+  for binder in decl[2][0].getArgs do
+    unless (binderType? binder).any (fun type => !typeHasHole type) do
+      PaperAudit.fail state s!"{name} needs explicit binder types"
+
 
 private def PaperAudit.collectMessages (state : IO.Ref PaperAudit) :
     PaperAudit.Elaboration Unit := do
@@ -184,9 +220,10 @@ private partial def PaperAudit.loop (state : IO.Ref PaperAudit) : PaperAudit.Ela
     return
   let pin := cmd.isOfKind ``Lean.guardMsgsCmd
   let pending := (← state.get).pending
+  let tokens := (← state.get).notations.map Prod.fst
   let checked : Except String (Sum Name (Option Syntax)) ←
     attempt (if pin then return .inl (← guardTarget cmd)
-      else return .inr (← command cmd))
+      else return .inr (← command tokens cmd))
   let .ok validated := checked | do
     let .error message := checked | return
     PaperAudit.fail state message
@@ -213,13 +250,22 @@ private partial def PaperAudit.loop (state : IO.Ref PaperAudit) : PaperAudit.Ela
   runCommandElabM <| withRef cmd <| Command.elabCommand cmd
   collectMessages state
   let after := (← get).commandState
+  state.modify fun s =>
+    { s with notations := s.notations.filter (fun entry => entry.2 ≤ after.scopes.length) }
+  if cmd.isOfKind ``Parser.Command.notation then
+    if let some token := cmd[7][0].isStrLit? then
+      state.modify fun s => { s with notations := s.notations.push (token, after.scopes.length) }
+  for (token, _) in (← state.get).notations do
+    if let .error message ← attempt (checkNotationName token) then
+      PaperAudit.fail state message
   if let some decl := primary? then
     if decl.isOfKind ``Parser.Command.structure then
       let name := decl[1][0].getId
-      for field in getStructureFields after.env name do
+      for field in getStructureFieldsFlattened after.env name do
         if (getDefaultFnForField? after.env name field).isSome ||
             (getAutoParamFnForField? after.env name field).isSome then
-          let some projection := getProjFnForField? after.env name field | continue
+          let some owner := findField? after.env name field | continue
+          let some projection := getProjFnForField? after.env owner field | continue
           let some info := after.env.find? projection | continue
           let prop ← runCommandElabM <| Command.liftTermElabM <| Meta.isProp info.type
           if prop then
@@ -229,20 +275,13 @@ private partial def PaperAudit.loop (state : IO.Ref PaperAudit) : PaperAudit.Ela
   for info in locals do
     unless (← state.get).seen.contains info.name do
       state.modify fun s => { s with seen := s.seen.insert info.name }
-      let prop ← runCommandElabM <| Command.liftTermElabM <| Meta.isProp info.toConstantVal.type
-      if prop then
-        if primary?.any (fun decl => decl[1][0].getId == info.name) then
+      if primary?.any (fun decl => decl[1][0].getId == info.name) then
+        let prop ← runCommandElabM <| Command.liftTermElabM <| Meta.isProp info.toConstantVal.type
+        if prop then
           let decl := primary?.get!
           checkExplicitStatement state decl info.name
           state.modify fun s =>
             { s with results := s.results.insert info.name, pending := some info.name }
-        else if primary?.any (fun decl => decl.isOfKind ``Parser.Command.structure &&
-            (decl[1][0].getId).isPrefixOf info.name) then
-          pure ()
-        else if !info.name.isInternal then
-          let equation ← runCommandElabM <| Command.liftTermElabM <| Meta.isEqnThm? info.name
-          unless equation.isSome do
-            PaperAudit.fail state s!"unexpected generated Paper result: {info.name}"
   loop state
 
 /-- Audit a file in a separately loaded import environment, without loader trust overrides. -/
@@ -277,10 +316,9 @@ def main (args : List String) : IO UInt32 := do
   let mut result : Array Json := #[]
   for file in args do
     let ctx := Parser.mkInputContext (← IO.FS.readFile file) file
-    let (header, ps, messages) ← Parser.parseHeader ctx
+    let (_, ps, messages) ← Parser.parseHeader ctx
     if messages.hasErrors then throw <| IO.userError s!"invalid import header: {file}"
     result := result.push <| Json.mkObj
-      [("file", toJson file), ("headerEnd", toJson ps.pos.byteIdx),
-      ("imports", toJson ((Elab.headerToImports header).map fun i => i.module.toString))]
+      [("file", toJson file), ("headerEnd", toJson ps.pos.byteIdx)]
   IO.println (toJson result).compress
   return 0

@@ -62,7 +62,7 @@ def audit_files(files, *, source_override=None):
         with tempfile.TemporaryDirectory(prefix='driver-', dir=directory) as temp:
             assert Path(temp).resolve().is_relative_to(directory.resolve())
             driver = Path(temp) / 'AuditDriver.lean'
-            driver.write_text(header + '\n' + tool + '\nopen Lean Elab\n' +
+            driver.write_text(header + '\n' + tool + '\n' +
                               '\n'.join(commands), encoding='utf-8')
             output = lean(['--setup', setup, driver])
         for line in output.splitlines():

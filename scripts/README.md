@@ -9,6 +9,7 @@ python scripts/check-module-boundaries.py
 python scripts/check-lean-options.py
 python scripts/check-doc-references.py
 python -m unittest discover -s scripts -p 'test_*.py'
+python -m unittest scripts.paper_audit_tests
 ```
 
 Module checks validate imports, aggregator coverage and architectural layers.
@@ -18,11 +19,14 @@ uses Lean's parser and elaborated declaration types, requires every authored
 Prop-typed declaration (including definitions and abbreviations of proofs) to
 have an adjacent exact guarded pin, and checks its actual axioms. Proofs stored
 inside data are not counted separately; a pinned result using such data still
-has its complete transitive axiom dependencies checked.
+has its complete transitive axiom dependencies checked. Generated equation and
+elaborator helpers require no separate pins; `where` and `let rec` helpers are
+not permitted in Paper. Result parameters need explicit types.
 
 The audit permits fresh local identifier shorthands and ordinary opens of Vegas,
 GameTheory and Interaction namespaces, including term-level opens. It rejects
 classes, scoped opens, shadowing notation, attributes and syntax extensions.
+Notation names are checked again when declarations or opens change their scope.
 Data defaults and documented structure fields are supported; proof-valued field
 defaults must be stated as separate named results. Each file uses its own exact
 import header and pristine import environment, before validator declarations.
