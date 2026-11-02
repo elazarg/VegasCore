@@ -1,10 +1,10 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensRecoveryService
+import Vegas.Examples.OddsEvensService
 import Interaction.ReactivePendingProcessing
-import Vegas.Examples.OddsEvensRecoveryCapacity
-import Vegas.Examples.OddsEvensRecoveryClock
-import Vegas.Pending.ExclusionEmissionTime
+import Vegas.Examples.OddsEvensServiceCapacity
+import Vegas.Examples.OddsEvensServiceClock
+import Interaction.ReactiveRecallInvariant
 import Interaction.ReactiveAnchoredTrace
 import Interaction.ReactiveReceiptIdentity
 import Interaction.ReactivePublication
@@ -14,10 +14,56 @@ import Interaction.ReactiveMonitoring
 
 noncomputable section
 
-namespace Vegas.Examples.OddsEvensRecoveryService
+namespace Vegas.Examples.OddsEvensService
 
 open SourceProgram EventGraphRuntime Interaction GameTheory GameTheory.Protocol
   GameTheory.Math.Probability
+
+private theorem old_response_mem_before (inputs : compiled.Inputs)
+    (players : OddsEvens.Player → app.Policy) (count : Nat) (before after : app.Execution)
+    (valid : before.application.Invariant inputs)
+    (reached : after ∈ ((app).runRounds scheduler players count before).support)
+    (owner : OddsEvens.Player) (entry : app.PlayerEntry)
+    (recorded : entry ∈ after.recall owner)
+    (old : entry.beforeView.application.publicView.clock <
+      before.application.clock) : entry ∈ before.recall owner := by
+  let predicate := fun execution : (app).Execution =>
+    execution.application.Invariant inputs ∧
+      before.application.clock ≤ execution.application.clock ∧
+      ∀ who remembered, remembered ∈ execution.recall who →
+        remembered ∈ before.recall who ∨ before.application.clock ≤
+          remembered.beforeView.application.publicView.clock
+  have invariant : (app).PolicyInvariant players predicate := {
+    respond := by
+      intro execution actor action prior _
+      have progress := reactive_respond_progress runtime leaks inputs execution actor action prior.1
+      have monotone : execution.application.clock ≤
+          (execution.respond app actor action).application.clock := by
+        rw [progress.clock]
+        omega
+      refine ⟨progress.invariant, prior.2.1.trans monotone, ?_⟩
+      intro who remembered member
+      rcases (app).respond_entry_origin execution actor who action remembered member with
+        earlier | fresh
+      · exact prior.2.2 who remembered earlier
+      · right
+        rw [fresh.2]
+        exact prior.2.1
+    environment := by
+      intro execution next command prior moved
+      have progress := reactive_environment_progress runtime leaks inputs execution next command
+        prior.1 moved
+      have monotone : execution.application.clock ≤ next.application.clock := by
+        rw [progress.clock]
+        omega
+      refine ⟨progress.invariant, prior.2.1.trans monotone, ?_⟩
+      intro who remembered member
+      rw [(app).environmentStep_recall execution next command moved] at member
+      exact prior.2.2 who remembered member }
+  have cut := invariant.runRounds scheduler count before after
+    ⟨valid, le_rfl, fun _ _ member => Or.inl member⟩ reached
+  exact (cut.2.2 owner entry recorded).resolve_right (Nat.not_le_of_lt old)
+
 
 /-- During a processing segment no player is activated, even under arbitrary
 raw response policies. The resulting execution is the deterministic batch. -/
@@ -126,21 +172,21 @@ theorem submitted_receipt_after_block (remaining cycle count : Nat)
 /-- An old recalled response predates a processing boundary, and its packet
 therefore has a receipt after the full block following that boundary. -/
 theorem receipt_after_boundary (inputs : compiled.Inputs)
-    (initialMember : (⟨State.initial inputs, ∅⟩ : app.State) ∈ initial.support)
+    (initialMember : ((State.initial inputs) : app.State) ∈ initial.support)
     (players : OddsEvens.Player → app.Policy) (cycle count : Nat)
     (cycleBound : cycle * width ≤ horizon) (room : packetBudget ≤ count)
     (before execution : app.Execution)
     (prefixReached : before ∈ (app.runRounds scheduler players (cycle * width)
-      (ReactiveApplication.Execution.initial app ⟨State.initial inputs, ∅⟩)).support)
+      (ReactiveApplication.Execution.initial app (State.initial inputs))).support)
     (suffixReached : execution ∈ (app.runRounds scheduler players count before).support)
     (owner : OddsEvens.Player) (entry : app.PlayerEntry)
     (recorded : entry ∈ execution.recall owner)
-    (old : entry.beforeView.application.1.publicView.clock < cycle)
+    (old : entry.beforeView.application.publicView.clock < cycle)
     (message : Message OddsEvens.Player app.Payload) (emitted : entry.emitted = some message) :
     ∃ accepted, (message.id, accepted) ∈ execution.receipts := by
-  let start := ReactiveApplication.Execution.initial app (⟨State.initial inputs, ∅⟩ : app.State)
+  let start := ReactiveApplication.Execution.initial app ((State.initial inputs) : app.State)
   have initialAligned : ClockAligned inputs 0 start :=
-    ⟨RecoveryState.Invariant.initial _, by
+    ⟨State.initial_invariant _, by
       simp [start, ReactiveApplication.Execution.initial, State.initial]⟩
   have beforeAligned := (clock_aligned_invariant inputs 0).runRounds players (cycle * width)
     start before initialAligned prefixReached
@@ -148,11 +194,11 @@ theorem receipt_after_boundary (inputs : compiled.Inputs)
     simpa only [start, ReactiveApplication.Execution.initial, List.length_nil, Nat.zero_add] using
       app.runRounds_environmentRecall_length scheduler players (cycle * width) start before
         prefixReached
-  have beforeClock : before.application.native.clock = cycle := by
+  have beforeClock : before.application.clock = cycle := by
     rw [beforeAligned.clock, beforeCursor, Nat.zero_add]
     exact (cursor_arithmetic cycle 0 (by decide)).1
-  have priorEntry := Recovery.old_response_mem_before runtime leaks inputs scheduler players
-    count before execution beforeAligned.valid.native suffixReached owner entry
+  have priorEntry := old_response_mem_before inputs players
+    count before execution beforeAligned.valid suffixReached owner entry
       recorded (by rw [beforeClock]; exact old)
   have prefixRounds : before ∈
       (app.roundsFrom initial scheduler players (cycle * width)).support := by
@@ -176,20 +222,20 @@ private theorem processing_cut_indices (sent used : Nat) (bounded : used ≤ hor
 /-- A run starting from a supported initialized state receipts every old
 emission. Clock accounting places a complete processing block between them. -/
 theorem initialized_run_receipt (inputs : compiled.Inputs)
-    (initialMember : (⟨State.initial inputs, ∅⟩ : app.State) ∈ initial.support)
+    (initialMember : ((State.initial inputs) : app.State) ∈ initial.support)
     (players : OddsEvens.Player → app.Policy) (used : Nat) (bounded : used ≤ horizon)
     (execution : app.Execution)
     (reached : execution ∈ (app.runRounds scheduler players used
-      (ReactiveApplication.Execution.initial app ⟨State.initial inputs, ∅⟩)).support)
-    (clock : execution.application.native.clock = used / width)
+      (ReactiveApplication.Execution.initial app (State.initial inputs))).support)
+    (clock : execution.application.clock = used / width)
     (owner : OddsEvens.Player) (entry : app.PlayerEntry) (recorded : entry ∈ execution.recall owner)
     (message : Message OddsEvens.Player app.Payload) (emitted : entry.emitted = some message)
-    (elapsed : entry.beforeView.application.1.publicView.clock + 2 <
-      execution.application.native.clock) :
+    (elapsed : entry.beforeView.application.publicView.clock + 2 <
+      execution.application.clock) :
     ∃ accepted, (message.id, accepted) ∈ execution.receipts := by
-  let start := ReactiveApplication.Execution.initial app (⟨State.initial inputs, ∅⟩ : app.State)
-  let cycle := entry.beforeView.application.1.publicView.clock + 1
-  have indices := processing_cut_indices entry.beforeView.application.1.publicView.clock used
+  let start := ReactiveApplication.Execution.initial app ((State.initial inputs) : app.State)
+  let cycle := entry.beforeView.application.publicView.clock + 1
+  have indices := processing_cut_indices entry.beforeView.application.publicView.clock used
     bounded (by rwa [← clock])
   have splitCount : cycle * width + (used - cycle * width) = used := indices.1
   have splitLaw := app.runRounds_add scheduler players (cycle * width)
@@ -208,8 +254,8 @@ theorem idle_emission_receipt (remaining : Nat) (execution : app.Execution)
     (trace : (app.protocol initial horizon scheduler).Trace (some ⟨remaining, none, execution⟩))
     (owner : OddsEvens.Player) (entry : app.PlayerEntry) (recorded : entry ∈ execution.recall owner)
     (message : Message OddsEvens.Player app.Payload) (emitted : entry.emitted = some message)
-    (elapsed : entry.beforeView.application.1.publicView.clock + 2 <
-      execution.application.native.clock) :
+    (elapsed : entry.beforeView.application.publicView.clock + 2 <
+      execution.application.clock) :
     ∃ accepted, (message.id, accepted) ∈ execution.receipts := by
   let fallback : OddsEvens.Player → app.Policy := fun _ => app.silentPolicy
   let players := app.anchoredPolicy execution fallback
@@ -220,16 +266,14 @@ theorem idle_emission_receipt (remaining : Nat) (execution : app.Execution)
     (ReactiveApplication.Execution.initial app state)).support at supported
   obtain ⟨state, initialized, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
   have initialMember := initialized
-  rw [initial, PMF.support_map] at initialized
-  obtain ⟨native, initialized, rfl⟩ := initialized
-  rw [Vegas.initialLaw, serviceInitialLaw, PMF.support_map] at initialized
+  rw [initial, Vegas.initialLaw, serviceInitialLaw, PMF.support_map] at initialized
   obtain ⟨input, _inputSupported, rfl⟩ := initialized
   let inputs := fixture.eventInputs input
-  let start := ReactiveApplication.Execution.initial app (⟨State.initial inputs, ∅⟩ : app.State)
+  let start := ReactiveApplication.Execution.initial app ((State.initial inputs) : app.State)
   have recalledEq : execution.environmentRecall.length = used := by
     simpa only [start, ReactiveApplication.Execution.initial, List.length_nil, Nat.zero_add]
       using app.runRounds_environmentRecall_length scheduler players used start execution reached
-  have clock : execution.application.native.clock = used / width := by
+  have clock : execution.application.clock = used / width := by
     rw [clock_history ⟨remaining, none, execution⟩ trace, recalledEq]
   exact initialized_run_receipt inputs initialMember players used (Nat.sub_le _ _) execution
     reached clock owner entry recorded message emitted elapsed
@@ -241,8 +285,8 @@ theorem emission_receipt (current : app.Control)
     (owner : OddsEvens.Player) (entry : app.PlayerEntry)
     (recorded : entry ∈ current.execution.recall owner)
     (message : Message OddsEvens.Player app.Payload) (emitted : entry.emitted = some message)
-    (elapsed : entry.beforeView.application.1.publicView.clock + 2 <
-      current.execution.application.native.clock) :
+    (elapsed : entry.beforeView.application.publicView.clock + 2 <
+      current.execution.application.clock) :
     ∃ accepted, (message.id, accepted) ∈ current.execution.receipts := by
   rcases current with ⟨remaining, actor, execution⟩
   cases actor with
@@ -261,15 +305,12 @@ theorem emission_receipt (current : app.Control)
 /-- The concrete forced-exit service supplies protected inclusion on every raw
 history; the bound does not require successful application acceptance. -/
 theorem protectedInclusion :
-    Recovery.ProtectedInclusion runtime leaks initial horizon scheduler (fun _ => 2) := by
+    ProtectedInclusion runtime leaks initial horizon scheduler (fun _ => 2) := by
   intro current trace event owner _acting earlier later entry message recalled emitted _sender
     _event _ready _sole _unfinished elapsed
-  have member : entry ∈ (RecoveryProjection.execution runtime leaks current.execution).recall
-      owner := by
+  have member : entry ∈ current.execution.recall owner := by
     rw [recalled]
     exact List.mem_append_right _ List.mem_cons_self
-  obtain ⟨actual, remembered, projected⟩ := List.mem_map.mp member
-  subst entry
-  exact emission_receipt current trace owner actual remembered message emitted elapsed
+  exact emission_receipt current trace owner entry member message emitted elapsed
 
-end Vegas.Examples.OddsEvensRecoveryService
+end Vegas.Examples.OddsEvensService

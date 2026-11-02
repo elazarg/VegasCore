@@ -8,7 +8,7 @@ per-game strategy choices to that compiler.
 The strict contract removes many operational decisions. It also permits useful
 information to arrive in a rejected packet. The following scenarios use the
 existing Odds–Evens program, sequential graph, six-tick deadlines and forced-exit
-application. The [checked scenarios](../VegasTests/RecoveryScenarios.lean) reuse
+application. The [checked scenarios](../VegasTests/RuntimeScenarios.lean) reuse
 the actual submission, emission, inclusion, expiry and automatic-completion
 operations.
 

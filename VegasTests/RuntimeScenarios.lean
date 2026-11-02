@@ -1,13 +1,12 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensRecoveryService
-import Vegas.Examples.OddsEvensFairValue
+import Vegas.Examples.OddsEvensService
 import Vegas.Examples.OddsEvensLedgerClient
 import Vegas.Pending.ReactiveOpeningConformance
 import Vegas.Game.NativeExitContinuation
 import Vegas.Pending.ReactiveCountVerdict
 
-/-! # Concrete client decisions after runtime irregularities
+/-! # Native client decisions after runtime irregularities
 
 The actual Odds–Evens application rejects a premature certified opening while
 retaining its evidence in the recipient's ledger view. Subsequent native
@@ -25,17 +24,17 @@ rational client require separate results.
 
 noncomputable section
 
-namespace VegasTests.RecoveryScenarios
+namespace VegasTests.RuntimeScenarios
 
 open Vegas Vegas.EventGraphRuntime Vegas.Examples.OddsEvens Interaction
   GameTheory.Math.Probability
 
-private abbrev runtime := Vegas.Examples.OddsEvensRecoveryService.runtime
-private abbrev app := Vegas.Examples.OddsEvensRecoveryService.app
+private abbrev runtime := Vegas.Examples.OddsEvensService.runtime
+private abbrev app := Vegas.Examples.OddsEvensService.app
 private abbrev event (n : Fin 4) : compiled.EventId := n
 private def initial : app.Execution :=
-  ReactiveApplication.Execution.initial (app := app) ⟨EventGraphRuntime.State.initial
-    (setup.eventInputs (Env.empty _)), ∅⟩
+  ReactiveApplication.Execution.initial (app := app) (EventGraphRuntime.State.initial
+    (setup.eventInputs (Env.empty _)))
 
 private def candidate (who : Player) : Handle compiled := (who, .prepared 0)
 private def raw (bit : Bool) : Raw simpleExpr := ⟨.bool, bit⟩
@@ -49,7 +48,7 @@ private def firstCommit (bit : Bool) : app.Execution :=
   (initial.respond app even (commit even 0 bit)).includePending app (even, 0)
 
 private abbrev submitted (bit : Bool) :=
-  (initial.respond app even (commit even 0 bit)).application.native
+  (initial.respond app even (commit even 0 bit)).application
 
 private theorem firstReady (bit : Bool) : (submitted bit).config.cut.Ready (event 0) := by
   change (EventOrder.Cut.empty compiled.order).Ready (event 0)
@@ -62,7 +61,7 @@ private theorem firstUnused (bit : Bool) : (submitted bit).HandleUnused (candida
   | inr e => change none ≠ some (candidate even); simp
 
 private def bound (bit : Bool) : EventGraphRuntime.State compiled :=
-  { ((submitted bit).complete (event 0) (firstReady bit) (.success bit) (.success bit)) with
+  { ((submitted bit).complete (event 0) (firstReady bit) (some (.success bit)) (.success bit)) with
     accepted := Function.update (submitted bit).accepted (.inr (event 0)) (some (candidate even))
     candidates := (submitted bit).candidates.freeze (candidate even) }
 
@@ -71,35 +70,38 @@ private theorem firstAccepted (bit : Bool) :
       ⟨(even, 0), .commitment (event 0) (candidate even)⟩ =
       some (bound bit) := by
   rw [EventGraphRuntime.handle_commitment_eq runtime (submitted bit) (even, 0) (event 0)
-    (candidate even) even .bool rfl rfl rfl (firstReady bit) (by change 0 < 6; decide)
+    (candidate even) even .bool rfl rfl rfl (firstReady bit) (by change 0 < 6; decide) (by
+      change even ∉ (∅ : Finset Player); simp)
     rfl rfl rfl (firstUnused bit)]
   rfl
 
-private theorem firstRecoveryAccepted (bit : Bool) (evidence : Option (OpeningFact compiled)) :
+private theorem boundDrain (bit : Bool) : (bound bit).drain = bound bit := by
+  apply State.drain_eq_of_clear
+  intro named eligible
+  obtain ⟨owner, _acting, inactive⟩ := eligible.owned
+  have empty : (bound bit).config.defaulted = ∅ := by rfl
+  simp [empty] at inactive
+
+private theorem firstNativeAccepted (bit : Bool) (evidence : Option (OpeningFact compiled)) :
     app.handle (initial.respond app even (commit even 0 bit)).application
       ⟨(even, 0), ⟨.commitment (event 0) (candidate even), evidence, some ⟨event 0⟩⟩⟩ =
-        some ⟨bound bit, ∅⟩ := by
-  change RecoveryState.handle runtime (⟨submitted bit, ∅⟩ : RecoveryState compiled)
-    ⟨(even, 0), ⟨.commitment (event 0) (candidate even), evidence, some ⟨event 0⟩⟩⟩ =
-      some ⟨bound bit, ∅⟩
-  simp only [RecoveryState.handle,
-    RecoveryState.excludedCall_of_empty (⟨submitted bit, ∅⟩ : RecoveryState compiled) rfl,
-    Bool.false_eq_true, ↓reduceIte,
-    WitnessedPacket.tokenValid_commitment, firstAccepted, Option.map_some]
-  exact congrArg some (RecoveryState.inclusionResult_drain_of_empty _ _ _ rfl)
+        some (bound bit) := by
+  rw [EventGraphRuntime.reactiveApplication_handle]
+  simp only [WitnessedPacket.tokenValid_commitment, ↓reduceIte, firstAccepted, Option.map_some]
+  exact congrArg some (boundDrain bit)
 
 private theorem first_receipts (bit : Bool) : (firstCommit bit).receipts = [((even, 0), true)] := by
   cases bit <;>
     change [((even, 0), (app.handle _
       ⟨(even, 0), ⟨.commitment (event 0) (candidate even), none, some ⟨event 0⟩⟩⟩).isSome)] = _
-  all_goals rw [firstRecoveryAccepted]; rfl
+  all_goals rw [firstNativeAccepted]; rfl
 
 private theorem first_application (bit : Bool) :
-    (firstCommit bit).application = ⟨bound bit, ∅⟩ := by
+    (firstCommit bit).application = bound bit := by
   cases bit <;>
     change (app.handle _
       ⟨(even, 0), ⟨.commitment (event 0) (candidate even), none, some ⟨event 0⟩⟩⟩).getD _ = _
-  all_goals rw [firstRecoveryAccepted]; rfl
+  all_goals rw [firstNativeAccepted]; rfl
 
 private def earlyOpening (bit : Bool) : app.Execution :=
   (firstCommit bit).respond app even (opening even 2 bit)
@@ -123,9 +125,8 @@ private def rejectedOpening (bit : Bool) : app.Execution :=
 private theorem rejection (state : app.State) (call : Payload compiled)
     (fact : Option (OpeningFact compiled)) :
     app.handle state ⟨(even, 1), ⟨call, fact, none⟩⟩ = none := by
-  change RecoveryState.handle runtime state _ = none
-  simp only [RecoveryState.handle, WitnessedPacket.tokenValid_none, Bool.false_eq_true,
-    ↓reduceIte, ite_self]
+  rw [EventGraphRuntime.reactiveApplication_handle]
+  simp only [WitnessedPacket.tokenValid_none, Bool.false_eq_true, ↓reduceIte]
 
 example (bit : Bool) : (rejectedOpening bit).receipts =
     [((even, 0), true), ((even, 1), false)] := by
@@ -138,7 +139,7 @@ example (bit : Bool) : (rejectedOpening bit).receipts =
   all_goals rw [rejection, first_receipts]; rfl
 
 private theorem rejected_application (bit : Bool) :
-    (rejectedOpening bit).application = ⟨bound bit, ∅⟩ := by
+    (rejectedOpening bit).application = bound bit := by
   have pending : (earlyOpening bit).network.lookup (even, 1) =
       some ⟨(even, 1), ⟨.opening (event 2) (candidate even) (raw bit),
         some ⟨candidate even, raw bit⟩, none⟩⟩ := by
@@ -160,11 +161,11 @@ example (bit : Bool) :
   all_goals decide
 
 private def secondSubmitted (e o : Bool) : EventGraphRuntime.State compiled :=
-  (RecoveryState.submit (⟨bound e, ∅⟩ : RecoveryState compiled) odd
-    ⟨⟨.commitment (event 1) (candidate odd), some (raw o)⟩, .none⟩).native
+  app.submit (bound e) odd
+    ⟨⟨.commitment (event 1) (candidate odd), some (raw o)⟩, .none⟩
 
 example (e o : Bool) :
-    ((rejectedOpening e).respond app odd (commit odd 1 o)).application.native =
+    ((rejectedOpening e).respond app odd (commit odd 1 o)).application =
       secondSubmitted e o := by
   simp only [ReactiveApplication.Execution.respond, rejected_application]
   rfl
@@ -182,7 +183,8 @@ private theorem secondUnused (e o : Bool) :
       cases e <;> cases o <;> fin_cases named <;> decide
 
 private def bothBound (e o : Bool) : EventGraphRuntime.State compiled :=
-  { ((secondSubmitted e o).complete (event 1) (secondReady e o) (.success o) (.success o)) with
+  { ((secondSubmitted e o).complete (event 1) (secondReady e o) (some (.success o)) (.success
+    o)) with
     accepted := Function.update (secondSubmitted e o).accepted (.inr (event 1))
       (some (candidate odd))
     candidates := (secondSubmitted e o).candidates.freeze (candidate odd) }
@@ -191,6 +193,7 @@ example (e o : Bool) : EventGraphRuntime.handle runtime (secondSubmitted e o)
     ⟨(odd, 0), .commitment (event 1) (candidate odd)⟩ = some (bothBound e o) := by
   rw [EventGraphRuntime.handle_commitment_eq runtime (secondSubmitted e o) (odd, 0) (event 1)
     (candidate odd) odd .bool rfl rfl rfl (secondReady e o) (by change 0 < 6; decide)
+    (by cases e <;> cases o <;> decide)
     rfl rfl rfl (secondUnused e o)]
   rfl
 
@@ -206,7 +209,8 @@ example (e o : Bool) : EventGraphRuntime.handle runtime (bothBound e o)
   unfold raw
   rw [EventGraphRuntime.handle_opening_eq runtime (bothBound e o) (even, 2) (event 2)
     (candidate even) even .bool _ _ rfl rfl rfl (evenOpeningReady e o)
-    (by change 0 < 6; decide) rfl rfl rfl e rfl rfl (.success e) rfl]
+    (by change 0 < 6; decide) (by cases e <;> cases o <;> decide)
+    rfl rfl rfl e rfl rfl (.success e) rfl]
   rfl
 
 private theorem oddOpeningReady (e o : Bool) :
@@ -221,14 +225,17 @@ example (e o : Bool) : EventGraphRuntime.handle runtime (evenOpened e o)
   unfold raw
   rw [EventGraphRuntime.handle_opening_eq runtime (evenOpened e o) (odd, 1) (event 3)
     (candidate odd) odd .bool _ _ rfl rfl rfl (oddOpeningReady e o)
-    (by change 0 < 6; decide) rfl rfl rfl o rfl rfl (.success o) rfl]
+    (by change 0 < 6; decide) (by cases e <;> cases o <;> decide)
+    rfl rfl rfl o rfl rfl (.success o) rfl]
   rfl
 
 example (e o : Bool) : (finished e o).config.cut.Terminal := by
   cases e <;> cases o <;> decide
 
 example (e o : Bool) :
-    decodeState? (terminalRefs program) (finished e o).config.store = some (bitTerminal e o) := by
+    decodeState? (terminalRefs program) (finished e o).config.store =
+      some (Env.cons (.success o) (Env.cons (.success e)
+        (Env.cons (.success o) (Env.cons (.success e) (Env.empty _))))) := by
   rfl
 
 example (e : Bool) : cash (.success e) (.success (!e)) odd = 126 := by
@@ -240,8 +247,9 @@ example (e o : Bool) :
 
 example (e : Bool) :
     expect (PMF.uniformOfFintype Bool)
-      (fun o => (cash (.success e) (.success o) odd : ℝ)) = 100 :=
-  uniform_opponent_value e odd
+      (fun o => (cash (.success e) (.success o) odd : ℝ)) = 100 := by
+  rw [expect_eq_sum]
+  cases e <;> norm_num [Fintype.sum_bool, PMF.uniformOfFintype_apply, cash, even, odd]
 
 example (other : PublicationResult Bool) (own : Bool) :
     74 ≤ cash (.success own) other even ∧ cash .failure other even = 0 := by
@@ -279,50 +287,61 @@ example (other : PublicationResult Bool) (own : Bool) :
   | failure => cases own <;> decide
   | success bit => cases bit <;> cases own <;> decide
 
-private def beforeTimeout (e : Bool) (clock : Nat) : RecoveryState compiled :=
-  ⟨{ bound e with clock }, ∅⟩
+private def beforeTimeout (e : Bool) (clock : Nat) : EventGraphRuntime.State compiled :=
+  { bound e with clock }
+
+private theorem beforeTimeoutDrain (e : Bool) (clock : Nat) :
+    (beforeTimeout e clock).drain = beforeTimeout e clock := by
+  apply State.drain_eq_of_clear
+  intro named eligible
+  obtain ⟨owner, _acting, inactive⟩ := eligible.owned
+  have empty : (beforeTimeout e clock).config.defaulted = ∅ := by rfl
+  simp [empty] at inactive
 
 example (e : Bool) (clock : Nat) :
-    RecoveryState.environment runtime (beforeTimeout e clock) .advanceClock =
+    app.environment (beforeTimeout e clock) .advanceClock =
       PMF.pure (beforeTimeout e (clock + 1)) := by
-  simp only [RecoveryState.environment, environmentStep, PMF.pure_map]
-  exact congrArg PMF.pure (RecoveryState.environmentResult_drain_of_empty _ _ _ rfl)
+  change (environmentStep runtime (beforeTimeout e clock) .advanceClock).map State.drain = _
+  simp only [environmentStep, PMF.pure_map]
+  exact congrArg PMF.pure (beforeTimeoutDrain e (clock + 1))
 
 private theorem timeoutReady (e : Bool) :
-    (beforeTimeout e 6).native.config.cut.Ready (event 1) := by
+    (beforeTimeout e 6).config.cut.Ready (event 1) := by
   cases e <;> decide
 
 example (e : Bool) (clock : Nat) (before : clock < 6) :
-    RecoveryState.environment runtime (beforeTimeout e clock) (.expire (event 1)) =
+    app.environment (beforeTimeout e clock) (.expire (event 1)) =
       PMF.pure (beforeTimeout e clock) := by
-  rw [RecoveryState.environment, environmentStep_expire_of_not_due runtime
-    (beforeTimeout e clock).native (event 1)
-    (timeoutReady e) 0 rfl (by change ¬ 6 ≤ clock - 0; omega), PMF.pure_map]
-  exact congrArg PMF.pure (RecoveryState.environmentResult_drain_of_empty _ _ _ rfl)
+  change (environmentStep runtime (beforeTimeout e clock) (.expire (event 1))).map State.drain = _
+  rw [environmentStep_expire_of_not_due runtime
+    (beforeTimeout e clock) (event 1) (timeoutReady e) 0 rfl
+    (by change ¬ 6 ≤ clock - 0; omega), PMF.pure_map]
+  exact congrArg PMF.pure (beforeTimeoutDrain e clock)
 
-private def timedOut (e : Bool) : RecoveryState compiled :=
-  ⟨(beforeTimeout e 6).native.complete (event 1) (timeoutReady e) .failure .failure, {odd}⟩
+private def timedOut (e : Bool) : EventGraphRuntime.State compiled :=
+  (beforeTimeout e 6).complete (event 1) (timeoutReady e) none .failure
 
-example (e : Bool) : RecoveryState.environment runtime (beforeTimeout e 6) (.expire (event 1)) =
+example (e : Bool) : app.environment (beforeTimeout e 6) (.expire (event 1)) =
     PMF.pure (timedOut e) := by
-  rw [RecoveryState.environment, environmentStep_expire_bind_eq runtime _ (event 1)
+  change (environmentStep runtime (beforeTimeout e 6) (.expire (event 1))).map State.drain = _
+  rw [environmentStep_expire_bind_eq runtime _ (event 1)
     (timeoutReady e) 0 rfl (by change 6 ≤ 6; decide) odd .bool rfl rfl rfl, PMF.pure_map]
   apply congrArg PMF.pure
   change (timedOut e).drain = timedOut e
-  apply RecoveryState.drain_eq_of_clear
+  apply State.drain_eq_of_clear
   intro named
   fin_cases named <;> cases e <;> decide
 
-private theorem survivorReady (e : Bool) : (timedOut e).native.config.cut.Ready (event 2) := by
+private theorem survivorReady (e : Bool) : (timedOut e).config.cut.Ready (event 2) := by
   cases e <;> decide
 
-private def survivorOpened (e : Bool) : RecoveryState compiled :=
-  ⟨(timedOut e).native.complete (event 2) (survivorReady e) true (.success e), {odd}⟩
+private def survivorOpened (e : Bool) : EventGraphRuntime.State compiled :=
+  (timedOut e).complete (event 2) (survivorReady e) true (.success e)
 
 private theorem automaticReady (e : Bool) : (survivorOpened e).AutomaticReady (event 3) := by
   cases e <;> decide
 
-private def survivorFinished (e : Bool) : RecoveryState compiled :=
+private def survivorFinished (e : Bool) : EventGraphRuntime.State compiled :=
   (survivorOpened e).completeAutomatic (event 3) (automaticReady e)
 
 private theorem survivorDrain (e : Bool) : (survivorOpened e).drain = survivorFinished e := by
@@ -331,39 +350,38 @@ private theorem survivorDrain (e : Bool) : (survivorOpened e).drain = survivorFi
       Classical.choose witness = event 3 :=
     setup.eventGraph.sequentialize_ready_unique _ (Classical.choose_spec witness).1
       (automaticReady e).1
-  change RecoveryState.drainFuel 1 (survivorOpened e) = _
-  simp only [RecoveryState.drainFuel, eligible, ↓reduceDIte, unique]
+  change State.drainFuel 1 (survivorOpened e) = _
+  simp only [State.drainFuel, eligible, ↓reduceDIte, unique]
   rfl
 
-example (e : Bool) : RecoveryState.handle runtime (timedOut e)
+example (e : Bool) : app.handle (timedOut e)
     ⟨(even, 1), ⟨.opening (event 2) (candidate even) (raw e),
       some ⟨candidate even, raw e⟩, some ⟨event 2⟩⟩⟩ = some (survivorFinished e) := by
-  simp only [RecoveryState.handle]
-  have clear : (timedOut e).excludedCall (.opening (event 2) (candidate even) (raw e)) = false := by
-    cases e <;> decide
-  rw [clear]
-  simp only [Bool.false_eq_true, ↓reduceIte, WitnessedPacket.tokenValid_opening]
+  rw [EventGraphRuntime.reactiveApplication_handle]
+  simp only [WitnessedPacket.tokenValid_opening, ↓reduceIte]
   unfold raw
-  rw [EventGraphRuntime.handle_opening_eq runtime (timedOut e).native (even, 1) (event 2)
+  rw [EventGraphRuntime.handle_opening_eq runtime (timedOut e) (even, 1) (event 2)
     (candidate even) even .bool _ _ rfl rfl rfl (survivorReady e)
-    (by change 0 < 6; decide) rfl rfl rfl e rfl rfl (.success e) rfl, Option.map_some]
+    (by change 0 < 6; decide) (by cases e <;> decide)
+    rfl rfl rfl e rfl rfl (.success e) rfl, Option.map_some]
   exact congrArg some (survivorDrain e)
 
-example (e : Bool) : (survivorFinished e).native.config.cut.Terminal := by
+example (e : Bool) : (survivorFinished e).config.cut.Terminal := by
   cases e <;> decide
 
 example (e : Bool) :
-    (survivorFinished e).native.config.outputs (event 2) = some (.success e) ∧
-      (survivorFinished e).native.config.outputs (event 3) = some .failure ∧
+    (survivorFinished e).config.outputs (event 2) = some (.success e) ∧
+      (survivorFinished e).config.outputs (event 3) = some .failure ∧
         cash (.success e) .failure even = 200 ∧ cash (.success e) .failure odd = 0 := by
   refine ⟨rfl, rfl, ?_, ?_⟩ <;> cases e <;> decide
 
 example (e : Bool) (remaining : Nat) (actor : Option Player) :
-    recoveryExclusionBase (setup := setup) (runtime := runtime)
-      (leaks := Vegas.Examples.OddsEvensRecoveryService.leaks)
-      (fun _ => ()) sourceUtility (fun _ => 0)
-      (some ⟨remaining, actor, {initial with application := timedOut e}⟩) odd = 0 :=
-  recoveryExclusionBase_of_excluded _ _ _ _ _ (by change odd ∈ ({odd} : Finset Player); simp)
+    exclusionBase setup runtime (fun _ => ()) sourceUtility (fun _ => 0)
+      Vegas.Examples.OddsEvensService.leaks
+      (some ⟨remaining, actor, {initial with application := timedOut e}⟩) odd = 0 := by
+  apply exclusionBase_of_defaulted
+  change odd ∈ (timedOut e).config.defaulted
+  cases e <;> decide
 
 private def oddCommitPacket : Message Player (WitnessedPacket compiled) :=
   ⟨(odd, 0), ⟨.commitment (event 1) (candidate odd), none, some ⟨event 1⟩⟩⟩
@@ -431,19 +449,19 @@ private def disclosedIncluded (bit : Bool) : app.Execution :=
   (initial.respond app even (disclosedCommit bit)).includePending app (even, 0)
 
 private theorem disclosed_application (bit : Bool) :
-    (disclosedIncluded bit).application = ⟨bound bit, ∅⟩ := by
+    (disclosedIncluded bit).application = bound bit := by
   cases bit <;>
     change (app.handle (initial.respond app even (commit even 0 _)).application
       ⟨(even, 0), ⟨.commitment (event 0) (candidate even), some ⟨candidate even, raw _⟩,
         some ⟨event 0⟩⟩⟩).getD _ = _
-  all_goals rw [firstRecoveryAccepted]; rfl
+  all_goals rw [firstNativeAccepted]; rfl
 
 example (bit : Bool) : (disclosedIncluded bit).receipts = [((even, 0), true)] := by
   cases bit <;>
     change [((even, 0), (app.handle (initial.respond app even (commit even 0 _)).application
       ⟨(even, 0), ⟨.commitment (event 0) (candidate even), some ⟨candidate even, raw _⟩,
         some ⟨event 0⟩⟩⟩).isSome)] = _
-  all_goals rw [firstRecoveryAccepted]; rfl
+  all_goals rw [firstNativeAccepted]; rfl
 
 private theorem disclosed_known (bit : Bool) :
     Vegas.Examples.OddsEvensLedgerClient.acceptedBit?
@@ -484,12 +502,12 @@ example (bit : Bool) : Vegas.Examples.OddsEvensLedgerClient.acceptedBit?
 example (bit : Bool) : client odd [] ((disclosedIncluded bit).observe app odd) =
     PMF.pure (Vegas.Examples.OddsEvensLedgerClient.ordinaryResponse odd []
       (((disclosedIncluded bit).observe app odd).ledgerOnly app)
-      (event 1) (PublicationResult.success (!bit))) := by
+      (event 1) (some (PublicationResult.success (!bit)))) := by
   apply Vegas.Examples.OddsEvensLedgerClient.policy_at_informed_commitment
-  · change odd ∉ (disclosedIncluded bit).application.excluded
+  · change odd ∉ (disclosedIncluded bit).application.config.defaulted
     rw [disclosed_application]
-    simp
-  · change (disclosedIncluded bit).application.native.publicView.ownTurn? odd = some (event 1)
+    cases bit <;> decide
+  · change (disclosedIncluded bit).application.publicView.ownTurn? odd = some (event 1)
     rw [disclosed_application]
     cases bit <;> decide
   · rfl
@@ -497,19 +515,21 @@ example (bit : Bool) : client odd [] ((disclosedIncluded bit).observe app odd) =
 
 example (bit choice : Bool) : Vegas.Examples.OddsEvensLedgerClient.ordinaryResponse odd []
     (((disclosedIncluded bit).observe app odd).ledgerOnly app)
-    (event 1) (PublicationResult.success choice) = commit odd 1 choice := by
-  let nativeView := RecoveryProjection.playerView runtime
-    Vegas.Examples.OddsEvensRecoveryService.leaks
-    (((disclosedIncluded bit).observe app odd).ledgerOnly app)
+    (event 1) (some (PublicationResult.success choice)) = commit odd 1 choice := by
+  let nativeView := (((disclosedIncluded bit).observe app odd).ledgerOnly app)
   have selected : canonicalFreshSlot odd nativeView.application = some 0 := by
     change canonicalFreshSlot odd
-      ((disclosedIncluded bit).application.native.playerView odd) = some 0
+      ((disclosedIncluded bit).application.playerView odd) = some 0
     rw [disclosed_application]
     exact canonicalFreshSlot_canonical odd _ rfl
+  have active : odd ∉ nativeView.application.publicView.observation.defaulted := by
+    change odd ∉ (disclosedIncluded bit).application.config.defaulted
+    rw [disclosed_application]
+    cases bit <;> decide
   have correct := runtime.canonicalServiceDecision_binding
-    Vegas.Examples.OddsEvensRecoveryService.leaks odd [] nativeView (event 1) .bool
-    rfl rfl rfl 0 selected (PublicationResult.success choice)
-  exact congrArg (fun response => (⟨response.transmission⟩ : app.Action)) correct
+    Vegas.Examples.OddsEvensService.leaks odd [] nativeView (event 1) .bool
+    rfl rfl rfl active 0 selected (PublicationResult.success choice)
+  exact correct
 
 example (bit : Bool) : ¬ CountPermits []
     ⟨(even, 0), ⟨.commitment (event 0) (candidate even), some ⟨candidate even, raw bit⟩,
@@ -518,4 +538,4 @@ example (bit : Bool) : ¬ CountPermits []
   have missing := permitted.2.1.2.1
   cases missing
 
-end VegasTests.RecoveryScenarios
+end VegasTests.RuntimeScenarios

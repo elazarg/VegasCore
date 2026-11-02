@@ -14,18 +14,18 @@ open SourceProgram GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 def bobBindingChoice (bit : Bool) (answer : Answer) :
     setup.intendedModel.Choice bob (bobBindingSite bit).1 :=
-  ⟨some (.commit bob 3 (.range 0 5) (.success answer)), by
+  ⟨some (.commit bob 3 (.range 0 5) (some (.success answer))), by
     change some bob = some bob ∧ ∃ value ∈ intendedValues bob answerGuard _,
-      (OwnAction.commit bob 3 (BaseTy.range 0 5) (.success answer) :
+      (OwnAction.commit bob 3 (BaseTy.range 0 5) (some (.success answer)) :
         OwnAction Player simpleExpr) =
-        OwnAction.commit bob 3 (BaseTy.range 0 5) (.success value)
+        OwnAction.commit bob 3 (BaseTy.range 0 5) (some (.success value))
     exact ⟨rfl, answer, Or.inl (fun _ => rfl), rfl⟩⟩
 
 theorem bobBindingChoice_injective (bit : Bool) : Function.Injective (bobBindingChoice bit) := by
   intro first second same
   have actions := congrArg Subtype.val same
-  change some (OwnAction.commit bob 3 (BaseTy.range 0 5) (.success first) :
-    OwnAction Player simpleExpr) = some (.commit bob 3 (BaseTy.range 0 5) (.success second))
+  change some (OwnAction.commit bob 3 (BaseTy.range 0 5) (some (.success first)) :
+    OwnAction Player simpleExpr) = some (.commit bob 3 (BaseTy.range 0 5) (some (.success second)))
       at actions
   simpa only [Option.some.injEq, OwnAction.commit.injEq, heq_eq_eq, true_and,
     PublicationResult.success.injEq] using actions
@@ -41,7 +41,7 @@ theorem bobBindingChoice_surjective (bit : Bool) : Function.Surjective (bobBindi
   | some action =>
       rw [value] at allowed
       change some bob = some bob ∧ ∃ answer ∈ intendedValues bob answerGuard _,
-        action = OwnAction.commit bob 3 (BaseTy.range 0 5) (.success answer) at allowed
+        action = OwnAction.commit bob 3 (BaseTy.range 0 5) (some (.success answer)) at allowed
       obtain ⟨answer, _, addressed⟩ := allowed.2
       refine ⟨answer, Subtype.ext ?_⟩
       exact value.trans (congrArg some addressed) |>.symm
@@ -55,7 +55,8 @@ def bobAnswerLaw (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) (
 
 def boundConfig (bit : Bool) (label : Fin 3) (answer : Answer) :=
   commitSuccessor 3 answerGuard
-    (revealSuccessor 2 .here (Config.initial (sourceInitial bit label)) true) (.success answer)
+    (revealSuccessor 2 .here (Config.initial (sourceInitial bit label)) true)
+    (some (.success answer))
 
 def boundState (bit : Bool) (label : Fin 3) (answer : Answer) : setup.ProtocolState :=
   some (.inr (.inr (.inl (boundConfig bit label answer))))
@@ -64,7 +65,7 @@ def finishedState (bit : Bool) (label : Fin 3) (answer : Answer) : setup.Protoco
   some (.inr (.inr (.inr (revealSuccessor 4 .here (boundConfig bit label answer) true))))
 
 private def bindingJoint (answer : Answer) (who : Player) : Option (OwnAction Player simpleExpr) :=
-  if who = bob then some (.commit bob 3 (.range 0 5) (.success answer)) else none
+  if who = bob then some (.commit bob 3 (.range 0 5) (some (.success answer))) else none
 
 private theorem bindingJointLegal (bit : Bool) (label : Fin 3) (answer : Answer) :
     setup.intendedProtocol.Legal (openedState bit label) (bindingJoint answer) := by
@@ -74,9 +75,9 @@ private theorem bindingJointLegal (bit : Bool) (label : Fin 3) (answer : Answer)
   · change some bob ≠ some alice
     decide
   · change some bob = some bob ∧ ∃ value ∈ intendedValues bob answerGuard _,
-      (OwnAction.commit bob 3 (BaseTy.range 0 5) (.success answer) :
+      (OwnAction.commit bob 3 (BaseTy.range 0 5) (some (.success answer)) :
         OwnAction Player simpleExpr) =
-        OwnAction.commit bob 3 (BaseTy.range 0 5) (.success value)
+        OwnAction.commit bob 3 (BaseTy.range 0 5) (some (.success value))
     exact ⟨rfl, answer, Or.inl (fun _ => rfl), rfl⟩
 
 private theorem binding_step (bit : Bool) (label : Fin 3) (answer : Answer) :
@@ -136,7 +137,7 @@ def finishedHistory (bit : Bool) (label : Fin 3) (answer : Answer) :
 
 theorem finishedHistory_readout (bit : Bool) (label : Fin 3) (answer : Answer) :
     setup.protocolReadout (finishedHistory bit label answer).state =
-      some (finalState bit label true answer true) := by
+      some (finalConfig bit label true answer true) := by
   rfl
 
 private theorem bob_choice_bound (bit : Bool) (label : Fin 3) (answer : Answer)
@@ -226,7 +227,7 @@ private theorem binding_joint_opened
   funext choice
   have encoded := congrArg Subtype.val ((bobChoiceEquiv bit).apply_symm_apply choice)
   change some (.commit bob 3 (BaseTy.range 0 5)
-    (.success ((bobChoiceEquiv bit).symm choice)) : OwnAction Player simpleExpr) = choice.val
+    (some (.success ((bobChoiceEquiv bit).symm choice))) : OwnAction Player simpleExpr) = choice.val
       at encoded
   rw [← encoded]
   funext who
@@ -275,7 +276,7 @@ theorem bobContinuation_readout
       setup.intended_bounded.wellFoundedHistories profile (openedHistory bit label)).map
         (fun final => setup.protocolReadout final.state) =
       (bobAnswerLaw profile bit).map
-        (fun answer => some (finalState bit label true answer true)) := by
+        (fun answer => some (finalConfig bit label true answer true)) := by
   rw [setup.intendedModel.runBehavioralTerminalFrom_eq_remaining
     setup.intended_bounded.wellFoundedHistories profile setup.intended_bounded]
   change (setup.intendedModel.runBehavioralFrom profile 2 (openedHistory bit label)).map _ = _
@@ -306,7 +307,7 @@ theorem intendedTerminal_readout
       setup.intended_bounded.wellFoundedHistories profile setup.intendedProtocol.initHistory).map
         (fun final => setup.protocolReadout final.state) =
       prior.bind (fun parameter => (bobAnswerLaw profile parameter.1).map
-        (fun answer => some (finalState parameter.1 parameter.2 true answer true))) := by
+        (fun answer => some (finalConfig parameter.1 parameter.2 true answer true))) := by
   rw [intendedTerminal_histories, PMF.map_bind]
   simp only [PMF.map_comp, Function.comp_def, finishedHistory_readout]
 

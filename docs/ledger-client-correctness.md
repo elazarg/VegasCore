@@ -50,7 +50,7 @@ This variant fits the existing periodic service's ordinary command order:
 | 3 | Odd's ordinary callback sees the certificate in the ledger before choosing its bit. |
 
 The packet operations, readout and informed client branch are checked in
-[the scenario tests](../VegasTests/RecoveryScenarios.lean). The calendar table
+[the scenario tests](../VegasTests/RuntimeScenarios.lean). The calendar table
 uses the existing scheduler's checked command order; a combined initialized
 rounds-trace theorem for this table has not been added. The same scheduler's
 all-history opportunity, inclusion and completion proofs are unchanged.

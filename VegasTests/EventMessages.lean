@@ -72,7 +72,7 @@ private theorem preparedResult :
   rfl
 
 private def bound : EventGraphRuntime.State graph :=
-  { (prepared.complete choiceEvent choiceReady (.success none) (.success none)) with
+  { (prepared.complete choiceEvent choiceReady (some (.success none)) (.success none)) with
     accepted := Function.update prepared.accepted (.inr choiceEvent) (some choiceHandle)
     candidates := prepared.candidates.freeze choiceHandle }
 
@@ -80,7 +80,8 @@ private theorem handle_commitment :
     EventGraphRuntime.handle runtime prepared commitment = some bound := by
   unfold commitment
   rw [EventGraphRuntime.handle_commitment_eq runtime prepared (.alice, 0) choiceEvent
-    choiceHandle .alice (.option .bool) rfl rfl rfl choiceReady choiceTimely rfl rfl rfl
+    choiceHandle .alice (.option .bool) rfl rfl rfl choiceReady choiceTimely
+    (by change .alice ∉ (∅ : Finset TestPlayer); simp) rfl rfl rfl
     choiceUnused]
   simp [bound, preparedResult]
 
@@ -106,7 +107,8 @@ private theorem handle_choice_opening :
   unfold choiceOpening choiceRaw
   rw [EventGraphRuntime.handle_opening_eq runtime bound (.alice, 1) choiceReveal
     choiceHandle .alice (.option .bool) _ _ rfl rfl rfl choiceRevealReady
-    choiceRevealTimely rfl rfl rfl none rfl rfl (.success none) rfl]
+    choiceRevealTimely (by change .alice ∉ (∅ : Finset TestPlayer); simp)
+    rfl rfl rfl none rfl rfl (.success none) rfl]
   rfl
 
 private theorem seedRevealReady : choiceOpened.config.cut.Ready seedReveal := by
@@ -125,6 +127,7 @@ private theorem handle_seed_opening :
   unfold seedOpening seedRaw
   rw [EventGraphRuntime.handle_opening_eq runtime choiceOpened (.alice, 2) seedReveal
     seedHandle .alice .bool _ _ rfl rfl rfl seedRevealReady seedRevealTimely
+    (by change .alice ∉ (∅ : Finset TestPlayer); simp)
     rfl rfl rfl true rfl rfl (.success true) rfl]
   rfl
 

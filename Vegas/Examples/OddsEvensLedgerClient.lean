@@ -1,8 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Interaction.ReactiveLedgerPolicy
-import Vegas.Examples.OddsEvensRecoveryService
-import Vegas.Pending.ExclusionProjection
+import Vegas.Examples.OddsEvensService
 import Vegas.Pending.ReactiveCanonicalDecision
 import Mathlib.Probability.Distributions.Uniform
 
@@ -13,7 +12,7 @@ ledger certificate opens Even's accepted handle, in which case Odd chooses
 the opposite bit. Both players request their ordinary successful openings.
 Canonical service decisions handle packet allocation. Own submission recall
 suppresses repeat packets for the same event.
-Permanent exclusion stops the client. All pending observations are erased
+Public default stops the client. All pending observations are erased
 before computing decisions, including observations in the player's recall.
 
 The policy is explicit; its full sequential rationality is a separate result.
@@ -25,15 +24,15 @@ namespace Vegas.Examples.OddsEvensLedgerClient
 
 open OddsEvens EventGraphRuntime Interaction GameTheory.Math.Probability
 
-abbrev runtime := OddsEvensRecoveryService.runtime
-abbrev app := OddsEvensRecoveryService.app
+abbrev runtime := OddsEvensService.runtime
+abbrev app := OddsEvensService.app
 
 private abbrev eventId (n : Fin 4) : compiled.EventId := n
 
 /-- Inspect only authenticated certificates for the accepted handle. The call
 carrying a certificate can itself have been rejected. -/
 def acceptedBit? (view : app.PlayerView) : Option Bool := do
-  let accepted ← view.application.1.publicView.accepted (.inr ⟨0, by decide⟩)
+  let accepted ← view.application.publicView.accepted (.inr ⟨0, by decide⟩)
   view.messages.ledger.findSome? fun message => do
     let fact ← message.payload.evidence
     if fact.handle = accepted then fact.raw.as? .bool else none
@@ -48,24 +47,21 @@ def oddBitLaw (view : app.PlayerView) : PMF Bool :=
 def ordinaryResponse (who : Player) (past : List app.PlayerEntry)
     (view : app.PlayerView) (event : compiled.EventId) (choice : compiled.Action event) :
     app.Action :=
-  ⟨(runtime.canonicalServiceDecision OddsEvensRecoveryService.leaks who
-    (past.map (RecoveryProjection.playerEntry runtime OddsEvensRecoveryService.leaks))
-    (RecoveryProjection.playerView runtime OddsEvensRecoveryService.leaks view)
-    event choice).transmission⟩
+  runtime.canonicalServiceDecision OddsEvensService.leaks who past view event choice
 
 private def respond (who : Player) : app.Policy := fun past view =>
-  if who ∈ view.application.2 then PMF.pure ⟨none⟩
-  else match view.application.1.publicView.ownTurn? who with
+  if who ∈ view.application.publicView.observation.defaulted then PMF.pure ⟨none⟩
+  else match view.application.publicView.ownTurn? who with
     | none => PMF.pure ⟨none⟩
     | some event =>
-        if runtime.eventRecorded OddsEvensRecoveryService.leaks
-            (past.map (RecoveryProjection.playerEntry runtime OddsEvensRecoveryService.leaks))
+        if runtime.eventRecorded OddsEvensService.leaks
+            past
             event then PMF.pure ⟨none⟩
         else match event with
         | ⟨0, _⟩ => (PMF.uniformOfFintype Bool).map fun bit =>
-            ordinaryResponse who past view (eventId 0) (PublicationResult.success bit)
+            ordinaryResponse who past view (eventId 0) (some (PublicationResult.success bit))
         | ⟨1, _⟩ => (oddBitLaw view).map fun bit =>
-            ordinaryResponse who past view (eventId 1) (PublicationResult.success bit)
+            ordinaryResponse who past view (eventId 1) (some (PublicationResult.success bit))
         | ⟨2, _⟩ => PMF.pure (ordinaryResponse who past view (eventId 2) true)
         | ⟨3, _⟩ => PMF.pure (ordinaryResponse who past view (eventId 3) true)
 
@@ -76,10 +72,12 @@ theorem policy_usesLedgerOnly (who : Player) :
     ReactiveApplication.Policy.UsesLedgerOnly app (policy who) :=
   app.ledgerPolicy_usesLedgerOnly (respond who)
 
-theorem policy_of_excluded (who : Player) (past : List app.PlayerEntry) (view : app.PlayerView)
-    (excluded : who ∈ view.application.2) : policy who past view = PMF.pure ⟨none⟩ := by
+theorem policy_of_defaulted (who : Player) (past : List app.PlayerEntry)
+    (view : app.PlayerView)
+    (defaulted : who ∈ view.application.publicView.observation.defaulted) :
+    policy who past view = PMF.pure ⟨none⟩ := by
   simp only [policy, ReactiveApplication.ledgerPolicy, respond,
-    ReactiveApplication.PlayerView.ledgerOnly, excluded, ↓reduceIte]
+    ReactiveApplication.PlayerView.ledgerOnly, defaulted, ↓reduceIte]
 
 theorem oddBitLaw_of_known (view : app.PlayerView) (bit : Bool)
     (known : acceptedBit? view = some bit) : oddBitLaw view = PMF.pure (!bit) := by
@@ -94,41 +92,38 @@ theorem acceptedBit?_ledgerOnly (view : app.PlayerView) :
 
 /-- At Odd's unsent commitment, an accepted ledger opening fixes the response. -/
 theorem policy_at_informed_commitment (past : List app.PlayerEntry) (view : app.PlayerView)
-    (included : odd ∉ view.application.2)
-    (turn : view.application.1.publicView.ownTurn? odd = some (eventId 1))
-    (unsent : runtime.eventRecorded OddsEvensRecoveryService.leaks
-      ((past.map (ReactiveApplication.PlayerEntry.ledgerOnly app)).map
-        (RecoveryProjection.playerEntry runtime OddsEvensRecoveryService.leaks)) (eventId 1) =
+    (included : odd ∉ view.application.publicView.observation.defaulted)
+    (turn : view.application.publicView.ownTurn? odd = some (eventId 1))
+    (unsent : runtime.eventRecorded OddsEvensService.leaks
+      (past.map (ReactiveApplication.PlayerEntry.ledgerOnly app)) (eventId 1) =
           false)
     (bit : Bool) (known : acceptedBit? view = some bit) :
     policy odd past view = PMF.pure (ordinaryResponse odd
       (past.map (ReactiveApplication.PlayerEntry.ledgerOnly app)) (view.ledgerOnly app)
-      (eventId 1) (PublicationResult.success (!bit))) := by
+      (eventId 1) (some (PublicationResult.success (!bit)))) := by
   simp only [policy, ReactiveApplication.ledgerPolicy, respond,
     ReactiveApplication.PlayerView.ledgerOnly, included, ↓reduceIte, turn, unsent,
     Bool.false_eq_true]
   change (oddBitLaw view).map (fun selected : Bool => ordinaryResponse odd
     (past.map (ReactiveApplication.PlayerEntry.ledgerOnly app)) (view.ledgerOnly app)
-    (eventId 1) (PublicationResult.success selected)) = _
+    (eventId 1) (some (PublicationResult.success selected))) = _
   rw [oddBitLaw_of_known _ bit known, PMF.pure_map]
   rfl
 
 private theorem recorded_ledgerOnly (past : List app.PlayerEntry) (event : compiled.EventId) :
-    runtime.eventRecorded OddsEvensRecoveryService.leaks
-      ((past.map (ReactiveApplication.PlayerEntry.ledgerOnly app)).map
-        (RecoveryProjection.playerEntry runtime OddsEvensRecoveryService.leaks)) event =
-    runtime.eventRecorded OddsEvensRecoveryService.leaks
-      (past.map (RecoveryProjection.playerEntry runtime OddsEvensRecoveryService.leaks)) event := by
+    runtime.eventRecorded OddsEvensService.leaks
+      (past.map (ReactiveApplication.PlayerEntry.ledgerOnly app)) event =
+    runtime.eventRecorded OddsEvensService.leaks
+      past event := by
   simp only [eventRecorded, List.any_map, Function.comp_def,
-    ReactiveApplication.PlayerEntry.ledgerOnly, RecoveryProjection.playerEntry,
-    RecoveryProjection.action]
+    ReactiveApplication.PlayerEntry.ledgerOnly]
 
 /-- Own submission recall suppresses another packet even before a receipt arrives. -/
 theorem policy_of_recorded (who : Player) (past : List app.PlayerEntry) (view : app.PlayerView)
     (event : compiled.EventId)
-    (turn : view.application.1.publicView.ownTurn? who = some event)
-    (recorded : runtime.eventRecorded OddsEvensRecoveryService.leaks
-      (past.map (RecoveryProjection.playerEntry runtime OddsEvensRecoveryService.leaks)) event =
+    (turn : view.application.publicView.ownTurn? who = some event)
+    (recorded : runtime.eventRecorded OddsEvensService.leaks
+      past event =
         true) : policy who past view = PMF.pure ⟨none⟩ := by
   simp only [policy, ReactiveApplication.ledgerPolicy, respond,
     ReactiveApplication.PlayerView.ledgerOnly]

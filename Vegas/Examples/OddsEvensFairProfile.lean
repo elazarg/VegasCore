@@ -33,32 +33,38 @@ def intendedBitAction (bit : Bool) (who : Player) (view : setup.ProtocolView who
     Option (OwnAction Player simpleExpr) :=
   match view with
   | none => none
-  | some (.inl _) => if who = even then some (.commit even 0 .bool (.success bit)) else none
-  | some (.inr (.inl _)) => if who = odd then some (.commit odd 1 .bool (.success bit)) else none
-  | some (.inr (.inr (.inl _))) => if who = even then some (.reveal even 0 true) else none
-  | some (.inr (.inr (.inr (.inl _)))) => if who = odd then some (.reveal odd 1 true) else none
+  | some (.inl view) => if who = even ∧ even ∉ view.defaulted then
+      some (.commit even 0 .bool (some (.success bit))) else none
+  | some (.inr (.inl view)) => if who = odd ∧ odd ∉ view.defaulted then
+      some (.commit odd 1 .bool (some (.success bit))) else none
+  | some (.inr (.inr (.inl view))) => if who = even ∧ even ∉ view.defaulted then
+      some (.reveal even 0 true) else none
+  | some (.inr (.inr (.inr (.inl view)))) => if who = odd ∧ odd ∉ view.defaulted then
+      some (.reveal odd 1 true) else none
   | some (.inr (.inr (.inr (.inr _)))) => none
 
 theorem intendedBitAction_mem (bit : Bool) (who : Player) (view : setup.ProtocolView who) :
     intendedBitAction bit who view ∈ setup.intendedMenu who view := by
   cases bit <;> cases who <;> rcases view with _ | (view | (view | (view | (view | view))))
   all_goals
+    simp only [intendedBitAction, even, odd]
+    try split_ifs
+  all_goals
     first
-    | solve | simp [intendedBitAction, Setup.intendedMenu, setup, program,
-        ProtocolView.intendedMenu, ProtocolView.actor, ProtocolView.intendedAvailable,
-        even, odd]
-    | simpa [intendedBitAction, Setup.intendedMenu, setup, program,
-        ProtocolView.intendedMenu, ProtocolView.actor, ProtocolView.intendedAvailable,
-        even, odd] using (bit_mem_intended false false false 0 view.1)
-    | simpa [intendedBitAction, Setup.intendedMenu, setup, program,
-        ProtocolView.intendedMenu, ProtocolView.actor, ProtocolView.intendedAvailable,
-        even, odd] using (bit_mem_intended false true true 1 view.1)
-    | simpa [intendedBitAction, Setup.intendedMenu, setup, program,
-        ProtocolView.intendedMenu, ProtocolView.actor, ProtocolView.intendedAvailable,
-        even, odd] using (bit_mem_intended true false false 0 view.1)
-    | simpa [intendedBitAction, Setup.intendedMenu, setup, program,
-        ProtocolView.intendedMenu, ProtocolView.actor, ProtocolView.intendedAvailable,
-        even, odd] using (bit_mem_intended true true true 1 view.1)
+    | solve | simp_all [Setup.intendedMenu, setup, program, ProtocolView.intendedMenu,
+        ProtocolView.actor, ProtocolView.intendedAvailable, even, odd]
+    | simpa [Setup.intendedMenu, setup, program, ProtocolView.intendedMenu,
+        ProtocolView.actor, ProtocolView.intendedAvailable, even, odd, *] using
+        (bit_mem_intended false false false 0 view.observation)
+    | simpa [Setup.intendedMenu, setup, program, ProtocolView.intendedMenu,
+        ProtocolView.actor, ProtocolView.intendedAvailable, even, odd, *] using
+        (bit_mem_intended false true true 1 view.observation)
+    | simpa [Setup.intendedMenu, setup, program, ProtocolView.intendedMenu,
+        ProtocolView.actor, ProtocolView.intendedAvailable, even, odd, *] using
+        (bit_mem_intended true false false 0 view.observation)
+    | simpa [Setup.intendedMenu, setup, program, ProtocolView.intendedMenu,
+        ProtocolView.actor, ProtocolView.intendedAvailable, even, odd, *] using
+        (bit_mem_intended true true true 1 view.observation)
 
 def intendedBitChoice (bit : Bool) (who : Player) (view : setup.ProtocolView who) :
     setup.intendedModel.Choice who view :=
@@ -67,23 +73,19 @@ def intendedBitChoice (bit : Bool) (who : Player) (view : setup.ProtocolView who
 theorem intendedBitChoice_surjective (who : Player) (view : setup.ProtocolView who) :
     Function.Surjective (fun bit => intendedBitChoice bit who view) := by
   rintro ⟨selected, legal⟩
+  suffices ∃ bit, intendedBitAction bit who view = selected by
+    obtain ⟨bit, same⟩ := this
+    exact ⟨bit, Subtype.ext same⟩
   change selected ∈ setup.intendedMenu who view at legal
   cases who <;> rcases view with _ | (view | (view | (view | (view | view)))) <;>
     rcases selected with _ | action
   all_goals
-    first
-    | exact ⟨false, rfl⟩
-    | solve | cases legal
-    | exact (legal rfl).elim
-    | solve | cases legal.1
-    | obtain ⟨bit, _, same⟩ := legal.2
-      exact ⟨bit, Subtype.ext (congrArg some same.symm)⟩
-    | have same : action = .reveal even 0 true := legal.2
-      subst action
-      exact ⟨false, rfl⟩
-    | have same : action = .reveal odd 1 true := legal.2
-      subst action
-      exact ⟨false, rfl⟩
+    aesop (config := { terminal := false, warnOnNonterminal := false })
+      (add simp [Setup.intendedMenu, setup, program, ProtocolView.intendedMenu,
+      ProtocolView.actor, ProtocolView.intendedAvailable, intendedBitAction, even, odd,
+      Membership.mem, Set.instMembership, Set.Mem, Set.ofPred,
+      Set.instSingletonSet, Set.singleton])
+  all_goals exact Eq.symm (by assumption)
 
 def uniformProfile : ∀ who, setup.intendedModel.BehavioralPolicy who :=
   fun who view => (PMF.uniformOfFintype Bool).map (fun bit => intendedBitChoice bit who view)

@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensRecoveryService
+import Vegas.Examples.OddsEvensService
 import Interaction.ReactiveTrafficState
 import Interaction.ReactivePublication
 
@@ -8,7 +8,7 @@ import Interaction.ReactivePublication
 
 noncomputable section
 
-namespace Vegas.Examples.OddsEvensRecoveryService
+namespace Vegas.Examples.OddsEvensService
 
 open SourceProgram EventGraphRuntime Interaction GameTheory GameTheory.Protocol
   GameTheory.Math.Probability
@@ -172,4 +172,4 @@ theorem pending_le_budget (control : app.Control)
   (pending_bound_invariant.history initial horizon (fun _ _ => le_rfl) trace).trans
     (inputs_le_budget control trace)
 
-end Vegas.Examples.OddsEvensRecoveryService
+end Vegas.Examples.OddsEvensService

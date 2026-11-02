@@ -67,7 +67,7 @@ theorem bob_ready : bound.cut.Ready 3 := by
         member).2 reveals_independent)
     · norm_num [graph, toEventGraph, program, eventCount, EventOrder.sequential] at earlier
 abbrev disclosed : graph.Config := bound.complete 2 alice_ready true (.success 6)
-abbrev compiled := (toEventGraph program).toModeProfile .concurrentReveals
+abbrev compiled := id
   (compileEventProfile program (fun who => (profile 6 who).1))
 theorem bob_actor : graph.actor? 3 = some Player.bob := by rfl
 theorem bob_before_alice :

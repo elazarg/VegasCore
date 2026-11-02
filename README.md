@@ -16,7 +16,7 @@ source policy. The manuscript is maintained separately in `overleaf/`.
 | --- | --- |
 | `Vegas.intended_raw_sequentialEquilibrium_preserved` | Intended-game SE extends to the bounded raw-menu game of the forced-exit contract on the sequential graph under a finitely branching asynchronous builder, arbitrary pending observation, conditional independence of initial private data given a public signal, and funded count-audit coverage. The realized joint outcome/payoff law is preserved and no player is excluded or charged on the implementing path. |
 | `Vegas.intended_raw_programPayments_preserved` | Monetary specialization with executable program transfers and valuation, retaining the initialized typed/public/net-payoff joint law. |
-| `Vegas.Paper.one_packet_raw_sequential_equilibrium` | Extension from the one-permitted-packet game to the bounded raw response menu on the plain contract, under conditional audit coverage and adequate deposits. |
+| `Vegas.EventGraphRuntime.MessageBounds.onePacket_raw_sequentialEquilibrium` | Extension from the one-permitted-packet game to the bounded raw response menu on the plain contract, under conditional audit coverage and adequate deposits. |
 
 These theorems need neither complete pending visibility nor independent
 inclusion jobs for different messages. Their substantive hypotheses include
@@ -27,7 +27,7 @@ theorems for ideal authenticated commitment interfaces and specified services.
 They do not themselves implement signatures, cryptography or an EVM backend.
 
 The [open-problems guide](docs/sequential-se-open-problems.md) states the exact
-boundaries and the next questions. The [two-player service](Vegas/Examples/OddsEvensRecoveryService.lean) and its
+boundaries and the next questions. The [two-player service](Vegas/Examples/OddsEvensService.lean) and its
 clock, opportunity, receipt and completion proofs exercise actual runtime
 service premises.
 
@@ -72,7 +72,6 @@ finite strategy support over an unbounded bid type is insufficient. Ordinary
 clients support arbitrary specified pending observations; ledger clients have
 the same run when no pending data is delivered. The completion backend is
 nonconstructive; numerical synthesis and client code generation are separate work.
-Its composition with the absorbing native semantics remains an acceptance obligation.
 
 Checked late-leak examples delimit preservation and show sufficient payoff
 conditions in their stated finite games. Their impossibility conclusions do

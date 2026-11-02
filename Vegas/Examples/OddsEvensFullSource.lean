@@ -12,11 +12,18 @@ namespace Vegas.Examples.OddsEvens
 open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
   GameTheory.Protocol.InformationModel GameTheory.Math.Probability
 
-def publicationOutcome (re ro : PublicationResult Bool) : PublicOutcome program :=
-  Env.cons ro (Env.cons re (Env.empty _))
+def publicationOutcome (defaults : DefaultHistory Player)
+    (re ro : PublicationResult Bool) : PublicOutcome program :=
+  ⟨Env.cons ro (Env.cons re (Env.empty _)), defaults⟩
 
 theorem publicationOutcome_eta (outcome : PublicOutcome program) :
-    outcome = publicationOutcome (outcome.get (.there .here)) (outcome.get .here) := by
+    outcome = publicationOutcome outcome.defaults
+      (outcome.values.get (.there .here)) (outcome.values.get .here) := by
+  suffices values : outcome.values =
+      Env.cons (outcome.values.get .here)
+        (Env.cons (outcome.values.get (.there .here)) (Env.empty _)) by
+    cases outcome
+    exact congrArg (fun cells => PublicOutcome.mk cells _) values
   funext name kind cell
   cases cell with
   | here => rfl
@@ -25,8 +32,9 @@ theorem publicationOutcome_eta (outcome : PublicOutcome program) :
       | here => rfl
       | there absent => cases absent
 
-theorem failedReveals_publicationOutcome (re ro : PublicationResult Bool) (who : Player) :
-    failedReveals program who (publicationOutcome re ro) =
+theorem failedReveals_publicationOutcome (defaults : DefaultHistory Player)
+    (re ro : PublicationResult Bool) (who : Player) :
+    failedReveals program who (publicationOutcome defaults re ro) =
       if (if who then ro else re).isFailure then 1 else 0 := by
   cases who <;> cases re <;> cases ro <;> rfl
 
@@ -34,8 +42,8 @@ theorem cash_zero_of_failedReveals (result : Unit × PublicOutcome program) (who
     (failed : 1 ≤ failedReveals program who result.2) : sourceUtility result who = 0 := by
   rcases result with ⟨⟨⟩, outcome⟩
   rw [publicationOutcome_eta outcome] at failed ⊢
-  generalize outcome.get (.there .here) = re at failed ⊢
-  generalize outcome.get .here = ro at failed ⊢
+  generalize outcome.values.get (.there .here) = re at failed ⊢
+  generalize outcome.values.get .here = ro at failed ⊢
   rw [failedReveals_publicationOutcome] at failed
   cases who <;> cases re <;> cases ro
   all_goals
@@ -43,12 +51,6 @@ theorem cash_zero_of_failedReveals (result : Unit × PublicOutcome program) (who
     | solve | norm_num [PublicationResult.isFailure] at failed
     | norm_num [sourceUtility, cash, publicationOutcome, Env.get, Env.cons, even, odd]
 
-theorem exclusionUtility_eq_sourceUtility (result : Unit × PublicOutcome program) (who : Player) :
-    exclusionUtility program (fun _ => 0) sourceUtility result who = sourceUtility result who := by
-  unfold exclusionUtility
-  split_ifs with clean
-  · rfl
-  · exact (cash_zero_of_failedReveals result who (Nat.one_le_iff_ne_zero.mpr clean)).symm
 
 abbrev fullAdmission := CommitmentInterface.forfeiture program
 abbrev fullProtocol := setup.executionProtocol fullAdmission
@@ -149,12 +151,8 @@ theorem fair_full_source_equilibrium_exists :
       change terminalUtility who final =
         exclusionReadoutUtility setup (fun _ => ()) sourceUtility (fun _ => 0)
           (setup.protocolReadout final.state) who
-      unfold terminalUtility exclusionReadoutUtility
-      cases setup.protocolReadout final.state with
-      | none => rfl
-      | some terminal =>
-          exact (exclusionUtility_eq_sourceUtility
-            (setup.parameterOutcome (fun _ => ()) terminal) who).symm
+      exact (setup.intended_exclusionReadoutUtility wellFormed (fun _ => ()) sourceUtility
+        (fun _ => 0) final who).symm
   rw [same]
   exact uniform_source_joint_law
 

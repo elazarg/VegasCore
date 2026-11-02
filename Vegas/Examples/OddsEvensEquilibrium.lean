@@ -32,26 +32,32 @@ def intendedFallbackAction (who : Player) (view : setup.ProtocolView who) :
     Option (OwnAction Player simpleExpr) :=
   match view with
   | none => none
-  | some (.inl _) => if who = even then some (.commit even 0 .bool (.success false)) else none
-  | some (.inr (.inl _)) => if who = odd then some (.commit odd 1 .bool (.success false)) else none
-  | some (.inr (.inr (.inl _))) => if who = even then some (.reveal even 0 true) else none
-  | some (.inr (.inr (.inr (.inl _)))) => if who = odd then some (.reveal odd 1 true) else none
+  | some (.inl view) => if who = even ∧ even ∉ view.defaulted then
+      some (.commit even 0 .bool (some (.success false))) else none
+  | some (.inr (.inl view)) => if who = odd ∧ odd ∉ view.defaulted then
+      some (.commit odd 1 .bool (some (.success false))) else none
+  | some (.inr (.inr (.inl view))) => if who = even ∧ even ∉ view.defaulted then
+      some (.reveal even 0 true) else none
+  | some (.inr (.inr (.inr (.inl view)))) => if who = odd ∧ odd ∉ view.defaulted then
+      some (.reveal odd 1 true) else none
   | some (.inr (.inr (.inr (.inr _)))) => none
 
 theorem intendedFallbackAction_mem (who : Player) (view : setup.ProtocolView who) :
     intendedFallbackAction who view ∈ setup.intendedMenu who view := by
   cases who <;> rcases view with _ | (view | (view | (view | (view | view))))
   all_goals
+    simp only [intendedFallbackAction, even, odd]
+    try split_ifs
+  all_goals
     first
-    | solve | simp [intendedFallbackAction, Setup.intendedMenu, setup, program,
-        ProtocolView.intendedMenu, ProtocolView.actor, ProtocolView.intendedAvailable,
-        even, odd]
-    | simpa [intendedFallbackAction, Setup.intendedMenu, setup, program,
-        ProtocolView.intendedMenu, ProtocolView.actor, ProtocolView.intendedAvailable,
-        even, odd] using (false_mem_intended false false 0 view.1)
-    | simpa [intendedFallbackAction, Setup.intendedMenu, setup, program,
-        ProtocolView.intendedMenu, ProtocolView.actor, ProtocolView.intendedAvailable,
-        even, odd] using (false_mem_intended true true 1 view.1)
+    | solve | simp_all [Setup.intendedMenu, setup, program, ProtocolView.intendedMenu,
+        ProtocolView.actor, ProtocolView.intendedAvailable, even, odd]
+    | simpa [Setup.intendedMenu, setup, program, ProtocolView.intendedMenu,
+        ProtocolView.actor, ProtocolView.intendedAvailable, even, odd, *] using
+        (false_mem_intended false false 0 view.observation)
+    | simpa [Setup.intendedMenu, setup, program, ProtocolView.intendedMenu,
+        ProtocolView.actor, ProtocolView.intendedAvailable, even, odd, *] using
+        (false_mem_intended true true 1 view.observation)
 
 def intendedFallback (who : Player) : setup.intendedModel.Policy who :=
   fun view => ⟨intendedFallbackAction who view, intendedFallbackAction_mem who view⟩

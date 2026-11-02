@@ -55,16 +55,17 @@ def values (state : State simpleExpr context) : Player → Int
   | .bob => state.get (.there .here)
 
 def alicePolicy (report : Int → Int) : BehavioralPolicy Player.alice program :=
-  (fun _ view => PMF.pure (.success (report ((view.1.cells.get .here).getD 0))),
+  (fun _ view _ => PMF.pure
+    (some (.success (report ((view.observation.cells.get .here).getD 0)))),
     ((fun h => nomatch h),
-      (fun _ _ => PMF.pure true, ((fun h => nomatch h), PUnit.unit))))
+      (fun _ _ _ => PMF.pure true, ((fun h => nomatch h), PUnit.unit))))
 
 def bobPolicy (report : Int → Int) : BehavioralPolicy Player.bob program :=
   ((fun h => nomatch h),
-    (fun _ view => PMF.pure
-      (.success (report ((view.1.cells.get (.there (.there .here))).getD 0))),
+    (fun _ view _ => PMF.pure
+      (some (.success (report ((view.observation.cells.get (.there (.there .here))).getD 0)))),
       ((fun h => nomatch h),
-        (fun _ _ => PMF.pure true, PUnit.unit))))
+        (fun _ _ _ => PMF.pure true, PUnit.unit))))
 
 /-- Reports may be arbitrary functions of the reporting player's own type. -/
 def profile (report : Player → Int → Int) : BehavioralProfile program
@@ -74,7 +75,8 @@ def profile (report : Player → Int → Int) : BehavioralProfile program
 def truthful : BehavioralProfile program := profile fun _ => id
 
 def result (alice bob : Int) : PublicOutcome program :=
-  Env.cons (.success bob) (Env.cons (.success alice) (Env.empty simpleExpr.Val))
+  ⟨Env.cons (.success bob) (Env.cons (.success alice) (Env.empty simpleExpr.Val)),
+    ⟨[none, none, none, none]⟩⟩
 
 /-- Every report family binds ordinary values. -/
 theorem profile_valueBinding (report : Player → Int → Int) (who : Player) :
@@ -87,6 +89,10 @@ theorem publicRun_initial (report : Player → Int → Int) (types : Player → 
       PMF.pure (result (report .alice (types .alice)) (report .bob (types .bob))) := by
   simp only [SourceProgram.run, program, profile, alicePolicy, bobPolicy, initial,
     runFrom, commitKernel, revealKernel, afterCommit, afterReveal, PMF.pure_bind,
+    Config.initial_defaulted, Finset.notMem_empty, ↓reduceDIte]
+  rw [dite_eq_right (by change Player.bob ∉ (∅ : Finset Player); decide), PMF.pure_bind]
+  rw [dite_eq_right (by change Player.alice ∉ (∅ : Finset Player); decide), PMF.pure_bind]
+  rw [dite_eq_right (by change Player.bob ∉ (∅ : Finset Player); decide), PMF.pure_bind,
     PMF.pure_map]
   rfl
 
@@ -109,7 +115,8 @@ theorem truthful_parameterRun (prior : PMF (Player → Int)) :
 
 /-- Type-dependent utility reuses the same public second-price settlement. -/
 def utility (forfeiture : ℝ) (outcome : (Player → Int) × PublicOutcome program) : Player → ℝ :=
-  CommitRevealAuction.utility (fun who => outcome.1 who) forfeiture outcome.2
+  CommitRevealAuction.utility (fun who => outcome.1 who) forfeiture
+    ⟨outcome.2.values, outcome.2.defaults⟩
 
 /-- Two bindings and two disclosures, independently of the private values. -/
 theorem eventCount : Vegas.eventCount program = 4 := rfl

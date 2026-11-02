@@ -6,6 +6,7 @@ import Vegas.Expr.Simple
 import GameTheoryExtensions.Math.Probability.Uniform
 import Vegas.Game.RevealService
 import Vegas.Game.IntendedAuditedOutcome
+import Vegas.Game.IntendedAuthenticOpening
 import GameTheory.Analysis.Protocol.SequentialExistence
 import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
 
@@ -157,10 +158,25 @@ def finalState (bit : Bool) (label : Fin 3) (aliceOpens : Bool)
   Env.cons (if aliceOpens then .success bit else .failure) <|
   sourceInitial bit label
 
+def afterAliceConfig (bit : Bool) (label : Fin 3) (opens : Bool) :=
+  revealSuccessor 2 .here (Config.initial (sourceInitial bit label)) opens
+
+def finalConfig (bit : Bool) (label : Fin 3) (aliceOpens : Bool)
+    (answer : Answer) (bobOpens : Bool) : Config Player simpleExpr program.terminalCtx :=
+  revealSuccessor 4 .here
+    (commitSuccessor 3 answerGuard (afterAliceConfig bit label aliceOpens)
+      (some (.success answer))) bobOpens
+
+theorem finalConfig_state (bit : Bool) (label : Fin 3) (aliceOpens : Bool)
+    (answer : Answer) (bobOpens : Bool) :
+    (finalConfig bit label aliceOpens answer bobOpens).state =
+      finalState bit label aliceOpens answer bobOpens := by
+  cases aliceOpens <;> cases bobOpens <;> rfl
+
 def constantProfile (aliceOpens : Bool) (answer : Answer) (bobOpens : Bool) :
     BehavioralProfile program := fun _ =>
-  ⟨fun _ _ => PMF.pure aliceOpens,
-    ⟨fun _ _ => PMF.pure (.success answer), ⟨fun _ _ => PMF.pure bobOpens, PUnit.unit⟩⟩⟩
+  ⟨fun _ _ _ => PMF.pure aliceOpens,
+    ⟨fun _ _ _ => PMF.pure (some (.success answer)), ⟨fun _ _ _ => PMF.pure bobOpens, PUnit.unit⟩⟩⟩
 
 def intendedProfile : BehavioralProfile program := constantProfile true safe true
 
@@ -168,14 +184,32 @@ theorem run_constant (bit : Bool) (label : Fin 3) (aliceOpens : Bool)
     (answer : Answer) (bobOpens : Bool) :
     SourceProgram.run program (constantProfile aliceOpens answer bobOpens)
       (sourceInitial bit label) =
-      PMF.pure (finalState bit label aliceOpens answer bobOpens) := by
-  simp only [SourceProgram.run, runFrom, program, constantProfile,
-    revealKernel, commitKernel, afterReveal, afterCommit, PMF.pure_bind]
-  congr 1
-  cases aliceOpens <;> cases bobOpens <;> rfl
+      PMF.pure (finalConfig bit label aliceOpens answer bobOpens) := by
+  change runFrom program _ (Config.initial (sourceInitial bit label)) = _
+  unfold program
+  rw [runFrom_reveal, dite_eq_right (by simp)]
+  simp only [revealKernel, constantProfile, PMF.pure_bind]
+  have activeBob : bob ∉ (afterAliceConfig bit label aliceOpens).defaulted := by
+    cases aliceOpens with
+    | false =>
+        change bob ∉ ({alice} : Finset Player)
+        decide
+    | true =>
+        change bob ∉ (∅ : Finset Player)
+        decide
+  unfold afterAliceConfig at activeBob
+  rw [runFrom_commit, dite_eq_right activeBob]
+  simp only [commitKernel, afterReveal, constantProfile, PMF.pure_bind]
+  rw [runFrom_reveal, dite_eq_right (by
+    have same := commitSuccessor_defaulted_of_accepted 3 answerGuard
+      (revealSuccessor 2 .here (Config.initial (sourceInitial bit label)) aliceOpens)
+      (.success answer)
+    exact same.symm ▸ activeBob)]
+  simp only [revealKernel, afterCommit, afterReveal, constantProfile, PMF.pure_bind]
+  rfl
 
 theorem run_intended : setup.run intendedProfile =
-    prior.map (fun parameter => finalState parameter.1 parameter.2 true safe true) := by
+    prior.map (fun parameter => finalConfig parameter.1 parameter.2 true safe true) := by
   change (prior.map (fun parameter => sourceInitial parameter.1 parameter.2)).bind
     (fun initial => SourceProgram.run program intendedProfile initial) = _
   rw [PMF.bind_map]
@@ -197,10 +231,10 @@ def parameter (state : State simpleExpr initialCtx) : Parameter :=
     exact Int.toNat_natCast label.val
 
 def aliceResult (outcome : PublicOutcome program) : PublicationResult Bool :=
-  outcome.get (.there .here)
+  outcome.values.get (.there .here)
 
 def bobResult (outcome : PublicOutcome program) : PublicationResult Answer :=
-  outcome.get .here
+  outcome.values.get .here
 
 def grossUtility (reward : ℝ) (result : Parameter × PublicOutcome program)
     (who : Player) : ℝ :=
@@ -220,9 +254,9 @@ def grossUtility (reward : ℝ) (result : Parameter × PublicOutcome program)
 
 theorem intended_gross (reward : ℝ) (bit : Bool) (label : Fin 3) :
     grossUtility reward ((bit, label),
-      publicOutcome program (finalState bit label true safe true)) alice = reward / 2 ∧
+      publicOutcome program (finalConfig bit label true safe true)) alice = reward / 2 ∧
     grossUtility reward ((bit, label),
-      publicOutcome program (finalState bit label true safe true)) bob = 2 / 5 := by
+      publicOutcome program (finalConfig bit label true safe true)) bob = 2 / 5 := by
   constructor <;> rfl
 
 theorem alice_gross_bounds {reward : ℝ} (nonnegative : 0 ≤ reward)
@@ -253,7 +287,7 @@ theorem bob_gross_bounds (reward : ℝ) (result : Parameter × PublicOutcome pro
 
 theorem bob_success_gross (reward : ℝ) (bit : Bool) (label : Fin 3) (answer : Answer) :
     grossUtility reward ((bit, label),
-      publicOutcome program (finalState bit label true answer true)) bob =
+      publicOutcome program (finalConfig bit label true answer true)) bob =
         if answer.val = 0 then 2 / 5
         else if answer.val = (label.val : Int) + 1 then 1 else 0 := by
   rfl
@@ -262,7 +296,7 @@ theorem bob_success_gross (reward : ℝ) (bit : Bool) (label : Fin 3) (answer : 
 theorem bob_uniform_success_value (reward : ℝ) (bit : Bool) (answer : Answer) :
     expect (PMF.uniformOfFintype (Fin 3)) (fun label =>
       grossUtility reward ((bit, label),
-        publicOutcome program (finalState bit label true answer true)) bob) =
+        publicOutcome program (finalConfig bit label true answer true)) bob) =
       if answer.val = 0 then 2 / 5
       else if 1 ≤ answer.val ∧ answer.val ≤ 3 then 1 / 3 else 0 := by
   rw [expect_uniformFin]
@@ -281,7 +315,7 @@ theorem bob_safe_strictly_best (reward : ℝ) (bit : Bool) (answer : Answer)
     (different : answer ≠ safe) :
     expect (PMF.uniformOfFintype (Fin 3)) (fun label =>
       grossUtility reward ((bit, label),
-        publicOutcome program (finalState bit label true answer true)) bob) < 2 / 5 := by
+        publicOutcome program (finalConfig bit label true answer true)) bob) < 2 / 5 := by
   rw [bob_uniform_success_value]
   have nonzero : answer.val ≠ 0 := by
     intro zero
@@ -292,10 +326,10 @@ theorem bob_safe_strictly_best (reward : ℝ) (bit : Bool) (answer : Answer)
 
 theorem intended_forfeit (reward forfeit : ℝ) (bit : Bool) (label : Fin 3) :
     forfeitUtility program forfeit (grossUtility reward)
-      ((bit, label), publicOutcome program (finalState bit label true safe true)) alice =
+      ((bit, label), publicOutcome program (finalConfig bit label true safe true)) alice =
         reward / 2 ∧
     forfeitUtility program forfeit (grossUtility reward)
-      ((bit, label), publicOutcome program (finalState bit label true safe true)) bob =
+      ((bit, label), publicOutcome program (finalConfig bit label true safe true)) bob =
         2 / 5 := by
   have success : Successful (finalState bit label true safe true) := by
     constructor
@@ -325,59 +359,26 @@ def intendedFallbackAction (who : Player) (view : setup.ProtocolView who) :
     Option (OwnAction Player simpleExpr) :=
   match view with
   | none => none
-  | some (.inl _) => if alice = who then some (.reveal alice 0 true) else none
-  | some (.inr (.inl _)) =>
-      if bob = who then some (.commit bob 3 (.range 0 5) (.success safe)) else none
-  | some (.inr (.inr (.inl _))) =>
-      if bob = who then some (.reveal bob 3 true) else none
+  | some (.inl observed) => if alice = who ∧ alice ∉ observed.defaulted then
+      some (.reveal alice 0 true) else none
+  | some (.inr (.inl observed)) =>
+      if bob = who ∧ bob ∉ observed.defaulted then
+        some (.commit bob 3 (.range 0 5) (some (.success safe))) else none
+  | some (.inr (.inr (.inl observed))) =>
+      if bob = who ∧ bob ∉ observed.defaulted then some (.reveal bob 3 true) else none
   | some (.inr (.inr (.inr _))) => none
 
 theorem intendedFallbackAction_mem (who : Player) (view : setup.ProtocolView who) :
     intendedFallbackAction who view ∈ setup.intendedMenu who view := by
-  cases view with
-  | none => rfl
-  | some view =>
-      cases view with
-      | inl observed =>
-          by_cases same : alice = who
-          · subst who
-            simp only [intendedFallbackAction, ↓reduceIte]
-            change some alice = some alice ∧ OwnAction.reveal alice 0 true ∈
-              ({OwnAction.reveal alice 0 true} : Set (OwnAction Player simpleExpr))
-            exact ⟨rfl, rfl⟩
-          · simp only [intendedFallbackAction, same, ↓reduceIte]
-            change some alice ≠ some who
-            exact fun equality => same (Option.some.inj equality)
-      | inr view =>
-          cases view with
-          | inl observed =>
-              by_cases same : bob = who
-              · subst who
-                simp only [intendedFallbackAction, ↓reduceIte]
-                change some bob = some bob ∧ ∃ value ∈ intendedValues bob answerGuard observed.1,
-                  (OwnAction.commit bob 3 (BaseTy.range 0 5) (.success safe) :
-                    OwnAction Player simpleExpr) =
-                    OwnAction.commit bob 3 (BaseTy.range 0 5) (.success value)
-                exact ⟨rfl, safe, Or.inl (fun _ => rfl), rfl⟩
-              · simp only [intendedFallbackAction, same, ↓reduceIte]
-                change some bob ≠ some who
-                exact fun equality => same (Option.some.inj equality)
-          | inr view =>
-              cases view with
-              | inl observed =>
-                  by_cases same : bob = who
-                  · subst who
-                    simp only [intendedFallbackAction, ↓reduceIte]
-                    change some bob = some bob ∧ OwnAction.reveal bob 3 true ∈
-                      ({OwnAction.reveal bob 3 true} : Set (OwnAction Player simpleExpr))
-                    exact ⟨rfl, rfl⟩
-                  · simp only [intendedFallbackAction, same, ↓reduceIte]
-                    change some bob ≠ some who
-                    exact fun equality => same (Option.some.inj equality)
-              | inr observed =>
-                  change none ≠ some who
-                  intro equality
-                  cases equality
+  classical
+  cases who
+  rcases view with _ | (view | (view | (view | view)))
+  all_goals
+    aesop (config := { terminal := false, warnOnNonterminal := false })
+      (add simp [intendedFallbackAction, Setup.intendedMenu, setup, program,
+        ProtocolView.intendedMenu, ProtocolView.actor, ProtocolView.intendedAvailable,
+        alice, bob, intendedValues, answerGuard, SourceGuard.predicts])
+  exact ⟨safe.val, safe.property, Or.inl (fun _ => rfl), rfl⟩
 
 def intendedFallback (who : Player) : setup.intendedModel.Policy who :=
   fun view => ⟨intendedFallbackAction who view, intendedFallbackAction_mem who view⟩
@@ -460,19 +461,32 @@ theorem bob_afterAlice_observation (bit : Bool) (label other : Fin 3) :
       | there member => cases member
 
 def randomizedAnswerProfile (answers : Bool → PMF Answer) : BehavioralProfile program :=
-  fun _ => ⟨fun _ _ => PMF.pure true,
-    ⟨fun _ view => (answers ((view.1.cells.get .here).getD false)).map PublicationResult.success,
-      ⟨fun _ _ => PMF.pure true, PUnit.unit⟩⟩⟩
+  fun _ => ⟨fun _ _ _ => PMF.pure true,
+    ⟨fun _ view _ => (answers ((view.observation.cells.get .here).getD false)).map
+      (some ∘ PublicationResult.success),
+      ⟨fun _ _ _ => PMF.pure true, PUnit.unit⟩⟩⟩
 
 theorem run_randomizedAnswer (answers : Bool → PMF Answer) (bit : Bool) (label : Fin 3) :
     SourceProgram.run program (randomizedAnswerProfile answers) (sourceInitial bit label) =
-      (answers bit).map (fun answer => finalState bit label true answer true) := by
-  simp only [SourceProgram.run, runFrom, program, randomizedAnswerProfile,
-    revealKernel, commitKernel, afterReveal, afterCommit, PMF.pure_bind]
-  change ((answers bit).map PublicationResult.success).bind _ = _
+      (answers bit).map (fun answer => finalConfig bit label true answer true) := by
+  change runFrom program _ (Config.initial (sourceInitial bit label)) = _
+  unfold program
+  rw [runFrom_reveal, dite_eq_right (by simp)]
+  simp only [revealKernel, randomizedAnswerProfile, PMF.pure_bind]
+  rw [runFrom_commit, dite_eq_right (by
+    change bob ∉ (∅ : Finset Player)
+    decide)]
+  change ((answers bit).map (some ∘ PublicationResult.success)).bind _ = _
   rw [PMF.bind_map]
   change (answers bit).bind _ = (answers bit).bind _
   congr 1
+  funext answer
+  dsimp only [Function.comp_def]
+  rw [runFrom_reveal, dite_eq_right (by
+    change bob ∉ (∅ : Finset Player)
+    decide)]
+  simp only [revealKernel, afterCommit, afterReveal, randomizedAnswerProfile, PMF.pure_bind]
+  rfl
 
 def drawnState (bit : Bool) (label : Fin 3) : setup.ProtocolState :=
   some (.inl (Config.initial (sourceInitial bit label)))
@@ -529,13 +543,19 @@ def openedHistory (bit : Bool) (label : Fin 3) : setup.intendedProtocol.History 
   (drawnHistory bit label).extend (aliceJointLegal bit label) (opening_supported bit label)
 
 def bobBindingInfo (bit : Bool) : setup.ProtocolView bob :=
-  some (.inr (.inl (sourceObserve bob (afterAliceState bit 0), [])))
+  some (.inr (.inl ((afterAliceConfig bit 0 true).view bob)))
+
+theorem bob_afterAlice_view (bit : Bool) (label other : Fin 3) :
+    (afterAliceConfig bit label true).view bob = (afterAliceConfig bit other true).view bob := by
+  unfold Config.view
+  congr 1
+  exact bob_afterAlice_observation bit label other
 
 theorem bobBindingInfo_opened (bit : Bool) (label : Fin 3) :
     setup.intendedModel.infoOf bob (openedHistory bit label).trace = bobBindingInfo bit := by
   refine (setup.intended_info bob (openedHistory bit label).trace).trans ?_
-  change some (Sum.inr (Sum.inl (sourceObserve bob (afterAliceState bit label), []))) = _
-  rw [bob_afterAlice_observation bit label 0]
+  change some (Sum.inr (Sum.inl ((afterAliceConfig bit label true).view bob))) = _
+  rw [bob_afterAlice_view bit label 0]
   rfl
 
 theorem bobBindingInfo_state
@@ -686,13 +706,13 @@ theorem openedHistory_injective : Function.Injective
 def bobBindingSite (bit : Bool) : setup.intendedModel.InformationSite bob :=
   ⟨bobBindingInfo bit, by
     refine ⟨⟨openedHistory bit 0, bobBindingInfo_opened bit 0⟩, ?_,
-      OwnAction.commit bob 3 (.range 0 5) (.success safe), ?_⟩
+      OwnAction.commit bob 3 (.range 0 5) (some (.success safe)), ?_⟩
     · change ¬ False
       exact not_false
     · change some bob = some bob ∧ ∃ value ∈ intendedValues bob answerGuard _,
-        (OwnAction.commit bob 3 (BaseTy.range 0 5) (.success safe) :
+        (OwnAction.commit bob 3 (BaseTy.range 0 5) (some (.success safe)) :
           OwnAction Player simpleExpr) =
-          OwnAction.commit bob 3 (BaseTy.range 0 5) (.success value)
+          OwnAction.commit bob 3 (BaseTy.range 0 5) (some (.success value))
       exact ⟨rfl, safe, Or.inl (fun _ => rfl), rfl⟩⟩
 
 end Vegas.Examples.LateOpeningRuntimeSource

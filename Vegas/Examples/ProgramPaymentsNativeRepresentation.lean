@@ -72,11 +72,11 @@ theorem submitted_ready (serial : Fin 2) :
   decide
 
 def boundConfig : nativeGraph.Config :=
-  initial.config.complete 0 (by decide) (.success true) (.success true)
+  initial.config.complete 0 (by decide) (some (.success true)) (.success true)
 
 def accepted (serial : Fin 2) : app.State :=
   { (submitted serial).application.complete 0 (submitted_ready serial)
-      (.success true) (.success true) with
+      (some (.success true)) (.success true) with
     accepted := Function.update (submitted serial).application.accepted (.inr 0)
       (some (.alice, .prepared serial.val))
     candidates := (submitted serial).application.candidates.freeze (.alice, .prepared serial.val) }
@@ -91,6 +91,8 @@ theorem commitment_handle (serial : Fin 2) :
     rfl
   · change 0 - 0 < 1
     decide
+  · change Player.alice ∉ (∅ : Finset Player)
+    simp
   · rfl
   · rfl
   · rfl
@@ -100,6 +102,9 @@ theorem commitment_handle (serial : Fin 2) :
     | inr event =>
         change none ≠ some _
         simp
+
+private theorem accepted_drain (serial : Fin 2) : (accepted serial).drain = accepted serial :=
+  State.drain_eq_of_empty _ rfl
 
 def bindingCall (serial : Fin 2) : Submission nativeGraph :=
   ⟨.commitment 0 (.alice, .prepared serial.val), some ⟨.bool, true⟩⟩
@@ -135,9 +140,9 @@ theorem included_application (serial : Fin 2) :
   change (app.handle (submitted serial).application (envelope serial)).getD _ = _
   rw [reactiveApplication_handle_of_tokenValid (runtime (setup 2)) (leaks 2)
     (submitted serial).application (envelope serial) rfl]
-  change (handle (runtime (setup 2)) (submitted serial).application
-    ⟨(.alice, 0), .commitment 0 (.alice, .prepared serial.val)⟩).getD _ = _
-  rw [commitment_handle]
+  change ((handle (runtime (setup 2)) (submitted serial).application
+    ⟨(.alice, 0), .commitment 0 (.alice, .prepared serial.val)⟩).map State.drain).getD _ = _
+  rw [commitment_handle, Option.map_some, accepted_drain]
   rfl
 
 theorem included_config (serial : Fin 2) :
@@ -227,10 +232,18 @@ def tick (execution : app.Execution) : app.Execution :=
     environmentRecall := execution.environmentRecall ++
       [⟨execution.observeEnvironment app, .application .advanceClock⟩] }
 
-theorem tick_law (execution : app.Execution) :
-    execution.environmentStep app (.application .advanceClock) = PMF.pure (tick execution) := by
-  have law : app.environment execution.application .advanceClock =
-      PMF.pure { execution.application with clock := execution.application.clock + 1 } := rfl
+theorem tick_law (serial : Fin 2) :
+    (included serial).environmentStep app (.application .advanceClock) =
+      PMF.pure (tick (included serial)) := by
+  have clear : ({ (included serial).application with
+      clock := (included serial).application.clock + 1 } : app.State).config.defaulted = ∅ := by
+    rw [included_application]
+    rfl
+  have law : app.environment (included serial).application .advanceClock =
+      PMF.pure { (included serial).application with
+        clock := (included serial).application.clock + 1 } := by
+    change (PMF.pure _).map State.drain = _
+    rw [PMF.pure_map, State.drain_eq_of_empty _ clear]
   simp only [ReactiveApplication.Execution.environmentStep, law, PMF.pure_map]
   rfl
 
@@ -248,9 +261,14 @@ theorem expireCompleted_law (serial : Fin 2) :
     intro ready
     exact ready.1 (by change 0 ∈ ({0} : Finset (Fin 2)); simp)
   unfold ReactiveApplication.Execution.environmentStep
-  change ((environmentStep (runtime (setup 2)) (tick (included serial)).application
-    (.expire 0)).map _).map _ = _
-  rw [environmentStep_expire_of_not_ready _ _ _ notReady, PMF.pure_map, PMF.pure_map]
+  change (((environmentStep (runtime (setup 2)) (tick (included serial)).application
+    (.expire 0)).map State.drain).map _).map _ = _
+  rw [environmentStep_expire_of_not_ready _ _ _ notReady, PMF.pure_map]
+  have clear : (tick (included serial)).application.config.defaulted = ∅ := by
+    change (included serial).application.config.defaulted = ∅
+    rw [included_config]
+    rfl
+  rw [State.drain_eq_of_empty _ clear, PMF.pure_map, PMF.pure_map]
   rfl
 
 def secondActivation (serial : Fin 2) : app.Execution :=
@@ -342,7 +360,7 @@ theorem opening_wrong_handle :
   simp only [handle, openingMessage, dite_eq_left (second_ready 1),
     dite_eq_left (second_timely 1),
     nodeView_eq_resolve (graph := nativeGraph) (event := 1) rfl reveal_code]
-  simp only [revealBinding, notAssociated, ↓reduceDIte]
+  simp only [revealBinding, notAssociated, ↓reduceDIte, ite_self]
 
 theorem second_candidate :
     (secondActivation 0).application.candidates.lookup (.alice, .prepared 0) =
@@ -361,12 +379,20 @@ theorem opening_correct_handle :
     handle (runtime (setup 2)) (secondActivation 0).application openingMessage = some opened := by
   exact handle_opening_eq (runtime (setup 2)) (secondActivation 0).application (.alice, 1) 1
     (.alice, .prepared 0) .alice .bool revealBinding revealChecks rfl reveal_code
-    (nodeView_eq_resolve rfl reveal_code) (second_ready 0) (second_timely 0) rfl rfl
+    (nodeView_eq_resolve rfl reveal_code) (second_ready 0) (second_timely 0)
+    (by rw [secondActivation_config]; change Player.alice ∉ (∅ : Finset Player); simp) rfl rfl
     (secondActivation_handle 0) true second_candidate (by
       rw [secondActivation_config]
       rfl) (.success true) (by
         rw [secondActivation_config]
         rfl)
+
+private theorem opened_drain : opened.drain = opened :=
+  State.drain_eq_of_empty _ (by
+    simp only [opened, State.complete, EventGraph.Config.defaulted,
+      EventGraph.Config.complete_defaults]
+    rw [secondActivation_config]
+    rfl)
 
 /-- The same admitted raw opening has different operational effects at equal Configs. -/
 theorem no_config_handle_factor :
@@ -405,7 +431,7 @@ theorem second_token (serial : Fin 2) :
     change predecessor.val = 0
     omega)
   subst predecessor
-  change 0 ∈ (secondActivation serial).application.config.history.map EventGraph.Completion.event
+  change 0 ∈ (secondActivation serial).application.config.history.map EventCompletion.event
   rw [secondActivation_config]
   change 0 ∈ [0]
   simp
@@ -432,8 +458,9 @@ theorem completed_application : completed.application = opened := by
   change (app.handle (secondActivation 0).application openingEnvelope).getD _ = _
   rw [reactiveApplication_handle_of_tokenValid (runtime (setup 2)) (leaks 2)
     (secondActivation 0).application openingEnvelope rfl]
-  change (handle (runtime (setup 2)) (secondActivation 0).application openingMessage).getD _ = _
-  rw [opening_correct_handle]
+  change ((handle (runtime (setup 2)) (secondActivation 0).application openingMessage).map
+    State.drain).getD _ = _
+  rw [opening_correct_handle, Option.map_some, opened_drain]
   rfl
 
 theorem opening_legal (past : List app.PlayerEntry) (view : app.PlayerView) :

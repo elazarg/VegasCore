@@ -21,7 +21,7 @@ establishes existence of this extension, not preservation of every full-source S
 
 ## Actual service
 
-[The service](../Vegas/Examples/OddsEvensRecoveryService.lean) runs the ordinary
+[The service](../Vegas/Examples/OddsEvensService.lean) runs the ordinary
 forced-exit application. Failure permanently excludes its owner; there is no
 checkpoint, attempt number or rollback. Each event has duration six, with
 reaction and inclusion bounds three and two.
@@ -32,11 +32,11 @@ There are 32 cycles. Players receive no pending packets in this concrete
 instance. This is a bounded periodic service instance, not a necessity claim
 about blockchain scheduling or capacity.
 
-The [clock](../Vegas/Examples/OddsEvensRecoveryClock.lean),
-[opportunity](../Vegas/Examples/OddsEvensRecoveryOpportunity.lean),
-[receipt](../Vegas/Examples/OddsEvensRecoveryReceipts.lean),
-[capacity](../Vegas/Examples/OddsEvensRecoveryCapacity.lean) and
-[completion](../Vegas/Examples/OddsEvensRecoveryCompletion.lean) proofs concern
+The [clock](../Vegas/Examples/OddsEvensServiceClock.lean),
+[opportunity](../Vegas/Examples/OddsEvensServiceOpportunity.lean),
+[receipt](../Vegas/Examples/OddsEvensServiceReceipts.lean),
+[capacity](../Vegas/Examples/OddsEvensServiceCapacity.lean) and
+[completion](../Vegas/Examples/OddsEvensServiceCompletion.lean) proofs concern
 actual raw histories, including deviations and histories after exclusion.
 Rejected application calls still receive ledger receipts. The pending bound
 comes from counting every possible callback transmission within the finite
@@ -64,7 +64,7 @@ question in the [open-problems guide](sequential-se-open-problems.md) remains.
 
 ## End-to-end scope
 
-[The raw equilibrium](../Vegas/Examples/OddsEvensRecoveryRawEquilibrium.lean)
+[The raw equilibrium](../Vegas/Examples/OddsEvensRawEquilibrium.lean)
 combines the source assessment, actual service and imperfect audit funding.
 Every intended source SE has a raw-runtime SE preserving its readout/payoff
 joint law, with nobody excluded or charged on the supported paths. The runtime

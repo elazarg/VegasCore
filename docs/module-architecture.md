@@ -63,7 +63,7 @@ compare actual bounded clients with source and canonical graph execution.
 The [operational refinement](../Vegas/Pending/GraphRefinement.lean) covers
 arbitrary raw responses and schedulers, with completion conditional on service.
 
-The [Odds–Evens raw instance](../Vegas/Examples/OddsEvensRecoveryRawEquilibrium.lean)
+The [Odds–Evens raw instance](../Vegas/Examples/OddsEvensRawEquilibrium.lean)
 consumes the forced-exit theorem and the
 [imperfect-evidence adapter](../Vegas/Pending/ThinnedCountCollection.lean).
 The [instance guide](sequential-se-instances.md) describes their exact scope.

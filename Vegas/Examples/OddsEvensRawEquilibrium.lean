@@ -1,28 +1,28 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensRecoveryService
-import Vegas.Examples.OddsEvensRecoveryReceipts
-import Vegas.Examples.OddsEvensRecoveryCompletion
-import Vegas.Examples.OddsEvensRecoveryOpportunity
+import Vegas.Examples.OddsEvensService
+import Vegas.Examples.OddsEvensServiceReceipts
+import Vegas.Examples.OddsEvensServiceCompletion
+import Vegas.Examples.OddsEvensServiceOpportunity
 import Vegas.Examples.OddsEvensFairLaw
 import Vegas.Examples.OddsEvensEquilibrium
-import Vegas.Game.RecoverySequentialCompilation
+import Vegas.Game.SequentialCompilation
 import Vegas.Pending.ThinnedCountCollection
 
 /-! # Funded raw equilibrium under positive reaction and inclusion latency -/
 
 noncomputable section
 
-namespace Vegas.Examples.OddsEvensRecoveryRaw
+namespace Vegas.Examples.OddsEvensRaw
 
 open SourceProgram EventGraphRuntime Interaction GameTheory GameTheory.Protocol
   GameTheory.Math.Probability GameTheory.Enforcement
 
-open OddsEvensRecoveryService
+open OddsEvensService
 
-local notation "rt" => OddsEvensRecoveryService.runtime
-local notation "steps" => OddsEvensRecoveryService.horizon
-local notation "serviceScheduler" => OddsEvensRecoveryService.scheduler
+local notation "rt" => OddsEvensService.runtime
+local notation "steps" => OddsEvensService.horizon
+local notation "serviceScheduler" => OddsEvensService.scheduler
 
 def halfRate : Set.Icc (0 : ℝ) 1 := ⟨1 / 2, by norm_num⟩
 
@@ -45,12 +45,12 @@ theorem intended_equilibrium_preserved
     (intended : fixture.intendedModel.BehavioralAssessment)
     (equilibrium :
       fixture.IntendedSequentialEquilibrium (fun _ => ()) OddsEvens.sourceUtility intended) :
-    let raw := Recovery.rawMenu rt leaks OddsEvens.bounds
+    let raw := OddsEvens.bounds.rawMenu rt leaks
     let observe := app.stateTraffic
-    let audit := Recovery.countAudit rt leaks
+    let audit := (rt).countAudit leaks
       evidenceService.sample
-    let base := recoveryExclusionBase (runtime := rt) (leaks := leaks)
-      (fun _ : State simpleExpr fixture.context => ()) OddsEvens.sourceUtility (fun _ => 0)
+    let base := exclusionBase fixture rt (fun _ : State simpleExpr fixture.context => ())
+      OddsEvens.sourceUtility (fun _ => 0) leaks
     let payoff := GameTheory.Enforcement.TerminalAudit.utility base observe audit (fun _ => 800)
     let settle := TerminalAudit.settlement base observe audit (fun _ => 800)
     ∃ target : (raw.information initial steps serviceScheduler).BehavioralAssessment,
@@ -61,25 +61,23 @@ theorem intended_equilibrium_preserved
       (∀ final ∈ ((raw.information initial steps serviceScheduler).runBehavioral
           target.strategy (2 * steps + 1)).support,
         ∀ control, final.state = some control →
-          control.execution.application.excluded = ∅) ∧
+          control.execution.application.config.defaulted = ∅) ∧
       (∀ final ∈ ((raw.information initial steps serviceScheduler).runBehavioral
           target.strategy (2 * steps + 1)).support,
         ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
       ((raw.information initial steps serviceScheduler).runBehavioral target.strategy
           (2 * steps + 1)).bind
         (fun final => (settle final.state).map fun payoffs =>
-          (sourceReadout fixture rt leaks
-            (RecoveryProjection.protocolState rt leaks final.state), payoffs)) =
+          (sourceReadout fixture rt leaks final.state, payoffs)) =
         (fixture.intendedModel.runBehavioral intended.strategy
           (instructionCount fixture.program + 1)).map
           (intendedReadoutExclusion fixture (fun _ => ()) OddsEvens.sourceUtility
             (fun _ => 0)) := by
   intro raw observe audit base payoff settle
-  let : app.FiniteNature ((Vegas.initialLaw fixture).map fun native =>
-      (⟨native, ∅⟩ : RecoveryState compiled)) serviceScheduler :=
+  let : app.FiniteNature (Vegas.initialLaw fixture) serviceScheduler :=
     (inferInstance : app.FiniteNature initial serviceScheduler)
   obtain ⟨target, rational, clear, noCharges, joint⟩ :=
-    Vegas.recovery_intended_raw_sequentialEquilibrium_preserved
+    Vegas.intended_raw_sequentialEquilibrium_preserved
       (setup := fixture) (runtime := rt) (leaks := leaks) (bounds := OddsEvens.bounds)
       (horizon := steps) (scheduler := serviceScheduler) (fun _ => ())
       OddsEvens.sourceUtility (fun _ => 0)
@@ -105,12 +103,12 @@ theorem intended_equilibrium_preserved
 /-- The actual forced-exit runtime realizes the fair independent-bit source
 assessment, with its complete typed/payoff law and expected payoff one hundred. -/
 theorem fair_equilibrium_exists :
-    let raw := Recovery.rawMenu rt leaks OddsEvens.bounds
+    let raw := OddsEvens.bounds.rawMenu rt leaks
     let observe := app.stateTraffic
-    let audit := Recovery.countAudit rt leaks
+    let audit := (rt).countAudit leaks
       evidenceService.sample
-    let base := recoveryExclusionBase (runtime := rt) (leaks := leaks)
-      (fun _ : State simpleExpr fixture.context => ()) OddsEvens.sourceUtility (fun _ => 0)
+    let base := exclusionBase fixture rt (fun _ : State simpleExpr fixture.context => ())
+      OddsEvens.sourceUtility (fun _ => 0) leaks
     let payoff := GameTheory.Enforcement.TerminalAudit.utility base observe audit (fun _ => 800)
     let settle := TerminalAudit.settlement base observe audit (fun _ => 800)
     ∃ target : (raw.information initial steps serviceScheduler).BehavioralAssessment,
@@ -121,22 +119,20 @@ theorem fair_equilibrium_exists :
       (∀ final ∈ ((raw.information initial steps serviceScheduler).runBehavioral
           target.strategy (2 * steps + 1)).support,
         ∀ control, final.state = some control →
-          control.execution.application.excluded = ∅) ∧
+          control.execution.application.config.defaulted = ∅) ∧
       (∀ final ∈ ((raw.information initial steps serviceScheduler).runBehavioral
           target.strategy (2 * steps + 1)).support,
         ∀ who, TerminalAudit.charge observe audit final.state who = 0) ∧
       ((raw.information initial steps serviceScheduler).runBehavioral target.strategy
           (2 * steps + 1)).bind
         (fun final => (settle final.state).map fun payoffs =>
-          (sourceReadout fixture rt leaks
-            (RecoveryProjection.protocolState rt leaks final.state), payoffs)) =
+          (sourceReadout fixture rt leaks final.state, payoffs)) =
               OddsEvens.uniformJointLaw ∧
       ∀ who, expect (
         ((raw.information initial steps serviceScheduler).runBehavioral target.strategy
           (2 * steps + 1)).bind
         (fun final => (settle final.state).map fun payoffs =>
-          (sourceReadout fixture rt leaks
-            (RecoveryProjection.protocolState rt leaks final.state), payoffs)))
+          (sourceReadout fixture rt leaks final.state, payoffs)))
           (fun realized => realized.2 who) = 100 := by
   intro raw observe audit base payoff settle
   obtain ⟨target, rational, clear, noCharges, joint⟩ :=
@@ -149,4 +145,4 @@ theorem fair_equilibrium_exists :
   rw [actual]
   exact OddsEvens.uniformJointLaw_expected who
 
-end Vegas.Examples.OddsEvensRecoveryRaw
+end Vegas.Examples.OddsEvensRaw

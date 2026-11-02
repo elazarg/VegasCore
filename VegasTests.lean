@@ -15,11 +15,11 @@ import VegasTests.EventStrategies
 import VegasTests.FiniteSupportPurification
 import VegasTests.Honest
 import VegasTests.PartialEnvironment
-import VegasTests.RecoveryCompiler
-import VegasTests.RecoveryScenarios
+import VegasTests.ClientCompiler
 import VegasTests.ResultExpressions
 import VegasTests.RosterAutomaticCompletion
 import VegasTests.RuntimeDefault
+import VegasTests.RuntimeScenarios
 import VegasTests.ServiceTiming
 import VegasTests.SourceSemantics
 import VegasTests.SourceSetup

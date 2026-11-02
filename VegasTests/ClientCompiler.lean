@@ -1,14 +1,14 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RecoveryClientCompiler
-import Vegas.Examples.OddsEvensRecoveryRawEquilibrium
+import Vegas.Game.ClientCompiler
+import Vegas.Examples.OddsEvensRawEquilibrium
 
 /-! # The uniform semantic compiler under a checked two-player service
 
 The instance supplies service and audit certificates. All player
 strategies come from the generic compiler; there is no game-specific client
 construction. The fair assessment specializes the same compiler and preserves
-the exact joint typed-store and settled-payoff law.
+the exact joint source-configuration and settled-payoff law.
 -/
 
 noncomputable section
@@ -17,10 +17,10 @@ namespace VegasTests
 
 open Vegas Vegas.SourceProgram Vegas.EventGraphRuntime Interaction
   GameTheory GameTheory.Protocol GameTheory.Math.Probability
-open Vegas.Examples.OddsEvensRecoveryService
-open Vegas.Examples.OddsEvensRecoveryRaw
+open Vegas.Examples.OddsEvensService
+open Vegas.Examples.OddsEvensRaw
 
-private def specification : Vegas.RecoveryClientSpec
+private def specification : Vegas.ClientSpec
     fixture runtime leaks Vegas.Examples.OddsEvens.bounds horizon scheduler
     (fun _ => ()) Vegas.Examples.OddsEvens.sourceUtility (fun _ => 0) where
   finiteNature := by change app.FiniteNature initial scheduler; infer_instance
@@ -81,8 +81,8 @@ example (intended : fixture.intendedModel.BehavioralAssessment)
     (supported : state ∈ (app.finish initial horizon scheduler
       (compiled intended equilibrium).clients none).support)
     (control : app.Control) (current : state = some control) :
-    control.execution.application.excluded = ∅ :=
-  (compiled intended equilibrium).clients_noExclusions state supported control current
+    control.execution.application.config.defaulted = ∅ :=
+  (compiled intended equilibrium).clients_noDefaults state supported control current
 
 example (intended : fixture.intendedModel.BehavioralAssessment)
     (equilibrium : fixture.IntendedSequentialEquilibrium
@@ -91,7 +91,7 @@ example (intended : fixture.intendedModel.BehavioralAssessment)
     (supported : state ∈ (app.finish initial horizon scheduler
       (compiled intended equilibrium).clients none).support) (who : Bool) :
     GameTheory.Enforcement.TerminalAudit.charge app.stateTraffic
-      (Recovery.countAudit runtime leaks specification.evidenceService.sample) state who = 0 :=
+      (runtime.countAudit leaks specification.evidenceService.sample) state who = 0 :=
   (compiled intended equilibrium).clients_noCharges state supported who
 
 example (intended : fixture.intendedModel.BehavioralAssessment)

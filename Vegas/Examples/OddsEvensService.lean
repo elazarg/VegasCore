@@ -1,17 +1,19 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Examples.OddsEvensSetup
-import Vegas.Pending.ExclusionServiceProgress
-import Vegas.Pending.ExclusionService
+import Vegas.Pending.ReactiveServiceProgress
+import Vegas.Pending.ReactiveStateInvariant
+import Vegas.Pending.ReactiveServiceConditions
 import Interaction.ReactiveRawRoundTrace
 import Interaction.ReactiveServiceRounds
 import Interaction.ReactivePendingProcessing
+import Interaction.ReactivePolicyInvariant
 
 /-! # A periodic physical service on the actual forced-exit application -/
 
 noncomputable section
 
-namespace Vegas.Examples.OddsEvensRecoveryService
+namespace Vegas.Examples.OddsEvensService
 
 open SourceProgram EventGraphRuntime Interaction GameTheory GameTheory.Protocol
   GameTheory.Math.Probability
@@ -24,9 +26,12 @@ def leaks : MessageNetwork.ObservationRule OddsEvens.Player (WitnessedPacket com
 
 def runtime : EventGraphRuntime compiled := serviceRuntime fixture .sequential (fun _ => 6)
 
-abbrev app := recoveryApplication runtime leaks
+abbrev app := runtime.reactiveApplication leaks
 
-def initial : PMF app.State := (Vegas.initialLaw fixture).map fun native => ⟨native, ∅⟩
+def initial : PMF app.State := Vegas.initialLaw fixture
+
+instance : leaks.FiniteSupport where
+  support_finite _ _ := by simp [leaks]
 
 abbrev cycles := 32
 abbrev packetBudget := 2 * cycles
@@ -95,27 +100,37 @@ theorem tick_command (cycle : Nat) (view : app.EnvironmentView) :
   norm_num [packetBudget, width, cycles]
 
 instance : app.FiniteNature initial scheduler where
-  observePending_finite _ _ := by
-    change (PMF.pure ∅).support.Finite
-    rw [PMF.support_pure]
-    exact Set.finite_singleton _
-  environment_finite state native := by
-    change (state.environment runtime native).support.Finite
-    rw [RecoveryState.environment, PMF.support_map]
-    exact (runtime.environmentStep_support_finite _ _).image _
+  toFiniteEnvironment := inferInstance
   initial_finite := by
-    rw [initial, PMF.support_map]
-    have nativeFinite : (Vegas.initialLaw fixture).support.Finite := by
-      rw [Vegas.initialLaw, serviceInitialLaw, PMF.support_map]
-      exact fixture.initialLaw_support_finite.image _
-    exact nativeFinite.image _
+    change (Vegas.initialLaw fixture).support.Finite
+    exact serviceInitialLaw_support_finite fixture .sequential
   scheduler_finite _ _ := by
     rw [scheduler, PMF.support_pure]
     exact Set.finite_singleton _
+
+/-- Physical rounds preserve completed events and live activation times. -/
+theorem runRounds_progress (inputs : compiled.Inputs) (players : OddsEvens.Player → app.Policy)
+    (count : Nat) (before after : app.Execution) (valid : before.application.Invariant inputs)
+    (reached : after ∈ (app.runRounds scheduler players count before).support) :
+    ∃ ticks, State.ServiceProgress inputs ticks before.application after.application := by
+  let predicate := fun execution : app.Execution =>
+    ∃ ticks, State.ServiceProgress inputs ticks before.application execution.application
+  have invariant : app.PolicyInvariant players predicate := {
+    respond := by
+      intro execution who action previous _
+      obtain ⟨ticks, previous⟩ := previous
+      exact ⟨_, previous.trans (reactive_respond_progress runtime leaks inputs execution who
+        action previous.invariant)⟩
+    environment := by
+      intro execution next selected previous moved
+      obtain ⟨ticks, previous⟩ := previous
+      exact ⟨_, previous.trans (reactive_environment_progress runtime leaks inputs execution next
+        selected previous.invariant moved)⟩ }
+  exact invariant.runRounds scheduler count before after ⟨0, .refl valid⟩ reached
 
 theorem timely : runtime.AsyncTimely (fun _ => 3) (fun _ => 2) := by
   intro event _
   change 3 + 2 < 6
   decide
 
-end Vegas.Examples.OddsEvensRecoveryService
+end Vegas.Examples.OddsEvensService

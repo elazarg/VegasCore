@@ -161,7 +161,7 @@ strategy. Computing numerical strategy coefficients and generating client code
 require effective finite input representations and a constructive certified
 completion backend.
 
-[The compiler regression](../VegasTests/RecoveryCompiler.lean) supplies
+[The compiler regression](../VegasTests/ClientCompiler.lean) supplies
 Odds–Evens service, audit and source certificates to the generic compiler for
 every supplied intended equilibrium. It also checks ordinary-client clean
 runs and the fair assessment's exact joint outcome law. The

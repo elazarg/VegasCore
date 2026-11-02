@@ -1,13 +1,13 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensRecoveryClock
-import Vegas.Pending.ExclusionActivationOrigin
+import Vegas.Examples.OddsEvensServiceClock
+import Vegas.Pending.ReactiveServiceOpportunity
 
 /-! # Recorded owner opportunities on the actual forced-exit execution -/
 
 noncomputable section
 
-namespace Vegas.Examples.OddsEvensRecoveryService
+namespace Vegas.Examples.OddsEvensService
 
 open SourceProgram EventGraphRuntime Interaction GameTheory GameTheory.Protocol
   GameTheory.Math.Probability
@@ -26,13 +26,13 @@ theorem owner_command (cycle : Nat) (owner : OddsEvens.Player) (view : app.Envir
 
 def RecordedOffers (execution : app.Execution) : Prop :=
   ∀ event owner entered cycle, compiled.actor? event = some owner →
-    execution.application.native.activatedAt event = some entered →
+    execution.application.activatedAt event = some entered →
     entered < cycle → cycle % 2 = 1 →
     cycle * width + ownerSlot owner < execution.environmentRecall.length →
     ∃ entry ∈ execution.environmentRecall, entry.command = .activate owner ∧
-      entry.beforeView.application.1.activatedAt event = some entered ∧
-      entry.beforeView.application.1.EventReady event ∧
-      entry.beforeView.application.1.clock = cycle
+      entry.beforeView.application.activatedAt event = some entered ∧
+      entry.beforeView.application.EventReady event ∧
+      entry.beforeView.application.clock = cycle
 
 private theorem cycle_le_before_offer (owner : OddsEvens.Player) (cycle cursor : Nat)
     (earlier : cycle * width + ownerSlot owner < cursor + 1) : cycle ≤ cursor / width := by
@@ -47,14 +47,14 @@ theorem recorded_offers_invariant (inputs : compiled.Inputs) :
     refine ⟨(clock_aligned_invariant inputs 0).respond execution who action valid.1, ?_⟩
     intro event owner entered cycle acting activated older odd earlier
     rw [app.respond_environmentRecall] at earlier ⊢
-    have beforeCycle : cycle ≤ execution.application.native.clock := by
+    have beforeCycle : cycle ≤ execution.application.clock := by
       rw [valid.1.clock, Nat.zero_add]
       exact cycle_le_before_offer owner cycle execution.environmentRecall.length (by omega)
-    have progress := Recovery.respond_progress runtime leaks inputs execution who action
-      valid.1.valid.native
+    have progress := reactive_respond_progress runtime leaks inputs execution who action
+      valid.1.valid
     have ready := ((progress.invariant.activated_iff event).mp (by
       rw [activated]; rfl)).1
-    have origin := Recovery.respond_activationOrigin runtime leaks execution who action
+    have origin := reactive_respond_activationOrigin runtime leaks execution who action
       event entered activated ready.1
     rcases origin with retained | fresh
     · exact valid.2 event owner entered cycle acting retained older odd earlier
@@ -66,17 +66,17 @@ theorem recorded_offers_invariant (inputs : compiled.Inputs) :
     have recallEq := app.environmentStep_environmentRecall execution next selected moved
     have lengthEq : next.environmentRecall.length = execution.environmentRecall.length + 1 := by
       rw [recallEq, List.length_append, List.length_singleton]
-    have beforeCycle : cycle ≤ execution.application.native.clock := by
+    have beforeCycle : cycle ≤ execution.application.clock := by
       rw [valid.1.clock, Nat.zero_add]
       apply cycle_le_before_offer owner cycle execution.environmentRecall.length
       omega
-    have progress := Recovery.environmentStep_progress runtime leaks inputs execution next selected
-      valid.1.valid.native moved
+    have progress := reactive_environment_progress runtime leaks inputs execution next selected
+      valid.1.valid moved
     have ready := ((progress.invariant.activated_iff event).mp (by
       rw [activated]; rfl)).1
-    have origin := Recovery.environmentStep_activationOrigin runtime leaks inputs execution next
-      selected valid.1.valid.native moved event entered activated ready.1
-    have prior : execution.application.native.activatedAt event = some entered := by
+    have origin := reactive_environmentStep_activationOrigin runtime leaks execution next
+      selected moved event entered activated ready.1
+    have prior : execution.application.activatedAt event = some entered := by
       rcases origin with retained | fresh
       · exact retained
       · omega
@@ -94,14 +94,14 @@ theorem recorded_offers_invariant (inputs : compiled.Inputs) :
       refine ⟨⟨execution.observeEnvironment app, selected⟩, ?_, chosen, prior, ?_, ?_⟩
       · rw [recallEq]
         exact List.mem_append_right _ (List.mem_singleton_self _)
-      · exact (execution.application.native.publicView_eventReady event).mpr
-          ((valid.1.valid.native.activated_iff event).mp (by rw [prior]; rfl)).1
-      · change execution.application.native.clock = cycle
+      · exact (execution.application.publicView_eventReady event).mpr
+          ((valid.1.valid.activated_iff event).mp (by rw [prior]; rfl)).1
+      · change execution.application.clock = cycle
         rw [valid.1.clock, current, Nat.zero_add]
         exact (cursor_arithmetic cycle (ownerSlot owner) (ownerSlot_bounds owner)).1
 
 theorem opportunity :
-    Recovery.Opportunity runtime leaks initial horizon scheduler (fun _ => 3) := by
+    Opportunity runtime leaks initial horizon scheduler (fun _ => 3) := by
   intro control trace event owner entered acting ready activated elapsed
   have invariant : app.ServiceInvariant scheduler (fun execution =>
       ∃ inputs, ClockAligned inputs 0 execution ∧ RecordedOffers execution) := {
@@ -116,31 +116,29 @@ theorem opportunity :
         valid supported moved⟩ }
   have state := invariant.history initial horizon (by
     intro state initialized
-    rw [initial, PMF.support_map] at initialized
-    obtain ⟨native, initialized, rfl⟩ := initialized
-    rw [Vegas.initialLaw, serviceInitialLaw, PMF.support_map] at initialized
+    rw [initial, Vegas.initialLaw, serviceInitialLaw, PMF.support_map] at initialized
     obtain ⟨input, _, rfl⟩ := initialized
     refine ⟨fixture.eventInputs input, ?_, ?_⟩
-    · exact ⟨RecoveryState.Invariant.initial _, by
+    · exact ⟨State.initial_invariant _, by
         simp [ReactiveApplication.Execution.initial, State.initial]⟩
     · intro event owner entered cycle _ _ _ _ impossible
       change _ < 0 at impossible
       omega) trace
   obtain ⟨inputs, aligned, offers⟩ := state
-  have divided : control.execution.application.native.clock =
+  have divided : control.execution.application.clock =
       control.execution.environmentRecall.length / width := by
     simpa only [Nat.zero_add] using aligned.clock
   let cycle := if (entered + 1) % 2 = 1 then entered + 1 else entered + 2
   have odd : cycle % 2 = 1 := by dsimp [cycle]; split_ifs <;> omega
   have older : entered < cycle := by dsimp [cycle]; split_ifs <;> omega
-  have beforeClock : cycle < control.execution.application.native.clock := by
-    change entered + 3 < control.execution.application.native.clock at elapsed
+  have beforeClock : cycle < control.execution.application.clock := by
+    change entered + 3 < control.execution.application.clock at elapsed
     dsimp [cycle]
     split_ifs <;> omega
   have earlier : cycle * width + ownerSlot owner < control.execution.environmentRecall.length := by
     have slotBound := ownerSlot_bounds owner
     have mulBound := Nat.mul_le_mul_right width (Nat.succ_le_of_lt beforeClock)
-    change (cycle + 1) * width ≤ control.execution.application.native.clock * width at mulBound
+    change (cycle + 1) * width ≤ control.execution.application.clock * width at mulBound
     have cursorBound := Nat.div_mul_le_self control.execution.environmentRecall.length width
     rw [← divided] at cursorBound
     have rightBound : cycle * width + ownerSlot owner < (cycle + 1) * width := by
@@ -149,10 +147,6 @@ theorem opportunity :
     omega
   obtain ⟨entry, member, chosen, stamp, wasReady, _⟩ :=
     offers event owner entered cycle acting activated older odd earlier
-  refine ⟨RecoveryProjection.environmentEntry runtime leaks entry, ?_, ?_, stamp, wasReady⟩
-  · exact List.mem_map.mpr ⟨entry, member, rfl⟩
-  · change RecoveryProjection.command runtime leaks entry.command = .activate owner
-    rw [chosen]
-    rfl
+  exact ⟨entry, member, chosen, stamp, wasReady⟩
 
-end Vegas.Examples.OddsEvensRecoveryService
+end Vegas.Examples.OddsEvensService

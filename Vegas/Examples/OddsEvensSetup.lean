@@ -5,6 +5,8 @@ import Vegas.Game.RevealService
 import Vegas.Game.OnePacketPublicInitialSignal
 import Vegas.Game.OnePacketSwapFiberSum
 import Vegas.Game.ProgramPayoffs
+import Vegas.Game.IntendedAuditedOutcome
+import Vegas.Game.OnePacketRetention
 
 /-! # Two-player Odds–Evens with executable settlement -/
 
@@ -63,7 +65,7 @@ def setup : Setup (Player := Player) (L := simpleExpr) where
 abbrev compiled := graph setup
 
 def sourceUtility (result : Unit × PublicOutcome program) (who : Player) : ℝ :=
-  cash (result.2.get (.there .here)) (result.2.get .here) who
+  cash (result.2.values.get (.there .here)) (result.2.values.get .here) who
 
 theorem cash_success (e o : Bool) :
     cash (.success e) (.success o) even = (if e = o then 126 else 74) ∧
@@ -94,9 +96,9 @@ theorem eval_cashExpr {Γ : CtxSimple} (who : Player)
 
 theorem publicPayoffs_eq (outcome : PublicOutcome program) :
     program.publicPayoffs outcome =
-      [(even, cash (outcome.get (.there .here)) (outcome.get .here) even),
-        (odd, cash (outcome.get (.there .here)) (outcome.get .here) odd)] := by
-  change [(even, evalExpr _ outcome), (odd, evalExpr _ outcome)] = _
+      [(even, cash (outcome.values.get (.there .here)) (outcome.values.get .here) even),
+        (odd, cash (outcome.values.get (.there .here)) (outcome.values.get .here) odd)] := by
+  change [(even, evalExpr _ outcome.values), (odd, evalExpr _ outcome.values)] = _
   rw [eval_cashExpr, eval_cashExpr]
   rfl
 

@@ -35,17 +35,17 @@ example (scheduler : SourceSetup.fairSetup.eventGraph.PublicScheduler)
         (Profile.update (sig := SourceSetup.fairSetup.eventGraph.gameSignature)
           (compileEventProfile SourceSetup.fairSetup.program
             (SourceSetup.profile chosen)) who replacement)).map
-              (terminalState SourceSetup.fairSetup.program) =
+              (terminalConfig SourceSetup.fairSetup.program) =
         mixture.bind fun alternative =>
           SourceSetup.fairSetup.run
             (Profile.update
               (sig := SourceProgram.gameSignature SourceSetup.fairSetup.program)
               (SourceSetup.profile chosen) who alternative) := by
-  obtain ⟨mixture, _, law⟩ := scheduled_setup_deviation_law SourceSetup.fairSetup
-    fair_finiteBindingTypes scheduler (SourceSetup.profile chosen) who replacement
-  exact ⟨mixture, by
+  have law := scheduled_setup_deviation_law SourceSetup.fairSetup
+    scheduler (SourceSetup.profile chosen) who replacement
+  exact ⟨PMF.pure (backtranslateEventPolicy SourceSetup.fairSetup.program who replacement), by
     simpa only [SourceProgram.Setup.eventGame, EventGraph.gameForm,
-      PMF.map_bind, PMF.bind_map, Function.comp_def] using law⟩
+      PMF.map_bind, PMF.bind_map, PMF.pure_bind, Function.comp_def] using law⟩
 
 private abbrev mixedSetup := SourceSemantics.mixedSetup
 
@@ -58,7 +58,7 @@ example (scheduler : mixedSetup.eventGraph.PublicScheduler)
     (ε : ℝ) (profile : SourceProgram.BehavioralProfile mixedSetup.program) :
     IsεNash (mixedSetup.eventGame scheduler)
         (fun outcome who => utility (SourceProgram.publicOutcome mixedSetup.program
-          (terminalState mixedSetup.program outcome)) who)
+          (terminalConfig mixedSetup.program outcome)) who)
         ε (compileEventProfile mixedSetup.program profile) ↔
       IsεNash mixedSetup.gameForm utility ε profile :=
   mixedSetup.eventGame_approximate_nash_iff ⟨inferInstanceAs (Finite (Option Bool)), trivial⟩

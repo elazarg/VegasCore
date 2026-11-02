@@ -13,10 +13,11 @@ open SourceProgram GameTheory GameTheory.Protocol
   GameTheory.Protocol.InformationModel GameTheory.Math.Probability
 
 def firstCommitView : DecisionView (L := simpleExpr) even [] :=
-  (sourceObserve even (Env.empty (CellVal simpleExpr)), [])
+  (Config.initial (Env.empty (CellVal simpleExpr))).view even
 
 def secondCommitView : DecisionView (L := simpleExpr) odd [(0, .commitment even .bool)] :=
-  (sourceObserve odd (Env.cons (.success false) (Env.empty (CellVal simpleExpr))), [])
+  (commitSuccessor 0 (acceptGuard even 0)
+    (Config.initial (Env.empty (CellVal simpleExpr))) (some (.success false))).view odd
 
 def firstInfo : setup.ProtocolView even := some (.inl firstCommitView)
 
@@ -28,7 +29,7 @@ def sourceDecoded (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) 
     (setup.intendedSourceProfile profile)
 
 theorem first_commit_decoded (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) :
-    commitKernel (sourceDecoded profile) firstCommitView =
+    commitKernel (sourceDecoded profile) firstCommitView (by decide) =
       (profile even firstInfo).map
         (fun choice => OwnAction.binding (L := simpleExpr) even 0 .bool choice.1) := by
   change ((profile even firstInfo).map _).map _ = _
@@ -36,7 +37,7 @@ theorem first_commit_decoded (profile : ∀ who, setup.intendedModel.BehavioralP
   rfl
 
 theorem second_commit_decoded (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) :
-    commitKernel (afterCommit (sourceDecoded profile)) secondCommitView =
+    commitKernel (afterCommit (sourceDecoded profile)) secondCommitView (by decide) =
       (profile odd secondInfo).map
         (fun choice => OwnAction.binding (L := simpleExpr) odd 1 .bool choice.1) := by
   change ((profile odd secondInfo).map _).map _ = _
@@ -57,7 +58,7 @@ theorem sourceDecoded_admitted
     (setup.intendedSourceProfile profile who)).2
 
 /-- The initialized intended protocol and its decoded source policies have the
-same complete typed-store law. No effective-opening transformation is needed. -/
+same complete source-configuration law. -/
 theorem sourceDecoded_run (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) :
     (setup.intendedModel.runBehavioral profile (instructionCount setup.program + 1)).map
         (fun final => setup.protocolReadout final.state) =
@@ -84,51 +85,53 @@ theorem sourceDecoded_run (profile : ∀ who, setup.intendedModel.BehavioralPoli
   rfl
 
 theorem first_binding_success (choice : setup.intendedModel.Choice even firstInfo) :
-    PublicationResult.success
-        ((OwnAction.binding (L := simpleExpr) even 0 .bool choice.1).getD false) =
+    some (PublicationResult.success
+        (((OwnAction.binding (L := simpleExpr) even 0 .bool choice.1).getD .failure).getD false)) =
       OwnAction.binding (L := simpleExpr) even 0 .bool choice.1 := by
   obtain ⟨bit, rfl⟩ := intendedBitChoice_surjective even firstInfo choice
   rw [show (intendedBitChoice bit even firstInfo).1 =
-    some (.commit even 0 .bool (.success bit)) from rfl, OwnAction.binding_commit]
+    some (.commit even 0 .bool (some (.success bit))) from rfl, OwnAction.binding_commit]
   rfl
 
 theorem second_binding_success (choice : setup.intendedModel.Choice odd secondInfo) :
-    PublicationResult.success
-        ((OwnAction.binding (L := simpleExpr) odd 1 .bool choice.1).getD false) =
+    some (PublicationResult.success
+        (((OwnAction.binding (L := simpleExpr) odd 1 .bool choice.1).getD .failure).getD false)) =
       OwnAction.binding (L := simpleExpr) odd 1 .bool choice.1 := by
   obtain ⟨bit, rfl⟩ := intendedBitChoice_surjective odd secondInfo choice
   rw [show (intendedBitChoice bit odd secondInfo).1 =
-    some (.commit odd 1 .bool (.success bit)) from rfl, OwnAction.binding_commit]
+    some (.commit odd 1 .bool (some (.success bit))) from rfl, OwnAction.binding_commit]
   rfl
 
 def firstBitLaw (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) : PMF Bool :=
   (profile even firstInfo).map
-    (fun choice => (OwnAction.binding (L := simpleExpr) even 0 .bool choice.1).getD false)
+    (fun choice =>
+      ((OwnAction.binding (L := simpleExpr) even 0 .bool choice.1).getD .failure).getD false)
 
 def secondBitLaw (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) : PMF Bool :=
   (profile odd secondInfo).map
-    (fun choice => (OwnAction.binding (L := simpleExpr) odd 1 .bool choice.1).getD false)
+    (fun choice =>
+      ((OwnAction.binding (L := simpleExpr) odd 1 .bool choice.1).getD .failure).getD false)
 
 theorem first_commit_bitLaw (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) :
-    commitKernel (sourceDecoded profile) firstCommitView =
-      (firstBitLaw profile).map PublicationResult.success := by
+    commitKernel (sourceDecoded profile) firstCommitView (by decide) =
+      (firstBitLaw profile).map (some ∘ PublicationResult.success) := by
   rw [first_commit_decoded, firstBitLaw, PMF.map_comp]
   exact map_congr_on_support _ (fun choice _ => (first_binding_success choice).symm)
 
 theorem second_commit_bitLaw (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) :
-    commitKernel (afterCommit (sourceDecoded profile)) secondCommitView =
-      (secondBitLaw profile).map PublicationResult.success := by
+    commitKernel (afterCommit (sourceDecoded profile)) secondCommitView (by decide) =
+      (secondBitLaw profile).map (some ∘ PublicationResult.success) := by
   rw [second_commit_decoded, secondBitLaw, PMF.map_comp]
   exact map_congr_on_support _ (fun choice _ => (second_binding_success choice).symm)
 
 theorem firstBitLaw_uniform : firstBitLaw uniformProfile = PMF.uniformOfFintype Bool := by
   rw [firstBitLaw, uniformProfile, PMF.map_comp]
   have simplified : (fun bit =>
-      (OwnAction.binding (L := simpleExpr) even 0 .bool
-        (intendedBitChoice bit even firstInfo).1).getD false) = id := by
+      ((OwnAction.binding (L := simpleExpr) even 0 .bool
+        (intendedBitChoice bit even firstInfo).1).getD .failure).getD false) = id := by
     funext bit
     rw [show (intendedBitChoice bit even firstInfo).1 =
-      some (.commit even 0 .bool (.success bit)) from rfl, OwnAction.binding_commit]
+      some (.commit even 0 .bool (some (.success bit))) from rfl, OwnAction.binding_commit]
     rfl
   exact (congrArg (fun action : Bool → Bool => (PMF.uniformOfFintype Bool).map action)
     simplified).trans (PMF.map_id _)
@@ -136,11 +139,11 @@ theorem firstBitLaw_uniform : firstBitLaw uniformProfile = PMF.uniformOfFintype 
 theorem secondBitLaw_uniform : secondBitLaw uniformProfile = PMF.uniformOfFintype Bool := by
   rw [secondBitLaw, uniformProfile, PMF.map_comp]
   have simplified : (fun bit =>
-      (OwnAction.binding (L := simpleExpr) odd 1 .bool
-        (intendedBitChoice bit odd secondInfo).1).getD false) = id := by
+      ((OwnAction.binding (L := simpleExpr) odd 1 .bool
+        (intendedBitChoice bit odd secondInfo).1).getD .failure).getD false) = id := by
     funext bit
     rw [show (intendedBitChoice bit odd secondInfo).1 =
-      some (.commit odd 1 .bool (.success bit)) from rfl, OwnAction.binding_commit]
+      some (.commit odd 1 .bool (some (.success bit))) from rfl, OwnAction.binding_commit]
     rfl
   exact (congrArg (fun action : Bool → Bool => (PMF.uniformOfFintype Bool).map action)
     simplified).trans (PMF.map_id _)

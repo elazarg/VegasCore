@@ -140,16 +140,19 @@ theorem finiteBindingTypes (penalty : Int) : (program penalty).FiniteBindingType
 exactly the semantic second-price settlement. -/
 theorem publicPayoffs_eq (penalty : Int) (outcome : PublicOutcome (program penalty)) :
     (program penalty).publicPayoffs outcome =
-      [(.alice, cash penalty (outcome.get (.there .here)) (outcome.get .here) .alice),
-        (.bob, cash penalty (outcome.get (.there .here)) (outcome.get .here) .bob)] := by
-  change [(Player.alice, evalExpr _ outcome), (Player.bob, evalExpr _ outcome)] = _
+      [(.alice, cash penalty (outcome.values.get (.there .here)) (outcome.values.get .here) .alice),
+        (.bob, cash penalty (outcome.values.get (.there .here))
+          (outcome.values.get .here) .bob)] := by
+  change [(Player.alice, evalExpr _ outcome.values), (Player.bob, evalExpr _ outcome.values)] = _
   rw [eval_cashExpr, eval_cashExpr]
   rfl
 
 
 def result (penalty : Int) (alice bob : PublicationResult Bid) :
     PublicOutcome (program penalty) :=
-  Env.cons bob (Env.cons alice (Env.empty simpleExpr.Val))
+  ⟨Env.cons bob (Env.cons alice (Env.empty simpleExpr.Val)),
+    ⟨[if bob.isFailure then some Player.bob else none,
+      if alice.isFailure then some Player.alice else none, none, none]⟩⟩
 
 private def integerPublication : PublicationResult Bid → PublicationResult Int
   | .failure => .failure
@@ -158,14 +161,14 @@ private def integerPublication : PublicationResult Bid → PublicationResult Int
 /-- Allocation value has no monetary component; the program supplies all cash. -/
 def valuation (penalty : Int) (values : Player → ℝ)
     (outcome : PublicOutcome (program penalty)) : Player → ℝ
-  | .alice => match (outcome.get (.there .here) : PublicationResult Bid) with
+  | .alice => match (outcome.values.get (.there .here) : PublicationResult Bid) with
     | .failure => 0
-    | .success a => match (outcome.get .here : PublicationResult Bid) with
+    | .success a => match (outcome.values.get .here : PublicationResult Bid) with
       | .failure => values .alice
       | .success b => if b.val ≤ a.val then values .alice else 0
-  | .bob => match (outcome.get .here : PublicationResult Bid) with
+  | .bob => match (outcome.values.get .here : PublicationResult Bid) with
     | .failure => 0
-    | .success b => match (outcome.get (.there .here) : PublicationResult Bid) with
+    | .success b => match (outcome.values.get (.there .here) : PublicationResult Bid) with
       | .failure => values .bob
       | .success a => if a.val < b.val then values .bob else 0
 
@@ -176,14 +179,14 @@ theorem paymentUtility_eq_economic (penalty : Int) (values : Player → ℝ)
     (program penalty).paymentUtility (valuation penalty values) outcome who =
       CommitRevealAuction.utility values (penalty : ℝ)
         (CommitRevealAuction.result
-          (integerPublication (outcome.get (.there .here)))
-          (integerPublication (outcome.get .here))) who := by
+          (integerPublication (outcome.values.get (.there .here)))
+          (integerPublication (outcome.values.get .here))) who := by
   rw [paymentUtility_eq]
   unfold publicTransfers
   rw [publicPayoffs_eq]
   cases who <;>
-    cases aliceEq : (outcome.get (.there .here) : PublicationResult Bid) <;>
-    cases bobEq : (outcome.get .here : PublicationResult Bid) <;>
+    cases aliceEq : (outcome.values.get (.there .here) : PublicationResult Bid) <;>
+    cases bobEq : (outcome.values.get .here : PublicationResult Bid) <;>
     simp only [Env.get] at aliceEq bobEq
   all_goals
     simp [valuation, cash, integerPublication, CommitRevealAuction.utility,
@@ -209,16 +212,16 @@ theorem compiled_nash_iff (penalty : Int) (values : Player → ℝ)
 /-- Alice reports a bounded value and discloses it. -/
 def alicePolicy (penalty : Int) (report : Bid) :
     BehavioralPolicy Player.alice (program penalty) :=
-  (fun _ _ => PMF.pure (.success report),
+  (fun _ _ _ => PMF.pure (some (.success report)),
     ((fun h => nomatch h),
-      (fun _ _ => PMF.pure true, ((fun h => nomatch h), PUnit.unit))))
+      (fun _ _ _ => PMF.pure true, ((fun h => nomatch h), PUnit.unit))))
 
 /-- Bob reports four and reveals exactly when Alice publishes five. -/
 def bobPolicy (penalty : Int) : BehavioralPolicy Player.bob (program penalty) :=
   ((fun h => nomatch h),
-    (fun _ _ => PMF.pure (.success (bid 4)),
+    (fun _ _ _ => PMF.pure (some (.success (bid 4))),
       ((fun h => nomatch h),
-        (fun _ view => PMF.pure (match view.1.cells.get .here with
+        (fun _ view _ => PMF.pure (match view.observation.cells.get .here with
           | .failure => false
           | .success report => decide (report = bid 5)), PUnit.unit))))
 
@@ -231,7 +234,11 @@ theorem play_truthful (penalty : Int) :
       PMF.pure (result penalty (.success (bid 5)) (.success (bid 4))) := by
   simp only [Setup.gameForm, Setup.publicRun, Setup.run, setup, SourceProgram.run,
     program, profile, alicePolicy, bobPolicy, runFrom, commitKernel, revealKernel,
-    afterCommit, afterReveal, PMF.pure_bind, PMF.pure_map]
+    afterCommit, afterReveal, PMF.pure_bind, Config.initial_defaulted,
+    Finset.notMem_empty, ↓reduceDIte]
+  rw [dite_eq_right (by decide), PMF.pure_bind]
+  rw [dite_eq_right (by decide), PMF.pure_bind]
+  rw [dite_eq_right (by decide), PMF.pure_bind, PMF.pure_map]
   rfl
 
 theorem play_misreport (penalty : Int) :
@@ -239,7 +246,11 @@ theorem play_misreport (penalty : Int) :
       PMF.pure (result penalty (.success (bid 6)) .failure) := by
   simp only [Setup.gameForm, Setup.publicRun, Setup.run, setup, SourceProgram.run,
     program, profile, alicePolicy, bobPolicy, runFrom, commitKernel, revealKernel,
-    afterCommit, afterReveal, PMF.pure_bind, PMF.pure_map]
+    afterCommit, afterReveal, PMF.pure_bind, Config.initial_defaulted,
+    Finset.notMem_empty, ↓reduceDIte]
+  rw [dite_eq_right (by decide), PMF.pure_bind]
+  rw [dite_eq_right (by decide), PMF.pure_bind]
+  rw [dite_eq_right (by decide), PMF.pure_bind, PMF.pure_map]
   rfl
 
 theorem update_profile (penalty : Int) (before after : Bid) :

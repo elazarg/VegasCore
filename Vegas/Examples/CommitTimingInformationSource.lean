@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.IntendedAuditedOutcome
+import Vegas.Game.IntendedAuthenticOpening
 import Vegas.Source.InitialState
 import Vegas.Source.SetupProtocolBehavioral
 import Vegas.Expr.Simple
@@ -141,53 +142,60 @@ abbrev alicePublication : HasVar program.terminalCtx 3 (.publication .bool) := .
 abbrev retainedPrivateBit : HasVar program.terminalCtx 0 (.privateInput bob .bool) :=
   .there (.there (.there (.there .here)))
 
-def terminalParameter (terminal : State simpleExpr program.terminalCtx) : Bool :=
-  terminal.get retainedPrivateBit
+def terminalParameter (terminal : Config Player simpleExpr program.terminalCtx) : Bool :=
+  terminal.state.get retainedPrivateBit
 
-def utility (terminal : State simpleExpr program.terminalCtx) (who : Player) : ℝ :=
+def utility (terminal : Config Player simpleExpr program.terminalCtx) (who : Player) : ℝ :=
   if who = alice then
-    match terminal.get alicePublication with
+    match terminal.state.get alicePublication with
     | .failure => 0
     | .success guess => if guess = terminalParameter terminal then 1 else 0
   else
     (if terminalParameter terminal then -1 else 1) *
       (if 0 < failedReveals program alice (publicOutcome program terminal) then 1 else 0)
 
-theorem terminalParameter_initialState (terminal : State simpleExpr program.terminalCtx) :
-    terminalParameter terminal = initialParameter (initialState program terminal) := rfl
+theorem terminalParameter_initialState (terminal : Config Player simpleExpr program.terminalCtx) :
+    terminalParameter terminal = initialParameter (initialState program terminal.state) := rfl
 
-theorem alice_utility_bounds (terminal : State simpleExpr program.terminalCtx) :
+theorem alice_utility_bounds (terminal : Config Player simpleExpr program.terminalCtx) :
     utility terminal alice ∈ Set.Icc (0 : ℝ) 1 := by
-  cases result : terminal.get alicePublication with
+  cases result : terminal.state.get alicePublication with
   | failure => norm_num [utility, result]
   | success guess =>
       by_cases same : guess = terminalParameter terminal <;> norm_num [utility, result, same]
 
-theorem bob_utility_bounds (terminal : State simpleExpr program.terminalCtx) :
+theorem bob_utility_bounds (terminal : Config Player simpleExpr program.terminalCtx) :
     utility terminal bob ∈ Set.Icc (-1 : ℝ) 1 := by
   change (if terminalParameter terminal then (-1 : ℝ) else 1) *
     (if 0 < failedReveals program alice (publicOutcome program terminal) then 1 else 0) ∈ _
   split <;> split <;> norm_num
 
-def finalState (bit guess helper : Bool) : State simpleExpr program.terminalCtx :=
-  Env.cons (.success helper) <| Env.cons (.success guess) <|
-    Env.cons (.success helper) <| Env.cons (.success guess) <| sourceInitial bit
+def finalConfig (bit guess helper : Bool) : Config Player simpleExpr program.terminalCtx :=
+  revealSuccessor 4 (.there .here)
+    (revealSuccessor 3 (.there .here)
+      (commitSuccessor 2 (acceptGuard bob 2)
+        (commitSuccessor 1 (acceptGuard alice 1) (Config.initial (sourceInitial bit))
+          (some (.success guess))) (some (.success helper))) true) true
 
 def constantProfile (guess helper : Bool) : BehavioralProfile program := fun _ =>
-  ⟨fun _ _ => PMF.pure (.success guess),
-    ⟨fun _ _ => PMF.pure (.success helper),
-      ⟨fun _ _ => PMF.pure true, ⟨fun _ _ => PMF.pure true, PUnit.unit⟩⟩⟩⟩
+  ⟨fun _ _ _ => PMF.pure (some (.success guess)),
+    ⟨fun _ _ _ => PMF.pure (some (.success helper)),
+      ⟨fun _ _ _ => PMF.pure true, ⟨fun _ _ _ => PMF.pure true, PUnit.unit⟩⟩⟩⟩
 
 theorem run_constant (bit guess helper : Bool) :
     program.run (constantProfile guess helper) (sourceInitial bit) =
-      PMF.pure (finalState bit guess helper) := by
+      PMF.pure (finalConfig bit guess helper) := by
   simp only [SourceProgram.run, program, constantProfile, sourceInitial, runFrom,
-    commitKernel, revealKernel, afterCommit, afterReveal, PMF.pure_bind]
+    commitKernel, revealKernel, afterCommit, afterReveal, PMF.pure_bind,
+    Config.initial_defaulted, Finset.notMem_empty, ↓reduceDIte]
+  rw [dite_eq_right (by change bob ∉ (∅ : Finset Player); decide), PMF.pure_bind]
+  rw [dite_eq_right (by change alice ∉ (∅ : Finset Player); decide), PMF.pure_bind]
+  rw [dite_eq_right (by change bob ∉ (∅ : Finset Player); decide), PMF.pure_bind]
   rfl
 
-theorem utility_finalState (bit guess helper : Bool) :
-    utility (finalState bit guess helper) alice = (if guess = bit then 1 else 0) ∧
-      utility (finalState bit guess helper) bob = 0 := by
+theorem utility_finalConfig (bit guess helper : Bool) :
+    utility (finalConfig bit guess helper) alice = (if guess = bit then 1 else 0) ∧
+      utility (finalConfig bit guess helper) bob = 0 := by
   constructor
   · rfl
   · change (if bit then (-1 : ℝ) else 1) * (if 0 < 0 then 1 else 0) = 0
@@ -195,7 +203,7 @@ theorem utility_finalState (bit guess helper : Bool) :
 
 theorem setup_run_constant (guess helper : Bool) :
     setup.run (constantProfile guess helper) =
-      bitLaw.map (fun bit => finalState bit guess helper) := by
+      bitLaw.map (fun bit => finalConfig bit guess helper) := by
   change (bitLaw.map sourceInitial).bind
     (fun initial => program.run (constantProfile guess helper) initial) = _
   rw [PMF.bind_map]
@@ -207,11 +215,11 @@ theorem constant_profile_alice_value (guess helper : Bool) :
     expect (setup.run (constantProfile guess helper)) (fun terminal => utility terminal alice) =
       1 / 2 := by
   rw [setup_run_constant, expect_map]
-  change expect bitLaw (fun bit => utility (finalState bit guess helper) alice) = 1 / 2
-  have values : (fun bit => utility (finalState bit guess helper) alice) =
+  change expect bitLaw (fun bit => utility (finalConfig bit guess helper) alice) = 1 / 2
+  have values : (fun bit => utility (finalConfig bit guess helper) alice) =
       fun bit => if guess = bit then (1 : ℝ) else 0 := by
     funext bit
-    exact (utility_finalState bit guess helper).1
+    exact (utility_finalConfig bit guess helper).1
   rw [values]
   simp only [bitLaw, expect_mix_of_finite, expect_pure]
   cases guess <;> norm_num
@@ -222,7 +230,7 @@ theorem constant_profile_bob_value (guess helper : Bool) :
   rw [setup_run_constant, expect_map]
   calc
     _ = expect bitLaw (fun _ => (0 : ℝ)) := expect_congr_on_support
-      (fun bit _ => (utility_finalState bit guess helper).2)
+      (fun bit _ => (utility_finalConfig bit guess helper).2)
     _ = 0 := expect_zero _
 
 theorem honest_decisionRecall : setup.intendedModel.DecisionRecall :=
@@ -236,24 +244,22 @@ private theorem honestMenu_nonempty (who : Player) (info : setup.ProtocolView wh
   | none => exact ⟨none, rfl⟩
   | some view =>
       rcases view with observed | observed | observed | observed | terminal
-      · by_cases same : alice = who
-        · subst who
-          refine ⟨some (.commit alice 1 .bool (.success false)), ?_⟩
-          exact ⟨rfl, false, Or.inl (fun _ => rfl), rfl⟩
-        · exact ⟨none, fun equality => same (Option.some.inj equality)⟩
-      · by_cases same : bob = who
-        · subst who
-          refine ⟨some (.commit bob 2 .bool (.success true)), ?_⟩
-          exact ⟨rfl, true, Or.inl (fun _ => rfl), rfl⟩
-        · exact ⟨none, fun equality => same (Option.some.inj equality)⟩
-      · by_cases same : alice = who
-        · subst who
-          exact ⟨some (.reveal alice 1 true), rfl, rfl⟩
-        · exact ⟨none, fun equality => same (Option.some.inj equality)⟩
-      · by_cases same : bob = who
-        · subst who
-          exact ⟨some (.reveal bob 2 true), rfl, rfl⟩
-        · exact ⟨none, fun equality => same (Option.some.inj equality)⟩
+      · by_cases acts : ProtocolView.actor who program (.inl observed) = some who
+        · exact ⟨some (.commit alice 1 .bool (some (.success false))), acts,
+            false, Or.inl (fun _ => rfl), rfl⟩
+        · exact ⟨none, acts⟩
+      · by_cases acts : ProtocolView.actor who program (.inr (.inl observed)) = some who
+        · exact ⟨some (.commit bob 2 .bool (some (.success true))), acts,
+            true, Or.inl (fun _ => rfl), rfl⟩
+        · exact ⟨none, acts⟩
+      · by_cases acts :
+            ProtocolView.actor who program (.inr (.inr (.inl observed))) = some who
+        · exact ⟨some (.reveal alice 1 true), acts, rfl⟩
+        · exact ⟨none, acts⟩
+      · by_cases acts :
+            ProtocolView.actor who program (.inr (.inr (.inr (.inl observed)))) = some who
+        · exact ⟨some (.reveal bob 2 true), acts, rfl⟩
+        · exact ⟨none, acts⟩
       · exact ⟨none, fun impossible => by cases impossible⟩
 
 def honestFallback (who : Player) : setup.intendedModel.Policy who := fun info =>
@@ -268,7 +274,7 @@ theorem honest_bob_payoff_zero (history : setup.intendedProtocol.History) :
   cases read : setup.protocolReadout history.state with
   | none => rfl
   | some terminal =>
-      change State simpleExpr program.terminalCtx at terminal
+      change Config Player simpleExpr program.terminalCtx at terminal
       have noFailure := setup.failedReveals_eq_zero_of_intendedState
         (setup.intendedState_trace wellFormed history.trace) alice read
       change failedReveals program alice (publicOutcome program terminal) = 0 at noFailure
@@ -294,21 +300,43 @@ def guessReward (bit : Bool) : PublicationResult Bool → ℝ
 /-- Later helper choices and publications cannot affect Alice's score once
 her own mandatory opening has published her first declaration. -/
 theorem run_alice_payoff (profile : BehavioralProfile program)
-    (opening : ∀ view, (profile alice).2.2.1 rfl view = PMF.pure true) (bit : Bool) :
+    (opening : ∀ view active, (profile alice).2.2.1 rfl view active = PMF.pure true) (bit : Bool) :
     (program.run profile (sourceInitial bit)).map (fun terminal => utility terminal alice) =
-      ((profile alice).1 rfl (sourceObserve alice (sourceInitial false), [])).map
-        (guessReward bit) := by
-  simp only [SourceProgram.run, program, runFrom, Config.view, commitKernel, revealKernel,
-    afterCommit, afterReveal, opening, PMF.pure_bind, PMF.map_bind]
-  rw [alice_initial_observation bit false]
+      ((profile alice).1 rfl ((Config.initial (sourceInitial false)).view alice)
+        (by decide)).map (fun choice => guessReward bit (choice.getD .failure)) := by
+  have sameView : (Config.initial (sourceInitial bit)).view alice =
+      (Config.initial (sourceInitial false)).view alice := by
+    unfold Config.view
+    congr 1
+    exact alice_initial_observation bit false
+  have viewed : (⟨(Config.initial (sourceInitial bit)).view alice,
+      by change alice ∉ (∅ : Finset Player); decide⟩ :
+        {view : DecisionView (L := simpleExpr) alice initialCtx // alice ∉ view.defaulted}) =
+      ⟨(Config.initial (sourceInitial false)).view alice, by decide⟩ := Subtype.ext sameView
+  have headEq := congrArg (fun view :
+      {view : DecisionView (L := simpleExpr) alice initialCtx // alice ∉ view.defaulted} =>
+        (profile alice).1 rfl view.1 view.2) viewed
+  simp only [SourceProgram.run, program, runFrom, commitKernel, revealKernel,
+    afterCommit, afterReveal, opening, PMF.map_bind,
+    Config.initial_defaulted, Finset.notMem_empty, ↓reduceDIte]
+  rw [headEq]
   apply bind_congr_on_support _
   intro guess _
   apply pmf_eq_pure_of_support_subset_singleton
   intro reward supported
   simp only [PMF.support_bind, PMF.support_map, PMF.support_pure, Set.mem_iUnion,
     Set.mem_image, Set.mem_singleton_iff] at supported
-  rcases supported with ⟨helper, _, disclosed, _, terminal, rfl, rfl⟩
-  cases guess <;> cases helper <;> cases disclosed <;> rfl
+  rcases supported with
+    ⟨helper, _, disclosedAlice, opened, disclosedBob, _, terminal, rfl, rfl⟩
+  rcases guess with _ | (_ | guess)
+  all_goals rcases helper with _ | (_ | helper)
+  all_goals
+    first
+    | have same : disclosedAlice = false := (PMF.mem_support_pure_iff _ _).mp opened
+      subst disclosedAlice
+    | have same : disclosedAlice = true := (PMF.mem_support_pure_iff _ _).mp opened
+      subst disclosedAlice
+  all_goals cases disclosedBob <;> rfl
 
 private def liftedHonestProfile
     (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) :
@@ -335,39 +363,20 @@ private theorem honestSourceProfile_roundtrip
   (setup.behavioralPolicyEquiv (CommitmentInterface.values program) who).apply_symm_apply _
 
 private theorem honestSourceProfile_opens
-    (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) (view) :
-    (honestSourceProfile profile alice).2.2.1 rfl view = PMF.pure true := by
-  change (((profile alice (some (.inr (.inr (.inl view))))).map
-    ((setup.intendedRestriction (CommitmentInterface.values program)).choice alice
-      (some (.inr (.inr (.inl view)))))).map
-        (fun choice => OwnAction.disclosure choice.1)) = PMF.pure true
-  rw [PMF.map_comp]
-  calc
-    _ = (profile alice (some (.inr (.inr (.inl view))))).map (fun _ => true) := by
-      apply map_congr_on_support
-      intro choice _
-      have allowed := choice.2
-      cases action : choice.1 with
-      | none =>
-          rw [action] at allowed
-          change some alice ≠ some alice at allowed
-          exact (allowed rfl).elim
-      | some material =>
-          rw [action] at allowed
-          change some alice = some alice ∧
-            material ∈ ({OwnAction.reveal alice 1 true} : Set (OwnAction Player simpleExpr))
-            at allowed
-          change OwnAction.disclosure choice.1 = true
-          rw [action, allowed.2]
-          rfl
-    _ = _ := by simp [← PMF.bind_pure_comp, Function.comp_def]
+    (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) (view) (active) :
+    (honestSourceProfile profile alice).2.2.1 rfl view active = PMF.pure true := by
+  have disclosing : Disclosing program (honestSourceProfile profile alice) :=
+    BehavioralPolicy.disclosing_fromProtocol setup.program _ _
+      (fun atView => setup.intendedSourceProfile_notRefusal profile alice (some atView))
+  exact eq_pure_true_of_false_not_mem (disclosing.1 rfl view active)
 
 private theorem honestSourceProfile_alice_value
     (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) :
     expect (setup.run (honestSourceProfile profile)) (fun terminal => utility terminal alice) =
       1 / 2 := by
   let selected := honestSourceProfile profile
-  let guesses := (selected alice).1 rfl (sourceObserve alice (sourceInitial false), [])
+  let guesses := (selected alice).1 rfl
+    ((Config.initial (sourceInitial false)).view alice) (by decide)
   have law : setup.run selected =
       bitLaw.bind (fun bit => program.run selected (sourceInitial bit)) := by
     change (bitLaw.map sourceInitial).bind (fun initial => program.run selected initial) = _
@@ -381,28 +390,42 @@ private theorem honestSourceProfile_alice_value
   rw [law] at integrable ⊢
   rw [expect_bind_tower _ _ _ integrable]
   calc
-    _ = expect bitLaw (fun bit => expect guesses (guessReward bit)) := by
+    _ = expect bitLaw (fun bit => expect guesses
+        (fun choice => guessReward bit (choice.getD .failure))) := by
       apply expect_congr_on_support
       intro bit _
       have readout := congrArg (fun distribution : PMF ℝ => expect distribution id)
         (run_alice_payoff selected (honestSourceProfile_opens profile) bit)
       change expect (program.run selected (sourceInitial bit))
           (fun terminal => utility terminal alice) =
-        expect ((selected alice).1 rfl (sourceObserve alice (sourceInitial false), []))
-          (fun value => guessReward bit value)
+        expect ((selected alice).1 rfl
+          ((Config.initial (sourceInitial false)).view alice) (by decide))
+          (fun value => guessReward bit (value.getD .failure))
       simpa only [expect_map, Function.comp_def, id_eq] using readout
-    _ = expect guesses (fun guess => expect bitLaw (fun bit => guessReward bit guess)) :=
+    _ = expect guesses (fun guess => expect bitLaw
+        (fun bit => guessReward bit (guess.getD .failure))) :=
       expect_comm_of_support_finite bitLaw guesses (Set.toFinite _) (Set.toFinite _)
-        (fun bit guess => guessReward bit guess)
+        (fun bit guess => guessReward bit (guess.getD .failure))
     _ = expect guesses (fun _ => (1 / 2 : ℝ)) := by
       apply expect_congr_on_support
       intro guess supported
-      have admitted := (honestSourceProfile_admitted profile alice).1 rfl
-        (sourceObserve alice (sourceInitial false), []) guess supported
-      cases guess with
-      | failure => cases admitted
-      | success value =>
-          simp only [guessReward, bitLaw, expect_mix_of_finite, expect_pure]
+      change guess ∈ (((profile alice
+        (some (.inl ((Config.initial (sourceInitial false)).view alice)))).map _).map _).support
+        at supported
+      rw [PMF.map_comp] at supported
+      obtain ⟨choice, _, same⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
+      change OwnAction.binding (L := simpleExpr) alice 1 .bool choice.1 = guess at same
+      have allowed := choice.2
+      cases action : choice.1 with
+      | none =>
+          rw [action] at allowed
+          exact (allowed (by rfl)).elim
+      | some material =>
+          rw [action] at allowed
+          obtain ⟨_, value, _, rfl⟩ := allowed
+          rw [action, OwnAction.binding_commit] at same
+          rw [← same]
+          simp only [Option.getD_some, guessReward, bitLaw, expect_mix_of_finite, expect_pure]
           cases value <;> norm_num
     _ = 1 / 2 := expect_constant _ _
 
