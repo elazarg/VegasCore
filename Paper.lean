@@ -999,6 +999,25 @@ theorem Vegas.Paper.lateLeak_intended_outcome_not_preserved
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.lateLeak_intended_outcome_not_preserved
 
+/-- At the sample parameters, both games have sequential equilibria, and every target
+equilibrium departs from the one intended outcome law. -/
+theorem Vegas.Paper.lateLeak_sample_intended_outcome_not_preserved :
+    (∃ assessment, Vegas.Paper.lateLeakSequential LateLeakParameters.sample false assessment) ∧
+    (∀ assessment, Vegas.Paper.lateLeakSequential LateLeakParameters.sample false assessment →
+      lateLeakOutcomeLaw LateLeakParameters.sample false assessment.strategy =
+        lateLeakIntendedOutcome) ∧
+    (∃ assessment, Vegas.Paper.lateLeakSequential LateLeakParameters.sample true assessment) ∧
+    (∀ assessment, Vegas.Paper.lateLeakSequential LateLeakParameters.sample true assessment →
+      lateLeakOutcomeLaw LateLeakParameters.sample true assessment.strategy ≠
+        lateLeakIntendedOutcome) := by
+  exact Vegas.Paper.lateLeak_intended_outcome_not_preserved LateLeakParameters.sample
+    LateLeakParameters.sample_deferralPays
+
+/-- info: 'Vegas.Paper.lateLeak_sample_intended_outcome_not_preserved' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.lateLeak_sample_intended_outcome_not_preserved
+
 /-- Every target equilibrium is at least 267/2000 from the intended full outcome law. -/
 theorem Vegas.Paper.lateLeak_sample_totalVariation_lower_bound
     {assessment : (lateLeakModel LateLeakParameters.sample true).BehavioralAssessment}
