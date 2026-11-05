@@ -11,6 +11,7 @@ import Vegas.EventGraph.Commutation
 import Vegas.EventGraph.CommutationRecall
 import Vegas.EventGraph.NormalizedPolicy
 import Vegas.EventGraph.SchedulerErasure
+import Vegas.EventGraph.RevealRelaxedScheduling
 import Vegas.EventGraph.Execution
 import Vegas.EventGraph.Information
 import Vegas.EventGraph.ObservationStep
