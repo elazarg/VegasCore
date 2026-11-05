@@ -388,3 +388,4 @@ import Vegas.Game.OnePacketPooledMemberGains
 import Vegas.Game.OnePacketKeyedCommitmentComparisons
 import Vegas.Game.OnePacketKeyedComparisons
 import Vegas.Game.SequentialCompilation
+import Vegas.Game.ConcurrentRevealNash
