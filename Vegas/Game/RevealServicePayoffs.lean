@@ -23,6 +23,12 @@ open Interaction EventGraphRuntime GameTheory GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
 
+/-- Utility of the terminal configuration a reader recovers from a native state,
+and zero when the reader recovers none. -/
+def readoutBaseUtility {State Terminal : Type} (reader : State → Option Terminal)
+    (utility : Terminal → Player → ℝ) (state : State) (who : Player) : ℝ :=
+  (reader state).elim 0 (fun source => utility source who)
+
 section Configured
 
 variable (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)

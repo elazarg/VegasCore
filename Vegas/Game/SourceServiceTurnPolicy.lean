@@ -181,6 +181,23 @@ theorem sourceServiceClientPolicy_deviation_roundsFrom
 
 end ClientRuns
 
+/-- The first-turn clients of a source profile have, through the supplied reader,
+the complete terminal configuration law of the profile's source run. -/
+def FirstTurnReadoutLaw (setup : Setup (Player := Player) (L := L))
+    (mode : EventGraph.ExecutionMode) (deadline : (serviceGraph setup mode).EventId → Nat)
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (reader : (serviceApplication setup mode deadline leaks).ProtocolState →
+      Option (Config Player L setup.program.terminalCtx))
+    (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (profile : BehavioralProfile setup.program) : Prop :=
+  ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+    scheduler (serviceTurnPolicy setup mode deadline leaks bound turns
+      (firstTurnTiming setup turns mode) profile) horizon).map
+      (fun execution => reader ((serviceApplication setup mode deadline leaks).finished
+        execution)) =
+    (setup.run profile).map some
+
 /-- The first-turn clients of a source profile have the complete terminal
 configuration law of the profile's source run. -/
 def FirstTurnSourceLaw (setup : Setup (Player := Player) (L := L))
