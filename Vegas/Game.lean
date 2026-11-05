@@ -390,3 +390,4 @@ import Vegas.Game.OnePacketKeyedComparisons
 import Vegas.Game.SequentialCompilation
 import Vegas.Game.ConcurrentRevealNash
 import Vegas.Game.IntendedOpeningExtension
+import Vegas.Game.ConcurrentRevealForfeit
