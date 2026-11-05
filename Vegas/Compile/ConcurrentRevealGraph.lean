@@ -7,6 +7,7 @@ import Vegas.EventGraph.SequentialLaw
 import Vegas.EventGraph.PublicationDecision
 import Vegas.Compile.EventGraphPolicy
 import Vegas.Source.Disclosure
+import Vegas.EventGraph.SchedulerReplay
 
 /-! # The compiled graph with concurrent reveals
 
@@ -116,3 +117,64 @@ theorem compileEventPolicy_publication {Γ : SourceCtx Player L} {openNames : Fi
     ((eventOwner?_eq_actor program event).trans actor) _ _ _ active
 
 end Vegas
+
+namespace Vegas.SourceProgram.Setup
+
+open Vegas.EventGraph
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+/-- The completions of a configuration listed in event rank, one per completed event. -/
+def rankedHistory {graph : Vegas.EventGraph Player L} (config : graph.Config) :
+    List graph.Completion :=
+  (List.finRange graph.order.eventCount).filterMap (completionOf config)
+
+omit [DecidableEq Player] in
+theorem rankedHistory_events {graph : Vegas.EventGraph Player L} (config : graph.Config) :
+    (rankedHistory config).map EventCompletion.event =
+      (List.finRange graph.order.eventCount).filter fun event =>
+        (completionOf config event).isSome := by
+  unfold rankedHistory
+  rw [List.map_filterMap]
+  have tagged (event : graph.EventId) :
+      (completionOf config event).map EventCompletion.event =
+        if (completionOf config event).isSome then some event else none := by
+    cases found : completionOf config event with
+    | none => rfl
+    | some completion =>
+        simp [((completionOf_eq_some_iff config event completion).mp found).2]
+  rw [List.filterMap_congr fun event _ => tagged event]
+  induction (List.finRange graph.order.eventCount) with
+  | nil => rfl
+  | cons head tail ih =>
+      cases present : (completionOf config head).isSome <;> simp [present, ih]
+
+/-- A terminal configuration of the concurrent graph, as a configuration of the
+compiled graph whose history lists completions in source order. -/
+def rankedConfig (setup : Setup (Player := Player) (L := L))
+    (config : setup.concurrentRevealGraph.Config) (terminal : config.cut.Terminal) :
+    setup.eventGraph.Config where
+  inputs := config.inputs
+  cut := { completed := Finset.univ, predecessor_closed := fun _ _ _ => Finset.mem_univ _ }
+  outputs := config.outputs
+  output_available event := by
+    rw [config.output_available, terminal]
+  history := rankedHistory (graph := setup.concurrentRevealGraph) config
+  history_nodup := by
+    have events : ((rankedHistory (graph := setup.concurrentRevealGraph) config).map
+        EventCompletion.event).Nodup := by
+      rw [rankedHistory_events]
+      exact (List.nodup_finRange _).filter _
+    exact events
+  history_exact event := by
+    have events : event ∈ (rankedHistory (graph := setup.concurrentRevealGraph) config).map
+        EventCompletion.event := by
+      rw [rankedHistory_events, List.mem_filter, ← mem_completed_iff_completionOf, terminal]
+      simp
+    exact ⟨fun _ => Finset.mem_univ _, fun _ => events⟩
+
+theorem rankedConfig_terminal (setup : Setup (Player := Player) (L := L))
+    (config : setup.concurrentRevealGraph.Config) (terminal : config.cut.Terminal) :
+    (setup.rankedConfig config terminal).cut.Terminal := rfl
+
+end Vegas.SourceProgram.Setup

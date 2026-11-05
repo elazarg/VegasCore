@@ -158,4 +158,43 @@ theorem RevealsOnlyConcurrent.deviation_le_of_canonical (only : graph.RevealsOnl
     rw [abs_le]
     constructor <;> cases abs_cases excluded <;> cases abs_cases bound <;> linarith
 
+omit [DecidableEq Player] in
+/-- A payoff of configurations that depends only on the order-free key is a
+function of that key. -/
+theorem exists_value_of_factors (payoff : graph.Config → ℝ)
+    (factors : ∀ left right : graph.Config, runKey left = runKey right →
+      payoff left = payoff right) :
+    ∃ value : graph.order.Cut × EventGraph.Store graph.layout ×
+        (graph.EventId → Option graph.Completion) → ℝ, payoff = value ∘ runKey := by
+  classical
+  refine ⟨fun key => if found : ∃ config, runKey config = key then payoff found.choose else 0,
+    funext fun config => ?_⟩
+  have found : ∃ other, runKey other = runKey config := ⟨config, rfl⟩
+  simp only [Function.comp_apply, dite_eq_left found]
+  exact (factors _ _ found.choose_spec).symm
+
+/-- **Every-scheduler deviation bound**, for a payoff that factors through the
+order-free final state. -/
+theorem RevealsOnlyConcurrent.deviation_le_of_canonical_of_factors
+    (only : graph.RevealsOnlyConcurrent) (finite : graph.FiniteActions)
+    (profile : graph.BehavioralProfile) (oblivious : graph.ObliviousAtPublications profile)
+    (who : Player) (decisive : graph.OpensDecisively who (graph.normalizePolicy who (profile who)))
+    (payoff : graph.Config → ℝ)
+    (factors : ∀ left right : graph.Config, runKey left = runKey right →
+      payoff left = payoff right)
+    (excluded : ℝ) (low : ∀ config, excluded ≤ payoff config)
+    (atDefault : ∀ config, who ∈ config.defaulted → payoff config = excluded)
+    (inputs : PMF graph.Inputs) (finiteInputs : inputs.support.Finite) (bound : ℝ)
+    (canonical : ∀ policy : graph.BehavioralPolicy who,
+      expect (inputs.bind (graph.runPolicies graph.canonicalScheduler
+        (graph.normalizeProfile (Profile.update (sig := graph.gameSignature) profile who
+          policy)))) payoff ≤ bound)
+    (scheduler : graph.PublicScheduler) (policy : graph.BehavioralPolicy who) :
+    expect (inputs.bind (graph.runPolicies scheduler
+      (Profile.update (sig := graph.gameSignature) (graph.normalizeProfile profile) who policy)))
+      payoff ≤ bound := by
+  obtain ⟨value, rfl⟩ := exists_value_of_factors payoff factors
+  exact only.deviation_le_of_canonical finite profile oblivious who decisive value excluded low
+    atDefault inputs finiteInputs bound canonical scheduler policy
+
 end Vegas.EventGraph
