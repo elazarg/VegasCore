@@ -219,4 +219,115 @@ theorem expect_concurrentPayoff_canonical (setup : Setup (Player := Player) (L :
     Subtype.ext recast
   rw [outcome]
 
+/-- Under canonical scheduling, normalization changes no play of the compiled game. -/
+theorem canonicalEventGame_play_normalizeProfile (setup : Setup (Player := Player) (L := L))
+    (profile : setup.eventGraph.BehavioralProfile) :
+    setup.canonicalEventGame.play (setup.eventGraph.normalizeProfile profile) =
+      setup.canonicalEventGame.play profile := by
+  change setup.concurrentInputs.bind (setup.eventGraph.terminalOutcomes _ _) =
+    setup.concurrentInputs.bind (setup.eventGraph.terminalOutcomes _ _)
+  congr 1
+  funext initial
+  apply pmf_map_injective (f := Subtype.val) Subtype.val_injective
+  rw [EventGraph.terminalOutcomes_map_val, EventGraph.terminalOutcomes_map_val]
+  exact runPolicies_canonical_normalizeProfile setup.eventGraph_total profile initial
+
+/-- **Intended-game Nash under every schedule of concurrent reveals.** For a
+well-formed setup with finite commitment payload types and an excluded payoff
+below every utility, let a source profile disclose at every reveal and extend
+an `ε`-Nash equilibrium of the intended game under the forfeiture interface.
+On the compiled graph with independent reveals concurrent, its compiled
+clients, normalized to ignore completion order, are an `ε`-Nash equilibrium
+under every public scheduler, for the exclusion utility of the outcome read in
+instruction order. -/
+theorem concurrentReveal_intended_isεNash (setup : Setup (Player := Player) (L := L))
+    [Finite Player] (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (wellFormed : setup.WellFormed) {Parameter : Type}
+    (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ) (low : ∀ outcome who, excludedPayoff who ≤ utility outcome who)
+    (intended : Profile setup.intendedModel.behavioralSignature)
+    (target : Profile (setup.informationModel
+      (CommitmentInterface.forfeiture setup.program)).behavioralSignature)
+    (agrees : (setup.intendedRestriction
+      (CommitmentInterface.forfeiture setup.program)).ExtendsProfile intended target) (ε : ℝ)
+    (equilibrium : IsεNash (setup.intendedModel.toBehavioralGameForm
+        (instructionCount setup.program + 1))
+      (fun final who => (setup.protocolReadout final.state).elim 0
+        (fun state => utility (setup.parameterOutcome parameter state) who)) ε intended)
+    (disclosing : ∀ who, Disclosing setup.program (setup.decodeBehavioralProfile
+      (CommitmentInterface.forfeiture setup.program) target who))
+    (scheduler : setup.concurrentRevealGraph.PublicScheduler) :
+    IsεNash (setup.concurrentRevealGraph.gameForm setup.concurrentInputs scheduler)
+      (fun outcome who => setup.concurrentPayoff parameter utility excludedPayoff who outcome.1) ε
+      (setup.concurrentRevealGraph.normalizeProfile (compileEventProfile setup.program
+        (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program)
+          target))) := by
+  let admission := CommitmentInterface.forfeiture setup.program
+  let source := setup.decodeBehavioralProfile admission target
+  let compiled : setup.eventGraph.BehavioralProfile := compileEventProfile setup.program source
+  let exclusion := exclusionUtility setup.program excludedPayoff utility
+  have actions := toEventGraph_finiteActions setup.program finite
+  -- The source chain: intended Nash, protocol Nash, source Nash, compiled canonical Nash.
+  have protocolNash := (setup.intended_isεNash_preserved admission finite wellFormed parameter
+    utility excludedPayoff (fun _ _ _ who => low _ who) intended target agrees ε equilibrium).1
+  have sourceNash := (setup.parameterProtocol_isεNash_iff admission
+    (fun _ policy => policy.admitted_forfeiture setup.program) parameter exclusion ε target).mp
+      protocolNash
+  have graphNash := (setup.parameterEventGame_approximate_nash_iff parameter finite
+    setup.eventGraph.canonicalScheduler exclusion ε source).mpr sourceNash
+  rw [IsεNash, isNash_iff] at graphNash
+  have canonicalBound (who : Player) (policy : setup.eventGraph.BehavioralPolicy who) :
+      expect (setup.canonicalEventGame.play
+          (Profile.update (sig := setup.eventGraph.gameSignature) compiled who policy))
+          (fun outcome => exclusion (setup.eventParameterOutcome parameter outcome) who) ≤
+        expect (setup.canonicalEventGame.play compiled)
+          (fun outcome => exclusion (setup.eventParameterOutcome parameter outcome) who) + ε := by
+    have preference := graphNash who policy
+    rwa [euPreferenceWithin_iff _ _ _ _ _
+      (payoffIntegrable_of_finite_support _ _ (setup.eventGame_play_support_finite finite _ _))
+      (payoffIntegrable_of_finite_support _ _ (setup.eventGame_play_support_finite finite _ _))]
+      at preference
+  -- The compiled clients open decisively and ignore observations at publications.
+  have opens (who : Player) (event : setup.concurrentRevealGraph.EventId)
+      (actor : setup.concurrentRevealGraph.actor? event = some who)
+      (publication : (setup.concurrentRevealGraph.outputLayout event).IsPublication)
+      (observation : setup.concurrentRevealGraph.PlayerObservation who)
+      (active : who ∉ observation.defaulted) :
+      compiled who event actor observation active =
+        PMF.pure (EventField.openAction _ publication) :=
+    compileEventPolicy_publication setup.program who (source who) (disclosing who) event actor
+      publication observation active
+  have oblivious : setup.concurrentRevealGraph.ObliviousAtPublications compiled :=
+    fun who event actor publication left right leftActive rightActive => by
+      rw [opens who event actor publication left leftActive,
+        opens who event actor publication right rightActive]
+  have canonicalConcurrent (who : Player) (profile : setup.eventGraph.BehavioralProfile) :
+      expect (setup.concurrentInputs.bind (setup.concurrentRevealGraph.runPolicies
+          setup.concurrentRevealGraph.canonicalScheduler
+            (setup.concurrentRevealGraph.normalizeProfile profile)))
+          (setup.concurrentPayoff parameter utility excludedPayoff who) =
+        expect (setup.canonicalEventGame.play profile)
+          (fun outcome => exclusion (setup.eventParameterOutcome parameter outcome) who) :=
+    (setup.expect_concurrentPayoff_canonical finite parameter utility excludedPayoff who
+      (setup.eventGraph.normalizeProfile profile)).trans
+        (congrArg (fun law => expect law (fun outcome =>
+          exclusion (setup.eventParameterOutcome parameter outcome) who))
+          (setup.canonicalEventGame_play_normalizeProfile profile))
+  exact (setup.eventGraph.withMode_concurrentReveals_revealsOnlyConcurrent
+    setup.eventGraph_total).isεNash_normalizeProfile actions compiled oblivious
+    (fun who => opensDecisively_of_opens who _ fun _ event actor publication active =>
+      opens who event actor publication _ _)
+    (fun who => setup.concurrentPayoff parameter utility excludedPayoff who)
+    (fun who => setup.concurrentPayoff_factors parameter utility excludedPayoff who)
+    excludedPayoff
+    (fun who => setup.le_concurrentPayoff parameter utility excludedPayoff who
+      (fun outcome => low outcome who))
+    (fun who => setup.concurrentPayoff_of_defaulted parameter utility excludedPayoff who)
+    setup.concurrentInputs setup.concurrentInputs_support_finite ε
+    (fun who policy => by
+      rw [canonicalConcurrent who, canonicalConcurrent who]
+      exact canonicalBound who policy)
+    scheduler
+
 end Vegas.SourceProgram.Setup
