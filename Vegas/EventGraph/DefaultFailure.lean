@@ -63,6 +63,7 @@ namespace EventCode
 variable {Field : Type} [DecidableEq Field] {layout : Field → EventField Player L}
 
 omit [DecidableEq Player] in
+/-- A binding node's actor is its output's owner. -/
 theorem actor_eq_of_binding {output : EventField Player L} {owner : Player} {payload : L.Ty}
     (code : EventCode layout output) (binding : output = .binding owner payload) :
     code.actor = some owner := by
