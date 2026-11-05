@@ -3,6 +3,7 @@
 import Vegas.Source.Safety
 import Vegas.Game.IntendedNash
 import Vegas.Game.ConcurrentRevealNash
+import Vegas.Game.IntendedOpeningExtension
 import Vegas.Game.SourceProtocolNash
 import Vegas.Compile.EventGraphScheduling
 import Vegas.Game.EventCompilation
@@ -273,6 +274,20 @@ theorem Vegas.Paper.concurrentReveal_intended_isεNash
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.concurrentReveal_intended_isεNash
+
+omit [Finite Player] initialFinite in
+/-- Every intended profile has an extension that opens at every reveal. -/
+theorem Vegas.Paper.exists_disclosing_extension
+    (intended : Profile setup.intendedModel.behavioralSignature) :
+    ∃ target : Profile (setup.informationModel forfeiture).behavioralSignature,
+      (setup.intendedRestriction forfeiture).ExtendsProfile intended target ∧
+        ∀ who, Disclosing setup.program (setup.decodeBehavioralProfile forfeiture target who) :=
+  setup.exists_disclosing_extension forfeiture intended
+
+/-- info: 'Vegas.Paper.exists_disclosing_extension' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.exists_disclosing_extension
 
 end Forfeits
 end Source

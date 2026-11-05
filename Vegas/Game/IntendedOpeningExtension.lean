@@ -43,31 +43,34 @@ theorem ProtocolView.exists_notRefusal_menu (who : Player) :
       | inr later => exact exists_notRefusal_menu who next admission later
   | _, _, .commit (payload := payload) name owner _ _ next, admission, view => by
       cases view with
-      | inl current =>
-          by_cases own : owner = who
-          · subst who
-            by_cases inactive : owner ∈ current.defaulted
-            · exact ⟨none, by simp [ProtocolView.menu, ProtocolView.actor, inactive],
-                fun _ _ => nofun⟩
-            · exact ⟨some (.commit owner name payload (some (.success (L.someValue payload)))),
-                by simp [ProtocolView.menu, ProtocolView.actor, ProtocolView.available,
-                  inactive, CommitmentAdmission.Admits], fun _ _ => nofun⟩
-          · exact ⟨none, by simp [ProtocolView.menu, ProtocolView.actor, own], fun _ _ => nofun⟩
+      | inl view =>
+          by_cases own : owner = who ∧ who ∉ view.defaulted
+          · obtain ⟨own, active⟩ := own
+            exact ⟨some (.commit owner name payload (some (.success (L.someValue payload)))),
+              by simp [ProtocolView.menu, ProtocolView.actor, ProtocolView.available, own,
+                active],
+              fun _ _ => nofun⟩
+          · refine ⟨none, ?_, fun _ _ => nofun⟩
+            by_cases same : owner = who
+            · have inactive : who ∈ view.defaulted := by simpa [same] using own
+              simp [ProtocolView.menu, ProtocolView.actor, same, inactive]
+            · simp [ProtocolView.menu, ProtocolView.actor, same]
       | inr later => exact exists_notRefusal_menu who next (fun site => admission (some site)) later
   | _, _, .reveal _ owner name _ _ _ next, admission, view => by
       cases view with
-      | inl current =>
-          by_cases own : owner = who
-          · subst who
-            by_cases inactive : owner ∈ current.defaulted
-            · exact ⟨none, by simp [ProtocolView.menu, ProtocolView.actor, inactive],
-                fun _ _ => nofun⟩
-            · refine ⟨some (.reveal owner name true),
-                by simp [ProtocolView.menu, ProtocolView.actor, ProtocolView.available,
-                  inactive], ?_⟩
-              intro other otherName same
-              simp at same
-          · exact ⟨none, by simp [ProtocolView.menu, ProtocolView.actor, own], fun _ _ => nofun⟩
+      | inl view =>
+          by_cases own : owner = who ∧ who ∉ view.defaulted
+          · obtain ⟨own, active⟩ := own
+            refine ⟨some (.reveal owner name true),
+              by simp [ProtocolView.menu, ProtocolView.actor, ProtocolView.available, own,
+                active], ?_⟩
+            intro other otherName same
+            simp at same
+          · refine ⟨none, ?_, fun _ _ => nofun⟩
+            by_cases same : owner = who
+            · have inactive : who ∈ view.defaulted := by simpa [same] using own
+              simp [ProtocolView.menu, ProtocolView.actor, same, inactive]
+            · simp [ProtocolView.menu, ProtocolView.actor, same]
       | inr later => exact exists_notRefusal_menu who next admission later
 
 /-- An intended action never refuses a disclosure. -/
@@ -153,29 +156,31 @@ def openingPolicy (admission : CommitmentInterface setup.program) (who : Player)
 /-- **The opening extension of an intended profile.** At the information values
 the intended game keeps, play the intended law; elsewhere a legal choice that
 is not a refusal. -/
-def openingExtension (intended : Profile setup.intendedModel.behavioralSignature) :
+def openingExtension (admission : CommitmentInterface setup.program)
+    (intended : Profile setup.intendedModel.behavioralSignature) :
     Profile
-      (setup.informationModel (CommitmentInterface.values setup.program)).behavioralSignature :=
-  (setup.intendedRestriction (CommitmentInterface.values setup.program)).extendProfile intended
-    (fun who => setup.openingPolicy (CommitmentInterface.values setup.program) who)
+      (setup.informationModel admission).behavioralSignature :=
+  (setup.intendedRestriction admission).extendProfile intended
+    (fun who => setup.openingPolicy admission who)
 
 /-- The opening extension extends the intended profile. -/
-theorem openingExtension_extends (intended : Profile setup.intendedModel.behavioralSignature) :
-    (setup.intendedRestriction (CommitmentInterface.values setup.program)).ExtendsProfile
-      intended (setup.openingExtension intended) :=
-  (setup.intendedRestriction (CommitmentInterface.values setup.program)).extendProfile_extends _ _
+theorem openingExtension_extends (admission : CommitmentInterface setup.program)
+    (intended : Profile setup.intendedModel.behavioralSignature) :
+    (setup.intendedRestriction admission).ExtendsProfile
+      intended (setup.openingExtension admission intended) :=
+  (setup.intendedRestriction admission).extendProfile_extends _ _
 
 /-- The opening extension never refuses a disclosure. -/
-theorem openingExtension_notRefusal (intended : Profile setup.intendedModel.behavioralSignature)
+theorem openingExtension_notRefusal (admission : CommitmentInterface setup.program)
+    (intended : Profile setup.intendedModel.behavioralSignature)
     (who : Player) (info : setup.ProtocolView who) :
-    ∀ choice ∈ (setup.openingExtension intended who info).support, NotRefusal choice.1 := by
+    ∀ choice ∈ (setup.openingExtension admission intended who info).support,
+      NotRefusal choice.1 := by
   classical
-  by_cases retained : (setup.intendedRestriction (CommitmentInterface.values
-    setup.program)).Retained who info
+  by_cases retained : (setup.intendedRestriction admission).Retained who info
   · obtain ⟨site, rfl⟩ := retained
     simp only [openingExtension, InformationModel.ActionRestriction.extendProfile,
-      dite_eq_left ((setup.intendedRestriction (CommitmentInterface.values
-        setup.program)).retained_site who site),
+      dite_eq_left ((setup.intendedRestriction admission).retained_site who site),
       InformationModel.ActionRestriction.retainedLaw_at]
     intro choice member
     obtain ⟨intendedChoice, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp member
@@ -203,12 +208,22 @@ theorem openingExtension_notRefusal (intended : Profile setup.intendedModel.beha
 
 /-- **The opening extension discloses.** Its decoded source policies disclose
 at every reveal. -/
-theorem openingExtension_disclosing
+theorem openingExtension_disclosing (admission : CommitmentInterface setup.program)
     (intended : Profile setup.intendedModel.behavioralSignature) (who : Player) :
     Disclosing setup.program (setup.decodeBehavioralProfile
-      (CommitmentInterface.values setup.program) (setup.openingExtension intended) who) :=
+      admission (setup.openingExtension admission intended) who) :=
   BehavioralPolicy.disclosing_fromProtocol setup.program _ _
-    (fun view => setup.openingExtension_notRefusal intended who (some view))
+    (fun view => setup.openingExtension_notRefusal admission intended who (some view))
+
+/-- Every intended profile has an extension whose decoded source policies
+disclose at every reveal. -/
+theorem exists_disclosing_extension (admission : CommitmentInterface setup.program)
+    (intended : Profile setup.intendedModel.behavioralSignature) :
+    ∃ target : Profile (setup.informationModel admission).behavioralSignature,
+      (setup.intendedRestriction admission).ExtendsProfile intended target ∧
+        ∀ who, Disclosing setup.program (setup.decodeBehavioralProfile admission target who) :=
+  ⟨setup.openingExtension admission intended, setup.openingExtension_extends admission intended,
+    setup.openingExtension_disclosing admission intended⟩
 
 end Setup
 
