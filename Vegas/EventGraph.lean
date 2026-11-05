@@ -17,6 +17,7 @@ import Vegas.EventGraph.SchedulerReplay
 import Vegas.EventGraph.RevealDeviation
 import Vegas.EventGraph.WithholdingCoupling
 import Vegas.EventGraph.ConcurrentRevealNash
+import Vegas.EventGraph.SequentialNormalization
 import Vegas.EventGraph.Execution
 import Vegas.EventGraph.Information
 import Vegas.EventGraph.ObservationStep
