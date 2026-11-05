@@ -178,3 +178,125 @@ theorem rankedConfig_terminal (setup : Setup (Player := Player) (L := L))
     (setup.rankedConfig config terminal).cut.Terminal := rfl
 
 end Vegas.SourceProgram.Setup
+
+namespace Vegas.SourceProgram.Setup
+
+open Vegas.EventGraph
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+omit [DecidableEq Player] in
+private theorem find?_filterMap_tagged {graph : Vegas.EventGraph Player L}
+    (read : graph.EventId → Option graph.Completion)
+    (tagged : ∀ event completion, read event = some completion → completion.event = event)
+    (event : graph.EventId) :
+    ∀ events : List graph.EventId, events.Nodup →
+      (events.filterMap read).find? (fun completion => completion.event = event) =
+        if event ∈ events then read event else none
+  | [], _ => rfl
+  | head :: tail, nodup => by
+      obtain ⟨headFresh, tailNodup⟩ := List.nodup_cons.mp nodup
+      have rest := find?_filterMap_tagged read tagged event tail tailNodup
+      cases found : read head with
+      | none =>
+          simp only [List.filterMap_cons, found, rest, List.mem_cons]
+          by_cases same : event = head
+          · subst same
+            simp [headFresh, found]
+          · simp [same]
+      | some completion =>
+          have headTag := tagged head completion found
+          by_cases same : event = head
+          · subst same
+            simp [found, headTag]
+          · have miss : ¬ completion.event = event := fun hit => same (hit.symm.trans headTag)
+            simp [found, miss, rest, same]
+
+/-- Recasting in source order keeps every completion record. -/
+theorem completionOf_rankedConfig (setup : Setup (Player := Player) (L := L))
+    (config : setup.concurrentRevealGraph.Config) (terminal : config.cut.Terminal) :
+    completionOf (setup.rankedConfig config terminal) = completionOf config := by
+  funext event
+  have found := find?_filterMap_tagged (completionOf config)
+    (fun event completion found => ((completionOf_eq_some_iff config event completion).mp found).2)
+    event _ (List.nodup_finRange _)
+  rw [ite_eq_left (List.mem_finRange _)] at found
+  exact found
+
+/-- Recasting in source order keeps the defaulted players. -/
+theorem defaulted_rankedConfig (setup : Setup (Player := Player) (L := L))
+    (config : setup.concurrentRevealGraph.Config) (terminal : config.cut.Terminal) :
+    (setup.rankedConfig config terminal).defaulted = config.defaulted := by
+  ext who
+  rw [mem_defaulted_iff_completionOf, mem_defaulted_iff_completionOf,
+    completionOf_rankedConfig]
+  exact Iff.rfl
+
+end Vegas.SourceProgram.Setup
+
+namespace Vegas.SourceProgram.Setup
+
+open Vegas.EventGraph
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+omit [DecidableEq Player] in
+private theorem config_eq_of_data_eq {graph : Vegas.EventGraph Player L}
+    {left right : graph.Config} (inputs : left.inputs = right.inputs)
+    (cut : left.cut = right.cut) (outputs : left.outputs = right.outputs)
+    (history : left.history = right.history) : left = right := by
+  cases left
+  cases right
+  simp_all
+
+omit [DecidableEq Player] in
+private theorem map_val_finRange (count : Nat) :
+    (List.finRange count).map Fin.val = List.range count := by
+  apply List.ext_getElem <;> simp
+
+/-- The compiled graph is totally ordered. -/
+theorem eventGraph_total (setup : Setup (Player := Player) (L := L))
+    (prior event : setup.eventGraph.EventId) (earlier : prior.val < event.val) :
+    prior ∈ setup.eventGraph.order.predecessors event :=
+  (EventOrder.sequential.mem_predecessors prior event).mpr earlier
+
+/-- A terminal configuration reached by the compiled graph is its own source-order
+recasting, viewed in the concurrent graph. -/
+theorem rankedConfig_fromSequentialConfig (setup : Setup (Player := Player) (L := L))
+    {inputs : setup.eventGraph.Inputs} {config : setup.eventGraph.Config}
+    (reach : Config.Reachable inputs config)
+    (terminal : (setup.concurrentRevealGraph.fromSequentialConfig config).cut.Terminal) :
+    setup.rankedConfig (setup.concurrentRevealGraph.fromSequentialConfig config) terminal =
+      config := by
+  have complete : config.cut.Terminal := terminal
+  have lengthEq : config.history.length = setup.eventGraph.order.eventCount := by
+    have exact : config.cut.completed = (config.history.map EventCompletion.event).toFinset := by
+      ext event
+      rw [List.mem_toFinset, config.history_exact]
+    have card := congrArg Finset.card exact
+    rw [complete, Finset.card_univ, Fintype.card_fin,
+      List.toFinset_card_of_nodup config.history_nodup, List.length_map] at card
+    exact card.symm
+  have events : config.history.map EventCompletion.event =
+      List.finRange setup.eventGraph.order.eventCount := by
+    apply List.map_injective_iff.mpr Fin.val_injective
+    rw [List.map_map, map_val_finRange]
+    have values := history_map_val_of_reachable (setup.eventGraph_total) reach
+    rw [lengthEq] at values
+    exact values
+  have records : ∀ completion ∈ config.history,
+      completionOf config completion.event = some completion := fun completion member =>
+    (completionOf_eq_some_iff config completion.event completion).mpr ⟨member, rfl⟩
+  apply config_eq_of_data_eq
+  · rfl
+  · ext event
+    change event ∈ Finset.univ ↔ event ∈ config.cut.completed
+    rw [complete]
+  · rfl
+  · change (List.finRange _).filterMap (completionOf config) = config.history
+    rw [← events, List.filterMap_map]
+    calc _ = config.history.filterMap some :=
+          List.filterMap_congr fun completion member => records completion member
+      _ = config.history := List.filterMap_some
+
+end Vegas.SourceProgram.Setup
