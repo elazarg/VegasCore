@@ -188,6 +188,10 @@ theorem Vegas.Paper.intended_forfeit_sequentialEquilibrium_preserved
     ∃ target : (setup.informationModel admission).BehavioralAssessment,
       target.IsSequentialEquilibrium (setup.decision_antichain admission) sourceTerminates
         (fun who final => readoutPayoff setup penalized final.state who) ∧
+      (setup.intendedRestriction admission).ExtendsProfile intended.strategy target.strategy ∧
+      (∀ who site, target.belief who ((setup.intendedRestriction admission).site who site) =
+        (intended.belief who site).map
+          ((setup.intendedRestriction admission).informationHistory who site)) ∧
       (∀ final ∈ ((setup.informationModel admission).runBehavioralTerminalFrom sourceTerminates
           target.strategy (setup.executionProtocol admission).initHistory).support,
         ∀ terminal, setup.protocolReadout final.state = some terminal →

@@ -368,8 +368,9 @@ commitment payload types and a finite initial law, every sequential equilibrium
 of the intended game has a sequential equilibrium of the source game under any
 sitewise commitment admission and the forfeit pass, with a forfeit no smaller
 than the payoff range. The source
-equilibrium has the intended joint law of terminal store and payoff, and no
-reveal fails on any history it reaches. -/
+equilibrium extends the intended strategy and transports the intended belief at
+every intended information set, reached or not. It has the intended joint law of
+terminal store and payoff, and no reveal fails on any history it reaches. -/
 theorem intended_forfeit_sequentialEquilibrium_preserved [Finite Player]
     (admission : CommitmentInterface setup.program)
     (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
@@ -391,6 +392,10 @@ theorem intended_forfeit_sequentialEquilibrium_preserved [Finite Player]
         (fun who final => (setup.protocolReadout final.state).elim 0
           (fun state => forfeitUtility setup.program forfeit utility
             (setup.parameterOutcome parameter state) who)) ∧
+      (setup.intendedRestriction admission).ExtendsProfile intended.strategy target.strategy ∧
+      (∀ who site, target.belief who ((setup.intendedRestriction admission).site who site) =
+        (intended.belief who site).map
+          ((setup.intendedRestriction admission).informationHistory who site)) ∧
       (∀ final ∈ ((setup.informationModel
           admission).runBehavioralTerminalFrom sourceTerminates
             target.strategy
@@ -447,7 +452,7 @@ theorem intended_forfeit_sequentialEquilibrium_preserved [Finite Player]
         (restriction.site who site).1 →
         PMF (setup.intendedModel.Choice who site.1) :=
     fun _ _ _ => PMF.pure (Classical.arbitrary _)
-  obtain ⟨target, sequential, _, _, historyLaw, jointLaw⟩ :=
+  obtain ⟨target, sequential, agrees, beliefs, historyLaw, jointLaw⟩ :=
     restriction.sequentialEquilibrium_extends_of_comparator_unclocked
       setup.intended_decision_antichain intendedTerminates sourceTerminates
       (setup.uniformReference finite _) (setup.uniformReference_fullyMixed finite _)
@@ -504,7 +509,7 @@ theorem intended_forfeit_sequentialEquilibrium_preserved [Finite Player]
             simp only [forfeitUtility]
             nlinarith)
       intended equilibrium
-  refine ⟨target, sequential, ?_, ?_⟩
+  refine ⟨target, sequential, agrees, beliefs, ?_, ?_⟩
   · intro final reached terminal read who
     rw [← historyLaw, PMF.support_map] at reached
     obtain ⟨intendedFinal, _, rfl⟩ := reached
@@ -519,7 +524,8 @@ theorem intended_forfeit_sequentialEquilibrium_preserved [Finite Player]
 /-- Every intended sequential equilibrium extends to the source game with
 fixed exit utility under any sitewise binding admission. The declared exit
 payoff is compared only with actual intended terminal readouts. The target
-retains the intended strategy and joint typed-readout/payoff law, and its
+retains the intended strategy, the intended belief at every intended information
+set, and the joint typed-readout/payoff law, and its
 equilibrium paths have neither a public default nor a failed reveal. -/
 theorem intended_sequentialEquilibrium_preserved [Finite Player]
     (admission : CommitmentInterface setup.program)
@@ -540,6 +546,9 @@ theorem intended_sequentialEquilibrium_preserved [Finite Player]
           (fun terminal => exclusionUtility setup.program excludedPayoff utility
             (setup.parameterOutcome parameter terminal) who)) ∧
       (setup.intendedRestriction admission).ExtendsProfile intended.strategy target.strategy ∧
+      (∀ who site, target.belief who ((setup.intendedRestriction admission).site who site) =
+        (intended.belief who site).map
+          ((setup.intendedRestriction admission).informationHistory who site)) ∧
       (∀ final ∈ ((setup.informationModel admission).runBehavioralTerminalFrom
           (setup.protocol_bounded admission).wellFoundedHistories target.strategy
           (setup.executionProtocol admission).initHistory).support,
@@ -588,7 +597,7 @@ theorem intended_sequentialEquilibrium_preserved [Finite Player]
       (setup.informationModel admission).Choice who (restriction.site who site).1 →
         PMF (setup.intendedModel.Choice who site.1) :=
     fun _ _ _ => PMF.pure (Classical.arbitrary _)
-  obtain ⟨target, sequential, agrees, _, historyLaw, jointLaw⟩ :=
+  obtain ⟨target, sequential, agrees, beliefs, historyLaw, jointLaw⟩ :=
     restriction.sequentialEquilibrium_extends_of_comparator_unclocked
       setup.intended_decision_antichain intendedTerminates sourceTerminates
       (setup.uniformReference finite _) (setup.uniformReference_fullyMixed finite _)
@@ -630,7 +639,7 @@ theorem intended_sequentialEquilibrium_preserved [Finite Player]
             rw [read]
             exact below final terminal read who)
       intended equilibrium
-  refine ⟨target, sequential, agrees, ?_, ?_⟩
+  refine ⟨target, sequential, agrees, beliefs, ?_, ?_⟩
   · intro final reached terminal read
     rw [← historyLaw, PMF.support_map] at reached
     obtain ⟨intendedFinal, _, rfl⟩ := reached
