@@ -2,6 +2,7 @@
 
 import Vegas.Source.Safety
 import Vegas.Game.IntendedNash
+import Vegas.Game.ConcurrentRevealNash
 import Vegas.Game.SourceProtocolNash
 import Vegas.Compile.EventGraphScheduling
 import Vegas.Game.EventCompilation
@@ -233,6 +234,35 @@ theorem Vegas.Paper.intended_forfeit_sequentialEquilibrium_preserved
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.intended_forfeit_sequentialEquilibrium_preserved
+
+local notation "forfeiture" => CommitmentInterface.forfeiture setup.program
+
+include finite wellFormed initialFinite in
+/-- With independent reveals concurrent, the order-blind compiled clients of a
+disclosing extension of an intended `ε`-Nash equilibrium are an `ε`-Nash
+equilibrium under every public scheduler, for a fixed exit payoff below every
+utility, with outcomes read in instruction order. -/
+theorem Vegas.Paper.concurrentReveal_intended_isεNash
+    (exitPayoff : Player → ℝ) (low : ∀ outcome who, exitPayoff who ≤ utility outcome who)
+    (intended : Profile setup.intendedModel.behavioralSignature)
+    (target : Profile (setup.informationModel forfeiture).behavioralSignature)
+    (agrees : (setup.intendedRestriction forfeiture).ExtendsProfile intended target) (ε : ℝ)
+    (equilibrium : IsεNash (setup.intendedModel.toBehavioralGameForm horizon)
+      (fun final => readoutPayoff setup base final.state) ε intended)
+    (disclosing : ∀ who, Disclosing setup.program
+      (setup.decodeBehavioralProfile forfeiture target who))
+    (scheduler : setup.concurrentRevealGraph.PublicScheduler) :
+    IsεNash (setup.concurrentRevealGraph.gameForm setup.concurrentInputs scheduler)
+      (fun outcome who => setup.concurrentPayoff parameter utility exitPayoff who outcome.1) ε
+      (setup.concurrentRevealGraph.normalizeProfile (compileEventProfile setup.program
+        (setup.decodeBehavioralProfile forfeiture target))) :=
+  setup.concurrentReveal_intended_isεNash finite wellFormed parameter utility exitPayoff low
+    intended target agrees ε equilibrium disclosing scheduler
+
+/-- info: 'Vegas.Paper.concurrentReveal_intended_isεNash' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.concurrentReveal_intended_isεNash
 
 end Forfeits
 end Source
