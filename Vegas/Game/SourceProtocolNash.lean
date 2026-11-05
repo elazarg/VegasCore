@@ -40,6 +40,31 @@ omit [Finite Player] in
   exact congrArg Subtype.val ((setup.behavioralPolicyEquiv admission who).symm_apply_apply
     ⟨profile who, permitted who⟩)
 
+/-- Play over source histories has the written-order law. Every legal protocol
+profile reads out as the source profile it decodes to, and every admitted source
+profile, played through the protocol, reads out as itself. -/
+theorem protocol_readout_law :
+    (∀ profile : Profile (setup.informationModel admission).behavioralSignature,
+      ((setup.informationModel admission).runBehavioral profile
+          (instructionCount setup.program + 1)).map
+          (fun final => setup.protocolReadout final.state) =
+        (setup.run (setup.decodeBehavioralProfile admission profile)).map some) ∧
+    (∀ (profile : BehavioralProfile setup.program)
+      (permitted : ∀ who, (profile who).Admitted setup.program admission),
+      ((setup.informationModel admission).runBehavioral
+          (setup.encodeBehavioralProfile admission profile permitted)
+          (instructionCount setup.program + 1)).map
+          (fun final => setup.protocolReadout final.state) =
+        (setup.run profile).map some) := by
+  have decoded (profile : Profile (setup.informationModel admission).behavioralSignature) :
+      ((setup.informationModel admission).runBehavioral profile
+          (instructionCount setup.program + 1)).map
+          (fun final => setup.protocolReadout final.state) =
+        (setup.run (setup.decodeBehavioralProfile admission profile)).map some :=
+    setup.runBehavioralFrom_readout admission profile _ _ (Nat.le_refl _)
+  refine ⟨decoded, fun profile permitted => ?_⟩
+  rw [decoded, decodeBehavioralProfile_encodeBehavioralProfile]
+
 omit [Finite Player] in
 /-- Arbitrary legal protocol deviations change exactly the corresponding source policy. -/
 theorem decodeBehavioralProfile_protocol_update

@@ -2,6 +2,7 @@
 
 import Vegas.Source.Safety
 import Vegas.Game.IntendedNash
+import Vegas.Game.SourceProtocolNash
 import Vegas.Compile.EventGraphScheduling
 import Vegas.Game.EventCompilation
 import Vegas.Pending.GraphRefinement
@@ -95,6 +96,29 @@ theorem Vegas.Paper.protocol_bounded (admission : CommitmentInterface setup.prog
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.protocol_bounded
+
+/-- Play over source histories has the written-order law, for every legal
+protocol profile and every admitted source profile. -/
+theorem Vegas.Paper.protocol_readout_law [Finite Player]
+    (admission : CommitmentInterface setup.program) :
+    (∀ profile : Profile (setup.informationModel admission).behavioralSignature,
+      ((setup.informationModel admission).runBehavioral profile
+          (setup.program.instructionCount + 1)).map
+          (fun final => setup.protocolReadout final.state) =
+        (setup.run (setup.decodeBehavioralProfile admission profile)).map some) ∧
+    (∀ (profile : BehavioralProfile setup.program)
+      (permitted : ∀ who, (profile who).Admitted setup.program admission),
+      ((setup.informationModel admission).runBehavioral
+          (setup.encodeBehavioralProfile admission profile permitted)
+          (setup.program.instructionCount + 1)).map
+          (fun final => setup.protocolReadout final.state) =
+        (setup.run profile).map some) :=
+  setup.protocol_readout_law admission
+
+/-- info: 'Vegas.Paper.protocol_readout_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.protocol_readout_law
 
 theorem Vegas.Paper.intended_no_failed_reveals (wellFormed : setup.WellFormed)
     (history : setup.intendedProtocol.History) {terminal : TerminalConfig setup}
