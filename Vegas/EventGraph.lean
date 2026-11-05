@@ -8,6 +8,7 @@ import Vegas.EventGraph.BindingRefinement
 import Vegas.EventGraph.CanonicalStep
 import Vegas.EventGraph.Code
 import Vegas.EventGraph.Commutation
+import Vegas.EventGraph.CommutationRecall
 import Vegas.EventGraph.Execution
 import Vegas.EventGraph.Information
 import Vegas.EventGraph.ObservationStep
