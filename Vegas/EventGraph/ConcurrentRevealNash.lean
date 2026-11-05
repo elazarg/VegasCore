@@ -269,4 +269,25 @@ theorem RevealsOnlyConcurrent.isεNash_normalizeProfile (only : graph.RevealsOnl
     (payoff who) (factors who) (excluded who) (low who) (atDefault who) inputs finiteInputs _
     (canonical who) scheduler deviation
 
+/-- Under every public scheduler, the normalization of a profile oblivious at
+publications has the canonical law of every observation of the order-free final
+state. -/
+theorem RevealsOnlyConcurrent.runPolicies_map_eq_canonical (only : graph.RevealsOnlyConcurrent)
+    (profile : graph.BehavioralProfile) (oblivious : graph.ObliviousAtPublications profile)
+    (scheduler : graph.PublicScheduler) (inputs : PMF graph.Inputs) {β : Type}
+    (observe : graph.Config → β)
+    (factors : ∀ left right : graph.Config, runKey left = runKey right →
+      observe left = observe right) :
+    (inputs.bind (graph.runPolicies scheduler (graph.normalizeProfile profile))).map observe =
+      (inputs.bind (graph.runPolicies graph.canonicalScheduler
+        (graph.normalizeProfile profile))).map observe := by
+  rw [PMF.map_bind, PMF.map_bind]
+  apply bind_congr_on_support _
+  intro initial _
+  rw [← PMF.bind_pure_comp, ← PMF.bind_pure_comp]
+  exact bind_eq_of_map_key_eq runKey Set.univ _ _ (Set.subset_univ _) (Set.subset_univ _)
+    (only.runPolicies_map_runKey profile oblivious scheduler initial) _
+    (fun left _ right _ keys => by rw [Function.comp_apply, Function.comp_apply,
+      factors left right keys])
+
 end Vegas.EventGraph

@@ -199,7 +199,7 @@ theorem expect_concurrentPayoff_canonical (setup : Setup (Player := Player) (L :
     rw [← setup.eventGraph.terminalOutcomes_map_val, expect_map]
     apply expect_congr_on_support
     intro outcome _
-    simp only [Function.comp_apply, readout, dite_eq_left outcome.2]
+    simp only [Function.comp_apply, readout, dite_eq_left outcome.2, Subtype.coe_eta]
   refine Eq.trans ?_ outcomes.symm
   change expect (setup.eventGraph.runPolicies setup.eventGraph.canonicalScheduler profile initial)
       (setup.concurrentPayoff parameter utility excludedPayoff who ∘
@@ -329,5 +329,198 @@ theorem concurrentReveal_intended_isεNash (setup : Setup (Player := Player) (L 
       rw [canonicalConcurrent who, canonicalConcurrent who]
       exact canonicalBound who policy)
     scheduler
+
+/-- The terminal source configuration of a concurrent play, read in instruction order. -/
+def concurrentReadout (setup : Setup (Player := Player) (L := L))
+    (outcome : setup.concurrentRevealGraph.gameSignature.Outcome) :
+    Config Player L setup.program.terminalCtx :=
+  terminalConfig setup.program
+    ⟨setup.rankedConfig outcome.1 outcome.2, setup.rankedConfig_terminal outcome.1 outcome.2⟩
+
+/-- The source-order readout and payoffs of a concurrent configuration. -/
+private def concurrentObservation (setup : Setup (Player := Player) (L := L)) {Parameter : Type}
+    (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ) (config : setup.concurrentRevealGraph.Config) :
+    Option (Config Player L setup.program.terminalCtx) × (Player → ℝ) :=
+  (if terminal : config.cut.Terminal then
+      some (terminalConfig setup.program
+        ⟨setup.rankedConfig config terminal, setup.rankedConfig_terminal config terminal⟩)
+    else none,
+    fun who => setup.concurrentPayoff parameter utility excludedPayoff who config)
+
+private theorem concurrentObservation_factors (setup : Setup (Player := Player) (L := L))
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ) (left right : setup.concurrentRevealGraph.Config)
+    (same : runKey left = runKey right) :
+    setup.concurrentObservation parameter utility excludedPayoff left =
+      setup.concurrentObservation parameter utility excludedPayoff right := by
+  have cut : left.cut = right.cut := congrArg Prod.fst same
+  unfold concurrentObservation
+  refine Prod.ext ?_ (funext fun who =>
+    setup.concurrentPayoff_factors parameter utility excludedPayoff who left right same)
+  by_cases terminal : left.cut.Terminal
+  · have rightTerminal : right.cut.Terminal := cut ▸ terminal
+    simp only [dite_eq_left terminal, dite_eq_left rightTerminal]
+    have outcome : (⟨setup.rankedConfig left terminal, setup.rankedConfig_terminal left terminal⟩ :
+          {config : setup.eventGraph.Config // config.cut.Terminal}) =
+        ⟨setup.rankedConfig right rightTerminal,
+          setup.rankedConfig_terminal right rightTerminal⟩ :=
+      Subtype.ext (setup.rankedConfig_congr same terminal rightTerminal)
+    rw [outcome]
+  · have rightTerminal : ¬ right.cut.Terminal := cut ▸ terminal
+    simp only [dite_eq_right terminal, dite_eq_right rightTerminal]
+
+private theorem canonical_concurrentObservation_law (setup : Setup (Player := Player) (L := L))
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ) (profile : setup.eventGraph.BehavioralProfile) :
+    (setup.concurrentInputs.bind (setup.concurrentRevealGraph.runPolicies
+        setup.concurrentRevealGraph.canonicalScheduler
+          (setup.concurrentRevealGraph.normalizeProfile profile))).map
+        (setup.concurrentObservation parameter utility excludedPayoff) =
+      (setup.canonicalEventGame.play profile).map fun outcome =>
+        (some (terminalConfig setup.program outcome), fun who =>
+          exclusionUtility setup.program excludedPayoff utility
+            (setup.eventParameterOutcome parameter outcome) who) := by
+  let readout : setup.eventGraph.Config →
+      Option (Config Player L setup.program.terminalCtx) × (Player → ℝ) := fun config =>
+    if terminal : config.cut.Terminal then
+      (some (terminalConfig setup.program ⟨config, terminal⟩), fun who =>
+        exclusionUtility setup.program excludedPayoff utility
+          (setup.eventParameterOutcome parameter ⟨config, terminal⟩) who)
+    else (none, fun who => excludedPayoff who)
+  have play : setup.canonicalEventGame.play profile = setup.concurrentInputs.bind
+      (setup.eventGraph.terminalOutcomes setup.eventGraph.canonicalScheduler profile) := rfl
+  rw [play, PMF.map_bind, PMF.map_bind]
+  apply bind_congr_on_support _
+  intro initial _
+  have law := setup.concurrentRevealGraph.canonical_fromSequential_config_law
+    (setup.concurrentRevealGraph.normalizeProfile profile) initial
+  have normalized := runPolicies_canonical_normalizeProfile setup.eventGraph_total profile initial
+  have outcomes : (setup.eventGraph.terminalOutcomes setup.eventGraph.canonicalScheduler
+      profile initial).map (fun outcome => (some (terminalConfig setup.program outcome),
+        fun who => exclusionUtility setup.program excludedPayoff utility
+          (setup.eventParameterOutcome parameter outcome) who)) =
+      (setup.eventGraph.runPolicies setup.eventGraph.canonicalScheduler profile initial).map
+        readout := by
+    rw [← setup.eventGraph.terminalOutcomes_map_val, PMF.map_comp]
+    apply map_congr_on_support _
+    intro outcome _
+    simp only [Function.comp_apply, readout, dite_eq_left outcome.2, Subtype.coe_eta]
+  refine Eq.trans ?_ outcomes.symm
+  rw [← law, PMF.map_comp]
+  change (setup.eventGraph.runPolicies setup.eventGraph.canonicalScheduler
+    (setup.eventGraph.normalizeProfile profile) initial).map _ = _
+  rw [normalized]
+  apply map_congr_on_support _
+  intro config member
+  have reach := setup.eventGraph.run_reachable initial _ config member
+  have terminal := setup.eventGraph.runPolicies_terminal _ profile initial config member
+  have viewTerminal : (setup.concurrentRevealGraph.fromSequentialConfig config).cut.Terminal :=
+    terminal
+  have recast := setup.rankedConfig_fromSequentialConfig reach viewTerminal
+  have outcome : (⟨setup.rankedConfig (setup.concurrentRevealGraph.fromSequentialConfig config)
+        viewTerminal, setup.rankedConfig_terminal _ viewTerminal⟩ :
+          {config : setup.eventGraph.Config // config.cut.Terminal}) = ⟨config, terminal⟩ :=
+    Subtype.ext recast
+  simp only [Function.comp_apply, concurrentObservation, concurrentPayoff, readout,
+    dite_eq_left viewTerminal, dite_eq_left terminal, outcome]
+
+/-- **Intended law under every schedule of concurrent reveals.** Under the
+hypotheses of `concurrentReveal_intended_isεNash`, the order-blind compiled
+clients have, under every public scheduler, the intended joint law of terminal
+configuration, read in instruction order, and payoff vector. -/
+theorem concurrentReveal_intended_law (setup : Setup (Player := Player) (L := L))
+    [Finite Player] (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (wellFormed : setup.WellFormed) {Parameter : Type}
+    (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
+    (excludedPayoff : Player → ℝ) (low : ∀ outcome who, excludedPayoff who ≤ utility outcome who)
+    (intended : Profile setup.intendedModel.behavioralSignature)
+    (target : Profile (setup.informationModel
+      (CommitmentInterface.forfeiture setup.program)).behavioralSignature)
+    (agrees : (setup.intendedRestriction
+      (CommitmentInterface.forfeiture setup.program)).ExtendsProfile intended target) (ε : ℝ)
+    (equilibrium : IsεNash (setup.intendedModel.toBehavioralGameForm
+        (instructionCount setup.program + 1))
+      (fun final who => (setup.protocolReadout final.state).elim 0
+        (fun state => utility (setup.parameterOutcome parameter state) who)) ε intended)
+    (disclosing : ∀ who, Disclosing setup.program (setup.decodeBehavioralProfile
+      (CommitmentInterface.forfeiture setup.program) target who))
+    (scheduler : setup.concurrentRevealGraph.PublicScheduler) :
+    ((setup.concurrentRevealGraph.gameForm setup.concurrentInputs scheduler).play
+        (setup.concurrentRevealGraph.normalizeProfile (compileEventProfile setup.program
+          (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program)
+            target)))).map (fun outcome => (some (setup.concurrentReadout outcome),
+          fun who => setup.concurrentPayoff parameter utility excludedPayoff who outcome.1)) =
+      (setup.intendedModel.runBehavioral intended (instructionCount setup.program + 1)).map
+        (fun final => (setup.protocolReadout final.state, fun who =>
+          (setup.protocolReadout final.state).elim 0
+            (fun state => utility (setup.parameterOutcome parameter state) who))) := by
+  let admission := CommitmentInterface.forfeiture setup.program
+  let source := setup.decodeBehavioralProfile admission target
+  let compiled : setup.eventGraph.BehavioralProfile := compileEventProfile setup.program source
+  let exclusion := exclusionUtility setup.program excludedPayoff utility
+  have preserved := setup.intended_isεNash_preserved admission finite wellFormed parameter
+    utility excludedPayoff (fun _ _ _ who => low _ who) intended target agrees ε equilibrium
+  have opens (who : Player) (event : setup.concurrentRevealGraph.EventId)
+      (actor : setup.concurrentRevealGraph.actor? event = some who)
+      (publication : (setup.concurrentRevealGraph.outputLayout event).IsPublication)
+      (observation : setup.concurrentRevealGraph.PlayerObservation who)
+      (active : who ∉ observation.defaulted) :
+      compiled who event actor observation active =
+        PMF.pure (EventField.openAction _ publication) :=
+    compileEventPolicy_publication setup.program who (source who) (disclosing who) event actor
+      publication observation active
+  have oblivious : setup.concurrentRevealGraph.ObliviousAtPublications compiled :=
+    fun who event actor publication left right leftActive rightActive => by
+      rw [opens who event actor publication left leftActive,
+        opens who event actor publication right rightActive]
+  have only := setup.eventGraph.withMode_concurrentReveals_revealsOnlyConcurrent
+    setup.eventGraph_total
+  -- Play to runs.
+  have mapped : ((setup.concurrentRevealGraph.gameForm setup.concurrentInputs scheduler).play
+      (setup.concurrentRevealGraph.normalizeProfile compiled)).map Subtype.val =
+        setup.concurrentInputs.bind (setup.concurrentRevealGraph.runPolicies scheduler
+          (setup.concurrentRevealGraph.normalizeProfile compiled)) := by
+    change (setup.concurrentInputs.bind _).map Subtype.val = _
+    rw [PMF.map_bind]
+    simp only [EventGraph.terminalOutcomes_map_val]
+  have observed : (fun outcome : setup.concurrentRevealGraph.gameSignature.Outcome =>
+      (some (setup.concurrentReadout outcome),
+        fun who => setup.concurrentPayoff parameter utility excludedPayoff who outcome.1)) =
+      setup.concurrentObservation parameter utility excludedPayoff ∘ Subtype.val := by
+    funext outcome
+    simp only [Function.comp_apply, concurrentObservation, dite_eq_left outcome.2,
+      concurrentReadout]
+  change PMF.map _ ((setup.concurrentRevealGraph.gameForm setup.concurrentInputs scheduler).play
+    (setup.concurrentRevealGraph.normalizeProfile compiled)) = _
+  rw [observed, ← PMF.map_comp, mapped,
+    only.runPolicies_map_eq_canonical compiled oblivious scheduler setup.concurrentInputs _
+      (setup.concurrentObservation_factors parameter utility excludedPayoff),
+    setup.canonical_concurrentObservation_law parameter utility excludedPayoff compiled]
+  -- The compiled canonical law is the source law.
+  have sourceLaw := canonical_setup_law setup source
+  have throughSource : (setup.canonicalEventGame.play compiled).map (fun outcome =>
+      (some (terminalConfig setup.program outcome), fun who =>
+        exclusion (setup.eventParameterOutcome parameter outcome) who)) =
+      (setup.run source).map (fun terminal => (some terminal, fun who =>
+        exclusion (setup.parameterOutcome parameter terminal) who)) := by
+    rw [← sourceLaw, PMF.map_comp]
+    rfl
+  rw [throughSource]
+  -- The source law is the protocol readout law.
+  have protocolLaw := (setup.protocol_readout_law admission).1 target
+  have viaSome : (setup.run source).map (fun terminal => (some terminal, fun who =>
+      exclusion (setup.parameterOutcome parameter terminal) who)) =
+      ((setup.run source).map some).map (fun readout => (readout, fun who =>
+        readout.elim 0 (fun terminal => exclusion (setup.parameterOutcome parameter terminal)
+          who))) := by
+    rw [PMF.map_comp]
+    rfl
+  rw [viaSome, ← protocolLaw, PMF.map_comp]
+  exact preserved.2.2
 
 end Vegas.SourceProgram.Setup

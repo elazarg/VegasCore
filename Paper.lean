@@ -241,7 +241,8 @@ include finite wellFormed initialFinite in
 /-- With independent reveals concurrent, the order-blind compiled clients of a
 disclosing extension of an intended `ε`-Nash equilibrium are an `ε`-Nash
 equilibrium under every public scheduler, for a fixed exit payoff below every
-utility, with outcomes read in instruction order. -/
+utility, with outcomes read in instruction order, and they have the intended
+joint law of terminal configuration and payoff. -/
 theorem Vegas.Paper.concurrentReveal_intended_isεNash
     (exitPayoff : Player → ℝ) (low : ∀ outcome who, exitPayoff who ≤ utility outcome who)
     (intended : Profile setup.intendedModel.behavioralSignature)
@@ -255,9 +256,18 @@ theorem Vegas.Paper.concurrentReveal_intended_isεNash
     IsεNash (setup.concurrentRevealGraph.gameForm setup.concurrentInputs scheduler)
       (fun outcome who => setup.concurrentPayoff parameter utility exitPayoff who outcome.1) ε
       (setup.concurrentRevealGraph.normalizeProfile (compileEventProfile setup.program
-        (setup.decodeBehavioralProfile forfeiture target))) :=
-  setup.concurrentReveal_intended_isεNash finite wellFormed parameter utility exitPayoff low
-    intended target agrees ε equilibrium disclosing scheduler
+        (setup.decodeBehavioralProfile forfeiture target))) ∧
+    ((setup.concurrentRevealGraph.gameForm setup.concurrentInputs scheduler).play
+        (setup.concurrentRevealGraph.normalizeProfile (compileEventProfile setup.program
+          (setup.decodeBehavioralProfile forfeiture target)))).map
+        (fun outcome => (some (setup.concurrentReadout outcome),
+          fun who => setup.concurrentPayoff parameter utility exitPayoff who outcome.1)) =
+      (setup.intendedModel.runBehavioral intended horizon).map
+        (fun final => (setup.protocolReadout final.state, readoutPayoff setup base final.state)) :=
+  ⟨setup.concurrentReveal_intended_isεNash finite wellFormed parameter utility exitPayoff low
+    intended target agrees ε equilibrium disclosing scheduler,
+   setup.concurrentReveal_intended_law finite wellFormed parameter utility exitPayoff low
+    intended target agrees ε equilibrium disclosing scheduler⟩
 
 /-- info: 'Vegas.Paper.concurrentReveal_intended_isεNash' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
