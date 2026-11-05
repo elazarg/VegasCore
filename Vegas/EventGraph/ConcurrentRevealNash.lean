@@ -2,6 +2,7 @@
 
 import Vegas.EventGraph.WithholdingCoupling
 import GameTheory.Math.Probability.ExpectationMap
+import GameTheory.Core.Approximate
 
 /-! # Deviation bounds under every public scheduler of concurrent reveals
 
@@ -196,5 +197,76 @@ theorem RevealsOnlyConcurrent.deviation_le_of_canonical_of_factors
   obtain ⟨value, rfl⟩ := exists_value_of_factors payoff factors
   exact only.deviation_le_of_canonical finite profile oblivious who decisive value excluded low
     atDefault inputs finiteInputs bound canonical scheduler policy
+
+/-- The expected payoff of a play is that of its run. -/
+theorem expect_gameForm_play (inputs : PMF graph.Inputs) (scheduler : graph.PublicScheduler)
+    (profile : graph.BehavioralProfile) (payoff : graph.Config → ℝ) :
+    expect ((graph.gameForm inputs scheduler).play profile) (fun outcome => payoff outcome.1) =
+      expect (inputs.bind (graph.runPolicies scheduler profile)) payoff := by
+  have mapped : ((graph.gameForm inputs scheduler).play profile).map Subtype.val =
+      inputs.bind (graph.runPolicies scheduler profile) := by
+    change (inputs.bind _).map Subtype.val = _
+    rw [PMF.map_bind]
+    simp only [EventGraph.terminalOutcomes_map_val]
+  rw [← mapped, expect_map]
+  rfl
+
+/-- **Nash under every scheduler of concurrent reveals.** Against exclusion
+payoffs of the order-free final state, the normalization of a profile that
+ignores the observation at publications and whose players open decisively is
+an `ε`-Nash equilibrium under every public scheduler, as soon as no normalized
+deviation gains more than `ε` under canonical scheduling. -/
+theorem RevealsOnlyConcurrent.isεNash_normalizeProfile (only : graph.RevealsOnlyConcurrent)
+    (finite : graph.FiniteActions) (profile : graph.BehavioralProfile)
+    (oblivious : graph.ObliviousAtPublications profile)
+    (decisive : ∀ who, graph.OpensDecisively who (graph.normalizePolicy who (profile who)))
+    (payoff : Player → graph.Config → ℝ)
+    (factors : ∀ who (left right : graph.Config), runKey left = runKey right →
+      payoff who left = payoff who right)
+    (excluded : Player → ℝ) (low : ∀ who config, excluded who ≤ payoff who config)
+    (atDefault : ∀ who config, who ∈ config.defaulted → payoff who config = excluded who)
+    (inputs : PMF graph.Inputs) (finiteInputs : inputs.support.Finite) (ε : ℝ)
+    (canonical : ∀ who (policy : graph.BehavioralPolicy who),
+      expect (inputs.bind (graph.runPolicies graph.canonicalScheduler
+        (graph.normalizeProfile (Profile.update (sig := graph.gameSignature) profile who
+          policy)))) (payoff who) ≤
+        expect (inputs.bind (graph.runPolicies graph.canonicalScheduler
+          (graph.normalizeProfile profile))) (payoff who) + ε)
+    (scheduler : graph.PublicScheduler) :
+    IsεNash (graph.gameForm inputs scheduler) (fun outcome who => payoff who outcome.1) ε
+      (graph.normalizeProfile profile) := by
+  rw [IsεNash, isNash_iff]
+  intro who deviation
+  have support (chosen : Profile (graph.gameForm inputs scheduler).sig) :
+      ((graph.gameForm inputs scheduler).play chosen).support.Finite :=
+    graph.gameForm_play_support_finite inputs finiteInputs scheduler chosen
+      (finite.profileFiniteSupport chosen)
+  have honestIntegrable : UtilityIntegrable (fun outcome who => payoff who outcome.1) who
+      ((graph.gameForm inputs scheduler).play (graph.normalizeProfile profile)) :=
+    payoffIntegrable_of_finite_support _ _ (support _)
+  have deviationIntegrable : UtilityIntegrable (fun outcome who => payoff who outcome.1) who
+      ((graph.gameForm inputs scheduler).play (Profile.update
+        (sig := (graph.gameForm inputs scheduler).sig) (graph.normalizeProfile profile) who
+          deviation)) :=
+    payoffIntegrable_of_finite_support _ _ (support _)
+  refine ⟨honestIntegrable.hasExpectation, deviationIntegrable.hasExpectation, ?_⟩
+  rw [extendedExpectedUtility_eq honestIntegrable, extendedExpectedUtility_eq deviationIntegrable]
+  refine EReal.coe_le_coe_iff.mpr ?_ |>.trans_eq (EReal.coe_add _ _)
+  unfold expectedUtility
+  rw [expect_gameForm_play inputs scheduler _ (payoff who),
+    expect_gameForm_play inputs scheduler _ (payoff who)]
+  obtain ⟨value, valueEq⟩ := exists_value_of_factors (payoff who) (factors who)
+  have honest : expect (inputs.bind (graph.runPolicies scheduler (graph.normalizeProfile profile)))
+      (payoff who) = expect (inputs.bind (graph.runPolicies graph.canonicalScheduler
+        (graph.normalizeProfile profile))) (payoff who) := by
+    rw [valueEq, ← expect_map runKey, ← expect_map runKey, PMF.map_bind, PMF.map_bind]
+    congr 1
+    apply bind_congr_on_support _
+    intro initial _
+    exact only.runPolicies_map_runKey profile oblivious scheduler initial
+  rw [honest]
+  exact only.deviation_le_of_canonical_of_factors finite profile oblivious who (decisive who)
+    (payoff who) (factors who) (excluded who) (low who) (atDefault who) inputs finiteInputs _
+    (canonical who) scheduler deviation
 
 end Vegas.EventGraph
