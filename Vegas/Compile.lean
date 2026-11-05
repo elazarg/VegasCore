@@ -25,3 +25,5 @@ import Vegas.Compile.EventGraphState
 import Vegas.Compile.EventGraphStep
 import Vegas.Compile.EventGraphSuffix
 import Vegas.Compile.ConcurrentRevealGraph
+import Vegas.Compile.RevealFailureReadout
+import Vegas.Compile.BindingReveal

@@ -21,6 +21,11 @@ variable {L : IExpr} [R : IExpr.ResultTypes L]
 
 namespace EventField
 
+/-- A stored value that records a failed publication. -/
+def FailedValue : (field : EventField Player L) → field.Value → Prop
+  | .publication _, value => value.isFailure = true
+  | .publicData _, _ | .binding _ _, _ | .privateInput _ _, _ => False
+
 /-- Opening, the action of a publication that is not its failure. -/
 def openAction : (field : EventField Player L) → field.IsPublication → field.Action
   | .publication _, _ => true
