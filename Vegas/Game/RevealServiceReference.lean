@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.RevealServiceRankedReadout
-import Vegas.Pending.CanonicalKeyLaw
+import Vegas.Pending.CanonicalKeyPublication
 import Vegas.EventGraph.RevealRelaxedScheduling
 
 /-! # The order-blind reference profile of concurrent reveals
@@ -50,6 +50,19 @@ theorem concurrentReference_readyIndependent (setup : Setup (Player := Player) (
     fun who event actor publication left right leftActive rightActive => by
       rw [opens who event actor publication left leftActive,
         opens who event actor publication right rightActive]
+
+/-- The order-blind reference of a disclosing source profile opens every
+publication of an active owner. -/
+theorem concurrentReference_opensPublications (setup : Setup (Player := Player) (L := L))
+    (source : BehavioralProfile setup.program)
+    (disclosing : ∀ who, Disclosing setup.program (source who)) :
+    OpensPublications (concurrentReference setup source) :=
+  fun config event who actor publication active =>
+    compileEventPolicy_publication setup.program who (source who) (disclosing who) event actor
+      publication _ (fun normalized => active
+        ((serviceGraph setup .concurrentReveals).normalizeObservation_defaulted_subset who
+          ((serviceGraph setup .concurrentReveals).playerObserve who config)
+          normalized))
 
 /-- The complete source configuration read from a concurrent-reveal
 configuration in instruction order; unfinished configurations have none. -/
