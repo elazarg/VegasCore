@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Pending.AcceptedEventOwnership
+import Vegas.Pending.CanonicalKeyLaw
 import Vegas.Pending.EventActivationOrigin
 import Vegas.Pending.EventApplication
 import Vegas.Pending.EventAssociationInvariant
@@ -81,8 +82,8 @@ import Vegas.Pending.ReactiveContinuationObservation
 import Vegas.Pending.ReactiveCountAudit
 import Vegas.Pending.ReactiveCountVerdict
 import Vegas.Pending.ReactiveCountedResponseForms
-import Vegas.Pending.ReactiveDisclosure
 import Vegas.Pending.ReactiveDefaultCompletion
+import Vegas.Pending.ReactiveDisclosure
 import Vegas.Pending.ReactiveEntryStability
 import Vegas.Pending.ReactiveEventStability
 import Vegas.Pending.ReactiveFiniteCompiler
