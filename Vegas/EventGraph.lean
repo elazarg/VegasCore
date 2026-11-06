@@ -19,6 +19,7 @@ import Vegas.EventGraph.PolicyPatch
 import Vegas.EventGraph.LastErasedLaw
 import Vegas.EventGraph.NormalizedRestriction
 import Vegas.EventGraph.LastKeyTarget
+import Vegas.EventGraph.PrefixRestriction
 import Vegas.EventGraph.SchedulerPredraw
 import Vegas.EventGraph.SchedulerReplay
 import Vegas.EventGraph.RevealDeviation

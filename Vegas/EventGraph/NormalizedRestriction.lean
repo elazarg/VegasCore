@@ -45,7 +45,7 @@ structure Config.RestrictionOf (events : graph.EventId → Prop) [DecidablePred 
 omit [DecidableEq Player] in
 /-- A list of records tagged by their events, taken over the ranks, returns each
 event's record. -/
-private theorem find?_filterMap_tagged (records : graph.EventId → Option graph.Completion)
+theorem find?_filterMap_tagged (records : graph.EventId → Option graph.Completion)
     (tagged : ∀ event completion, records event = some completion → completion.event = event)
     (event : graph.EventId) :
     ((List.finRange graph.order.eventCount).filterMap records).find?
@@ -98,14 +98,14 @@ private theorem find?_filterMap_tagged (records : graph.EventId → Option graph
       simp [recorded]
 
 omit [DecidableEq Player] in
-private theorem completionOf_tagged (config : graph.Config) (event : graph.EventId)
+theorem completionOf_tagged (config : graph.Config) (event : graph.EventId)
     (completion : graph.Completion) (found : completionOf config event = some completion) :
     completion.event = event := by
   unfold completionOf at found
   simpa using List.find?_some found
 
 omit [DecidableEq Player] in
-private theorem filter_tagged (config : graph.Config) (keep : graph.Completion → Bool)
+theorem completionOf_filter_tagged (config : graph.Config) (keep : graph.Completion → Bool)
     (event : graph.EventId) (completion : graph.Completion)
     (found : (completionOf config event).filter keep = some completion) :
     completion.event = event := by
@@ -161,8 +161,8 @@ theorem normalizeObservation_playerObserve_restrict (who : Player)
         (completionOf large' event).filter (fun completion =>
           graph.actor? completion.event = some who ∧ completion.decision.isSome) := by
     have found := congrArg (fun list => list.find? fun completion => completion.event = event) owns
-    rw [find?_filterMap_tagged _ (filter_tagged large _) event,
-      find?_filterMap_tagged _ (filter_tagged large' _) event] at found
+    rw [find?_filterMap_tagged _ (completionOf_filter_tagged large _) event,
+      find?_filterMap_tagged _ (completionOf_filter_tagged large' _) event] at found
     exact found
   have sameFilter : ((List.finRange graph.order.eventCount).filter fun event =>
       (completionOf large event).isSome) =

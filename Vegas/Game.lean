@@ -399,3 +399,4 @@ import Vegas.Game.RevealServiceHonestLaw
 import Vegas.Game.RevealServiceOutcomeLaw
 import Vegas.Game.DeviationSimulation
 import Vegas.Game.OwnedPhaseJoint
+import Vegas.Game.LastOwnedPhase
