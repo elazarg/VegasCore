@@ -396,3 +396,4 @@ import Vegas.Game.RevealServiceReference
 import Vegas.Game.RevealServiceTimely
 import Vegas.Game.RevealServiceSoleSegment
 import Vegas.Game.RevealServiceHonestLaw
+import Vegas.Game.RevealServiceOutcomeLaw
