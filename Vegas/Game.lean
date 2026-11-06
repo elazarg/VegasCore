@@ -403,3 +403,4 @@ import Vegas.Game.LastOwnedPhase
 import Vegas.Game.LastChancePhase
 import Vegas.Game.ReferenceForeignTraffic
 import Vegas.Game.LastForeignPhase
+import Vegas.Game.RevealBlockTraffic

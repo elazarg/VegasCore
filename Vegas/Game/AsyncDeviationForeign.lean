@@ -1246,7 +1246,9 @@ theorem sourceService_foreign_mixture
   · exact fun _ => boundary.ordered.ready event.isLt
 
 
-private theorem canonical_opening_exact
+/-- The canonical opening of a stored successful binding is exactly its opening
+submission. -/
+theorem canonical_opening_exact
     {event : (serviceGraph setup mode).EventId} {owner : Player} {payload : L.Ty}
     {binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
     {checks : List (GuardCheck (serviceGraph setup mode).layout payload)}
@@ -1280,7 +1282,9 @@ private theorem canonical_opening_exact
     recalled owner event payload binding checks outputEq codeEq node candidate value
     accepted owned fixed active stored
 
-private theorem opening_normal_packet
+/-- The packet of a normalized opening submission names its event, candidate and raw
+value. -/
+theorem opening_normal_packet
     (execution : (serviceApplication setup mode deadline leaks).Execution)
     (owner : Player) (event : (serviceGraph setup mode).EventId)
     (candidate : Handle (serviceGraph setup mode)) (raw : Raw L)
