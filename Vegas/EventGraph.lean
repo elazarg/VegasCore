@@ -12,6 +12,7 @@ import Vegas.EventGraph.CommutationRecall
 import Vegas.EventGraph.NormalizedPolicy
 import Vegas.EventGraph.SchedulerErasure
 import Vegas.EventGraph.RevealRelaxedScheduling
+import Vegas.EventGraph.SolitaryEvent
 import Vegas.EventGraph.SchedulerPredraw
 import Vegas.EventGraph.SchedulerReplay
 import Vegas.EventGraph.RevealDeviation

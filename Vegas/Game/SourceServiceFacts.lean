@@ -2,6 +2,7 @@
 
 import Vegas.Game.RevealService
 import Vegas.Game.SourceServiceFreshCall
+import Vegas.EventGraph.SolitaryEvent
 import Vegas.Pending.ReactiveSignedCommitments
 import Vegas.Pending.ReactiveEventStability
 import Vegas.Pending.ReactiveAssociationEvidence
@@ -260,38 +261,43 @@ theorem eventRecorded_of_pending
   exact named
 
 
-section SequentialWaiting
+section SolitaryWaiting
 
 open EventGraph
 variable {setup}
 
-private theorem pending_waiting_call_rejected (runtime : EventGraphRuntime (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (execution : (application setup runtime leaks).Execution)
-    (event : (graph setup).EventId) (ready : execution.application.config.cut.Ready event)
-    (owner : Player) (owned : (graph setup).actor? event = some owner)
+private theorem pending_waiting_call_rejected
+    (runtime : EventGraphRuntime (serviceGraph setup mode))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (execution : (runtime.reactiveApplication leaks).Execution)
+    (event : (serviceGraph setup mode).EventId) (solitary :
+      (serviceGraph setup mode).Solitary event)
+    (ready : execution.application.config.cut.Ready event)
+    (owner : Player) (owned : (serviceGraph setup mode).actor? event = some owner)
     (safe : ∀ message ∈ execution.network.pending, message.sender = owner →
-      message.payload.call.event? (graph setup) ≠ some event)
-    (message : Message Player (WitnessedPacket (graph setup)))
+      message.payload.call.event? (serviceGraph setup mode) ≠ some event)
+    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
     (pending : message ∈ execution.network.pending) :
-    (application setup runtime leaks).handle execution.application message = none := by
+    (runtime.reactiveApplication leaks).handle execution.application message = none := by
   apply reactiveHandle_none
   cases handled : handle runtime execution.application ⟨message.id, message.payload.call⟩ with
   | none => rfl
   | some next =>
       obtain ⟨query, named, queryReady, _action, _moved⟩ :=
         handle_config_mem_step runtime execution.application next _ handled
-      have same := setup.eventGraph.sequentialize_ready_unique _ queryReady ready
+      have same := solitary _ queryReady ready
       subst query
       have authored := handle_sender_actor runtime execution.application next _ handled event named
       have sender : message.sender = owner := Option.some.inj (authored.symm.trans owned)
       exact (safe message pending sender named).elim
 
-private theorem native_waiting_config (runtime : EventGraphRuntime (graph setup))
-    (state next : EventGraphRuntime.State (graph setup))
-    (operation : EnvironmentCommand (graph setup))
-    (event : (graph setup).EventId) (ready : state.config.cut.Ready event)
-    (owner : Player) (owned : (graph setup).actor? event = some owner)
+private theorem native_waiting_config (runtime : EventGraphRuntime (serviceGraph setup mode))
+    (state next : EventGraphRuntime.State (serviceGraph setup mode))
+    (operation : EnvironmentCommand (serviceGraph setup mode))
+    (event : (serviceGraph setup mode).EventId) (solitary :
+      (serviceGraph setup mode).Solitary event)
+    (ready : state.config.cut.Ready event)
+    (owner : Player) (owned : (serviceGraph setup mode).actor? event = some owner)
     (within : state.WithinDeadline runtime event)
     (quiescent : ∀ query, ¬ state.AutomaticReady query)
     (moved : next ∈ (environmentStep runtime state operation).support) :
@@ -312,7 +318,7 @@ private theorem native_waiting_config (runtime : EventGraphRuntime (graph setup)
           cases moved
           exact ready.1
   have same := EventGraph.Config.Step.path_eq_of_ready_of_not_completed event
-    (fun _ otherReady => setup.eventGraph.sequentialize_ready_unique _ otherReady ready)
+    (fun _ otherReady => solitary _ otherReady ready)
     unfinished (environmentStep_graph_steps runtime state next operation moved)
   have cleared : ∀ query, ¬ next.AutomaticReady query := by
     simpa only [EventGraphRuntime.State.AutomaticReady, same] using quiescent
@@ -320,19 +326,21 @@ private theorem native_waiting_config (runtime : EventGraphRuntime (graph setup)
 
 /-- Before its deadline, no environment command changes the unique ready owned
 configuration when the network has no call from that owner naming that event. -/
-theorem environment_waiting_config (runtime : EventGraphRuntime (graph setup))
-    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (execution next : (application setup runtime leaks).Execution)
-    (command : (application setup runtime leaks).Command)
-    (event : (graph setup).EventId) (owner : Player)
+theorem environment_waiting_config_mode (runtime : EventGraphRuntime (serviceGraph setup mode))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
+    (execution next : (runtime.reactiveApplication leaks).Execution)
+    (command : (runtime.reactiveApplication leaks).Command)
+    (event : (serviceGraph setup mode).EventId) (solitary :
+      (serviceGraph setup mode).Solitary event)
+    (owner : Player)
     (ready : execution.application.config.cut.Ready event)
-    (owned : (graph setup).actor? event = some owner)
+    (owned : (serviceGraph setup mode).actor? event = some owner)
     (within : execution.application.WithinDeadline runtime event)
     (quiescent : ∀ query, ¬ execution.application.AutomaticReady query)
     (safe : ∀ message ∈ execution.network.pending, message.sender = owner →
-      message.payload.call.event? (graph setup) ≠ some event)
+      message.payload.call.event? (serviceGraph setup mode) ≠ some event)
     (reached : next ∈
-      (execution.environmentStep (application setup runtime leaks) command).support) :
+      (execution.environmentStep (runtime.reactiveApplication leaks) command).support) :
     next.application.config = execution.application.config := by
   cases command with
   | wait =>
@@ -353,8 +361,8 @@ theorem environment_waiting_config (runtime : EventGraphRuntime (graph setup))
           simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
             found]
       | some message =>
-          have rejected := pending_waiting_call_rejected runtime leaks execution event ready owner
-            owned safe message (List.mem_of_find?_eq_some found)
+          have rejected := pending_waiting_call_rejected runtime leaks execution event solitary
+            ready owner owned safe message (List.mem_of_find?_eq_some found)
           simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
             found, rejected, Option.getD_none]
   | application operation =>
@@ -363,11 +371,29 @@ theorem environment_waiting_config (runtime : EventGraphRuntime (graph setup))
       change state ∈ ((environmentStep runtime execution.application operation).map
         EventGraphRuntime.State.drain).support at changed
       obtain ⟨native, nativeMoved, rfl⟩ := PMF.support_map .. ▸ changed
-      exact native_waiting_config runtime execution.application native operation event ready owner
-        owned within quiescent nativeMoved
+      exact native_waiting_config runtime execution.application native operation event solitary
+        ready owner owned within quiescent nativeMoved
 
 
+/-- Before its deadline, no environment command changes the unique ready owned
+configuration when the network has no call from that owner naming that event. -/
+theorem environment_waiting_config (runtime : EventGraphRuntime (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (execution next : (application setup runtime leaks).Execution)
+    (command : (application setup runtime leaks).Command)
+    (event : (graph setup).EventId) (owner : Player)
+    (ready : execution.application.config.cut.Ready event)
+    (owned : (graph setup).actor? event = some owner)
+    (within : execution.application.WithinDeadline runtime event)
+    (quiescent : ∀ query, ¬ execution.application.AutomaticReady query)
+    (safe : ∀ message ∈ execution.network.pending, message.sender = owner →
+      message.payload.call.event? (graph setup) ≠ some event)
+    (reached : next ∈
+      (execution.environmentStep (application setup runtime leaks) command).support) :
+    next.application.config = execution.application.config :=
+  environment_waiting_config_mode runtime leaks execution next command event
+    (setup.eventGraph.sequentialize_solitary event) owner ready owned within quiescent safe reached
 
-end SequentialWaiting
+end SolitaryWaiting
 
 end Vegas

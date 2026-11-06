@@ -260,28 +260,29 @@ theorem canonical_freshCall {horizon : Nat}
 end Admission
 
 section Witness
-variable {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+variable {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+  {runtime : EventGraphRuntime (serviceGraph setup mode)}
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 /-- A transmitting canonical decision fixes its actual graph action and typed output. -/
 theorem canonical_response_witness
-    (execution : (application setup runtime leaks).Execution) (who : Player)
-    (event : (graph setup).EventId)
+    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
+    (event : (serviceGraph setup mode).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
-    (action : (graph setup).Action event) (material : (application setup runtime leaks).Submission)
+    (action : (serviceGraph setup mode).Action event) (material :
+      (runtime.reactiveApplication leaks).Submission)
     (submits : (runtime.canonicalServiceDecision leaks who (execution.logs who)
-      (execution.observe (application setup runtime leaks) who) event action).transmission =
+      (execution.observe (runtime.reactiveApplication leaks) who) event action).transmission =
         some material) :
     ∃ output, AcceptanceWitness event (sentEnvelope setup runtime leaks execution who material)
       execution.application.config action output
-      ((application setup runtime leaks).submit execution.application who material) := by
+      ((runtime.reactiveApplication leaks).submit execution.application who material) := by
   have activeView := runtime.canonicalServiceDecision_active leaks who (execution.logs who)
-    (execution.observe (application setup runtime leaks) who) event action material submits
+    (execution.observe (runtime.reactiveApplication leaks) who) event action material submits
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
   have ready := (execution.application.publicView_eventReady event).mp
     (PublicView.ownTurn?_spec _ who event turn).1
-  cases node : nodeView (graph setup) event with
+  cases node : nodeView (serviceGraph setup mode) event with
   | sample payload law outputEq codeEq =>
       have none := nodeView_sample_actor outputEq codeEq
       rw [owned] at none
@@ -300,7 +301,7 @@ theorem canonical_response_witness
           cases submits
       | some choice =>
           cases selected : canonicalFreshSlot actor
-              (execution.observe (application setup runtime leaks) actor).application with
+              (execution.observe (runtime.reactiveApplication leaks) actor).application with
           | none =>
               simp only [EventGraphRuntime.canonicalServiceDecision,
                 EventGraphRuntime.canonicalReactiveDecision, ite_eq_right activeView,
@@ -310,7 +311,7 @@ theorem canonical_response_witness
           | some serial =>
               have fresh := canonicalFreshSlot_spec actor _ serial selected
               rw [runtime.canonicalServiceDecision_binding leaks actor (execution.logs actor)
-                (execution.observe (application setup runtime leaks) actor) event payload
+                (execution.observe (runtime.reactiveApplication leaks) actor) event payload
                 outputEq codeEq node activeView serial selected choice] at submits
               cases Option.some.inj submits
               have freshLookup : execution.application.candidates.lookup
@@ -329,22 +330,23 @@ theorem canonical_response_witness
         Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
       subst actorEq
       rw [runtime.canonicalServiceDecision_eq_of_not_bind leaks actor (execution.logs actor)
-        (execution.observe (application setup runtime leaks) actor) event action
+        (execution.observe (runtime.reactiveApplication leaks) actor) event action
         (fun _ _ _ _ bind => by rw [node] at bind; cases bind)] at submits
       unfold EventGraphRuntime.serviceDecision EventGraphRuntime.reactiveDecision at submits
       simp only [ite_eq_right activeView, node] at submits
       rcases reactiveResolutionPacket_shape actor event payload binding checks outputEq action
-          (execution.observe (application setup runtime leaks) actor).application with
+          (execution.observe (runtime.reactiveApplication leaks) actor).application with
         ⟨candidate, raw, packet⟩ | packet
       · obtain ⟨_, isTrue, _, value, _, _, _, rawEq⟩ :=
           reactiveResolutionPacket_opening_spec actor event payload binding checks outputEq action
-            (execution.observe (application setup runtime leaks) actor).application event
+            (execution.observe (runtime.reactiveApplication leaks) actor).application event
             candidate raw packet
         subst rawEq
         have defined := EventGraph.EventCode.resolveOutput?_isSome binding checks true
           execution.application.config.store (fun field read =>
             execution.application.config.read_available ready (by
-              rw [← EventGraph.EventCode.readFields_cast outputEq ((graph setup).nodes event),
+              rw [← EventGraph.EventCode.readFields_cast outputEq
+                ((serviceGraph setup mode).nodes event),
                 codeEq]
               exact read))
         let result := (EventGraph.EventCode.resolveOutput? binding checks true

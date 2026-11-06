@@ -394,3 +394,5 @@ import Vegas.Game.ConcurrentRevealForfeit
 import Vegas.Game.RevealServiceRankedReadout
 import Vegas.Game.RevealServiceReference
 import Vegas.Game.RevealServiceTimely
+import Vegas.Game.RevealServiceSoleSegment
+import Vegas.Game.RevealServiceHonestLaw
