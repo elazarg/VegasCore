@@ -15,6 +15,7 @@ import Vegas.EventGraph.RevealRelaxedScheduling
 import Vegas.EventGraph.SolitaryEvent
 import Vegas.EventGraph.LastScheduler
 import Vegas.EventGraph.LastSchedulerErasure
+import Vegas.EventGraph.PolicyPatch
 import Vegas.EventGraph.SchedulerPredraw
 import Vegas.EventGraph.SchedulerReplay
 import Vegas.EventGraph.RevealDeviation
