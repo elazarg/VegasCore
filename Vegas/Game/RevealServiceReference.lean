@@ -2,6 +2,8 @@
 
 import Vegas.Game.RevealServiceRankedReadout
 import Vegas.Pending.CanonicalKeyPublication
+import Vegas.EventGraph.DecisionTwin
+import Vegas.Source.InitialState
 import Vegas.EventGraph.RevealRelaxedScheduling
 
 /-! # The order-blind reference profile of concurrent reveals
@@ -89,6 +91,50 @@ theorem concurrentRankedRead_congr (setup : Setup (Player := Player) (L := L))
     rw [records]
   unfold concurrentRankedRead
   rw [cut, store, history]
+
+/-- The ranked history of an erasure is the erased ranked history. -/
+theorem rankedHistory_erase {graph : EventGraph Player L} (config : graph.Config) :
+    Setup.rankedHistory config.erase =
+      (Setup.rankedHistory config).map (graph.eraseCompletion config.defaulted) := by
+  unfold Setup.rankedHistory
+  simp only [completionOf_erase]
+  generalize List.finRange graph.order.eventCount = events
+  induction events with
+  | nil => rfl
+  | cons head tail ih =>
+      cases found : completionOf config head <;> simp [found, ih]
+
+/-- The outcome read from a concurrent-reveal configuration in instruction
+order: the parameter, public values and defaults of the decoded source
+configuration. -/
+def concurrentOutcome {Parameter : Type} (setup : Setup (Player := Player) (L := L))
+    (parameter : State L setup.context → Parameter)
+    (config : (serviceGraph setup .concurrentReveals).Config) :
+    Option (Parameter × PublicOutcome setup.program) :=
+  (concurrentRankedRead setup config).map (setup.parameterOutcome parameter)
+
+/-- **The outcome ignores the decisions of defaulted players.** -/
+theorem concurrentOutcome_erase {Parameter : Type} (setup : Setup (Player := Player) (L := L))
+    (parameter : State L setup.context → Parameter)
+    (config : (serviceGraph setup .concurrentReveals).Config) :
+    concurrentOutcome setup parameter config.erase = concurrentOutcome setup parameter config := by
+  have defaultsEq : Vegas.EventCompletion.defaults (Setup.rankedHistory config.erase) =
+      Vegas.EventCompletion.defaults (Setup.rankedHistory config) := by
+    rw [rankedHistory_erase]
+    unfold Vegas.EventCompletion.defaults
+    simp only [List.map_map, Function.comp_def, eraseCompletion_defaultEvent]
+  unfold concurrentOutcome concurrentRankedRead
+  change (if config.cut.Terminal then _ else none).map _ =
+    (if config.cut.Terminal then _ else none).map _
+  split
+  · unfold Vegas.decodeConfig?
+    rw [Option.map_map, Option.map_map]
+    change Option.map _ (Vegas.decodeState? _ config.store) =
+      Option.map _ (Vegas.decodeState? _ config.store)
+    congr 1
+    funext state
+    simp only [Function.comp_apply, Setup.parameterOutcome, publicOutcome, defaultsEq]
+  · rfl
 
 /-- The service's instruction-order readout is the configuration reader at the
 native terminal configuration. -/
