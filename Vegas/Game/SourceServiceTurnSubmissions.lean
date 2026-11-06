@@ -75,7 +75,7 @@ theorem sourceServiceCanonicalPolicy_submitsAtTurn (profile : BehavioralProfile 
     SubmitsAtTurn setup leaks (serviceCanonicalPolicy setup mode deadline leaks profile who)
         who := by
   intro past view response chosen event submitted
-  unfold serviceCanonicalPolicy at chosen
+  unfold serviceCanonicalPolicy serviceReferencePolicy at chosen
   split at chosen
   · rename_i identity
     split at chosen
@@ -106,7 +106,7 @@ theorem sourceServiceCanonicalOpportunity_submitsAtTurn
     (who : Player) (event : (serviceGraph setup mode).EventId) : SubmitsAtTurn setup leaks
       (serviceCanonicalOpportunity setup mode deadline leaks bound profile who event) who := by
   intro past view response chosen other submitted
-  unfold serviceCanonicalOpportunity at chosen
+  unfold serviceCanonicalOpportunity serviceReferenceOpportunity at chosen
   split at chosen
   · exact silentPolicy_submitsAtTurn setup leaks who past view response chosen other submitted
   · split at chosen
@@ -158,7 +158,7 @@ theorem sourceServiceTurnPolicy_submitsAtTurn (bound : (serviceGraph setup mode)
         (serviceTurnPolicy setup mode deadline leaks bound turns timing profile who)
       who := by
   intro past view response chosen event submitted
-  unfold serviceTurnPolicy at chosen
+  unfold serviceTurnPolicy serviceReferenceTurnPolicy at chosen
   split at chosen
   · exact silentPolicy_submitsAtTurn setup leaks who past view response chosen event submitted
   · split at chosen

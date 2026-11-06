@@ -110,7 +110,7 @@ theorem serviceTurnPolicy_fix_of_not_turn (bound : (serviceGraph setup mode).Eve
     serviceTurnPolicy setup mode deadline leaks bound turns (timing.fix event slot) profile who
         past view =
       serviceTurnPolicy setup mode deadline leaks bound turns timing profile who past view := by
-  unfold serviceTurnPolicy
+  unfold serviceTurnPolicy serviceReferenceTurnPolicy
   split
   · rfl
   · rename_i current turnEq
@@ -125,7 +125,7 @@ theorem serviceTurnPolicy_fix_of_not_owner (bound : (serviceGraph setup mode).Ev
     serviceTurnPolicy setup mode deadline leaks bound turns (timing.fix event slot) profile who =
       serviceTurnPolicy setup mode deadline leaks bound turns timing profile who := by
   funext past view
-  unfold serviceTurnPolicy
+  unfold serviceTurnPolicy serviceReferenceTurnPolicy
   split
   · rfl
   · rename_i current _
@@ -167,6 +167,7 @@ theorem serviceTurnPolicy_eq_timingMixture (bound : (serviceGraph setup mode).Ev
     exact serviceTurnPolicy_fix_of_not_turn bound timing profile event slot owner past view other
   · intro past view other
     refine ⟨app.silentPolicy past view, fun slot => ?_⟩
+    unfold serviceTurnFamily serviceReferenceTurnFamily
     exact app.turnScheduledPolicy_of_none _ _ _ _ _ _
       (sourceServiceTurn_of_not_turn setup leaks owner event past view other)
   · intro past view serving

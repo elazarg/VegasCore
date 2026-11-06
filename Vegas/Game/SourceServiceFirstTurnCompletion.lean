@@ -49,14 +49,14 @@ private theorem firstTurn_noRepeatedEvent
   by_cases owned : (serviceGraph setup mode).actor? event = some owner
   · by_cases first : serviceTurn setup mode deadline leaks owner event past view = some 0
     · rw [sourceServiceTurnPolicy_firstTurn owned first] at member
-      simp only [serviceCanonicalOpportunity, recorded, ↓reduceIte,
+      simp only [serviceCanonicalOpportunity, serviceReferenceOpportunity, recorded, ↓reduceIte,
         ReactiveApplication.silentPolicy_apply] at member
       cases (PMF.mem_support_pure_iff _ _).mp member
       cases named
     · rw [sourceServiceTurnPolicy_laterTurn owned serving first] at member
       cases (PMF.mem_support_pure_iff _ _).mp member
       cases named
-  · simp only [serviceTurnPolicy, serving, owned, ↓reduceDIte,
+  · simp only [serviceTurnPolicy, serviceReferenceTurnPolicy, serving, owned, ↓reduceDIte,
       ReactiveApplication.silentPolicy_apply] at member
     cases (PMF.mem_support_pure_iff _ _).mp member
     cases named
@@ -362,7 +362,7 @@ theorem sourceService_firstTurn_mixture
           (middle.observe app owner) = _
     rw [sourceServiceTurnPolicy_firstTurn owned firstNow]
     simp only [member, first, firstNow, ↓reduceIte]
-    unfold serviceCanonicalOpportunity decidedOpportunity
+    unfold serviceCanonicalOpportunity serviceReferenceOpportunity decidedOpportunity
     by_cases recorded : runtime.eventRecorded leaks (middle.logs owner) event = true
     · simp only [recorded, ↓reduceIte, PMF.bind_const]
     · have notRecorded := Bool.eq_false_of_not_eq_true recorded
@@ -448,7 +448,7 @@ private theorem fixed_silent_client_quiet
   · rw [ite_eq_right first]
     by_cases owned : (graph setup).actor? event = some owner
     · exact sourceServiceTurnPolicy_laterTurn owned serving first
-    · simp only [serviceTurnPolicy, serving, owned, ↓reduceDIte,
+    · simp only [serviceTurnPolicy, serviceReferenceTurnPolicy, serving, owned, ↓reduceDIte,
         ReactiveApplication.silentPolicy_apply]
 
 /-- Fixing a silent first-turn action has that action's full graph continuation

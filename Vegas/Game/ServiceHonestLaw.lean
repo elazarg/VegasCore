@@ -149,8 +149,10 @@ theorem firstTurn_readout_law [Finite Player]
           exact (serviceGraph setup selectedMode).reads_available event (.inr producer)
             (by simpa only [serviceGraph, EventGraph.withMode_nodes] using member)
     dsimp only [statement, evaluate]
-    delta FirstTurnSourceLaw serviceTurnPolicy firstTurnTiming serviceTurnFamily serviceTurn
-    delta serviceCanonicalOpportunity serviceCanonicalPolicy serviceSourceReadout
+    delta FirstTurnSourceLaw serviceTurnPolicy serviceReferenceTurnPolicy firstTurnTiming
+    delta serviceTurnFamily serviceReferenceTurnFamily serviceTurn
+    delta serviceCanonicalOpportunity serviceReferenceOpportunity serviceCanonicalPolicy
+    delta serviceReferencePolicy serviceSourceReadout
     delta serviceApplication serviceRuntime serviceInitialLaw
     delta serviceGraph graph EventGraph.sequentialize EventGraph.withMode
     dsimp (config := { instances := true }) only

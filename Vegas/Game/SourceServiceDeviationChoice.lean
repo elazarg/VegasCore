@@ -146,7 +146,7 @@ theorem runUntil_deviation_focal
           exact fun impossible => by cases impossible
         · rw [owned]
           exact fun equal => same (Option.some.inj equal).symm
-      simp only [serviceTurnPolicy, idle]
+      simp only [serviceTurnPolicy, serviceReferenceTurnPolicy, idle]
   · intro current currentHolds running next reached
     exact round_ready_of_pending alone (currentHolds running) reached
   · exact holds

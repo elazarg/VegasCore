@@ -1143,7 +1143,8 @@ theorem sourceService_foreign_fixedRun
           apply ownTurn?_none_of_alone alone middle.application ready actor
           rw [owned]
           exact fun equal => isOwner (Option.some.inj equal).symm
-        simp only [serviceTurnPolicy, idle, ReactiveApplication.silentPolicy_apply]
+        simp only [serviceTurnPolicy, serviceReferenceTurnPolicy, idle,
+          ReactiveApplication.silentPolicy_apply]
   · intro current holds running next reached
     exact round_ready_of_pending alone (holds running) reached
   · exact fun _ => ready
@@ -1236,7 +1237,8 @@ theorem sourceService_foreign_mixture
           apply ownTurn?_none_of_alone alone middle.application ready actor
           rw [owned]
           exact fun equal => isOwner (Option.some.inj equal).symm
-        simp only [serviceTurnPolicy, idle, ReactiveApplication.silentPolicy_apply]
+        simp only [serviceTurnPolicy, serviceReferenceTurnPolicy, idle,
+          ReactiveApplication.silentPolicy_apply]
   · intro current holds running next reached
     exact round_ready_of_pending alone (holds running) reached
   · exact fun _ => boundary.ordered.ready event.isLt

@@ -392,3 +392,4 @@ import Vegas.Game.ConcurrentRevealNash
 import Vegas.Game.IntendedOpeningExtension
 import Vegas.Game.ConcurrentRevealForfeit
 import Vegas.Game.RevealServiceRankedReadout
+import Vegas.Game.RevealServiceReference

@@ -65,7 +65,7 @@ theorem sourceServiceCanonicalPolicy_submission {profile : BehavioralProfile set
     ∃ event action, view.application.publicView.ownTurn? who = some event ∧
       response = (serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view
           event action := by
-  unfold serviceCanonicalPolicy at chosen
+  unfold serviceCanonicalPolicy serviceReferencePolicy at chosen
   split at chosen
   · split at chosen
     · rw [PMF.mem_support_pure_iff] at chosen
@@ -106,7 +106,7 @@ theorem sourceServiceCanonicalOpportunity_submission
     response = (serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view
     turnEvent
           action := by
-  unfold serviceCanonicalOpportunity at chosen
+  unfold serviceCanonicalOpportunity serviceReferenceOpportunity at chosen
   split at chosen
   · exact (silentPolicy_not_submit chosen material submits).elim
   · rename_i unrecorded
@@ -141,14 +141,14 @@ theorem sourceServiceTurnPolicy_submission {bound : (serviceGraph setup mode).Ev
     bound event ∧
       response = (serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view
           event action := by
-  unfold serviceTurnPolicy at chosen
+  unfold serviceTurnPolicy serviceReferenceTurnPolicy at chosen
   split at chosen
   · exact (silentPolicy_not_submit chosen material submits).elim
   · rename_i event turn
     split at chosen
     · rw [ReactiveApplication.policyMixture_policy, PMF.support_bind] at chosen
       obtain ⟨slot, _, member⟩ := Set.mem_iUnion₂.mp chosen
-      unfold serviceTurnFamily ReactiveApplication.turnScheduledPolicy at member
+      unfold serviceReferenceTurnFamily ReactiveApplication.turnScheduledPolicy at member
       dsimp only at member
       split at member
       · obtain ⟨unrecorded, fits, other, action, otherTurn, rfl⟩ :=

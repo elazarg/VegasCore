@@ -138,8 +138,9 @@ private theorem clientPolicy_congr {turns : Nat} (timing : TurnTiming service.se
       serviceClientPolicy service.setup service.mode service.deadline service.leaks service.bound
         turns timing other
         who := by
-  unfold serviceClientPolicy serviceTurnPolicy serviceTurnFamily serviceCanonicalOpportunity
-    serviceCanonicalPolicy compileEventProfile
+  unfold serviceClientPolicy serviceReferenceClientPolicy serviceReferenceTurnPolicy
+    serviceReferenceTurnFamily serviceReferenceOpportunity serviceReferencePolicy
+      compileEventProfile
   rw [same]
 
 /-- Each player's client depends only on its own source policy. -/
