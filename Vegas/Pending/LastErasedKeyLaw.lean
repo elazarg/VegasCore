@@ -182,4 +182,17 @@ theorem drainConfig_lastErasedLaw {profile : graph.BehavioralProfile} {who : Pla
     lastErasedLaw profile who (drainConfig config) = lastErasedLaw profile who config :=
   drain_lastErasedLaw independent (ofConfig config)
 
+/-- A quiescent state's configuration is its own drain, up to key. -/
+theorem runKey_drainConfig_of_quiescent (state : State graph)
+    (quiet : ∀ event, ¬ state.AutomaticReady event) :
+    runKey (drainConfig state.config) = runKey state.config := by
+  rw [← drain_runKey_eq, drain_eq_of_clear state quiet]
+
+/-- Draining a drained configuration changes no key. -/
+theorem drainConfig_drain (state : State graph) :
+    runKey (drainConfig state.drain.config) = runKey (drainConfig state.config) := by
+  rw [← drain_runKey_eq state]
+  exact runKey_drainConfig_of_quiescent (ofConfig state.drain.config)
+    (fun event eligible => drain_quiescent state event eligible)
+
 end Vegas.EventGraphRuntime.State

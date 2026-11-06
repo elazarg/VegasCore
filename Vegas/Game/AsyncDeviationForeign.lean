@@ -839,7 +839,9 @@ private theorem binding_response_matched
               bindingTraffic_respond_other foreign.symm activated _ _ (Or.inl ⟨rfl, rfl⟩)⟩
 
 
-private theorem binding_stopped_readout_congr
+/-- Decided foreign bindings of equal admission, run until the binding completes from
+equal starting readouts, give equal stopped readout laws. -/
+theorem binding_stopped_readout_congr
     {horizon count leftRemaining rightRemaining : Nat}
     (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
     (focal : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)

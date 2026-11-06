@@ -201,4 +201,66 @@ theorem normalizeObservation_playerObserve_of_complete_paths (who : Player) {ran
     ((Config.restrictionOf_complete ordered' event ready' late action' value').trans_path
       (within before' ordered' ready' action' value') path') same
 
+/-- Equal normalized observations have the same completed events. -/
+theorem normalize_present_congr (who : Player) {left right : graph.Config}
+    (same : graph.normalizeObservation who (graph.playerObserve who left) =
+      graph.normalizeObservation who (graph.playerObserve who right)) (event : graph.EventId) :
+    (completionOf left event).isSome = (completionOf right event).isSome := by
+  rw [normalizeObservation_playerObserve, normalizeObservation_playerObserve] at same
+  have orders : ((List.finRange graph.order.eventCount).filter fun event =>
+      (completionOf left event).isSome) =
+      (List.finRange graph.order.eventCount).filter fun event =>
+        (completionOf right event).isSome :=
+    congrArg EventPlayerObservation.completionOrder same
+  have member := congrArg (fun list => event ∈ list) orders
+  simp only [List.mem_filter, List.mem_finRange, true_and, eq_iff_iff] at member
+  exact Bool.eq_iff_iff.mpr member
+
+/-- Equal normalized observations record the same default entry at every
+completed event. -/
+theorem normalize_defaultEvent_congr (who : Player) {left right : graph.Config}
+    (same : graph.normalizeObservation who (graph.playerObserve who left) =
+      graph.normalizeObservation who (graph.playerObserve who right)) (event : graph.EventId)
+    (present : (completionOf left event).isSome) :
+    (completionOf left event).bind EventCompletion.defaultEvent =
+      (completionOf right event).bind EventCompletion.defaultEvent := by
+  have presentEach := normalize_present_congr who same
+  rw [normalizeObservation_playerObserve, normalizeObservation_playerObserve] at same
+  have histories : (((List.finRange graph.order.eventCount).filter fun event =>
+      (completionOf left event).isSome).map fun event =>
+        (completionOf left event).bind EventCompletion.defaultEvent).reverse =
+      (((List.finRange graph.order.eventCount).filter fun event =>
+        (completionOf right event).isSome).map fun event =>
+          (completionOf right event).bind EventCompletion.defaultEvent).reverse :=
+    congrArg (fun view => view.defaults.events) same
+  have sameFilter : ((List.finRange graph.order.eventCount).filter fun event =>
+      (completionOf left event).isSome) =
+      (List.finRange graph.order.eventCount).filter fun event =>
+        (completionOf right event).isSome :=
+    List.filter_congr fun event _ => presentEach event
+  rw [sameFilter, List.reverse_inj] at histories
+  exact (List.map_inj_left.mp histories) event
+    (by rw [List.mem_filter]; exact ⟨List.mem_finRange _, by rw [← presentEach]; exact present⟩)
+
+/-- Equal normalized observations have the same defaulted players. -/
+theorem normalize_defaulted_congr (who : Player) {left right : graph.Config}
+    (same : graph.normalizeObservation who (graph.playerObserve who left) =
+      graph.normalizeObservation who (graph.playerObserve who right)) :
+    left.defaulted = right.defaulted := by
+  ext player
+  rw [mem_defaulted_iff_completionOf, mem_defaulted_iff_completionOf]
+  constructor
+  · rintro ⟨event, found⟩
+    have present : (completionOf left event).isSome := by
+      cases recorded : completionOf left event with
+      | none => rw [recorded] at found; cases found
+      | some _ => rfl
+    exact ⟨event, (normalize_defaultEvent_congr who same event present).symm.trans found⟩
+  · rintro ⟨event, found⟩
+    have present : (completionOf right event).isSome := by
+      cases recorded : completionOf right event with
+      | none => rw [recorded] at found; cases found
+      | some _ => rfl
+    exact ⟨event, (normalize_defaultEvent_congr who same.symm event present).symm.trans found⟩
+
 end Vegas.EventGraph
