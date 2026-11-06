@@ -107,4 +107,98 @@ theorem normalizeObservation_playerObserve_of_paths (who : Player) {rank : Nat}
   normalizeObservation_playerObserve_restrict who _ (Config.restrictionOf_path ordered path)
     (Config.restrictionOf_path ordered' path') same
 
+/-- A restriction to completed events stays a restriction along graph paths. -/
+theorem Config.RestrictionOf.trans_path {events : graph.EventId → Prop} [DecidablePred events]
+    {small middle large : graph.Config} (restricted : small.RestrictionOf events middle)
+    (within : ∀ event, events event → event ∈ middle.cut.completed)
+    (path : Relation.ReflTransGen Config.Step middle large) :
+    small.RestrictionOf events large where
+  records event := by
+    rw [restricted.records]
+    by_cases inside : events event
+    · rw [ite_eq_left inside, ite_eq_left inside]
+      obtain ⟨completion, found⟩ := Option.isSome_iff_exists.mp
+        ((completionOf_isSome_iff middle event).mpr (within event inside))
+      rw [found, Config.Step.path_completionOf_of_some path event completion found]
+    · rw [ite_eq_right inside, ite_eq_right inside]
+  store field := by
+    rw [restricted.store]
+    by_cases inside : FieldWithin events field
+    · rw [ite_eq_left inside, ite_eq_left inside]
+      have available : (middle.store field).isSome := by
+        cases field with
+        | inl input => rfl
+        | inr event =>
+            change (middle.outputs event).isSome = true
+            exact (middle.output_available event).mpr (within event inside)
+      obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp available
+      rw [stored, Config.Step.path_store_of_some path field value stored]
+    · rw [ite_eq_right inside, ite_eq_right inside]
+
+/-- A prefix configuration is the restriction of its completion at a later event. -/
+theorem Config.restrictionOf_complete {config : graph.Config} {rank : Nat}
+    (ordered : config.cut.IsPrefix rank) (event : graph.EventId) (ready : config.cut.Ready event)
+    (late : rank ≤ event.val) (action : graph.Action event)
+    (value : (graph.outputLayout event).Value) :
+    config.RestrictionOf (fun other => other.val < rank)
+      (config.complete event ready action value) where
+  records other := by
+    by_cases smaller : other.val < rank
+    · rw [ite_eq_left smaller, completionOf_complete, Function.update_of_ne]
+      intro same
+      subst same
+      omega
+    · rw [ite_eq_right smaller]
+      exact (completionOf_eq_none_iff config other).mpr fun completed =>
+        smaller ((ordered.2 other).mp completed)
+  store field := by
+    cases field with
+    | inl input =>
+        rw [ite_eq_left (show FieldWithin (fun other : graph.EventId => other.val < rank)
+          (.inl input) from trivial)]
+        rfl
+    | inr other =>
+        by_cases smaller : other.val < rank
+        · rw [ite_eq_left (show FieldWithin (fun other : graph.EventId => other.val < rank)
+            (.inr other) from smaller)]
+          change config.outputs other = (config.complete event ready action value).outputs other
+          rw [config.complete_output_of_ne event other ready action value]
+          intro same
+          subst same
+          omega
+        · rw [ite_eq_right (show ¬ FieldWithin (fun other : graph.EventId => other.val < rank)
+            (.inr other) from smaller)]
+          change config.outputs other = none
+          exact Option.not_isSome_iff_eq_none.mp fun available =>
+            smaller ((ordered.2 other).mp ((config.output_available other).mp available))
+
+/-- **Prefix views are read from views after completing a later event and
+taking graph steps.** -/
+theorem normalizeObservation_playerObserve_of_complete_paths (who : Player) {rank : Nat}
+    {before after before' after' : graph.Config}
+    (ordered : before.cut.IsPrefix rank) (ordered' : before'.cut.IsPrefix rank)
+    (event : graph.EventId) (ready : before.cut.Ready event) (ready' : before'.cut.Ready event)
+    (late : rank ≤ event.val) (action action' : graph.Action event)
+    (value value' : (graph.outputLayout event).Value)
+    (path : Relation.ReflTransGen Config.Step (before.complete event ready action value) after)
+    (path' : Relation.ReflTransGen Config.Step (before'.complete event ready' action' value')
+      after')
+    (same : graph.normalizeObservation who (graph.playerObserve who after) =
+      graph.normalizeObservation who (graph.playerObserve who after')) :
+    graph.normalizeObservation who (graph.playerObserve who before) =
+      graph.normalizeObservation who (graph.playerObserve who before') := by
+  have within (config : graph.Config) (configOrdered : config.cut.IsPrefix rank)
+      (configReady : config.cut.Ready event) (chosen : graph.Action event)
+      (output : (graph.outputLayout event).Value) :
+      ∀ other : graph.EventId, other.val < rank →
+        other ∈ (config.complete event configReady chosen output).cut.completed := by
+    intro other smaller
+    rw [Config.complete_cut, EventOrder.Cut.mem_complete]
+    exact Or.inr ((configOrdered.2 other).mpr smaller)
+  exact normalizeObservation_playerObserve_restrict who _
+    ((Config.restrictionOf_complete ordered event ready late action value).trans_path
+      (within before ordered ready action value) path)
+    ((Config.restrictionOf_complete ordered' event ready' late action' value').trans_path
+      (within before' ordered' ready' action' value') path') same
+
 end Vegas.EventGraph

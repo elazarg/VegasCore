@@ -400,3 +400,4 @@ import Vegas.Game.RevealServiceOutcomeLaw
 import Vegas.Game.DeviationSimulation
 import Vegas.Game.OwnedPhaseJoint
 import Vegas.Game.LastOwnedPhase
+import Vegas.Game.LastChancePhase
