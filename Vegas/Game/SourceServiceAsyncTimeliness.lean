@@ -31,6 +31,51 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {deadline : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
+/-- **A settled protected call keeps its event within the deadline.** While the
+event of a recorded settled fresh call is unfinished, protected inclusion has
+not yet run out, so the event has not passed its deadline. -/
+theorem FreshCall.withinDeadline
+    {horizon : Nat}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {bound : (serviceGraph setup mode).EventId → Nat}
+    (owner : Player) (event : (serviceGraph setup mode).EventId)
+    (owned : (serviceGraph setup mode).actor? event = some owner)
+    {control : (serviceApplication setup mode deadline leaks).Control}
+    (trace : ((serviceApplication setup mode deadline leaks).protocol
+      (serviceInitialLaw setup mode) horizon scheduler).Trace (some control))
+    (inclusion : ProtectedInclusionAt (serviceRuntime setup mode deadline)
+      leaks control.execution bound)
+    (earlier : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (later : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (split : control.execution.logs owner = earlier ++ entry :: later)
+    (call : FreshCall setup leaks owner event bound entry message)
+    (sole : ∀ other ∈ earlier ++ later, ¬ EmitsOtherFor (serviceRuntime setup mode deadline) leaks
+      other event message.id)
+    (settled : Settled setup leaks event message.id control.execution)
+    (unfinished : event ∉ control.execution.application.config.cut.completed) :
+    control.execution.application.WithinDeadline (serviceRuntime setup mode deadline) event := by
+  have facts := legalFacts setup leaks horizon scheduler _ trace
+  have member : entry ∈ control.execution.logs owner := by rw [split]; simp
+  obtain ⟨entered, activated, early⟩ := call.fits.exists
+  change entry.beforeView.application.publicView.clock - entered + bound event <
+    deadline event at early
+  have notLate : control.execution.application.clock ≤
+      entry.beforeView.application.publicView.clock + bound event := by
+    by_contra late
+    obtain ⟨accepted, receipt⟩ := inclusion event owner owned earlier later entry message
+      split call.emitted call.authored call.addressed call.ready sole unfinished
+      (by change _ < control.execution.application.clock; omega)
+    exact unfinished (settled.2.2 (settled.2.1 accepted receipt))
+  obtain ⟨_, _, _, kept, _⟩ := facts.eventStable owner entry member event call.ready unfinished
+  have activatedNow : control.execution.application.activatedAt event = some entered :=
+    kept owner owned entered activated
+  unfold State.WithinDeadline
+  rw [activatedNow]
+  change control.execution.application.clock - entered < deadline event
+  omega
+
 /-- A native command preserves protected fresh-call settlement. -/
 theorem SettlesFreshCalls.environment
     {horizon : Nat}

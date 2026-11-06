@@ -54,18 +54,19 @@ theorem silentPolicy_not_submit
 
 /-- A fresh submission of the canonical source policy is the canonical decision
 at the player's own turn. -/
-theorem sourceServiceCanonicalPolicy_submission {profile : BehavioralProfile setup.program}
+theorem sourceServiceCanonicalPolicy_submission_reference {reference :
+    (serviceGraph setup mode).BehavioralProfile}
     {who : Player} {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
     {view : (serviceApplication setup mode deadline leaks).PlayerView}
     {response : (serviceApplication setup mode deadline leaks).Action}
     (chosen : response ∈
-        (serviceCanonicalPolicy setup mode deadline leaks profile who past view).support)
+        (serviceReferencePolicy setup mode deadline leaks reference who past view).support)
     {material : (serviceApplication setup mode deadline leaks).Submission}
     (submits : response.transmission = some material) :
     ∃ event action, view.application.publicView.ownTurn? who = some event ∧
       response = (serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view
           event action := by
-  unfold serviceCanonicalPolicy serviceReferencePolicy at chosen
+  unfold serviceReferencePolicy at chosen
   split at chosen
   · split at chosen
     · rw [PMF.mem_support_pure_iff] at chosen
@@ -88,6 +89,57 @@ theorem sourceServiceCanonicalPolicy_submission {profile : BehavioralProfile set
     subst chosen
     cases submits
 
+/-- A fresh submission of the canonical source policy is the canonical decision
+at the player's own turn. -/
+theorem sourceServiceCanonicalPolicy_submission {profile : BehavioralProfile setup.program}
+    {who : Player} {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
+    {view : (serviceApplication setup mode deadline leaks).PlayerView}
+    {response : (serviceApplication setup mode deadline leaks).Action}
+    (chosen : response ∈
+        (serviceCanonicalPolicy setup mode deadline leaks profile who past view).support)
+    {material : (serviceApplication setup mode deadline leaks).Submission}
+    (submits : response.transmission = some material) :
+    ∃ event action, view.application.publicView.ownTurn? who = some event ∧
+      response = (serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view
+          event action := by
+  apply sourceServiceCanonicalPolicy_submission_reference
+    (reference := compileEventProfile setup.program profile) <;> assumption
+
+/-- A fresh submission of a canonical opportunity is made before the event is
+recorded and while a fresh call fits the deadline. -/
+theorem sourceServiceCanonicalOpportunity_submission_reference
+    {bound : (serviceGraph setup mode).EventId → Nat} {reference :
+      (serviceGraph setup mode).BehavioralProfile}
+    {who : Player} {event : (serviceGraph setup mode).EventId}
+    {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
+    {view : (serviceApplication setup mode deadline leaks).PlayerView}
+    {response : (serviceApplication setup mode deadline leaks).Action}
+    (chosen : response ∈
+        (serviceReferenceOpportunity setup mode deadline leaks bound reference who event past
+        view).support) {material : (serviceApplication setup mode deadline leaks).Submission}
+    (submits : response.transmission = some material) :
+    (serviceRuntime setup mode deadline).eventRecorded leaks past event = false ∧
+    view.application.publicView.InclusionFitsDeadline (serviceRuntime setup mode deadline) bound
+    event ∧ ∃ turnEvent action, view.application.publicView.ownTurn? who = some turnEvent ∧
+    response = (serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view
+    turnEvent
+          action := by
+  unfold serviceReferenceOpportunity at chosen
+  split at chosen
+  · exact (silentPolicy_not_submit chosen material submits).elim
+  · rename_i unrecorded
+    split at chosen
+    · rename_i fits
+      rw [PMF.support_bind] at chosen
+      obtain ⟨decided, decidedChosen, member⟩ := Set.mem_iUnion₂.mp chosen
+      split at member
+      · exact (silentPolicy_not_submit member material submits).elim
+      · rw [PMF.mem_support_pure_iff] at member
+        subst member
+        exact ⟨by simpa using unrecorded, fits,
+          sourceServiceCanonicalPolicy_submission_reference decidedChosen submits⟩
+    · exact (silentPolicy_not_submit chosen material submits).elim
+
 /-- A fresh submission of a canonical opportunity is made before the event is
 recorded and while a fresh call fits the deadline. -/
 theorem sourceServiceCanonicalOpportunity_submission
@@ -106,20 +158,46 @@ theorem sourceServiceCanonicalOpportunity_submission
     response = (serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view
     turnEvent
           action := by
-  unfold serviceCanonicalOpportunity serviceReferenceOpportunity at chosen
+  apply sourceServiceCanonicalOpportunity_submission_reference
+    (reference := compileEventProfile setup.program profile) <;> assumption
+
+/-- **Fresh submissions of the turn-counted policy.** Every fresh submission on
+its support, at any turn index, is the canonical decision at the player's own
+turn, at an event not yet recorded in its recall, while a fresh call fits the
+deadline within the inclusion bound. -/
+theorem sourceServiceTurnPolicy_submission_reference {bound :
+    (serviceGraph setup mode).EventId → Nat}
+    {turns : Nat} {timing : TurnTiming setup turns mode} {reference :
+      (serviceGraph setup mode).BehavioralProfile}
+    {who : Player} {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
+    {view : (serviceApplication setup mode deadline leaks).PlayerView}
+    {response : (serviceApplication setup mode deadline leaks).Action}
+    (chosen : response ∈
+        (serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing reference who past
+        view).support) {material : (serviceApplication setup mode deadline leaks).Submission}
+    (submits : response.transmission = some material) : ∃ event action,
+    view.application.publicView.ownTurn? who = some event ∧
+    (serviceRuntime setup mode deadline).eventRecorded leaks past event = false ∧
+    view.application.publicView.InclusionFitsDeadline (serviceRuntime setup mode deadline)
+    bound event ∧
+      response = (serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view
+          event action := by
+  unfold serviceReferenceTurnPolicy at chosen
   split at chosen
   · exact (silentPolicy_not_submit chosen material submits).elim
-  · rename_i unrecorded
+  · rename_i event turn
     split at chosen
-    · rename_i fits
-      rw [PMF.support_bind] at chosen
-      obtain ⟨decided, decidedChosen, member⟩ := Set.mem_iUnion₂.mp chosen
+    · rw [ReactiveApplication.policyMixture_policy, PMF.support_bind] at chosen
+      obtain ⟨slot, _, member⟩ := Set.mem_iUnion₂.mp chosen
+      unfold serviceReferenceTurnFamily ReactiveApplication.turnScheduledPolicy at member
+      dsimp only at member
       split at member
+      · obtain ⟨unrecorded, fits, other, action, otherTurn, rfl⟩ :=
+          sourceServiceCanonicalOpportunity_submission_reference member submits
+        have same : other = event := Option.some.inj (otherTurn.symm.trans turn)
+        subst same
+        exact ⟨other, action, turn, unrecorded, fits, rfl⟩
       · exact (silentPolicy_not_submit member material submits).elim
-      · rw [PMF.mem_support_pure_iff] at member
-        subst member
-        exact ⟨by simpa using unrecorded, fits,
-          sourceServiceCanonicalPolicy_submission decidedChosen submits⟩
     · exact (silentPolicy_not_submit chosen material submits).elim
 
 /-- **Fresh submissions of the turn-counted policy.** Every fresh submission on
@@ -141,23 +219,8 @@ theorem sourceServiceTurnPolicy_submission {bound : (serviceGraph setup mode).Ev
     bound event ∧
       response = (serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view
           event action := by
-  unfold serviceTurnPolicy serviceReferenceTurnPolicy at chosen
-  split at chosen
-  · exact (silentPolicy_not_submit chosen material submits).elim
-  · rename_i event turn
-    split at chosen
-    · rw [ReactiveApplication.policyMixture_policy, PMF.support_bind] at chosen
-      obtain ⟨slot, _, member⟩ := Set.mem_iUnion₂.mp chosen
-      unfold serviceReferenceTurnFamily ReactiveApplication.turnScheduledPolicy at member
-      dsimp only at member
-      split at member
-      · obtain ⟨unrecorded, fits, other, action, otherTurn, rfl⟩ :=
-          sourceServiceCanonicalOpportunity_submission member submits
-        have same : other = event := Option.some.inj (otherTurn.symm.trans turn)
-        subst same
-        exact ⟨other, action, turn, unrecorded, fits, rfl⟩
-      · exact (silentPolicy_not_submit member material submits).elim
-    · exact (silentPolicy_not_submit chosen material submits).elim
+  apply sourceServiceTurnPolicy_submission_reference
+    (reference := compileEventProfile setup.program profile) <;> assumption
 
 /-- Every packet the policy sends is the canonical decision at the player's
 own turn, at an event not yet recorded in its recall. -/
@@ -172,15 +235,27 @@ def SubmitsCanonically (policy : (serviceApplication setup mode deadline leaks).
           event action
 
 /-- The turn-counted policy submits canonically. -/
+theorem serviceTurnPolicy_submitsCanonically_reference (bound :
+    (serviceGraph setup mode).EventId → Nat)
+    (turns : Nat) (timing : TurnTiming setup turns mode) (reference :
+      (serviceGraph setup mode).BehavioralProfile)
+    (who : Player) :
+    SubmitsCanonically (serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing
+      reference who)
+      who := by
+  intro past view response chosen material submits
+  obtain ⟨event, action, turn, unrecorded, _, rfl⟩ :=
+    sourceServiceTurnPolicy_submission_reference chosen submits
+  exact ⟨event, action, turn, unrecorded, rfl⟩
+
+/-- The turn-counted policy submits canonically. -/
 theorem serviceTurnPolicy_submitsCanonically (bound : (serviceGraph setup mode).EventId → Nat)
     (turns : Nat) (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
     (who : Player) :
     SubmitsCanonically (serviceTurnPolicy setup mode deadline leaks bound turns timing profile who)
-      who := by
-  intro past view response chosen material submits
-  obtain ⟨event, action, turn, unrecorded, _, rfl⟩ :=
-    sourceServiceTurnPolicy_submission chosen submits
-  exact ⟨event, action, turn, unrecorded, rfl⟩
+      who :=
+  serviceTurnPolicy_submitsCanonically_reference bound turns timing
+    (compileEventProfile setup.program profile) who
 
 end Submissions
 
@@ -529,12 +604,13 @@ theorem canonicalSlots_round {horizon remaining : Nat}
 
 /-- On the support of rounds in which `who` follows the turn-counted policy,
 `who`'s submissions are at its turns and its used slots lie below the count. -/
-theorem canonicalSlots_roundsFrom
+theorem canonicalSlots_roundsFrom_reference
     (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
     (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
     {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
-    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
-    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing profile
+    (timing : TurnTiming setup turns mode) (reference : (serviceGraph setup mode).BehavioralProfile)
+    (follows : players who = serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+      timing reference
         who) (count : Nat) (execution : (serviceApplication setup mode deadline leaks).Execution)
     (reached : execution ∈
         ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
@@ -556,9 +632,26 @@ theorem canonicalSlots_roundsFrom
           scheduler players count (Nat.le_succ count) prior priorMem
       rw [show count + 1 - count = 0 + 1 by omega] at trace
       exact canonicalSlots_round
-        (follows ▸ serviceTurnPolicy_submitsCanonically bound turns timing profile who)
-        (follows ▸ sourceServiceTurnPolicy_submitsAtTurn setup leaks bound turns timing profile
+        (follows ▸ serviceTurnPolicy_submitsCanonically_reference bound turns timing reference who)
+        (follows ▸ sourceServiceTurnPolicy_submitsAtTurn_reference setup leaks bound turns timing
+          reference
           who) trace atTurn valid moved
+
+/-- On the support of rounds in which `who` follows the turn-counted policy,
+`who`'s submissions are at its turns and its used slots lie below the count. -/
+theorem canonicalSlots_roundsFrom
+    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
+    {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
+    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
+    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing profile
+        who) (count : Nat) (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (reached : execution ∈
+        ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler players count).support) : OwnSubmissionsAtTurn setup leaks execution who ∧
+      CanonicalSlotsUsed setup leaks execution who := by
+  apply canonicalSlots_roundsFrom_reference
+    (reference := compileEventProfile setup.program profile) <;> assumption
 
 /-- **The counted slot supplies an unrecorded own decision.** On every legal
 history where the owner's submissions were made at its own turns and its used
@@ -632,9 +725,9 @@ private theorem freshCalls_round
     {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
     {players : Player → (serviceApplication setup mode deadline leaks).Policy} {who : Player}
     {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
-    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
-    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing
-      profile who)
+    (timing : TurnTiming setup turns mode) (reference : (serviceGraph setup mode).BehavioralProfile)
+    (follows : players who = serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing
+      reference who)
     {execution next : (serviceApplication setup mode deadline leaks).Execution}
     (calls : OwnFreshCalls setup leaks bound execution who)
     (once : OneCallPerEvent setup leaks execution who)
@@ -682,7 +775,7 @@ private theorem freshCalls_round
               cases firstEvent
       | some material =>
           obtain ⟨event, action, _turn, unrecorded, fits, decided⟩ :=
-            sourceServiceTurnPolicy_submission chosen rfl
+            sourceServiceTurnPolicy_submission_reference chosen rfl
           have canonical := runtime.canonicalServiceDecision_cases leaks who (middle.logs who)
             (middle.observe app who) event action
           rw [← decided] at canonical
@@ -745,13 +838,13 @@ private theorem freshCalls_round
 
 /-- Every prescribed player's transmitted calls are timely and use one identifier
 per event, under arbitrary other policies and scheduler, for every turn timing. -/
-theorem sourceServiceTurnPolicy_freshCalls
+theorem sourceServiceTurnPolicy_freshCalls_reference
     (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
     (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
     {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
-    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
-    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing
-      profile who) (count : Nat)
+    (timing : TurnTiming setup turns mode) (reference : (serviceGraph setup mode).BehavioralProfile)
+    (follows : players who = serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing
+      reference who) (count : Nat)
     (execution : (serviceApplication setup mode deadline leaks).Execution)
     (reached : execution ∈ ((serviceApplication setup mode deadline leaks).roundsFrom
       (serviceInitialLaw setup mode) scheduler players count).support) :
@@ -770,6 +863,22 @@ theorem sourceServiceTurnPolicy_freshCalls
       rw [app.roundsFrom_succ] at reached
       obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨calls, once⟩ := ih prior priorMem
-      exact freshCalls_round timing profile follows calls once moved
+      exact freshCalls_round timing reference follows calls once moved
+
+/-- Every prescribed player's transmitted calls are timely and use one identifier
+per event, under arbitrary other policies and scheduler, for every turn timing. -/
+theorem sourceServiceTurnPolicy_freshCalls
+    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
+    {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
+    (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
+    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing
+      profile who) (count : Nat)
+    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (reached : execution ∈ ((serviceApplication setup mode deadline leaks).roundsFrom
+      (serviceInitialLaw setup mode) scheduler players count).support) :
+    OwnFreshCalls setup leaks bound execution who ∧ OneCallPerEvent setup leaks execution who := by
+  apply sourceServiceTurnPolicy_freshCalls_reference
+    (reference := compileEventProfile setup.program profile) <;> assumption
 
 end Vegas

@@ -70,12 +70,13 @@ theorem submittedEvent_canonicalServiceDecision (who : Player)
     cases submitted
   · exact (Option.some.inj (named.symm.trans submitted)).symm
 
-theorem sourceServiceCanonicalPolicy_submitsAtTurn (profile : BehavioralProfile setup.program)
+theorem sourceServiceCanonicalPolicy_submitsAtTurn_reference (reference :
+    (serviceGraph setup mode).BehavioralProfile)
     (who : Player) :
-    SubmitsAtTurn setup leaks (serviceCanonicalPolicy setup mode deadline leaks profile who)
+    SubmitsAtTurn setup leaks (serviceReferencePolicy setup mode deadline leaks reference who)
         who := by
   intro past view response chosen event submitted
-  unfold serviceCanonicalPolicy serviceReferencePolicy at chosen
+  unfold serviceReferencePolicy at chosen
   split at chosen
   · rename_i identity
     split at chosen
@@ -101,12 +102,20 @@ theorem sourceServiceCanonicalPolicy_submitsAtTurn (profile : BehavioralProfile 
     subst chosen
     simp [EventGraphRuntime.submittedEvent?] at submitted
 
-theorem sourceServiceCanonicalOpportunity_submitsAtTurn
-    (bound : (serviceGraph setup mode).EventId → Nat) (profile : BehavioralProfile setup.program)
+theorem sourceServiceCanonicalPolicy_submitsAtTurn (profile : BehavioralProfile setup.program)
+    (who : Player) :
+    SubmitsAtTurn setup leaks (serviceCanonicalPolicy setup mode deadline leaks profile who)
+        who := by
+  apply sourceServiceCanonicalPolicy_submitsAtTurn_reference
+    (reference := compileEventProfile setup.program profile)
+
+theorem sourceServiceCanonicalOpportunity_submitsAtTurn_reference
+    (bound : (serviceGraph setup mode).EventId → Nat) (reference :
+      (serviceGraph setup mode).BehavioralProfile)
     (who : Player) (event : (serviceGraph setup mode).EventId) : SubmitsAtTurn setup leaks
-      (serviceCanonicalOpportunity setup mode deadline leaks bound profile who event) who := by
+      (serviceReferenceOpportunity setup mode deadline leaks bound reference who event) who := by
   intro past view response chosen other submitted
-  unfold serviceCanonicalOpportunity serviceReferenceOpportunity at chosen
+  unfold serviceReferenceOpportunity at chosen
   split at chosen
   · exact silentPolicy_submitsAtTurn setup leaks who past view response chosen other submitted
   · split at chosen
@@ -117,10 +126,18 @@ theorem sourceServiceCanonicalOpportunity_submitsAtTurn
           submitted
       · rw [PMF.mem_support_pure_iff] at member
         subst member
-        exact sourceServiceCanonicalPolicy_submitsAtTurn setup leaks profile who past view
+        exact sourceServiceCanonicalPolicy_submitsAtTurn_reference setup leaks reference who past
+          view
           response decidedChosen other submitted
     · exact silentPolicy_submitsAtTurn setup leaks who past view response chosen other
         submitted
+
+theorem sourceServiceCanonicalOpportunity_submitsAtTurn
+    (bound : (serviceGraph setup mode).EventId → Nat) (profile : BehavioralProfile setup.program)
+    (who : Player) (event : (serviceGraph setup mode).EventId) : SubmitsAtTurn setup leaks
+      (serviceCanonicalOpportunity setup mode deadline leaks bound profile who event) who := by
+  apply sourceServiceCanonicalOpportunity_submitsAtTurn_reference
+    (reference := compileEventProfile setup.program profile)
 
 theorem turnScheduledPolicy_submitsAtTurn
     (turn : List (serviceApplication setup mode deadline leaks).PlayerEntry →
@@ -151,25 +168,35 @@ theorem policyMixture_submitsAtTurn {Index : Type} (initial : PMF Index)
   obtain ⟨index, _, member⟩ := Set.mem_iUnion₂.mp chosen
   exact each index past view response member event submitted
 
-theorem sourceServiceTurnPolicy_submitsAtTurn (bound : (serviceGraph setup mode).EventId → Nat)
+theorem sourceServiceTurnPolicy_submitsAtTurn_reference (bound :
+    (serviceGraph setup mode).EventId → Nat)
     (turns : Nat) (timing : TurnTiming setup turns mode)
-    (profile : BehavioralProfile setup.program) (who : Player) :
+    (reference : (serviceGraph setup mode).BehavioralProfile) (who : Player) :
     SubmitsAtTurn setup leaks
-        (serviceTurnPolicy setup mode deadline leaks bound turns timing profile who)
+        (serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing reference who)
       who := by
   intro past view response chosen event submitted
-  unfold serviceTurnPolicy serviceReferenceTurnPolicy at chosen
+  unfold serviceReferenceTurnPolicy at chosen
   split at chosen
   · exact silentPolicy_submitsAtTurn setup leaks who past view response chosen event submitted
   · split at chosen
     · rename_i turnEvent _ owned
       exact policyMixture_submitsAtTurn setup leaks _ _ who (fun slot =>
         turnScheduledPolicy_submitsAtTurn setup leaks _ _ _ _ who
-          (sourceServiceCanonicalOpportunity_submitsAtTurn setup leaks bound profile who
+          (sourceServiceCanonicalOpportunity_submitsAtTurn_reference setup leaks bound reference who
             turnEvent)
           (silentPolicy_submitsAtTurn setup leaks who)) past view response chosen event submitted
     · exact silentPolicy_submitsAtTurn setup leaks who past view response chosen event
         submitted
+
+theorem sourceServiceTurnPolicy_submitsAtTurn (bound : (serviceGraph setup mode).EventId → Nat)
+    (turns : Nat) (timing : TurnTiming setup turns mode)
+    (profile : BehavioralProfile setup.program) (who : Player) :
+    SubmitsAtTurn setup leaks
+        (serviceTurnPolicy setup mode deadline leaks bound turns timing profile who)
+      who := by
+  apply sourceServiceTurnPolicy_submitsAtTurn_reference
+    (reference := compileEventProfile setup.program profile)
 
 /-- Deciding a fixed action at the first turn submits only for that event,
 and only at an input where it is the owner's turn. -/

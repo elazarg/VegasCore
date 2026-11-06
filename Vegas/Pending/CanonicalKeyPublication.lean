@@ -40,7 +40,8 @@ theorem actor_of_publication {event : graph.EventId}
       exact ⟨owner, nodeView_resolve_actor outputEq codeEq⟩
 
 omit [DecidableEq Player] in
-private theorem openAction_eq_cast_true {event : graph.EventId} {payload : L.Ty}
+/-- The opening action of a publication is the cast `true` action. -/
+theorem openAction_eq_cast_true {event : graph.EventId} {payload : L.Ty}
     (outputEq : graph.outputLayout event = .publication payload)
     (publication : (graph.outputLayout event).IsPublication) :
     EventField.openAction _ publication = cast (congrArg EventField.Action outputEq.symm) true := by

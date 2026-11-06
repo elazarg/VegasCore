@@ -254,6 +254,24 @@ theorem sourceServiceTurn_of_not_turn (who : Player) (event : (serviceGraph setu
   simp only [serviceTurn, other, ↓reduceIte]
 
 /-- At its own turn a player follows the event's timing mixture. -/
+theorem sourceServiceTurnPolicy_turn_reference (bound : (serviceGraph setup mode).EventId → Nat)
+    (turns : Nat)
+    (timing : TurnTiming setup turns mode)
+    (reference : (serviceGraph setup mode).BehavioralProfile) (who : Player)
+    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (view : (serviceApplication setup mode deadline leaks).PlayerView)
+    (event : (serviceGraph setup mode).EventId)
+    (owned : (serviceGraph setup mode).actor? event = some who)
+    (serving : view.application.publicView.ownTurn? who = some event) :
+    serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing reference who past
+      view =
+      ((serviceApplication setup mode deadline leaks).policyMixture (timing event who owned)
+        (serviceReferenceTurnFamily setup mode deadline leaks bound reference who event
+          turns)).policy past
+        view := by
+  simp only [serviceReferenceTurnPolicy, serving, owned, ↓reduceDIte]
+
+/-- At its own turn a player follows the event's timing mixture. -/
 theorem sourceServiceTurnPolicy_turn (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (timing : TurnTiming setup turns mode)
     (profile : BehavioralProfile setup.program) (who : Player)
@@ -265,9 +283,9 @@ theorem sourceServiceTurnPolicy_turn (bound : (serviceGraph setup mode).EventId 
     serviceTurnPolicy setup mode deadline leaks bound turns timing profile who past view =
       ((serviceApplication setup mode deadline leaks).policyMixture (timing event who owned)
         (serviceTurnFamily setup mode deadline leaks bound profile who event turns)).policy past
-        view := by
-  simp only [serviceTurnPolicy, serviceReferenceTurnPolicy, serving, owned, ↓reduceDIte]
-  rfl
+        view :=
+  sourceServiceTurnPolicy_turn_reference setup leaks bound turns timing
+    (compileEventProfile setup.program profile) who past view event owned serving
 
 section FirstTurn
 
@@ -290,6 +308,33 @@ theorem sourceServiceTurn_first {owner : Player} {event : (serviceGraph setup mo
   · cases first
 
 /-- A pure first-turn timing retains its selection after every own transcript. -/
+theorem sourceServiceTurnPolicy_firstTurn_reference {bound :
+    (serviceGraph setup mode).EventId → Nat}
+    {turns : Nat} {reference : (serviceGraph setup mode).BehavioralProfile} {who : Player}
+    {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
+    {view : (serviceApplication setup mode deadline leaks).PlayerView}
+    {event : (serviceGraph setup mode).EventId}
+    (owned : (serviceGraph setup mode).actor? event = some who)
+    (first : serviceTurn setup mode deadline leaks who event past view = some 0) :
+    serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+      (firstTurnTiming setup turns mode)
+        reference who past view =
+      serviceReferenceOpportunity setup mode deadline leaks bound reference who event past view
+        := by
+  let app := serviceApplication setup mode deadline leaks
+  let family := serviceReferenceTurnFamily setup mode deadline leaks bound reference who event turns
+  have pin : (app.policyMixture (PMF.pure (0 : Fin (turns + 1))) family).posterior past =
+      PMF.pure 0 := by
+    simpa only [List.nil_append] using app.policyMixture_posterior_pure_append
+      (PMF.pure (0 : Fin (turns + 1))) family [] past 0 rfl
+  rw [sourceServiceTurnPolicy_turn_reference setup leaks bound turns _ reference who past view
+    event owned
+    (sourceServiceTurn_first first).1]
+  change (app.policyMixture (PMF.pure (0 : Fin (turns + 1))) family).policy past view = _
+  rw [app.policyMixture_policy, pin, PMF.pure_bind]
+  exact app.turnScheduledPolicy_selected _ (0 : Fin (turns + 1)) _ _ past view first
+
+/-- A pure first-turn timing retains its selection after every own transcript. -/
 theorem sourceServiceTurnPolicy_firstTurn {bound : (serviceGraph setup mode).EventId → Nat}
     {turns : Nat} {profile : BehavioralProfile setup.program} {who : Player}
     {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
@@ -300,18 +345,36 @@ theorem sourceServiceTurnPolicy_firstTurn {bound : (serviceGraph setup mode).Eve
     serviceTurnPolicy setup mode deadline leaks bound turns (firstTurnTiming setup turns mode)
         profile who past view =
       serviceCanonicalOpportunity setup mode deadline leaks bound profile who event past view := by
+  apply sourceServiceTurnPolicy_firstTurn_reference
+    (reference := compileEventProfile setup.program profile) <;> assumption
+
+
+/-- A pure first-turn client is silent at every later turn at the event. -/
+theorem sourceServiceTurnPolicy_laterTurn_reference {bound :
+    (serviceGraph setup mode).EventId → Nat}
+    {turns : Nat} {reference : (serviceGraph setup mode).BehavioralProfile} {who : Player}
+    {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
+    {view : (serviceApplication setup mode deadline leaks).PlayerView}
+    {event : (serviceGraph setup mode).EventId}
+    (owned : (serviceGraph setup mode).actor? event = some who)
+    (serving : view.application.publicView.ownTurn? who = some event)
+    (later : serviceTurn setup mode deadline leaks who event past view ≠ some 0) :
+    serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+      (firstTurnTiming setup turns mode)
+        reference who past view = PMF.pure ⟨none⟩ := by
   let app := serviceApplication setup mode deadline leaks
-  let family := serviceTurnFamily setup mode deadline leaks bound profile who event turns
+  let family := serviceReferenceTurnFamily setup mode deadline leaks bound reference who event turns
   have pin : (app.policyMixture (PMF.pure (0 : Fin (turns + 1))) family).posterior past =
       PMF.pure 0 := by
     simpa only [List.nil_append] using app.policyMixture_posterior_pure_append
       (PMF.pure (0 : Fin (turns + 1))) family [] past 0 rfl
-  rw [sourceServiceTurnPolicy_turn setup leaks bound turns _ profile who past view event owned
-    (sourceServiceTurn_first first).1]
+  rw [sourceServiceTurnPolicy_turn_reference setup leaks bound turns _ reference who past view
+    event owned
+    serving]
   change (app.policyMixture (PMF.pure (0 : Fin (turns + 1))) family).policy past view = _
   rw [app.policyMixture_policy, pin, PMF.pure_bind]
-  exact app.turnScheduledPolicy_selected _ (0 : Fin (turns + 1)) _ _ past view first
-
+  exact app.turnScheduledPolicy_unselected _ (some (0 : Fin (turns + 1))) _ _ past view
+    (fun slot selected => by cases selected; exact later)
 
 /-- A pure first-turn client is silent at every later turn at the event. -/
 theorem sourceServiceTurnPolicy_laterTurn {bound : (serviceGraph setup mode).EventId → Nat}
@@ -324,18 +387,8 @@ theorem sourceServiceTurnPolicy_laterTurn {bound : (serviceGraph setup mode).Eve
     (later : serviceTurn setup mode deadline leaks who event past view ≠ some 0) :
     serviceTurnPolicy setup mode deadline leaks bound turns (firstTurnTiming setup turns mode)
         profile who past view = PMF.pure ⟨none⟩ := by
-  let app := serviceApplication setup mode deadline leaks
-  let family := serviceTurnFamily setup mode deadline leaks bound profile who event turns
-  have pin : (app.policyMixture (PMF.pure (0 : Fin (turns + 1))) family).posterior past =
-      PMF.pure 0 := by
-    simpa only [List.nil_append] using app.policyMixture_posterior_pure_append
-      (PMF.pure (0 : Fin (turns + 1))) family [] past 0 rfl
-  rw [sourceServiceTurnPolicy_turn setup leaks bound turns _ profile who past view event owned
-    serving]
-  change (app.policyMixture (PMF.pure (0 : Fin (turns + 1))) family).policy past view = _
-  rw [app.policyMixture_policy, pin, PMF.pure_bind]
-  exact app.turnScheduledPolicy_unselected _ (some (0 : Fin (turns + 1))) _ _ past view
-    (fun slot selected => by cases selected; exact later)
+  apply sourceServiceTurnPolicy_laterTurn_reference
+    (reference := compileEventProfile setup.program profile) <;> assumption
 
 end FirstTurn
 
