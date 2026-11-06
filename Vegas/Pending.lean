@@ -6,6 +6,7 @@ import Vegas.Pending.CanonicalKeyPublication
 import Vegas.Pending.CanonicalOutcomePublication
 import Vegas.Pending.CanonicalOutcomeHead
 import Vegas.Pending.LastKeyLaw
+import Vegas.Pending.LastErasedKeyLaw
 import Vegas.Pending.EventActivationOrigin
 import Vegas.Pending.EventApplication
 import Vegas.Pending.EventAssociationInvariant
