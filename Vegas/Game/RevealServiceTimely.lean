@@ -6,13 +6,13 @@ import Vegas.Game.SourceServiceCanonicalAcceptance
 import Vegas.Game.SourceServiceCanonicalSlots
 import Vegas.Game.SourceServiceTurnSubmissions
 import Vegas.Game.SourceServiceFirstTurnMixture
-import Vegas.Pending.CanonicalKeyPublication
+import Vegas.Pending.CanonicalOutcomePublication
 
 /-! # Honest publications never expire
 
 A first-turn client of a reference that opens every publication sends a fresh
-opening at its first turn at each ready publication, provided the publication's
-binding holds a value. Before that turn the reaction contract keeps the event
+opening at its first turn at each ready publication whose binding holds a
+value. Before that turn the reaction contract keeps the event
 inside its protected window; after it, protected inclusion settles the call
 before the deadline. So an honest owner's ready publication is always within its
 deadline at a scheduler boundary, on every execution mode.
@@ -29,24 +29,34 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {deadline : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
-/-- Every ready publication of an active owner holds an openable binding. -/
-def PublicationsEffective (config : (serviceGraph setup mode).Config) : Prop :=
-  ∀ event owner, config.cut.Ready event → (serviceGraph setup mode).actor? event = some owner →
-    owner ∉ config.defaulted →
-    ∀ publication : ((serviceGraph setup mode).outputLayout event).IsPublication,
-      EffectiveAction config event (EventField.openAction _ publication)
-
 /-- Every publication at which the owner has had a turn has a recorded fresh
-call of the owner. -/
-def PublicationsCalled (bound : (serviceGraph setup mode).EventId → Nat)
+call of the owner, unless its binding holds a failure. -/
+def PublicationsSettled (bound : (serviceGraph setup mode).EventId → Nat)
     (execution : (serviceApplication setup mode deadline leaks).Execution) (owner : Player) :
     Prop :=
   ∀ event, ((serviceGraph setup mode).outputLayout event).IsPublication →
     (∃ entry ∈ execution.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner = some event) →
-    ∃ entry ∈ execution.logs owner, ∃ message, FreshCall setup leaks owner event bound entry message
+    (∃ entry ∈ execution.logs owner, ∃ message,
+      FreshCall setup leaks owner event bound entry message) ∨
+    BindingFails execution.application.config event
 
 variable {setup leaks}
+
+/-- A publication whose binding holds a value can be opened. -/
+theorem effectiveAction_of_bindingHolds (config : (serviceGraph setup mode).Config)
+    (event : (serviceGraph setup mode).EventId)
+    (publication : ((serviceGraph setup mode).outputLayout event).IsPublication)
+    (holds : BindingHolds config event) :
+    EffectiveAction config event (EventField.openAction _ publication) := by
+  unfold BindingHolds at holds
+  unfold EffectiveAction
+  cases view : nodeView (serviceGraph setup mode) event with
+  | resolve owner payload binding checks outputEq codeEq =>
+      rw [view] at holds
+      exact fun _ => holds
+  | bind owner payload outputEq codeEq => trivial
+  | sample payload law outputEq codeEq => trivial
 
 /-- The canonical opening of an effective publication transmits. -/
 theorem canonicalServiceDecision_opening_transmits {horizon : Nat}
@@ -174,7 +184,7 @@ theorem FreshCall.sole {horizon : Nat}
     (submitted other otherRecall second emittedOther secondAddressed)
     (submitted entry entryMember message call.emitted call.addressed) emittedOther call.emitted)
 
-private theorem publicationsCalled_round {horizon : Nat}
+private theorem publicationsSettled_round {horizon : Nat}
     {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
     {delay bound : (serviceGraph setup mode).EventId → Nat}
     (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
@@ -189,11 +199,10 @@ private theorem publicationsCalled_round {horizon : Nat}
     (execution next : (serviceApplication setup mode deadline leaks).Execution)
     (supported : execution ∈ ((serviceApplication setup mode deadline leaks).roundsFrom
       (serviceInitialLaw setup mode) scheduler players count).support)
-    (effective : PublicationsEffective setup execution.application.config)
-    (called : PublicationsCalled setup leaks bound execution owner)
+    (called : PublicationsSettled setup leaks bound execution owner)
     (reached : next ∈ ((serviceApplication setup mode deadline leaks).round scheduler players
       execution).support) :
-    PublicationsCalled setup leaks bound next owner := by
+    PublicationsSettled setup leaks bound next owner := by
   let app := serviceApplication setup mode deadline leaks
   obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon scheduler
     players count (by omega) execution supported
@@ -206,27 +215,40 @@ private theorem publicationsCalled_round {horizon : Nat}
     execution supported
   obtain ⟨command, selected, middle, moved, cases⟩ := round_cases setup leaks reached
   have recallEq := app.environmentStep_recall execution middle command moved
-  have calledMiddle : PublicationsCalled setup leaks bound middle owner := by
-    unfold PublicationsCalled
-    rw [recallEq]
-    exact called
+  have keptMiddle := (keepsStore_step (serviceRuntime setup mode deadline) leaks).environmentStep
+    execution middle command moved
+  have calledMiddle : PublicationsSettled setup leaks bound middle owner := by
+    intro event publication turned
+    rw [recallEq] at turned
+    rcases called event publication turned with ⟨entry, member, message, call⟩ | failed
+    · exact Or.inl ⟨entry, by rw [recallEq]; exact member, message, call⟩
+    · exact Or.inr (BindingFails.keep keptMiddle failed)
   rcases cases with ⟨_, rfl⟩ | ⟨who, active, response, chosen, rfl⟩
   · exact calledMiddle
   by_cases same : who = owner
   swap
   · have recallSame := app.respond_recall_other middle who owner (Ne.symm same) response
-    unfold PublicationsCalled
-    rw [recallSame]
-    exact calledMiddle
+    have kept := (keepsStore_step (serviceRuntime setup mode deadline) leaks).respond middle who
+      response
+    intro event publication turned
+    rw [recallSame] at turned
+    rcases calledMiddle event publication turned with ⟨entry, member, message, call⟩ | failed
+    · exact Or.inl ⟨entry, by rw [recallSame]; exact member, message, call⟩
+    · exact Or.inr (BindingFails.keep kept failed)
   subst who
   obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle owner response
+  have kept := (keepsStore_step (serviceRuntime setup mode deadline) leaks).respond middle owner
+    response
   intro event publication ⟨entry, member, turn⟩
   have old (prior : ∃ entry ∈ middle.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner = some event) :
-      ∃ entry ∈ (middle.respond app owner response).logs owner, ∃ message,
-        FreshCall setup leaks owner event bound entry message := by
-    obtain ⟨call, callMember, message, isCall⟩ := calledMiddle event publication prior
-    exact ⟨call, by rw [recalled]; exact List.mem_append_left _ callMember, message, isCall⟩
+      (∃ entry ∈ (middle.respond app owner response).logs owner, ∃ message,
+        FreshCall setup leaks owner event bound entry message) ∨
+      BindingFails (middle.respond app owner response).application.config event := by
+    rcases calledMiddle event publication prior with ⟨call, callMember, message, isCall⟩ | failed
+    · exact Or.inl
+        ⟨call, by rw [recalled]; exact List.mem_append_left _ callMember, message, isCall⟩
+    · exact Or.inr (BindingFails.keep kept failed)
   rw [recalled] at member
   rcases List.mem_append.mp member with present | fresh
   · exact old ⟨entry, present, turn⟩
@@ -263,10 +285,13 @@ private theorem publicationsCalled_round {horizon : Nat}
   obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup mode) horizon
     scheduler (horizon - (count + 1)) execution middle (.activate owner) trace selected moved
   rw [active] at middleTrace
+  rcases bindingHolds_or_fails middle.application.config event ready publication with
+    holds | failed
+  swap
+  · exact Or.inr (BindingFails.keep kept failed)
   have effectiveMiddle : EffectiveAction middle.application.config event
-      (EventField.openAction _ publication) := by
-    rw [appEq]
-    exact effective event owner readyBefore owned activeBefore publication
+      (EventField.openAction _ publication) :=
+    effectiveAction_of_bindingHolds middle.application.config event publication holds
   have activeMiddle : owner ∉ middle.application.config.defaulted := by
     rw [appEq]
     exact activeBefore
@@ -310,11 +335,11 @@ private theorem publicationsCalled_round {horizon : Nat}
     simp only [ReactiveApplication.Execution.respond, ↓reduceIte]
     rfl
   rw [recalledExact]
-  exact ⟨_, List.mem_append_right _ (List.mem_singleton_self _), _, call⟩
+  exact Or.inl ⟨_, List.mem_append_right _ (List.mem_singleton_self _), _, call⟩
 
 /-- Every publication at which a first-turn owner has had a turn carries a
-recorded fresh call, when publications are effective along the run. -/
-theorem publicationsCalled_roundsFrom {horizon : Nat}
+recorded fresh call, unless its binding holds a failure. -/
+theorem publicationsSettled_roundsFrom {horizon : Nat}
     {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
     {delay bound : (serviceGraph setup mode).EventId → Nat}
     (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
@@ -324,15 +349,11 @@ theorem publicationsCalled_roundsFrom {horizon : Nat}
     {turns : Nat} (reference : (serviceGraph setup mode).BehavioralProfile)
     (opens : OpensPublications reference)
     (follows : players owner = serviceReferenceTurnPolicy setup mode deadline leaks bound turns
-      (firstTurnTiming setup turns mode) reference owner)
-    (effective : ∀ count execution, count ≤ horizon →
-      execution ∈ ((serviceApplication setup mode deadline leaks).roundsFrom
-        (serviceInitialLaw setup mode) scheduler players count).support →
-      PublicationsEffective setup execution.application.config) :
+      (firstTurnTiming setup turns mode) reference owner) :
     ∀ count execution, count ≤ horizon →
       execution ∈ ((serviceApplication setup mode deadline leaks).roundsFrom
         (serviceInitialLaw setup mode) scheduler players count).support →
-      PublicationsCalled setup leaks bound execution owner := by
+      PublicationsSettled setup leaks bound execution owner := by
   let app := serviceApplication setup mode deadline leaks
   intro count
   induction count with
@@ -346,14 +367,13 @@ theorem publicationsCalled_roundsFrom {horizon : Nat}
       intro execution within reached
       rw [app.roundsFrom_succ] at reached
       obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      exact publicationsCalled_round contract timely players owner reference opens follows count
-        within prior execution priorMem (effective count prior (by omega) priorMem)
-        (ih prior (by omega) priorMem) moved
+      exact publicationsSettled_round contract timely players owner reference opens follows count
+        within prior execution priorMem (ih prior (by omega) priorMem) moved
 
 /-- **Honest publications never expire.** Under the asynchronous contract and
 its timing budget, a ready publication of a first-turn owner of an opening
-reference is within its deadline at every scheduler boundary, whatever the other
-players and the scheduler do, when publications are effective along the run. -/
+reference whose binding holds a value is within its deadline at every scheduler
+boundary, whatever the other players and the scheduler do. -/
 theorem honestPublication_withinDeadline {horizon : Nat}
     {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
     {delay bound : (serviceGraph setup mode).EventId → Nat}
@@ -365,10 +385,6 @@ theorem honestPublication_withinDeadline {horizon : Nat}
     (opens : OpensPublications reference)
     (follows : players owner = serviceReferenceTurnPolicy setup mode deadline leaks bound turns
       (firstTurnTiming setup turns mode) reference owner)
-    (effective : ∀ count execution, count ≤ horizon →
-      execution ∈ ((serviceApplication setup mode deadline leaks).roundsFrom
-        (serviceInitialLaw setup mode) scheduler players count).support →
-      PublicationsEffective setup execution.application.config)
     (count : Nat) (within : count ≤ horizon)
     (execution : (serviceApplication setup mode deadline leaks).Execution)
     (supported : execution ∈ ((serviceApplication setup mode deadline leaks).roundsFrom
@@ -376,16 +392,19 @@ theorem honestPublication_withinDeadline {horizon : Nat}
     (event : (serviceGraph setup mode).EventId)
     (owned : (serviceGraph setup mode).actor? event = some owner)
     (ready : execution.application.config.cut.Ready event)
-    (publication : ((serviceGraph setup mode).outputLayout event).IsPublication) :
+    (publication : ((serviceGraph setup mode).outputLayout event).IsPublication)
+    (holds : BindingHolds execution.application.config event) :
     execution.application.WithinDeadline (serviceRuntime setup mode deadline) event := by
   let app := serviceApplication setup mode deadline leaks
   obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon scheduler
     players count within execution supported
   by_cases turned : ∃ entry ∈ execution.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner = some event
-  · obtain ⟨entry, member, message, call⟩ := publicationsCalled_roundsFrom contract timely
-      players owner reference opens follows effective count execution within supported event
+  · obtain ⟨entry, member, message, call⟩ | failed := publicationsSettled_roundsFrom contract
+      timely players owner reference opens follows count execution within supported event
       publication turned
+    swap
+    · exact (holds.not_fails failed).elim
     obtain ⟨earlier, later, split⟩ := List.mem_iff_append.mp member
     have once := (sourceServiceTurnPolicy_freshCalls_reference scheduler players owner
       (firstTurnTiming setup turns mode) reference follows count execution supported).2

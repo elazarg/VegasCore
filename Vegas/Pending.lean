@@ -3,6 +3,7 @@
 import Vegas.Pending.AcceptedEventOwnership
 import Vegas.Pending.CanonicalKeyLaw
 import Vegas.Pending.CanonicalKeyPublication
+import Vegas.Pending.CanonicalOutcomePublication
 import Vegas.Pending.EventActivationOrigin
 import Vegas.Pending.EventApplication
 import Vegas.Pending.EventAssociationInvariant
