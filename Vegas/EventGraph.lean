@@ -19,6 +19,7 @@ import Vegas.EventGraph.PolicyPatch
 import Vegas.EventGraph.LastErasedLaw
 import Vegas.EventGraph.NormalizedRestriction
 import Vegas.EventGraph.LastKeyTarget
+import Vegas.EventGraph.HonestClosure
 import Vegas.EventGraph.PrefixRestriction
 import Vegas.EventGraph.FootprintIndependence
 import Vegas.EventGraph.ErasureTwin
