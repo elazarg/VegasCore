@@ -407,3 +407,4 @@ import Vegas.Game.RevealBlockTraffic
 import Vegas.Game.RevealServiceEffectiveTimely
 import Vegas.Game.RevealServiceEffectiveHonestLaw
 import Vegas.Game.RevealServiceEffectiveOutcomeLaw
+import Vegas.Game.RevealBlockRecords

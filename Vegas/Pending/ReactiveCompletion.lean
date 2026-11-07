@@ -123,7 +123,9 @@ theorem State.drain_new_completion (state : State graph) (record : graph.Complet
             simpa only [before.completeAutomatic_defaulted event eligible] using inactive⟩
   exact origin state.drain_trace fresh present
 
-private theorem native_new_completion_cases (runtime : EventGraphRuntime graph)
+/-- A record newly appended by a native environment command comes from a due expiry
+or from chance. -/
+theorem native_new_completion_cases (runtime : EventGraphRuntime graph)
     (state native : State graph) (command : EnvironmentCommand graph)
     (supported : native ∈ (environmentStep runtime state command).support)
     (record : graph.Completion) (fresh : record ∉ state.config.history)

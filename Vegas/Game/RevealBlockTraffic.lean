@@ -2,6 +2,7 @@
 
 import Vegas.Game.ReferenceForeignTraffic
 import Vegas.Pending.CanonicalKeyPublication
+import Vegas.Pending.EffectiveOpening
 
 /-! # Deviator traffic across a block of concurrent reveals
 
@@ -306,24 +307,24 @@ theorem blockRound_readout_congr
         change blockCounters left = blockCounters right
         exact sameCounters
 
-/-- A first-turn reference client at its own publication, where the reference
-opens, is the decided opener there. -/
-theorem referenceTurnPolicy_eq_decided_of_opens
+/-- A first-turn reference client at its own event, where the reference's
+kernel is a point mass, is the decided client of that action there. -/
+theorem referenceTurnPolicy_eq_decided_of_kernel
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (reference : (serviceGraph setup mode).BehavioralProfile) (owner : Player)
     (event : (serviceGraph setup mode).EventId)
     (owned : (serviceGraph setup mode).actor? event = some owner)
-    (publication : ((serviceGraph setup mode).outputLayout event).IsPublication)
     (execution : (serviceApplication setup mode deadline leaks).Execution)
     (turn : execution.application.publicView.ownTurn? owner = some event)
     (active : owner ∉ execution.application.config.defaulted)
+    (action : (serviceGraph setup mode).Action event)
     (opens : reference owner event owned
         ((serviceGraph setup mode).playerObserve owner execution.application.config) active =
-      PMF.pure (EventField.openAction _ publication)) :
+      PMF.pure action) :
     serviceReferenceTurnPolicy setup mode deadline leaks bound turns
         (firstTurnTiming setup turns mode) reference owner (execution.logs owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner) =
-      decidedTurnPolicy setup leaks bound owner event (EventField.openAction _ publication)
+      decidedTurnPolicy setup leaks bound owner event action
         (execution.logs owner)
         (execution.observe (serviceApplication setup mode deadline leaks) owner) := by
   let app := serviceApplication setup mode deadline leaks
@@ -351,7 +352,7 @@ theorem referenceTurnPolicy_eq_decided_of_opens
       event turn owned, dite_eq_right active]
     have opened : reference owner event owned
         (id ((serviceGraph setup mode).playerObserve owner execution.application.config))
-        active = PMF.pure (EventField.openAction _ publication) := opens
+        active = PMF.pure action := opens
     rw [opened, PMF.pure_map, PMF.pure_bind]
   · have unselected : ∀ (slot : Fin (turns + 1)), some (0 : Fin (turns + 1)) = some slot →
         serviceTurn setup mode deadline leaks owner event (execution.logs owner)
@@ -368,15 +369,80 @@ theorem referenceTurnPolicy_eq_decided_of_opens
     rw [app.turnScheduledPolicy_unselected _ _ _ _ _ _ unselected,
       app.turnScheduledPolicy_unselected _ _ _ _ _ _ unselectedOne]
 
+/-- Acceptance of an opening agrees on stores with the same binding and public
+fields. -/
+theorem openingAccepted_congr_public {event : (serviceGraph setup mode).EventId}
+    {owner : Player} {payload : L.Ty}
+    {binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
+    {checks : List (GuardCheck (serviceGraph setup mode).layout payload)}
+    {outputEq : (serviceGraph setup mode).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks}
+    (node : nodeView (serviceGraph setup mode) event =
+      .resolve owner payload binding checks outputEq codeEq)
+    {left right : EventGraph.Store (serviceGraph setup mode).layout}
+    (bound : binding.get? left = binding.get? right)
+    (publicStores : (serviceGraph setup mode).publicStore left =
+      (serviceGraph setup mode).publicStore right) :
+    openingAccepted event left = openingAccepted event right := by
+  have checked (proposal : PublicationResult (L.Val payload)) :
+      GuardCheck.allAccepted? checks left proposal =
+        GuardCheck.allAccepted? checks right proposal := by
+    rw [← GuardCheck.allAccepted?_publicStore checks left, publicStores,
+      GuardCheck.allAccepted?_publicStore]
+  unfold openingAccepted
+  rw [node]
+  simp only [EventCode.resolveOutput?, bound, checked]
+
+/-- A decided client that withholds at its own ready reveal is silent. -/
+theorem decidedTurnPolicy_withhold_silent (bound : (serviceGraph setup mode).EventId → Nat)
+    {owner : Player} {event : (serviceGraph setup mode).EventId}
+    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (ready : execution.application.config.cut.Ready event)
+    (owned : (serviceGraph setup mode).actor? event = some owner) {payload : L.Ty}
+    {binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
+    {checks : List (GuardCheck (serviceGraph setup mode).layout payload)}
+    {outputEq : (serviceGraph setup mode).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks}
+    (node : nodeView (serviceGraph setup mode) event =
+      .resolve owner payload binding checks outputEq codeEq) :
+    decidedTurnPolicy setup leaks bound owner event
+        (cast (congrArg EventField.Action outputEq.symm) false) (execution.logs owner)
+        (execution.observe (serviceApplication setup mode deadline leaks) owner) =
+      PMF.pure ⟨none⟩ := by
+  by_cases first : ownerTurns owner event execution = 0
+  · rw [decidedTurnPolicy_open _ execution ready owned first]
+    unfold decidedOpportunity
+    rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_resolution_false leaks
+      owner _ _ event owner payload binding checks outputEq codeEq node]
+    split_ifs <;> rfl
+  · apply decidedTurnPolicy_closed _ execution ready owned
+    exact fun opened => first opened.1
+
 /-- **An honest client in a block.** Among concurrently ready reveals, a
-reference client that opens its publications answers an activation with a
-point mass, alike from executions with equal compared readouts and equal
-stored bindings at ready reveals: the opening of its stored value, or silence. -/
+reference client that opens a publication exactly when the opening would be
+accepted answers an activation with a point mass, alike from executions with
+equal compared readouts and equal stored bindings at ready reveals: the opening
+of its stored value, or silence. -/
 theorem honest_block_matched {horizon leftRemaining rightRemaining : Nat}
     {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (reference : (serviceGraph setup mode).BehavioralProfile)
-    (opens : OpensPublications reference) (who : Player)
+    (decides : ∀ (config : (serviceGraph setup mode).Config)
+      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
+      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup mode) event =
+        .resolve owner payload binding checks outputEq codeEq →
+      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
+        reference owner event actor ((serviceGraph setup mode).playerObserve owner config)
+          active = PMF.pure (cast (congrArg EventField.Action outputEq.symm)
+            (openingAccepted event config.store))) (who : Player)
     (deviation : (serviceApplication setup mode deadline leaks).Policy)
     {left right : (serviceApplication setup mode deadline leaks).Execution}
     (same : blockReadout who left = blockReadout who right)
@@ -489,12 +555,6 @@ theorem honest_block_matched {horizon leftRemaining rightRemaining : Nat}
         leftActive.application.active_of_ready_owned leftFacts.quiescent ready owned
       have rightActiveOwner : actor ∉ rightActive.application.config.defaulted :=
         rightActive.application.active_of_ready_owned rightFacts.quiescent rightReady owned
-      rw [referenceTurnPolicy_eq_decided_of_opens bound turns reference actor event owned
-          publication leftActive turnEq leftActiveOwner
-          (opens _ event actor owned publication leftActiveOwner),
-        referenceTurnPolicy_eq_decided_of_opens bound turns reference actor event owned
-          publication rightActive rightTurn rightActiveOwner
-          (opens _ event actor owned publication rightActiveOwner)]
       have counted := congrFun (congrFun sameCounters actor) event
       have sameTurns : ownerTurns actor event left = ownerTurns actor event right :=
         congrArg Prod.fst counted
@@ -513,9 +573,27 @@ theorem honest_block_matched {horizon leftRemaining rightRemaining : Nat}
           have sameOwner : owner = actor :=
             Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
           subst owner
-          rw [openAction_eq_cast_true outputEq publication]
-          let action := cast (congrArg EventField.Action outputEq.symm) true
           have storedEq := bindings event actor payload binding checks outputEq codeEq node ready
+          have publicStores : (serviceGraph setup mode).publicStore left.application.config.store =
+              (serviceGraph setup mode).publicStore right.application.config.store :=
+            congrArg (fun view : PublicView (serviceGraph setup mode) =>
+              view.observation.store) publics
+          have acceptedSame : openingAccepted event left.application.config.store =
+              openingAccepted event right.application.config.store :=
+            openingAccepted_congr_public node storedEq publicStores
+          have leftKernel := decides left.application.config event actor payload binding checks
+            outputEq codeEq node owned leftActiveOwner
+          have rightKernel := decides right.application.config event actor payload binding checks
+            outputEq codeEq node owned rightActiveOwner
+          rw [referenceTurnPolicy_eq_decided_of_kernel bound turns reference actor event owned
+              leftActive turnEq leftActiveOwner _ leftKernel,
+            referenceTurnPolicy_eq_decided_of_kernel bound turns reference actor event owned
+              rightActive rightTurn rightActiveOwner _ rightKernel, ← acceptedSame]
+          cases acceptedEq : openingAccepted event left.application.config.store
+          · exact ⟨⟨none⟩, ⟨none⟩, decidedTurnPolicy_withhold_silent bound leftActive ready owned
+              node, decidedTurnPolicy_withhold_silent bound rightActive rightReady owned node, rfl,
+              silentTraffic⟩
+          let action := cast (congrArg EventField.Action outputEq.symm) true
           by_cases opened : ownerTurns actor event left = 0 ∧
               runtime.eventRecorded leaks (left.logs actor) event = false ∧
               left.application.publicView.InclusionFitsDeadline runtime bound event
@@ -737,13 +815,27 @@ theorem BindingsAgree.get? {start finish : Nat} {left right : (serviceGraph setu
 
 /-- **The block's stopped readout.** From executions inside an unfinished
 block with equal compared readouts and agreeing stored bindings of the block's
-reveals, reference clients that open their publications, against any
-deviation, give equal laws of the readout when the block finishes. -/
+reveals, reference clients that open a publication exactly when the opening would be
+accepted, against any deviation, give equal laws of the readout when the block
+finishes. -/
 theorem block_stopped_readout_congr {horizon : Nat}
     (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (reference : (serviceGraph setup mode).BehavioralProfile)
-    (opens : OpensPublications reference) (who : Player)
+    (decides : ∀ (config : (serviceGraph setup mode).Config)
+      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
+      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup mode) event =
+        .resolve owner payload binding checks outputEq codeEq →
+      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
+        reference owner event actor ((serviceGraph setup mode).playerObserve owner config)
+          active = PMF.pure (cast (congrArg EventField.Action outputEq.symm)
+            (openingAccepted event config.store))) (who : Player)
     (deviation : (serviceApplication setup mode deadline leaks).Policy)
     (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup mode) start finish)
     (publications : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
@@ -842,7 +934,7 @@ theorem block_stopped_readout_congr {horizon : Nat}
         bounded.2
     apply blockRound_readout_congr scheduler who players equal
     · intro actor other' selected sample sampled
-      exact honest_block_matched bound turns reference opens who deviation equal currentBefore
+      exact honest_block_matched bound turns reference decides who deviation equal currentBefore
         otherBefore (fun event ready => publications event (shaped _ inside running event
           ready).1 (shaped _ inside running event ready).2) bindings actor other' selected
         sample sampled
@@ -854,5 +946,109 @@ theorem block_stopped_readout_congr {horizon : Nat}
   · exact ⟨⟨leftRemaining, ⟨leftTrace⟩⟩, leftInside, agree.self⟩
   · exact ⟨⟨rightRemaining, ⟨rightTrace⟩⟩, rightInside, rightAvailable⟩
   · exact same
+
+/-- A decided client either stays silent or sends its canonical decision. -/
+theorem decidedTurnPolicy_support (bound : (serviceGraph setup mode).EventId → Nat)
+    (owner : Player) (event : (serviceGraph setup mode).EventId)
+    (action : (serviceGraph setup mode).Action event)
+    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (view : (serviceApplication setup mode deadline leaks).PlayerView)
+    (response : (serviceApplication setup mode deadline leaks).Action)
+    (chosen : response ∈
+      (decidedTurnPolicy setup leaks bound owner event action past view).support) :
+    response = ⟨none⟩ ∨
+      response = (serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner past
+        view event action := by
+  unfold decidedTurnPolicy ReactiveApplication.turnScheduledPolicy at chosen
+  dsimp only at chosen
+  split at chosen
+  · unfold decidedOpportunity at chosen
+    split_ifs at chosen <;>
+      first
+      | exact Or.inl ((PMF.mem_support_pure_iff _ _).mp chosen)
+      | exact Or.inr ((PMF.mem_support_pure_iff _ _).mp chosen)
+  · exact Or.inl ((PMF.mem_support_pure_iff _ _).mp chosen)
+
+/-- **An honest client in a block submits only accepted reveals.** Among
+concurrently ready reveals, a first-turn effective-opening client answers an
+activation with a response that submits an event only when that event is its
+own ready reveal and its opening is accepted. -/
+theorem honest_block_submits_accepted (bound : (serviceGraph setup mode).EventId → Nat)
+    (turns : Nat) (reference : (serviceGraph setup mode).BehavioralProfile)
+    (decides : ∀ (config : (serviceGraph setup mode).Config)
+      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
+      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup mode) event =
+        .resolve owner payload binding checks outputEq codeEq →
+      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
+        reference owner event actor ((serviceGraph setup mode).playerObserve owner config)
+          active = PMF.pure (cast (congrArg EventField.Action outputEq.symm)
+            (openingAccepted event config.store)))
+    (execution : (serviceApplication setup mode deadline leaks).Execution) (owner : Player)
+    (quiescent : ∀ query, ¬ execution.application.AutomaticReady query)
+    (publications : ∀ event, execution.application.config.cut.Ready event →
+      ((serviceGraph setup mode).outputLayout event).IsPublication)
+    (response : (serviceApplication setup mode deadline leaks).Action)
+    (chosen : response ∈ (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+      (firstTurnTiming setup turns mode) reference owner (execution.logs owner)
+      (execution.observe (serviceApplication setup mode deadline leaks) owner)).support)
+    (event : (serviceGraph setup mode).EventId)
+    (submitted : (serviceRuntime setup mode deadline).submittedEvent? leaks response =
+      some event) :
+    execution.application.config.cut.Ready event ∧
+      (serviceGraph setup mode).actor? event = some owner ∧
+      openingAccepted event execution.application.config.store = true := by
+  let app := serviceApplication setup mode deadline leaks
+  cases turnEq : execution.application.publicView.ownTurn? owner with
+  | none =>
+      have silent : serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+          (firstTurnTiming setup turns mode) reference owner (execution.logs owner)
+          (execution.observe app owner) = PMF.pure ⟨none⟩ := by
+        unfold serviceReferenceTurnPolicy
+        change (match execution.application.publicView.ownTurn? owner with
+          | none => _ | some _ => _) = _
+        rw [turnEq]
+        rfl
+      rw [silent, PMF.mem_support_pure_iff] at chosen
+      subst chosen
+      cases submitted
+  | some current =>
+      obtain ⟨readyView, owned⟩ :=
+        execution.application.publicView.ownTurn?_spec owner current turnEq
+      have ready := (execution.application.publicView_eventReady current).mp readyView
+      have active : owner ∉ execution.application.config.defaulted :=
+        execution.application.active_of_ready_owned quiescent ready owned
+      obtain ⟨actorName, payload, binding, checks, outputEq, codeEq, node⟩ :=
+        exists_resolve_of_publication (publications current ready)
+      have actorSame : actorName = owner :=
+        Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
+      subst actorName
+      have kernel := decides execution.application.config current owner payload binding checks
+        outputEq codeEq node owned active
+      rw [referenceTurnPolicy_eq_decided_of_kernel bound turns reference owner current owned
+        execution turnEq active _ kernel] at chosen
+      cases acceptedEq : openingAccepted current execution.application.config.store
+      · rw [acceptedEq, decidedTurnPolicy_withhold_silent bound execution ready owned node,
+          PMF.mem_support_pure_iff] at chosen
+        subst chosen
+        cases submitted
+      · rw [acceptedEq] at chosen
+        rcases decidedTurnPolicy_support bound owner current _ _ _ response chosen with
+          silent | decided
+        · subst silent
+          cases submitted
+        · rcases (serviceRuntime setup mode deadline).canonicalServiceDecision_submittedEvent
+              leaks owner (execution.logs owner) (execution.observe app owner) current _ with
+            none | named
+          · rw [← decided, submitted] at none
+            cases none
+          · rw [← decided, submitted] at named
+            cases named
+            exact ⟨ready, owned, acceptedEq⟩
 
 end Vegas
