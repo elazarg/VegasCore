@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.EventGraph.LastKeyTarget
+import Vegas.EventGraph.PrefixRestriction
 
 /-! # The closure of the determined reveals
 
@@ -810,5 +811,76 @@ theorem step_eq_settled {config next : graph.Config} {event : graph.EventId}
   exact config.complete_congr_decision ready decisions _
 
 end Steps
+
+section Outputs
+
+variable {reference : graph.BehavioralProfile} {who : Player}
+
+/-- **The closure records a settling event's determined completion.** An event
+settling at a configuration is completed in its closure with its determined
+action's recorded decision and its determined output. -/
+theorem closure_settles_record (independent : ReadyIndependent reference) :
+    ∀ (fuel : Nat) (config : graph.Config), config.remaining = fuel →
+      ∀ (event : graph.EventId) (action : graph.Action event)
+        (value : (graph.outputLayout event).Value),
+        Settles reference who config event →
+        actionLaw reference config event = PMF.pure action →
+        (graph.nodes event).eval? (config.effectiveAction event action) config.store =
+          some (PMF.pure value) →
+        (closure reference who config).outputs event = some value ∧
+          completionOf (closure reference who config) event =
+            some (EventGraph.completion graph event (config.actualDecision event action)
+              value) := by
+  intro fuel
+  induction fuel using Nat.strong_induction_on with
+  | _ fuel ih =>
+  intro config remaining event action value settles acting evaluates
+  obtain ⟨least, leastSettles, stepEq⟩ := settleStep_of_settles settles
+  have consumed := settled_remaining leastSettles
+  rw [closure_of_settles settles, stepEq]
+  have path := closure_path reference who (settled config least leastSettles)
+  by_cases same : event = least
+  · subst same
+    have settledEq := settled_eq leastSettles acting evaluates
+    have stored : (settled config event leastSettles).store (.inr event) = some value := by
+      rw [settledEq]
+      exact config.complete_output_same event leastSettles.1 action value
+    refine ⟨Config.Step.path_store_of_some path (.inr event) value stored, ?_⟩
+    rw [Config.Step.path_completionOf_of_some path event _ (by
+      rw [settledEq, completionOf_complete, Function.update_self])]
+  · obtain ⟨leastActing, leastEvaluates⟩ := leastSettles.2.2.2.choose_spec.choose_spec
+    have settledEq := settled_eq leastSettles leastActing leastEvaluates
+    have differ := independent.actorsDiffer config leastSettles.1 settles.1 (Ne.symm same)
+    obtain ⟨after, _⟩ := Settles.after_complete independent settles leastSettles.1 same
+      leastSettles.2.2.2.choose leastSettles.2.2.2.choose_spec.choose acting evaluates
+    have afterActing : actionLaw reference (config.complete least leastSettles.1
+        leastSettles.2.2.2.choose leastSettles.2.2.2.choose_spec.choose) event =
+          PMF.pure action := by
+      rw [independent.stable config settles.1 leastSettles.1 (Ne.symm same)]
+      exact acting
+    have afterEvaluates : (graph.nodes event).eval? ((config.complete least leastSettles.1
+        leastSettles.2.2.2.choose leastSettles.2.2.2.choose_spec.choose).effectiveAction event
+          action) (config.complete least leastSettles.1 leastSettles.2.2.2.choose
+            leastSettles.2.2.2.choose_spec.choose).store = some (PMF.pure value) := by
+      rw [effectiveAction_complete_of_actorsDiffer config leastSettles.1 differ,
+        eval?_after_complete leastSettles.1 settles.1]
+      exact evaluates
+    have generalized : ∀ (stepped : graph.Config)
+        (equal : stepped = config.complete least leastSettles.1 leastSettles.2.2.2.choose
+          leastSettles.2.2.2.choose_spec.choose),
+        (closure reference who stepped).outputs event = some value ∧
+          completionOf (closure reference who stepped) event =
+            some (EventGraph.completion graph event (config.actualDecision event action)
+              value) := by
+      rintro stepped rfl
+      have steppedRemaining := settled_remaining leastSettles
+      rw [settledEq] at steppedRemaining
+      obtain ⟨outputs, records⟩ := ih _ (by omega) _ rfl event action value after afterActing
+        afterEvaluates
+      refine ⟨outputs, ?_⟩
+      rw [records, actualDecision_complete_of_actorsDiffer config leastSettles.1 differ]
+    exact generalized _ settledEq
+
+end Outputs
 
 end Vegas.EventGraph
