@@ -305,4 +305,58 @@ theorem erasureTwins_effectiveOpening (base : graph.BehavioralProfile)
         simp only [normalizeProfile, normalizePolicy, GameTheory.Profile.update_of_ne _ _ same]
         rw [effectiveOpening_of_not_publication base publication ownerEq]
 
+/-- **The normalized effective opening and the always-open base are twins.** -/
+theorem erasureTwins_effectiveOpening_honest (base : graph.BehavioralProfile)
+    (opens : ∀ owner event (actor : (graph.nodes event).actor = some owner)
+      (publication : (graph.outputLayout event).IsPublication)
+      (observation : graph.PlayerObservation owner) (active : owner ∉ observation.defaulted),
+      base owner event actor observation active =
+        PMF.pure (EventField.openAction _ publication)) :
+    ErasureTwins (graph.normalizeProfile (effectiveOpening base))
+      (graph.normalizeProfile base) := by
+  apply erasureTwins_of_pointwise
+  intro config event ready
+  cases ownerEq : (graph.nodes event).actor with
+  | none =>
+      left
+      rw [actionLaw_of_ownerless _ _ ownerEq, actionLaw_of_ownerless _ _ ownerEq]
+  | some owner =>
+      by_cases inactive : owner ∈ config.defaulted
+      · left
+        rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq, dite_eq_left inactive,
+          dite_eq_left inactive]
+      by_cases publication : (graph.outputLayout event).IsPublication
+      · obtain ⟨actorName, payload, binding, checks, outputEq, codeEq, node⟩ :=
+          exists_resolve_of_publication publication
+        have actorSame : actorName = owner :=
+          Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans ownerEq)
+        subst actorName
+        have effective : actionLaw (graph.normalizeProfile (effectiveOpening base)) config event =
+            PMF.pure (cast (congrArg EventField.Action outputEq.symm)
+              (openingAccepted event config.store)) := by
+          rw [actionLaw_of_actor _ _ ownerEq, dite_eq_right inactive]
+          exact normalize_effectiveOpening_publication base config node ownerEq _
+        have always : actionLaw (graph.normalizeProfile base) config event =
+            PMF.pure (cast (congrArg EventField.Action outputEq.symm) true) := by
+          rw [actionLaw_of_actor _ _ ownerEq, dite_eq_right inactive]
+          simp only [normalizeProfile, normalizePolicy]
+          rw [opens owner event ownerEq publication, openAction_eq_cast_true outputEq publication]
+        cases accepted : openingAccepted event config.store
+        · right
+          refine ⟨_, _, by rw [effective, accepted], always, ?_⟩
+          rw [step_of_opening_rejected config event ready node accepted,
+            step_of_opening_rejected config event ready node accepted, PMF.pure_map,
+            PMF.pure_map]
+          apply congrArg PMF.pure
+          exact Config.erase_complete_of_defaulting config event ready owner ownerEq inactive _ _ _
+            (defaultEvent_of_failed_publication event outputEq codeEq _)
+            (defaultEvent_of_failed_publication event outputEq codeEq _)
+        · left
+          rw [effective, always, accepted]
+      · left
+        rw [actionLaw_of_actor _ _ ownerEq, actionLaw_of_actor _ _ ownerEq,
+          dite_eq_right inactive, dite_eq_right inactive]
+        simp only [normalizeProfile, normalizePolicy]
+        rw [effectiveOpening_of_not_publication base publication ownerEq]
+
 end Vegas.EventGraphRuntime

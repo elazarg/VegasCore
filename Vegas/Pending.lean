@@ -8,6 +8,7 @@ import Vegas.Pending.CanonicalOutcomeHead
 import Vegas.Pending.LastKeyLaw
 import Vegas.Pending.LastErasedKeyLaw
 import Vegas.Pending.EffectiveOpening
+import Vegas.Pending.CanonicalOutcomeAccepted
 import Vegas.Pending.EventActivationOrigin
 import Vegas.Pending.EventApplication
 import Vegas.Pending.EventAssociationInvariant
