@@ -455,4 +455,127 @@ theorem concurrentEffectiveClients_deviation_bound (setup : Setup (Player := Pla
     ← viaGame, ← viaGame]
   exact bound
 
+/-- **Independent reveal phases.** Within every run of consecutive reveals of
+the compiled program, the reveals are by distinct players and none reads
+another's value. -/
+def SourceProgram.Setup.IndependentRevealPhases (setup : Setup (Player := Player) (L := L)) :
+    Prop :=
+  FlatRevealRuns (serviceGraph setup .concurrentReveals)
+
+/-- **The ledger game with concurrent reveals.** Each player chooses a native
+ledger policy; the outcome is the configuration reached by the horizon. -/
+def concurrentLedgerGame (setup : Setup (Player := Player) (L := L))
+    (deadline : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (leaks : MessageNetwork.ObservationRule Player
+      (WitnessedPacket (serviceGraph setup .concurrentReveals)))
+    (scheduler : (serviceApplication setup .concurrentReveals deadline leaks).Scheduler)
+    (horizon : Nat) : GameForm Player where
+  sig := { Strategy := fun _ => (serviceApplication setup .concurrentReveals deadline leaks).Policy
+           Outcome := (serviceGraph setup .concurrentReveals).Config }
+  play profile := ((serviceApplication setup .concurrentReveals deadline leaks).roundsFrom
+    (serviceInitialLaw setup .concurrentReveals) scheduler profile horizon).map
+      fun final => final.application.config
+
+/-- The effective-opening clients of a source profile: each player opens a
+reveal at its first opportunity exactly when the opening would be accepted. -/
+def concurrentLedgerClients (setup : Setup (Player := Player) (L := L))
+    (deadline : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (leaks : MessageNetwork.ObservationRule Player
+      (WitnessedPacket (serviceGraph setup .concurrentReveals)))
+    (bound : (serviceGraph setup .concurrentReveals).EventId → Nat) (turns : Nat)
+    (source : BehavioralProfile setup.program) :
+    Player → (serviceApplication setup .concurrentReveals deadline leaks).Policy :=
+  serviceReferenceTurnPolicy setup .concurrentReveals deadline leaks bound turns
+    (firstTurnTiming setup turns .concurrentReveals) (concurrentEffectiveReference setup source)
+
+/-- Every expectation of a payoff bounded above exists. -/
+private theorem hasExpectation_of_le {α : Type*} {law : PMF α} {pay : α → ℝ} {top : ℝ}
+    (below : ∀ outcome, pay outcome ≤ top) : HasExpectation law pay := by
+  rw [← hasExpectation_neg_iff, ← hasExpectation_affine_iff (c := 1) top one_pos]
+  exact hasExpectation_of_nonneg fun outcome _ => by linarith [below outcome]
+
+/-- The configuration payoff is bounded above when the forfeit is at least the
+payoff range. -/
+private theorem concurrentConfigPayoff_le (setup : Setup (Player := Player) (L := L))
+    {Parameter : Type} (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
+    (range : ∀ high low who, utility high who - utility low who ≤ forfeit) (who : Player) :
+    ∃ top, ∀ config, concurrentConfigPayoff setup parameter utility forfeit config who ≤ top := by
+  classical
+  by_cases inhabited : Nonempty (Parameter × PublicOutcome setup.program)
+  · obtain ⟨anchor⟩ := inhabited
+    have nonneg : 0 ≤ forfeit := by simpa using range anchor anchor who
+    refine ⟨max 0 (utility anchor who + forfeit), fun config => ?_⟩
+    unfold concurrentConfigPayoff
+    cases concurrentOutcome setup parameter config with
+    | none => exact le_max_left _ _
+    | some outcome =>
+        simp only [Option.elim, forfeitUtility]
+        have := range outcome anchor who
+        have : 0 ≤ forfeit * (failedReveals setup.program who outcome.2 : ℝ) :=
+          mul_nonneg nonneg (Nat.cast_nonneg _)
+        exact le_max_of_le_right (by linarith)
+  · refine ⟨0, fun config => ?_⟩
+    unfold concurrentConfigPayoff
+    cases concurrentOutcome setup parameter config with
+    | none => exact le_rfl
+    | some outcome => exact (inhabited ⟨outcome⟩).elim
+
+/-- **Nash equilibria of the intended game are preserved on the ledger with
+concurrent reveals.** For a well-formed program with finitely many binding
+values and independent reveal phases, and a forfeit at least the payoff range,
+the effective-opening clients of a disclosing extension of an `ε`-Nash
+equilibrium of the intended game are an `ε`-Nash equilibrium of the ledger game
+under every scheduler satisfying the asynchronous service contract. -/
+theorem concurrentReveal_ledger_isεNash (setup : Setup (Player := Player) (L := L))
+    [Finite Player] (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
+    (wellFormed : setup.WellFormed) (phases : setup.IndependentRevealPhases) {Parameter : Type}
+    (parameter : State L setup.context → Parameter)
+    (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
+    (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
+    (intended : Profile setup.intendedModel.behavioralSignature)
+    (target : Profile (setup.informationModel
+      (CommitmentInterface.forfeiture setup.program)).behavioralSignature)
+    (agrees : (setup.intendedRestriction
+      (CommitmentInterface.forfeiture setup.program)).ExtendsProfile intended target) (ε : ℝ)
+    (equilibrium : IsεNash (setup.intendedModel.toBehavioralGameForm
+        (instructionCount setup.program + 1))
+      (fun final who => (setup.protocolReadout final.state).elim 0
+        (fun state => utility (setup.parameterOutcome parameter state) who)) ε intended)
+    (disclosing : ∀ who, Disclosing setup.program (setup.decodeBehavioralProfile
+      (CommitmentInterface.forfeiture setup.program) target who))
+    (deadline : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (leaks : MessageNetwork.ObservationRule Player
+      (WitnessedPacket (serviceGraph setup .concurrentReveals)))
+    {horizon turns : Nat}
+    {scheduler : (serviceApplication setup .concurrentReveals deadline leaks).Scheduler}
+    {delay bound : (serviceGraph setup .concurrentReveals).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup .concurrentReveals deadline) leaks
+      (serviceInitialLaw setup .concurrentReveals) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceRuntime setup .concurrentReveals deadline) delay bound) :
+    IsεNash (concurrentLedgerGame setup deadline leaks scheduler horizon)
+      (concurrentConfigPayoff setup parameter utility forfeit) ε
+      (concurrentLedgerClients setup deadline leaks bound turns
+        (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program) target)) := by
+  rw [isεNash_iff]
+  intro who replacement
+  obtain ⟨top, below⟩ := concurrentConfigPayoff_le setup parameter utility forfeit range who
+  refine ⟨hasExpectation_of_le below, hasExpectation_of_le below, ?_⟩
+  change extendedExpectedUtility (concurrentConfigPayoff setup parameter utility forfeit) who
+      (((serviceApplication setup .concurrentReveals deadline leaks).roundsFrom
+        (serviceInitialLaw setup .concurrentReveals) scheduler
+        (Function.update (concurrentLedgerClients setup deadline leaks bound turns
+          (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program) target))
+          who replacement) horizon).map fun final => final.application.config) ≤
+    extendedExpectedUtility (concurrentConfigPayoff setup parameter utility forfeit) who
+      (((serviceApplication setup .concurrentReveals deadline leaks).roundsFrom
+        (serviceInitialLaw setup .concurrentReveals) scheduler
+        (concurrentLedgerClients setup deadline leaks bound turns
+          (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program) target))
+          horizon).map fun final => final.application.config) + ε
+  rw [extendedExpectedUtility_map, extendedExpectedUtility_map]
+  exact concurrentEffectiveClients_deviation_bound setup finite wellFormed parameter utility
+    forfeit range intended target agrees ε equilibrium disclosing deadline leaks contract timely
+    phases who replacement
+
 end Vegas
