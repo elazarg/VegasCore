@@ -197,14 +197,16 @@ def HonestExpired (who : Player) (config : (serviceGraph setup mode).Config)
       some (cast (congrArg EventField.Value outputEq.symm) (PublicationResult.failure))
 
 /-- **The block's records.** Every event completed since `origin` was completed
-automatically, or is a block reveal of the deviator, an honest accepted opening,
-or an honest expired rejected opening. -/
+automatically for a defaulted owner, or is a block reveal of the deviator, an
+honest accepted opening, or an honest expired rejected opening. -/
 def BlockRecordsSound (who : Player) (start finish : Nat)
     (origin current : (serviceGraph setup mode).Config) : Prop :=
   ∀ event : (serviceGraph setup mode).EventId, event ∉ origin.cut.completed →
     event ∈ current.cut.completed →
     (completionOf current event = some ⟨event, none, none⟩ ∧
-      current.outputs event = failureOutput event) ∨
+      current.outputs event = failureOutput event ∧
+      ∃ owner, (serviceGraph setup mode).actor? event = some owner ∧
+        owner ∈ current.defaulted) ∨
     (start ≤ event.val ∧ event.val < finish ∧
       ((serviceGraph setup mode).actor? event = some who ∨ HonestOpened who current event ∨
         HonestExpired who current event))
@@ -250,16 +252,20 @@ theorem BlockRecordsSound.path {who : Player} {start finish : Nat}
     (sound : BlockRecordsSound who start finish origin before) :
     ∀ event, event ∉ origin.cut.completed → event ∈ before.cut.completed →
       (completionOf after event = some ⟨event, none, none⟩ ∧
-        after.outputs event = failureOutput event) ∨
+        after.outputs event = failureOutput event ∧
+        ∃ owner, (serviceGraph setup mode).actor? event = some owner ∧
+          owner ∈ after.defaulted) ∨
       (start ≤ event.val ∧ event.val < finish ∧
         ((serviceGraph setup mode).actor? event = some who ∨ HonestOpened who after event ∨
           HonestExpired who after event)) := by
   intro event fresh done
   have kept : ∀ field value, before.store field = some value → after.store field = some value :=
     fun field value stored => Config.Step.path_store_of_some path field value stored
-  rcases sound event fresh done with ⟨recorded, output⟩ | ⟨early, late, owned | opened | expired⟩
+  rcases sound event fresh done with ⟨recorded, output, owner, acting, inactive⟩ |
+    ⟨early, late, owned | opened | expired⟩
   · left
-    refine ⟨Config.Step.path_completionOf_of_some path event _ recorded, ?_⟩
+    refine ⟨Config.Step.path_completionOf_of_some path event _ recorded, ?_,
+      owner, acting, Config.Step.path_defaulted_mono path inactive⟩
     have stored := kept (.inr event)
     cases outputEq : before.outputs event with
     | none =>
@@ -293,8 +299,11 @@ theorem drainRecord_of_not_mem (native : EventGraphRuntime.State (serviceGraph s
     (present : record ∈ native.drain.config.history) :
     record.decision = none ∧ record.defaultEvent = none ∧
       record.event ∉ native.config.cut.completed ∧
-      native.drain.config.outputs record.event = failureOutput record.event := by
-  obtain ⟨silent, quiet, _⟩ := native.drain_new_completion record primary present
+      native.drain.config.outputs record.event = failureOutput record.event ∧
+      ∃ owner, (serviceGraph setup mode).actor? record.event = some owner ∧
+        owner ∈ native.drain.config.defaulted := by
+  obtain ⟨silent, quiet, owner, acting, inactive⟩ :=
+    native.drain_new_completion record primary present
   have notDone : record.event ∉ native.config.cut.completed := by
     intro done
     obtain ⟨other, otherMember, otherEvent⟩ := List.mem_map.mp
@@ -309,7 +318,8 @@ theorem drainRecord_of_not_mem (native : EventGraphRuntime.State (serviceGraph s
     exact primary (same ▸ otherMember)
   exact ⟨silent, quiet, notDone, native.drain_outputs record.event notDone (by
     rw [← native.drain.config.history_exact]
-    exact List.mem_map.mpr ⟨record, present, rfl⟩)⟩
+    exact List.mem_map.mpr ⟨record, present, rfl⟩),
+    owner, acting, Config.Step.path_defaulted_mono native.drain_graph_steps inactive⟩
 
 /-- A record new after one graph step and a drain is the step's completion, or
 an automatic completion of a newly completed event storing its failure. -/
@@ -324,7 +334,9 @@ theorem newRecord_step_drain (config : (serviceGraph setup mode).Config)
       (serviceGraph setup mode) event (config.actualDecision event action) value) ∨
     (record.decision = none ∧ record.defaultEvent = none ∧
       record.event ∉ native.config.cut.completed ∧
-      native.drain.config.outputs record.event = failureOutput record.event) := by
+      native.drain.config.outputs record.event = failureOutput record.event ∧
+      ∃ owner, (serviceGraph setup mode).actor? record.event = some owner ∧
+        owner ∈ native.drain.config.defaulted) := by
   by_cases primary : record ∈ native.config.history
   · left
     refine ⟨primary, ?_⟩
@@ -497,18 +509,24 @@ theorem blockRecordsSound_round {horizon : Nat}
       (drained : native.drain.config = middle.application.config)
       (silent : record.decision = none) (quiet : record.defaultEvent = none)
       (notDone : record.event ∉ native.config.cut.completed)
-      (output : native.drain.config.outputs record.event = failureOutput record.event) :
+      (output : native.drain.config.outputs record.event = failureOutput record.event)
+      (drainOwner : ∃ owner, (serviceGraph setup mode).actor? record.event = some owner ∧
+        owner ∈ native.drain.config.defaulted) :
       (completionOf middle.application.config event = some ⟨event, none, none⟩ ∧
-        middle.application.config.outputs event = failureOutput event) ∨
+        middle.application.config.outputs event = failureOutput event ∧
+        ∃ owner, (serviceGraph setup mode).actor? event = some owner ∧
+          owner ∈ middle.application.config.defaulted) ∨
       (start ≤ event.val ∧ event.val < finish ∧
         ((serviceGraph setup mode).actor? event = some who ∨
           HonestOpened who middle.application.config event ∨
           HonestExpired who middle.application.config event)) := by
     left
     subst recordEvent
-    refine ⟨completionOf_of_silent present silent quiet, ?_⟩
-    rw [← drained]
-    exact output
+    refine ⟨completionOf_of_silent present silent quiet, ?_, ?_⟩
+    · rw [← drained]
+      exact output
+    · rw [← drained]
+      exact drainOwner
   -- the step's own completion of a ready block reveal
   have readyCase (ready : current.application.config.cut.Ready event) :
       start ≤ event.val ∧ event.val < finish := shaped _ inside running event ready
@@ -577,7 +595,7 @@ theorem blockRecordsSound_round {horizon : Nat}
                     current.application native message.id named candidate raw handled
                   rcases newRecord_step_drain current.application.config native named readyNamed
                       action member record newRecord present with
-                    ⟨primary, value, recordEq⟩ | ⟨silent, quiet, notDone, output⟩
+                    ⟨primary, value, recordEq⟩ | ⟨silent, quiet, notDone, output, drainOwner⟩
                   · have eventEq : event = named := by rw [← recordEvent, recordEq]; rfl
                     subst eventEq
                     have bounds := readyCase readyNamed
@@ -633,7 +651,7 @@ theorem blockRecordsSound_round {horizon : Nat}
                         resolveOutput_keep keptMiddle (outputEq := outputEq) codeEq available,
                         resolved]
                       rfl
-                  · exact silentCase native middleDrain silent quiet notDone output
+                  · exact silentCase native middleDrain silent quiet notDone output drainOwner
   | application operation =>
       obtain ⟨updated, supported', rfl⟩ := PMF.support_map .. ▸ moved
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported'
@@ -643,12 +661,12 @@ theorem blockRecordsSound_round {horizon : Nat}
       rcases completionStep_environmentStep runtime current.application native operation
           nativeMoved with ⟨same, _, _⟩ | ⟨stepped, readyStepped, action, member, _, _⟩
       · have fresh' : record ∉ native.config.history := by rw [same]; exact newRecord
-        obtain ⟨silent, quiet, notDone, output⟩ :=
+        obtain ⟨silent, quiet, notDone, output, drainOwner⟩ :=
           drainRecord_of_not_mem native record fresh' present
-        exact silentCase native rfl silent quiet notDone output
+        exact silentCase native rfl silent quiet notDone output drainOwner
       rcases newRecord_step_drain current.application.config native stepped readyStepped action
           member record newRecord present with
-        ⟨primary, value, recordEq⟩ | ⟨silent, quiet, notDone, output⟩
+        ⟨primary, value, recordEq⟩ | ⟨silent, quiet, notDone, output, drainOwner⟩
       · subst recordEvent
         have steppedEq : stepped = record.event := by rw [recordEq]; rfl
         subst steppedEq
@@ -709,6 +727,6 @@ theorem blockRecordsSound_round {horizon : Nat}
             exact absurd due (Nat.not_le.mpr within)
         · rw [owned] at ownerless
           cases ownerless
-      · exact silentCase native rfl silent quiet notDone output
+      · exact silentCase native rfl silent quiet notDone output drainOwner
 
 end Vegas

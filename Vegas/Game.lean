@@ -410,3 +410,4 @@ import Vegas.Game.RevealServiceEffectiveOutcomeLaw
 import Vegas.Game.RevealBlockRecords
 import Vegas.Game.RevealBlockEndpoint
 import Vegas.Game.RevealBlockCoupling
+import Vegas.Game.RevealBlockReflection

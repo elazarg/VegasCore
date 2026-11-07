@@ -132,9 +132,9 @@ private theorem block_new_congr {who : Player} {start finish : Nat}
   have defaults := normalize_defaultEvent_congr who views event
     ((completionOf_isSome_iff left event).mpr doneLeft)
   rcases soundLeft event freshLeft doneLeft with
-    ⟨silentLeft, failedLeft⟩ | ⟨earlyLeft, lateLeft, ownedLeft | openedLeft | expiredLeft⟩ <;>
+    ⟨silentLeft, failedLeft, _⟩ | ⟨earlyLeft, lateLeft, ownedLeft | openedLeft | expiredLeft⟩ <;>
   rcases soundRight event freshRight doneRight with
-    ⟨silentRight, failedRight⟩ | ⟨earlyRight, lateRight, ownedRight | openedRight | expiredRight⟩
+    ⟨silentRight, failedRight, _⟩ | ⟨earlyRight, lateRight, ownedRight | openedRight | expiredRight⟩
   · exact ⟨silentLeft.trans silentRight.symm, failedLeft.trans failedRight.symm⟩
   · exact ⟨normalize_own_completionOf_congr who views event ownedRight,
       published (publications event earlyRight lateRight)⟩
