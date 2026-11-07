@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.RevealRunAgree
+import Vegas.Game.LastOwnedPhase
 
 /-! # The deviator's next reveal in a run
 
@@ -137,5 +138,73 @@ theorem closure_target_alone (base : (serviceGraph setup mode).BehavioralProfile
         · exact independent.2.1
       exact closure_quiet R who config event
         (honest_settles base decides who ready publication owned)
+
+section Advance
+
+variable {graph : Vegas.EventGraph Player L}
+
+/-- The closure key after an owned event takes an action from a configuration
+of a key where it is ready; the key itself when it takes no action or is ready
+at no configuration of the key. -/
+def closureAdvance (reference : graph.BehavioralProfile) (who : Player)
+    (event : graph.EventId) (owned : graph.actor? event = some who)
+    (key : RunKey graph) : Option (graph.Action event) → RunKey graph
+  | none => key
+  | some action =>
+      open scoped Classical in
+      if found : ∃ config : graph.Config, runKey config = key ∧ config.cut.Ready event then
+        runKey (closure reference who
+          (ownedStepped event owned found.choose found.choose_spec.2 action))
+      else key
+
+/-- The closure advance from a configuration where the owned event is ready. -/
+theorem closureAdvance_runKey {reference : graph.BehavioralProfile} {who : Player}
+    (keyed : ∀ {left right : graph.Config}, runKey left = runKey right →
+      ∀ event, actionLaw reference left event = actionLaw reference right event)
+    (event : graph.EventId) (owned : graph.actor? event = some who) (config : graph.Config)
+    (ready : config.cut.Ready event) (action : graph.Action event) :
+    closureAdvance reference who event owned (runKey config) (some action) =
+      runKey (closure reference who (ownedStepped event owned config ready action)) := by
+  have found : ∃ other : graph.Config, runKey other = runKey config ∧ other.cut.Ready event :=
+    ⟨config, rfl, ready⟩
+  dsimp only [closureAdvance]
+  rw [dite_eq_left found]
+  have keys : runKey (ownedStepped event owned found.choose found.choose_spec.2 action) =
+      runKey (ownedStepped event owned config ready action) := by
+    have mapped := step_map_runKey_congr found.choose_spec.1 event found.choose_spec.2 ready
+      action
+    rw [step_eq_ownedStepped event owned found.choose found.choose_spec.2 action,
+      step_eq_ownedStepped event owned config ready action, PMF.pure_map, PMF.pure_map]
+      at mapped
+    have supports := congrArg PMF.support mapped
+    rw [PMF.support_pure, PMF.support_pure] at supports
+    exact Set.singleton_eq_singleton_iff.mp supports
+  exact closure_runKey_congr keyed _ _ _ rfl keys
+
+/-- Without a configuration of the key where the owned event is ready, the key
+does not advance. -/
+theorem closureAdvance_of_not_ready {reference : graph.BehavioralProfile} {who : Player}
+    (event : graph.EventId) (owned : graph.actor? event = some who) (key : RunKey graph)
+    (blocked : ∀ config : graph.Config, runKey config = key → ¬ config.cut.Ready event)
+    (choice : Option (graph.Action event)) :
+    closureAdvance reference who event owned key choice = key := by
+  cases choice with
+  | none => rfl
+  | some action =>
+      dsimp only [closureAdvance]
+      rw [dite_eq_right]
+      rintro ⟨config, keyEq, ready⟩
+      exact blocked config keyEq ready
+
+/-- A completion supported by an owned event's step is the owned step. -/
+theorem ownedStepped_eq_of_mem {event : graph.EventId} {who : Player}
+    (owned : graph.actor? event = some who) {config next : graph.Config}
+    {ready : config.cut.Ready event} {action : graph.Action event}
+    (member : next ∈ (config.step event ready action).support) :
+    next = ownedStepped event owned config ready action := by
+  rw [step_eq_ownedStepped event owned config ready action, PMF.mem_support_pure_iff] at member
+  exact member
+
+end Advance
 
 end Vegas
