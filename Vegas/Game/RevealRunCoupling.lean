@@ -155,7 +155,7 @@ theorem run_stopped_traffic_congr {horizon : Nat}
             ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
         nodeView (serviceGraph setup mode) event =
           .resolve owner payload binding checks outputEq codeEq →
-        current.cut.Ready event →
+        current.cut.Ready event → owner ∉ current.defaulted → owner ∉ other.defaulted →
         (owner ≠ who → openingAccepted event current.store = openingAccepted event other.store) ∧
         (openingAccepted event current.store = true ∨ owner = who →
           binding.get? current.store = binding.get? other.store)) →
@@ -252,7 +252,30 @@ theorem run_stopped_traffic_congr {horizon : Nat}
           (ready : current.application.config.cut.Ready event) :
           start ≤ event.val ∧ event.val < finish :=
         shaped _ inside unfinished event ready
-      have agreeNow := agreeAt _ _ currentPath otherPath cuts running
+      have agreeAtNow := agreeAt _ _ currentPath otherPath cuts running
+      have agreeNow : ∀ (event : (serviceGraph setup mode).EventId) (owner : Player)
+          (payload : L.Ty)
+          (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
+          (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
+          (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
+          (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+            ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
+          nodeView (serviceGraph setup mode) event =
+            .resolve owner payload binding checks outputEq codeEq →
+          current.application.config.cut.Ready event →
+          (owner ≠ who → openingAccepted event current.application.config.store =
+            openingAccepted event other.application.config.store) ∧
+          (openingAccepted event current.application.config.store = true ∨ owner = who →
+            binding.get? current.application.config.store =
+              binding.get? other.application.config.store) := by
+        intro event owner payload binding checks outputEq codeEq node ready
+        have owned := nodeView_resolve_actor outputEq codeEq
+        have otherReady : other.application.config.cut.Ready event := by
+          rw [← cuts]
+          exact ready
+        exact agreeAtNow event owner payload binding checks outputEq codeEq node ready
+          (current.application.active_of_ready_owned currentLegal.quiescent ready owned)
+          (other.application.active_of_ready_owned otherLegal.quiescent otherReady owned)
       apply blockRoundOn_readout_congr scheduler who window players equal
       · intro actor other' selected sample sampled
         exact honest_block_matched_of_turns bound turns reference decides who deviation
