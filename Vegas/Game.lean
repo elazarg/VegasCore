@@ -424,3 +424,4 @@ import Vegas.Game.RevealDeviationLaw
 import Vegas.Game.RevealConcurrentNash
 import Vegas.Game.RevealTurnRecall
 import Vegas.Game.RevealRunCoupling
+import Vegas.Game.RevealRunClosure
