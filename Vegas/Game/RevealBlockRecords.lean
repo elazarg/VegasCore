@@ -172,8 +172,10 @@ def HonestOpened (who : Player) (config : (serviceGraph setup mode).Config)
     (∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
       (config.store field).isSome) ∧
     openingAccepted event config.store = true ∧
-    ∃ value, completionOf config event = some (EventGraph.completion (serviceGraph setup mode)
-      event (some (cast (congrArg EventField.Action outputEq.symm) true)) value)
+    completionOf config event =
+      some ⟨event, some (cast (congrArg EventField.Action outputEq.symm) true), none⟩ ∧
+    config.outputs event = (EventCode.resolveOutput? binding checks true config.store).map
+      (cast (congrArg EventField.Value outputEq.symm))
 
 /-- An honest block reveal whose rejected opening expired. -/
 def HonestExpired (who : Player) (config : (serviceGraph setup mode).Config)
@@ -189,8 +191,10 @@ def HonestExpired (who : Player) (config : (serviceGraph setup mode).Config)
     (∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
       (config.store field).isSome) ∧
     openingAccepted event config.store = false ∧
-    ∃ value, completionOf config event = some (EventGraph.completion (serviceGraph setup mode)
-      event (some (cast (congrArg EventField.Action outputEq.symm) false)) value)
+    completionOf config event =
+      some ⟨event, some (cast (congrArg EventField.Action outputEq.symm) false), some owner⟩ ∧
+    config.outputs event =
+      some (cast (congrArg EventField.Value outputEq.symm) (PublicationResult.failure))
 
 /-- **The block's records.** Every event completed since `origin` was completed
 automatically, or is a block reveal of the deviator, an honest accepted opening,
@@ -204,6 +208,40 @@ def BlockRecordsSound (who : Player) (start finish : Nat)
     (start ≤ event.val ∧ event.val < finish ∧
       ((serviceGraph setup mode).actor? event = some who ∨ HonestOpened who current event ∨
         HonestExpired who current event))
+
+/-- A completed event keeps its output along a graph path. -/
+theorem outputs_path {before after : (serviceGraph setup mode).Config}
+    (path : Relation.ReflTransGen Config.Step before after)
+    {event : (serviceGraph setup mode).EventId} (done : event ∈ before.cut.completed) :
+    after.outputs event = before.outputs event := by
+  cases outputEq : before.outputs event with
+  | none =>
+      exact (Option.not_isSome_iff_eq_none.mpr outputEq
+        ((before.output_available event).mpr done)).elim
+  | some value => exact Config.Step.path_store_of_some path (.inr event) value outputEq
+
+/-- A resolution's output keeps its value once its footprint is stored. -/
+theorem resolveOutput_keep {before after : (serviceGraph setup mode).Config}
+    (kept : ∀ field value, before.store field = some value → after.store field = some value)
+    {event : (serviceGraph setup mode).EventId} {owner : Player} {payload : L.Ty}
+    {binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
+    {checks : List (GuardCheck (serviceGraph setup mode).layout payload)}
+    {outputEq : (serviceGraph setup mode).outputLayout event = .publication payload}
+    (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks)
+    (available : ∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
+      (before.store field).isSome) (disclose : Bool) :
+    EventCode.resolveOutput? binding checks disclose after.store =
+      EventCode.resolveOutput? binding checks disclose before.store := by
+  have footprint := EventCode.readFields_cast outputEq ((serviceGraph setup mode).nodes event)
+  rw [codeEq] at footprint
+  apply EventCode.resolveOutput?_congr
+  intro field member
+  have read : field ∈ ((serviceGraph setup mode).nodes event).readFields := by
+    rw [← footprint]
+    exact member
+  obtain ⟨value, stored⟩ := Option.isSome_iff_exists.mp (available field read)
+  rw [kept field value stored, stored]
 
 /-- Block records persist along graph paths. -/
 theorem BlockRecordsSound.path {who : Player} {start finish : Nat}
@@ -233,17 +271,20 @@ theorem BlockRecordsSound.path {who : Player} {start finish : Nat}
         rw [later, ← outputEq, output]
   · exact Or.inr ⟨early, late, Or.inl owned⟩
   · obtain ⟨owner, payload, binding, checks, outputEq, codeEq, different, node, available,
-      accepted, value, recorded⟩ := opened
+      accepted, recorded, stored⟩ := opened
     obtain ⟨availableAfter, acceptedAfter⟩ := openingAccepted_keep kept available accepted
     exact Or.inr ⟨early, late, Or.inr (Or.inl ⟨owner, payload, binding, checks, outputEq, codeEq,
-      different, node, availableAfter, acceptedAfter, value,
-      Config.Step.path_completionOf_of_some path event _ recorded⟩)⟩
+      different, node, availableAfter, acceptedAfter,
+      Config.Step.path_completionOf_of_some path event _ recorded, by
+        rw [outputs_path path done, stored,
+          resolveOutput_keep kept (outputEq := outputEq) codeEq available]⟩)⟩
   · obtain ⟨owner, payload, binding, checks, outputEq, codeEq, different, node, available,
-      rejected, value, recorded⟩ := expired
+      rejected, recorded, stored⟩ := expired
     have rejectedAfter := (OpeningRejected.keep (setup := setup) kept ⟨available, rejected⟩)
     exact Or.inr ⟨early, late, Or.inr (Or.inr ⟨owner, payload, binding, checks, outputEq, codeEq,
-      different, node, rejectedAfter.1, rejectedAfter.2, value,
-      Config.Step.path_completionOf_of_some path event _ recorded⟩)⟩
+      different, node, rejectedAfter.1, rejectedAfter.2,
+      Config.Step.path_completionOf_of_some path event _ recorded, by
+        rw [outputs_path path done, stored]⟩)⟩
 
 /-- A record a drain appends is silent, for a newly completed event storing its
 failure. -/
@@ -302,6 +343,75 @@ theorem completionOf_of_silent {config : (serviceGraph setup mode).Config}
   simp only at silent quiet
   subst silent quiet
   rfl
+
+/-- An accepted opening's resolution publishes a value. -/
+theorem resolveOutput_of_accepted {event : (serviceGraph setup mode).EventId} {owner : Player}
+    {payload : L.Ty} {binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
+    {checks : List (GuardCheck (serviceGraph setup mode).layout payload)}
+    {outputEq : (serviceGraph setup mode).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks}
+    (node : nodeView (serviceGraph setup mode) event =
+      .resolve owner payload binding checks outputEq codeEq)
+    {store : EventGraph.Store (serviceGraph setup mode).layout}
+    (accepted : openingAccepted event store = true) :
+    ∃ value, EventCode.resolveOutput? binding checks true store = some (.success value) := by
+  unfold openingAccepted at accepted
+  rw [node] at accepted
+  dsimp only at accepted
+  cases result : EventCode.resolveOutput? binding checks true store with
+  | none => rw [result] at accepted; cases accepted
+  | some output =>
+      cases output with
+      | success value => exact ⟨value, rfl⟩
+      | failure => rw [result] at accepted; cases accepted
+
+/-- An active owner's resolution step completes with its deterministic output. -/
+theorem resolve_step_eq {config : (serviceGraph setup mode).Config}
+    {event : (serviceGraph setup mode).EventId} (ready : config.cut.Ready event) {owner : Player}
+    {payload : L.Ty} {binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
+    {checks : List (GuardCheck (serviceGraph setup mode).layout payload)}
+    (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks)
+    (active : owner ∉ config.defaulted)
+    (disclose : Bool) (output : PublicationResult (L.Val payload))
+    (resolved : EventCode.resolveOutput? binding checks disclose config.store = some output) :
+    config.step event ready (cast (congrArg EventField.Action outputEq.symm) disclose) =
+      PMF.pure (config.complete event ready (cast (congrArg EventField.Action outputEq.symm)
+        disclose) (cast (congrArg EventField.Value outputEq.symm) output)) := by
+  have effective : (EventCode.resolve owner payload binding checks).effectiveAction
+      config.defaulted disclose = disclose := by
+    simp only [EventCode.effectiveAction, EventCode.actor, ite_eq_right active]
+  rw [config.step_eq_map_of_code event ready outputEq (.resolve owner payload binding checks)
+    codeEq disclose (PMF.pure output) (by rw [effective, EventCode.resolve_eval?, resolved]; rfl),
+    PMF.pure_map]
+
+/-- An active owner's resolution record carries its disclosure, and names the
+owner as defaulting exactly when the output fails. -/
+theorem completion_resolve_eq (config : (serviceGraph setup mode).Config)
+    (event : (serviceGraph setup mode).EventId) {owner : Player} {payload : L.Ty}
+    {binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
+    {checks : List (GuardCheck (serviceGraph setup mode).layout payload)}
+    (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
+    (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks)
+    (active : owner ∉ config.defaulted) (disclose : Bool)
+    (output : PublicationResult (L.Val payload)) :
+    EventGraph.completion (serviceGraph setup mode) event
+        (config.actualDecision event (cast (congrArg EventField.Action outputEq.symm) disclose))
+        (cast (congrArg EventField.Value outputEq.symm) output) =
+      ⟨event, some (cast (congrArg EventField.Action outputEq.symm) disclose),
+        if output.isFailure then some owner else none⟩ := by
+  have quiet := config.completion_resolve_defaultEvent event owner payload binding checks
+    outputEq codeEq disclose output
+  rw [ite_eq_right active] at quiet
+  have decided := config.actualDecision_of_active event owner
+    (nodeView_resolve_actor outputEq codeEq) active
+    (cast (congrArg EventField.Action outputEq.symm) disclose)
+  rw [← quiet]
+  unfold EventGraph.completion
+  rw [decided]
 
 /-- **The block's records persist.** A round inside an unfinished block keeps
 every record since `origin` classified, when honest clients open a reveal
@@ -467,7 +577,7 @@ theorem blockRecordsSound_round {horizon : Nat}
                     current.application native message.id named candidate raw handled
                   rcases newRecord_step_drain current.application.config native named readyNamed
                       action member record newRecord present with
-                    ⟨_, value, recordEq⟩ | ⟨silent, quiet, notDone, output⟩
+                    ⟨primary, value, recordEq⟩ | ⟨silent, quiet, notDone, output⟩
                   · have eventEq : event = named := by rw [← recordEvent, recordEq]; rfl
                     subst eventEq
                     have bounds := readyCase readyNamed
@@ -499,11 +609,30 @@ theorem blockRecordsSound_round {horizon : Nat}
                       other bounds.1 bounds.2 submitted
                     obtain ⟨availableMiddle, acceptedMiddle⟩ :=
                       openingAccepted_keep keptMiddle available acceptedNow
+                    obtain ⟨opened, resolved⟩ := resolveOutput_of_accepted node acceptedNow
+                    rw [actionEq, resolve_step_eq readyNamed outputEq codeEq active true
+                      (.success opened) resolved, PMF.mem_support_pure_iff] at member
+                    rw [member, Config.complete_history] at primary
+                    have recordExact :=
+                      List.mem_singleton.mp ((List.mem_append.mp primary).resolve_left newRecord)
+                    have nativeOutput : native.config.outputs other =
+                        some (cast (congrArg EventField.Value outputEq.symm)
+                          (PublicationResult.success opened)) := by
+                      rw [member]
+                      exact Config.complete_output_same _ _ _ _ _
+                    have stored := Config.Step.path_store_of_some native.drain_graph_steps
+                      (.inr other) _ nativeOutput
+                    change native.drain.config.outputs other = _ at stored
+                    rw [middleDrain] at stored
                     refine ⟨owner, payload, binding, checks, outputEq, codeEq, isWho, node,
-                      availableMiddle, acceptedMiddle, value, ?_⟩
-                    rw [recorded, recordEq, actionEq,
-                      current.application.config.actualDecision_of_active other owner owned
-                        active]
+                      availableMiddle, acceptedMiddle, ?_, ?_⟩
+                    · rw [recorded]
+                      exact congrArg some (recordExact.trans (completion_resolve_eq _ other
+                        outputEq codeEq active true (.success opened)))
+                    · rw [stored,
+                        resolveOutput_keep keptMiddle (outputEq := outputEq) codeEq available,
+                        resolved]
+                      rfl
                   · exact silentCase native middleDrain silent quiet notDone output
   | application operation =>
       obtain ⟨updated, supported', rfl⟩ := PMF.support_map .. ▸ moved
@@ -542,13 +671,34 @@ theorem blockRecordsSound_round {horizon : Nat}
             have rejectedMiddle := OpeningRejected.keep (setup := setup) keptMiddle
               ⟨fun field read => current.application.config.read_available readyStepped read,
                 acceptedEq⟩
-            refine ⟨owner, payload, binding, checks, outputEq, codeEq, isWho, node,
-              rejectedMiddle.1, rejectedMiddle.2, expiredValue, ?_⟩
-            rw [recorded]
-            refine congrArg some (expiredEq.trans ?_)
-            rw [ExpiredAction.publication_eq expired payload outputEq,
+            rw [step_of_opening_rejected current.application.config record.event readyStepped
+              node acceptedEq action, PMF.mem_support_pure_iff] at member
+            have primary' := primary
+            rw [member, Config.complete_history] at primary'
+            have recordExact :=
+              List.mem_singleton.mp ((List.mem_append.mp primary').resolve_left newRecord)
+            have both := recordExact.symm.trans expiredEq
+            unfold EventGraph.completion at both
+            rw [current.application.config.actualDecision_of_active record.event owner owned
+                active action,
               current.application.config.actualDecision_of_active record.event owner owned
-                active]
+                active expiredAction,
+              ExpiredAction.publication_eq expired payload outputEq] at both
+            simp only [EventCompletion.mk.injEq, Option.some.injEq, heq_eq_eq, true_and] at both
+            obtain ⟨actionFalse, -⟩ := both
+            have nativeOutput : native.config.outputs record.event =
+                some (cast (congrArg EventField.Value outputEq.symm)
+                  (PublicationResult.failure)) := by
+              rw [member]
+              exact Config.complete_output_same _ _ _ _ _
+            refine ⟨owner, payload, binding, checks, outputEq, codeEq, isWho, node,
+              rejectedMiddle.1, rejectedMiddle.2, ?_,
+              Config.Step.path_store_of_some native.drain_graph_steps (.inr record.event) _
+                nativeOutput⟩
+            rw [recorded]
+            refine congrArg some (recordExact.trans ?_)
+            rw [actionFalse]
+            exact completion_resolve_eq _ _ outputEq codeEq active false .failure
           · exfalso
             have within := effectivePublication_withinDeadline contract timely players owner
               reference decides (follows owner isWho) current.environmentRecall.length bounded
