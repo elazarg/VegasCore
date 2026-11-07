@@ -758,7 +758,9 @@ theorem Config.complete_congr_decision (config : graph.Config) {event : graph.Ev
   simp only [decisions]
 
 omit [DecidableEq Player] in
-private theorem effectiveAction_of_active [DecidableEq Player] {Field : Type} [DecidableEq Field]
+/-- An active owner's requested action is effective and recorded. -/
+theorem EventCode.effectiveAction_of_active [DecidableEq Player] {Field : Type}
+    [DecidableEq Field]
     {layout : Field → EventField Player L} {output : EventField Player L}
     (code : EventCode layout output) (defaulted : Finset Player) (owner : Player)
     (owned : code.actor = some owner) (active : owner ∉ defaulted) (requested : code.Action) :
@@ -792,9 +794,10 @@ theorem step_eq_settled {config next : graph.Config} {event : graph.EventId}
     · rw [EventCode.effectiveAction_of_defaulted _ _ owner owned inactive,
         EventCode.effectiveAction_of_defaulted _ _ owner owned inactive]
     · obtain ⟨actionEffective, actionDecision⟩ :=
-        effectiveAction_of_active _ config.defaulted owner owned inactive action
+        EventCode.effectiveAction_of_active _ config.defaulted owner owned inactive action
       obtain ⟨chosenEffective, chosenDecision⟩ :=
-        effectiveAction_of_active _ config.defaulted owner owned inactive settles.2.2.2.choose
+        EventCode.effectiveAction_of_active _ config.defaulted owner owned inactive
+          settles.2.2.2.choose
       unfold Config.actualDecision at decisions
       rw [actionDecision, chosenDecision] at decisions
       rw [actionEffective, chosenEffective, Option.some.inj decisions]

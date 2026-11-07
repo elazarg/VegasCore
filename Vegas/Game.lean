@@ -425,3 +425,4 @@ import Vegas.Game.RevealConcurrentNash
 import Vegas.Game.RevealTurnRecall
 import Vegas.Game.RevealRunCoupling
 import Vegas.Game.RevealRunClosure
+import Vegas.Game.RevealRunPath
