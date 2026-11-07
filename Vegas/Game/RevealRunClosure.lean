@@ -40,14 +40,6 @@ theorem DependsOn.completed {prior later : graph.EventId} (depends : DependsOn g
   | refl => exact done
   | head member _ ih => exact cut.predecessor_closed ih member
 
-/-- Defaults only grow along graph paths. -/
-theorem Config.Step.path_defaulted_mono {before after : graph.Config}
-    (path : Relation.ReflTransGen Config.Step before after) :
-    before.defaulted ⊆ after.defaulted := by
-  induction path with
-  | refl => exact Finset.Subset.refl _
-  | tail _ moved ih => exact ih.trans (Config.Step.defaulted_mono moved)
-
 end Generic
 
 variable {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
@@ -81,10 +73,10 @@ theorem honest_settles (base : (serviceGraph setup mode).BehavioralProfile)
   have owned := nodeView_resolve_actor outputEq codeEq
   have ownedNode : ((serviceGraph setup mode).nodes event).actor = some owner := owned
   by_cases inactive : owner ∈ config.defaulted
-  · exact settles_of_defaulted ready publication ownedNode inactive
+  · exact settles_of_defaulted ready ownedNode inactive
   have honest : owner ≠ who := fun same => foreign (same ▸ owned)
   obtain ⟨value, stepEq, _⟩ := honest_complete_records (who := who) ready node honest inactive
-  refine Settles.of_step ready publication (Or.inl foreign) ?_ stepEq
+  refine Settles.of_step ready (Or.inl publication) (Or.inl foreign) ?_ stepEq
   rw [actionLaw_of_actor _ _ ownedNode, dite_eq_right inactive]
   exact decides config event owner payload binding checks outputEq codeEq node owned inactive
 
@@ -145,7 +137,7 @@ theorem closure_completes_run (base : (serviceGraph setup mode).BehavioralProfil
       have ownedNode : (G.nodes event).actor = some owner := owned
       have same : owner = who := Option.some.inj (owned.symm.trans mine)
       subst same
-      exact closure_quiet R owner config event (settles_of_defaulted ready publication ownedNode
+      exact closure_quiet R owner config event (settles_of_defaulted ready ownedNode
         (Config.Step.path_defaulted_mono path defaulted))
   · exact closure_quiet R who config event (honest_settles base decides who ready publication mine)
 
@@ -167,13 +159,15 @@ theorem RelaxedOrder.dependsOn_of_same_owner {graph : Vegas.EventGraph Player L}
   .single ((relaxed prior later).mpr ⟨earlier, fun independent =>
     independent.2.2.2 (priorOwned.trans laterOwned.symm)⟩)
 
-/-- The closure completes nothing from the end of an unfinished run on. -/
+/-- The closure completes nothing from the end of a run on while the closure
+leaves the run unfinished. -/
 theorem closure_before_finish (base : (serviceGraph setup mode).BehavioralProfile) (who : Player)
     (relaxed : RelaxedOrder (serviceGraph setup mode)) {start finish : Nat}
     (run : RevealRun (serviceGraph setup mode) start finish)
     {config : (serviceGraph setup mode).Config}
-    (inside : ∀ event : (serviceGraph setup mode).EventId, finish ≤ event.val →
-      event ∉ config.cut.completed)
+    {blocked : (serviceGraph setup mode).EventId} (blockedLate : blocked.val < finish)
+    (blockedPending : blocked ∉ (closure ((serviceGraph setup mode).normalizeProfile base) who
+      config).cut.completed)
     {event : (serviceGraph setup mode).EventId}
     (done : event ∈ (closure ((serviceGraph setup mode).normalizeProfile base) who
       config).cut.completed) : event.val < finish := by
@@ -190,8 +184,8 @@ theorem closure_before_finish (base : (serviceGraph setup mode).BehavioralProfil
       exact done
     · exact (closure R who config).cut.predecessor_closed done
         (relaxed.predecessor_of_not_publication (run.closed closer rfl) later)
-  exact run.closed closer rfl ((closure_shape R who _ config rfl).1 closer closerDone
-    (inside closer le_rfl)).1
+  exact blockedPending ((closure R who config).cut.predecessor_closed closerDone
+    (relaxed.predecessor_of_later_not_publication (run.closed closer rfl) blockedLate))
 
 /-- **The closure at a point of a run.** When the deviator is active and
 `target` is its earliest pending reveal of an unfinished run whose earlier
@@ -218,10 +212,9 @@ theorem closure_completed_iff_target (base : (serviceGraph setup mode).Behaviora
     {config : (serviceGraph setup mode).Config}
     (earlier : ∀ event : (serviceGraph setup mode).EventId, event.val < start →
       event ∈ config.cut.completed)
-    (inside : ∀ event : (serviceGraph setup mode).EventId, finish ≤ event.val →
-      event ∉ config.cut.completed)
     (target : (serviceGraph setup mode).EventId)
     (targetOwned : (serviceGraph setup mode).actor? target = some who)
+    (targetLate : target.val < finish)
     (before : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
       event.val < target.val → (serviceGraph setup mode).actor? event = some who →
         event ∈ config.cut.completed)
@@ -232,12 +225,13 @@ theorem closure_completed_iff_target (base : (serviceGraph setup mode).Behaviora
         event.val < finish ∧ ¬ DependsOn (serviceGraph setup mode) target event := by
   let G := serviceGraph setup mode
   let R := G.normalizeProfile base
+  have targetPending : target ∉ (closure R who config).cut.completed := fun targetDone =>
+    ((closure_shape R who _ config rfl).1 target targetDone pending).2 active targetOwned
   intro event
   constructor
   · intro done
-    refine ⟨closure_before_finish base who relaxed run inside done, fun depends => ?_⟩
-    have targetDone := depends.completed done
-    exact ((closure_shape R who _ config rfl).1 target targetDone pending).2 active targetOwned
+    refine ⟨closure_before_finish base who relaxed run targetLate targetPending done,
+      fun depends => targetPending (depends.completed done)⟩
   · rintro ⟨late, independent⟩
     apply closure_completes_run base decides who run earlier event late
     intro owned depends ownedWho
@@ -254,10 +248,10 @@ theorem closure_completed_iff_target (base : (serviceGraph setup mode).Behaviora
         depends)).elim
 
 /-- **The closure at the end of the deviator's part of a run.** When every
-reveal of the deviator in an unfinished run whose earlier events have
-completed has completed, or the deviator has defaulted, the closure has
-completed exactly the events before the run's end. -/
-theorem closure_completed_iff_done (base : (serviceGraph setup mode).BehavioralProfile)
+reveal of the deviator in a run whose earlier events have completed has
+completed, or the deviator has defaulted, the closure has completed every event
+before the run's end. -/
+theorem closure_completes_done (base : (serviceGraph setup mode).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup mode).Config)
       (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
       (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
@@ -273,21 +267,17 @@ theorem closure_completed_iff_done (base : (serviceGraph setup mode).BehavioralP
           ((serviceGraph setup mode).playerObserve owner config) active =
           PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
-    (who : Player) (relaxed : RelaxedOrder (serviceGraph setup mode)) {start finish : Nat}
-    (run : RevealRun (serviceGraph setup mode) start finish)
+    (who : Player) {start finish : Nat} (run : RevealRun (serviceGraph setup mode) start finish)
     {config : (serviceGraph setup mode).Config}
     (earlier : ∀ event : (serviceGraph setup mode).EventId, event.val < start →
       event ∈ config.cut.completed)
-    (inside : ∀ event : (serviceGraph setup mode).EventId, finish ≤ event.val →
-      event ∉ config.cut.completed)
     (finished : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
       event.val < finish → (serviceGraph setup mode).actor? event = some who →
         event ∈ config.cut.completed ∨ who ∈ config.defaulted) :
-    ∀ event : (serviceGraph setup mode).EventId,
+    ∀ event : (serviceGraph setup mode).EventId, event.val < finish →
       event ∈ (closure ((serviceGraph setup mode).normalizeProfile base) who
-        config).cut.completed ↔ event.val < finish := by
-  intro event
-  refine ⟨fun done => closure_before_finish base who relaxed run inside done, fun late => ?_⟩
+        config).cut.completed := by
+  intro event late
   apply closure_completes_run base decides who run earlier event late
   intro owned depends ownedWho
   by_cases early : owned.val < start

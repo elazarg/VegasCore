@@ -4,10 +4,11 @@ import Vegas.EventGraph.LastKeyTarget
 
 /-! # The closure of the determined reveals
 
-An event *settles* at a configuration when it is a ready reveal that may be
-taken before the events of a distinguished player `who` (one of another player,
-or any event once `who` has defaulted), and both its action under a reference
-profile and its output are determined. The closure of a configuration completes
+An event *settles* at a configuration when it is a ready reveal, or a ready
+event of a defaulted owner, that may be taken before the events of a
+distinguished player `who` (one of another player, or any event once `who` has
+defaulted), and both its action under a reference profile and its output are
+determined. The closure of a configuration completes
 settling events, least first, until none is left.
 
 The closure forgets the order in which settling events were completed: when
@@ -33,11 +34,24 @@ private theorem pmf_pure_inj {α : Type} {first second : α}
   have supports := congrArg PMF.support same
   simpa [PMF.support_pure] using supports
 
-/-- An event settles: a ready reveal that may be taken before the events of
-`who`, whose action under the reference and whose output are determined. -/
+/-- The kinds of event the closure completes: reveals, and events of a
+defaulted owner. -/
+def ClosureKind (config : graph.Config) (event : graph.EventId) : Prop :=
+  (graph.outputLayout event).IsPublication ∨
+    ∃ owner, (graph.nodes event).actor = some owner ∧ owner ∈ config.defaulted
+
+/-- A closure kind persists while defaults grow. -/
+theorem ClosureKind.mono {before after : graph.Config} {event : graph.EventId}
+    (kind : ClosureKind before event) (grows : before.defaulted ⊆ after.defaulted) :
+    ClosureKind after event :=
+  kind.imp_right fun ⟨owner, owned, inactive⟩ => ⟨owner, owned, grows inactive⟩
+
+/-- An event settles: a ready reveal or event of a defaulted owner that may be
+taken before the events of `who`, whose action under the reference and whose
+output are determined. -/
 def Settles (reference : graph.BehavioralProfile) (who : Player) (config : graph.Config)
     (event : graph.EventId) : Prop :=
-  config.cut.Ready event ∧ (graph.outputLayout event).IsPublication ∧ Movable who config event ∧
+  config.cut.Ready event ∧ ClosureKind config event ∧ Movable who config event ∧
     ∃ (action : graph.Action event) (value : (graph.outputLayout event).Value),
       actionLaw reference config event = PMF.pure action ∧
         (graph.nodes event).eval? (config.effectiveAction event action) config.store =
@@ -218,8 +232,9 @@ theorem Settles.congr {reference : graph.BehavioralProfile} {who : Player}
   have store : left.store = right.store := congrArg (fun key => key.2.1) same
   have records : completionOf left = completionOf right := congrArg (fun key => key.2.2) same
   have defaulted := defaulted_eq_of_completionOf_eq records
-  obtain ⟨ready, publication, movable, action, value, acting, evaluates⟩ := settles
-  refine ⟨cut ▸ ready, publication, ?_, action, value, (keyed same event) ▸ acting, ?_⟩
+  obtain ⟨ready, kind, movable, action, value, acting, evaluates⟩ := settles
+  refine ⟨cut ▸ ready, kind.mono (fun owner member => by rw [← defaulted]; exact member), ?_,
+    action, value, (keyed same event) ▸ acting, ?_⟩
   · unfold Movable at movable ⊢
     rw [← defaulted]
     exact movable
@@ -344,7 +359,8 @@ theorem Settles.after {config : graph.Config} {event other : graph.EventId}
       eval?_after_complete otherSettles.1 settles.1]
     exact evaluates
   have after : Settles reference who (settled config other otherSettles) event :=
-    ⟨settles.1.after_complete otherSettles.1 different, settles.2.1,
+    ⟨settles.1.after_complete otherSettles.1 different,
+      settles.2.1.mono (config.complete_defaulted_mono other otherSettles.1 _ _),
       settles.2.2.1.imp_right fun defaulted =>
         config.complete_defaulted_mono other otherSettles.1 _ _ defaulted,
       action, value, afterActing, afterEvaluates⟩
@@ -500,13 +516,13 @@ theorem eval_eq_of_step {config : graph.Config} {event : graph.EventId}
 whose step is the point mass at one completion settles. -/
 theorem Settles.of_step {reference : graph.BehavioralProfile} {who : Player}
     {config : graph.Config} {event : graph.EventId} (ready : config.cut.Ready event)
-    (publication : (graph.outputLayout event).IsPublication) (movable : Movable who config event)
+    (kind : ClosureKind config event) (movable : Movable who config event)
     {action : graph.Action event} {value : (graph.outputLayout event).Value}
     (acting : actionLaw reference config event = PMF.pure action)
     (stepped : config.step event ready action =
       PMF.pure (config.complete event ready action value)) :
     Settles reference who config event :=
-  ⟨ready, publication, movable, action, value, acting, eval_eq_of_step stepped⟩
+  ⟨ready, kind, movable, action, value, acting, eval_eq_of_step stepped⟩
 
 end Deterministic
 
@@ -544,7 +560,8 @@ theorem Settles.after_complete {config : graph.Config} {event other : graph.Even
     exact evaluates
   have after : Settles reference who (config.complete other otherReady otherAction otherValue)
       event :=
-    ⟨settles.1.after_complete otherReady different, settles.2.1,
+    ⟨settles.1.after_complete otherReady different,
+      settles.2.1.mono (config.complete_defaulted_mono other otherReady _ _),
       settles.2.2.1.imp_right fun defaulted =>
         config.complete_defaulted_mono other otherReady _ _ defaulted,
       action, value, afterActing, afterEvaluates⟩
@@ -645,10 +662,10 @@ section Shape
 
 variable {reference : graph.BehavioralProfile} {who : Player}
 
-/-- A ready reveal of a defaulted owner settles under every reference. -/
+/-- A ready event of a defaulted owner settles under every reference. -/
 theorem settles_of_defaulted {config : graph.Config} {event : graph.EventId}
-    (ready : config.cut.Ready event) (publication : (graph.outputLayout event).IsPublication)
-    {owner : Player} (owned : (graph.nodes event).actor = some owner)
+    (ready : config.cut.Ready event) {owner : Player}
+    (owned : (graph.nodes event).actor = some owner)
     (inactive : owner ∈ config.defaulted) : Settles reference who config event := by
   have movable : Movable who config event := by
     by_cases same : owner = who
@@ -660,17 +677,17 @@ theorem settles_of_defaulted {config : graph.Config} {event : graph.EventId}
     EventCode.effectiveAction_of_defaulted _ _ owner owned inactive _
   obtain ⟨value, evaluates, _⟩ := EventCode.failureAction_eval? (graph.nodes event) owner owned
     config.store (fun _ read => config.read_available ready read)
-  refine ⟨ready, publication, movable, (graph.nodes event).failureAction owner owned, value, ?_,
-    ?_⟩
+  refine ⟨ready, Or.inr ⟨owner, owned, inactive⟩, movable,
+    (graph.nodes event).failureAction owner owned, value, ?_, ?_⟩
   · rw [actionLaw_of_actor reference config owned, dite_eq_left inactive]
   · rw [effective]
     exact evaluates
 
-/-- A settled event is a reveal of another player than `who`, or `who` has
-defaulted; and completing it keeps `who` active if `who` was. -/
+/-- A settled event is of a closure kind and of another player than `who`, or
+`who` has defaulted; and completing it keeps `who` active if `who` was. -/
 theorem settled_shape {config : graph.Config} {event : graph.EventId}
     (settles : Settles reference who config event) :
-    (graph.outputLayout event).IsPublication ∧
+    ClosureKind config event ∧
       (who ∉ config.defaulted → graph.actor? event ≠ some who ∧
         who ∉ (settled config event settles).defaulted) := by
   refine ⟨settles.2.1, fun active => ?_⟩
@@ -683,12 +700,13 @@ theorem settled_shape {config : graph.Config} {event : graph.EventId}
   rw [mem_defaulted_complete_of_actor_ne config event settles.1 _ _ who foreign]
   exact active
 
-/-- **What the closure adds.** Every event the closure completes is a reveal;
-while `who` is active, it is not an event of `who`, and `who` stays active. -/
+/-- **What the closure adds.** Every event the closure completes is a reveal or
+an event of an owner defaulted at the closure; while `who` is active, it is not
+an event of `who`, and `who` stays active. -/
 theorem closure_shape (reference : graph.BehavioralProfile) (who : Player) :
     ∀ (fuel : Nat) (config : graph.Config), config.remaining = fuel →
       (∀ event, event ∈ (closure reference who config).cut.completed →
-        event ∉ config.cut.completed → (graph.outputLayout event).IsPublication ∧
+        event ∉ config.cut.completed → ClosureKind (closure reference who config) event ∧
           (who ∉ config.defaulted → graph.actor? event ≠ some who)) ∧
       (who ∉ config.defaulted → who ∉ (closure reference who config).defaulted) := by
   intro fuel
@@ -701,11 +719,16 @@ theorem closure_shape (reference : graph.BehavioralProfile) (who : Player) :
     have consumed := settled_remaining leastSettles
     rw [closure_of_settles settles, stepEq]
     obtain ⟨added, stays⟩ := ih _ (by omega) (settled config least leastSettles) rfl
-    obtain ⟨publication, shape⟩ := settled_shape leastSettles
+    obtain ⟨kind, shape⟩ := settled_shape leastSettles
+    have grows : (settled config least leastSettles).defaulted ⊆
+        (closure reference who (settled config least leastSettles)).defaulted :=
+      Config.Step.path_defaulted_mono (closure_path reference who _)
     refine ⟨fun query done fresh => ?_, fun active => stays (shape active).2⟩
     by_cases same : query = least
-    · subst same
-      exact ⟨publication, fun active => (shape active).1⟩
+    · rw [same]
+      exact ⟨kind.mono fun _ member =>
+        grows (config.complete_defaulted_mono least leastSettles.1 _ _ member),
+        fun active => (shape active).1⟩
     · have notBefore : query ∉ (settled config least leastSettles).cut.completed := by
         unfold settled
         rw [Config.complete_cut, EventOrder.Cut.mem_complete]
@@ -719,5 +742,70 @@ theorem closure_shape (reference : graph.BehavioralProfile) (who : Player) :
     exact ⟨fun _ done fresh => (fresh done).elim, id⟩
 
 end Shape
+
+section Steps
+
+variable {reference : graph.BehavioralProfile} {who : Player}
+
+/-- Completing an event depends on the requested action only through the
+recorded decision. -/
+theorem Config.complete_congr_decision (config : graph.Config) {event : graph.EventId}
+    (ready : config.cut.Ready event) {first second : graph.Action event}
+    (decisions : config.actualDecision event first = config.actualDecision event second)
+    (value : (graph.outputLayout event).Value) :
+    config.complete event ready first value = config.complete event ready second value := by
+  unfold Config.complete
+  simp only [decisions]
+
+omit [DecidableEq Player] in
+private theorem effectiveAction_of_active [DecidableEq Player] {Field : Type} [DecidableEq Field]
+    {layout : Field → EventField Player L} {output : EventField Player L}
+    (code : EventCode layout output) (defaulted : Finset Player) (owner : Player)
+    (owned : code.actor = some owner) (active : owner ∉ defaulted) (requested : code.Action) :
+    code.effectiveAction defaulted requested = requested ∧
+      code.actualDecision defaulted requested = some requested := by
+  cases code with
+  | bind who payload =>
+      have same : who = owner := Option.some.inj owned
+      subst who
+      simp [EventCode.effectiveAction, EventCode.actualDecision, EventCode.actor, active]
+  | resolve who payload binding checks =>
+      have same : who = owner := Option.some.inj owned
+      subst who
+      simp [EventCode.effectiveAction, EventCode.actualDecision, EventCode.actor, active]
+  | sample => simp [EventCode.actor] at owned
+
+/-- **A step recording the determined decision of an owned settling event is
+its settling.** -/
+theorem step_eq_settled {config next : graph.Config} {event : graph.EventId}
+    (settles : Settles reference who config event) {owner : Player}
+    (owned : (graph.nodes event).actor = some owner) {ready : config.cut.Ready event}
+    {action : graph.Action event} (member : next ∈ (config.step event ready action).support)
+    (decisions : config.actualDecision event action =
+      config.actualDecision event settles.2.2.2.choose) :
+    next = settled config event settles := by
+  obtain ⟨acting, evaluates⟩ := settles.2.2.2.choose_spec.choose_spec
+  have effective : config.effectiveAction event action =
+      config.effectiveAction event settles.2.2.2.choose := by
+    unfold Config.effectiveAction
+    by_cases inactive : owner ∈ config.defaulted
+    · rw [EventCode.effectiveAction_of_defaulted _ _ owner owned inactive,
+        EventCode.effectiveAction_of_defaulted _ _ owner owned inactive]
+    · obtain ⟨actionEffective, actionDecision⟩ :=
+        effectiveAction_of_active _ config.defaulted owner owned inactive action
+      obtain ⟨chosenEffective, chosenDecision⟩ :=
+        effectiveAction_of_active _ config.defaulted owner owned inactive settles.2.2.2.choose
+      unfold Config.actualDecision at decisions
+      rw [actionDecision, chosenDecision] at decisions
+      rw [actionEffective, chosenEffective, Option.some.inj decisions]
+  have stepEq := config.step_eq_map_of_eval event ready action _
+    ((congrArg (fun chosen => (graph.nodes event).eval? chosen config.store) effective).trans
+      evaluates)
+  rw [stepEq, PMF.pure_map, PMF.mem_support_pure_iff] at member
+  rw [member]
+  unfold settled
+  exact config.complete_congr_decision ready decisions _
+
+end Steps
 
 end Vegas.EventGraph
