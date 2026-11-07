@@ -97,8 +97,9 @@ theorem eventRecorded_eq_false_of_ownerTurns
 
 /-- **The traffic of a run.** Two executions inside a run of concurrent reveals,
 with the recall facts, whose honest submissions are accepted, whose ready
-reveals stay accepted alike along their graph paths with equal stored bindings
-when accepted or the deviator's, and with equal deviator traffic, give equal
+reveals of active owners are accepted alike, with equal stored bindings when
+accepted or the deviator's, at every pair of executions the run reaches keeping
+given invariants, and with equal deviator traffic, give equal
 laws of that traffic when run until a condition on the cut that holds once the
 run is done, when honest clients open a reveal exactly when its opening is
 accepted. -/
@@ -127,7 +128,18 @@ theorem run_stopped_traffic_congr {horizon : Nat}
     (stop : (serviceGraph setup mode).order.Cut → Prop) [DecidablePred stop]
     (stopDone : ∀ cut : (serviceGraph setup mode).order.Cut,
       (∀ event : (serviceGraph setup mode).EventId, event.val < finish →
-        event ∈ cut.completed) → stop cut) :
+        event ∈ cut.completed) → stop cut)
+    (leftGood rightGood : Nat → (serviceApplication setup mode deadline leaks).Execution → Prop)
+    (leftRound : ∀ n current, leftGood (n + 1) current → ¬ stop current.application.config.cut →
+      ∀ next ∈ ((serviceApplication setup mode deadline leaks).round scheduler
+        (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+          (firstTurnTiming setup turns mode) reference) who deviation) current).support,
+        leftGood n next)
+    (rightRound : ∀ n current, rightGood (n + 1) current → ¬ stop current.application.config.cut →
+      ∀ next ∈ ((serviceApplication setup mode deadline leaks).round scheduler
+        (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+          (firstTurnTiming setup turns mode) reference) who deviation) current).support,
+        rightGood n next) :
     ∀ (count leftRemaining rightRemaining : Nat)
       (left right : (serviceApplication setup mode deadline leaks).Execution),
       ((serviceApplication setup mode deadline leaks).protocol
@@ -143,10 +155,13 @@ theorem run_stopped_traffic_congr {horizon : Nat}
       HonestBlockSubmissions who start finish left →
       HonestBlockSubmissions who start finish right →
       RunTurnFacts who left → RunTurnFacts who right →
-      (∀ current other : (serviceGraph setup mode).Config,
-        Relation.ReflTransGen Config.Step left.application.config current →
-        Relation.ReflTransGen Config.Step right.application.config other →
-        current.cut = other.cut → ¬ stop current.cut →
+      leftGood count left → rightGood count right →
+      (∀ (n : Nat) (currentRun otherRun : (serviceApplication setup mode deadline leaks).Execution),
+        leftGood (n + 1) currentRun → rightGood (n + 1) otherRun →
+        currentRun.application.config.cut = otherRun.application.config.cut →
+        ¬ stop currentRun.application.config.cut →
+        let current := currentRun.application.config
+        let other := otherRun.application.config
         ∀ (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
           (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
           (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
@@ -172,7 +187,7 @@ theorem run_stopped_traffic_congr {horizon : Nat}
         (fun final => stop final.application.config.cut) count right).map
           ((serviceRuntime setup mode deadline).bindingTraffic leaks who) := by
   intro count leftRemaining rightRemaining left right leftTrace rightTrace leftInside
-    rightInside leftValid rightValid leftFacts rightFacts agreeAt same
+    rightInside leftValid rightValid leftFacts rightFacts leftStart rightStart agreeAt same
   let app := serviceApplication setup mode deadline leaks
   let players := Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound
     turns (firstTurnTiming setup turns mode) reference) who deviation
@@ -183,19 +198,23 @@ theorem run_stopped_traffic_congr {horizon : Nat}
   have notDone (cut : (serviceGraph setup mode).order.Cut) (running : ¬ stop cut) :
       ¬ ∀ event : (serviceGraph setup mode).EventId, event.val < finish →
         event ∈ cut.completed := fun done => running (stopDone cut done)
-  let invariant := fun (origin : app.Execution) (count : Nat) (current : app.Execution) =>
+  let invariant := fun (good : Nat → app.Execution → Prop) (count : Nat)
+      (current : app.Execution) =>
     (∃ remaining, Nonempty ((app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
       (some ⟨remaining + count, none, current⟩))) ∧
     (¬ BlockDone finish current.application.config →
       InBlock start finish current.application.config) ∧
-    Relation.ReflTransGen Config.Step origin.application.config current.application.config ∧
+    good count current ∧
     HonestBlockSubmissions who start finish current ∧ RunTurnFacts who current
-  have advance (origin : app.Execution) (n : Nat) (current : app.Execution)
-      (valid : invariant origin (n + 1) current)
+  have advance (good : Nat → app.Execution → Prop)
+      (goodRound : ∀ n current, good (n + 1) current → ¬ stop current.application.config.cut →
+        ∀ next ∈ (app.round scheduler players current).support, good n next)
+      (n : Nat) (current : app.Execution)
+      (valid : invariant good (n + 1) current)
       (running : ¬ stop current.application.config.cut)
       (next : app.Execution) (reached : next ∈ (app.round scheduler players current).support) :
-      invariant origin n next := by
-    obtain ⟨⟨remaining, ⟨trace⟩⟩, inside, walked, submitted, facts⟩ := valid
+      invariant good n next := by
+    obtain ⟨⟨remaining, ⟨trace⟩⟩, inside, goodNow, submitted, facts⟩ := valid
     have before : (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
         (some ⟨(remaining + n) + 1, none, current⟩) := by
       simpa only [Nat.add_assoc] using trace
@@ -206,13 +225,14 @@ theorem run_stopped_traffic_congr {horizon : Nat}
     have unfinished : ¬ BlockDone finish current.application.config :=
       notDone _ running
     exact ⟨⟨remaining, ⟨nextTrace⟩⟩, fun later => (inside unfinished).path shaped path
-      later, walked.trans path, honestBlockSubmissions_round scheduler bound turns reference
+      later, goodRound n current goodNow running next reached,
+      honestBlockSubmissions_round scheduler bound turns reference
       decides who deviation start finish shaped publications current next before
       (inside unfinished) unfinished submitted reached,
       RunTurnFacts.round bound turns reference who deviation before facts reached⟩
   have coupled := ReactiveApplication.runUntil_map_congr_of_rounds app scheduler players players
     (fun final => stop final.application.config.cut) (blockReadoutOn who window)
-    (invariant left) (invariant right)
+    (invariant leftGood) (invariant rightGood)
     (by
       intro n current other _ _ equal
       have publics : current.application.publicView = other.application.publicView :=
@@ -221,9 +241,9 @@ theorem run_stopped_traffic_congr {horizon : Nat}
       simp only [cuts])
     (by
       intro n current other currentValid otherValid equal running
-      obtain ⟨⟨currentRest, ⟨currentTrace⟩⟩, currentInside, currentPath, currentSubmitted,
+      obtain ⟨⟨currentRest, ⟨currentTrace⟩⟩, currentInside, currentGood, currentSubmitted,
         currentFacts⟩ := currentValid
-      obtain ⟨⟨otherRest, ⟨otherTrace⟩⟩, _, otherPath, _, otherFacts⟩ := otherValid
+      obtain ⟨⟨otherRest, ⟨otherTrace⟩⟩, _, otherGood, _, otherFacts⟩ := otherValid
       have currentBefore : (app.protocol (serviceInitialLaw setup mode) horizon scheduler).Trace
           (some ⟨(currentRest + n) + 1, none, current⟩) := by
         simpa only [Nat.add_assoc] using currentTrace
@@ -252,7 +272,7 @@ theorem run_stopped_traffic_congr {horizon : Nat}
           (ready : current.application.config.cut.Ready event) :
           start ≤ event.val ∧ event.val < finish :=
         shaped _ inside unfinished event ready
-      have agreeAtNow := agreeAt _ _ currentPath otherPath cuts running
+      have agreeAtNow := agreeAt n current other currentGood otherGood cuts running
       have agreeNow : ∀ (event : (serviceGraph setup mode).EventId) (owner : Player)
           (payload : L.Ty)
           (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
@@ -321,9 +341,9 @@ theorem run_stopped_traffic_congr {horizon : Nat}
         rw [senderOwner] at entryMember
         exact (currentSubmitted owner isWho entry entryMember named bounds.1 bounds.2
           submitted).2)
-    (advance left) (advance right) count left right
-    ⟨⟨leftRemaining, ⟨leftTrace⟩⟩, leftInside, .refl, leftValid, leftFacts⟩
-    ⟨⟨rightRemaining, ⟨rightTrace⟩⟩, rightInside, .refl, rightValid, rightFacts⟩
+    (advance leftGood leftRound) (advance rightGood rightRound) count left right
+    ⟨⟨leftRemaining, ⟨leftTrace⟩⟩, leftInside, leftStart, leftValid, leftFacts⟩
+    ⟨⟨rightRemaining, ⟨rightTrace⟩⟩, rightInside, rightStart, rightValid, rightFacts⟩
     (by rw [readoutOf, readoutOf, same])
   have projected := congrArg (PMF.map Prod.fst) coupled
   simpa only [PMF.map_comp, Function.comp_def, readoutOf] using projected
