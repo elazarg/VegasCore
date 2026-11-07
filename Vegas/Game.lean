@@ -408,3 +408,4 @@ import Vegas.Game.RevealServiceEffectiveTimely
 import Vegas.Game.RevealServiceEffectiveHonestLaw
 import Vegas.Game.RevealServiceEffectiveOutcomeLaw
 import Vegas.Game.RevealBlockRecords
+import Vegas.Game.RevealBlockEndpoint
