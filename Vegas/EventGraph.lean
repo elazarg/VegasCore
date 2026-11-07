@@ -20,6 +20,8 @@ import Vegas.EventGraph.LastErasedLaw
 import Vegas.EventGraph.NormalizedRestriction
 import Vegas.EventGraph.LastKeyTarget
 import Vegas.EventGraph.PrefixRestriction
+import Vegas.EventGraph.FootprintIndependence
+import Vegas.EventGraph.ErasureTwin
 import Vegas.EventGraph.SchedulerPredraw
 import Vegas.EventGraph.SchedulerReplay
 import Vegas.EventGraph.RevealDeviation
