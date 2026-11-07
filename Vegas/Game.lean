@@ -422,3 +422,5 @@ import Vegas.Game.RevealPhaseBoundary
 import Vegas.Game.RevealDeviationSimulation
 import Vegas.Game.RevealDeviationLaw
 import Vegas.Game.RevealConcurrentNash
+import Vegas.Game.RevealTurnRecall
+import Vegas.Game.RevealRunCoupling
