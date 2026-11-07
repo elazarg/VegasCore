@@ -207,4 +207,103 @@ theorem ownedStepped_eq_of_mem {event : graph.EventId} {who : Player}
 
 end Advance
 
+/-- A recorded own decision is read from the normalized view. -/
+theorem observedAction_of_record {graph : Vegas.EventGraph Player L} {who : Player}
+    {config : graph.Config} {event : graph.EventId} (owned : graph.actor? event = some who)
+    {action : graph.Action event} {value : (graph.outputLayout event).Value}
+    (recorded : completionOf config event =
+      some (EventGraph.completion graph event (some action) value)) :
+    observedAction event (graph.normalizeObservation who (graph.playerObserve who config)) =
+      some action := by
+  rw [observedAction_normalize, recorded]
+  have keep : (decide (graph.actor? event = some who) && (some action).isSome) = true := by
+    simp only [owned, decide_true, Option.isSome_some, Bool.and_self]
+  simp only [Option.filter_some, EventGraph.completion, keep, ite_true, Option.bind_some,
+    Bool.decide_and, Bool.decide_eq_true]
+  exact recordAction_completion event (some action) value
+
+/-- **The end of a step to the deviator's next reveal.** On a path from a point
+of a run to a configuration where `target` has completed, with records
+classified as in a run and a decision of the deviator only at `target`, the
+closure's key at the end is the closure advance of the starting closure's key
+by the deviator's observed action at `target`. -/
+theorem targetStep_end (base : (serviceGraph setup mode).BehavioralProfile)
+    (decides : ∀ (config : (serviceGraph setup mode).Config)
+      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
+      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup mode) event =
+        .resolve owner payload binding checks outputEq codeEq →
+      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
+        (serviceGraph setup mode).normalizeProfile base owner event actor
+          ((serviceGraph setup mode).playerObserve owner config) active =
+          PMF.pure (cast (congrArg EventField.Action outputEq.symm)
+            (openingAccepted event config.store)))
+    (independent : ReadyIndependent ((serviceGraph setup mode).normalizeProfile base))
+    (who : Player) {start finish : Nat} (run : RevealRun (serviceGraph setup mode) start finish)
+    {origin final : (serviceGraph setup mode).Config}
+    (path : Relation.ReflTransGen Config.Step origin final)
+    (sound : BlockRecordsSound who start finish origin final)
+    (target : (serviceGraph setup mode).EventId)
+    (targetOwned : (serviceGraph setup mode).actor? target = some who)
+    (decided : DecidesOnly who origin (· = target) final)
+    (earlier : ∀ event : (serviceGraph setup mode).EventId, event.val < start →
+      event ∈ origin.cut.completed)
+    (targetLate : target.val < finish)
+    (before : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
+      event.val < target.val → (serviceGraph setup mode).actor? event = some who →
+        event ∈ origin.cut.completed)
+    (activePending : who ∉ origin.defaulted → target ∉ origin.cut.completed)
+    (done : target ∈ final.cut.completed) :
+    runKey (closure ((serviceGraph setup mode).normalizeProfile base) who final) =
+      closureAdvance ((serviceGraph setup mode).normalizeProfile base) who target targetOwned
+        (runKey (closure ((serviceGraph setup mode).normalizeProfile base) who origin))
+        (observedAction target ((serviceGraph setup mode).normalizeObservation who
+          ((serviceGraph setup mode).playerObserve who final))) := by
+  let G := serviceGraph setup mode
+  let R := G.normalizeProfile base
+  by_cases active : who ∉ origin.defaulted
+  · have pending := activePending active
+    obtain ⟨ready, action, value, supported, recorded, key⟩ :=
+      (run_path_closure base decides independent who sound target targetOwned
+        (fun event different fresh mine => decided event different fresh mine) active pending
+        final path .refl).2 done
+    rw [observedAction_of_record targetOwned recorded,
+      closureAdvance_runKey independent.congr target targetOwned _ ready action,
+      ← ownedStepped_eq_of_mem targetOwned supported]
+    exact key
+  · push Not at active
+    have quiet : ∀ event : G.EventId, event ∉ origin.cut.completed →
+        G.actor? event = some who →
+          ∀ record, completionOf final event = some record → record.decision = none := by
+      intro event fresh mine record found
+      by_cases same : event = target
+      · subst same
+        have doneEvent : event ∈ final.cut.completed := done
+        obtain ⟨middle, next, readyMiddle, action, walked, member, rest⟩ :=
+          path_new_event path fresh doneEvent
+        obtain ⟨value, _, stepRecord⟩ := step_record_path member rest
+        rw [stepRecord] at found
+        cases found
+        have inactive : who ∈ middle.defaulted :=
+          Config.Step.path_defaulted_mono walked active
+        have ownedNode : (G.nodes event).actor = some who := targetOwned
+        unfold Config.actualDecision
+        rw [EventCode.actualDecision_of_defaulted _ _ who ownedNode inactive]
+        rfl
+      · exact decided event same fresh mine record found
+    rw [run_path_closure_settles base decides independent who sound quiet final path .refl]
+    symm
+    apply closureAdvance_of_not_ready
+    intro config keyEq ready
+    have completedTarget : target ∈ (closure R who origin).cut.completed :=
+      closure_completes_done base decides who run earlier
+        (fun _ _ _ _ => Or.inr active) target targetLate
+    have cuts : config.cut = (closure R who origin).cut := congrArg Prod.fst keyEq
+    exact ready.1 (cuts ▸ completedTarget)
+
 end Vegas
