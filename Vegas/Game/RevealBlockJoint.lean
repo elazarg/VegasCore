@@ -1,7 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.OwnedPhaseJoint
-import Vegas.Game.RevealBlockRun
+import Vegas.Game.RevealBlockStart
 
 /-! # The joint law of a block of concurrent reveals
 
@@ -229,6 +229,17 @@ theorem ledgerBlock_joint {horizon : Nat}
       picks
     exact blockEnd_runKey_congr publications keys otherPath path otherSound sound
       (eq_of_heq (Sigma.mk.inj picked).2)
+  have stayOf (seed : Seed) (final : app.Execution) (reached : final ∈ (run seed).support)
+      (done : BlockDone finish (execution seed).application.config) :
+      final.application.config = (execution seed).application.config := by
+    have stopped := app.runUntil_of_stop scheduler players
+      (fun current => BlockDone finish current.application.config)
+      (horizon - (execution seed).environmentRecall.length) (execution seed) done
+    change final ∈ (app.runUntil scheduler players
+      (fun current => BlockDone finish current.application.config)
+      (horizon - (execution seed).environmentRecall.length) (execution seed)).support at reached
+    rw [stopped, PMF.mem_support_pure_iff] at reached
+    rw [reached]
   have atTurnOf (seed : Seed) (member : seed ∈ prior.support) :
       ∀ owner, owner ≠ who → OwnSubmissionsAtTurn setup leaks (execution seed) owner :=
     fun owner different => (canonicalSlots_roundsFrom_reference scheduler players owner
@@ -255,8 +266,9 @@ theorem ledgerBlock_joint {horizon : Nat}
       intro event owner payload binding checks outputEq codeEq node early late pending
       have pendingRight : event ∉ (execution right).application.config.cut.completed :=
         fun done => pending ((completed_iff_of_normalize who normals event).mpr done)
-      have leftReady := flat.ready (begin left leftMember).inside early late pending
-      have rightReady := flat.ready (begin right rightMember).inside early late pendingRight
+      have leftReady := flat.ready_of_earlier (begin left leftMember).earlier early late pending
+      have rightReady :=
+        flat.ready_of_earlier (begin right rightMember).earlier early late pendingRight
       have owned := nodeView_resolve_actor outputEq codeEq
       have resolvedEq (honest : owner ≠ who) :
           EventCode.resolveOutput? binding checks true (execution left).application.config.store =
@@ -331,7 +343,7 @@ theorem ledgerBlock_joint {horizon : Nat}
       (horizon - (execution left).environmentRecall.length) 0 0 (execution left)
       (execution right) (by simpa only [Nat.zero_add] using leftTrace)
       (by rw [lengths]; simpa only [Nat.zero_add] using rightTrace)
-      (fun _ => (begin left leftMember).inside) (fun _ => (begin right rightMember).inside)
+      (begin left leftMember).inside (begin right rightMember).inside
       (honestBlockSubmissions_start who start finish _ (atTurnOf left leftMember)
         (untouched left leftMember))
       (honestBlockSubmissions_start who start finish _ (atTurnOf right rightMember)
@@ -374,12 +386,13 @@ theorem ledgerBlock_joint {horizon : Nat}
     have ends := Option.some.inj same
     obtain ⟨leftPath, leftSound⟩ := facts leftSeed leftMember leftFinal leftReached
     obtain ⟨rightPath, rightSound⟩ := facts rightSeed rightMember rightFinal rightReached
-    obtain ⟨startViews, hiddens⟩ := blockStart_reflect concurrent flat publications
+    obtain ⟨startViews, hiddens⟩ := blockStart_reflect_general concurrent flat publications
       (begin leftSeed leftMember) (begin rightSeed rightMember) leftPath rightPath leftSound
       rightSound (DefaultOwners.path leftPath (owners leftSeed leftMember))
       (DefaultOwners.path rightPath (owners rightSeed rightMember))
-      (completes leftSeed leftMember leftFinal leftReached)
-      (completes rightSeed rightMember rightFinal rightReached) ends
+      (fun event _ late _ _ => completes leftSeed leftMember leftFinal leftReached event late)
+      (fun event _ late _ _ => completes rightSeed rightMember rightFinal rightReached event late)
+      (stayOf leftSeed leftFinal leftReached) (stayOf rightSeed rightFinal rightReached) ends
     rw [← leftKey, ← rightKey]
     change (keyView who (runKey (execution leftSeed).application.config),
         blockHidden who start finish (runKey (execution leftSeed).application.config)) =

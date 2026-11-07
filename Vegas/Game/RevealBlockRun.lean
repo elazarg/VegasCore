@@ -122,7 +122,8 @@ theorem blockRun_facts {horizon : Nat}
         (firstTurnTiming setup turns mode) reference) who deviation)
       execution.environmentRecall.length).support)
     (bounded : execution.environmentRecall.length ≤ horizon)
-    (inside : InBlock start finish execution.application.config)
+    (inside : ¬ BlockDone finish execution.application.config →
+      InBlock start finish execution.application.config)
     (untouched : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
       event.val < finish → Untouched setup leaks event execution)
     (final : (serviceApplication setup mode deadline leaks).Execution)
@@ -180,7 +181,7 @@ theorem blockRun_facts {horizon : Nat}
   obtain ⟨n, _, _, _, _, walked, sound⟩ := app.runUntil_support_holds scheduler players
     (fun current => BlockDone finish current.application.config) holds preserved
     (horizon - execution.environmentRecall.length) execution
-    ⟨supported, by omega, fun _ => inside, honestBlockSubmissions_start who start finish execution
+    ⟨supported, by omega, inside, honestBlockSubmissions_start who start finish execution
       atTurn untouched, .refl, fun event fresh done => (fresh done).elim⟩ final reached
   exact ⟨walked, sound⟩
 

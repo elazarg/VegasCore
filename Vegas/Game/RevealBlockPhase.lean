@@ -264,7 +264,9 @@ theorem lastBlock_phase {horizon : Nat}
       pending (((begin seed member).drained event early late).mpr ⟨owner, owned, inactive⟩)
   have closure (seed : Seed) (member : seed ∈ prior.support) (policy : G.BehavioralPolicy who) :
       ∃ final : G.Config,
-        Relation.ReflTransGen Config.Step (config seed) final ∧ InBlock start finish final ∧
+        Relation.ReflTransGen Config.Step (config seed) final ∧
+        (∀ event : G.EventId, event.val < start → event ∈ final.cut.completed) ∧
+        (¬ BlockDone finish final → InBlock start finish final) ∧
         BlockRecordsSound who start finish (config seed) final ∧
         lastErasedLaw (P policy) who (config seed) = lastErasedLaw (P policy) who final ∧
         (∀ event : G.EventId, start ≤ event.val → event.val < finish →
@@ -272,12 +274,17 @@ theorem lastBlock_phase {horizon : Nat}
         (∀ event, event ∈ final.cut.completed → event ∈ (config seed).cut.completed ∨
           (start ≤ event.val ∧ event.val < finish ∧ G.actor? event ≠ some who)) ∧
         (who ∈ final.defaulted → who ∈ (config seed).defaulted) := by
+    by_cases done : BlockDone finish (config seed)
+    · exact ⟨config seed, .refl, (begin seed member).earlier,
+        fun running => (running done).elim, fun event fresh finished => (fresh finished).elim,
+        rfl, fun event _ late pending => (pending (done event late)).elim,
+        fun event finished => Or.inl finished, id⟩
     obtain ⟨final, path, inside, _, sound, law, pending, fresh, whoDefaulted⟩ :=
       lastErasedLaw_honest_block shaped flat publications concurrent (P policy)
         (honestLaw policy) (config seed) (config seed).remaining (config seed) rfl
-        (begin seed member).inside .refl (fun event fresh done => (fresh done).elim)
+        ((begin seed member).inside done) .refl (fun event fresh done => (fresh done).elim)
         (startActive seed member)
-    exact ⟨final, path, inside, sound, law, pending, fresh, whoDefaulted⟩
+    exact ⟨final, path, inside.1, fun _ => inside, sound, law, pending, fresh, whoDefaulted⟩
   have honestDoneOf {seed : Seed} {final : G.Config}
       (pending : ∀ event : G.EventId, start ≤ event.val → event.val < finish →
         event ∉ final.cut.completed → G.actor? event = some who) :
@@ -296,14 +303,14 @@ theorem lastBlock_phase {horizon : Nat}
         BlockDone finish final ∧
         ∀ other ∈ prior.support, key other = key seed → ∀ last ∈ (run other).support,
           runKey last.application.config = runKey (State.drainConfig final) := by
-    obtain ⟨final, path, inside, sound, law, pending, _, _⟩ := closure seed member policy
+    obtain ⟨final, path, earlier, _, sound, law, pending, _, _⟩ := closure seed member policy
     have done : BlockDone finish final := by
       intro event late
       by_contra notDone
       by_cases early : start ≤ event.val
       · exact notDone (Config.Step.path_completed_mono path
           (none event early late (pending event early late notDone)))
-      · exact notDone (inside.1 event (by omega))
+      · exact notDone (earlier event (by omega))
     refine ⟨final, law, done, fun other otherMember keys last reached => ?_⟩
     obtain ⟨lastPath, lastSound, lastOwners, lastDone, lastQuiet⟩ :=
       finalFacts other otherMember last reached
@@ -372,9 +379,10 @@ theorem lastBlock_phase {horizon : Nat}
   let HonestClosure := fun (seed : Seed) (final : G.Config) =>
     Relation.ReflTransGen Config.Step (config seed) final ∧
       BlockRecordsSound who start finish (config seed) final ∧ DefaultOwners final ∧
-      ∀ event : G.EventId, start ≤ event.val → event.val < finish →
+      (∀ event : G.EventId, start ≤ event.val → event.val < finish →
         event ∉ (config seed).cut.completed → G.actor? event ≠ some who →
-          event ∈ final.cut.completed
+          event ∈ final.cut.completed) ∧
+      (BlockDone finish (config seed) → final = config seed)
   obtain ⟨anchor, _⟩ := prior.support_nonempty
   let recover := fun observation : G.PlayerObservation who =>
     if found : ∃ seed ∈ prior.support, ∃ final, HonestClosure seed final ∧
@@ -399,7 +407,7 @@ theorem lastBlock_phase {horizon : Nat}
   · exact quietPointwise build policy seed member
       (fun event early late owned => by rw [unique event early late owned]; exact wDone)
       (fun final done => lastErasedLaw_patch_completed w agree final (done w wLate))
-  obtain ⟨Y, pathY, insideY, soundY, lawY, pendingY, freshY, whoY⟩ :=
+  obtain ⟨Y, pathY, earlierY, insideYOf, soundY, lawY, pendingY, freshY, whoY⟩ :=
     closure seed member (build policy)
   have whoActiveStart : who ∉ (config seed).defaulted := fun inactive =>
     wDone (((begin seed member).drained w wEarly wLate).mpr ⟨who, wOwned, inactive⟩)
@@ -408,21 +416,22 @@ theorem lastBlock_phase {horizon : Nat}
     rcases freshY w done with old | ⟨_, _, honest⟩
     · exact wDone old
     · exact honest wOwned
-  have wReady : Y.cut.Ready w := flat.ready insideY wEarly wLate wPendingY
+  have wReady : Y.cut.Ready w := flat.ready_of_earlier earlierY wEarly wLate wPendingY
   have alone : ∀ other, Y.cut.Ready other → other = w := by
     intro other ready
     have running : ¬ BlockDone finish Y := fun done => wPendingY (done w wLate)
-    have bounds := shaped Y insideY running other ready
+    have bounds := shaped Y (insideYOf running) running other ready
     exact unique other bounds.1 bounds.2 (pendingY other bounds.1 bounds.2 ready.1)
   have nonempty : Y.cut.enabled.Nonempty := ⟨w, (EventOrder.Cut.mem_enabled _ _).mpr wReady⟩
-  have startReady := flat.ready (begin seed member).inside wEarly wLate wDone
+  have startReady := flat.ready_of_earlier (begin seed member).earlier wEarly wLate wDone
   have available : ∀ field ∈ (G.nodes w).readFields, ((config seed).store field).isSome :=
     fun field read => (config seed).read_available startReady read
   have keptY : ∀ field stored, (config seed).store field = some stored →
       Y.store field = some stored :=
     fun field stored found => Config.Step.path_store_of_some pathY field stored found
   have closureSeed : HonestClosure seed Y :=
-    ⟨pathY, soundY, DefaultOwners.path pathY (owners seed member), honestDoneOf pendingY⟩
+    ⟨pathY, soundY, DefaultOwners.path pathY (owners seed member), honestDoneOf pendingY,
+      fun done => (wDone (done w wLate)).elim⟩
   have recovered : recover (G.normalizeObservation who (G.playerObserve who Y)) =
       view (key seed) := by
     have found : ∃ other ∈ prior.support, ∃ final, HonestClosure other final ∧
@@ -435,10 +444,10 @@ theorem lastBlock_phase {horizon : Nat}
       view (key found.choose) else view (key anchor)) = _
     rw [dite_eq_left found]
     obtain ⟨otherMember, otherFinal, otherClosure, otherViews⟩ := found.choose_spec
-    obtain ⟨startViews, hiddens⟩ := blockStart_reflect_of_honestDone concurrent flat
+    obtain ⟨startViews, hiddens⟩ := blockStart_reflect_general concurrent flat
       publications (begin _ otherMember) (begin seed member) otherClosure.1 pathY
-      otherClosure.2.1 soundY otherClosure.2.2.1 closureSeed.2.2.1 otherClosure.2.2.2
-      closureSeed.2.2.2 otherViews
+      otherClosure.2.1 soundY otherClosure.2.2.1 closureSeed.2.2.1 otherClosure.2.2.2.1
+      closureSeed.2.2.2.1 otherClosure.2.2.2.2 closureSeed.2.2.2.2 otherViews
     change (keyView who (runKey (config found.choose)),
         blockHidden who start finish (runKey (config found.choose))) =
       (keyView who (runKey (config seed)), blockHidden who start finish (runKey (config seed)))
@@ -512,7 +521,7 @@ theorem lastBlock_phase {horizon : Nat}
       · right
         by_contra notDone
         exact same (unique event early late (pendingY event early late notDone))
-    · exact Or.inr (insideY.1 event (by omega))
+    · exact Or.inr (earlierY event (by omega))
   have steppedRecord : completionOf stepped w = some (EventGraph.completion G w
       (some (cast (congrArg EventField.Action outputEq.symm) disclose))
       (cast (congrArg EventField.Value outputEq.symm) output)) := by

@@ -98,8 +98,8 @@ theorem honest_end_congr_of_keys {who : Player} {start finish : Nat}
   have cuts : leftOrigin.cut = rightOrigin.cut := congrArg Prod.fst keys
   have stores : leftOrigin.store = rightOrigin.store := congrArg (fun key => key.2.1) keys
   have rightPending : event ∉ rightOrigin.cut.completed := by rw [← cuts]; exact pending
-  have leftReady := flat.ready leftBegin.inside early late pending
-  have rightReady := flat.ready rightBegin.inside early late rightPending
+  have leftReady := flat.ready_of_earlier leftBegin.earlier early late pending
+  have rightReady := flat.ready_of_earlier rightBegin.earlier early late rightPending
   have leftAvailable : ∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
       (leftOrigin.store field).isSome := fun field read => leftOrigin.read_available leftReady read
   have rightAvailable : ∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,

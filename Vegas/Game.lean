@@ -415,4 +415,5 @@ import Vegas.Game.RevealBlockRun
 import Vegas.Game.RevealBlockJoint
 import Vegas.Game.RevealBlockClosure
 import Vegas.Game.RevealBlockGraph
+import Vegas.Game.RevealBlockStart
 import Vegas.Game.RevealBlockPhase

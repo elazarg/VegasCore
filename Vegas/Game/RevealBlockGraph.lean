@@ -370,8 +370,8 @@ theorem pending_not_silent {who : Player} {start finish : Nat}
       rw [silent] at found
       cases found
       cases defaulted
-    · have eventReady := flat.ready begin.inside early late pending
-      have otherReady := flat.ready begin.inside otherEarly otherLate old
+    · have eventReady := flat.ready_of_earlier begin.earlier early late pending
+      have otherReady := flat.ready_of_earlier begin.earlier otherEarly otherLate old
       rcases concurrent origin.cut eventReady otherReady (Ne.symm same) with
         independent | independent
       · exact independent.2.2.2 (owned.trans otherOwned.symm)

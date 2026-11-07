@@ -64,6 +64,16 @@ def BlockFlat (start finish : Nat) : Prop :=
     prior ∈ graph.order.predecessors event → prior.val < start
 
 omit [DecidableEq Player] in
+/-- In a flat block every pending block event is ready once every earlier
+event has completed. -/
+theorem BlockFlat.ready_of_earlier {start finish : Nat}
+    (flat : BlockFlat (graph := graph) start finish) {config : graph.Config}
+    (earlier : ∀ event : graph.EventId, event.val < start → event ∈ config.cut.completed)
+    {event : graph.EventId} (early : start ≤ event.val) (late : event.val < finish)
+    (pending : event ∉ config.cut.completed) : config.cut.Ready event :=
+  ⟨pending, fun prior member => earlier prior (flat event prior early late member)⟩
+
+omit [DecidableEq Player] in
 /-- Inside a flat block every pending block event is ready. -/
 theorem BlockFlat.ready {start finish : Nat} (flat : BlockFlat (graph := graph) start finish)
     {config : graph.Config} (inside : InBlock start finish config)
@@ -77,17 +87,32 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
   {mode : EventGraph.ExecutionMode}
 
-/-- The start of a block: every earlier event has completed and no later one,
-and a block event has completed exactly when its owner is defaulted, silently. -/
+/-- The start of a block: every earlier event has completed, a later event only
+once the block is done, and every block or later event completed so far was
+completed silently, a block event exactly when its owner is defaulted. -/
 structure BlockStart (start finish : Nat) (config : (serviceGraph setup mode).Config) :
     Prop where
-  inside : InBlock start finish config
+  earlier : ∀ event : (serviceGraph setup mode).EventId, event.val < start →
+    event ∈ config.cut.completed
+  later : ∀ event : (serviceGraph setup mode).EventId, finish ≤ event.val →
+    event ∈ config.cut.completed → BlockDone finish config
+  beyond : ∀ event : (serviceGraph setup mode).EventId, finish ≤ event.val →
+    event ∈ config.cut.completed → completionOf config event = some ⟨event, none, none⟩
+  failed : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
+    event.val < finish → event ∈ config.cut.completed →
+      config.outputs event = failureOutput event
   drained : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
     event.val < finish → (event ∈ config.cut.completed ↔
       ∃ owner, (serviceGraph setup mode).actor? event = some owner ∧ owner ∈ config.defaulted)
   silent : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
     event.val < finish → event ∈ config.cut.completed →
       completionOf config event = some ⟨event, none, none⟩
+
+/-- A block start whose block is unfinished lies inside the block. -/
+theorem BlockStart.inside {start finish : Nat} {config : (serviceGraph setup mode).Config}
+    (begin : BlockStart start finish config) (running : ¬ BlockDone finish config) :
+    InBlock start finish config :=
+  ⟨begin.earlier, fun event late done => running (begin.later event late done)⟩
 
 /-- The output a reveal would publish if opened now. -/
 def acceptedOutput (event : (serviceGraph setup mode).EventId)
@@ -190,8 +215,8 @@ theorem honest_pending_not_silent {who : Player} {start finish : Nat}
       rw [silent] at found
       cases found
       cases defaulted
-    · have eventReady := flat.ready begin.inside early late pending
-      have otherReady := flat.ready begin.inside otherEarly otherLate old
+    · have eventReady := flat.ready_of_earlier begin.earlier early late pending
+      have otherReady := flat.ready_of_earlier begin.earlier otherEarly otherLate old
       rcases concurrent origin.cut eventReady otherReady (Ne.symm same) with
         independent | independent
       · exact independent.2.2.2 (owned.trans otherOwned.symm)
@@ -216,7 +241,7 @@ theorem acceptedOutput_eq_of_honestDone {who : Player} {start finish : Nat}
     (late : event.val < finish) (pending : event ∉ origin.cut.completed)
     (honest : (serviceGraph setup mode).actor? event ≠ some who) :
     acceptedOutput event origin.store = current.outputs event := by
-  have ready := flat.ready begin.inside early late pending
+  have ready := flat.ready_of_earlier begin.earlier early late pending
   have available : ∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
       (origin.store field).isSome := fun field read => origin.read_available ready read
   have kept : ∀ field value, origin.store field = some value → current.store field = some value :=
@@ -278,12 +303,14 @@ private theorem defaulted_of_end {who : Player} {start finish : Nat}
     by_contra late
     push Not at late
     by_cases beyond : finish ≤ event.val
-    · exact beginLeft.inside.2 event beyond done
+    · rw [beginLeft.beyond event beyond done] at found
+      cases found
+      cases entry
     · push Not at beyond
       rw [beginLeft.silent event late beyond done] at found
       cases found
       cases entry
-  have doneRight : event ∈ startRight.cut.completed := beginRight.inside.1 event early
+  have doneRight : event ∈ startRight.cut.completed := beginRight.earlier event early
   obtain ⟨other, otherFound⟩ :=
     Option.isSome_iff_exists.mp ((completionOf_isSome_iff startRight event).mpr doneRight)
   have leftEnd := Config.Step.path_completionOf_of_some pathLeft event record found
@@ -305,6 +332,7 @@ theorem blockStart_reflect_of_honestDone {who : Player} {start finish : Nat}
     {startLeft startRight endLeft endRight : (serviceGraph setup mode).Config}
     (beginLeft : BlockStart start finish startLeft)
     (beginRight : BlockStart start finish startRight)
+    (runningLeft : ¬ BlockDone finish startLeft) (runningRight : ¬ BlockDone finish startRight)
     (pathLeft : Relation.ReflTransGen Config.Step startLeft endLeft)
     (pathRight : Relation.ReflTransGen Config.Step startRight endRight)
     (soundLeft : BlockRecordsSound who start finish startLeft endLeft)
@@ -338,11 +366,11 @@ theorem blockStart_reflect_of_honestDone {who : Player} {start finish : Nat}
   have completedIff (event : (serviceGraph setup mode).EventId) :
       event ∈ startLeft.cut.completed ↔ event ∈ startRight.cut.completed := by
     by_cases early : event.val < start
-    · exact ⟨fun _ => beginRight.inside.1 event early, fun _ => beginLeft.inside.1 event early⟩
+    · exact ⟨fun _ => beginRight.earlier event early, fun _ => beginLeft.earlier event early⟩
     push Not at early
     by_cases beyond : finish ≤ event.val
-    · exact ⟨fun done => (beginLeft.inside.2 event beyond done).elim,
-        fun done => (beginRight.inside.2 event beyond done).elim⟩
+    · exact ⟨fun done => ((beginLeft.inside runningLeft).2 event beyond done).elim,
+        fun done => ((beginRight.inside runningRight).2 event beyond done).elim⟩
     push Not at beyond
     rw [beginLeft.drained event early beyond, beginRight.drained event early beyond,
       defaultedEq]
@@ -424,6 +452,7 @@ theorem blockStart_reflect {who : Player} {start finish : Nat}
     {startLeft startRight endLeft endRight : (serviceGraph setup mode).Config}
     (beginLeft : BlockStart start finish startLeft)
     (beginRight : BlockStart start finish startRight)
+    (runningLeft : ¬ BlockDone finish startLeft) (runningRight : ¬ BlockDone finish startRight)
     (pathLeft : Relation.ReflTransGen Config.Step startLeft endLeft)
     (pathRight : Relation.ReflTransGen Config.Step startRight endRight)
     (soundLeft : BlockRecordsSound who start finish startLeft endLeft)
@@ -445,8 +474,8 @@ theorem blockStart_reflect {who : Player} {start finish : Nat}
         ((serviceGraph setup mode).playerObserve who startRight) ∧
     blockHidden who start finish (runKey startLeft) =
       blockHidden who start finish (runKey startRight) :=
-  blockStart_reflect_of_honestDone concurrent flat publications beginLeft beginRight pathLeft
-    pathRight soundLeft soundRight ownersLeft ownersRight
+  blockStart_reflect_of_honestDone concurrent flat publications beginLeft beginRight runningLeft
+    runningRight pathLeft pathRight soundLeft soundRight ownersLeft ownersRight
     (fun event _ late _ _ => finishedLeft event late)
     (fun event _ late _ _ => finishedRight event late) views
 
