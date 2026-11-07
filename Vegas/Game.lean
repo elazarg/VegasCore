@@ -421,3 +421,4 @@ import Vegas.Game.RevealPhasing
 import Vegas.Game.RevealPhaseBoundary
 import Vegas.Game.RevealDeviationSimulation
 import Vegas.Game.RevealDeviationLaw
+import Vegas.Game.RevealConcurrentNash
