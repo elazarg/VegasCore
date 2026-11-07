@@ -350,4 +350,225 @@ theorem observedAction_eq_none_of_silent {graph : Vegas.EventGraph Player L} {wh
       have quiet := silent record found
       simp [Option.filter_some, quiet]
 
+/-- A completed event's observed own decision is kept by the closure. -/
+theorem observedAction_closure {graph : Vegas.EventGraph Player L}
+    (reference : graph.BehavioralProfile) (who : Player) {config : graph.Config}
+    {event : graph.EventId} (done : event ∈ config.cut.completed) :
+    observedAction event (graph.normalizeObservation who (graph.playerObserve who
+      (closure reference who config))) =
+      observedAction event (graph.normalizeObservation who (graph.playerObserve who config)) := by
+  rw [observedAction_normalize, observedAction_normalize]
+  obtain ⟨record, found⟩ := Option.isSome_iff_exists.mp
+    ((completionOf_isSome_iff config event).mpr done)
+  rw [Config.Step.path_completionOf_of_some (closure_path reference who config) event record
+    found, found]
+
+/-- Observed own decisions are read from the key's view. -/
+theorem observedAction_of_keyView {graph : Vegas.EventGraph Player L} (who : Player)
+    {left right : graph.Config} (views : keyView who (runKey left) = keyView who (runKey right))
+    (event : graph.EventId) :
+    observedAction event (graph.normalizeObservation who (graph.playerObserve who left)) =
+      observedAction event (graph.normalizeObservation who (graph.playerObserve who right)) := by
+  rw [keyView_runKey, keyView_runKey] at views
+  rw [Option.some.inj views]
+
+/-- Once the deviator has defaulted at a point of a run, the closure advance at
+its next reveal keeps the closure's key. -/
+theorem closureAdvance_of_defaulted (base : (serviceGraph setup mode).BehavioralProfile)
+    (decides : ∀ (config : (serviceGraph setup mode).Config)
+      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
+      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup mode) event =
+        .resolve owner payload binding checks outputEq codeEq →
+      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
+        (serviceGraph setup mode).normalizeProfile base owner event actor
+          ((serviceGraph setup mode).playerObserve owner config) active =
+          PMF.pure (cast (congrArg EventField.Action outputEq.symm)
+            (openingAccepted event config.store)))
+    (who : Player) {start finish : Nat} (run : RevealRun (serviceGraph setup mode) start finish)
+    {config : (serviceGraph setup mode).Config}
+    (earlier : ∀ event : (serviceGraph setup mode).EventId, event.val < start →
+      event ∈ config.cut.completed)
+    (inactive : who ∈ config.defaulted) (target : (serviceGraph setup mode).EventId)
+    (targetOwned : (serviceGraph setup mode).actor? target = some who)
+    (targetLate : target.val < finish) (choice : Option ((serviceGraph setup mode).Action target)) :
+    closureAdvance ((serviceGraph setup mode).normalizeProfile base) who target targetOwned
+      (runKey (closure ((serviceGraph setup mode).normalizeProfile base) who config)) choice =
+      runKey (closure ((serviceGraph setup mode).normalizeProfile base) who config) := by
+  apply closureAdvance_of_not_ready
+  intro other keyEq ready
+  have completedTarget := closure_completes_done base decides who run earlier
+    (fun _ _ _ _ => Or.inr inactive) target targetLate
+  have cuts := congrArg Prod.fst keyEq
+  exact ready.1 (by
+    change target ∈ other.cut.completed
+    rw [show other.cut = _ from cuts]
+    exact completedTarget)
+
+/-- **Reflection through a step to the deviator's next reveal.** When the ends
+of two such steps have closures that look alike to the deviator, so did their
+starts. -/
+theorem targetStep_reflect (base : (serviceGraph setup mode).BehavioralProfile)
+    (decides : ∀ (config : (serviceGraph setup mode).Config)
+      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
+      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup mode) event =
+        .resolve owner payload binding checks outputEq codeEq →
+      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
+        (serviceGraph setup mode).normalizeProfile base owner event actor
+          ((serviceGraph setup mode).playerObserve owner config) active =
+          PMF.pure (cast (congrArg EventField.Action outputEq.symm)
+            (openingAccepted event config.store)))
+    (independent : ReadyIndependent ((serviceGraph setup mode).normalizeProfile base))
+    (who : Player) (relaxed : RelaxedOrder (serviceGraph setup mode))
+    {start finish : Nat} (run : RevealRun (serviceGraph setup mode) start finish)
+    (target : (serviceGraph setup mode).EventId)
+    (targetOwned : (serviceGraph setup mode).actor? target = some who)
+    (targetLate : target.val < finish)
+    {leftOrigin leftFinal rightOrigin rightFinal : (serviceGraph setup mode).Config}
+    (leftPath : Relation.ReflTransGen Config.Step leftOrigin leftFinal)
+    (rightPath : Relation.ReflTransGen Config.Step rightOrigin rightFinal)
+    (leftSound : BlockRecordsSound who start finish leftOrigin leftFinal)
+    (rightSound : BlockRecordsSound who start finish rightOrigin rightFinal)
+    (leftDecided : DecidesOnly who leftOrigin (· = target) leftFinal)
+    (rightDecided : DecidesOnly who rightOrigin (· = target) rightFinal)
+    (leftEarlier : ∀ event : (serviceGraph setup mode).EventId, event.val < start →
+      event ∈ leftOrigin.cut.completed)
+    (rightEarlier : ∀ event : (serviceGraph setup mode).EventId, event.val < start →
+      event ∈ rightOrigin.cut.completed)
+    (leftBefore : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
+      event.val < target.val → (serviceGraph setup mode).actor? event = some who →
+        event ∈ leftOrigin.cut.completed)
+    (rightBefore : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
+      event.val < target.val → (serviceGraph setup mode).actor? event = some who →
+        event ∈ rightOrigin.cut.completed)
+    (leftPending : who ∉ leftOrigin.defaulted → target ∉ leftOrigin.cut.completed)
+    (rightPending : who ∉ rightOrigin.defaulted → target ∉ rightOrigin.cut.completed)
+    (leftSilent : ∀ record, completionOf leftOrigin target = some record →
+      record.decision = none)
+    (rightSilent : ∀ record, completionOf rightOrigin target = some record →
+      record.decision = none)
+    (leftDone : target ∈ leftFinal.cut.completed) (rightDone : target ∈ rightFinal.cut.completed)
+    (views : keyView who (runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
+      leftFinal)) = keyView who (runKey (closure ((serviceGraph setup mode).normalizeProfile
+        base) who rightFinal))) :
+    keyView who (runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
+      leftOrigin)) = keyView who (runKey (closure ((serviceGraph setup mode).normalizeProfile
+        base) who rightOrigin)) := by
+  classical
+  let G := serviceGraph setup mode
+  let R := G.normalizeProfile base
+  have observed : observedAction target (G.normalizeObservation who (G.playerObserve who
+      leftFinal)) = observedAction target (G.normalizeObservation who (G.playerObserve who
+        rightFinal)) := by
+    rw [← observedAction_closure R who leftDone, ← observedAction_closure R who rightDone]
+    exact observedAction_of_keyView who views target
+  -- the deviator's own action at the target when it was active
+  have activeObserved {origin final : G.Config}
+      (path : Relation.ReflTransGen Config.Step origin final)
+      (sound : BlockRecordsSound who start finish origin final)
+      (decided : DecidesOnly who origin (· = target) final) (active : who ∉ origin.defaulted)
+      (pending : target ∉ origin.cut.completed) (done : target ∈ final.cut.completed) :
+      ∃ (ready : (closure R who origin).cut.Ready target) (action : G.Action target)
+        (value : (G.outputLayout target).Value),
+        (closure R who origin).complete target ready action value ∈
+          ((closure R who origin).step target ready action).support ∧
+        observedAction target (G.normalizeObservation who (G.playerObserve who final)) =
+          some action ∧
+        runKey (closure R who final) = runKey (closure R who
+          ((closure R who origin).complete target ready action value)) := by
+    obtain ⟨ready, action, value, supported, recorded, key⟩ :=
+      (run_path_closure base decides independent who sound target targetOwned
+        (fun event different fresh mine => decided event different fresh mine) active pending
+        final path .refl).2 done
+    exact ⟨ready, action, value, supported, observedAction_of_record targetOwned recorded, key⟩
+  have inactiveObserved {origin final : G.Config}
+      (path : Relation.ReflTransGen Config.Step origin final) (inactive : who ∈ origin.defaulted)
+      (silent : ∀ record, completionOf origin target = some record → record.decision = none) :
+      observedAction target (G.normalizeObservation who (G.playerObserve who final)) = none := by
+    apply observedAction_eq_none_of_silent
+    intro record found
+    by_cases old : target ∈ origin.cut.completed
+    · obtain ⟨previous, previousFound⟩ := Option.isSome_iff_exists.mp
+        ((completionOf_isSome_iff origin target).mpr old)
+      rw [Config.Step.path_completionOf_of_some path target previous previousFound] at found
+      cases found
+      exact silent _ previousFound
+    · exact record_silent_of_defaulted path inactive targetOwned old found
+  have inactiveKey {origin final : G.Config}
+      (path : Relation.ReflTransGen Config.Step origin final)
+      (sound : BlockRecordsSound who start finish origin final)
+      (decided : DecidesOnly who origin (· = target) final)
+      (earlier : ∀ event : G.EventId, event.val < start → event ∈ origin.cut.completed)
+      (before : ∀ event : G.EventId, start ≤ event.val → event.val < target.val →
+        G.actor? event = some who → event ∈ origin.cut.completed)
+      (pending : who ∉ origin.defaulted → target ∉ origin.cut.completed)
+      (done : target ∈ final.cut.completed) (inactive : who ∈ origin.defaulted) :
+      runKey (closure R who final) = runKey (closure R who origin) := by
+    rw [targetStep_end base decides independent who run path sound target targetOwned decided
+      earlier targetLate before pending done]
+    exact closureAdvance_of_defaulted base decides who run earlier inactive target targetOwned
+      targetLate _
+  by_cases leftActive : who ∉ leftOrigin.defaulted <;>
+    by_cases rightActive : who ∉ rightOrigin.defaulted
+  · have leftPend := leftPending leftActive
+    have rightPend := rightPending rightActive
+    obtain ⟨leftReady, leftAction, leftValue, leftSupported, _, leftKey⟩ :=
+      activeObserved leftPath leftSound leftDecided leftActive leftPend leftDone
+    obtain ⟨rightReady, rightAction, rightValue, rightSupported, _, rightKey⟩ :=
+      activeObserved rightPath rightSound rightDecided rightActive rightPend rightDone
+    have sets : (closure R who rightOrigin).cut.completed =
+        (closure R who leftOrigin).cut.completed := by
+      ext event
+      rw [closure_completed_iff_target base decides who relaxed run rightEarlier target
+          targetOwned targetLate rightBefore rightActive rightPend event,
+        closure_completed_iff_target base decides who relaxed run leftEarlier target
+          targetOwned targetLate leftBefore leftActive leftPend event]
+    have pathOf (origin : G.Config) (ready : (closure R who origin).cut.Ready target)
+        (action : G.Action target) (value : (G.outputLayout target).Value)
+        (supported : (closure R who origin).complete target ready action value ∈
+          ((closure R who origin).step target ready action).support) :
+        Relation.ReflTransGen Config.Step (closure R who origin)
+          (closure R who ((closure R who origin).complete target ready action value)) :=
+      Relation.ReflTransGen.head ⟨target, ready, action, supported⟩ (closure_path R who _)
+    have restrictedLeft := Config.restrictionOf_of_completed rfl
+      (pathOf leftOrigin leftReady leftAction leftValue leftSupported)
+    have restrictedRight := Config.restrictionOf_of_completed sets
+      (pathOf rightOrigin rightReady rightAction rightValue rightSupported)
+    have ends : G.normalizeObservation who (G.playerObserve who (closure R who
+        ((closure R who leftOrigin).complete target leftReady leftAction leftValue))) =
+        G.normalizeObservation who (G.playerObserve who (closure R who
+          ((closure R who rightOrigin).complete target rightReady rightAction rightValue))) := by
+      have endViews := views
+      rw [leftKey, rightKey, keyView_runKey, keyView_runKey] at endViews
+      exact Option.some.inj endViews
+    rw [keyView_runKey, keyView_runKey, normalizeObservation_playerObserve_restrict who _
+      restrictedLeft restrictedRight ends]
+  · push Not at rightActive
+    obtain ⟨_, leftAction, _, _, leftObserved, _⟩ :=
+      activeObserved leftPath leftSound leftDecided leftActive (leftPending leftActive) leftDone
+    rw [leftObserved, inactiveObserved rightPath rightActive rightSilent] at observed
+    cases observed
+  · push Not at leftActive
+    obtain ⟨_, rightAction, _, _, rightObserved, _⟩ := activeObserved rightPath rightSound
+      rightDecided rightActive (rightPending rightActive) rightDone
+    rw [rightObserved, inactiveObserved leftPath leftActive leftSilent] at observed
+    cases observed
+  · push Not at leftActive rightActive
+    rw [← inactiveKey leftPath leftSound leftDecided leftEarlier leftBefore leftPending leftDone
+        leftActive,
+      ← inactiveKey rightPath rightSound rightDecided rightEarlier rightBefore rightPending
+        rightDone rightActive]
+    exact views
+
 end Vegas
