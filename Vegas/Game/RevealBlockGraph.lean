@@ -241,4 +241,258 @@ theorem lastErasedLaw_honest_block {who : Player} {start finish : Nat}
   · exact (EventGraph.mem_defaulted_complete_of_actor_ne current picked pickedReady action value who
       pickedHonest).mp (finalWho defaulted)
 
+/-- A path completes each newly completed event by one of its steps. -/
+theorem path_new_event {graph : Vegas.EventGraph Player L} {before after : graph.Config}
+    (path : Relation.ReflTransGen Config.Step before after) {event : graph.EventId}
+    (fresh : event ∉ before.cut.completed) (done : event ∈ after.cut.completed) :
+    ∃ (middle next : graph.Config) (ready : middle.cut.Ready event) (action : graph.Action event),
+      Relation.ReflTransGen Config.Step before middle ∧
+        next ∈ (middle.step event ready action).support ∧
+        Relation.ReflTransGen Config.Step next after := by
+  induction path with
+  | refl => exact (fresh done).elim
+  | @tail middle last walked moved ih =>
+      by_cases earlier : event ∈ middle.cut.completed
+      · obtain ⟨first, second, ready, action, firstPath, member, secondPath⟩ := ih earlier
+        exact ⟨first, second, ready, action, firstPath, member, secondPath.tail moved⟩
+      · obtain ⟨stepped, steppedReady, action, member⟩ := moved
+        have same : event = stepped := by
+          rw [middle.step_cut stepped steppedReady action last member,
+            EventOrder.Cut.mem_complete] at done
+          exact done.resolve_right earlier
+        subst same
+        exact ⟨middle, last, steppedReady, action, walked, member, .refl⟩
+
+/-- **A decided resolution along a path.** A reveal completed along a path from
+a configuration storing its footprint, whose record carries a decision, records
+that disclosure and publishes the resolution of the starting store. -/
+theorem resolve_record_of_path {origin current : (serviceGraph setup mode).Config}
+    (path : Relation.ReflTransGen Config.Step origin current)
+    {event : (serviceGraph setup mode).EventId} (fresh : event ∉ origin.cut.completed)
+    (done : event ∈ current.cut.completed) {owner : Player} {payload : L.Ty}
+    {binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
+    {checks : List (GuardCheck (serviceGraph setup mode).layout payload)}
+    {outputEq : (serviceGraph setup mode).outputLayout event = .publication payload}
+    {codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+      ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks}
+    (available : ∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
+      (origin.store field).isSome)
+    (decided : ∃ record, completionOf current event = some record ∧ record.decision.isSome) :
+    ∃ (disclose : Bool) (output : PublicationResult (L.Val payload)),
+      EventCode.resolveOutput? binding checks disclose origin.store = some output ∧
+      completionOf current event = some (EventGraph.completion (serviceGraph setup mode) event
+        (some (cast (congrArg EventField.Action outputEq.symm) disclose))
+        (cast (congrArg EventField.Value outputEq.symm) output)) ∧
+      current.outputs event = some (cast (congrArg EventField.Value outputEq.symm) output) := by
+  obtain ⟨middle, next, ready, action, before, member, after⟩ := path_new_event path fresh done
+  have owned := nodeView_resolve_actor outputEq codeEq
+  let disclose : Bool := cast (congrArg EventField.Action outputEq) action
+  have actionEq : action = cast (congrArg EventField.Action outputEq.symm) disclose := by
+    simp only [disclose, cast_cast, cast_eq]
+  obtain ⟨value, nextOutput, history⟩ := middle.step_completion event ready action next member
+  have nextRecord : completionOf next event = some (EventGraph.completion
+      (serviceGraph setup mode) event (middle.actualDecision event action) value) :=
+    (completionOf_eq_some_iff next event _).mpr ⟨by
+      rw [history]
+      exact List.mem_append_right _ (List.mem_singleton_self _), rfl⟩
+  have currentRecord := Config.Step.path_completionOf_of_some after event _ nextRecord
+  obtain ⟨chosen, chosenFound, decision⟩ := decided
+  rw [currentRecord] at chosenFound
+  have chosenEq := Option.some.inj chosenFound
+  subst chosenEq
+  have activeMiddle : owner ∉ middle.defaulted := by
+    intro inactive
+    change (middle.actualDecision event action).isSome = true at decision
+    rw [middle.actualDecision_of_defaulted event owner owned inactive action] at decision
+    cases decision
+  have kept : ∀ field stored, origin.store field = some stored →
+      middle.store field = some stored :=
+    fun field stored found => Config.Step.path_store_of_some before field stored found
+  have availableMiddle : ∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
+      (middle.store field).isSome := by
+    intro field read
+    obtain ⟨stored, found⟩ := Option.isSome_iff_exists.mp (available field read)
+    rw [kept field stored found]
+    rfl
+  have footprint := EventCode.readFields_cast outputEq ((serviceGraph setup mode).nodes event)
+  rw [codeEq] at footprint
+  obtain ⟨output, resolved⟩ := Option.isSome_iff_exists.mp
+    (EventCode.resolveOutput?_isSome binding checks disclose middle.store
+      (fun field member => availableMiddle field (by rw [← footprint]; exact member)))
+  have stepEq := resolve_step_eq ready outputEq codeEq activeMiddle disclose output resolved
+  rw [actionEq, stepEq, PMF.mem_support_pure_iff] at member
+  have valueEq : value = cast (congrArg EventField.Value outputEq.symm) output := by
+    rw [member, Config.complete_output_same] at nextOutput
+    exact (Option.some.inj nextOutput).symm
+  refine ⟨disclose, output, ?_, ?_, ?_⟩
+  · rw [← resolveOutput_keep kept (outputEq := outputEq) codeEq available disclose]
+    exact resolved
+  · rw [currentRecord, middle.actualDecision_of_active event owner owned activeMiddle action,
+      valueEq, ← actionEq]
+  · have nextDone : event ∈ next.cut.completed := by
+      rw [middle.step_cut event ready _ next
+          (by rw [stepEq, member]; exact (PMF.mem_support_pure_iff _ _).mpr rfl),
+        EventOrder.Cut.mem_complete]
+      exact Or.inl rfl
+    rw [outputs_path after nextDone, nextOutput, valueEq]
+
+/-- **No block reveal pending at the start completes silently.** Its owner is
+active at the start and owns no other block event, and only block events record
+new defaults. -/
+theorem pending_not_silent {who : Player} {start finish : Nat}
+    (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent)
+    (flat : BlockFlat (graph := serviceGraph setup mode) start finish)
+    {origin current : (serviceGraph setup mode).Config}
+    (begin : BlockStart start finish origin)
+    (path : Relation.ReflTransGen Config.Step origin current)
+    (sound : BlockRecordsSound who start finish origin current)
+    (owners : DefaultOwners current)
+    {event : (serviceGraph setup mode).EventId} (early : start ≤ event.val)
+    (late : event.val < finish) (pending : event ∉ origin.cut.completed) {owner : Player}
+    (owned : (serviceGraph setup mode).actor? event = some owner)
+    (silent : completionOf current event = some ⟨event, none, none⟩)
+    (inactive : owner ∈ current.defaulted) : False := by
+  have active : owner ∉ origin.defaulted := fun defaulted =>
+    pending ((begin.drained event early late).mpr ⟨owner, owned, defaulted⟩)
+  obtain ⟨other, recorded⟩ := (mem_defaulted_iff_completionOf current owner).mp inactive
+  obtain ⟨record, found, defaulted⟩ := Option.bind_eq_some_iff.mp recorded
+  have recordEvent := completionOf_tagged current other record found
+  have member := ((completionOf_eq_some_iff current other record).mp found).1
+  have otherOwned : (serviceGraph setup mode).actor? other = some owner := by
+    rw [← recordEvent]
+    exact owners record member owner defaulted
+  have otherDone : other ∈ current.cut.completed :=
+    (completionOf_isSome_iff current other).mp (by rw [found]; rfl)
+  have clash (otherEarly : start ≤ other.val) (otherLate : other.val < finish)
+      (old : other ∉ origin.cut.completed) : False := by
+    by_cases same : other = event
+    · subst same
+      rw [silent] at found
+      cases found
+      cases defaulted
+    · have eventReady := flat.ready begin.inside early late pending
+      have otherReady := flat.ready begin.inside otherEarly otherLate old
+      rcases concurrent origin.cut eventReady otherReady (Ne.symm same) with
+        independent | independent
+      · exact independent.2.2.2 (owned.trans otherOwned.symm)
+      · exact independent.2.2.2 (otherOwned.trans owned.symm)
+  by_cases old : other ∈ origin.cut.completed
+  · obtain ⟨earlier, earlierFound⟩ :=
+      Option.isSome_iff_exists.mp ((completionOf_isSome_iff origin other).mpr old)
+    have kept := Config.Step.path_completionOf_of_some path other earlier earlierFound
+    rw [kept] at found
+    have same : earlier = record := Option.some.inj found
+    subst same
+    exact active ((mem_defaulted_iff_completionOf origin owner).mpr
+      ⟨other, by rw [earlierFound]; exact defaulted⟩)
+  rcases sound other old otherDone with ⟨quiet, _, _⟩ |
+    ⟨otherEarly, otherLate, _ | opened | _⟩
+  · rw [quiet] at found
+    cases found
+    cases defaulted
+  · exact clash otherEarly otherLate old
+  · obtain ⟨_, _, _, _, _, _, _, _, _, _, openedRecord, _⟩ := opened
+    rw [openedRecord] at found
+    cases found
+    cases defaulted
+  · exact clash otherEarly otherLate old
+
+/-- Distinct events of a flat block of concurrent reveals have distinct owners. -/
+theorem block_actor_unique {start finish : Nat}
+    (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent)
+    (flat : BlockFlat (graph := serviceGraph setup mode) start finish)
+    {left right : (serviceGraph setup mode).EventId} (leftEarly : start ≤ left.val)
+    (leftLate : left.val < finish) (rightEarly : start ≤ right.val) (rightLate : right.val < finish)
+    {player : Player} (leftOwned : (serviceGraph setup mode).actor? left = some player)
+    (rightOwned : (serviceGraph setup mode).actor? right = some player) : left = right := by
+  by_contra different
+  let prefixCut : (serviceGraph setup mode).order.Cut :=
+    { completed := Finset.univ.filter fun event => event.val < start
+      predecessor_closed := fun {event} member prior priorMember => by
+        simp only [Finset.mem_filter, Finset.mem_univ, true_and] at member ⊢
+        exact lt_trans ((serviceGraph setup mode).order.predecessor_lt priorMember) member }
+  have readyOf {event : (serviceGraph setup mode).EventId} (early : start ≤ event.val)
+      (late : event.val < finish) : prefixCut.Ready event := by
+    refine ⟨fun member => ?_, fun prior priorMember => ?_⟩
+    · simp only [prefixCut, Finset.mem_filter, Finset.mem_univ, true_and] at member
+      omega
+    · simp only [prefixCut, Finset.mem_filter, Finset.mem_univ, true_and]
+      exact flat event prior early late priorMember
+  rcases concurrent prefixCut (readyOf leftEarly leftLate) (readyOf rightEarly rightLate)
+      different with independent | independent
+  · exact independent.2.2.2 (leftOwned.trans rightOwned.symm)
+  · exact independent.2.2.2 (rightOwned.trans leftOwned.symm)
+
+/-- A block reveal pending at the start completes with a decision. -/
+theorem decided_of_pending {who : Player} {start finish : Nat}
+    (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent)
+    (flat : BlockFlat (graph := serviceGraph setup mode) start finish)
+    {origin current : (serviceGraph setup mode).Config}
+    (begin : BlockStart start finish origin)
+    (path : Relation.ReflTransGen Config.Step origin current)
+    (sound : BlockRecordsSound who start finish origin current)
+    (owners : DefaultOwners current)
+    {event : (serviceGraph setup mode).EventId} (early : start ≤ event.val)
+    (late : event.val < finish) (pending : event ∉ origin.cut.completed)
+    (done : event ∈ current.cut.completed) {owner : Player}
+    (owned : (serviceGraph setup mode).actor? event = some owner) :
+    ∃ record, completionOf current event = some record ∧ record.decision.isSome := by
+  obtain ⟨middle, next, ready, action, before, member, after⟩ := path_new_event path pending done
+  obtain ⟨value, _, history⟩ := middle.step_completion event ready action next member
+  have nextRecord : completionOf next event = some (EventGraph.completion
+      (serviceGraph setup mode) event (middle.actualDecision event action) value) :=
+    (completionOf_eq_some_iff next event _).mpr ⟨by
+      rw [history]
+      exact List.mem_append_right _ (List.mem_singleton_self _), rfl⟩
+  have currentRecord := Config.Step.path_completionOf_of_some after event _ nextRecord
+  refine ⟨_, currentRecord, ?_⟩
+  by_cases inactive : owner ∈ middle.defaulted
+  · exfalso
+    have silent : completionOf current event = some ⟨event, none, none⟩ := by
+      rw [currentRecord, middle.actualDecision_of_defaulted event owner owned inactive action]
+      rfl
+    have laterInactive : owner ∈ current.defaulted :=
+      Config.Step.path_defaulted_mono (Relation.ReflTransGen.head ⟨event, ready, action, member⟩
+        after) inactive
+    exact pending_not_silent concurrent flat begin path sound owners early late pending owned
+      silent laterInactive
+  · change (middle.actualDecision event action).isSome = true
+    rw [middle.actualDecision_of_active event owner owned inactive action]
+    rfl
+
+/-- A state with no automatically ready event has a quiescent configuration. -/
+theorem quiescent_of_automatic (state : EventGraphRuntime.State (serviceGraph setup mode))
+    (quiet : ∀ event, ¬ state.AutomaticReady event) : state.config.Quiescent := by
+  intro event ready owner owned inactive
+  apply quiet event
+  unfold EventGraphRuntime.State.AutomaticReady
+  rw [owned]
+  exact ⟨ready, inactive⟩
+
+/-- Draining a configuration reaches a quiescent configuration. -/
+theorem drainConfig_quiescent (config : (serviceGraph setup mode).Config) :
+    (State.drainConfig config).Quiescent :=
+  quiescent_of_automatic _ (State.drain_quiescent (State.ofConfig config))
+
+/-- Draining a configuration keeps the block's records classified. -/
+theorem BlockRecordsSound.drainConfig {who : Player} {start finish : Nat}
+    {origin config : (serviceGraph setup mode).Config}
+    (sound : BlockRecordsSound who start finish origin config) :
+    BlockRecordsSound who start finish origin (State.drainConfig config) := by
+  have path : Relation.ReflTransGen Config.Step config (State.drainConfig config) :=
+    State.drain_graph_steps (State.ofConfig config)
+  intro event fresh done
+  by_cases old : event ∈ config.cut.completed
+  · exact BlockRecordsSound.path path sound event fresh old
+  obtain ⟨record, recorded⟩ := Option.isSome_iff_exists.mp
+    ((completionOf_isSome_iff (State.drainConfig config) event).mpr done)
+  obtain ⟨present, recordEvent⟩ :=
+    (completionOf_eq_some_iff (State.drainConfig config) event record).mp recorded
+  have primary : record ∉ config.history := fun inside =>
+    old ((config.history_exact event).mp (List.mem_map.mpr ⟨record, inside, recordEvent⟩))
+  obtain ⟨silent, quiet, _, output, owner, owned, inactive⟩ :=
+    drainRecord_of_not_mem (State.ofConfig config) record primary present
+  subst recordEvent
+  exact Or.inl ⟨completionOf_of_silent present silent quiet, output, owner, owned, inactive⟩
+
 end Vegas

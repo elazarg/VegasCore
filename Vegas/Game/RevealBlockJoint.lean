@@ -132,7 +132,8 @@ theorem ledgerBlock_joint {horizon : Nat}
     ∃ (channel : Option ((serviceGraph setup mode).PlayerObservation who) ×
         ((event : (serviceGraph setup mode).EventId) →
           Option ((serviceGraph setup mode).outputLayout event).Value) → PMF _)
-      (nextNoise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _),
+      (nextNoise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _)
+      (endKey : RunKey (serviceGraph setup mode) → _ → RunKey (serviceGraph setup mode)),
       (prior.bind fun seed =>
         ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
           (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
@@ -156,7 +157,15 @@ theorem ledgerBlock_joint {horizon : Nat}
               (firstTurnTiming setup turns mode) reference) who deviation)
             (fun current => BlockDone finish current.application.config) horizon
             (execution seed)).map fun final => runKey final.application.config).bind
-          (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) := by
+          (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
+      ∀ seed ∈ prior.support, ∀ final ∈
+        ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
+          (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+            (firstTurnTiming setup turns mode) reference) who deviation)
+          (fun current => BlockDone finish current.application.config) horizon
+          (execution seed)).support,
+        runKey final.application.config = endKey (runKey (execution seed).application.config)
+          ((serviceRuntime setup mode deadline).bindingTraffic leaks who final) := by
   classical
   let G := serviceGraph setup mode
   let app := serviceApplication setup mode deadline leaks
@@ -178,14 +187,17 @@ theorem ledgerBlock_joint {horizon : Nat}
       ⟨who, G.normalizeObservation who (G.playerObserve who final.application.config)⟩ := rfl
   change ∃ (channel : Option (G.PlayerObservation who) ×
       ((event : G.EventId) → Option (G.outputLayout event).Value) → PMF Traffic)
-    (nextNoise : Option (G.PlayerObservation who) → PMF Traffic),
+    (nextNoise : Option (G.PlayerObservation who) → PMF Traffic)
+    (endKey : RunKey G → Traffic → RunKey G),
     (prior.bind fun seed => (run seed).map fun final => (key seed, traffic final)) =
       (prior.map key).bind (fun current => (channel (view current)).map
         fun extra => (current, extra)) ∧
     (prior.bind fun seed => (run seed).map fun final =>
         (runKey final.application.config, traffic final)) =
       (prior.bind fun seed => (run seed).map fun final => runKey final.application.config).bind
-        (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra))
+        (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
+      ∀ seed ∈ prior.support, ∀ final ∈ (run seed).support,
+        runKey final.application.config = endKey (key seed) (traffic final)
   have facts (seed : Seed) (member : seed ∈ prior.support) (final : app.Execution)
       (reached : final ∈ (run seed).support) :=
     blockRun_facts bound turns contract timely reference decides who deviation start finish
@@ -415,7 +427,8 @@ theorem ledgerBlock_joint {horizon : Nat}
     simp only [PMF.map_bind, PMF.map_comp, Function.comp_def, pmf_map_fun_const,
       PMF.bind_pure] at projected
     exact (bind_congr_on_support _ keyedEnds).trans projected
-  refine ⟨channel, nextNoise, ?_, ?_⟩
+  refine ⟨channel, nextNoise, fun current extra => advance current (pick extra), ?_, ?_,
+    fun seed member final reached => (advanceSpec seed member final reached).symm⟩
   · refine Eq.trans (bind_congr_on_support _ fun seed _ => ?_) joint
     rw [PMF.map_comp]
     rfl
