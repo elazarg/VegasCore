@@ -306,4 +306,48 @@ theorem targetStep_end (base : (serviceGraph setup mode).BehavioralProfile)
     have cuts : config.cut = (closure R who origin).cut := congrArg Prod.fst keyEq
     exact ready.1 (cuts ▸ completedTarget)
 
+omit [DecidableEq Player] in
+/-- A configuration is the restriction of its successors to a set equal to its
+completed events. -/
+theorem Config.restrictionOf_of_completed {graph : Vegas.EventGraph Player L} [DecidableEq Player]
+    {before after : graph.Config} {done : Finset graph.EventId}
+    (same : before.cut.completed = done) (path : Relation.ReflTransGen Config.Step before after) :
+    before.RestrictionOf (fun event => event ∈ done) after := by
+  subst same
+  exact Config.restrictionOf_completed_path path
+
+/-- An event of a defaulted player completed along a path records no decision. -/
+theorem record_silent_of_defaulted {who : Player}
+    {before after : (serviceGraph setup mode).Config}
+    (path : Relation.ReflTransGen Config.Step before after)
+    (inactive : who ∈ before.defaulted) {event : (serviceGraph setup mode).EventId}
+    (owned : (serviceGraph setup mode).actor? event = some who)
+    (fresh : event ∉ before.cut.completed) {record : (serviceGraph setup mode).Completion}
+    (found : completionOf after event = some record) :
+    record.decision = none := by
+  have done : event ∈ after.cut.completed := (completionOf_isSome_iff after event).mp (by
+    rw [found]; rfl)
+  obtain ⟨middle, next, ready, action, walked, member, rest⟩ := path_new_event path fresh done
+  obtain ⟨value, _, recorded⟩ := step_record_path member rest
+  rw [recorded] at found
+  cases found
+  have ownedNode : ((serviceGraph setup mode).nodes event).actor = some who := owned
+  unfold Config.actualDecision
+  rw [EventCode.actualDecision_of_defaulted _ _ who ownedNode
+    (Config.Step.path_defaulted_mono walked inactive)]
+  rfl
+
+/-- An own decision is observed only when recorded with a decision. -/
+theorem observedAction_eq_none_of_silent {graph : Vegas.EventGraph Player L} {who : Player}
+    {config : graph.Config} {event : graph.EventId}
+    (silent : ∀ record, completionOf config event = some record → record.decision = none) :
+    observedAction event (graph.normalizeObservation who (graph.playerObserve who config)) =
+      none := by
+  rw [observedAction_normalize]
+  cases found : completionOf config event with
+  | none => rfl
+  | some record =>
+      have quiet := silent record found
+      simp [Option.filter_some, quiet]
+
 end Vegas
