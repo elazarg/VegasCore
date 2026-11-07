@@ -642,7 +642,7 @@ theorem honest_block_matched_of {horizon leftRemaining rightRemaining : Nat}
       (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
         ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
       nodeView (serviceGraph setup mode) event =
-        .resolve owner payload binding checks outputEq codeEq →
+        .resolve owner payload binding checks outputEq codeEq → owner ≠ who →
       left.application.config.cut.Ready event →
         openingAccepted event left.application.config.store =
           openingAccepted event right.application.config.store ∧
@@ -758,7 +758,7 @@ theorem honest_block_matched_of {horizon leftRemaining rightRemaining : Nat}
             Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
           subst owner
           obtain ⟨acceptedSame, storedOf⟩ :=
-            agree event actor payload binding checks outputEq codeEq node ready
+            agree event actor payload binding checks outputEq codeEq node other ready
           have leftKernel := decides left.application.config event actor payload binding checks
             outputEq codeEq node owned leftActiveOwner
           have rightKernel := decides right.application.config event actor payload binding checks
@@ -945,7 +945,7 @@ theorem honest_block_matched {horizon leftRemaining rightRemaining : Nat}
       (serviceGraph setup mode).publicStore right.application.config.store :=
     congrArg (fun view : PublicView (serviceGraph setup mode) => view.observation.store) publics
   exact honest_block_matched_of bound turns reference decides who deviation sameTraffic leftTrace
-    rightTrace publications (fun event owner payload binding checks outputEq codeEq node ready =>
+    rightTrace publications (fun event owner payload binding checks outputEq codeEq node _ ready =>
       have storedEq := bindings event owner payload binding checks outputEq codeEq node ready
       ⟨openingAccepted_congr_public node storedEq publicStores, fun _ => storedEq⟩)
     actor other (fun event _ => congrFun (congrFun (congrArg Prod.snd same) actor) event)

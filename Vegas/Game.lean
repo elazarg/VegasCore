@@ -411,3 +411,5 @@ import Vegas.Game.RevealBlockRecords
 import Vegas.Game.RevealBlockEndpoint
 import Vegas.Game.RevealBlockCoupling
 import Vegas.Game.RevealBlockReflection
+import Vegas.Game.RevealBlockRun
+import Vegas.Game.RevealBlockJoint

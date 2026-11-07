@@ -27,9 +27,9 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 def blockWindow (start finish : Nat) : (serviceGraph setup mode).EventId → Bool :=
   fun event => decide (start ≤ event.val ∧ event.val < finish)
 
-/-- Two configurations agree on the block's reveals: their footprints are
-stored, they are accepted alike, and an accepted reveal, or one of the deviator,
-stores the same binding. -/
+/-- Two configurations agree on the block's reveals pending in the first: their
+footprints are stored, an honest one is accepted alike, and an accepted reveal,
+or one of the deviator, stores the same binding. -/
 def AcceptedAgree (who : Player) (start finish : Nat)
     (left right : (serviceGraph setup mode).Config) : Prop :=
   ∀ (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
@@ -40,12 +40,12 @@ def AcceptedAgree (who : Player) (start finish : Nat)
       ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
     nodeView (serviceGraph setup mode) event =
       .resolve owner payload binding checks outputEq codeEq →
-    start ≤ event.val → event.val < finish →
+    start ≤ event.val → event.val < finish → event ∉ left.cut.completed →
     (∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
       (left.store field).isSome) ∧
     (∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
       (right.store field).isSome) ∧
-    openingAccepted event left.store = openingAccepted event right.store ∧
+    (owner ≠ who → openingAccepted event left.store = openingAccepted event right.store) ∧
     (openingAccepted event left.store = true ∨ owner = who →
       binding.get? left.store = binding.get? right.store)
 
@@ -68,9 +68,10 @@ theorem AcceptedAgree.path {who : Player} {start finish : Nat}
     (leftPath : Relation.ReflTransGen Config.Step left left')
     (rightPath : Relation.ReflTransGen Config.Step right right') :
     AcceptedAgree who start finish left' right' := by
-  intro event owner payload binding checks outputEq codeEq node early late
+  intro event owner payload binding checks outputEq codeEq node early late pending
   obtain ⟨leftAvailable, rightAvailable, accepted, stored⟩ :=
     agree event owner payload binding checks outputEq codeEq node early late
+      (fun done => pending (Config.Step.path_completed_mono leftPath done))
   have footprint := EventCode.readFields_cast outputEq ((serviceGraph setup mode).nodes event)
   rw [codeEq] at footprint
   have read : binding.field ∈ ((serviceGraph setup mode).nodes event).readFields := by
@@ -89,8 +90,9 @@ theorem AcceptedAgree.path {who : Player} {start finish : Nat}
     exact leftAvailable field member
   · rw [keep rightPath rightAvailable field member]
     exact rightAvailable field member
-  · rw [openingAccepted_path_eq leftPath leftAvailable,
-      openingAccepted_path_eq rightPath rightAvailable, accepted]
+  · intro honest
+    rw [openingAccepted_path_eq leftPath leftAvailable,
+      openingAccepted_path_eq rightPath rightAvailable, accepted honest]
   · rw [openingAccepted_path_eq leftPath leftAvailable] at opened
     rw [FieldRef.get?_congr binding left'.store left.store
         (keep leftPath leftAvailable _ read),
@@ -223,10 +225,10 @@ theorem block_stopped_readoutOn_congr {horizon : Nat}
         currentBefore otherBefore
         (fun event ready => publications event (inWindow event ready).1
           (inWindow event ready).2)
-        (fun event owner payload binding checks outputEq codeEq node ready =>
+        (fun event owner payload binding checks outputEq codeEq node honest ready =>
           have facts := agreeNow event owner payload binding checks outputEq codeEq node
-            (inWindow event ready).1 (inWindow event ready).2
-          ⟨facts.2.2.1, fun accepted => facts.2.2.2 (Or.inl accepted)⟩)
+            (inWindow event ready).1 (inWindow event ready).2 ready.1
+          ⟨facts.2.2.1 honest, fun accepted => facts.2.2.2 (Or.inl accepted)⟩)
         actor other' (fun event ready => by
           have counted := congrFun (congrFun (congrArg Prod.snd equal) actor) event
           have admitted : window event = true := by
@@ -240,8 +242,8 @@ theorem block_stopped_readoutOn_congr {horizon : Nat}
         currentFacts.binding otherFacts.binding
       intro named candidate raw call owner payload binding checks outputEq codeEq node ready sent
       have bounds := inWindow named ready
-      obtain ⟨_, _, _, stored⟩ :=
-        agreeNow named owner payload binding checks outputEq codeEq node bounds.1 bounds.2
+      obtain ⟨_, _, _, stored⟩ := agreeNow named owner payload binding checks outputEq codeEq
+        node bounds.1 bounds.2 ready.1
       by_cases isWho : owner = who
       · exact stored (Or.inr isWho)
       apply stored
