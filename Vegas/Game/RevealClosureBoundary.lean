@@ -112,4 +112,65 @@ theorem phaseBoundary_reflect (reference : (serviceGraph setup mode).BehavioralP
     (Config.restrictionOf_of_completed rfl leftPath)
     (Config.restrictionOf_of_completed sets.symm rightPath) same]
 
+/-- **The closure at a pending solitary event.** At a phase boundary whose
+event is not a reveal and is pending, nothing settles, so the closure is the
+configuration itself. -/
+theorem closure_eq_of_pending (reference : (serviceGraph setup mode).BehavioralProfile)
+    (who : Player) (relaxed : RelaxedOrder (serviceGraph setup mode))
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode deadline leaks).Policy} {horizon : Nat}
+    {event : (serviceGraph setup mode).EventId}
+    {execution : (serviceApplication setup mode deadline leaks).Execution}
+    (boundary : PhaseBoundary scheduler players horizon event.val execution)
+    (notPublication : ¬ ((serviceGraph setup mode).outputLayout event).IsPublication)
+    (pending : event ∉ execution.application.config.cut.completed) :
+    closure reference who execution.application.config = execution.application.config := by
+  apply closure_of_none
+  intro other settles
+  obtain ⟨ready, kind, _⟩ := settles
+  rcases kind with publication | ⟨owner, owned, inactive⟩
+  · rcases Nat.lt_trichotomy other.val event.val with smaller | same | larger
+    · exact ready.1 (boundary.earlier other smaller)
+    · have equal : other = event := Fin.ext same
+      subst equal
+      exact notPublication publication
+    · exact pending (ready.2 (relaxed.predecessor_of_not_publication notPublication larger))
+  · apply boundary.quiescent other
+    unfold EventGraphRuntime.State.AutomaticReady
+    have ownedGraph : (serviceGraph setup mode).actor? other = some owner := owned
+    rw [ownedGraph]
+    exact ⟨ready, inactive⟩
+
+/-- The closure key read from an order-free key. -/
+def closureKeyOf (reference : (serviceGraph setup mode).BehavioralProfile) (who : Player)
+    (key : RunKey (serviceGraph setup mode)) : RunKey (serviceGraph setup mode) :=
+  open scoped Classical in
+  if found : ∃ config : (serviceGraph setup mode).Config, runKey config = key then
+    runKey (closure reference who found.choose)
+  else key
+
+/-- The closure key of a configuration is read from its key. -/
+theorem closureKeyOf_runKey {reference : (serviceGraph setup mode).BehavioralProfile}
+    (independent : ReadyIndependent reference) (who : Player)
+    (config : (serviceGraph setup mode).Config) :
+    closureKeyOf reference who (runKey config) = runKey (closure reference who config) := by
+  have found : ∃ other : (serviceGraph setup mode).Config, runKey other = runKey config :=
+    ⟨config, rfl⟩
+  unfold closureKeyOf
+  rw [dite_eq_left found]
+  exact closure_runKey_congr independent.congr _ _ _ rfl found.choose_spec
+
+/-- The target of a normalized deviation is read from the closure key. -/
+theorem keyTarget_closure (base : (serviceGraph setup mode).BehavioralProfile) (who : Player)
+    (policy : (serviceGraph setup mode).BehavioralPolicy who)
+    (independent : LastIndependent
+      ((serviceGraph setup mode).lastDeviationProfile base who policy) who)
+    (config : (serviceGraph setup mode).Config) :
+    keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy) who
+        (runKey (closure ((serviceGraph setup mode).normalizeProfile base) who config)) =
+      keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy) who
+        (runKey config) := by
+  rw [keyTarget_runKey independent, keyTarget_runKey independent,
+    lastErasedLaw_closure_deviation base who policy independent]
+
 end Vegas
