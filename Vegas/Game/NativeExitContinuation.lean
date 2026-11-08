@@ -21,7 +21,7 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] [Finite Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- After actual public default, every supported terminal continuation has the
@@ -30,35 +30,35 @@ theorem exclusionBase_continuation_of_defaulted {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ)
-    (menu : (application setup runtime leaks).ResponseMenu)
-    (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler)
+    (menu : (application setup timeouts leaks).ResponseMenu)
+    (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
+    (scheduler : (application setup timeouts leaks).Scheduler)
     (certificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)
     (players : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (history : (menu.protocol initial horizon scheduler).History)
-    (control : (application setup runtime leaks).Control) (current : history.state = some control)
+    (control : (application setup timeouts leaks).Control) (current : history.state = some control)
     (who : Player) (defaulted : who ∈ control.execution.application.config.defaulted) :
     ∀ final ∈ ((menu.information initial horizon scheduler).runBehavioralTerminalFrom
         certificate players history).support,
-      exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who =
+      exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state who =
         excludedPayoff who := by
   let : Fintype Player := Fintype.ofFinite Player
-  let closed := fun state : (application setup runtime leaks).ProtocolState =>
-    ∃ next : (application setup runtime leaks).Control,
+  let closed := fun state : (application setup timeouts leaks).ProtocolState =>
+    ∃ next : (application setup timeouts leaks).Control,
       state = some next ∧ who ∈ next.execution.application.config.defaulted
   have preserved := (menu.information initial horizon
     scheduler).runBehavioralTerminalFrom_support_closed
     certificate players closed (fun before joint _legal after holds reached => by
       obtain ⟨before, rfl, member⟩ := holds
-      obtain ⟨next, nextEq, _⟩ := (application setup runtime leaks).transition_recall_prefix
+      obtain ⟨next, nextEq, _⟩ := (application setup timeouts leaks).transition_recall_prefix
         initial horizon scheduler before after joint reached
-      exact ⟨next, nextEq, reactive_protocol_defaulted_mono runtime leaks initial horizon scheduler
+      exact ⟨next, nextEq, reactive_protocol_defaulted_mono timeouts leaks initial horizon scheduler
         before next joint (nextEq ▸ reached) member⟩)
     history ⟨control, current, defaulted⟩
   intro final supported
   obtain ⟨next, nextEq, member⟩ := preserved final supported
   rw [nextEq]
-  exact exclusionBase_of_defaulted setup runtime parameter utility excludedPayoff leaks next who
+  exact exclusionBase_of_defaulted setup timeouts parameter utility excludedPayoff leaks next who
     member
 
 /-- The full continuation's fixed exit utility is integrable and has the
@@ -67,20 +67,20 @@ theorem exclusionBase_expect_of_defaulted {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ)
-    (menu : (application setup runtime leaks).ResponseMenu)
-    (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler)
+    (menu : (application setup timeouts leaks).ResponseMenu)
+    (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
+    (scheduler : (application setup timeouts leaks).Scheduler)
     (certificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)
     (players : ∀ who, (menu.information initial horizon scheduler).BehavioralPolicy who)
     (history : (menu.protocol initial horizon scheduler).History)
-    (control : (application setup runtime leaks).Control) (current : history.state = some control)
+    (control : (application setup timeouts leaks).Control) (current : history.state = some control)
     (who : Player) (defaulted : who ∈ control.execution.application.config.defaulted) :
     let law := (menu.information initial horizon scheduler).runBehavioralTerminalFrom
       certificate players history
     PayoffIntegrable law (fun final =>
-      exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who) ∧
+      exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state who) ∧
     expect law (fun final =>
-      exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who) =
+      exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state who) =
         excludedPayoff who := by
   let : Fintype Player := Fintype.ofFinite Player
   have fixed := exclusionBase_continuation_of_defaulted parameter utility excludedPayoff menu

@@ -28,7 +28,7 @@ variable {Player : Type} [DecidableEq Player]
 section Content
 
 variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- The content a packet will settle with if accepted at this state is what the
@@ -44,14 +44,14 @@ def PendingContent (state : EventGraphRuntime.State (serviceGraph setup mode))
 
 /-- A retained packet is on track, or accepted with the content the record
 accepts. -/
-def SettledGood (execution : (serviceApplication setup mode deadline leaks).Execution)
+def SettledGood (execution : (serviceApplication setup mode duration leaks).Execution)
     (message : Message Player (WitnessedPacket (serviceGraph setup mode))) : Prop :=
   ∃ event, message.payload.call.event? (serviceGraph setup mode) = some event ∧
     ((execution.application.config.cut.Ready event ∧ (message.id, true) ∉ execution.receipts ∧
         PendingContent setup execution.application message) ∨
       ((message.id, true) ∈ execution.receipts ∧
         event ∈ execution.application.config.cut.completed ∧
-        ((serviceRuntime setup mode deadline).settledRecord leaks execution).SettledContent
+        ((settledRecord (serviceTimeouts setup mode duration)) leaks execution).SettledContent
         message))
 
 variable {setup leaks}
@@ -59,13 +59,15 @@ variable {setup leaks}
 /-- A conforming packet's content is what the record accepts. -/
 theorem pendingContent_of_fresh (state : EventGraphRuntime.State (serviceGraph setup mode))
     (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
-    (fresh : (serviceRuntime setup mode deadline).freshServiceEnvelope state.publicView message) :
+    (fresh : (freshServiceEnvelope (serviceTimeouts setup mode duration)) state.publicView
+      message) :
     PendingContent setup state message := by
   rcases message with ⟨id, ⟨call, evidence, token⟩⟩
   cases call with
   | commitment event candidate =>
       obtain ⟨_, canonical, empty, _⟩ :=
-          ((serviceRuntime setup mode deadline).freshServiceEnvelope_binding_iff state.publicView id
+          ((freshServiceEnvelope_binding_iff (serviceTimeouts setup mode duration))
+            state.publicView id
               event candidate evidence token).mp fresh
       exact ⟨empty, canonical⟩
   | opening event candidate raw =>
@@ -109,10 +111,10 @@ theorem settledContent_of_pending (before after : EventGraphRuntime.State (servi
   | opening actual candidate raw => exact pending
 
 /-- A good packet is permitted by the settled record. -/
-theorem SettledGood.permits {execution : (serviceApplication setup mode deadline leaks).Execution}
+theorem SettledGood.permits {execution : (serviceApplication setup mode duration leaks).Execution}
     {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
     (good : SettledGood setup leaks execution message) :
-    ((serviceRuntime setup mode deadline).settledRecord leaks execution).permits message =
+    ((settledRecord (serviceTimeouts setup mode duration)) leaks execution).permits message =
     true := by
   obtain ⟨event, named, ⟨ready, _, _⟩ | ⟨accepted, _, content⟩⟩ := good
   · exact SettledRecord.permits_of_unsettled _ message event named fun inside =>
@@ -223,14 +225,15 @@ theorem pendingContent_of_path
 
 /-- A submission names the event its emitted packet addresses. -/
 theorem submittedEvent_of_issued
-    {entry : (serviceApplication setup mode deadline leaks).PlayerEntry}
-    {material : (serviceApplication setup mode deadline leaks).Submission}
+    {entry : (serviceApplication setup mode duration leaks).PlayerEntry}
+    {material : (serviceApplication setup mode duration leaks).Submission}
     (transmission : entry.action.transmission = some material)
     {state : EventGraphRuntime.State (serviceGraph setup mode)} {who : Player}
     {known : List (Message Player (WitnessedPacket (serviceGraph setup mode)))}
     {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
-    (packet : (serviceApplication setup mode deadline leaks).packet state who known material =
-        message.payload) : (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action =
+    (packet : (serviceApplication setup mode duration leaks).packet state who known material =
+        message.payload) : (submittedEvent? (serviceTimeouts setup mode duration)) leaks
+          entry.action =
       message.payload.call.event? (serviceGraph setup mode) := by
   unfold EventGraphRuntime.submittedEvent?
   rw [transmission, ← packet]
@@ -241,21 +244,22 @@ end Content
 section Retained
 
 variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 variable {setup leaks}
 
 /-- A response keeps a packet good: it changes no contract state or receipt. -/
-theorem SettledGood.respond {execution : (serviceApplication setup mode deadline leaks).Execution}
+theorem SettledGood.respond {execution : (serviceApplication setup mode duration leaks).Execution}
     {message : Message Player (WitnessedPacket (serviceGraph setup mode))}
     (good : SettledGood setup leaks execution message) (who : Player)
-    (action : (serviceApplication setup mode deadline leaks).Action) :
+    (action : (serviceApplication setup mode duration leaks).Action) :
     SettledGood setup leaks
-        (execution.respond (serviceApplication setup mode deadline leaks) who action) message := by
-  obtain ⟨configEq, publicEq⟩ := (serviceRuntime setup mode deadline).reactive_respond_application
+        (execution.respond (serviceApplication setup mode duration leaks) who action) message := by
+  obtain ⟨configEq, publicEq⟩ := (reactive_respond_application (serviceTimeouts setup mode
+    duration))
       leaks execution who action
-  have receiptsEq := (serviceApplication setup mode deadline leaks).respond_receipts execution
+  have receiptsEq := (serviceApplication setup mode duration leaks).respond_receipts execution
       who action
   obtain ⟨event, named, ⟨ready, unaccepted, pending⟩ | ⟨accepted, completed, content⟩⟩ := good
   · refine ⟨event, named, Or.inl ⟨configEq ▸ ready, receiptsEq ▸ unaccepted, ?_⟩⟩

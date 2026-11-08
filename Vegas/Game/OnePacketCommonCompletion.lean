@@ -22,17 +22,17 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-  (bounds : MessageBounds (graph setup)) (initial : PMF (application setup runtime leaks).State)
-  (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
-  [Fintype ((bounds.onePacketMenu runtime leaks).protocol initial horizon
+  (bounds : MessageBounds (graph setup)) (initial : PMF (application setup timeouts leaks).State)
+  (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
+  [Fintype ((bounds.onePacketMenu timeouts leaks).protocol initial horizon
     scheduler).History]
-  [infoEq : ∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds initial horizon
+  [infoEq : ∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds initial horizon
     scheduler).InfoState who)]
 
-local notation "N" => onePacketModel setup runtime leaks bounds initial horizon scheduler
-local notation "menu" => bounds.onePacketMenu runtime leaks
+local notation "N" => onePacketModel setup timeouts leaks bounds initial horizon scheduler
+local notation "menu" => bounds.onePacketMenu timeouts leaks
 
 open Classical in
 /-- Singleton free pools turn pooled optimality and component limits into
@@ -41,9 +41,9 @@ private theorem freeOptimal_of_pooled_limits
     (sourceSequence : ℕ → setup.intendedModel.BehavioralAssessment) (slots : Nat)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     (vanishes : Tendsto scale atTop (nhds 0)) :
-    let parts := OnePacketPart setup runtime leaks bounds initial horizon scheduler slots
-    let pools := onePacketPool setup runtime leaks bounds initial horizon scheduler
-    let laws := fun n => onePacketComponent setup runtime leaks bounds initial horizon scheduler
+    let parts := OnePacketPart setup timeouts leaks bounds initial horizon scheduler slots
+    let pools := onePacketPool setup timeouts leaks bounds initial horizon scheduler
+    let laws := fun n => onePacketComponent setup timeouts leaks bounds initial horizon scheduler
       (sourceSequence n) (slots := slots) (scale n) (positive n).le (le_one n)
     ∀ (_weights : ℕ → ∀ p, PMF (parts p)) (sequence : ℕ → (N).BehavioralAssessment)
       (limit : (N).BehavioralAssessment)
@@ -78,7 +78,7 @@ private theorem freeOptimal_of_pooled_limits
                     (limit.continuationContext certificate site (payoff who)).value
                       (limit.strategy who)) →
       ∀ who (site : (N).InformationSite who),
-            FreeAgent setup runtime leaks bounds initial horizon scheduler ((N).agentAt site) →
+            FreeAgent setup timeouts leaks bounds initial horizon scheduler ((N).agentAt site) →
               ∀ law : PMF ((N).Choice who site.1),
                 (limit.continuationContext certificate site (payoff who)).value
                     ((limit.strategy who).withLaw site.1 law) ≤
@@ -86,21 +86,21 @@ private theorem freeOptimal_of_pooled_limits
                     (limit.strategy who) := by
   intro parts pools laws weights sequence limit certificate payoff pooled limits who site isFree law
   let identify := freeIdentify
-    (keyed := LateDeliveryAgent setup runtime leaks bounds initial horizon scheduler)
-    (key := agentLateKey setup runtime leaks bounds initial horizon scheduler) (Opt := LateOption
+    (keyed := LateDeliveryAgent setup timeouts leaks bounds initial horizon scheduler)
+    (key := agentLateKey setup timeouts leaks bounds initial horizon scheduler) (Opt := LateOption
       slots)
     isFree
   let limitComponent := fun part => PMF.pure (identify part)
   have componentsConverge (part : parts (pools ((N).agentAt site))) :
       PMFConvergesPointwise (fun n => laws n ((N).agentAt site) part) (limitComponent part) := by
     have same : (fun n => laws n ((N).agentAt site) part) = fun n =>
-        unforcedLaw setup runtime leaks bounds initial horizon scheduler (scale n) (positive
+        unforcedLaw setup timeouts leaks bounds initial horizon scheduler (scale n) (positive
           n).le (le_one n)
           ((N).agentAt site) (identify part) := by
       funext n
       exact freeKeyedComponent_of_free _ _ _ isFree part
     rw [same]
-    exact unforcedLaw_converges setup runtime leaks bounds initial horizon scheduler scale
+    exact unforcedLaw_converges setup timeouts leaks bounds initial horizon scheduler scale
       positive le_one
       vanishes ((N).agentAt site) (identify part)
   have finiteOptimal (n : ℕ) (alternative : PMF (parts (pools ((N).agentAt site)))) :
@@ -151,15 +151,15 @@ theorem SourceProgram.Setup.exists_onePacket_consistent_completion {Parameter : 
     (sourceSequence : ℕ → setup.intendedModel.BehavioralAssessment) (slots : Nat)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     (vanishes : Tendsto scale atTop (nhds 0)) :
-    let parts := OnePacketPart setup runtime leaks bounds initial horizon scheduler slots
-    let pools := onePacketPool setup runtime leaks bounds initial horizon scheduler
-    let laws := fun n => onePacketComponent setup runtime leaks bounds initial horizon scheduler
+    let parts := OnePacketPart setup timeouts leaks bounds initial horizon scheduler slots
+    let pools := onePacketPool setup timeouts leaks bounds initial horizon scheduler
+    let laws := fun n => onePacketComponent setup timeouts leaks bounds initial horizon scheduler
       (sourceSequence n)
       (slots := slots) (scale n) (positive n).le (le_one n)
     let fallback : ∀ who, (N).Policy who := fun _ _ => Classical.arbitrary _
     let certificate := (menu).bounded initial horizon scheduler |>.wellFoundedHistories
     let payoff := fun who (final : (menu).protocol initial horizon scheduler |>.History) =>
-      exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who
+      exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state who
     ∃ (weights : ℕ → ∀ p, PMF (parts p)) (sequence : ℕ → (N).BehavioralAssessment)
       (limit : (N).BehavioralAssessment) (index : ℕ → ℕ),
       (∀ n, (sequence n).strategy = (N).agentBehavior (N).playedInformation fallback
@@ -200,23 +200,23 @@ theorem SourceProgram.Setup.exists_onePacket_consistent_completion {Parameter : 
               (limit.continuationContext certificate site (payoff who)).value
                 (limit.strategy who)) ∧
       (∀ who (site : (N).InformationSite who),
-        FreeAgent setup runtime leaks bounds initial horizon scheduler ((N).agentAt site) →
+        FreeAgent setup timeouts leaks bounds initial horizon scheduler ((N).agentAt site) →
           ∀ law : PMF ((N).Choice who site.1),
             (limit.continuationContext certificate site (payoff who)).value
                 ((limit.strategy who).withLaw site.1 law) ≤
               (limit.continuationContext certificate site (payoff who)).value
                 (limit.strategy who)) ∧
-      ∀ who (site : (N).InformationSite who), runtime.PublicDefaultInput leaks site.1 →
+      ∀ who (site : (N).InformationSite who), (PublicDefaultInput timeouts) leaks site.1 →
         limit.IsSequentiallyRationalAt site
           (limit.continuationContext certificate site (payoff who)) := by
   intro parts pools laws fallback certificate payoff
-  let Pool := FreeKeyedPool (FreeAgent setup runtime leaks bounds initial horizon scheduler)
-    (LateDeliveryAgent setup runtime leaks bounds initial horizon scheduler)
-    (agentLateKey setup runtime leaks bounds initial horizon scheduler)
+  let Pool := FreeKeyedPool (FreeAgent setup timeouts leaks bounds initial horizon scheduler)
+    (LateDeliveryAgent setup timeouts leaks bounds initial horizon scheduler)
+    (agentLateKey setup timeouts leaks bounds initial horizon scheduler)
   have componentFull : ∀ (n : ℕ) (agent : (N).InformationAgent (N).playedInformation)
       (part : parts (pools agent)), FullSupport (laws n agent part) := by
     intro n agent part
-    exact onePacketComponent_fullSupport setup runtime leaks bounds initial horizon scheduler
+    exact onePacketComponent_fullSupport setup timeouts leaks bounds initial horizon scheduler
       (sourceSequence n) (positive n) (le_one n) agent part
   let core :=
     (N).exists_consistent_completion_with_shared_mixture_weights
@@ -225,17 +225,17 @@ theorem SourceProgram.Setup.exists_onePacket_consistent_completion {Parameter : 
   rcases core with ⟨weights, sequence, limit, index, assembled, mixed, bayes, increasing, converges,
     consistent, pooled, limits⟩
   have freeOptimal : ∀ who (site : (N).InformationSite who),
-      FreeAgent setup runtime leaks bounds initial horizon scheduler ((N).agentAt site) →
+      FreeAgent setup timeouts leaks bounds initial horizon scheduler ((N).agentAt site) →
         ∀ law : PMF ((N).Choice who site.1),
           (limit.continuationContext certificate site (payoff who)).value
               ((limit.strategy who).withLaw site.1 law) ≤
             (limit.continuationContext certificate site (payoff who)).value
               (limit.strategy who) := by
-    exact freeOptimal_of_pooled_limits setup runtime leaks bounds initial horizon scheduler
+    exact freeOptimal_of_pooled_limits setup timeouts leaks bounds initial horizon scheduler
       sourceSequence slots scale positive le_one vanishes weights sequence limit certificate payoff
       pooled limits
   have localDefaultOptimal : ∀ player (site : (N).InformationSite player),
-      runtime.PublicDefaultInput leaks site.1 → ∀ law : PMF ((N).Choice player site.1),
+      (PublicDefaultInput timeouts) leaks site.1 → ∀ law : PMF ((N).Choice player site.1),
         (limit.continuationContext certificate site (payoff player)).value
             (@BehavioralPolicy.withLaw Player ((menu).protocol initial horizon scheduler)
               (N) player (Classical.typeDecidableEq ((N).InfoState player))
@@ -246,12 +246,12 @@ theorem SourceProgram.Setup.exists_onePacket_consistent_completion {Parameter : 
     have equality : infoEq player =
         Classical.typeDecidableEq ((N).InfoState player) := Subsingleton.elim _ _
     have comparison := freeOptimal player site
-      (freeAgent_of_publicDefault setup runtime leaks bounds initial horizon scheduler
+      (freeAgent_of_publicDefault setup timeouts leaks bounds initial horizon scheduler
         ((N).agentAt site) flagged) law
     rw [equality] at comparison
     exact comparison
   have publicOptimal : ∀ who (site : (N).InformationSite who),
-      runtime.PublicDefaultInput leaks site.1 →
+      (PublicDefaultInput timeouts) leaks site.1 →
         limit.IsSequentiallyRationalAt site
           (limit.continuationContext certificate site (payoff who)) := by
     intro who site flagged
@@ -263,7 +263,7 @@ theorem SourceProgram.Setup.exists_onePacket_consistent_completion {Parameter : 
       payoffIntegrable_of_finite (ctx.outcome alternative) ctx.continuation
     have compare (alternative : (N).BehavioralPolicy who) :
         ctx.value alternative ≤ ctx.value (limit.strategy who) :=
-      runtime.wholePolicyOptimal_of_publicDefault leaks (bounds.onePacketMenu runtime leaks)
+      (wholePolicyOptimal_of_publicDefault timeouts) leaks (bounds.onePacketMenu timeouts leaks)
         initial horizon scheduler certificate payoff limit consistent localDefaultOptimal
         who site flagged alternative
     change ctx.IsLocallyOptimal Set.univ (limit.strategy who)

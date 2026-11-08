@@ -34,6 +34,9 @@ initialized histories retain reachability, cells, deadlines and quiescence.
 The roster scheduler has an all-history service proof through automatic
 completion, and completed native configurations freeze readout and fixed-exit
 payoff. Sequential completion geometry uses finite paths and actual prefix ranks.
+`Vegas.EventTimeouts graph` supplies only per-event timeout durations, measured
+from readiness in clock ticks. The state, handlers and execution machinery
+belong to the `Vegas.EventGraphRuntime` namespace.
 The direct sequential physical-client laws compose the source continuation
 with silent expiry, typed acceptance and chance sampling in
 [SourceServiceFirstTurnCompletion](../Vegas/Game/SourceServiceFirstTurnCompletion.lean).

@@ -14,12 +14,12 @@ open SourceProgram GameTheory.Protocol Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
-local notation "menu" => bounds.onePacketMenu runtime leaks
+local notation "menu" => bounds.onePacketMenu timeouts leaks
 local notation "protocol" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup)
   horizon scheduler
 local notation "model" => ReactiveApplication.ResponseMenu.information menu (initialLaw setup)
@@ -31,22 +31,22 @@ This is independent of service, timing and the later response policies. -/
 theorem pending_publicClear_of_acceptanceInvariant
     (certificate : (protocol).WellFoundedHistories)
     (profile : ∀ who, (model).BehavioralPolicy who) (stopped : (protocol).History → Prop)
-    (who : Player) (entry : (application setup runtime leaks).PlayerEntry)
+    (who : Player) (entry : (application setup timeouts leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup)))
     (event : (graph setup).EventId) (sent : (graph setup).Config)
     (action : (graph setup).Action event) (output : ((graph setup).outputLayout event).Value)
-    (start : (protocol).History) (current : (application setup runtime leaks).Control)
+    (start : (protocol).History) (current : (application setup timeouts leaks).Control)
     (state : start.state = some current)
     (clear : current.execution.application.config.defaulted = ∅)
-    (invariant : AcceptanceInvariant setup runtime leaks bounds horizon scheduler who entry
+    (invariant : AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who entry
       message event
       sent action output (some current)) :
     ∀ final ∈ ((model).runBehavioralUntil certificate profile stopped start).support,
       ∀ control, final.state = some control →
         event ∉ control.execution.application.config.cut.completed →
           control.execution.application.config.defaulted = ∅ := by
-  let property := fun state : (application setup runtime leaks).ProtocolState =>
-    AcceptanceInvariant setup runtime leaks bounds horizon scheduler who entry message event sent
+  let property := fun state : (application setup timeouts leaks).ProtocolState =>
+    AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who entry message event sent
       action output state ∧
       match state with
       | none => False
@@ -56,10 +56,10 @@ theorem pending_publicClear_of_acceptanceInvariant
       property before → after ∈ ((protocol).step before ⟨joint, legal⟩).support → property after :=
       by
     intro before joint legal after holds reached
-    have nextInvariant := acceptanceInvariant_transition (runtime := runtime) bounds horizon
+    have nextInvariant := acceptanceInvariant_transition (timeouts := timeouts) bounds horizon
       scheduler who entry
       message event sent action output before after joint legal holds.1 reached
-    change after ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+    change after ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
       scheduler
       before joint).support at reached
     cases before with
@@ -69,7 +69,7 @@ theorem pending_publicClear_of_acceptanceInvariant
       | none => exact nextInvariant.elim
       | some next =>
         refine ⟨nextInvariant, fun pending => ?_⟩
-        have path := reactive_protocol_graph_steps runtime leaks (initialLaw setup) horizon
+        have path := reactive_protocol_graph_steps timeouts leaks (initialLaw setup) horizon
           scheduler current next joint reached
         have historyKept := EventGraph.Config.Step.path_history_prefix path
         have beforePending : event ∉ current.execution.application.config.cut.completed :=

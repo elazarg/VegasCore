@@ -27,13 +27,13 @@ open Vegas.Examples.CommitRevealAuction (Player)
 
 private abbrev graph := Vegas.toEventGraph program
 private abbrev firstEvent : graph.EventId := ⟨0, by decide⟩
-private def runtime : EventGraphRuntime graph := ⟨fun _ => 10⟩
+private def timeouts : EventTimeouts graph := ⟨fun _ => 10⟩
 
 private def leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph) :=
   fun _ pending => (uniformLaw Bool).map fun seen =>
     if seen then (pending.map Message.id).toFinset else ∅
 
-private abbrev app := runtime.reactiveApplication leaks
+private abbrev app := (reactiveApplication timeouts) leaks
 
 private def initialExecution : app.Execution :=
   ReactiveApplication.Execution.initial app
@@ -93,15 +93,15 @@ theorem observation_rule_branches :
 theorem same_scheduler_input :
     (missed.environmentRecall, missed.observeEnvironment app) =
       (observed.environmentRecall, observed.observeEnvironment app) :=
-  (reactiveApplication_activation_schedulerInput runtime leaks sent missed .bob
+  (reactiveApplication_activation_schedulerInput timeouts leaks sent missed .bob
     missed_supported).trans
-      (reactiveApplication_activation_schedulerInput runtime leaks sent observed .bob
+      (reactiveApplication_activation_schedulerInput timeouts leaks sent observed .bob
         observed_supported).symm
 
 theorem every_scheduler_same_law (scheduler : app.Scheduler) :
     scheduler missed.environmentRecall (missed.observeEnvironment app) =
       scheduler observed.environmentRecall (observed.observeEnvironment app) :=
-  reactiveApplication_activation_scheduler runtime leaks scheduler sent missed observed .bob
+  reactiveApplication_activation_scheduler timeouts leaks scheduler sent missed observed .bob
     missed_supported observed_supported
 
 private def certificate : OpeningFact graph := ⟨(.alice, .prepared 0), ⟨.int, 7⟩⟩

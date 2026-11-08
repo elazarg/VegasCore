@@ -64,13 +64,13 @@ def FixesCandidates (before after : State graph) : Prop :=
 def KeepsInputHandles (before after : State graph) : Prop :=
   ∀ input, after.accepted (.inl input) = before.accepted (.inl input)
 
-variable (runtime : EventGraphRuntime graph)
+variable (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 /-- An accepted call either is a commitment, freezing its handle and installing
 it at its event for its sender, or changes neither table. -/
 theorem handle_tables_cases (state next : State graph) (message : Message Player (Payload graph))
-    (accepted : handle runtime state message = some next) :
+    (accepted : handle timeouts state message = some next) :
     (∃ event candidate, message.payload = .commitment event candidate ∧
       next.candidates = state.candidates.freeze candidate ∧
       next.accepted = Function.update state.accepted (.inr event) (some candidate) ∧
@@ -80,18 +80,18 @@ theorem handle_tables_cases (state next : State graph) (message : Message Player
   cases packet with
   | commitment event candidate =>
       exact Or.inl ⟨event, candidate, rfl,
-        handle_commitment_tables runtime state next id event candidate accepted⟩
+        handle_commitment_tables timeouts state next id event candidate accepted⟩
   | opening event candidate raw =>
-      exact Or.inr (handle_resolution_tables runtime state next _
+      exact Or.inr (handle_resolution_tables timeouts state next _
         (fun _ _ same => by cases same) accepted)
   | malformed raw =>
-      exact Or.inr (handle_resolution_tables runtime state next _
+      exact Or.inr (handle_resolution_tables timeouts state next _
         (fun _ _ same => by cases same) accepted)
 
 /-- Inclusion with automatic service has the native admission table effect. -/
 theorem reactiveHandle_tables_cases (state next : State graph)
     (message : Message Player (WitnessedPacket graph))
-    (accepted : (runtime.reactiveApplication leaks).handle state message = some next) :
+    (accepted : ((reactiveApplication timeouts) leaks).handle state message = some next) :
     (∃ event candidate, message.payload.call = .commitment event candidate ∧
       next.candidates = state.candidates.freeze candidate ∧
       next.accepted = Function.update state.accepted (.inr event) (some candidate) ∧
@@ -99,7 +99,7 @@ theorem reactiveHandle_tables_cases (state next : State graph)
     (next.accepted = state.accepted ∧ next.candidates = state.candidates) := by
   obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
   rw [← nextEq]
-  rcases handle_tables_cases runtime state native ⟨message.id, message.payload.call⟩ handled with
+  rcases handle_tables_cases timeouts state native ⟨message.id, message.payload.call⟩ handled with
     ⟨event, candidate, call, candidates, handles, owner⟩ | ⟨handles, candidates⟩
   · exact Or.inl ⟨event, candidate, call, native.drain_tables.2.1.trans candidates,
       native.drain_tables.1.trans handles, owner⟩
@@ -108,7 +108,7 @@ theorem reactiveHandle_tables_cases (state next : State graph)
 
 /-- **Fixed candidates stay fixed** under every runtime operation. -/
 theorem fixesCandidates_step :
-    (runtime.reactiveApplication leaks).StepRelation FixesCandidates where
+    ((reactiveApplication timeouts) leaks).StepRelation FixesCandidates where
   refl _ _ fixed := fixed
   submit state who material handle fixed := by
     change (submitStep (material.call.register state who) who
@@ -117,38 +117,38 @@ theorem fixesCandidates_step :
     rw [submitStep_lookup_of_not_fresh _ _ _ _ (registered ▸ fixed), registered]
     exact fixed
   handle state message next accepted handle fixed := by
-    rcases reactiveHandle_tables_cases runtime leaks state next message accepted with
+    rcases reactiveHandle_tables_cases timeouts leaks state next message accepted with
       ⟨_, candidate, _, candidates, _⟩ | ⟨_, candidates⟩
     · rw [candidates, state.candidates.lookup_freeze_eq_of_not_fresh handle candidate fixed]
       exact fixed
     · rw [candidates]
       exact fixed
   environment state command next reached handle fixed := by
-    rw [(reactiveApplication_environment_tables runtime leaks state next command reached).2]
+    rw [(reactiveApplication_environment_tables timeouts leaks state next command reached).2]
     exact fixed
 
 /-- **Initial input handles stay accepted** under every runtime operation. -/
 theorem keepsInputHandles_step :
-    (runtime.reactiveApplication leaks).StepRelation KeepsInputHandles where
+    ((reactiveApplication timeouts) leaks).StepRelation KeepsInputHandles where
   refl _ _ := rfl
   submit state who material input := by
     change (submitStep (material.call.register state who) who
       material.call.packet).accepted (.inl input) = _
     rw [submitStep_accepted, Submission.register_accepted]
   handle state message next accepted input := by
-    rcases reactiveHandle_tables_cases runtime leaks state next message accepted with
+    rcases reactiveHandle_tables_cases timeouts leaks state next message accepted with
       ⟨event, _, _, _, acceptedEq, _⟩ | ⟨acceptedEq, _⟩
     · rw [acceptedEq, Function.update_of_ne (by simp)]
     · rw [acceptedEq]
   environment state command next reached input := by
-    rw [(reactiveApplication_environment_tables runtime leaks state next command reached).1]
+    rw [(reactiveApplication_environment_tables timeouts leaks state next command reached).1]
 
 /-- An accepted inclusion either installs, for a binding event, the handle its
 envelope commits to, or leaves every accepted handle of a binding event as it
 was. -/
-theorem includePending_accepted (execution : (runtime.reactiveApplication leaks).Execution)
+theorem includePending_accepted (execution : ((reactiveApplication timeouts) leaks).Execution)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
-    (installed : (execution.includePending (runtime.reactiveApplication leaks)
+    (installed : (execution.includePending ((reactiveApplication timeouts) leaks)
       id).application.accepted (.inr event) = some candidate) :
     execution.application.accepted (.inr event) = some candidate ∨
       ∃ envelope, execution.network.lookup id = some envelope ∧
@@ -161,13 +161,13 @@ theorem includePending_accepted (execution : (runtime.reactiveApplication leaks)
   | some envelope =>
       simp only [found] at installed
       cases accepted :
-          (runtime.reactiveApplication leaks).handle execution.application envelope with
+          ((reactiveApplication timeouts) leaks).handle execution.application envelope with
       | none =>
           simp only [accepted, Option.getD_none] at installed
           exact Or.inl installed
       | some next =>
           simp only [accepted, Option.getD_some] at installed
-          rcases reactiveHandle_tables_cases runtime leaks execution.application next envelope
+          rcases reactiveHandle_tables_cases timeouts leaks execution.application next envelope
               accepted with
             ⟨named, committed, call, _, acceptedEq, owner⟩ | ⟨acceptedEq, _⟩
           · rw [acceptedEq] at installed
@@ -183,44 +183,44 @@ theorem includePending_accepted (execution : (runtime.reactiveApplication leaks)
 
 /-- A response leaves every other player's recall and appends one entry to
 the responder's, which records the envelope the response emits. -/
-theorem respond_recall (execution : (runtime.reactiveApplication leaks).Execution)
-    (who observer : Player) (action : (runtime.reactiveApplication leaks).Action) :
-    (execution.respond (runtime.reactiveApplication leaks) who action).logs observer =
+theorem respond_recall (execution : ((reactiveApplication timeouts) leaks).Execution)
+    (who observer : Player) (action : ((reactiveApplication timeouts) leaks).Action) :
+    (execution.respond ((reactiveApplication timeouts) leaks) who action).logs observer =
       if observer = who then execution.logs who ++
-        [⟨execution.observe (runtime.reactiveApplication leaks) who, action,
+        [⟨execution.observe ((reactiveApplication timeouts) leaks) who, action,
           action.transmission.map fun material =>
             ⟨(who, execution.network.nextSerial who),
-              (runtime.reactiveApplication leaks).packet
-                ((runtime.reactiveApplication leaks).submit execution.application who material)
+              ((reactiveApplication timeouts) leaks).packet
+                (((reactiveApplication timeouts) leaks).submit execution.application who material)
                 who (execution.network.known who) material⟩⟩]
       else execution.logs observer := by
   rcases action with ⟨_ | material⟩ <;> rfl
 
 /-- Every envelope a player recalls emitting is signed by it and carries the
 packet of the submission it recalls. -/
-def EmissionsRecorded (execution : (runtime.reactiveApplication leaks).Execution) : Prop :=
+def EmissionsRecorded (execution : ((reactiveApplication timeouts) leaks).Execution) : Prop :=
   ∀ who, ∀ entry ∈ execution.logs who, ∀ message, entry.emitted = some message →
     message.sender = who ∧ ∃ material, entry.action.transmission = some material ∧
       message.payload.call = material.call.packet
 
 /-- **Own signed data behind commitments and accepted handles.** -/
-structure SignedCommitments (execution : (runtime.reactiveApplication leaks).Execution) :
+structure SignedCommitments (execution : ((reactiveApplication timeouts) leaks).Execution) :
     Prop where
-  provenance : execution.Provenance (runtime.reactiveApplication leaks)
-  emissions : EmissionsRecorded runtime leaks execution
-  ownFixed : ∀ who, ∀ message ∈ (runtime.reactiveApplication leaks).outputs (execution.logs who),
+  provenance : execution.Provenance ((reactiveApplication timeouts) leaks)
+  emissions : EmissionsRecorded timeouts leaks execution
+  ownFixed : ∀ who, ∀ message ∈ ((reactiveApplication timeouts) leaks).outputs (execution.logs who),
     ∀ event slot, message.payload.call = .commitment event (who, slot) →
       execution.application.candidates.lookup (who, slot) ≠ .fresh
   acceptedSigned : ∀ event candidate,
     execution.application.accepted (.inr event) = some candidate →
-      ∃ message ∈ (runtime.reactiveApplication leaks).outputs (execution.logs candidate.1),
+      ∃ message ∈ ((reactiveApplication timeouts) leaks).outputs (execution.logs candidate.1),
         message.payload.call = .commitment event candidate
   inputHandles : ∀ input candidate, execution.application.accepted (.inl input) = some candidate →
     candidate.2 = .initial input
 
 theorem signedCommitments_initial (inputs : graph.Inputs) :
-    SignedCommitments runtime leaks
-      (ReactiveApplication.Execution.initial (runtime.reactiveApplication leaks)
+    SignedCommitments timeouts leaks
+      (ReactiveApplication.Execution.initial ((reactiveApplication timeouts) leaks)
         (State.initial inputs)) where
   provenance := MessageNetwork.Satisfies.empty
   emissions _ _ member := (List.not_mem_nil member).elim
@@ -235,14 +235,14 @@ theorem signedCommitments_initial (inputs : graph.Inputs) :
     rfl
 
 /-- The invariant survives every response, whatever its content. -/
-theorem SignedCommitments.respond {execution : (runtime.reactiveApplication leaks).Execution}
-    (valid : SignedCommitments runtime leaks execution) (who : Player)
-    (action : (runtime.reactiveApplication leaks).Action) :
-    SignedCommitments runtime leaks (execution.respond (runtime.reactiveApplication leaks) who
+theorem SignedCommitments.respond {execution : ((reactiveApplication timeouts) leaks).Execution}
+    (valid : SignedCommitments timeouts leaks execution) (who : Player)
+    (action : ((reactiveApplication timeouts) leaks).Action) :
+    SignedCommitments timeouts leaks (execution.respond ((reactiveApplication timeouts) leaks) who
       action) := by
-  let app := runtime.reactiveApplication leaks
-  have fixes := (fixesCandidates_step runtime leaks).respond execution who action
-  have inputs := (keepsInputHandles_step runtime leaks).respond execution who action
+  let app := (reactiveApplication timeouts) leaks
+  have fixes := (fixesCandidates_step timeouts leaks).respond execution who action
+  have inputs := (keepsInputHandles_step timeouts leaks).respond execution who action
   have acceptedSame : (execution.respond app who action).application.accepted =
       execution.application.accepted := by
     rcases action with ⟨_ | material⟩
@@ -301,17 +301,17 @@ theorem SignedCommitments.respond {execution : (runtime.reactiveApplication leak
 
 /-- The invariant survives every environment step. -/
 theorem SignedCommitments.environmentStep
-    {execution next : (runtime.reactiveApplication leaks).Execution}
-    (valid : SignedCommitments runtime leaks execution)
-    (command : (runtime.reactiveApplication leaks).Command)
-    (reached : next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
+    {execution next : ((reactiveApplication timeouts) leaks).Execution}
+    (valid : SignedCommitments timeouts leaks execution)
+    (command : ((reactiveApplication timeouts) leaks).Command)
+    (reached : next ∈ (execution.environmentStep ((reactiveApplication timeouts) leaks)
       command).support) :
-    SignedCommitments runtime leaks next := by
-  let app := runtime.reactiveApplication leaks
+    SignedCommitments timeouts leaks next := by
+  let app := (reactiveApplication timeouts) leaks
   have recallSame := app.environmentStep_recall execution next command reached
-  have fixes := (fixesCandidates_step runtime leaks).environmentStep execution next command
+  have fixes := (fixesCandidates_step timeouts leaks).environmentStep execution next command
     reached
-  have inputs := (keepsInputHandles_step runtime leaks).environmentStep execution next command
+  have inputs := (keepsInputHandles_step timeouts leaks).environmentStep execution next command
     reached
   refine ⟨app.environment_provenance execution next command valid.provenance reached, ?_, ?_, ?_,
     ?_⟩
@@ -338,7 +338,7 @@ theorem SignedCommitments.environmentStep
       | «include» id =>
           simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at reached
           cases (PMF.mem_support_pure_iff _ _).mp reached
-          rcases includePending_accepted runtime leaks execution id event candidate accepted with
+          rcases includePending_accepted timeouts leaks execution id event candidate accepted with
             old | ⟨envelope, found, call, owner⟩
           · exact Or.inl old
           · right
@@ -349,7 +349,7 @@ theorem SignedCommitments.environmentStep
       | application command =>
           obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
           obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-          rw [(reactiveApplication_environment_tables runtime leaks execution.application state
+          rw [(reactiveApplication_environment_tables timeouts leaks execution.application state
             command changed).1]
             at accepted
           exact Or.inl accepted
@@ -361,25 +361,25 @@ theorem SignedCommitments.environmentStep
     exact valid.inputHandles input candidate accepted
 
 /-- The invariant is a service invariant under every scheduler. -/
-theorem signedCommitments_invariant (scheduler : (runtime.reactiveApplication leaks).Scheduler) :
-    (runtime.reactiveApplication leaks).ServiceInvariant scheduler
-      (SignedCommitments runtime leaks) where
-  respond _ who action valid := valid.respond runtime leaks who action
-  environment _ _ command valid _ reached := valid.environmentStep runtime leaks command reached
+theorem signedCommitments_invariant (scheduler : ((reactiveApplication timeouts) leaks).Scheduler) :
+    ((reactiveApplication timeouts) leaks).ServiceInvariant scheduler
+      (SignedCommitments timeouts leaks) where
+  respond _ who action valid := valid.respond timeouts leaks who action
+  environment _ _ command valid _ reached := valid.environmentStep timeouts leaks command reached
 
 /-- **Signed commitments along every history.** Under an initial law of
 initial runtime states, every history of the runtime, under arbitrary responses
 and scheduler choices, satisfies the invariant. -/
-theorem signedCommitments_history (initial : PMF (runtime.reactiveApplication leaks).State)
+theorem signedCommitments_history (initial : PMF ((reactiveApplication timeouts) leaks).State)
     (initialized : ∀ state ∈ initial.support, ∃ inputs, state = State.initial inputs)
-    (horizon : Nat) (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    {control : (runtime.reactiveApplication leaks).Control}
-    (trace : ((runtime.reactiveApplication leaks).protocol initial horizon scheduler).Trace
+    (horizon : Nat) (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    {control : ((reactiveApplication timeouts) leaks).Control}
+    (trace : (((reactiveApplication timeouts) leaks).protocol initial horizon scheduler).Trace
       (some control)) :
-    SignedCommitments runtime leaks control.execution :=
-  (signedCommitments_invariant runtime leaks scheduler).history initial horizon
+    SignedCommitments timeouts leaks control.execution :=
+  (signedCommitments_invariant timeouts leaks scheduler).history initial horizon
     (fun state supported => by
       obtain ⟨inputs, rfl⟩ := initialized state supported
-      exact signedCommitments_initial runtime leaks inputs) trace
+      exact signedCommitments_initial timeouts leaks inputs) trace
 
 end Vegas.EventGraphRuntime

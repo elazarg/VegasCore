@@ -22,13 +22,13 @@ open SourceProgram EventGraph EventGraphRuntime GameTheory.Math.Probability Inte
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 /-- Every event a recorded response saw ready has completed or satisfies
 `allowed`. -/
 def SeenWithin (allowed : (serviceGraph setup mode).EventId → Prop)
-    (execution : (serviceApplication setup mode deadline leaks).Execution) : Prop :=
+    (execution : (serviceApplication setup mode duration leaks).Execution) : Prop :=
   ∀ who, ∀ entry ∈ execution.logs who, ∀ event,
     entry.beforeView.application.publicView.EventReady event →
       event ∈ execution.application.config.cut.completed ∨ allowed event
@@ -36,7 +36,7 @@ def SeenWithin (allowed : (serviceGraph setup mode).EventId → Prop)
 /-- An untouched event: no response saw it ready, when only completed or allowed
 events were seen and it is neither. -/
 theorem SeenWithin.untouched {allowed : (serviceGraph setup mode).EventId → Prop}
-    {execution : (serviceApplication setup mode deadline leaks).Execution}
+    {execution : (serviceApplication setup mode duration leaks).Execution}
     (seen : SeenWithin allowed execution) {event : (serviceGraph setup mode).EventId}
     (unfinished : event ∉ execution.application.config.cut.completed)
     (disallowed : ¬ allowed event) : Untouched setup leaks event execution := by
@@ -47,34 +47,34 @@ theorem SeenWithin.untouched {allowed : (serviceGraph setup mode).EventId → Pr
 
 /-- A round's configuration is reached from the previous one by graph steps. -/
 theorem round_config_path
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
-    {execution next : (serviceApplication setup mode deadline leaks).Execution}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode duration leaks).Policy}
+    {execution next : (serviceApplication setup mode duration leaks).Execution}
     (reached : next ∈
-      ((serviceApplication setup mode deadline leaks).round scheduler players execution).support) :
+      ((serviceApplication setup mode duration leaks).round scheduler players execution).support) :
     Relation.ReflTransGen EventGraph.Config.Step execution.application.config
       next.application.config := by
   obtain ⟨command, _, middle, moved, cases⟩ := round_cases (setup := setup) leaks reached
-  have path := ((serviceRuntime setup mode deadline).reactiveApplication_graphSteps
+  have path := ((reactiveApplication_graphSteps (serviceTimeouts setup mode duration))
     leaks).environmentStep execution middle command moved
   rcases cases with ⟨_, rfl⟩ | ⟨who, _, response, _, rfl⟩
   · exact path
-  · rw [((serviceRuntime setup mode deadline).reactive_respond_application leaks middle who
+  · rw [((reactive_respond_application (serviceTimeouts setup mode duration)) leaks middle who
       response).1]
     exact path
 
 /-- A round keeps the seen-ready bound when every event ready before it is
 allowed. -/
 theorem round_seenWithin {allowed : (serviceGraph setup mode).EventId → Prop}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
-    {execution next : (serviceApplication setup mode deadline leaks).Execution}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode duration leaks).Policy}
+    {execution next : (serviceApplication setup mode duration leaks).Execution}
     (seen : SeenWithin allowed execution)
     (readyAllowed : ∀ event, execution.application.config.cut.Ready event → allowed event)
     (reached : next ∈
-      ((serviceApplication setup mode deadline leaks).round scheduler players execution).support) :
+      ((serviceApplication setup mode duration leaks).round scheduler players execution).support) :
     SeenWithin allowed next := by
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   have grown := EventGraph.Config.Step.path_completed_mono (round_config_path reached)
   obtain ⟨command, _, middle, moved, cases⟩ := round_cases (setup := setup) leaks reached
   have recallEq := app.environmentStep_recall execution middle command moved
@@ -103,18 +103,18 @@ theorem round_seenWithin {allowed : (serviceGraph setup mode).EventId → Prop}
 /-- While a solitary event is ready, responses see only it, so running until
 it completes keeps every seen event completed, allowed or that event. -/
 theorem runUntil_seenWithin {allowed : (serviceGraph setup mode).EventId → Prop}
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy)
+    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
+    (players : Player → (serviceApplication setup mode duration leaks).Policy)
     (event : (serviceGraph setup mode).EventId)
     (solitary : (serviceGraph setup mode).Solitary event) :
-    ∀ (count : Nat) (execution stopped : (serviceApplication setup mode deadline leaks).Execution),
+    ∀ (count : Nat) (execution stopped : (serviceApplication setup mode duration leaks).Execution),
       execution.application.config.cut.Ready event →
       SeenWithin (fun other => allowed other ∨ other = event) execution →
-      stopped ∈ ((serviceApplication setup mode deadline leaks).runUntil scheduler players
+      stopped ∈ ((serviceApplication setup mode duration leaks).runUntil scheduler players
         (fun final => event ∈ final.application.config.cut.completed) count execution).support →
       SeenWithin (fun other => allowed other ∨ other = event) stopped := by
   classical
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   intro count
   induction count with
   | zero =>
@@ -139,7 +139,7 @@ theorem runUntil_seenWithin {allowed : (serviceGraph setup mode).EventId → Pro
 section Induction
 
 variable {horizon turns : Nat} {scheduler :
-    (serviceApplication setup mode deadline leaks).Scheduler}
+    (serviceApplication setup mode duration leaks).Scheduler}
   {delay bound : (serviceGraph setup mode).EventId → Nat}
 
 /-- **The honest outcome law from every boundary.** Under the asynchronous
@@ -148,9 +148,9 @@ every other event leads, honest clients of an opening, ready-independent
 reference run, from every initialized execution whose responses saw only
 completed events or publications ready, to the reference's outcome law. -/
 theorem honest_runToHorizon_outcomeLaw
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
       (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
     (only : (serviceGraph setup mode).RevealsOnlyConcurrent)
     (leading : ∀ event, ¬ ((serviceGraph setup mode).outputLayout event).IsPublication →
       (serviceGraph setup mode).Leading event)
@@ -160,21 +160,21 @@ theorem honest_runToHorizon_outcomeLaw
     (keyed : ∀ left right : (serviceGraph setup mode).Config, runKey left = runKey right →
       read left = read right)
     (invariant : ∀ config, read config.erase = read config) :
-    let players := serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+    let players := serviceReferenceTurnPolicy setup mode duration leaks bound turns
       (firstTurnTiming setup turns mode) reference
-    ∀ execution : (serviceApplication setup mode deadline leaks).Execution,
-      execution ∈ ((serviceApplication setup mode deadline leaks).roundsFrom
+    ∀ execution : (serviceApplication setup mode duration leaks).Execution,
+      execution ∈ ((serviceApplication setup mode duration leaks).roundsFrom
         (serviceInitialLaw setup mode) scheduler players
           execution.environmentRecall.length).support →
       execution.environmentRecall.length ≤ horizon →
       SeenWithin (fun event => ((serviceGraph setup mode).outputLayout event).IsPublication)
         execution →
-      ((serviceApplication setup mode deadline leaks).runToHorizon scheduler players horizon
+      ((serviceApplication setup mode duration leaks).runToHorizon scheduler players horizon
           execution).map (fun final => read final.application.config) =
         outcomeLaw reference read execution.application.config := by
   classical
   intro players
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   let publication := fun event : (serviceGraph setup mode).EventId =>
     ((serviceGraph setup mode).outputLayout event).IsPublication
   intro execution
@@ -226,7 +226,7 @@ theorem honest_runToHorizon_outcomeLaw
             rw [ih left (by omega) next (by omega) supportedNext (by omega)
               (round_seenWithin seen allPublications reached)]
             exact reactive_round_outcomeLaw_of_publications independent opens read keyed invariant
-              (serviceRuntime setup mode deadline) leaks scheduler players execution next
+              (serviceTimeouts setup mode duration) leaks scheduler players execution next
               allPublications (fun event owner ready owned _ holds =>
                 honestPublication_withinDeadline contract timely players owner reference opens rfl
                   execution.environmentRecall.length bounded execution supported event owned ready
@@ -279,7 +279,7 @@ theorem honest_runToHorizon_outcomeLaw
                 exact Or.inl finished
             exact ih (horizon - stopped.environmentRecall.length) (by omega) stopped rfl
               stoppedSupported stoppedBounded seenStopped
-          _ = _ := soleSegment_outcomeLaw (serviceRuntime setup mode deadline) leaks scheduler
+          _ = _ := soleSegment_outcomeLaw (serviceTimeouts setup mode duration) leaks scheduler
               delay bound contract timely reference independent read keyed players event
               (fun _ _ => rfl) solitary (leading event notPublication) notPublication execution
               ready supported (seen.untouched ready.1 notPublication) bounded
@@ -288,9 +288,9 @@ theorem honest_runToHorizon_outcomeLaw
 `honest_runToHorizon_outcomeLaw`, the outcome of the honest clients' run to the
 horizon has the reference's outcome law from the initial configurations. -/
 theorem honest_roundsFrom_outcomeLaw
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
       (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
     (only : (serviceGraph setup mode).RevealsOnlyConcurrent)
     (leading : ∀ event, ¬ ((serviceGraph setup mode).outputLayout event).IsPublication →
       (serviceGraph setup mode).Leading event)
@@ -300,14 +300,14 @@ theorem honest_roundsFrom_outcomeLaw
     (keyed : ∀ left right : (serviceGraph setup mode).Config, runKey left = runKey right →
       read left = read right)
     (invariant : ∀ config, read config.erase = read config) :
-    ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
-        scheduler (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+    ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler (serviceReferenceTurnPolicy setup mode duration leaks bound turns
           (firstTurnTiming setup turns mode) reference) horizon).map
         (fun final => read final.application.config) =
       (serviceInitialLaw setup mode).bind
         (fun state => outcomeLaw reference read state.config) := by
-  let app := serviceApplication setup mode deadline leaks
-  let players := serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+  let app := serviceApplication setup mode duration leaks
+  let players := serviceReferenceTurnPolicy setup mode duration leaks bound turns
     (firstTurnTiming setup turns mode) reference
   unfold ReactiveApplication.roundsFrom
   rw [PMF.map_bind]

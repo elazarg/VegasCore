@@ -31,40 +31,40 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- A policy submits fresh packets only for the event that is its player's
 own turn. -/
-def SubmitsAtTurn (policy : (serviceApplication setup mode deadline leaks).Policy) (who : Player) :
+def SubmitsAtTurn (policy : (serviceApplication setup mode duration leaks).Policy) (who : Player) :
     Prop := ∀ past view response, response ∈ (policy past view).support → ∀ event,
-    (serviceRuntime setup mode deadline).submittedEvent? leaks response = some event →
+    (submittedEvent? (serviceTimeouts setup mode duration)) leaks response = some event →
     view.application.publicView.ownTurn? who = some event
 
 /-- Every recorded fresh submission was for its author's own turn. -/
-def SubmissionsAtTurn (execution : (serviceApplication setup mode deadline leaks).Execution) :
+def SubmissionsAtTurn (execution : (serviceApplication setup mode duration leaks).Execution) :
     Prop := ∀ who, ∀ entry ∈ execution.logs who, ∀ event,
-    (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action = some event →
+    (submittedEvent? (serviceTimeouts setup mode duration)) leaks entry.action = some event →
     entry.beforeView.application.publicView.ownTurn? who = some event
 
 theorem silentPolicy_submitsAtTurn (who : Player) :
-    SubmitsAtTurn setup leaks (serviceApplication setup mode deadline leaks).silentPolicy who := by
+    SubmitsAtTurn setup leaks (serviceApplication setup mode duration leaks).silentPolicy who := by
   intro past view response chosen event submitted
-  obtain rfl := (serviceApplication setup mode deadline leaks).silentPolicy_cases past view
+  obtain rfl := (serviceApplication setup mode duration leaks).silentPolicy_cases past view
       response chosen
   simp [EventGraphRuntime.submittedEvent?] at submitted
 
 /-- A canonical compiled decision submits only for its own event. -/
 theorem submittedEvent_canonicalServiceDecision (who : Player)
-    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (view : (serviceApplication setup mode deadline leaks).PlayerView)
+    (past : List (serviceApplication setup mode duration leaks).PlayerEntry)
+    (view : (serviceApplication setup mode duration leaks).PlayerView)
     (event : (serviceGraph setup mode).EventId)
     (action : (serviceGraph setup mode).Action event) (other : (serviceGraph setup mode).EventId)
-    (submitted : (serviceRuntime setup mode deadline).submittedEvent? leaks
-      ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view event
+    (submitted : (submittedEvent? (serviceTimeouts setup mode duration)) leaks
+      ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who past view event
           action) = some other) :
     other = event := by
-  rcases (serviceRuntime setup mode deadline).canonicalServiceDecision_cases leaks who past view
+  rcases (canonicalServiceDecision_cases (serviceTimeouts setup mode duration)) leaks who past view
       event action with silent | named
   · rw [silent] at submitted
     cases submitted
@@ -73,7 +73,7 @@ theorem submittedEvent_canonicalServiceDecision (who : Player)
 theorem sourceServiceCanonicalPolicy_submitsAtTurn_reference (reference :
     (serviceGraph setup mode).BehavioralProfile)
     (who : Player) :
-    SubmitsAtTurn setup leaks (serviceReferencePolicy setup mode deadline leaks reference who)
+    SubmitsAtTurn setup leaks (serviceReferencePolicy setup mode duration leaks reference who)
         who := by
   intro past view response chosen event submitted
   unfold serviceReferencePolicy at chosen
@@ -104,7 +104,7 @@ theorem sourceServiceCanonicalPolicy_submitsAtTurn_reference (reference :
 
 theorem sourceServiceCanonicalPolicy_submitsAtTurn (profile : BehavioralProfile setup.program)
     (who : Player) :
-    SubmitsAtTurn setup leaks (serviceCanonicalPolicy setup mode deadline leaks profile who)
+    SubmitsAtTurn setup leaks (serviceCanonicalPolicy setup mode duration leaks profile who)
         who := by
   apply sourceServiceCanonicalPolicy_submitsAtTurn_reference
     (reference := compileEventProfile setup.program profile)
@@ -113,7 +113,7 @@ theorem sourceServiceCanonicalOpportunity_submitsAtTurn_reference
     (bound : (serviceGraph setup mode).EventId → Nat) (reference :
       (serviceGraph setup mode).BehavioralProfile)
     (who : Player) (event : (serviceGraph setup mode).EventId) : SubmitsAtTurn setup leaks
-      (serviceReferenceOpportunity setup mode deadline leaks bound reference who event) who := by
+      (serviceReferenceOpportunity setup mode duration leaks bound reference who event) who := by
   intro past view response chosen other submitted
   unfold serviceReferenceOpportunity at chosen
   split at chosen
@@ -135,19 +135,19 @@ theorem sourceServiceCanonicalOpportunity_submitsAtTurn_reference
 theorem sourceServiceCanonicalOpportunity_submitsAtTurn
     (bound : (serviceGraph setup mode).EventId → Nat) (profile : BehavioralProfile setup.program)
     (who : Player) (event : (serviceGraph setup mode).EventId) : SubmitsAtTurn setup leaks
-      (serviceCanonicalOpportunity setup mode deadline leaks bound profile who event) who := by
+      (serviceCanonicalOpportunity setup mode duration leaks bound profile who event) who := by
   apply sourceServiceCanonicalOpportunity_submitsAtTurn_reference
     (reference := compileEventProfile setup.program profile)
 
 theorem turnScheduledPolicy_submitsAtTurn
-    (turn : List (serviceApplication setup mode deadline leaks).PlayerEntry →
-      (serviceApplication setup mode deadline leaks).PlayerView → Option Nat)
+    (turn : List (serviceApplication setup mode duration leaks).PlayerEntry →
+      (serviceApplication setup mode duration leaks).PlayerView → Option Nat)
     {slots : Nat} (selected : Option (Fin slots))
-    (opening waiting : (serviceApplication setup mode deadline leaks).Policy) (who : Player)
+    (opening waiting : (serviceApplication setup mode duration leaks).Policy) (who : Player)
     (openingAt : SubmitsAtTurn setup leaks opening who)
     (waitingAt : SubmitsAtTurn setup leaks waiting who) :
     SubmitsAtTurn setup leaks
-      ((serviceApplication setup mode deadline leaks).turnScheduledPolicy turn selected opening
+      ((serviceApplication setup mode duration leaks).turnScheduledPolicy turn selected opening
           waiting) who := by
   intro past view response chosen event submitted
   unfold ReactiveApplication.turnScheduledPolicy at chosen
@@ -158,10 +158,10 @@ theorem turnScheduledPolicy_submitsAtTurn
     · exact waitingAt past view response chosen event submitted
 
 theorem policyMixture_submitsAtTurn {Index : Type} (initial : PMF Index)
-    (policies : Index → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
+    (policies : Index → (serviceApplication setup mode duration leaks).Policy) (who : Player)
     (each : ∀ index, SubmitsAtTurn setup leaks (policies index) who) :
     SubmitsAtTurn setup leaks
-      ((serviceApplication setup mode deadline leaks).policyMixture initial policies).policy
+      ((serviceApplication setup mode duration leaks).policyMixture initial policies).policy
       who := by
   intro past view response chosen event submitted
   rw [ReactiveApplication.policyMixture_policy, PMF.support_bind] at chosen
@@ -173,7 +173,7 @@ theorem sourceServiceTurnPolicy_submitsAtTurn_reference (bound :
     (turns : Nat) (timing : TurnTiming setup turns mode)
     (reference : (serviceGraph setup mode).BehavioralProfile) (who : Player) :
     SubmitsAtTurn setup leaks
-        (serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing reference who)
+        (serviceReferenceTurnPolicy setup mode duration leaks bound turns timing reference who)
       who := by
   intro past view response chosen event submitted
   unfold serviceReferenceTurnPolicy at chosen
@@ -193,7 +193,7 @@ theorem sourceServiceTurnPolicy_submitsAtTurn (bound : (serviceGraph setup mode)
     (turns : Nat) (timing : TurnTiming setup turns mode)
     (profile : BehavioralProfile setup.program) (who : Player) :
     SubmitsAtTurn setup leaks
-        (serviceTurnPolicy setup mode deadline leaks bound turns timing profile who)
+        (serviceTurnPolicy setup mode duration leaks bound turns timing profile who)
       who := by
   apply sourceServiceTurnPolicy_submitsAtTurn_reference
     (reference := compileEventProfile setup.program profile)
@@ -204,7 +204,7 @@ theorem decidedTurnPolicy_submitsAtTurn (bound : (serviceGraph setup mode).Event
     (owner : Player) (event : (serviceGraph setup mode).EventId)
     (action : (serviceGraph setup mode).Action event) :
     SubmitsAtTurn setup leaks
-        (decidedTurnPolicy (deadline := deadline) setup leaks bound owner event
+        (decidedTurnPolicy (duration := duration) setup leaks bound owner event
       action) owner := by
   intro past view response chosen other submitted
   unfold decidedTurnPolicy ReactiveApplication.turnScheduledPolicy at chosen
@@ -236,7 +236,7 @@ theorem decidedTurnPolicy_submitsAtTurn (bound : (serviceGraph setup mode).Event
 variable {setup leaks} in
 /-- Submissions at every author's turn are in particular one author's
 submissions at its turns. -/
-theorem SubmissionsAtTurn.own {execution : (serviceApplication setup mode deadline leaks).Execution}
+theorem SubmissionsAtTurn.own {execution : (serviceApplication setup mode duration leaks).Execution}
     (valid : SubmissionsAtTurn setup leaks execution) (who : Player) :
     OwnSubmissionsAtTurn setup leaks execution who :=
   fun entry member event submitted => valid who entry member event submitted
@@ -244,16 +244,16 @@ theorem SubmissionsAtTurn.own {execution : (serviceApplication setup mode deadli
 /-- A round in which `who` submits only at its own turns keeps every recorded
 submission of `who` at its turn, whatever the other players do. -/
 theorem round_ownSubmissionsAtTurn
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy} {who : Player}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode duration leaks).Policy} {who : Player}
     (atTurn : SubmitsAtTurn setup leaks (players who) who)
-    {execution next : (serviceApplication setup mode deadline leaks).Execution}
+    {execution next : (serviceApplication setup mode duration leaks).Execution}
     (valid : OwnSubmissionsAtTurn setup leaks execution who)
     (reached : next ∈
-        ((serviceApplication setup mode deadline leaks).round scheduler players
+        ((serviceApplication setup mode duration leaks).round scheduler players
         execution).support) :
     OwnSubmissionsAtTurn setup leaks next who := by
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   obtain ⟨command, _, middle, moved, cases⟩ := round_cases setup leaks reached
   have recallEq := app.environmentStep_recall execution middle command moved
   rcases cases with ⟨_, rfl⟩ | ⟨responder, _, response, chosen, rfl⟩
@@ -278,14 +278,14 @@ theorem round_ownSubmissionsAtTurn
 /-- Every initialized round preserves one player's submission discipline,
 independently of the other players and the initial native law. -/
 theorem SubmitsAtTurn.roundsFrom
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy} {who : Player}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode duration leaks).Policy} {who : Player}
     (atTurn : SubmitsAtTurn setup leaks (players who) who)
-    (initial : PMF (serviceApplication setup mode deadline leaks).State) :
-    ∀ (count : Nat) (execution : (serviceApplication setup mode deadline leaks).Execution),
-      execution ∈ ((serviceApplication setup mode deadline leaks).roundsFrom initial
+    (initial : PMF (serviceApplication setup mode duration leaks).State) :
+    ∀ (count : Nat) (execution : (serviceApplication setup mode duration leaks).Execution),
+      execution ∈ ((serviceApplication setup mode duration leaks).roundsFrom initial
         scheduler players count).support → OwnSubmissionsAtTurn setup leaks execution who := by
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   intro count
   induction count with
   | zero =>
@@ -301,21 +301,21 @@ theorem SubmitsAtTurn.roundsFrom
       exact round_ownSubmissionsAtTurn setup leaks atTurn (ih prior priorMember) moved
 
 /-- A round never changes a candidate whose meaning is fixed. -/
-theorem round_candidate_fixed {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
-    {execution next : (serviceApplication setup mode deadline leaks).Execution}
+theorem round_candidate_fixed {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode duration leaks).Policy}
+    {execution next : (serviceApplication setup mode duration leaks).Execution}
     (reached : next ∈
-        ((serviceApplication setup mode deadline leaks).round scheduler players execution).support)
+        ((serviceApplication setup mode duration leaks).round scheduler players execution).support)
     (handle : Handle (serviceGraph setup mode))
     (fixed : execution.application.candidates.lookup handle ≠ .fresh) :
     next.application.candidates.lookup handle =
       execution.application.candidates.lookup handle := by
   obtain ⟨command, _, middle, moved, cases⟩ := round_cases setup leaks reached
-  have stepped := ((serviceRuntime setup mode deadline).keepsFixedCandidates_step
+  have stepped := ((keepsFixedCandidates_step (serviceTimeouts setup mode duration))
     leaks).environmentStep execution middle command moved handle fixed
   rcases cases with ⟨_, rfl⟩ | ⟨who, _, response, _, rfl⟩
   · exact stepped
-  · rw [((serviceRuntime setup mode deadline).keepsFixedCandidates_step leaks).respond
+  · rw [((keepsFixedCandidates_step (serviceTimeouts setup mode duration)) leaks).respond
       middle who response handle (stepped ▸ fixed), stepped]
 
 end Vegas

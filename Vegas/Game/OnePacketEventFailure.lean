@@ -95,15 +95,15 @@ def EventFailedReadout (who : Player) (event : (graph setup).EventId) :
 
 variable (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
-variable (runtime : EventGraphRuntime (graph setup)) [Fintype Player]
+variable (timeouts : EventTimeouts (graph setup)) [Fintype Player]
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
 /-- **The event-level failed histories** of the one-packet game: those whose
 typed readout records a failure of `event` and a failed reveal of `who`. -/
 def EventFailedHistory (who : Player) (event : (graph setup).EventId) :
-    Set ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    Set ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).History :=
-  {history | sourceReadout setup runtime leaks history.state ∈ EventFailedReadout setup who event}
+  {history | sourceReadout setup timeouts leaks history.state ∈ EventFailedReadout setup who event}
 
 end Vegas

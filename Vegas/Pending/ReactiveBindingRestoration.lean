@@ -17,7 +17,7 @@ open Interaction EventGraph GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 namespace BindingShadow
@@ -41,10 +41,10 @@ theorem rememberCompletion_eq_self (memory : BindingShadow graph)
 /-- Before public default, the owner sees its original typed binding result and
 action after actual inclusion. Public receipts and network observations are retained. -/
 theorem include_binding_input (memory : BindingShadow graph)
-    (left right : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (observed : memory.inputView runtime leaks
-      (right.observe (runtime.reactiveApplication leaks) who) =
-        left.observe (runtime.reactiveApplication leaks) who)
+    (left right : ((reactiveApplication timeouts) leaks).Execution) (who : Player)
+    (observed : memory.inputView timeouts leaks
+      (right.observe ((reactiveApplication timeouts) leaks) who) =
+        left.observe ((reactiveApplication timeouts) leaks) who)
     (network : left.network = right.network)
     (clear : left.application.config.defaulted = ∅)
     (event : graph.EventId) (payload : L.Ty)
@@ -56,7 +56,7 @@ theorem include_binding_input (memory : BindingShadow graph)
     (sender : id.1 = who) (owned : candidate.1 = who)
     (found : left.network.lookup id = some ⟨id, ⟨.commitment event candidate, none, some ⟨event⟩⟩⟩)
     (ready : left.application.config.cut.Ready event)
-    (timely : left.application.WithinDeadline runtime event)
+    (timely : left.application.WithinDeadline timeouts event)
     (vacant : left.application.accepted (.inr event) = none)
     (unused : left.application.HandleUnused candidate)
     (leftFixed : left.application.candidates.lookup candidate ≠ .fresh)
@@ -67,12 +67,12 @@ theorem include_binding_input (memory : BindingShadow graph)
     (rememberedValue : memory.values (.inr event) = some
       (cast (congrArg EventField.Value outputEq.symm)
         (left.application.bindingResult candidate payload))) :
-    memory.inputView runtime leaks
-      ((right.includePending (runtime.reactiveApplication leaks) id).observe
-        (runtime.reactiveApplication leaks) who) =
-      (left.includePending (runtime.reactiveApplication leaks) id).observe
-        (runtime.reactiveApplication leaks) who := by
-  let app := runtime.reactiveApplication leaks
+    memory.inputView timeouts leaks
+      ((right.includePending ((reactiveApplication timeouts) leaks) id).observe
+        ((reactiveApplication timeouts) leaks) who) =
+      (left.includePending ((reactiveApplication timeouts) leaks) id).observe
+        ((reactiveApplication timeouts) leaks) who := by
+  let app := (reactiveApplication timeouts) leaks
   have application := congrArg ReactiveApplication.PlayerView.application observed
   have visible : left.application.publicView = right.application.publicView :=
     (congrArg PlayerView.publicView application).symm
@@ -98,7 +98,7 @@ theorem include_binding_input (memory : BindingShadow graph)
   have ready' : right.application.config.cut.Ready event := by
     rw [← State.publicView_eventReady, ← visible, State.publicView_eventReady]
     exact ready
-  have timely' : right.application.WithinDeadline runtime event := by
+  have timely' : right.application.WithinDeadline timeouts event := by
     unfold State.WithinDeadline at timely ⊢
     rw [← show left.application.clock = right.application.clock from
       congrArg PublicView.clock visible,
@@ -112,16 +112,16 @@ theorem include_binding_input (memory : BindingShadow graph)
     exact unused field ((congrFun accepted field).trans associated)
   have found' : right.network.lookup id =
       some ⟨id, ⟨.commitment event candidate, none, some ⟨event⟩⟩⟩ := network ▸ found
-  have handled := runtime.handle_commitment_eq left.application id event candidate who payload
+  have handled := (handle_commitment_eq timeouts) left.application id event candidate who payload
     outputEq codeEq node ready timely active sender owned vacant unused
-  have handled' := runtime.handle_commitment_eq right.application id event candidate who payload
+  have handled' := (handle_commitment_eq timeouts) right.application id event candidate who payload
     outputEq codeEq node ready' timely' active' sender owned vacant' unused'
-  have nextPublic := runtime.reactive_include_binding_public_congr leaks left right network
+  have nextPublic := (reactive_include_binding_public_congr timeouts) leaks left right network
     visible who event payload outputEq codeEq node id candidate none sender owned found ready
       timely vacant unused
-  have leftCandidates := runtime.reactive_include_fixed_binding_candidates leaks left id
+  have leftCandidates := (reactive_include_fixed_binding_candidates timeouts) leaks left id
     event candidate none found leftFixed
-  have rightCandidates := runtime.reactive_include_fixed_binding_candidates leaks right id
+  have rightCandidates := (reactive_include_fixed_binding_candidates timeouts) leaks right id
     event candidate none found' rightFixed
   have restores := memory.rememberCompletion_observation who left.application.config
     right.application.config

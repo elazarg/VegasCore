@@ -30,12 +30,12 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- **A publication turn of a key.** It is the key owner's turn at the event in
 the key's public view, and the event resolves a binding of the owner. -/
-def PublicationTurn (key : LateKey setup runtime leaks) (event : (graph setup).EventId) : Prop :=
+def PublicationTurn (key : LateKey setup timeouts leaks) (event : (graph setup).EventId) : Prop :=
   key.current.1.ownTurn? key.owner = some event ∧
     ∃ (payload : L.Ty) (binding : EventGraph.FieldRef (graph setup).layout
         (.binding key.owner payload))
@@ -49,13 +49,14 @@ def PublicationTurn (key : LateKey setup runtime leaks) (event : (graph setup).E
 
 open Classical in
 /-- The publication event a key decides, if any. -/
-def turnEvent (key : LateKey setup runtime leaks) : Option (graph setup).EventId :=
-  if turn : ∃ event, PublicationTurn (runtime := runtime) key event then some turn.choose else none
+def turnEvent (key : LateKey setup timeouts leaks) : Option (graph setup).EventId :=
+  if turn : ∃ event, PublicationTurn (timeouts := timeouts) key event then some turn.choose else
+    none
 
-theorem publicationTurn_of_turnEvent {key : LateKey setup runtime leaks} {event : (graph
+theorem publicationTurn_of_turnEvent {key : LateKey setup timeouts leaks} {event : (graph
   setup).EventId}
-    (found : turnEvent (runtime := runtime) key = some event) : PublicationTurn (runtime :=
-      runtime) key event := by
+    (found : turnEvent (timeouts := timeouts) key = some event) : PublicationTurn (timeouts :=
+      timeouts) key event := by
   unfold turnEvent at found
   split at found
   · rename_i turn
@@ -64,65 +65,66 @@ theorem publicationTurn_of_turnEvent {key : LateKey setup runtime leaks} {event 
   · cases found
 
 /-- The image of the pending lumping. -/
-abbrev PendingImage := Option (OperationalState setup runtime leaks) ⊕ Bool
+abbrev PendingImage := Option (OperationalState setup timeouts leaks) ⊕ Bool
 
 open Classical in
 /-- The image at a key: the pending image of the decided event, constant at a
 key deciding none. -/
-def lateImage (key : LateKey setup runtime leaks) (state : (application setup runtime
+def lateImage (key : LateKey setup timeouts leaks) (state : (application setup timeouts
   leaks).ProtocolState) :
-    PendingImage (runtime := runtime) (setup := setup) (leaks := leaks) :=
-  match turnEvent (runtime := runtime) key with
+    PendingImage (timeouts := timeouts) (setup := setup) (leaks := leaks) :=
+  match turnEvent (timeouts := timeouts) key with
   | none => .inr false
-  | some event => pendingImage (runtime := runtime) event state
+  | some event => pendingImage (timeouts := timeouts) event state
 
 /-- Failure read off the image. -/
-def imageFailure : PendingImage (runtime := runtime) (setup := setup) (leaks := leaks) → ℝ
+def imageFailure : PendingImage (timeouts := timeouts) (setup := setup) (leaks := leaks) → ℝ
   | .inl _ => 0
   | .inr failed => if failed then 1 else 0
 
 /-- The image of a history read off its operational record: the newest
 operational state, pending. -/
-def recordImage (key : LateKey setup runtime leaks)
-    (record : List (Option (OperationalState setup runtime leaks))) :
-    PendingImage (runtime := runtime) (setup := setup) (leaks := leaks) :=
-  match turnEvent (runtime := runtime) key with
+def recordImage (key : LateKey setup timeouts leaks)
+    (record : List (Option (OperationalState setup timeouts leaks))) :
+    PendingImage (timeouts := timeouts) (setup := setup) (leaks := leaks) :=
+  match turnEvent (timeouts := timeouts) key with
   | none => .inr false
   | some _ => match record with
     | [] => .inl none
     | newest :: _ => .inl newest
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
 open Classical in
 /-- A scheduler round from an operational state, read through the image of a
 representative forced state with the event ready; the state itself when there
 is none. -/
 def roundKernel (event : (graph setup).EventId) (owner : Player) (remaining : Nat)
-    (state : OperationalState setup runtime leaks) : PMF (PendingImage (runtime := runtime) (setup
+    (state : OperationalState setup timeouts leaks) : PMF (PendingImage (timeouts := timeouts)
+      (setup
       := setup) (leaks := leaks)) :=
-  if represented : ∃ (history : (onePacketProtocol setup runtime leaks bounds horizon
+  if represented : ∃ (history : (onePacketProtocol setup timeouts leaks bounds horizon
     scheduler).History)
-      (execution : (application setup runtime leaks).Execution),
+      (execution : (application setup timeouts leaks).Execution),
       history.state = some ⟨remaining + 1, none, execution⟩ ∧
-        ForcedState setup runtime leaks owner history.state ∧
+        ForcedState setup timeouts leaks owner history.state ∧
         execution.application.config.cut.Ready event ∧
-        operationalState setup runtime leaks (some ⟨remaining + 1, none, execution⟩) = some state
+        operationalState setup timeouts leaks (some ⟨remaining + 1, none, execution⟩) = some state
           then
-    ((application setup runtime leaks).transition (initialLaw setup) horizon scheduler
+    ((application setup timeouts leaks).transition (initialLaw setup) horizon scheduler
       (some ⟨remaining + 1, none, represented.choose_spec.choose⟩) (fun _ => none)).map
-        (pendingImage (runtime := runtime) event)
+        (pendingImage (timeouts := timeouts) event)
   else PMF.pure (.inl (some state))
 
 /-- **The pending kernel.** Completed and uninitialized images stay put; the
 owner's step is ownerStep; another player's step is its silent response; a
 scheduler round is read off a representative. -/
 def pendingKernel (event : (graph setup).EventId) (owner : Player)
-    (ownerStep : Option (OperationalState setup runtime leaks) →
-      PMF (PendingImage (runtime := runtime) (setup := setup) (leaks := leaks))) :
-    PendingImage (runtime := runtime) (setup := setup) (leaks := leaks) →
-      PMF (PendingImage (runtime := runtime) (setup := setup) (leaks := leaks))
+    (ownerStep : Option (OperationalState setup timeouts leaks) →
+      PMF (PendingImage (timeouts := timeouts) (setup := setup) (leaks := leaks))) :
+    PendingImage (timeouts := timeouts) (setup := setup) (leaks := leaks) →
+      PMF (PendingImage (timeouts := timeouts) (setup := setup) (leaks := leaks))
   | .inr failed => PMF.pure (.inr failed)
   | .inl none => PMF.pure (.inl none)
   | .inl (some state) => match state.actor with
@@ -130,41 +132,41 @@ def pendingKernel (event : (graph setup).EventId) (owner : Player)
         else PMF.pure (.inl (some (state.silent player)))
     | none => match state.remaining with
       | 0 => PMF.pure (.inl (some state))
-      | remaining + 1 => roundKernel (runtime := runtime) bounds horizon scheduler event owner
+      | remaining + 1 => roundKernel (timeouts := timeouts) bounds horizon scheduler event owner
         remaining state
 
 /-- The kept states at a key: at a key deciding a publication event, the states
 of one-packet histories at which the event has completed, or which are forced
 for the key's owner with the event ready. -/
-def lateKept (key : LateKey setup runtime leaks) : Set (application setup runtime
+def lateKept (key : LateKey setup timeouts leaks) : Set (application setup timeouts
   leaks).ProtocolState :=
-  match turnEvent (runtime := runtime) key with
+  match turnEvent (timeouts := timeouts) key with
   | none => Set.univ
-  | some event => {state | (∃ history : (onePacketProtocol setup runtime leaks bounds horizon
+  | some event => {state | (∃ history : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).History, history.state = state) ∧ ∃ control, state = some control ∧
       (event ∈ control.execution.application.config.cut.completed ∨
-        (ForcedState setup runtime leaks key.owner (some control) ∧
+        (ForcedState setup timeouts leaks key.owner (some control) ∧
           control.execution.application.config.cut.Ready event))}
 
 /-- The image kernel at a key and an option. -/
 def lateKernel {LateOption : Type}
-    (ownerKernel : LateKey setup runtime leaks → LateOption → Option (OperationalState setup
-      runtime leaks) →
-      PMF (PendingImage (runtime := runtime) (setup := setup) (leaks := leaks)))
-    (key : LateKey setup runtime leaks) (option : LateOption) :
-    PendingImage (runtime := runtime) (setup := setup) (leaks := leaks) →
-      PMF (PendingImage (runtime := runtime) (setup := setup) (leaks := leaks)) :=
-  match turnEvent (runtime := runtime) key with
+    (ownerKernel : LateKey setup timeouts leaks → LateOption → Option (OperationalState setup
+      timeouts leaks) →
+      PMF (PendingImage (timeouts := timeouts) (setup := setup) (leaks := leaks)))
+    (key : LateKey setup timeouts leaks) (option : LateOption) :
+    PendingImage (timeouts := timeouts) (setup := setup) (leaks := leaks) →
+      PMF (PendingImage (timeouts := timeouts) (setup := setup) (leaks := leaks)) :=
+  match turnEvent (timeouts := timeouts) key with
   | none => fun _ => PMF.pure (.inr false)
-  | some event => pendingKernel (runtime := runtime) bounds horizon scheduler event key.owner
+  | some event => pendingKernel (timeouts := timeouts) bounds horizon scheduler event key.owner
       (ownerKernel key option)
 
 variable {bounds horizon scheduler}
 
 omit [Fintype Player] in
 /-- The key of an observer's information is its own. -/
-theorem owner_of_lateKey {who : Player} {info : (application setup runtime leaks).Info}
-    {key : LateKey setup runtime leaks} (siteKey : lateKey setup runtime leaks who info = some
+theorem owner_of_lateKey {who : Player} {info : (application setup timeouts leaks).Info}
+    {key : LateKey setup timeouts leaks} (siteKey : lateKey setup timeouts leaks who info = some
       key) :
     key.owner = who := by
   cases info with
@@ -176,17 +178,18 @@ theorem owner_of_lateKey {who : Player} {info : (application setup runtime leaks
 /-- **The key of a site's history.** At a history of a site with a key, the
 observer acts, and the key is that of its current information. -/
 theorem lateKey_of_history {who : Player}
-    {site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who}
-    {key : LateKey setup runtime leaks} (siteKey : lateKey setup runtime leaks who site.1 = some
+    {site : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationSite
+      who}
+    {key : LateKey setup timeouts leaks} (siteKey : lateKey setup timeouts leaks who site.1 = some
       key)
-    (history : (onePacketInformation setup runtime leaks bounds horizon
+    (history : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory who
       site.1)
-    {control : (application setup runtime leaks).Control} (current : history.1.state = some
+    {control : (application setup timeouts leaks).Control} (current : history.1.state = some
       control) :
     control.actor = some who ∧
-      lateKey setup runtime leaks who (some (control.execution.logs who,
-        control.execution.observe (application setup runtime leaks) who)) = some key := by
+      lateKey setup timeouts leaks who (some (control.execution.logs who,
+        control.execution.observe (application setup timeouts leaks) who)) = some key := by
   have info := history.2
   rw [onePacket_infoOf, current] at info
   rw [← info] at siteKey
@@ -198,16 +201,18 @@ theorem lateKey_of_history {who : Player}
 /-- At a history of a site whose key decides a publication event, the event is
 ready. -/
 theorem ready_of_publicationTurn {who : Player}
-    {site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who}
-    {key : LateKey setup runtime leaks} (siteKey : lateKey setup runtime leaks who site.1 = some
+    {site : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationSite
+      who}
+    {key : LateKey setup timeouts leaks} (siteKey : lateKey setup timeouts leaks who site.1 = some
       key)
-    (history : (onePacketInformation setup runtime leaks bounds horizon
+    (history : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory who
       site.1)
-    {control : (application setup runtime leaks).Control} (current : history.1.state = some control)
-    {event : (graph setup).EventId} (turn : PublicationTurn (runtime := runtime) key event) :
+    {control : (application setup timeouts leaks).Control} (current : history.1.state = some
+      control)
+    {event : (graph setup).EventId} (turn : PublicationTurn (timeouts := timeouts) key event) :
     control.execution.application.config.cut.Ready event := by
-  obtain ⟨_, keyEq⟩ := lateKey_of_history (runtime := runtime) siteKey history current
+  obtain ⟨_, keyEq⟩ := lateKey_of_history (timeouts := timeouts) siteKey history current
   simp only [lateKey, Option.some.injEq] at keyEq
   have owned := turn.1
   rw [← keyEq] at owned
@@ -217,35 +222,36 @@ theorem ready_of_publicationTurn {who : Player}
 section Fields
 
 variable {who : Player}
-  {site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who}
-  {key : LateKey setup runtime leaks} (siteKey : lateKey setup runtime leaks who site.1 = some key)
+  {site : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationSite who}
+  {key : LateKey setup timeouts leaks} (siteKey : lateKey setup timeouts leaks who site.1 = some
+    key)
 include siteKey
 
 omit siteKey in
 /-- The image of a forced history's state is read off its operational record. -/
 theorem lateImage_of_history
-    (siteKey : lateKey setup runtime leaks who site.1 = some key)
-    (history : (onePacketInformation setup runtime leaks bounds horizon
+    (siteKey : lateKey setup timeouts leaks who site.1 = some key)
+    (history : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory who
       site.1)
-    (forced : ForcedState setup runtime leaks who history.1.state) :
-    lateImage (runtime := runtime) key history.1.state =
-      recordImage (runtime := runtime) key (operationalRecord setup runtime leaks bounds horizon
+    (forced : ForcedState setup timeouts leaks who history.1.state) :
+    lateImage (timeouts := timeouts) key history.1.state =
+      recordImage (timeouts := timeouts) key (operationalRecord setup timeouts leaks bounds horizon
         scheduler history.1.trace) := by
   unfold lateImage recordImage
-  cases turn : turnEvent (runtime := runtime) key with
+  cases turn : turnEvent (timeouts := timeouts) key with
   | none => rfl
   | some event =>
-      obtain ⟨rest, record⟩ := operationalRecord_head (runtime := runtime) history.1.trace
+      obtain ⟨rest, record⟩ := operationalRecord_head (timeouts := timeouts) history.1.trace
       rw [record]
       cases current : history.1.state with
       | none =>
           rw [current] at forced
           exact forced.elim
       | some control =>
-          have ready := ready_of_publicationTurn (runtime := runtime) siteKey history current
-            (publicationTurn_of_turnEvent (runtime := runtime) turn)
-          exact pendingImage_of_pending (runtime := runtime) control ready.1
+          have ready := ready_of_publicationTurn (timeouts := timeouts) siteKey history current
+            (publicationTurn_of_turnEvent (timeouts := timeouts) turn)
+          exact pendingImage_of_pending (timeouts := timeouts) control ready.1
 
 end Fields
 
@@ -254,53 +260,53 @@ owner's control step from an allowed forced state with the decided event ready
 is within `δ` in total variation of a kernel of the key, the option and the
 operational state. Every state is allowed unless a restriction is given. -/
 def OwnerStepClose {LateOption : Type}
-    (ownerKernel : LateKey setup runtime leaks → LateOption → Option (OperationalState setup
-      runtime leaks) →
-      PMF (PendingImage (runtime := runtime) (setup := setup) (leaks := leaks)))
-    (key : LateKey setup runtime leaks) (option : LateOption)
+    (ownerKernel : LateKey setup timeouts leaks → LateOption → Option (OperationalState setup
+      timeouts leaks) →
+      PMF (PendingImage (timeouts := timeouts) (setup := setup) (leaks := leaks)))
+    (key : LateKey setup timeouts leaks) (option : LateOption)
     (profile : ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player)
-    (δ : ℝ) (allowed : (application setup runtime leaks).ProtocolState → Prop := fun _ => True) :
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)
+    (δ : ℝ) (allowed : (application setup timeouts leaks).ProtocolState → Prop := fun _ => True) :
     Prop :=
-  ∀ event, PublicationTurn (runtime := runtime) key event →
-    ∀ (history : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
-      (control : (application setup runtime leaks).Control), history.state = some control →
+  ∀ event, PublicationTurn (timeouts := timeouts) key event →
+    ∀ (history : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History)
+      (control : (application setup timeouts leaks).Control), history.state = some control →
       allowed (some control) →
-      ForcedState setup runtime leaks key.owner (some control) →
+      ForcedState setup timeouts leaks key.owner (some control) →
       control.execution.application.config.cut.Ready event →
       control.actor = some key.owner →
-      PMF.WithinTV δ (((application setup runtime leaks).controlStep (initialLaw setup) horizon
+      PMF.WithinTV δ (((application setup timeouts leaks).controlStep (initialLaw setup) horizon
         scheduler
-          ((bounds.onePacketMenu runtime leaks).decodeProfile (initialLaw setup) horizon
-            scheduler profile) (some control)).map (pendingImage (runtime := runtime) event))
-        (ownerKernel key option (operationalState setup runtime leaks (some control)))
+          ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup) horizon
+            scheduler profile) (some control)).map (pendingImage (timeouts := timeouts) event))
+        (ownerKernel key option (operationalState setup timeouts leaks (some control)))
 
 /-- **One step of the native kernel at a key.** From a kept state, the control
 step of a decoded profile, read through the key's image, is within `δ` in total
 variation of the key's kernel, provided the owner's own step is. -/
 theorem lateKernel_close {LateOption : Type}
-    (ownerKernel : LateKey setup runtime leaks → LateOption → Option (OperationalState setup
-      runtime leaks) →
-      PMF (PendingImage (runtime := runtime) (setup := setup) (leaks := leaks)))
-    (key : LateKey setup runtime leaks) (option : LateOption)
+    (ownerKernel : LateKey setup timeouts leaks → LateOption → Option (OperationalState setup
+      timeouts leaks) →
+      PMF (PendingImage (timeouts := timeouts) (setup := setup) (leaks := leaks)))
+    (key : LateKey setup timeouts leaks) (option : LateOption)
     (profile : ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player)
-    {δ : ℝ} (nonneg : 0 ≤ δ) {allowed : (application setup runtime leaks).ProtocolState → Prop}
-    (owner : OwnerStepClose (runtime := runtime) ownerKernel key option profile δ allowed)
-    {state : (application setup runtime leaks).ProtocolState}
-    (kept : state ∈ lateKept (runtime := runtime) bounds horizon scheduler key) (allowedState :
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)
+    {δ : ℝ} (nonneg : 0 ≤ δ) {allowed : (application setup timeouts leaks).ProtocolState → Prop}
+    (owner : OwnerStepClose (timeouts := timeouts) ownerKernel key option profile δ allowed)
+    {state : (application setup timeouts leaks).ProtocolState}
+    (kept : state ∈ lateKept (timeouts := timeouts) bounds horizon scheduler key) (allowedState :
       allowed state) :
-    PMF.WithinTV δ (((application setup runtime leaks).controlStep (initialLaw setup) horizon
+    PMF.WithinTV δ (((application setup timeouts leaks).controlStep (initialLaw setup) horizon
       scheduler
-        ((bounds.onePacketMenu runtime leaks).decodeProfile (initialLaw setup) horizon
-          scheduler profile) state).map (lateImage (runtime := runtime) key))
-      (lateKernel (runtime := runtime) bounds horizon scheduler ownerKernel key option (lateImage
-        (runtime := runtime) key state)) := by
+        ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup) horizon
+          scheduler profile) state).map (lateImage (timeouts := timeouts) key))
+      (lateKernel (timeouts := timeouts) bounds horizon scheduler ownerKernel key option (lateImage
+        (timeouts := timeouts) key state)) := by
   unfold lateKept at kept
-  cases turn : turnEvent (runtime := runtime) key with
+  cases turn : turnEvent (timeouts := timeouts) key with
   | none =>
       convert (PMF.WithinTV.refl _).mono nonneg using 1
-      have constant : lateImage (runtime := runtime) key = Function.const _ (.inr false) := by
+      have constant : lateImage (timeouts := timeouts) key = Function.const _ (.inr false) := by
         funext state
         simp only [lateImage, turn, Function.const_apply]
       simp only [constant, lateKernel, turn, PMF.map_const]
@@ -308,61 +314,62 @@ theorem lateKernel_close {LateOption : Type}
       rw [turn] at kept
       obtain ⟨⟨history, current⟩, control, rfl, status⟩ := kept
       obtain ⟨_, payload, binding, checks, outputEq, codeEq, view⟩ :=
-        publicationTurn_of_turnEvent (runtime := runtime) turn
-      have imageEq : lateImage (runtime := runtime) key = pendingImage (runtime := runtime) event
+        publicationTurn_of_turnEvent (timeouts := timeouts) turn
+      have imageEq : lateImage (timeouts := timeouts) key = pendingImage (timeouts := timeouts)
+        event
         := by
         funext state
         simp only [lateImage, turn]
-      have kernelEq : lateKernel (runtime := runtime) bounds horizon scheduler ownerKernel key
+      have kernelEq : lateKernel (timeouts := timeouts) bounds horizon scheduler ownerKernel key
         option =
-          pendingKernel (runtime := runtime) bounds horizon scheduler event key.owner
+          pendingKernel (timeouts := timeouts) bounds horizon scheduler event key.owner
             (ownerKernel key option) := by
         simp only [lateKernel, turn]
       rw [imageEq, kernelEq]
       rcases status with completed | ⟨forced, ready⟩
       · convert (PMF.WithinTV.refl _).mono nonneg using 1
-        have constant : ((application setup runtime leaks).controlStep (initialLaw setup) horizon
-            scheduler ((bounds.onePacketMenu runtime leaks).decodeProfile
+        have constant : ((application setup timeouts leaks).controlStep (initialLaw setup) horizon
+            scheduler ((bounds.onePacketMenu timeouts leaks).decodeProfile
               (initialLaw setup) horizon scheduler profile) (some control)).map
-              (pendingImage (runtime := runtime) event) =
-            ((application setup runtime leaks).controlStep (initialLaw setup) horizon
-            scheduler ((bounds.onePacketMenu runtime leaks).decodeProfile
+              (pendingImage (timeouts := timeouts) event) =
+            ((application setup timeouts leaks).controlStep (initialLaw setup) horizon
+            scheduler ((bounds.onePacketMenu timeouts leaks).decodeProfile
               (initialLaw setup) horizon scheduler profile) (some control)).map
-              (Function.const _ (pendingImage (runtime := runtime) event (some control))) := by
+              (Function.const _ (pendingImage (timeouts := timeouts) event (some control))) := by
           apply map_congr_on_support
           intro next member
           obtain ⟨control', rfl, step⟩ :=
-            controlStep_graphSteps (runtime := runtime) horizon scheduler _ control member
-          exact pendingImage_of_path (runtime := runtime) step completed
+            controlStep_graphSteps (timeouts := timeouts) horizon scheduler _ control member
+          exact pendingImage_of_path (timeouts := timeouts) step completed
         rw [constant, PMF.map_const]
         simp only [pendingImage, completed, ↓reduceIte, pendingKernel]
       · have pending := ready.1
-        rw [pendingImage_of_pending (runtime := runtime) control pending]
+        rw [pendingImage_of_pending (timeouts := timeouts) control pending]
         rcases control with ⟨remaining, actor, execution⟩
         cases actor with
         | some player =>
             by_cases owned : player = key.owner
             · subst owned
-              have kernelOwner : pendingKernel (runtime := runtime) bounds horizon scheduler event
+              have kernelOwner : pendingKernel (timeouts := timeouts) bounds horizon scheduler event
                 key.owner
-                  (ownerKernel key option) (.inl (operationalState setup runtime leaks
+                  (ownerKernel key option) (.inl (operationalState setup timeouts leaks
                     (some ⟨remaining, some key.owner, execution⟩))) =
-                  ownerKernel key option (operationalState setup runtime leaks
+                  ownerKernel key option (operationalState setup timeouts leaks
                     (some ⟨remaining, some key.owner, execution⟩)) := by
                 simp only [operationalState, pendingKernel, ↓reduceIte]
               rw [kernelOwner]
-              exact owner event (publicationTurn_of_turnEvent (runtime := runtime) turn) history _
+              exact owner event (publicationTurn_of_turnEvent (timeouts := timeouts) turn) history _
                 current allowedState
                 forced ready rfl
             · convert (PMF.WithinTV.refl _).mono nonneg using 1
-              rw [controlStep_other_of_pending (runtime := runtime) bounds horizon scheduler
+              rw [controlStep_other_of_pending (timeouts := timeouts) bounds horizon scheduler
                 profile key.owner history
                 (by rw [current]; exact forced) current ready
                 (nodeView_resolve_actor outputEq codeEq) rfl owned, PMF.pure_map,
-                pendingImage_of_pending (runtime := runtime) _ (by
-                  change event ∉ (execution.respond (application setup runtime leaks) player
+                pendingImage_of_pending (timeouts := timeouts) _ (by
+                  change event ∉ (execution.respond (application setup timeouts leaks) player
                     ⟨none⟩).application.config.cut.completed
-                  rw [(runtime.reactive_respond_application leaks execution player _).1]
+                  rw [((reactive_respond_application timeouts) leaks execution player _).1]
                   exact pending),
                 operationalState_silent]
               simp only [operationalState, Option.map_some, pendingKernel, owned, ↓reduceIte]
@@ -370,37 +377,39 @@ theorem lateKernel_close {LateOption : Type}
             cases remaining with
             | zero =>
                 convert (PMF.WithinTV.refl _).mono nonneg using 1
-                have law : (application setup runtime leaks).controlStep (initialLaw setup) horizon
-                    scheduler ((bounds.onePacketMenu runtime leaks).decodeProfile
+                have law : (application setup timeouts leaks).controlStep (initialLaw setup) horizon
+                    scheduler ((bounds.onePacketMenu timeouts leaks).decodeProfile
                       (initialLaw setup) horizon scheduler profile) (some ⟨0, none, execution⟩) =
                     PMF.pure (some ⟨0, none, execution⟩) := rfl
-                rw [law, PMF.pure_map, pendingImage_of_pending (runtime := runtime) _ pending]
+                rw [law, PMF.pure_map, pendingImage_of_pending (timeouts := timeouts) _ pending]
                 rfl
             | succ remaining =>
                 convert (PMF.WithinTV.refl _).mono nonneg using 1
-                have law : (application setup runtime leaks).controlStep (initialLaw setup) horizon
-                    scheduler ((bounds.onePacketMenu runtime leaks).decodeProfile
+                have law : (application setup timeouts leaks).controlStep (initialLaw setup) horizon
+                    scheduler ((bounds.onePacketMenu timeouts leaks).decodeProfile
                       (initialLaw setup) horizon scheduler profile)
                       (some ⟨remaining + 1, none, execution⟩) =
-                    (application setup runtime leaks).transition (initialLaw setup) horizon
+                    (application setup timeouts leaks).transition (initialLaw setup) horizon
                       scheduler
                       (some ⟨remaining + 1, none, execution⟩) (fun _ => none) := rfl
                 rw [law]
-                obtain ⟨state, stateEq⟩ : ∃ state, operationalState setup runtime leaks
+                obtain ⟨state, stateEq⟩ : ∃ state, operationalState setup timeouts leaks
                     (some ⟨remaining + 1, none, execution⟩) = some state := ⟨_, rfl⟩
-                have represented : ∃ (history : (onePacketProtocol setup runtime leaks bounds
+                have represented : ∃ (history : (onePacketProtocol setup timeouts leaks bounds
                   horizon
-                      scheduler).History) (execution : (application setup runtime leaks).Execution),
+                      scheduler).History) (execution : (application setup timeouts
+                        leaks).Execution),
                     history.state = some ⟨remaining + 1, none, execution⟩ ∧
-                      ForcedState setup runtime leaks key.owner history.state ∧
+                      ForcedState setup timeouts leaks key.owner history.state ∧
                       execution.application.config.cut.Ready event ∧
-                      operationalState setup runtime leaks (some ⟨remaining + 1, none, execution⟩) =
+                      operationalState setup timeouts leaks (some ⟨remaining + 1, none,
+                        execution⟩) =
                         some state :=
                   ⟨history, execution, current, by rw [current]; exact forced, ready, stateEq⟩
-                have kernelRound : pendingKernel (runtime := runtime) bounds horizon scheduler
+                have kernelRound : pendingKernel (timeouts := timeouts) bounds horizon scheduler
                   event key.owner
                     (ownerKernel key option) (.inl (some state)) =
-                    roundKernel (runtime := runtime) bounds horizon scheduler event key.owner
+                    roundKernel (timeouts := timeouts) bounds horizon scheduler event key.owner
                       remaining state := by
                   have actorNone : state.actor = none := by
                     have := congrArg (Option.map OperationalState.actor)
@@ -418,7 +427,7 @@ theorem lateKernel_close {LateOption : Type}
                 rw [dite_eq_left represented]
                 obtain ⟨repCurrent, _, _, repSame⟩ :=
                   represented.choose_spec.choose_spec
-                exact (round_image_congr_of_forced (runtime := runtime) bounds horizon scheduler
+                exact (round_image_congr_of_forced (timeouts := timeouts) bounds horizon scheduler
                   key.owner remaining
                   history represented.choose current repCurrent (by rw [current]; exact forced)
                   (stateEq.trans repSame.symm) pending ready view).symm

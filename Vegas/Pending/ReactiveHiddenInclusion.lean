@@ -19,25 +19,25 @@ open Interaction EventGraph GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 private theorem include_hidden_congr
-    (left right : (runtime.reactiveApplication leaks).Execution) (hidden : Player)
+    (left right : ((reactiveApplication timeouts) leaks).Execution) (hidden : Player)
     (network : left.network = right.network) (receipts : left.receipts = right.receipts)
     (views : ∀ who, who ≠ hidden →
       left.application.playerView who = right.application.playerView who)
     (logs : ∀ who, who ≠ hidden → left.logs who = right.logs who)
     (id : MessageId Player) (packet : WitnessedPacket graph)
     (found : left.network.lookup id = some ⟨id, packet⟩)
-    (decision : (handle runtime left.application ⟨id, packet.call⟩).isSome =
-      (handle runtime right.application ⟨id, packet.call⟩).isSome)
+    (decision : (handle timeouts left.application ⟨id, packet.call⟩).isSome =
+      (handle timeouts right.application ⟨id, packet.call⟩).isSome)
     (handled : ∀ who, who ≠ hidden →
-      (handle runtime left.application ⟨id, packet.call⟩).map (fun next => next.playerView who) =
-        (handle runtime right.application ⟨id, packet.call⟩).map
+      (handle timeouts left.application ⟨id, packet.call⟩).map (fun next => next.playerView who) =
+        (handle timeouts right.application ⟨id, packet.call⟩).map
           (fun next => next.playerView who)) :
-    let first := left.includePending (runtime.reactiveApplication leaks) id
-    let second := right.includePending (runtime.reactiveApplication leaks) id
+    let first := left.includePending ((reactiveApplication timeouts) leaks) id
+    let second := right.includePending ((reactiveApplication timeouts) leaks) id
     first.network = second.network ∧ first.receipts = second.receipts ∧
       (∀ who, who ≠ hidden →
         first.application.playerView who = second.application.playerView who) ∧
@@ -49,22 +49,22 @@ private theorem include_hidden_congr
   by_cases valid : packet.tokenValid = true
   swap
   · have rejected (state : State graph) :
-        (runtime.reactiveApplication leaks).handle state ⟨id, packet⟩ = none :=
-      reactiveApplication_handle_of_not_tokenValid runtime leaks state ⟨id, packet⟩
+        ((reactiveApplication timeouts) leaks).handle state ⟨id, packet⟩ = none :=
+      reactiveApplication_handle_of_not_tokenValid timeouts leaks state ⟨id, packet⟩
         (Bool.eq_false_iff.mpr valid)
     simp only [rejected, Option.getD_none, Option.isSome_none]
     exact ⟨by rw [network], by rw [receipts], views, logs⟩
   have handler (state : State graph) :
-      (runtime.reactiveApplication leaks).handle state ⟨id, packet⟩ =
-        (handle runtime state ⟨id, packet.call⟩).map State.drain :=
-    reactiveApplication_handle_of_tokenValid runtime leaks state ⟨id, packet⟩ valid
+      ((reactiveApplication timeouts) leaks).handle state ⟨id, packet⟩ =
+        (handle timeouts state ⟨id, packet.call⟩).map State.drain :=
+    reactiveApplication_handle_of_tokenValid timeouts leaks state ⟨id, packet⟩ valid
   simp only [handler]
   simp only [Option.isSome_map]
   refine ⟨by rw [network], by rw [receipts, decision], ?_, logs⟩
   intro who different
   have same := handled who different
-  cases first : handle runtime left.application ⟨id, packet.call⟩ <;>
-    cases second : handle runtime right.application ⟨id, packet.call⟩ <;>
+  cases first : handle timeouts left.application ⟨id, packet.call⟩ <;>
+    cases second : handle timeouts right.application ⟨id, packet.call⟩ <;>
     simp only [first, second, Option.map_none, Option.map_some, Option.some.injEq,
       Option.getD_none, Option.getD_some] at same ⊢
   · exact views who different
@@ -75,7 +75,7 @@ private theorem include_hidden_congr
 /-- Opaque inclusion preserves all nonowner inputs simultaneously, including
 whether the call was accepted. Hidden candidate meanings need not agree. -/
 theorem reactive_include_binding_hidden_congr
-    (left right : (runtime.reactiveApplication leaks).Execution) (hidden : Player)
+    (left right : ((reactiveApplication timeouts) leaks).Execution) (hidden : Player)
     (network : left.network = right.network) (receipts : left.receipts = right.receipts)
     (publicEq : left.application.publicView = right.application.publicView)
     (views : ∀ who, who ≠ hidden →
@@ -85,21 +85,21 @@ theorem reactive_include_binding_hidden_congr
     (evidence : Option (OpeningFact graph)) {token : Option (ReadinessToken graph)}
     (found : left.network.lookup id =
       some ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩) :
-    let first := left.includePending (runtime.reactiveApplication leaks) id
-    let second := right.includePending (runtime.reactiveApplication leaks) id
+    let first := left.includePending ((reactiveApplication timeouts) leaks) id
+    let second := right.includePending ((reactiveApplication timeouts) leaks) id
     first.network = second.network ∧ first.receipts = second.receipts ∧
       (∀ who, who ≠ hidden →
         first.application.playerView who = second.application.playerView who) ∧
       (∀ who, who ≠ hidden → first.logs who = second.logs who) := by
-  have decision : (handle runtime left.application ⟨id, .commitment event candidate⟩).isSome =
-      (handle runtime right.application ⟨id, .commitment event candidate⟩).isSome := by
+  have decision : (handle timeouts left.application ⟨id, .commitment event candidate⟩).isSome =
+      (handle timeouts right.application ⟨id, .commitment event candidate⟩).isSome := by
     apply Bool.eq_iff_iff.mpr
-    rw [← State.publicView_bindingIncludable runtime left.application id event candidate,
-      ← State.publicView_bindingIncludable runtime right.application id event candidate, publicEq]
-  apply include_hidden_congr runtime leaks left right hidden network receipts
+    rw [← State.publicView_bindingIncludable timeouts left.application id event candidate,
+      ← State.publicView_bindingIncludable timeouts right.application id event candidate, publicEq]
+  apply include_hidden_congr timeouts leaks left right hidden network receipts
     views logs id ⟨.commitment event candidate, evidence, token⟩ found decision
   intro who different
-  exact handle_commitment_playerView_congr runtime left.application right.application who
+  exact handle_commitment_playerView_congr timeouts left.application right.application who
     id event candidate (views who different)
 
 omit [DecidableEq Player] in
@@ -125,13 +125,13 @@ theorem opening_right_facts
     (event : graph.EventId) (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload)) (candidate : Handle graph)
-    (ready : left.config.cut.Ready event) (timely : left.WithinDeadline runtime event)
+    (ready : left.config.cut.Ready event) (timely : left.WithinDeadline timeouts event)
     (associated : left.accepted binding.field = some candidate) (value : L.Val payload)
     (leftStored : binding.get? left.config.store = some (.success value))
     (rightStored : binding.get? right.config.store = some (.success value))
     (result : PublicationResult (L.Val payload))
     (resolved : EventCode.resolveOutput? binding checks true left.config.store = some result) :
-    right.config.cut.Ready event ∧ right.WithinDeadline runtime event ∧
+    right.config.cut.Ready event ∧ right.WithinDeadline timeouts event ∧
       right.accepted binding.field = some candidate ∧
       EventCode.resolveOutput? binding checks true right.config.store = some result := by
   have rightReady : right.config.cut.Ready event := by
@@ -140,7 +140,7 @@ theorem opening_right_facts
   have clockEq : left.clock = right.clock := congrArg PublicView.clock publicEq
   have activatedEq : left.activatedAt = right.activatedAt :=
     congrArg PublicView.activatedAt publicEq
-  have rightTimely : right.WithinDeadline runtime event := by
+  have rightTimely : right.WithinDeadline timeouts event := by
     unfold State.WithinDeadline at timely ⊢
     rwa [← activatedEq, ← clockEq]
   have acceptedEq : left.accepted = right.accepted := congrArg PublicView.accepted publicEq

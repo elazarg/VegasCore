@@ -17,19 +17,19 @@ open SourceProgram Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 namespace DirectedBindingFrame
 
-variable {memory : BindingMemory runtime leaks} {owner : Player}
-  {original repaired : (application setup runtime leaks).Execution}
+variable {memory : BindingMemory timeouts leaks} {owner : Player}
+  {original repaired : (application setup timeouts leaks).Execution}
 
 /-- Advancing the actual clock preserves the repaired owner's recorded inputs. -/
-theorem advanceClock (frame : DirectedBindingFrame (runtime := runtime) memory owner original
+theorem advanceClock (frame : DirectedBindingFrame (timeouts := timeouts) memory owner original
   repaired) :
-    let app := application setup runtime leaks
-    DirectedBindingFrame (runtime := runtime) memory owner
+    let app := application setup timeouts leaks
+    DirectedBindingFrame (timeouts := timeouts) memory owner
       { original with
         application := { original.application with clock := original.application.clock + 1 }
         environmentRecall := original.environmentRecall ++
@@ -44,7 +44,7 @@ theorem advanceClock (frame : DirectedBindingFrame (runtime := runtime) memory o
 operational frame. Its remembered original result and successful-value
 agreement are exactly the candidate facts retained by the repair frame. -/
 theorem pending_binding_inclusion
-    (frame : DirectedBindingFrame (runtime := runtime) memory owner original repaired)
+    (frame : DirectedBindingFrame (timeouts := timeouts) memory owner original repaired)
     (clear : original.application.config.defaulted = ∅)
     (event : (graph setup).EventId) (payload : L.Ty)
     (outputEq : (graph setup).outputLayout event = .binding owner payload)
@@ -56,7 +56,7 @@ theorem pending_binding_inclusion
     (found : original.network.lookup id =
       some ⟨id, ⟨.commitment event candidate, none, some ⟨event⟩⟩⟩)
     (ready : original.application.config.cut.Ready event)
-    (timely : original.application.WithinDeadline runtime event)
+    (timely : original.application.WithinDeadline timeouts event)
     (vacant : original.application.accepted (.inr event) = none)
     (unused : original.application.HandleUnused candidate)
     (leftFixed : original.application.candidates.lookup candidate ≠ .fresh)
@@ -69,8 +69,8 @@ theorem pending_binding_inclusion
         (original.application.bindingResult candidate payload)))
     (successful : ∀ value, original.application.bindingResult candidate payload = .success value →
       repaired.application.bindingResult candidate payload = .success value) :
-    let app := application setup runtime leaks
-    DirectedBindingFrame (runtime := runtime) memory owner
+    let app := application setup timeouts leaks
+    DirectedBindingFrame (timeouts := timeouts) memory owner
       { original.includePending app id with environmentRecall := original.environmentRecall ++
         [⟨original.observeEnvironment app, .include id⟩] }
       { repaired.includePending app id with environmentRecall := repaired.environmentRecall ++
@@ -79,14 +79,14 @@ theorem pending_binding_inclusion
     codeEq node id candidate
     sender owned found ready timely vacant unused leftFixed rightFixed rememberedAction
     rememberedValue successful, ?_⟩
-  have unchanged (execution : (application setup runtime leaks).Execution) :
-      (execution.includePending (application setup runtime leaks) id).logs = execution.logs :=
+  have unchanged (execution : (application setup timeouts leaks).Execution) :
+      (execution.includePending (application setup timeouts leaks) id).logs = execution.logs :=
         by
     simp only [ReactiveApplication.Execution.includePending]
     split <;> rfl
-  change operationalRecall (runtime := runtime)
-      ((original.includePending (application setup runtime leaks) id).logs owner) =
-    operationalRecall (runtime := runtime) ((repaired.includePending (application setup runtime
+  change operationalRecall (timeouts := timeouts)
+      ((original.includePending (application setup timeouts leaks) id).logs owner) =
+    operationalRecall (timeouts := timeouts) ((repaired.includePending (application setup timeouts
       leaks) id).logs owner)
   rw [unchanged original, unchanged repaired]
   exact frame.recalled

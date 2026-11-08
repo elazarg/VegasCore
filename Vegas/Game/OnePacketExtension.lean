@@ -39,7 +39,7 @@ open Interaction GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionPro
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  {runtime : EventGraphRuntime graph}
+  {timeouts : EventTimeouts graph}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
 
 omit [Fintype Player] in
@@ -49,9 +49,9 @@ envelope the count verdict forbids gives the coverage product as a lower bound
 on the expected collection, under arbitrary later behavioral policies of any
 response menu. -/
 theorem countForbidden_collection_committed [Finite Player]
-    (menu : (runtime.reactiveApplication leaks).ResponseMenu)
-    (initial : PMF (runtime.reactiveApplication leaks).State) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (menu : ((reactiveApplication timeouts) leaks).ResponseMenu)
+    (initial : PMF ((reactiveApplication timeouts) leaks).State) (horizon : Nat)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
     (certificate : (menu.protocol initial horizon scheduler).WellFoundedHistories)
     (service : EvidenceReportService (CountEvidence graph))
     (observationRate deliveryRate : Player → ℝ)
@@ -59,26 +59,26 @@ theorem countForbidden_collection_committed [Finite Player]
     (coverage : CountEvidenceCoverage service observationRate deliveryRate)
     (profile : ∀ player, (menu.information initial horizon scheduler).BehavioralPolicy player)
     (history : (menu.protocol initial horizon scheduler).History)
-    (who : Player) (remaining : Nat) (execution : (runtime.reactiveApplication leaks).Execution)
+    (who : Player) (remaining : Nat) (execution : ((reactiveApplication timeouts) leaks).Execution)
     (current : history.state = some ⟨remaining, some who, execution⟩)
     (info : (menu.information initial horizon scheduler).InfoState who)
     (choice : (menu.information initial horizon scheduler).Choice who info)
     (observed : (menu.information initial horizon scheduler).infoOf who history.trace = info)
-    (material : (runtime.reactiveApplication leaks).Submission)
+    (material : ((reactiveApplication timeouts) leaks).Submission)
     (selected : choice.1 = some ⟨some material⟩)
-    (forbidden : countPermits ((runtime.reactiveApplication leaks).outputs (execution.logs who))
-      (runtime.localEnvelope leaks who (execution.logs who)
-        (execution.observe (runtime.reactiveApplication leaks) who) material) = false) :
+    (forbidden : countPermits (((reactiveApplication timeouts) leaks).outputs (execution.logs who))
+      ((localEnvelope timeouts) leaks who (execution.logs who)
+        (execution.observe ((reactiveApplication timeouts) leaks) who) material) = false) :
     observationRate who * deliveryRate who ≤
       expect ((menu.information initial horizon scheduler).runBehavioralTerminalFrom certificate
         (Profile.update (sig := (menu.information initial horizon scheduler).behavioralSignature)
           profile who ((profile who).commit info choice)) history)
-        (fun final => TerminalAudit.charge (runtime.reactiveApplication leaks).stateTraffic
-          (runtime.countAudit leaks service.sample) final.state who) := by
+        (fun final => TerminalAudit.charge ((reactiveApplication timeouts) leaks).stateTraffic
+          ((countAudit timeouts) leaks service.sample) final.state who) := by
   classical
   let : Fintype Player := Fintype.ofFinite Player
   subst info
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   let model := menu.information initial horizon scheduler
   let protocol := menu.protocol initial horizon scheduler
   let updated := Profile.update (sig := model.behavioralSignature) profile who
@@ -86,7 +86,7 @@ theorem countForbidden_collection_committed [Finite Player]
   let observe := fun final : protocol.History => app.stateTraffic final.state
   change observationRate who * deliveryRate who ≤
     expect (model.runBehavioralTerminalFrom certificate updated history)
-      (fun final => TerminalAudit.charge observe (runtime.countAudit leaks service.sample)
+      (fun final => TerminalAudit.charge observe ((countAudit timeouts) leaks service.sample)
         final who)
   let rawTrace := menu.toRawTrace initial horizon scheduler history.trace
   have traceBound := app.trace_bound initial horizon scheduler rawTrace
@@ -105,8 +105,8 @@ theorem countForbidden_collection_committed [Finite Player]
   change (model.runBehavioralFrom updated 1 history).map History.state = _ at committed
   have activeTrace : (app.protocol initial horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩) := current ▸ rawTrace
-  have recalled := runtime.countRecall_history leaks activeTrace
-  obtain ⟨inputs, fresh, _⟩ := runtime.countPermits_respond leaks execution recalled who material
+  have recalled := (countRecall_history timeouts) leaks activeTrace
+  obtain ⟨inputs, fresh, _⟩ := (countPermits_respond timeouts) leaks execution recalled who material
   rw [model.runBehavioralTerminalFrom_eq_remaining certificate updated
     (menu.bounded initial horizon scheduler) history, ← fuelEq,
     model.runBehavioralFrom_add]
@@ -123,8 +123,8 @@ theorem countForbidden_collection_committed [Finite Player]
     exact (PMF.mem_support_pure_iff _ _).mp member
   exact app.audit_collection_continuation menu initial horizon scheduler countPermits
     (fun left right message same => countPermits_congr left right message same)
-    (runtime.countAudit leaks service.sample) (fun who => observationRate who * deliveryRate who)
-    (runtime.countAudit_collection leaks service observationRate deliveryRate
+    ((countAudit timeouts) leaks service.sample) (fun who => observationRate who * deliveryRate who)
+    ((countAudit_collection timeouts) leaks service observationRate deliveryRate
       delivery_nonnegative coverage) updated fuel next
     ⟨remaining, none, execution.respond app who ⟨some material⟩⟩ nextState _
     (by rw [inputs]; exact List.mem_append_right _ (List.mem_singleton_self _))
@@ -132,34 +132,34 @@ theorem countForbidden_collection_committed [Finite Player]
 
 namespace MessageBounds
 
-variable (bounds : MessageBounds graph) (runtime : EventGraphRuntime graph)
+variable (bounds : MessageBounds graph) (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
   (initial : PMF (State graph)) (horizon : Nat)
-  (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+  (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
 
 /-- The one-packet game as an action restriction of the bounded effective
 game. It changes no application state, observation, response or scheduler
 step. -/
 def onePacketRestriction :
-    ((bounds.onePacketMenu runtime leaks).information initial horizon scheduler).ActionRestriction
-      ((bounds.menu runtime leaks).information initial horizon scheduler) :=
+    ((bounds.onePacketMenu timeouts leaks).information initial horizon scheduler).ActionRestriction
+      ((bounds.menu timeouts leaks).information initial horizon scheduler) :=
   ReactiveApplication.ResponseMenu.IncludedIn.actionRestriction
-    (bounds.onePacketMenu_in_effective runtime leaks) initial horizon scheduler
+    (bounds.onePacketMenu_in_effective timeouts leaks) initial horizon scheduler
 
 /-- An excluded choice is, at a decision input, a transmission whose local
 envelope the count verdict forbids against own earlier packets. -/
 theorem onePacketRestriction_extra (who : Player)
-    (site : ((bounds.onePacketMenu runtime leaks).information initial horizon
+    (site : ((bounds.onePacketMenu timeouts leaks).information initial horizon
       scheduler).InformationSite who)
-    (action : ((bounds.menu runtime leaks).information initial horizon scheduler).Choice who
-      ((bounds.onePacketRestriction runtime leaks initial horizon scheduler).site who site).1)
+    (action : ((bounds.menu timeouts leaks).information initial horizon scheduler).Choice who
+      ((bounds.onePacketRestriction timeouts leaks initial horizon scheduler).site who site).1)
     (extra : action ∉ Set.range
-      ((bounds.onePacketRestriction runtime leaks initial horizon scheduler).choice who site.1)) :
+      ((bounds.onePacketRestriction timeouts leaks initial horizon scheduler).choice who site.1)) :
     ∃ past view material, site.1 = some (past, view) ∧ action.1 = some ⟨some material⟩ ∧
-      countPermits ((runtime.reactiveApplication leaks).outputs past)
-        (runtime.localEnvelope leaks who past view material) = false := by
-  let effective := bounds.menu runtime leaks
-  let included := bounds.onePacketMenu_in_effective runtime leaks
+      countPermits (((reactiveApplication timeouts) leaks).outputs past)
+        ((localEnvelope timeouts) leaks who past view material) = false := by
+  let effective := bounds.menu timeouts leaks
+  let included := bounds.onePacketMenu_in_effective timeouts leaks
   rcases site with ⟨info, occurs⟩
   cases info with
   | none =>
@@ -171,7 +171,7 @@ theorem onePacketRestriction_extra (who : Player)
         who (some data)) at extra
       obtain ⟨response, value, available, absent⟩ := included.extra_choice_response
         initial horizon scheduler who data.1 data.2 action extra
-      obtain ⟨material, sent, rejected⟩ := bounds.onePacket_extra runtime leaks who data.1 data.2
+      obtain ⟨material, sent, rejected⟩ := bounds.onePacket_extra timeouts leaks who data.1 data.2
         response available absent
       refine ⟨data.1, data.2, material, rfl, ?_, rejected⟩
       rw [value]
@@ -180,8 +180,8 @@ theorem onePacketRestriction_extra (who : Player)
       rw [sent]
 
 local instance effectiveHistory_nonempty :
-    Nonempty ((bounds.menu runtime leaks).protocol initial horizon scheduler).History :=
-  ⟨((bounds.menu runtime leaks).protocol initial horizon scheduler).initHistory⟩
+    Nonempty ((bounds.menu timeouts leaks).protocol initial horizon scheduler).History :=
+  ⟨((bounds.menu timeouts leaks).protocol initial horizon scheduler).initHistory⟩
 
 open Classical in
 /-- **One-packet equilibria extend to the bounded effective runtime.** Under
@@ -194,29 +194,29 @@ and beliefs at every one-packet site, has the same terminal law and the same
 joint law of terminal history and realized payoffs, and charges nobody on its
 paths. -/
 theorem onePacket_sequentialEquilibrium_extends
-    [(runtime.reactiveApplication leaks).FiniteNature initial scheduler]
+    [((reactiveApplication timeouts) leaks).FiniteNature initial scheduler]
     (service : EvidenceReportService (CountEvidence graph))
     (observationRate deliveryRate : Player → ℝ)
     (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
     (coverage : CountEvidenceCoverage service observationRate deliveryRate)
-    (utility : (runtime.reactiveApplication leaks).ProtocolState → Player → ℝ)
+    (utility : ((reactiveApplication timeouts) leaks).ProtocolState → Player → ℝ)
     (lower upper deposit : Player → ℝ)
-    (lower_le : ∀ history : ((bounds.onePacketMenu runtime leaks).protocol initial horizon
+    (lower_le : ∀ history : ((bounds.onePacketMenu timeouts leaks).protocol initial horizon
       scheduler).History,
       ∀ who, lower who ≤ utility history.state who)
-    (le_upper : ∀ history : ((bounds.menu runtime leaks).protocol initial horizon
+    (le_upper : ∀ history : ((bounds.menu timeouts leaks).protocol initial horizon
       scheduler).History,
       ∀ who, utility history.state who ≤ upper who)
     (deposit_nonnegative : ∀ who, 0 ≤ deposit who)
     (sufficient : ∀ who,
       upper who - lower who ≤ observationRate who * deliveryRate who * deposit who) :
-    let onePacket := bounds.onePacketMenu runtime leaks
-    let effective := bounds.menu runtime leaks
-    let restriction := bounds.onePacketRestriction runtime leaks initial horizon scheduler
+    let onePacket := bounds.onePacketMenu timeouts leaks
+    let effective := bounds.menu timeouts leaks
+    let restriction := bounds.onePacketRestriction timeouts leaks initial horizon scheduler
     let sourceCertificate := (onePacket.bounded initial horizon scheduler).wellFoundedHistories
     let targetCertificate := (effective.bounded initial horizon scheduler).wellFoundedHistories
-    let observe := (runtime.reactiveApplication leaks).stateTraffic
-    let audit := runtime.countAudit leaks service.sample
+    let observe := ((reactiveApplication timeouts) leaks).stateTraffic
+    let audit := (countAudit timeouts) leaks service.sample
     let payoff := TerminalAudit.utility utility observe audit deposit
     let settle := TerminalAudit.settlement utility observe audit deposit
     ∀ source : (onePacket.information initial horizon scheduler).BehavioralAssessment,
@@ -251,7 +251,7 @@ theorem onePacket_sequentialEquilibrium_extends
   classical
   intro onePacket effective restriction sourceCertificate targetCertificate observe audit payoff
     settle source equilibrium
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   obtain ⟨target, targetSE, agrees, beliefs, laws, settled, clean⟩ :=
     restriction.sequential_equilibrium_extends_of_terminal_audit
       (onePacket.decisionInformationAntichain initial horizon scheduler)
@@ -260,7 +260,7 @@ theorem onePacket_sequentialEquilibrium_extends
       (effective.decisionRecall initial horizon scheduler)
       (fun final who => utility final.state who) (fun final who => utility final.state who)
       (fun final => observe final.state) audit (fun _ _ => rfl)
-      (fun final who => bounds.onePacketMenu_countCharge_zero runtime leaks initial horizon
+      (fun final who => bounds.onePacketMenu_countCharge_zero timeouts leaks initial horizon
         scheduler service final who)
       lower upper (fun who => observationRate who * deliveryRate who) deposit
       deposit_nonnegative lower_le le_upper
@@ -268,7 +268,7 @@ theorem onePacket_sequentialEquilibrium_extends
       (fun profile who site action extra history => by
         rw [TerminalAudit.collection_probability]
         obtain ⟨past, view, material, input, chosen, rejected⟩ :=
-          bounds.onePacketRestriction_extra runtime leaks initial horizon scheduler who site
+          bounds.onePacketRestriction_extra timeouts leaks initial horizon scheduler who site
             action extra
         have observed : (effective.information initial horizon scheduler).infoOf who
             (restriction.history history.1).trace = (restriction.site who site).1 :=
@@ -308,28 +308,28 @@ normalized play is the one-packet law of play, its joint law of normalized
 terminal state and realized payoffs is the one-packet law of terminal state and
 utility, and it charges nobody on its paths. -/
 theorem onePacket_raw_sequentialEquilibrium
-    [(runtime.reactiveApplication leaks).FiniteNature initial scheduler]
+    [((reactiveApplication timeouts) leaks).FiniteNature initial scheduler]
     (service : EvidenceReportService (CountEvidence graph))
     (observationRate deliveryRate : Player → ℝ)
     (delivery_nonnegative : ∀ who, 0 ≤ deliveryRate who)
     (coverage : CountEvidenceCoverage service observationRate deliveryRate)
-    (utility : (runtime.reactiveApplication leaks).ProtocolState → Player → ℝ)
+    (utility : ((reactiveApplication timeouts) leaks).ProtocolState → Player → ℝ)
     (normalized : ∀ state,
-      utility ((runtime.reactiveNormalization leaks).state state) = utility state)
+      utility (((reactiveNormalization timeouts) leaks).state state) = utility state)
     (lower upper deposit : Player → ℝ)
-    (lower_le : ∀ history : ((bounds.rawMenu runtime leaks).protocol initial horizon
+    (lower_le : ∀ history : ((bounds.rawMenu timeouts leaks).protocol initial horizon
       scheduler).History, ∀ who, lower who ≤ utility history.state who)
-    (le_upper : ∀ history : ((bounds.rawMenu runtime leaks).protocol initial horizon
+    (le_upper : ∀ history : ((bounds.rawMenu timeouts leaks).protocol initial horizon
       scheduler).History, ∀ who, utility history.state who ≤ upper who)
     (deposit_nonnegative : ∀ who, 0 ≤ deposit who)
     (sufficient : ∀ who,
       upper who - lower who ≤ observationRate who * deliveryRate who * deposit who) :
-    let onePacket := bounds.onePacketMenu runtime leaks
-    let raw := bounds.rawMenu runtime leaks
+    let onePacket := bounds.onePacketMenu timeouts leaks
+    let raw := bounds.rawMenu timeouts leaks
     let sourceCertificate := (onePacket.bounded initial horizon scheduler).wellFoundedHistories
-    let normalize := (runtime.reactiveNormalization leaks).state
-    let observe := (runtime.reactiveApplication leaks).stateTraffic
-    let audit := runtime.countAudit leaks service.sample
+    let normalize := ((reactiveNormalization timeouts) leaks).state
+    let observe := ((reactiveApplication timeouts) leaks).stateTraffic
+    let audit := (countAudit timeouts) leaks service.sample
     let payoff := TerminalAudit.utility utility observe audit deposit
     let settle := TerminalAudit.settlement utility observe audit deposit
     ∀ source : (onePacket.information initial horizon scheduler).BehavioralAssessment,
@@ -355,27 +355,28 @@ theorem onePacket_raw_sequentialEquilibrium
           (2 * horizon + 1)).map (fun final => (final.state, utility final.state)) := by
   classical
   intro onePacket raw sourceCertificate normalize observe audit payoff settle source equilibrium
-  let effective := bounds.menu runtime leaks
+  let effective := bounds.menu timeouts leaks
   obtain ⟨effectiveTarget, effectiveSE, _, _, laws, _, clean⟩ :=
-    bounds.onePacket_sequentialEquilibrium_extends runtime leaks initial horizon scheduler service
+    bounds.onePacket_sequentialEquilibrium_extends timeouts leaks initial horizon scheduler service
       observationRate deliveryRate delivery_nonnegative coverage utility lower upper deposit
       (fun history who => lower_le
-        ((bounds.onePacketMenu_in_raw runtime leaks).history initial horizon scheduler history) who)
+        ((bounds.onePacketMenu_in_raw timeouts leaks).history initial horizon scheduler history)
+          who)
       (fun history who => le_upper
-        ((bounds.menu_in_raw runtime leaks).history initial horizon scheduler history) who)
+        ((bounds.menu_in_raw timeouts leaks).history initial horizon scheduler history) who)
       deposit_nonnegative sufficient source equilibrium
   have truncated := (effectiveTarget.isSequentialEquilibrium_iff_truncated_of_bounded _ _
     (effective.bounded initial horizon scheduler).wellFoundedHistories
     (effective.bounded initial horizon scheduler) _).mp effectiveSE
   obtain ⟨target, _, targetSE, _, stateLaw⟩ :=
-    bounds.exists_canonicalRaw_sequentialEquilibrium runtime leaks initial horizon scheduler
+    bounds.exists_canonicalRaw_sequentialEquilibrium timeouts leaks initial horizon scheduler
       effectiveTarget (fun who state => payoff state who) truncated
-  have observation (state : (runtime.reactiveApplication leaks).ProtocolState) :
-      observe ((runtime.reactiveNormalization leaks).state state) = observe state :=
-    (runtime.reactiveApplication leaks).stateTraffic_normalization
-      (runtime.reactiveNormalization leaks) state
-  have payoffInvariant (state : (runtime.reactiveApplication leaks).ProtocolState) :
-      payoff ((runtime.reactiveNormalization leaks).state state) = payoff state := by
+  have observation (state : ((reactiveApplication timeouts) leaks).ProtocolState) :
+      observe (((reactiveNormalization timeouts) leaks).state state) = observe state :=
+    ((reactiveApplication timeouts) leaks).stateTraffic_normalization
+      ((reactiveNormalization timeouts) leaks) state
+  have payoffInvariant (state : ((reactiveApplication timeouts) leaks).ProtocolState) :
+      payoff (((reactiveNormalization timeouts) leaks).state state) = payoff state := by
     funext who
     simp only [payoff, TerminalAudit.utility, TerminalAudit.charge, normalized, observation]
   have effectiveLaw := InformationModel.runBehavioralTerminalFrom_initHistory

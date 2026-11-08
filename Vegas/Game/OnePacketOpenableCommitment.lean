@@ -28,29 +28,29 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
-variable (setup runtime leaks) in
+variable (setup timeouts leaks) in
 /-- The submitted candidate remains fixed, the unfinished configuration stays
 at the original binding, and completion retains either an actual failed output
 or a successful primary step followed by native automatic service. -/
-def OpenableCommitmentInvariant (who : Player) (entry : (application setup runtime
+def OpenableCommitmentInvariant (who : Player) (entry : (application setup timeouts
   leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup))) (event : (graph setup).EventId)
     (candidate : Handle (graph setup)) {payload : L.Ty}
     (_outputEq : (graph setup).outputLayout event = .binding who payload) (value : L.Val payload)
     (sent : (graph setup).Config) (ready : sent.cut.Ready event)
     (action : (graph setup).Action event) :
-    (application setup runtime leaks).ProtocolState → Prop
+    (application setup timeouts leaks).ProtocolState → Prop
   | none => False
   | some control =>
-      Nonempty (((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+      Nonempty (((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
         horizon scheduler).Trace (some control)) ∧
-      RecordsEntry setup runtime leaks who entry (some control) ∧ entry.emitted = some message ∧
+      RecordsEntry setup timeouts leaks who entry (some control) ∧ entry.emitted = some message ∧
       message.sender = who ∧ message.payload.call = .commitment event candidate ∧
       control.execution.application.candidates.lookup candidate = .openable ⟨payload, value⟩ ∧
       (event ∉ control.execution.application.config.cut.completed →
@@ -76,7 +76,7 @@ private theorem cast_cast_back {A B : Type} (same : A = B) (value : B) :
 /-- An unfinished openable binding retains its failure output or its exact
 successful primary completion followed by automatic service. -/
 theorem openableCommitmentInvariant_transition {who : Player}
-    {entry : (application setup runtime leaks).PlayerEntry}
+    {entry : (application setup timeouts leaks).PlayerEntry}
     {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
     {candidate : Handle (graph setup)} {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding who payload}
@@ -86,17 +86,18 @@ theorem openableCommitmentInvariant_transition {who : Player}
     {action : (graph setup).Action event}
     (successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
       Option (PublicationResult (L.Val payload))) = some (.success value))
-    (before after : (application setup runtime leaks).ProtocolState)
+    (before after : (application setup timeouts leaks).ProtocolState)
     (unfinished : ∀ control, before = some control →
       event ∉ control.execution.application.config.cut.completed)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    (legal : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    (legal : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Legal before joint)
-    (holds : OpenableCommitmentInvariant setup runtime leaks bounds horizon scheduler who entry
+    (holds : OpenableCommitmentInvariant setup timeouts leaks bounds horizon scheduler who entry
       message event candidate outputEq value sent ready action before)
-    (reached : after ∈ (((bounds.onePacketMenu runtime leaks).protocol
+    (reached : after ∈ (((bounds.onePacketMenu timeouts leaks).protocol
       (initialLaw setup) horizon scheduler).step before ⟨joint, legal⟩).support) :
-    OpenableCommitmentInvariant setup runtime leaks bounds horizon scheduler who entry message event
+    OpenableCommitmentInvariant setup timeouts leaks bounds horizon scheduler who entry message
+      event
       candidate outputEq value sent ready action after := by
   cases before with
   | none => exact holds.elim
@@ -104,27 +105,27 @@ theorem openableCommitmentInvariant_transition {who : Player}
       obtain ⟨⟨trace⟩, records, emitted, sender, call, fixed, frozen, _⟩ := holds
       have pending := unfinished control rfl
       have atSent := frozen pending
-      have afterRecords := recordsEntry_transition (runtime := runtime) who entry (initialLaw
+      have afterRecords := recordsEntry_transition (timeouts := timeouts) who entry (initialLaw
         setup) horizon scheduler _ after joint records reached
       cases after with
       | none => exact afterRecords.elim
       | some next =>
-          have nextTrace : ((bounds.onePacketMenu runtime leaks).protocol
+          have nextTrace : ((bounds.onePacketMenu timeouts leaks).protocol
               (initialLaw setup) horizon scheduler).Trace (some next) :=
             .extend trace joint legal reached
-          have kept := (keepsFixedCandidates_step runtime leaks).transition
+          have kept := (keepsFixedCandidates_step timeouts leaks).transition
             (initialLaw setup) horizon scheduler control next joint reached
           have lookupEq := kept candidate (by
             rw [fixed]
             exact fun impossible => by cases impossible)
           have owned : (graph setup).actor? event = some who := nodeView_bind_actor outputEq codeEq
-          have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+          have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
             horizon scheduler trace
-          have nextRawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+          have nextRawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
             horizon scheduler nextTrace
           have facts := legalFacts setup leaks horizon scheduler _ rawTrace
           have nextFacts := legalFacts setup leaks horizon scheduler _ nextRawTrace
-          rcases reactive_protocol_primary_or_stutter runtime leaks (initialLaw setup) horizon
+          rcases reactive_protocol_primary_or_stutter timeouts leaks (initialLaw setup) horizon
             scheduler control next joint facts.quiescent reached with
             same | ⟨completed, completedReady, found, primary, member, drained⟩
           · refine ⟨⟨nextTrace⟩, afterRecords, emitted, sender, call, lookupEq.trans fixed,
@@ -194,7 +195,7 @@ theorem openableCommitmentInvariant_transition {who : Player}
                   | some present' =>
                       exact (pending (facts.binding.toAssociationInvariant.accepted_complete
                         event present' present)).elim
-                have same := onePacket_accepted_new (runtime := runtime) bounds horizon scheduler
+                have same := onePacket_accepted_new (timeouts := timeouts) bounds horizon scheduler
                   trace records emitted sender call owned vacant joint reached installed acceptedAt
                 subst same
                 rw [lookupEq, fixed] at meaning
@@ -218,12 +219,12 @@ theorem openableCommitmentInvariant_transition {who : Player}
 
 /-- Native first-completion classification at the monotone target stop. -/
 theorem openableCommitment_stop (bounds : MessageBounds (graph setup)) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler)
-    (certificate : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+    (scheduler : (application setup timeouts leaks).Scheduler)
+    (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
       horizon scheduler).WellFoundedHistories)
-    (players : ∀ player, ((bounds.onePacketMenu runtime leaks).information
+    (players : ∀ player, ((bounds.onePacketMenu timeouts leaks).information
       (initialLaw setup) horizon scheduler).BehavioralPolicy player)
-    {who : Player} {entry : (application setup runtime leaks).PlayerEntry}
+    {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
     {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
     {candidate : Handle (graph setup)} {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding who payload}
@@ -234,41 +235,41 @@ theorem openableCommitment_stop (bounds : MessageBounds (graph setup)) (horizon 
     (successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
       Option (PublicationResult (L.Val payload))) = some (.success value))
     {rank : Nat} (ordered : sent.cut.IsPrefix rank)
-    (terminalCompleted : ∀ (final : (application setup runtime leaks).Control),
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (terminalCompleted : ∀ (final : (application setup timeouts leaks).Control),
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some final) →
-      (application setup runtime leaks).terminal (some final) →
+      (application setup timeouts leaks).terminal (some final) →
       final.execution.application.config = sent →
       event ∈ final.execution.application.config.cut.completed)
-    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).History)
-    (holds : OpenableCommitmentInvariant setup runtime leaks bounds horizon scheduler who entry
+    (holds : OpenableCommitmentInvariant setup timeouts leaks bounds horizon scheduler who entry
       message
       event candidate outputEq value sent ready action start.state) :
-    ∀ stop ∈ (((bounds.onePacketMenu runtime leaks).information (initialLaw setup)
+    ∀ stop ∈ (((bounds.onePacketMenu timeouts leaks).information (initialLaw setup)
         horizon scheduler).runBehavioralUntil certificate players
-        (LateStopped setup runtime leaks bounds horizon scheduler rank) start).support,
+        (LateStopped setup timeouts leaks bounds horizon scheduler rank) start).support,
       ∃ final, stop.state = some final ∧
         (StoreEventFailed final.execution.application.config.store event ∨
           ∃ primary : EventGraphRuntime.State (graph setup),
             primary.config ∈ (sent.step event ready action).support ∧
               final.execution.application.config = primary.drain.config) := by
   intro stop member
-  let menu := bounds.onePacketMenu runtime leaks
+  let menu := bounds.onePacketMenu timeouts leaks
   let model := menu.information (initialLaw setup) horizon scheduler
   have rankEq := (ready_iff_rank setup sent rank ordered event).mp ready
   have unfinishedOf : ∀ history : (menu.protocol (initialLaw setup) horizon scheduler).History,
-      ¬ LateStopped setup runtime leaks bounds horizon scheduler rank history →
+      ¬ LateStopped setup timeouts leaks bounds horizon scheduler rank history →
       ∀ control, history.state = some control →
         event ∉ control.execution.application.config.cut.completed := by
     intro history going control state done
     exact going ⟨control, state, event, done, rankEq⟩
   have reachedInvariant := model.runBehavioralUntil_support_closed certificate players
-    (LateStopped setup runtime leaks bounds horizon scheduler rank)
-    (OpenableCommitmentInvariant setup runtime leaks bounds horizon scheduler who entry message
+    (LateStopped setup timeouts leaks bounds horizon scheduler rank)
+    (OpenableCommitmentInvariant setup timeouts leaks bounds horizon scheduler who entry message
       event candidate outputEq value sent ready action)
     (fun history going _ joint legal target holds reached =>
-      openableCommitmentInvariant_transition (runtime := runtime) bounds horizon scheduler codeEq
+      openableCommitmentInvariant_transition (timeouts := timeouts) bounds horizon scheduler codeEq
         successful history.state target (unfinishedOf history going) joint legal holds reached)
     start holds stop member
   have ends := model.mem_support_runBehavioralUntil certificate players _ start stop member
@@ -294,7 +295,7 @@ theorem openableCommitment_stop (bounds : MessageBounds (graph setup)) (horizon 
 
 /-- Every completed output is the committed value or a persistent failure. -/
 theorem openableCommitmentInvariant_output {who : Player}
-    {entry : (application setup runtime leaks).PlayerEntry}
+    {entry : (application setup timeouts leaks).PlayerEntry}
     {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
     {candidate : Handle (graph setup)} {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding who payload}
@@ -304,8 +305,8 @@ theorem openableCommitmentInvariant_output {who : Player}
     {action : (graph setup).Action event}
     (successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
       Option (PublicationResult (L.Val payload))) = some (.success value))
-    {control : (application setup runtime leaks).Control}
-    (holds : OpenableCommitmentInvariant setup runtime leaks bounds horizon scheduler who entry
+    {control : (application setup timeouts leaks).Control}
+    (holds : OpenableCommitmentInvariant setup timeouts leaks bounds horizon scheduler who entry
       message event candidate outputEq value sent ready action (some control))
     (completed : event ∈ control.execution.application.config.cut.completed) :
     StoreEventFailed control.execution.application.config.store event ∨
@@ -358,8 +359,8 @@ committing at a slot the count verdict permits a source choice encoded as an
 action binding the successful value `value` leaves the openable-commitment
 invariant, from the configuration of the decision, at the state it reaches. -/
 theorem openableCommitmentInvariant_slot {remaining : Nat} {who : Player}
-    {execution : (application setup runtime leaks).Execution}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    {execution : (application setup timeouts leaks).Execution}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
     {event : (graph setup).EventId} {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding who payload}
@@ -372,64 +373,64 @@ theorem openableCommitmentInvariant_slot {remaining : Nat} {who : Player}
     {value : L.Val payload}
     (successful : (cast (congrArg EventGraph.EventField.Action outputEq) action :
       Option (PublicationResult (L.Val payload))) = some (.success value))
-    (permitted : countPermits ((application setup runtime leaks).outputs (execution.logs who))
-      (slotEnvelope setup runtime leaks who (execution.logs who)
-        (execution.observe (application setup runtime leaks) who) event slot) = true)
-    (afterTrace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+    (permitted : countPermits ((application setup timeouts leaks).outputs (execution.logs who))
+      (slotEnvelope setup timeouts leaks who (execution.logs who)
+        (execution.observe (application setup timeouts leaks) who) event slot) = true)
+    (afterTrace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
       horizon scheduler).Trace (some ⟨remaining, none, execution.respond (application setup
-        runtime leaks)
-        who (slotResponse setup runtime leaks who (execution.logs who)
-          (execution.observe (application setup runtime leaks) who) event slot choice)⟩)) :
-    ∃ entry message, OpenableCommitmentInvariant setup runtime leaks bounds horizon scheduler who
+        timeouts leaks)
+        who (slotResponse setup timeouts leaks who (execution.logs who)
+          (execution.observe (application setup timeouts leaks) who) event slot choice)⟩)) :
+    ∃ entry message, OpenableCommitmentInvariant setup timeouts leaks bounds horizon scheduler who
       entry
       message event (who, .prepared slot) outputEq value execution.application.config ready
-      action (some ⟨remaining, none, execution.respond (application setup runtime leaks) who
-        (slotResponse setup runtime leaks who (execution.logs who)
-          (execution.observe (application setup runtime leaks) who) event slot choice)⟩) := by
-  let response := slotResponse setup runtime leaks who (execution.logs who)
-    (execution.observe (application setup runtime leaks) who) event slot choice
-  obtain ⟨material, transmits, envelope⟩ := slotResponse_transmission setup runtime leaks who
-    (execution.logs who) (execution.observe (application setup runtime leaks) who) event node slot
+      action (some ⟨remaining, none, execution.respond (application setup timeouts leaks) who
+        (slotResponse setup timeouts leaks who (execution.logs who)
+          (execution.observe (application setup timeouts leaks) who) event slot choice)⟩) := by
+  let response := slotResponse setup timeouts leaks who (execution.logs who)
+    (execution.observe (application setup timeouts leaks) who) event slot choice
+  obtain ⟨material, transmits, envelope⟩ := slotResponse_transmission setup timeouts leaks who
+    (execution.logs who) (execution.observe (application setup timeouts leaks) who) event node slot
     choice action encoded (by rw [successful]; rfl)
   have call : material.call.packet = .commitment event (who, .prepared slot) :=
     congrArg (fun message : Message Player (WitnessedPacket (graph setup)) =>
       message.payload.call) envelope
   have sends : response.transmission = some material := transmits
-  have bound := slotResponse_of_bind setup runtime leaks who (execution.logs who)
-    (execution.observe (application setup runtime leaks) who) event node slot choice action encoded
+  have bound := slotResponse_of_bind setup timeouts leaks who (execution.logs who)
+    (execution.observe (application setup timeouts leaks) who) event node slot choice action encoded
   rw [successful] at bound
   rw [bound] at transmits
   have materialEq := Option.some.inj transmits.symm
-  have submitted : (application setup runtime leaks).submit execution.application who material =
-      (execution.respond (application setup runtime leaks) who
+  have submitted : (application setup timeouts leaks).submit execution.application who material =
+      (execution.respond (application setup timeouts leaks) who
         ⟨some ⟨⟨.commitment event (who, .prepared slot), some ⟨payload, value⟩⟩,
           .none⟩⟩).application := by
     rw [materialEq]
-    change (application setup runtime leaks).submit execution.application who
-      ((runtime.reactiveNormalization leaks).normalize who
-        ((application setup runtime leaks).observePlayer execution.application who)
+    change (application setup timeouts leaks).submit execution.application who
+      (((reactiveNormalization timeouts) leaks).normalize who
+        ((application setup timeouts leaks).observePlayer execution.application who)
         (ReactiveApplication.ResponseMenu.knownPackets (execution.logs who)
-          (execution.observe (application setup runtime leaks) who))
+          (execution.observe (application setup timeouts leaks) who))
         ⟨⟨.commitment event (who, .prepared slot), some ⟨payload, value⟩⟩, .none⟩) = _
-    rw [(runtime.reactiveNormalization leaks).submit]
+    rw [((reactiveNormalization timeouts) leaks).submit]
     rfl
   have fresh : execution.application.candidates.lookup (who, .prepared slot) = .fresh :=
-    onePacket_permitted_fresh (runtime := runtime) (control := ⟨remaining, some who, execution⟩)
+    onePacket_permitted_fresh (timeouts := timeouts) (control := ⟨remaining, some who, execution⟩)
       trace who event slot
       permitted
-  have responded : (execution.respond (application setup runtime leaks) who response).application =
-      (application setup runtime leaks).submit execution.application who material := by
+  have responded : (execution.respond (application setup timeouts leaks) who response).application =
+      (application setup timeouts leaks).submit execution.application who material := by
     unfold ReactiveApplication.Execution.respond
     rw [sends]
-  have sameConfig : (execution.respond (application setup runtime leaks) who
+  have sameConfig : (execution.respond (application setup timeouts leaks) who
       response).application.config = execution.application.config :=
-    (runtime.reactive_respond_application leaks execution who response).1
-  refine ⟨respondEntry setup runtime leaks execution who response, sentEnvelope setup runtime
+    ((reactive_respond_application timeouts) leaks execution who response).1
+  refine ⟨respondEntry setup timeouts leaks execution who response, sentEnvelope setup timeouts
     leaks execution who
-    material, ⟨afterTrace⟩, recordsEntry_respond (runtime := runtime) execution who response
+    material, ⟨afterTrace⟩, recordsEntry_respond (timeouts := timeouts) execution who response
       remaining none, ?_, rfl,
     call, ?_, fun _ => sameConfig, fun done => ?_⟩
-  · change response.transmission.map (sentEnvelope setup runtime leaks execution who) = _
+  · change response.transmission.map (sentEnvelope setup timeouts leaks execution who) = _
     rw [sends]
     rfl
   · rw [responded, submitted]

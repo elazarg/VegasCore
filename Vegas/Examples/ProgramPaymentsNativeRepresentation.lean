@@ -18,7 +18,7 @@ open EventGraphRuntime Interaction GameTheory.Math.Probability
 open GameTheory.Protocol
 
 abbrev nativeGraph := Vegas.graph (setup 2)
-abbrev app := application (setup 2) (Vegas.runtime (setup 2)) (leaks 2)
+abbrev app := application (setup 2) (Vegas.timeouts (setup 2)) (leaks 2)
 
 private instance : NeZero nativeGraph.order.eventCount := ⟨by decide⟩
 
@@ -50,7 +50,7 @@ theorem include_law (execution : app.Execution) (identity : MessageId Player) :
   rfl
 
 def bindingAction (serial : Fin 2) : app.Action :=
-  (runtime (setup 2)).reactiveBinding (leaks 2) .alice 0 .bool (.success true) serial.val
+  (reactiveBinding (timeouts (setup 2))) (leaks 2) .alice 0 .bool (.success true) serial.val
 
 def submitted (serial : Fin 2) : app.Execution :=
   (activate start).respond app .alice (bindingAction serial)
@@ -60,7 +60,7 @@ def included (serial : Fin 2) : app.Execution := includePacket (submitted serial
 theorem submitted_binding (serial : Fin 2) :
     (submitted serial).application.bindingResult (.alice, .prepared serial.val) .bool =
       .success true := by
-  exact reactiveBinding_result (runtime (setup 2)) (leaks 2) .alice 0 .bool
+  exact reactiveBinding_result (timeouts (setup 2)) (leaks 2) .alice 0 .bool
     (.success true) serial.val (activate start) rfl
 
 theorem submitted_config (serial : Fin 2) : (submitted serial).application.config =
@@ -82,9 +82,9 @@ def accepted (serial : Fin 2) : app.State :=
     candidates := (submitted serial).application.candidates.freeze (.alice, .prepared serial.val) }
 
 theorem commitment_handle (serial : Fin 2) :
-    handle (runtime (setup 2)) (submitted serial).application
+    handle (timeouts (setup 2)) (submitted serial).application
       ⟨(.alice, 0), .commitment 0 (.alice, .prepared serial.val)⟩ = some (accepted serial) := by
-  rw [handle_commitment_eq (runtime (setup 2)) (submitted serial).application
+  rw [handle_commitment_eq (timeouts (setup 2)) (submitted serial).application
     (.alice, 0) 0 (.alice, .prepared serial.val) .alice .bool rfl rfl
     (nodeView_eq_bind rfl rfl) (submitted_ready serial)]
   · rw [submitted_binding]
@@ -121,8 +121,8 @@ theorem initial_token (serial : Fin 2) :
 theorem submitted_lookup (serial : Fin 2) :
     (submitted serial).network.lookup (.alice, 0) = some (envelope serial) := by
   change some (⟨(.alice, 0),
-    ((runtime (setup 2)).reactiveApplication (leaks 2)).packet
-      (((runtime (setup 2)).reactiveApplication (leaks 2)).submit initial .alice
+    ((reactiveApplication (timeouts (setup 2))) (leaks 2)).packet
+      (((reactiveApplication (timeouts (setup 2))) (leaks 2)).submit initial .alice
         ⟨bindingCall serial, .none⟩) .alice [] ⟨bindingCall serial, .none⟩⟩ :
       Message Player (WitnessedPacket nativeGraph)) = _
   rw [reactiveApplication_packet_none]
@@ -138,9 +138,9 @@ theorem included_application (serial : Fin 2) :
   unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
   rw [submitted_lookup]
   change (app.handle (submitted serial).application (envelope serial)).getD _ = _
-  rw [reactiveApplication_handle_of_tokenValid (runtime (setup 2)) (leaks 2)
+  rw [reactiveApplication_handle_of_tokenValid (timeouts (setup 2)) (leaks 2)
     (submitted serial).application (envelope serial) rfl]
-  change ((handle (runtime (setup 2)) (submitted serial).application
+  change ((handle (timeouts (setup 2)) (submitted serial).application
     ⟨(.alice, 0), .commitment 0 (.alice, .prepared serial.val)⟩).map State.drain).getD _ = _
   rw [commitment_handle, Option.map_some, accepted_drain]
   rfl
@@ -156,7 +156,7 @@ theorem included_handle (serial : Fin 2) :
   rw [included_application]
   simp [accepted]
 
-abbrev menu := (bounds 2).rawMenu (runtime (setup 2)) (leaks 2)
+abbrev menu := (bounds 2).rawMenu (timeouts (setup 2)) (leaks 2)
 abbrev protocol := menu.protocol (Vegas.initialLaw (setup 2)) 9 (service 2).scheduler
 
 theorem initial_law : Vegas.initialLaw (setup 2) = PMF.pure initial := by
@@ -198,7 +198,7 @@ def activatedTrace : protocol.Trace (some ⟨8, some .alice, activate start⟩) 
 
 theorem binding_legal (serial : Fin 2) (past : List app.PlayerEntry) (view : app.PlayerView) :
     bindingAction serial ∈ menu.actions .alice past view := by
-  change bindingAction serial ∈ ((bounds 2).rawMenu (runtime (setup 2)) (leaks 2)).actions _ _ _
+  change bindingAction serial ∈ ((bounds 2).rawMenu (timeouts (setup 2)) (leaks 2)).actions _ _ _
   unfold MessageBounds.rawMenu
   rw [ReactiveApplication.ResponseMenu.fromSubmissions_mem]
   change ⟨bindingCall serial, .none⟩ ∈ (bounds 2).submissions _
@@ -261,7 +261,7 @@ theorem expireCompleted_law (serial : Fin 2) :
     intro ready
     exact ready.1 (by change 0 ∈ ({0} : Finset (Fin 2)); simp)
   unfold ReactiveApplication.Execution.environmentStep
-  change (((environmentStep (runtime (setup 2)) (tick (included serial)).application
+  change (((environmentStep (timeouts (setup 2)) (tick (included serial)).application
     (.expire 0)).map State.drain).map _).map _ = _
   rw [environmentStep_expire_of_not_ready _ _ _ notReady, PMF.pure_map]
   have clear : (tick (included serial)).application.config.defaulted = ∅ := by
@@ -314,7 +314,7 @@ theorem second_ready (serial : Fin 2) :
   decide
 
 theorem second_timely (serial : Fin 2) :
-    (secondActivation serial).application.WithinDeadline (runtime (setup 2)) 1 := by
+    (secondActivation serial).application.WithinDeadline (timeouts (setup 2)) 1 := by
   have ready : boundConfig.cut.Ready 1 := by decide
   have unready : ¬ initial.config.cut.Ready 1 := by decide
   have initialNotActivated : initial.activatedAt 1 = none := by
@@ -352,7 +352,7 @@ theorem reveal_code : cast (congrArg (EventGraph.EventCode nativeGraph.layout)
           revealBinding revealChecks := rfl
 
 theorem opening_wrong_handle :
-    handle (runtime (setup 2)) (secondActivation 1).application openingMessage = none := by
+    handle (timeouts (setup 2)) (secondActivation 1).application openingMessage = none := by
   have notAssociated : (secondActivation 1).application.accepted (.inr 0) ≠
       some (.alice, .prepared 0) := by
     rw [secondActivation_handle]
@@ -376,8 +376,8 @@ def opened : app.State :=
   (secondActivation 0).application.complete 1 (second_ready 0) true (.success true)
 
 theorem opening_correct_handle :
-    handle (runtime (setup 2)) (secondActivation 0).application openingMessage = some opened := by
-  exact handle_opening_eq (runtime (setup 2)) (secondActivation 0).application (.alice, 1) 1
+    handle (timeouts (setup 2)) (secondActivation 0).application openingMessage = some opened := by
+  exact handle_opening_eq (timeouts (setup 2)) (secondActivation 0).application (.alice, 1) 1
     (.alice, .prepared 0) .alice .bool revealBinding revealChecks rfl reveal_code
     (nodeView_eq_resolve rfl reveal_code) (second_ready 0) (second_timely 0)
     (by rw [secondActivation_config]; change Player.alice ∉ (∅ : Finset Player); simp) rfl rfl
@@ -398,7 +398,7 @@ private theorem opened_drain : opened.drain = opened :=
 theorem no_config_handle_factor :
     ¬ ∃ execute : nativeGraph.Config → Option nativeGraph.Config,
       ∀ serial : Fin 2,
-        (handle (runtime (setup 2)) (secondActivation serial).application openingMessage).map
+        (handle (timeouts (setup 2)) (secondActivation serial).application openingMessage).map
           EventGraphRuntime.State.config =
             execute (secondActivation serial).application.config := by
   rintro ⟨execute, correct⟩
@@ -456,16 +456,16 @@ theorem completed_application : completed.application = opened := by
   unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
   rw [openingSubmitted_lookup]
   change (app.handle (secondActivation 0).application openingEnvelope).getD _ = _
-  rw [reactiveApplication_handle_of_tokenValid (runtime (setup 2)) (leaks 2)
+  rw [reactiveApplication_handle_of_tokenValid (timeouts (setup 2)) (leaks 2)
     (secondActivation 0).application openingEnvelope rfl]
-  change ((handle (runtime (setup 2)) (secondActivation 0).application openingMessage).map
+  change ((handle (timeouts (setup 2)) (secondActivation 0).application openingMessage).map
     State.drain).getD _ = _
   rw [opening_correct_handle, Option.map_some, opened_drain]
   rfl
 
 theorem opening_legal (past : List app.PlayerEntry) (view : app.PlayerView) :
     openingAction ∈ menu.actions .alice past view := by
-  change openingAction ∈ ((bounds 2).rawMenu (runtime (setup 2)) (leaks 2)).actions _ _ _
+  change openingAction ∈ ((bounds 2).rawMenu (timeouts (setup 2)) (leaks 2)).actions _ _ _
   unfold MessageBounds.rawMenu
   rw [ReactiveApplication.ResponseMenu.fromSubmissions_mem]
   change ⟨openingCall, .none⟩ ∈ (bounds 2).submissions _

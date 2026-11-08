@@ -20,14 +20,14 @@ open Interaction EventGraph GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  {runtime : EventGraphRuntime graph}
+  {timeouts : EventTimeouts graph}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
-  {memory : BindingMemory runtime leaks} {owner : Player}
-  {original repaired : (runtime.reactiveApplication leaks).Execution}
+  {memory : BindingMemory timeouts leaks} {owner : Player}
+  {original repaired : ((reactiveApplication timeouts) leaks).Execution}
 
 /-- The native repair invariant itself preserves successful-opening provenance.
 No source-state decoder or independence of the initial private values is needed. -/
-theorem successful_opening (frame : Frame runtime leaks memory owner original repaired)
+theorem successful_opening (frame : Frame timeouts leaks memory owner original repaired)
     (leftBinding : original.application.BindingInvariant)
     (rightBinding : repaired.application.BindingInvariant)
     {actor : Player} {payload : L.Ty}
@@ -54,22 +54,22 @@ theorem successful_opening (frame : Frame runtime leaks memory owner original re
 /-- An inert application submission is recorded privately using its original
 response. Only equality of the actual emitted packet is needed; private request
 representations need not agree. -/
-theorem inert_submission (frame : Frame runtime leaks memory owner original repaired)
+theorem inert_submission (frame : Frame timeouts leaks memory owner original repaired)
     (left right : WitnessedSubmission graph)
-    (leftInert : (runtime.reactiveApplication leaks).submit original.application owner left =
+    (leftInert : ((reactiveApplication timeouts) leaks).submit original.application owner left =
       original.application)
-    (rightInert : (runtime.reactiveApplication leaks).submit repaired.application owner right =
+    (rightInert : ((reactiveApplication timeouts) leaks).submit repaired.application owner right =
       repaired.application)
     (packet : left.emit original.application owner (original.network.known owner) =
       right.emit repaired.application owner (repaired.network.known owner)) :
-    let app := runtime.reactiveApplication leaks
-    let remembered := memory.record runtime leaks
-      (memory.shadow.inputView runtime leaks (repaired.observe app owner))
+    let app := (reactiveApplication timeouts) leaks
+    let remembered := memory.record timeouts leaks
+      (memory.shadow.inputView timeouts leaks (repaired.observe app owner))
       ⟨some left⟩
-    Frame runtime leaks remembered owner
+    Frame timeouts leaks remembered owner
       (original.respond app owner ⟨some left⟩)
       (repaired.respond app owner ⟨some right⟩) := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   have emitted : left.emit (app.submit original.application owner left) owner
       (original.network.known owner) =
       right.emit (app.submit repaired.application owner right) owner
@@ -85,7 +85,7 @@ theorem inert_submission (frame : Frame runtime leaks memory owner original repa
       (inert : app.submit execution.application owner submission = execution.application) :
       (execution.respond app owner ⟨some submission⟩).application =
         execution.application := inert
-  refine ⟨memory.restoreRecall_submit runtime leaks original repaired owner left right
+  refine ⟨memory.restoreRecall_submit timeouts leaks original repaired owner left right
     frame.lengths frame.past frame.observed frame.network emitted, ?_, ?_, nextNetwork, ?_,
       ?_, ?_, ?_, ?_, ?_⟩
   · change (⟨(repaired.respond app owner ⟨some right⟩).network.observe owner,
@@ -113,7 +113,7 @@ theorem inert_submission (frame : Frame runtime leaks memory owner original repa
     exact frame.slots slot
   · rw [application original left leftInert, application repaired right rightInert]
     exact frame.successful
-  · rw [runtime.submissionRecall_respond, runtime.submissionRecall_respond, frame.submissions]
+  · rw [(submissionRecall_respond timeouts), (submissionRecall_respond timeouts), frame.submissions]
     have calls := congrArg WitnessedPacket.call packet
     change left.call.packet = right.call.packet at calls
     simp only [submittedEvent?, calls]
@@ -121,27 +121,27 @@ theorem inert_submission (frame : Frame runtime leaks memory owner original repa
 /-- Accepted application transitions lift to actual inclusion, including the
 network update and public receipt. Constructor-specific lemmas establish the
 application frame; this lemma adds no assumption about future play. -/
-theorem include_accepted (frame : Frame runtime leaks memory owner original repaired)
+theorem include_accepted (frame : Frame timeouts leaks memory owner original repaired)
     (id : MessageId Player)
-    (endpointClear : (original.includePending (runtime.reactiveApplication leaks)
+    (endpointClear : (original.includePending ((reactiveApplication timeouts) leaks)
       id).application.config.defaulted = ∅)
     (packet : WitnessedPacket graph)
     (found : original.network.lookup id = some ⟨id, packet⟩)
     (valid : packet.tokenValid = true)
     (leftState rightState : State graph)
-    (completed : Frame runtime leaks memory owner
+    (completed : Frame timeouts leaks memory owner
       { original with application := leftState } { repaired with application := rightState })
-    (leftHandled : handle runtime original.application ⟨id, packet.call⟩ =
+    (leftHandled : handle timeouts original.application ⟨id, packet.call⟩ =
       some leftState)
-    (rightHandled : handle runtime repaired.application ⟨id, packet.call⟩ =
+    (rightHandled : handle timeouts repaired.application ⟨id, packet.call⟩ =
       some rightState) :
-    let app := runtime.reactiveApplication leaks
-    Frame runtime leaks memory owner
+    let app := (reactiveApplication timeouts) leaks
+    Frame timeouts leaks memory owner
       { original.includePending app id with environmentRecall := original.environmentRecall ++
         [⟨original.observeEnvironment app, .include id⟩] }
       { repaired.includePending app id with environmentRecall := repaired.environmentRecall ++
         [⟨repaired.observeEnvironment app, .include id⟩] } := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   have rightFound : repaired.network.lookup id = some ⟨id, packet⟩ := frame.network ▸ found
   have nextNetwork : (original.includePending app id).network =
       (repaired.includePending app id).network := by
@@ -149,7 +149,7 @@ theorem include_accepted (frame : Frame runtime leaks memory owner original repa
     rw [frame.network]
   have leftAppliedDrain : (original.includePending app id).application = leftState.drain := by
     simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending, found]
-    rw [reactiveApplication_handle_of_tokenValid runtime leaks _ ⟨id, packet⟩ valid,
+    rw [reactiveApplication_handle_of_tokenValid timeouts leaks _ ⟨id, packet⟩ valid,
       leftHandled]
     rfl
   have leftEmpty : leftState.config.defaulted = ∅ := by
@@ -163,20 +163,20 @@ theorem include_accepted (frame : Frame runtime leaks memory owner original repa
   have applyHandler (execution : app.Execution)
       (located : execution.network.lookup id = some ⟨id, packet⟩)
       (after : State graph) (empty : after.config.defaulted = ∅)
-      (handled : handle runtime execution.application ⟨id, packet.call⟩ = some after) :
+      (handled : handle timeouts execution.application ⟨id, packet.call⟩ = some after) :
       (execution.includePending app id).application = after ∧
       (execution.includePending app id).receipts = execution.receipts ++ [⟨id, true⟩] ∧
       (execution.includePending app id).logs = execution.logs := by
     simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
       located]
-    rw [reactiveApplication_handle_of_tokenValid runtime leaks _ ⟨id, packet⟩ valid, handled]
+    rw [reactiveApplication_handle_of_tokenValid timeouts leaks _ ⟨id, packet⟩ valid, handled]
     simp only [Option.map_some, after.drain_eq_of_empty empty, Option.getD_some,
       Option.isSome_some]
     trivial
   have leftApplied := applyHandler original found leftState leftEmpty leftHandled
   have rightApplied := applyHandler repaired rightFound rightState rightEmpty rightHandled
   refine ⟨?_, ?_, ?_, nextNetwork, ?_, ?_, ?_, ?_, ?_, ?_⟩
-  · change memory.restoreRecall runtime leaks ((repaired.includePending app id).logs owner) =
+  · change memory.restoreRecall timeouts leaks ((repaired.includePending app id).logs owner) =
       (original.includePending app id).logs owner
     rw [leftApplied.2.2, rightApplied.2.2]
     exact frame.past
@@ -215,27 +215,27 @@ theorem include_accepted (frame : Frame runtime leaks memory owner original repa
       (repaired.includePending app id).application.config.store
     rw [leftApplied.1, rightApplied.1]
     exact completed.successful
-  · change runtime.submissionRecall leaks ((original.includePending app id).logs owner) =
-      runtime.submissionRecall leaks ((repaired.includePending app id).logs owner)
+  · change (submissionRecall timeouts) leaks ((original.includePending app id).logs owner) =
+      (submissionRecall timeouts) leaks ((repaired.includePending app id).logs owner)
     rw [leftApplied.2.2, rightApplied.2.2]
     exact frame.submissions
 
 /-- A request that discloses an unchanged authentic candidate transmits the
 same certificate on the repaired side. Forwarding is included, with identical
 actual network knowledge; no certificate is assumed to be owner-exclusive. -/
-theorem opening_submission (frame : Frame runtime leaks memory owner original repaired)
+theorem opening_submission (frame : Frame timeouts leaks memory owner original repaired)
     (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
     (evidence : EvidenceRequest graph)
     (rightFixed : repaired.application.candidates.lookup candidate = .openable raw)
     (certified : (WitnessedSubmission.mk ⟨.opening event candidate raw, none⟩ evidence |>.emit
       original.application owner (original.network.known owner)).evidence =
         some ⟨candidate, raw⟩) :
-    let app := runtime.reactiveApplication leaks
+    let app := (reactiveApplication timeouts) leaks
     let response : app.Action :=
       ⟨some ⟨⟨.opening event candidate raw, none⟩, evidence⟩⟩
-    Frame runtime leaks
-      (memory.record runtime leaks
-        (memory.shadow.inputView runtime leaks (repaired.observe app owner)) response)
+    Frame timeouts leaks
+      (memory.record timeouts leaks
+        (memory.shadow.inputView timeouts leaks (repaired.observe app owner)) response)
       owner (original.respond app owner response) (repaired.respond app owner response) := by
   apply frame.inert_submission _ _ rfl rfl
   have rightCertified :
@@ -267,7 +267,7 @@ theorem opening_submission (frame : Frame runtime leaks memory owner original re
 /-- A genuine opening of an unchanged binding preserves the entire frame
 through actual inclusion. The result is the existing deferred-guard result;
 this lemma does not identify application acceptance with successful disclosure. -/
-theorem opening_inclusion (frame : Frame runtime leaks memory owner original repaired)
+theorem opening_inclusion (frame : Frame timeouts leaks memory owner original repaired)
     (clear : original.application.config.defaulted = ∅)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
@@ -279,7 +279,7 @@ theorem opening_inclusion (frame : Frame runtime leaks memory owner original rep
       (graph.nodes event) = .resolve actor payload binding checks)
     (node : nodeView graph event = .resolve actor payload binding checks outputEq codeEq)
     (ready : original.application.config.cut.Ready event)
-    (timely : original.application.WithinDeadline runtime event)
+    (timely : original.application.WithinDeadline timeouts event)
     (sender : id.1 = actor) (owned : candidate.1 = actor)
     (associated : original.application.accepted binding.field = some candidate)
     (value : L.Val payload)
@@ -293,16 +293,16 @@ theorem opening_inclusion (frame : Frame runtime leaks memory owner original rep
     (evidence : Option (OpeningFact graph))
     (found : original.network.lookup id =
       some ⟨id, ⟨.opening event candidate ⟨payload, value⟩, evidence, some ⟨event⟩⟩⟩)
-    (endpointClear : (original.includePending (runtime.reactiveApplication leaks)
+    (endpointClear : (original.includePending ((reactiveApplication timeouts) leaks)
       id).application.config.defaulted = ∅) :
-    let app := runtime.reactiveApplication leaks
-    Frame runtime leaks memory owner
+    let app := (reactiveApplication timeouts) leaks
+    Frame timeouts leaks memory owner
       { original.includePending app id with environmentRecall := original.environmentRecall ++
         [⟨original.observeEnvironment app, .include id⟩] }
       { repaired.includePending app id with environmentRecall := repaired.environmentRecall ++
         [⟨repaired.observeEnvironment app, .include id⟩] } := by
   obtain ⟨rightReady, rightTimely, rightAssociated, rightResolved⟩ :=
-    opening_right_facts runtime original.application repaired.application frame.publicView
+    opening_right_facts timeouts original.application repaired.application frame.publicView
       event actor payload binding checks candidate ready timely associated value leftStored
         rightStored result resolved
   have rightClear : repaired.application.config.defaulted = ∅ :=
@@ -314,11 +314,11 @@ theorem opening_inclusion (frame : Frame runtime leaks memory owner original rep
     (frame.complete_unmodified event ready rightReady
       (onlyBindings.public_value_none (.inr event) visible)
       (onlyBindings.public_action_none event visible) _ _)
-    (handle_opening_eq runtime original.application id event candidate actor payload binding checks
+    (handle_opening_eq timeouts original.application id event candidate actor payload binding checks
       outputEq codeEq node ready timely (by simp [clear]) sender owned associated value leftFixed
         leftStored result
         resolved)
-    (handle_opening_eq runtime repaired.application id event candidate actor payload binding checks
+    (handle_opening_eq timeouts repaired.application id event candidate actor payload binding checks
       outputEq codeEq node rightReady rightTimely (by simp [rightClear]) sender owned
         rightAssociated value rightFixed
         rightStored result rightResolved)

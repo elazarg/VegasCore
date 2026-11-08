@@ -15,10 +15,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {memory : BindingMemory runtime leaks} {owner : Player}
-  {original repaired : (application setup runtime leaks).Execution}
+  {memory : BindingMemory timeouts leaks} {owner : Player}
+  {original repaired : (application setup timeouts leaks).Execution}
 
 namespace EventGraphRuntime.BindingMemory.Frame
 
@@ -27,7 +27,7 @@ opening inclusion preserves the frame, including rejection. The successful
 binding is unchanged by directed repair, so both native handlers accept the
 same packets and execute the same public deferred-guard result. -/
 theorem ready_opening_inclusion
-    (frame : Frame runtime leaks memory owner original repaired)
+    (frame : Frame timeouts leaks memory owner original repaired)
     (clear : original.application.config.defaulted = ∅)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (leftBinding : original.application.BindingInvariant)
@@ -47,10 +47,10 @@ theorem ready_opening_inclusion
     (found : original.network.lookup id =
       some ⟨id, ⟨.opening event candidate raw, evidence, some ⟨event⟩⟩⟩)
     (endpointClear :
-      (original.includePending (application setup runtime leaks) id).application.config.defaulted =
+      (original.includePending (application setup timeouts leaks) id).application.config.defaulted =
         ∅) :
-    let app := application setup runtime leaks
-    Frame runtime leaks memory owner
+    let app := application setup timeouts leaks
+    Frame timeouts leaks memory owner
       { original.includePending app id with environmentRecall := original.environmentRecall ++
         [⟨original.observeEnvironment app, .include id⟩] }
       { repaired.includePending app id with environmentRecall := repaired.environmentRecall ++
@@ -62,27 +62,27 @@ theorem ready_opening_inclusion
   have rightReady : repaired.application.config.cut.Ready event := by
     rw [← State.publicView_eventReady, ← frame.publicView, State.publicView_eventReady]
     exact ready
-  cases handled : handle runtime original.application
+  cases handled : handle timeouts original.application
       ⟨id, .opening event candidate raw⟩ with
   | none =>
-      have rightRejected : handle runtime repaired.application
+      have rightRejected : handle timeouts repaired.application
           ⟨id, .opening event candidate raw⟩ = none := by
-        cases rightHandled : handle runtime repaired.application
+        cases rightHandled : handle timeouts repaired.application
             ⟨id, .opening event candidate raw⟩ with
         | none => rfl
         | some next =>
-            obtain ⟨previous, previousHandled, _⟩ := handle_opening_accepted_transfer (runtime :=
-              runtime)
+            obtain ⟨previous, previousHandled, _⟩ := handle_opening_accepted_transfer (timeouts :=
+              timeouts)
               repaired.application original.application frame.publicView.symm rightBinding
               leftBinding rightReady node sameBinding.symm id candidate raw rightHandled
             rw [handled] at previousHandled
             cases previousHandled
       exact frame.include_rejected id _ found
-        (reactiveHandle_none (runtime := runtime) (leaks := leaks) handled)
-        (reactiveHandle_none (runtime := runtime) (leaks := leaks) rightRejected)
+        (reactiveHandle_none (timeouts := timeouts) (leaks := leaks) handled)
+        (reactiveHandle_none (timeouts := timeouts) (leaks := leaks) rightRejected)
   | some next =>
       obtain ⟨timely, sender, owned, associated, chosen, rawEq, stored⟩ :=
-        handle_opening_accepted_facts (runtime := runtime) original.application next ready node id
+        handle_opening_accepted_facts (timeouts := timeouts) original.application next ready node id
           candidate raw handled
       subst raw
       have chosenEq : chosen = value := PublicationResult.success.inj

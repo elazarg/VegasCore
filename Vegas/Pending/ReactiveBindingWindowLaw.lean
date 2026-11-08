@@ -18,16 +18,16 @@ open Interaction EventGraph GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  {runtime : EventGraphRuntime graph}
+  {timeouts : EventTimeouts graph}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
-  {memory : BindingMemory runtime leaks} {owner : Player}
-  {original repaired : (runtime.reactiveApplication leaks).Execution}
+  {memory : BindingMemory timeouts leaks} {owner : Player}
+  {original repaired : ((reactiveApplication timeouts) leaks).Execution}
 
 /-- The pending candidate facts required for delayed inclusion follow from
 the actual repair response. They are not assumptions about an unobserved value
 chosen by the opponent or by an auditor. -/
 theorem binding_submission_pending
-    (frame : Frame runtime leaks memory owner original repaired)
+    (frame : Frame timeouts leaks memory owner original repaired)
     (event : graph.EventId) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
@@ -35,11 +35,11 @@ theorem binding_submission_pending
     (node : nodeView graph event = .bind owner payload outputEq codeEq)
     (serial : Nat) (opening : Option (Raw L))
     (fresh : original.application.candidates.lookup (owner, .prepared serial) = .fresh) :
-    let app := runtime.reactiveApplication leaks
+    let app := (reactiveApplication timeouts) leaks
     let view := repaired.observe app owner
     let response : app.Action :=
       ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
-    let changed := memory.repairResponse runtime leaks owner view response
+    let changed := memory.repairResponse timeouts leaks owner view response
     let left := original.respond app owner response
     let right := repaired.respond app owner changed.1
     left.application.candidates.lookup (owner, .prepared serial) ≠ .fresh ∧
@@ -50,33 +50,33 @@ theorem binding_submission_pending
         (left.application.bindingResult (owner, .prepared serial) payload)) ∧
       ∀ value, left.application.bindingResult (owner, .prepared serial) payload = .success value →
         right.application.bindingResult (owner, .prepared serial) payload = .success value := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   let view := repaired.observe app owner
   let response : app.Action :=
     ⟨some ⟨⟨.commitment event (owner, .prepared serial), opening⟩, .none⟩⟩
-  let changed := memory.repairResponse runtime leaks owner view response
+  let changed := memory.repairResponse timeouts leaks owner view response
   let left := original.respond app owner response
   let right := repaired.respond app owner changed.1
   have actualFresh := (frame.slots (.prepared serial)).mp fresh
-  have ownFresh : (memory.shadow.inputView runtime leaks view).application.candidates
+  have ownFresh : (memory.shadow.inputView timeouts leaks view).application.candidates
       (.prepared serial) = .fresh := by
     rw [frame.observed]
     exact fresh
   have localFresh : view.application.candidates (.prepared serial) = .fresh := actualFresh
   have result : left.application.bindingResult (owner, .prepared serial) payload =
       (opening.bind fun raw => raw.as? payload).elim .failure PublicationResult.success :=
-    runtime.submitted_bindingResult leaks original owner event payload serial opening fresh
+    (submitted_bindingResult timeouts) leaks original owner event payload serial opening fresh
   change _ ∧ _ ∧ _ ∧ _ ∧ _
   refine ⟨submitStep_commitment_fixed _ owner event (.prepared serial), ?_, ?_, ?_, ?_⟩
   · cases decoded : opening.bind (fun raw => raw.as? payload) with
     | none =>
         change (repaired.respond app owner changed.1).application.candidates.lookup _ ≠ .fresh
-        rw [memory.repairResponse_unusable runtime leaks owner view event payload outputEq codeEq
+        rw [memory.repairResponse_unusable timeouts leaks owner view event payload outputEq codeEq
           node serial opening ownFresh actualFresh decoded]
         exact submitStep_commitment_fixed _ owner event (.prepared serial)
     | some value =>
         change (repaired.respond app owner changed.1).application.candidates.lookup _ ≠ .fresh
-        rw [memory.repairResponse_usable runtime leaks owner view event payload outputEq codeEq
+        rw [memory.repairResponse_usable timeouts leaks owner view event payload outputEq codeEq
           node serial opening ownFresh actualFresh value decoded]
         exact submitStep_commitment_fixed _ owner event (.prepared serial)
   · change changed.2.actions event = some (cast (congrArg EventField.Action outputEq.symm)
@@ -96,9 +96,9 @@ theorem binding_submission_pending
         simp only [decoded, Option.elim_some, PublicationResult.success.injEq] at same
         subst chosen
         change (repaired.respond app owner changed.1).application.bindingResult _ _ = _
-        rw [memory.repairResponse_usable runtime leaks owner view event payload outputEq codeEq
+        rw [memory.repairResponse_usable timeouts leaks owner view event payload outputEq codeEq
           node serial opening ownFresh actualFresh value decoded]
-        rw [runtime.submitted_bindingResult leaks repaired owner event payload serial
+        rw [(submitted_bindingResult timeouts) leaks repaired owner event payload serial
           opening actualFresh, decoded, Option.elim_some]
 
 end Vegas.EventGraphRuntime.BindingMemory.Frame

@@ -114,17 +114,17 @@ end Generic
 section Runtime
 
 variable {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- A submission keeps freshness of prepared slots in step with the inputs. -/
 theorem preparedFresh_submit (state : EventGraphRuntime.State (graph setup))
     (inputs : List (Message Player (WitnessedPacket (graph setup)))) (who : Player)
-    (material : (application setup runtime leaks).Submission)
+    (material : (application setup timeouts leaks).Submission)
     (message : Message Player (WitnessedPacket (graph setup)))
     (sender : message.sender = who) (call : message.payload.call = material.call.packet)
     (fresh : PreparedFresh state inputs) :
-    PreparedFresh ((application setup runtime leaks).submit state who material) (inputs ++
+    PreparedFresh ((application setup timeouts leaks).submit state who material) (inputs ++
       [message]) := by
   intro owner serial
   rw [slotCommitted_append]
@@ -182,7 +182,8 @@ theorem preparedFresh_submit (state : EventGraphRuntime.State (graph setup))
             cases otherCall
         · intro uncommitted committed
           exact uncommitted (Or.inl committed)
-  · have unchanged : ((application setup runtime leaks).submit state who material).candidates.lookup
+  · have unchanged : ((application setup timeouts leaks).submit state who
+    material).candidates.lookup
         (owner, .prepared serial) = state.candidates.lookup (owner, .prepared serial) := by
       change (submitStep (material.call.register state who) who
         material.call.packet).candidates.lookup (owner, .prepared serial) = _
@@ -204,9 +205,10 @@ theorem preparedFresh_submit (state : EventGraphRuntime.State (graph setup))
 
 /-- A scheduler command keeps every prepared slot's meaning: inclusion freezes
 only the handle of a commitment already submitted, which is no longer fresh. -/
-theorem environment_lookup_prepared (execution next : (application setup runtime leaks).Execution)
-    (command : (application setup runtime leaks).Command)
-    (reached : next ∈ (execution.environmentStep (application setup runtime leaks) command).support)
+theorem environment_lookup_prepared (execution next : (application setup timeouts leaks).Execution)
+    (command : (application setup timeouts leaks).Command)
+    (reached : next ∈ (execution.environmentStep (application setup timeouts leaks)
+      command).support)
     (facts : SettledFacts setup leaks execution)
     (fresh : PreparedFresh execution.application execution.network.inputs)
     (owner : Player) (serial : Nat) :
@@ -229,14 +231,14 @@ theorem environment_lookup_prepared (execution next : (application setup runtime
   | application command =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      rw [(reactiveApplication_environment_tables runtime leaks execution.application state
+      rw [(reactiveApplication_environment_tables timeouts leaks execution.application state
         command changed).2]
   | «include» id =>
       unfold ReactiveApplication.Execution.environmentStep at reached
       rw [PMF.support_map] at reached
       obtain ⟨updated, supported, rfl⟩ := reached
       cases (PMF.mem_support_pure_iff _ _).mp supported
-      change (execution.includePending (application setup runtime leaks)
+      change (execution.includePending (application setup timeouts leaks)
         id).application.candidates.lookup _ = _
       cases found : execution.network.lookup id with
       | none =>
@@ -244,19 +246,19 @@ theorem environment_lookup_prepared (execution next : (application setup runtime
             found]
       | some message =>
           obtain ⟨identified, present, _⟩ := includePending_found execution.network id message found
-          cases accepted : (application setup runtime leaks).handle execution.application message
+          cases accepted : (application setup timeouts leaks).handle execution.application message
             with
           | none =>
               simp only [ReactiveApplication.Execution.includePending,
                 MessageNetwork.includePending, found, accepted, Option.getD_none]
           | some after =>
               have applicationEq :
-                  (execution.includePending (application setup runtime leaks) id).application =
+                  (execution.includePending (application setup timeouts leaks) id).application =
                     after := by
                 simp only [ReactiveApplication.Execution.includePending,
                   MessageNetwork.includePending, found, accepted, Option.getD_some]
               rw [applicationEq]
-              rcases reactiveHandle_tables_cases runtime leaks execution.application after
+              rcases reactiveHandle_tables_cases timeouts leaks execution.application after
                   message accepted with
                 ⟨event, handle, packet, frozen, _accepted, handleOwner⟩ | ⟨_accepted, same⟩
               · rw [frozen]
@@ -272,26 +274,26 @@ theorem environment_lookup_prepared (execution next : (application setup runtime
               · rw [same]
 
 /-- Prepared freshness, with the settled facts it rests on. -/
-def FreshFacts (execution : (application setup runtime leaks).Execution) : Prop :=
+def FreshFacts (execution : (application setup timeouts leaks).Execution) : Prop :=
   SettledFacts setup leaks execution ∧
     PreparedFresh execution.application execution.network.inputs
 
-theorem freshFacts_serviceInvariant (scheduler : (application setup runtime leaks).Scheduler) :
-    (application setup runtime leaks).ServiceInvariant scheduler
-      (FreshFacts (runtime := runtime)) where
+theorem freshFacts_serviceInvariant (scheduler : (application setup timeouts leaks).Scheduler) :
+    (application setup timeouts leaks).ServiceInvariant scheduler
+      (FreshFacts (timeouts := timeouts)) where
   respond execution who action valid := by
     refine ⟨settledFacts_respond execution valid.1 who action, ?_⟩
     rcases action with ⟨transmission⟩
     cases transmission with
     | none => exact valid.2
     | some material =>
-        exact preparedFresh_submit (runtime := runtime) execution.application
+        exact preparedFresh_submit (timeouts := timeouts) execution.application
           execution.network.inputs who material _
           rfl rfl valid.2
   environment execution next command valid _ reached := by
     refine ⟨settledFacts_environment execution next command valid.1 reached, ?_⟩
     intro owner serial
-    rw [environment_lookup_prepared (runtime := runtime) execution next command reached valid.1
+    rw [environment_lookup_prepared (timeouts := timeouts) execution next command reached valid.1
       valid.2 owner serial,
       (environmentStep_shape setup leaks execution next command reached).1]
     exact valid.2 owner serial
@@ -300,13 +302,14 @@ theorem freshFacts_serviceInvariant (scheduler : (application setup runtime leak
 supplied runtime from its initial law, under arbitrary responses and every
 scheduler, a prepared slot is fresh exactly when no submitted packet of its
 owner commits to it. -/
-theorem preparedFresh_history (horizon : Nat) (scheduler : (application setup runtime
+theorem preparedFresh_history (horizon : Nat) (scheduler : (application setup timeouts
   leaks).Scheduler)
-    {control : (application setup runtime leaks).Control}
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace
       (some control)) :
     PreparedFresh control.execution.application control.execution.network.inputs :=
-  ((freshFacts_serviceInvariant (runtime := runtime) scheduler).history (initialLaw setup) horizon
+  ((freshFacts_serviceInvariant (timeouts := timeouts) scheduler).history (initialLaw setup) horizon
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       refine ⟨settledFacts_initial _, fun owner serial => ?_⟩

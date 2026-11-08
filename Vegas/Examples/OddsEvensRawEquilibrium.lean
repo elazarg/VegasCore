@@ -20,7 +20,7 @@ open SourceProgram EventGraphRuntime Interaction GameTheory GameTheory.Protocol
 
 open OddsEvensService
 
-local notation "rt" => OddsEvensService.runtime
+local notation "rt" => OddsEvensService.timeouts
 local notation "steps" => OddsEvensService.horizon
 local notation "serviceScheduler" => OddsEvensService.scheduler
 

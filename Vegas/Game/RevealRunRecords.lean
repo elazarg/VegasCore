@@ -19,19 +19,19 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime Eve
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+  {mode : EventGraph.ExecutionMode} {duration : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 /-- **A round's new records.** Every record a round adds, from an execution
 whose ready events are reveals, records no decision, or completes an event that
 was ready when the round began. -/
 theorem round_new_record_ready
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
-    (current next : (serviceApplication setup mode deadline leaks).Execution)
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode duration leaks).Policy}
+    (current next : (serviceApplication setup mode duration leaks).Execution)
     (publications : ∀ event, current.application.config.cut.Ready event →
       ((serviceGraph setup mode).outputLayout event).IsPublication)
-    (reached : next ∈ ((serviceApplication setup mode deadline leaks).round scheduler players
+    (reached : next ∈ ((serviceApplication setup mode duration leaks).round scheduler players
       current).support)
     (event : (serviceGraph setup mode).EventId)
     (fresh : event ∉ current.application.config.cut.completed)
@@ -39,13 +39,13 @@ theorem round_new_record_ready
     (∀ record, completionOf next.application.config event = some record →
       record.decision = none) ∨ current.application.config.cut.Ready event := by
   classical
-  let app := serviceApplication setup mode deadline leaks
-  let runtime := serviceRuntime setup mode deadline
+  let app := serviceApplication setup mode duration leaks
+  let timeouts := serviceTimeouts setup mode duration
   obtain ⟨command, selected, middle, moved, cases⟩ := round_cases setup leaks reached
   have nextConfig : next.application.config = middle.application.config := by
     rcases cases with ⟨_, rfl⟩ | ⟨actor, _, response, _, rfl⟩
     · rfl
-    · exact (reactive_respond_application runtime leaks middle actor response).1
+    · exact (reactive_respond_application timeouts leaks middle actor response).1
   rw [nextConfig] at done ⊢
   obtain ⟨record, recorded⟩ := Option.isSome_iff_exists.mp
     ((completionOf_isSome_iff middle.application.config event).mpr done)
@@ -109,14 +109,14 @@ theorem round_new_record_ready
               | commitment named candidate =>
                   rw [call] at handled
                   obtain ⟨_, readyNamed, _, owner, payload, outputEq, codeEq, _⟩ :=
-                    (handle_commitment_iff runtime current.application native message.id named
+                    (handle_commitment_iff timeouts current.application native message.id named
                       candidate).mp handled
                   have publication := publications named readyNamed
                   rw [outputEq] at publication
                   exact publication.elim
               | opening named candidate raw =>
                   rw [call] at handled
-                  obtain ⟨readyNamed, action, member, -⟩ := handle_opening_config_step runtime
+                  obtain ⟨readyNamed, action, member, -⟩ := handle_opening_config_step timeouts
                     current.application native message.id named candidate raw handled
                   rcases newRecord_step_drain current.application.config native named readyNamed
                       action member record newRecord present with
@@ -128,10 +128,10 @@ theorem round_new_record_ready
   | application operation =>
       obtain ⟨updated, supported', rfl⟩ := PMF.support_map .. ▸ moved
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported'
-      change state ∈ ((EventGraphRuntime.environmentStep runtime current.application
+      change state ∈ ((EventGraphRuntime.environmentStep timeouts current.application
         operation).map EventGraphRuntime.State.drain).support at changed
       obtain ⟨native, nativeMoved, rfl⟩ := PMF.support_map .. ▸ changed
-      rcases completionStep_environmentStep runtime current.application native operation
+      rcases completionStep_environmentStep timeouts current.application native operation
           nativeMoved with ⟨same, _, _⟩ | ⟨stepped, readyStepped, action, member, _, _⟩
       · have fresh' : record ∉ native.config.history := by rw [same]; exact newRecord
         obtain ⟨silent, -⟩ := drainRecord_of_not_mem native record fresh' present

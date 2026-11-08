@@ -29,13 +29,13 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
 section Generic
 
 variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 variable {setup} {leaks}
@@ -52,15 +52,15 @@ theorem deferral_nonneg {turns : Nat} (timing : TurnTiming setup turns mode)
 
 /-- Rounds from a terminal configuration keep the configuration. -/
 theorem runRounds_config_terminal
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (count : Nat)
-    (execution next : (serviceApplication setup mode deadline leaks).Execution)
+    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
+    (players : Player → (serviceApplication setup mode duration leaks).Policy) (count : Nat)
+    (execution next : (serviceApplication setup mode duration leaks).Execution)
     (terminal : execution.application.config.cut.IsPrefix
       (serviceGraph setup mode).order.eventCount)
-    (reached : next ∈ ((serviceApplication setup mode deadline leaks).runRounds scheduler players
+    (reached : next ∈ ((serviceApplication setup mode duration leaks).runRounds scheduler players
       count execution).support) :
     next.application.config = execution.application.config := by
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   induction count generalizing execution with
   | zero =>
       cases (PMF.mem_support_pure_iff _ _).mp reached
@@ -72,7 +72,7 @@ theorem runRounds_config_terminal
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
       have stepConfig : stepped.application.config = execution.application.config :=
         EventGraph.Config.Step.path_eq_of_terminal
-          (((serviceRuntime setup mode deadline).reactiveApplication_graphSteps
+          (((reactiveApplication_graphSteps (serviceTimeouts setup mode duration))
             leaks).environmentStep execution stepped command stepMember) terminal.terminal
       have middleConfig : middle.application.config = execution.application.config := by
         change middle ∈ (app.resume players (command.actor? app) stepped).support at resumed
@@ -87,7 +87,8 @@ theorem runRounds_config_terminal
             change middle ∈ (app.invoke players who stepped).support at resumed
             rw [ReactiveApplication.invoke, PMF.support_map] at resumed
             obtain ⟨response, _, rfl⟩ := resumed
-            rw [((serviceRuntime setup mode deadline).reactive_respond_application leaks stepped who
+            rw [((reactive_respond_application (serviceTimeouts setup mode duration)) leaks
+              stepped who
               response).1, stepConfig]
       have terminalMiddle : middle.application.config.cut.IsPrefix
           (serviceGraph setup mode).order.eventCount := by
@@ -99,24 +100,24 @@ end Generic
 /-- The approximate version of `BoundaryContinuationLaw`: from every completion
 boundary within the horizon, the players' run is within `error rank` of the
 source continuation. -/
-def BoundaryContinuationWithin (scheduler : (application setup runtime leaks).Scheduler)
+def BoundaryContinuationWithin (scheduler : (application setup timeouts leaks).Scheduler)
   (horizon : Nat)
-    (players : Player → (application setup runtime leaks).Policy)
+    (players : Player → (application setup timeouts leaks).Policy)
     (profile : BehavioralProfile setup.program) (error : Nat → ℝ) : Prop :=
-  ∀ rank (execution : (application setup runtime leaks).Execution),
+  ∀ rank (execution : (application setup timeouts leaks).Execution),
     CompletionBoundary setup leaks scheduler players rank execution →
     execution.environmentRecall.length ≤ horizon →
     PMF.WithinTV (error rank)
-      (((application setup runtime leaks).runToHorizon scheduler players horizon execution).map
-        (fun final => sourceReadout setup runtime leaks ((application setup runtime
+      (((application setup timeouts leaks).runToHorizon scheduler players horizon execution).map
+        (fun final => sourceReadout setup timeouts leaks ((application setup timeouts
           leaks).finished final)))
       (sourceContinuation setup profile rank execution.application.config)
 
 /-- With no error, the approximate law is the exact one. -/
-theorem BoundaryContinuationWithin.law {scheduler : (application setup runtime leaks).Scheduler}
-    {horizon : Nat} {players : Player → (application setup runtime leaks).Policy}
+theorem BoundaryContinuationWithin.law {scheduler : (application setup timeouts leaks).Scheduler}
+    {horizon : Nat} {players : Player → (application setup timeouts leaks).Policy}
     {profile : BehavioralProfile setup.program} {error : Nat → ℝ}
-    (within : BoundaryContinuationWithin setup runtime leaks scheduler horizon players profile
+    (within : BoundaryContinuationWithin setup timeouts leaks scheduler horizon players profile
       error)
     (zero : ∀ rank, error rank = 0) :
     BoundaryContinuationLaw setup leaks scheduler horizon players profile := by
@@ -127,26 +128,27 @@ theorem BoundaryContinuationWithin.law {scheduler : (application setup runtime l
 variable {setup leaks}
 /-- A stopped point of a completion run from a completion boundary at which
 the event has completed is a later actual boundary, within the horizon. -/
-theorem CompletionBoundary.stopped {scheduler : (application setup runtime leaks).Scheduler}
-    {players : Player → (application setup runtime leaks).Policy} {horizon : Nat}
-    (event : (graph setup).EventId) (execution : (application setup runtime leaks).Execution)
+theorem CompletionBoundary.stopped {scheduler : (application setup timeouts leaks).Scheduler}
+    {players : Player → (application setup timeouts leaks).Policy} {horizon : Nat}
+    (event : (graph setup).EventId) (execution : (application setup timeouts leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler players event.val execution)
     (bounded : execution.environmentRecall.length ≤ horizon)
-    (stopped : (application setup runtime leaks).Execution)
-    (reached : stopped ∈ ((application setup runtime leaks).runUntilHorizon scheduler players
+    (stopped : (application setup timeouts leaks).Execution)
+    (reached : stopped ∈ ((application setup timeouts leaks).runUntilHorizon scheduler players
       (fun final => event ∈ final.application.config.cut.completed) horizon execution).support)
     (finished : event ∈ stopped.application.config.cut.completed) :
     stopped.environmentRecall.length ≤ horizon ∧
       ∃ actualRank, event.val < actualRank ∧
         CompletionBoundary setup leaks scheduler players actualRank stopped := by
-  let app := application setup runtime leaks
-  obtain ⟨rank, ranked, seen⟩ := roundsFrom_ranked setup runtime leaks scheduler players _ execution
+  let app := application setup timeouts leaks
+  obtain ⟨rank, ranked, seen⟩ := roundsFrom_ranked setup timeouts leaks scheduler players _
+    execution
     boundary.supported
   have rankEq := EventOrder.Cut.IsPrefix.unique ranked boundary.ordered
   subst rankEq
   obtain ⟨used, within, _, length⟩ := app.runUntil_runRounds scheduler players _ _ execution
     stopped reached
-  obtain ⟨stoppedSeen, stoppedConfig⟩ := runUntil_completion_prefix setup runtime leaks scheduler
+  obtain ⟨stoppedSeen, stoppedConfig⟩ := runUntil_completion_prefix setup timeouts leaks scheduler
     players event _ execution stopped boundary.ordered seen reached
   rcases stoppedConfig with current | ⟨actualRank, later, ordered⟩
   · exact (Nat.lt_irrefl _ ((current.2 event).mp finished)).elim
@@ -163,14 +165,14 @@ variable (setup leaks)
 Automatic completion may cross several source instructions before the next boundary. -/
 theorem CompletionBoundary.runToHorizon_law {Outcome : Type*}
     (profile : (graph setup).BehavioralProfile) (read : (graph setup).Config → Outcome)
-    {scheduler : (application setup runtime leaks).Scheduler}
-    {players : Player → (application setup runtime leaks).Policy} {horizon : Nat}
-    (completes : runtime.CompletesPlay leaks (initialLaw setup) horizon scheduler)
+    {scheduler : (application setup timeouts leaks).Scheduler}
+    {players : Player → (application setup timeouts leaks).Policy} {horizon : Nat}
+    (completes : (CompletesPlay timeouts) leaks (initialLaw setup) horizon scheduler)
     (completionLaw : ∀ (event : (graph setup).EventId)
-      (execution : (application setup runtime leaks).Execution),
+      (execution : (application setup timeouts leaks).Execution),
       CompletionBoundary setup leaks scheduler players event.val execution →
       execution.environmentRecall.length ≤ horizon →
-      ((application setup runtime leaks).runUntilHorizon scheduler players
+      ((application setup timeouts leaks).runUntilHorizon scheduler players
         (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
           (fun final => ((graph setup).runPlan
             ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
@@ -178,16 +180,16 @@ theorem CompletionBoundary.runToHorizon_law {Outcome : Type*}
         ((graph setup).runPlan
           ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
           execution.application.config.remaining execution.application.config).map read)
-    {rank : Nat} (execution : (application setup runtime leaks).Execution)
+    {rank : Nat} (execution : (application setup timeouts leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler players rank execution)
     (bounded : execution.environmentRecall.length ≤ horizon) :
-    ((application setup runtime leaks).runToHorizon scheduler players horizon execution).map
+    ((application setup timeouts leaks).runToHorizon scheduler players horizon execution).map
         (fun final => read final.application.config) =
       ((graph setup).runPlan
         ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
         execution.application.config.remaining execution.application.config).map read := by
   classical
-  let app := application setup runtime leaks
+  let app := application setup timeouts leaks
   let plan := (graph setup).policyPlan profile (graph setup).canonicalScheduler
   generalize remainingEq : execution.application.config.remaining = remaining
   induction remaining using Nat.strong_induction_on generalizing rank execution with
@@ -239,7 +241,7 @@ theorem CompletionBoundary.runToHorizon_law {Outcome : Type*}
                 rw [terminal]
                 exact Finset.mem_univ _
             obtain ⟨stoppedBounded, actualRank, later, nextBoundary⟩ :=
-              boundary.stopped runtime event execution bounded stopped reached stoppedDone
+              boundary.stopped timeouts event execution bounded stopped reached stoppedDone
             have decrease : stopped.application.config.remaining < remaining := by
               have oldCard : execution.application.config.cut.completed.card = rank :=
                 boundary.ordered.card

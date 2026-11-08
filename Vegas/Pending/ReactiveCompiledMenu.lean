@@ -69,16 +69,16 @@ theorem finite_binding_values (covered : bounds.CoversBindingValues)
   exact ⟨⟨value, (bounds.typedValues_mem payload value).mpr
     ⟨⟨payload, value⟩, all value, Raw.as?_mk payload value⟩⟩, rfl⟩
 
-variable [Fintype Player] (runtime : EventGraphRuntime graph)
+variable [Fintype Player] (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 open Classical in
 /-- All semantic choices at the player's own turn, before intersecting with
 the explicit finite target bounds. Samples remain environment commands. -/
 def decisionActions (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView) :
-    Finset (runtime.reactiveApplication leaks).Action :=
+    (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView) :
+    Finset ((reactiveApplication timeouts) leaks).Action :=
   match view.application.publicView.ownTurn? who with
   | none => {⟨none⟩}
   | some event =>
@@ -87,21 +87,21 @@ def decisionActions (who : Player)
         | .sample .. => {⟨none⟩}
         | .bind _ payload outputEq _ =>
             (bounds.bindingChoices payload).image fun choice =>
-              runtime.serviceDecision leaks who past view event
+              (serviceDecision timeouts) leaks who past view event
                 (cast (congrArg EventField.Action outputEq.symm) choice)
         | .resolve _ _ _ _ outputEq _ =>
             Finset.univ.image fun disclose : Bool =>
-              runtime.serviceDecision leaks who past view event
+              (serviceDecision timeouts) leaks who past view event
                 (cast (congrArg EventField.Action outputEq.symm) disclose)
       else {⟨none⟩}
 
 omit [Fintype Player] in
 /-- Omission or withholding gives silence at every strategic opportunity. -/
 theorem silence_decisionActions (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView) :
-    (⟨none⟩ : (runtime.reactiveApplication leaks).Action) ∈
-      bounds.decisionActions runtime leaks who past view := by
+    (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView) :
+    (⟨none⟩ : ((reactiveApplication timeouts) leaks).Action) ∈
+      bounds.decisionActions timeouts leaks who past view := by
   classical
   unfold decisionActions
   split
@@ -124,40 +124,40 @@ open Classical in
 /-- Ordinary opportunities permit waiting. A
 fresh source decision is available only before its event has been submitted. -/
 def compiledActions (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView) :
-    Finset (runtime.reactiveApplication leaks).Action :=
-  (bounds.decisionActions runtime leaks who past view).filter
-    (fun response => runtime.firstSubmission leaks past response) ∩
-      (bounds.menu runtime leaks).actions who past view
+    (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView) :
+    Finset ((reactiveApplication timeouts) leaks).Action :=
+  (bounds.decisionActions timeouts leaks who past view).filter
+    (fun response => (firstSubmission timeouts) leaks past response) ∩
+      (bounds.menu timeouts leaks).actions who past view
 
 theorem silence_compiled (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView) :
-    (⟨none⟩ : (runtime.reactiveApplication leaks).Action) ∈
-      bounds.compiledActions runtime leaks who past view := by
+    (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView) :
+    (⟨none⟩ : ((reactiveApplication timeouts) leaks).Action) ∈
+      bounds.compiledActions timeouts leaks who past view := by
   classical
   apply Finset.mem_inter.mpr
   refine ⟨Finset.mem_filter.mpr
-    ⟨bounds.silence_decisionActions runtime leaks who past view, rfl⟩, ?_⟩
+    ⟨bounds.silence_decisionActions timeouts leaks who past view, rfl⟩, ?_⟩
   rw [bounds.menu_mem]
   exact ⟨trivial, rfl⟩
 
 theorem compiledActions_nonempty (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView) :
-    (bounds.compiledActions runtime leaks who past view).Nonempty :=
-  ⟨⟨none⟩, bounds.silence_compiled runtime leaks who past view⟩
+    (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView) :
+    (bounds.compiledActions timeouts leaks who past view).Nonempty :=
+  ⟨⟨none⟩, bounds.silence_compiled timeouts leaks who past view⟩
 
 theorem binding_normalized_available (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
     (event : graph.EventId) (payload : L.Ty) (result : PublicationResult (L.Val payload))
     (serial : Nat) (capacity : serial < bounds.candidateCount)
     (value : ∀ chosen, result = .success chosen → (⟨payload, chosen⟩ : Raw L) ∈ bounds.values) :
-    (runtime.reactiveNormalization leaks).action who past view
-      (runtime.reactiveBinding leaks who event payload result serial) ∈
-        (bounds.menu runtime leaks).actions who past view := by
+    ((reactiveNormalization timeouts) leaks).action who past view
+      ((reactiveBinding timeouts) leaks who event payload result serial) ∈
+        (bounds.menu timeouts leaks).actions who past view := by
   rw [menu, ReactiveApplication.SubmissionNormalization.menu_mem]
   refine ⟨_, ?_, rfl⟩
   rw [rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem]

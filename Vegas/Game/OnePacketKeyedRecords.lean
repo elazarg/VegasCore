@@ -33,37 +33,38 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 open Classical in
 /-- **Agreeing base laws.** The normalized base weights of the regular histories
 of two sites give a payoff of the operational record the same expectation. -/
 def BaseLawAgrees {who : Player}
-    [Finite (onePacketProtocol setup runtime leaks bounds horizon scheduler).History]
-    (base : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History → ℝ)
-    (regular : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History → Prop)
-    (first second : (onePacketInformation setup runtime leaks bounds horizon
+    [Finite (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History]
+    (base : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History → ℝ)
+    (regular : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History → Prop)
+    (first second : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationSite who)
-    (payoff : List (Option (OperationalState setup runtime leaks)) → ℝ) : Prop :=
-  let := Fintype.ofFinite ((onePacketInformation setup runtime leaks bounds horizon
+    (payoff : List (Option (OperationalState setup timeouts leaks)) → ℝ) : Prop :=
+  let := Fintype.ofFinite ((onePacketInformation setup timeouts leaks bounds horizon
     scheduler).InformationHistory who first.1)
-  let := Fintype.ofFinite ((onePacketInformation setup runtime leaks bounds horizon
+  let := Fintype.ofFinite ((onePacketInformation setup timeouts leaks bounds horizon
     scheduler).InformationHistory who second.1)
-  (∑ b : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationHistory who
+  (∑ b : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationHistory who
       second.1, (if regular b.1 then base b.1 else 0) /
-      (∑ c : (onePacketInformation setup runtime leaks bounds horizon
+      (∑ c : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who
         second.1, if regular c.1 then base c.1 else 0) *
-      payoff (operationalRecord setup runtime leaks bounds horizon scheduler b.1.trace)) =
-    ∑ a : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationHistory who
+      payoff (operationalRecord setup timeouts leaks bounds horizon scheduler b.1.trace)) =
+    ∑ a : (onePacketInformation setup timeouts leaks bounds horizon
+      scheduler).InformationHistory who
       first.1, (if regular a.1 then base a.1 else 0) /
-      (∑ c : (onePacketInformation setup runtime leaks bounds horizon
+      (∑ c : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who
         first.1, if regular c.1 then base c.1 else 0) *
-      payoff (operationalRecord setup runtime leaks bounds horizon scheduler a.1.trace)
+      payoff (operationalRecord setup timeouts leaks bounds horizon scheduler a.1.trace)
 
 open Classical in
 /-- **Record laws at two sites.** Suppose the beliefs at two sites of `who` are
@@ -75,95 +76,95 @@ irregular histories of each site carry at most `ρ` times its regular reach. The
 the two beliefs give that payoff of the record expectations within
 `2 ρ / (1 + ρ) + 2 ε / (1 - ε)`. -/
 theorem recordLaw_near_of_baseLaw {who : Player}
-    [Finite (onePacketProtocol setup runtime leaks bounds horizon scheduler).History]
-    (assessment : (onePacketInformation setup runtime leaks bounds horizon
+    [Finite (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History]
+    (assessment : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).BehavioralAssessment)
-    (first second : (onePacketInformation setup runtime leaks bounds horizon
+    (first second : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationSite who)
-    (reach base : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History → ℝ)
-    (regular : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History → Prop)
+    (reach base : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History → ℝ)
+    (regular : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History → Prop)
     (reach_nonneg : ∀ history, 0 ≤ reach history)
     (base_nonneg : ∀ history, regular history → 0 ≤ base history)
-    (bayes : ∀ (site : (onePacketInformation setup runtime leaks bounds horizon
-        scheduler).InformationSite who) (history : (onePacketInformation setup runtime leaks bounds
+    (bayes : ∀ (site : (onePacketInformation setup timeouts leaks bounds horizon
+        scheduler).InformationSite who) (history : (onePacketInformation setup timeouts leaks bounds
         horizon scheduler).InformationHistory who site.1), site = first ∨ site = second →
       (assessment.belief who site history).toReal = reach history.1 /
-        ∑' other : (onePacketInformation setup runtime leaks bounds horizon
+        ∑' other : (onePacketInformation setup timeouts leaks bounds horizon
           scheduler).InformationHistory who site.1, reach other.1)
     (scale₁ scale₂ ε ρ : ℝ) (scale₁_pos : 0 < scale₁) (scale₂_pos : 0 < scale₂) (ε_lt : ε < 1)
-    (close₁ : ∀ history : (onePacketInformation setup runtime leaks bounds horizon
+    (close₁ : ∀ history : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who first.1, regular history.1 →
       |reach history.1 - scale₁ * base history.1| ≤ ε * (scale₁ * base history.1))
-    (close₂ : ∀ history : (onePacketInformation setup runtime leaks bounds horizon
+    (close₂ : ∀ history : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who second.1, regular history.1 →
       |reach history.1 - scale₂ * base history.1| ≤ ε * (scale₂ * base history.1))
-    (irregular₁ : ∑' history : (onePacketInformation setup runtime leaks bounds horizon
+    (irregular₁ : ∑' history : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who first.1,
         (if regular history.1 then 0 else reach history.1) ≤
-      ρ * ∑' history : (onePacketInformation setup runtime leaks bounds horizon
+      ρ * ∑' history : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who first.1,
         if regular history.1 then reach history.1 else 0)
-    (irregular₂ : ∑' history : (onePacketInformation setup runtime leaks bounds horizon
+    (irregular₂ : ∑' history : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who second.1,
         (if regular history.1 then 0 else reach history.1) ≤
-      ρ * ∑' history : (onePacketInformation setup runtime leaks bounds horizon
+      ρ * ∑' history : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who second.1,
         if regular history.1 then reach history.1 else 0)
-    (payoff : List (Option (OperationalState setup runtime leaks)) → ℝ)
+    (payoff : List (Option (OperationalState setup timeouts leaks)) → ℝ)
     (unit : ∀ record, 0 ≤ payoff record ∧ payoff record ≤ 1)
-    (base₁_pos : 0 < ∑' history : (onePacketInformation setup runtime leaks bounds horizon
+    (base₁_pos : 0 < ∑' history : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who first.1,
         (if regular history.1 then base history.1 else 0))
-    (base₂_pos : 0 < ∑' history : (onePacketInformation setup runtime leaks bounds horizon
+    (base₂_pos : 0 < ∑' history : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who second.1,
         (if regular history.1 then base history.1 else 0))
-    (agree : BaseLawAgrees (runtime := runtime) base regular first second payoff) :
+    (agree : BaseLawAgrees (timeouts := timeouts) base regular first second payoff) :
     |expect ((assessment.belief who first).map fun history =>
-        operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) payoff -
+        operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace) payoff -
       expect ((assessment.belief who second).map fun history =>
-        operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) payoff| ≤
+        operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace) payoff| ≤
       2 * ρ / (1 + ρ) + 2 * ε / (1 - ε) := by
-  let := Fintype.ofFinite ((onePacketInformation setup runtime leaks bounds horizon
+  let := Fintype.ofFinite ((onePacketInformation setup timeouts leaks bounds horizon
     scheduler).InformationHistory who first.1)
-  let := Fintype.ofFinite ((onePacketInformation setup runtime leaks bounds horizon
+  let := Fintype.ofFinite ((onePacketInformation setup timeouts leaks bounds horizon
     scheduler).InformationHistory who second.1)
   simp only [tsum_fintype] at irregular₁ irregular₂ base₁_pos base₂_pos
   rw [expect_map, expect_map, expect_eq_sum, expect_eq_sum]
   have firstSum : (∑ history, (assessment.belief who first history).toReal *
-      (payoff ∘ fun history : (onePacketInformation setup runtime leaks bounds horizon
+      (payoff ∘ fun history : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who first.1 =>
-        operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) history) =
-      ∑ history : (onePacketInformation setup runtime leaks bounds horizon
+        operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace) history) =
+      ∑ history : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory
-        who first.1, reach history.1 / (∑ other : (onePacketInformation setup runtime leaks bounds
+        who first.1, reach history.1 / (∑ other : (onePacketInformation setup timeouts leaks bounds
           horizon scheduler).InformationHistory who first.1, reach other.1) *
-        payoff (operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) :=
+        payoff (operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace) :=
     Finset.sum_congr rfl fun history _ => by
       rw [bayes first history (Or.inl rfl), tsum_fintype]
       rfl
   have secondSum : (∑ history, (assessment.belief who second history).toReal *
-      (payoff ∘ fun history : (onePacketInformation setup runtime leaks bounds horizon
+      (payoff ∘ fun history : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who second.1 =>
-        operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) history) =
-      ∑ history : (onePacketInformation setup runtime leaks bounds horizon
+        operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace) history) =
+      ∑ history : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory
-        who second.1, reach history.1 / (∑ other : (onePacketInformation setup runtime leaks bounds
+        who second.1, reach history.1 / (∑ other : (onePacketInformation setup timeouts leaks bounds
           horizon scheduler).InformationHistory who second.1, reach other.1) *
-        payoff (operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) :=
+        payoff (operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace) :=
     Finset.sum_congr rfl fun history _ => by
       rw [bayes second history (Or.inr rfl), tsum_fintype]
       rfl
   rw [firstSum, secondSum]
   exact abs_normalized_sub_le_of_base_agree
-    (α := (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationHistory
+    (α := (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationHistory
       who first.1)
-    (β := (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationHistory
+    (β := (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationHistory
       who second.1)
     (fun history => reach history.1) (fun history => reach history.1)
     (fun history => base history.1) (fun history => base history.1)
     (fun history => regular history.1) (fun history => regular history.1)
-    (fun history => operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace)
-    (fun history => operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace)
+    (fun history => operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace)
+    (fun history => operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace)
     (fun history => reach_nonneg _) (fun history => reach_nonneg _)
     (fun history => base_nonneg _) (fun history => base_nonneg _) scale₁ scale₂ scale₁_pos
     scale₂_pos ε ρ ε_lt close₁ close₂ base₁_pos base₂_pos irregular₁ irregular₂ payoff unit
@@ -235,27 +236,27 @@ record-preserving swap of the owner's committed value at its unrevealed binding
 maps the regular histories of one site onto those of the other, scaling the
 base weight by the ratio of the prior masses of the two values. -/
 theorem baseLawAgrees_of_fibers {who : Player}
-    [Finite (onePacketProtocol setup runtime leaks bounds horizon scheduler).History]
-    (base : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History → ℝ)
-    (regular : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History → Prop)
-    (first second : (onePacketInformation setup runtime leaks bounds horizon
+    [Finite (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History]
+    (base : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History → ℝ)
+    (regular : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History → Prop)
+    (first second : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationSite who)
     (c : ℝ) (c_ne : c ≠ 0)
     (fiber : ∀ record,
-      ∑' b : (onePacketInformation setup runtime leaks bounds horizon
+      ∑' b : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who
           second.1, (if regular b.1 ∧
-            operationalRecord setup runtime leaks bounds horizon scheduler b.1.trace = record then
+            operationalRecord setup timeouts leaks bounds horizon scheduler b.1.trace = record then
           base b.1 else 0) =
-        c * ∑' a : (onePacketInformation setup runtime leaks bounds horizon
+        c * ∑' a : (onePacketInformation setup timeouts leaks bounds horizon
           scheduler).InformationHistory who first.1, (if regular a.1 ∧
-            operationalRecord setup runtime leaks bounds horizon scheduler a.1.trace = record then
+            operationalRecord setup timeouts leaks bounds horizon scheduler a.1.trace = record then
           base a.1 else 0))
-    (payoff : List (Option (OperationalState setup runtime leaks)) → ℝ) :
-    BaseLawAgrees (runtime := runtime) base regular first second payoff := by
-  let := Fintype.ofFinite ((onePacketInformation setup runtime leaks bounds horizon
+    (payoff : List (Option (OperationalState setup timeouts leaks)) → ℝ) :
+    BaseLawAgrees (timeouts := timeouts) base regular first second payoff := by
+  let := Fintype.ofFinite ((onePacketInformation setup timeouts leaks bounds horizon
     scheduler).InformationHistory who first.1)
-  let := Fintype.ofFinite ((onePacketInformation setup runtime leaks bounds horizon
+  let := Fintype.ofFinite ((onePacketInformation setup timeouts leaks bounds horizon
     scheduler).InformationHistory who second.1)
   unfold BaseLawAgrees
   apply normalized_sum_eq_of_fibers _ _ _ _ c c_ne _ payoff
@@ -264,12 +265,12 @@ theorem baseLawAgrees_of_fibers {who : Player}
   simp only [tsum_fintype] at fibered
   convert fibered using 2 with b _ a _
   · by_cases holds : regular b.1 <;> by_cases same :
-        operationalRecord setup runtime leaks bounds horizon scheduler b.1.trace = record <;>
+        operationalRecord setup timeouts leaks bounds horizon scheduler b.1.trace = record <;>
       simp [holds, same]
   · apply Finset.sum_congr rfl
     intro a _
     by_cases holds : regular a.1 <;> by_cases same :
-        operationalRecord setup runtime leaks bounds horizon scheduler a.1.trace = record <;>
+        operationalRecord setup timeouts leaks bounds horizon scheduler a.1.trace = record <;>
       simp [holds, same]
 
 end Vegas

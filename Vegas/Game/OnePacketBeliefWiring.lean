@@ -35,20 +35,20 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- Operational steps of one profile sequence are operational steps of every
 sequence equal to it, with the same masses and errors. -/
 def OperationalSteps.ofProfilesEq {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
     {profiles other : ℕ → ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player}
-    {who : Player} (steps : OperationalSteps setup runtime leaks bounds horizon scheduler sequence
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player}
+    {who : Player} (steps : OperationalSteps setup timeouts leaks bounds horizon scheduler sequence
       profiles who)
     (same : ∀ n, other n = profiles n) :
-    OperationalSteps setup runtime leaks bounds horizon scheduler sequence other who where
+    OperationalSteps setup timeouts leaks bounds horizon scheduler sequence other who where
   mass := steps.mass
   error := steps.error
   mass_nonneg := steps.mass_nonneg
@@ -61,31 +61,31 @@ def OperationalSteps.ofProfilesEq {sequence : ℕ → setup.intendedModel.Behavi
     rw [same n]
     exact steps.component n
 
-variable [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+variable [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
   [Finite setup.intendedProtocol.History]
 
 local notation "onePacketN" =>
-  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
 
 section BeliefInputs
 
-variable (setup runtime leaks bounds horizon scheduler)
+variable (setup timeouts leaks bounds horizon scheduler)
 
 /-- A site at which `who` owes no failure at the decoded point of any history. -/
 def SiteDebtFree {who : Player} (site : (onePacketN).InformationSite who) : Prop :=
   ∀ history : (onePacketN).InformationHistory who site.1,
-    ∀ point, nativeDecodedState setup runtime leaks history.1.state = some point →
+    ∀ point, nativeDecodedState setup timeouts leaks history.1.state = some point →
       ¬ ProtocolState.OwesFailure who setup.program point
 
 omit [Finite setup.intendedProtocol.History] in
 /-- The site of an agent owing no failure is debt free. -/
 theorem siteDebtFree_of_not_owing {who : Player} {site : (onePacketN).InformationSite who}
-    (notOwing : ¬ OwingAgent setup runtime leaks bounds (initialLaw setup)
+    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler ((onePacketN).agentAt
       site)) :
-    SiteDebtFree setup runtime leaks bounds horizon scheduler site :=
+    SiteDebtFree setup timeouts leaks bounds horizon scheduler site :=
   fun history point decoded owes => notOwing ⟨history, point, decoded, owes⟩
 
 open Classical in
@@ -114,16 +114,16 @@ structure OnePacketCounterpartInputs (sequence : ℕ → setup.intendedModel.Beh
     (onePacketN).InformationHistory who site.1
   /-- The weight common to an irregular history and its counterpart. -/
   commonWeight : ℕ → (onePacketN).InformationHistory who site.1 → ℝ
-  counterpart_regular : ∀ n history, ¬ RegularTrace setup runtime leaks bounds horizon scheduler
+  counterpart_regular : ∀ n history, ¬ RegularTrace setup timeouts leaks bounds horizon scheduler
       (sequence n) who history.1.trace →
-    RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+    RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
       (counterpart n history).1.trace
-  irregular_le : ∀ n history, ¬ RegularTrace setup runtime leaks bounds horizon scheduler
+  irregular_le : ∀ n history, ¬ RegularTrace setup timeouts leaks bounds horizon scheduler
     (sequence n)
       who history.1.trace →
     ((onePacketN).historyReachWeight (targetSequence n).strategy history.1).toReal ≤
       scale n ^ 3 * commonWeight n history
-  counterpart_ge : ∀ n history, ¬ RegularTrace setup runtime leaks bounds horizon scheduler
+  counterpart_ge : ∀ n history, ¬ RegularTrace setup timeouts leaks bounds horizon scheduler
       (sequence n) who history.1.trace →
     scale n ^ 2 * floors n ^ depth * commonWeight n history ≤
       slack * ((onePacketN).historyReachWeight (targetSequence n).strategy
@@ -138,28 +138,29 @@ structure OnePacketOwnInputs (sequence : ℕ → setup.intendedModel.BehavioralA
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment) {who : Player}
     (site : (onePacketN).InformationSite who)
     (sourceSite : setup.intendedModel.InformationSite who)
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView}
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView}
     (decision : site.1 = some (past, view))
-    (projected : sourceSite.1 = projectView setup runtime leaks who site.1) where
+    (projected : sourceSite.1 = projectView setup timeouts leaks who site.1) where
   /-- Operational steps of the target profiles. -/
-  steps : OperationalSteps setup runtime leaks bounds horizon scheduler sequence
+  steps : OperationalSteps setup timeouts leaks bounds horizon scheduler sequence
     (fun n => (targetSequence n).strategy) who
   /-- Own completions along regular histories decode to intended actions. -/
   ownIntended : ∀ n (history : (onePacketN).InformationHistory who site.1),
-    RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who history.1.trace →
-    OwnCompletionsIntended (runtime := runtime) (bounds := bounds) (horizon := horizon) (scheduler
+    RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who history.1.trace →
+    OwnCompletionsIntended (timeouts := timeouts) (bounds := bounds) (horizon := horizon) (scheduler
       := scheduler) who
       history.1.trace
   /-- The common operational mass of the fibers at each stage. -/
   fiberMass : ℕ → ℝ
-  fiber : ∀ n point, ∑ history with RegularTrace setup runtime leaks bounds horizon scheduler
+  fiber : ∀ n point, ∑ history with RegularTrace setup timeouts leaks bounds horizon scheduler
       (sequence n) who history.1.trace ∧
-      replayProjection setup runtime leaks bounds horizon scheduler sourceSite site decision
+      replayProjection setup timeouts leaks bounds horizon scheduler sourceSite site decision
         projected
         history = point,
-    operationalWeight setup runtime leaks who (steps.mass n)
-      (operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) = fiberMass n
+    operationalWeight setup timeouts leaks who (steps.mass n)
+      (operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace) =
+        fiberMass n
 
 /-- **The forced-belief inputs at one own-turn site** along a source sequence
 and a target sequence: the honest counterparts of irregular histories, and the
@@ -168,16 +169,16 @@ structure OnePacketBeliefInputs (sequence : ℕ → setup.intendedModel.Behavior
     (targetSequence : ℕ → (onePacketN).BehavioralAssessment) {who : Player}
     (site : (onePacketN).InformationSite who)
     (sourceSite : setup.intendedModel.InformationSite who)
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView}
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView}
     (decision : site.1 = some (past, view))
-    (projected : sourceSite.1 = projectView setup runtime leaks who site.1) extends
-    OnePacketCounterpartInputs setup runtime leaks bounds horizon scheduler sequence
+    (projected : sourceSite.1 = projectView setup timeouts leaks who site.1) extends
+    OnePacketCounterpartInputs setup timeouts leaks bounds horizon scheduler sequence
       targetSequence site,
-    OnePacketOwnInputs setup runtime leaks bounds horizon scheduler sequence targetSequence site
+    OnePacketOwnInputs setup timeouts leaks bounds horizon scheduler sequence targetSequence site
       sourceSite decision projected
 
-omit [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+omit [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler).InfoState who)] in
 /-- **Beliefs converge at an own-turn site.** For a well-formed setup, at a
 forced site of `who` at its own turn whose projected view is an intended site,
@@ -192,31 +193,31 @@ theorem onePacket_beliefConverges (wellFormed : setup.WellFormed)
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-      ((bounds.onePacketMenu runtime leaks).decisionRecall
+      ((bounds.onePacketMenu timeouts leaks).decisionRecall
         (initialLaw setup) horizon scheduler).decisionInformationAntichain)
     {who : Player} {site : (onePacketN).InformationSite who}
     {sourceSite : setup.intendedModel.InformationSite who}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView}
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView}
     (decision : site.1 = some (past, view))
-    (projected : sourceSite.1 = projectView setup runtime leaks who site.1)
-    (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
+    (projected : sourceSite.1 = projectView setup timeouts leaks who site.1)
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
       setup) horizon
       scheduler who site.1)
     {event : (graph setup).EventId} (turn : view.application.publicView.ownTurn? who = some event)
-    (inputs : OnePacketBeliefInputs setup runtime leaks bounds horizon scheduler sequence
+    (inputs : OnePacketBeliefInputs setup timeouts leaks bounds horizon scheduler sequence
       targetSequence
       site sourceSite decision projected) :
     Tendsto (fun n => ∑' point,
       |((((targetSequence n).belief who site).map
-          (replayProjection setup runtime leaks bounds horizon scheduler sourceSite site decision
+          (replayProjection setup timeouts leaks bounds horizon scheduler sourceSite site decision
             projected)) point).toReal -
         ((sequence n).belief who sourceSite point).toReal|) atTop (nhds 0) := by
   classical
   let := Fintype.ofFinite (setup.intendedModel.InformationHistory who sourceSite.1)
   simp only [tsum_fintype]
-  exact tendsto_projectedBelief_sub (runtime := runtime)
-    (fun n => ForcedBeliefInputs.ofRegularHistories (runtime := runtime) (n := n) wellFormed
+  exact tendsto_projectedBelief_sub (timeouts := timeouts)
+    (fun n => ForcedBeliefInputs.ofRegularHistories (timeouts := timeouts) (n := n) wellFormed
       forced decision turn
       projected (sourceMixed n) (inputs.ownIntended n) (inputs.fiberMass n) (inputs.fiber n)
       (inputs.counterpart n) (inputs.commonWeight n)
@@ -227,7 +228,7 @@ theorem onePacket_beliefConverges (wellFormed : setup.WellFormed)
       inputs.slack_nonneg
 
 omit [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler).InfoState who)] in
 open Classical in
 /-- **Irregular histories vanish at a site with honest counterparts.** Along a
@@ -239,13 +240,13 @@ theorem onePacket_irregularVanishes {sequence : ℕ → setup.intendedModel.Beha
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-      ((bounds.onePacketMenu runtime leaks).decisionRecall
+      ((bounds.onePacketMenu timeouts leaks).decisionRecall
         (initialLaw setup) horizon scheduler).decisionInformationAntichain)
     {who : Player} {site : (onePacketN).InformationSite who}
-    (inputs : OnePacketCounterpartInputs setup runtime leaks bounds horizon scheduler sequence
+    (inputs : OnePacketCounterpartInputs setup timeouts leaks bounds horizon scheduler sequence
       targetSequence site) :
     Tendsto (fun n => expect ((targetSequence n).belief who site) (fun history =>
-      if RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who history.1.trace
+      if RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who history.1.trace
       then (0 : ℝ) else 1)) atTop (nhds 0) := by
   let := Fintype.ofFinite ((onePacketN).InformationHistory who site.1)
   have limit := tendsto_irregularRatio (slack := inputs.slack)
@@ -256,7 +257,7 @@ theorem onePacket_irregularVanishes {sequence : ℕ → setup.intendedModel.Beha
   rw [expect_eq_sum]
   have bound := sum_belief_le_of_counterpart
     (fun history : (onePacketN).InformationHistory who site.1 =>
-      ¬ RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who history.1.trace)
+      ¬ RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who history.1.trace)
     (inputs.counterpart n) (Fintype.card ((onePacketN).InformationHistory who
       site.1)) (bayes n)
     (InformationModel.informationMass_pos_of_fullSupport _ _ (mixed n) who site)
@@ -280,7 +281,7 @@ theorem onePacket_irregularVanishes {sequence : ℕ → setup.intendedModel.Beha
   split_ifs <;> simp
 
 omit [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler).InfoState who)] in
 open Classical in
 /-- **Histories outside the forced region vanish at a forced site.** Along a
@@ -295,34 +296,35 @@ theorem onePacket_unforcedVanishes (wellFormed : setup.WellFormed)
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (onePacketN) (targetSequence n)
-      ((bounds.onePacketMenu runtime leaks).decisionRecall
+      ((bounds.onePacketMenu timeouts leaks).decisionRecall
         (initialLaw setup) horizon scheduler).decisionInformationAntichain)
     {who : Player} {site : (onePacketN).InformationSite who}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView}
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView}
     (decision : site.1 = some (past, view))
-    (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
       setup) horizon
       scheduler who site.1)
-    (counterparts : OnePacketCounterpartInputs setup runtime leaks bounds horizon scheduler sequence
+    (counterparts : OnePacketCounterpartInputs setup timeouts leaks bounds horizon scheduler
+      sequence
       targetSequence site)
     (ownIntended : ∀ n (history : (onePacketN).InformationHistory who site.1),
-      RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who history.1.trace →
-      OwnCompletionsIntended (runtime := runtime) (bounds := bounds) (horizon := horizon)
+      RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who history.1.trace →
+      OwnCompletionsIntended (timeouts := timeouts) (bounds := bounds) (horizon := horizon)
         (scheduler := scheduler) who
         history.1.trace) :
     Tendsto (fun n => expect ((targetSequence n).belief who site) (fun history =>
-      if ForcedState setup runtime leaks who history.1.state then (0 : ℝ) else 1)) atTop (nhds 0)
+      if ForcedState setup timeouts leaks who history.1.state then (0 : ℝ) else 1)) atTop (nhds 0)
         := by
   refine squeeze_zero (fun n => expect_nonneg _ _ fun history _ => by split <;> norm_num)
-    (fun n => ?_) (onePacket_irregularVanishes setup runtime leaks bounds horizon scheduler mixed
+    (fun n => ?_) (onePacket_irregularVanishes setup timeouts leaks bounds horizon scheduler mixed
       bayes
       counterparts)
   refine expect_mono (fun history _ => ?_) (payoffIntegrable_of_finite _ _)
     (payoffIntegrable_of_finite _ _)
-  by_cases regular : RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+  by_cases regular : RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
     history.1.trace
-  · have inForced := forcedState_of_regular (runtime := runtime) wellFormed (sequence n) decision
+  · have inForced := forcedState_of_regular (timeouts := timeouts) wellFormed (sequence n) decision
       forced history
       regular (ownIntended n history regular)
     simp only [inForced, regular, ↓reduceIte, le_refl]
@@ -331,13 +333,14 @@ theorem onePacket_unforcedVanishes (wellFormed : setup.WellFormed)
 
 /-- The intended site at the projected view of a site, when that view is an
 intended decision site. -/
-def projectedSite {who : Player} {info : (application setup runtime leaks).Info}
-    (decision : setup.intendedModel.IsDecisionInfo who (projectView setup runtime leaks who info)) :
+def projectedSite {who : Player} {info : (application setup timeouts leaks).Info}
+    (decision : setup.intendedModel.IsDecisionInfo who (projectView setup timeouts leaks who
+      info)) :
     setup.intendedModel.InformationSite who :=
-  ⟨projectView setup runtime leaks who info, decision⟩
+  ⟨projectView setup timeouts leaks who info, decision⟩
 
 omit [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
 open Classical Filter in
 /-- **Uniform errors from errors at each site.** For a property of errors at a
@@ -389,28 +392,28 @@ theorem exists_uniform_of_sites
 
 end BeliefInputs
 
-omit [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
 /-- A forced history whose observer owes no failure decodes to a point reached
 by the intended source game. -/
 theorem intendedReached_of_forced_debtFree (wellFormed : setup.WellFormed) {who : Player}
     (site : (onePacketN).InformationSite who)
-    (debtFree : SiteDebtFree setup runtime leaks bounds horizon scheduler site)
+    (debtFree : SiteDebtFree setup timeouts leaks bounds horizon scheduler site)
     (history : (onePacketN).InformationHistory who site.1)
-    {remaining : Nat} {execution : (application setup runtime leaks).Execution}
+    {remaining : Nat} {execution : (application setup timeouts leaks).Execution}
     (current : history.1.state = some ⟨remaining, some who, execution⟩)
-    (ordered : execution.application.config.cut.IsPrefix (siteRank (runtime := runtime) site.1))
-    (forced : ForcedState setup runtime leaks who history.1.state) :
-    ∃ point, sourceServicePrefix? setup (siteRank (runtime := runtime) site.1)
+    (ordered : execution.application.config.cut.IsPrefix (siteRank (timeouts := timeouts) site.1))
+    (forced : ForcedState setup timeouts leaks who history.1.state) :
+    ∃ point, sourceServicePrefix? setup (siteRank (timeouts := timeouts) site.1)
       execution.application.config =
       some point ∧ ProtocolState.Intended setup.program point ∧ IntendedReached setup point := by
   classical
-  let menu := bounds.onePacketMenu runtime leaks
+  let menu := bounds.onePacketMenu timeouts leaks
   have trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩) := current ▸ history.1.trace
-  obtain ⟨decodedRank, ⟨residual⟩, holds⟩ := decodedState_intended_or_owes (runtime := runtime)
+  obtain ⟨decodedRank, ⟨residual⟩, holds⟩ := decodedState_intended_or_owes (timeouts := timeouts)
     wellFormed
     (failureProfile setup.program) menu horizon scheduler trace _ rfl
   have sameRank := EventOrder.Cut.IsPrefix.unique residual.checkpoint.ordered ordered
@@ -423,7 +426,7 @@ theorem intendedReached_of_forced_debtFree (wellFormed : setup.WellFormed) {who 
   have forcedHere := forced
   rw [current] at forcedHere
   obtain ⟨forcedFound, forcedDecoded, forcedHolds⟩ :=
-    (forcedState_iff_decodedPoint (runtime := runtime) _).mp forcedHere
+    (forcedState_iff_decodedPoint (timeouts := timeouts) _).mp forcedHere
   rw [pointDecoded, Option.some.injEq] at forcedDecoded
   subst forcedDecoded
   have free : ∀ found, decodedPoint setup execution.application.config = some found →
@@ -439,10 +442,10 @@ theorem intendedReached_of_forced_debtFree (wellFormed : setup.WellFormed) {who 
     rcases holds point decoded with intendedHere | ⟨player, owed⟩
     · exact intendedHere
     · exact (free point pointDecoded player owed).elim
-  obtain ⟨replay, replayed⟩ := intendedHistory?_isSome_of_debtFree (runtime := runtime) wellFormed
+  obtain ⟨replay, replayed⟩ := intendedHistory?_isSome_of_debtFree (timeouts := timeouts) wellFormed
     trace _ rfl free
   have reachedPoint : IntendedReached setup point :=
-    ⟨replay, (intendedHistory?_state (runtime := runtime) trace replayed).trans pointDecoded⟩
+    ⟨replay, (intendedHistory?_state (timeouts := timeouts) trace replayed).trans pointDecoded⟩
   exact ⟨point, decoded, intendedPoint, reachedPoint⟩
 
 /-- **Operational steps of assembled profiles.** For a well-formed setup, at
@@ -454,29 +457,29 @@ def assembledOperationalSteps (wellFormed : setup.WellFormed)
     (scale : ℕ → ℝ) (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     (depth : ℕ)
     (scaleEq : ∀ n, scale n = trembleScale
-      (combinedFloor setup runtime leaks bounds horizon scheduler (sequence n)) depth n)
+      (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)) depth n)
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       scale_pos
       scale_le_one weights targetSequence)
     (who : Player) :
-    OperationalSteps setup runtime leaks bounds horizon scheduler sequence
+    OperationalSteps setup timeouts leaks bounds horizon scheduler sequence
       (fun n => (targetSequence n).strategy) who :=
-  have floorPos := fun n => combinedFloor_pos setup runtime leaks bounds horizon scheduler
+  have floorPos := fun n => combinedFloor_pos setup timeouts leaks bounds horizon scheduler
     (sequence n)
-  have floorLe := fun n => combinedFloor_le_one setup runtime leaks bounds horizon scheduler
+  have floorLe := fun n => combinedFloor_le_one setup timeouts leaks bounds horizon scheduler
     (sequence n)
-  OperationalSteps.ofProfilesEq (runtime := runtime)
-    (certificateOperationalSteps (runtime := runtime) wellFormed sequence scale scale_pos
+  OperationalSteps.ofProfilesEq (timeouts := timeouts)
+    (certificateOperationalSteps (timeouts := timeouts) wellFormed sequence scale scale_pos
       scale_le_one
       (fun n => (scaleEq n).trans_le (trembleScale_le_quarter (floorPos n).le (floorLe n)))
-      (fun n => combinedFloor setup runtime leaks bounds horizon scheduler (sequence n)) floorPos
-      (fun n => combinedFloor_le_contentFloor setup runtime leaks bounds horizon scheduler
+      (fun n => combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)) floorPos
+      (fun n => combinedFloor_le_contentFloor setup timeouts leaks bounds horizon scheduler
         (sequence n))
       covers capacity weights who
       (by
@@ -496,78 +499,79 @@ def OnePacketBeliefInputs.ofCertificate (wellFormed : setup.WellFormed)
     {scale : ℕ → ℝ} {scale_pos : ∀ n, 0 < scale n} {scale_le_one : ∀ n, scale n ≤ 1}
     (depth : ℕ)
     (scaleEq : ∀ n, scale n = trembleScale
-      (combinedFloor setup runtime leaks bounds horizon scheduler (sequence n)) depth n)
+      (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)) depth n)
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     {slots : Nat}
-    {weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    {weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p)}
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       scale_pos
       scale_le_one weights targetSequence)
     {who : Player} {site : (onePacketN).InformationSite who}
     {sourceSite : setup.intendedModel.InformationSite who}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView}
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView}
     (decision : site.1 = some (past, view))
-    (projected : sourceSite.1 = projectView setup runtime leaks who site.1)
+    (projected : sourceSite.1 = projectView setup timeouts leaks who site.1)
     (slack : ℝ) (slack_nonneg : 0 ≤ slack)
     (ownIntended : ∀ n (history : (onePacketN).InformationHistory who site.1),
-      RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who history.1.trace →
-      OwnCompletionsIntended (runtime := runtime) (bounds := bounds) (horizon := horizon)
+      RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who history.1.trace →
+      OwnCompletionsIntended (timeouts := timeouts) (bounds := bounds) (horizon := horizon)
         (scheduler := scheduler) who
         history.1.trace)
     (fiberMass : ℕ → ℝ)
-    (fiber : ∀ n point, ∑ history with RegularTrace setup runtime leaks bounds horizon scheduler
+    (fiber : ∀ n point, ∑ history with RegularTrace setup timeouts leaks bounds horizon scheduler
         (sequence n) who history.1.trace ∧
-        replayProjection setup runtime leaks bounds horizon scheduler sourceSite site decision
+        replayProjection setup timeouts leaks bounds horizon scheduler sourceSite site decision
           projected
           history = point,
-      operationalWeight setup runtime leaks who
-        (roundOrResponseMass (runtime := runtime) (scheduler := scheduler)
-          (stepResponse (runtime := runtime) bounds (keyWeights setup runtime leaks bounds horizon
+      operationalWeight setup timeouts leaks who
+        (roundOrResponseMass (timeouts := timeouts) (scheduler := scheduler)
+          (stepResponse (timeouts := timeouts) bounds (keyWeights setup timeouts leaks bounds
+            horizon
             scheduler (weights n))
             (scale n)))
-        (operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) =
+        (operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace) =
           fiberMass n)
     (counterpart : ℕ → (onePacketN).InformationHistory who site.1 →
       (onePacketN).InformationHistory who site.1)
     (commonWeight : ℕ → (onePacketN).InformationHistory who site.1 → ℝ)
-    (counterpart_regular : ∀ n history, ¬ RegularTrace setup runtime leaks bounds horizon scheduler
+    (counterpart_regular : ∀ n history, ¬ RegularTrace setup timeouts leaks bounds horizon scheduler
         (sequence n) who history.1.trace →
-      RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+      RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
         (counterpart n history).1.trace)
-    (irregular_le : ∀ n history, ¬ RegularTrace setup runtime leaks bounds horizon scheduler
+    (irregular_le : ∀ n history, ¬ RegularTrace setup timeouts leaks bounds horizon scheduler
       (sequence n)
         who history.1.trace →
       ((onePacketN).historyReachWeight (targetSequence n).strategy history.1).toReal ≤
         scale n ^ 3 * commonWeight n history)
-    (counterpart_ge : ∀ n history, ¬ RegularTrace setup runtime leaks bounds horizon scheduler
+    (counterpart_ge : ∀ n history, ¬ RegularTrace setup timeouts leaks bounds horizon scheduler
         (sequence n) who history.1.trace →
-      scale n ^ 2 * combinedFloor setup runtime leaks bounds horizon scheduler (sequence n) ^
+      scale n ^ 2 * combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n) ^
         depth *
           commonWeight n history ≤
         slack * ((onePacketN).historyReachWeight (targetSequence n).strategy
           (counterpart n history).1).toReal) :
-    OnePacketBeliefInputs setup runtime leaks bounds horizon scheduler sequence targetSequence site
+    OnePacketBeliefInputs setup timeouts leaks bounds horizon scheduler sequence targetSequence site
       sourceSite decision projected where
-  steps := assembledOperationalSteps (runtime := runtime) wellFormed sequence
+  steps := assembledOperationalSteps (timeouts := timeouts) wellFormed sequence
     scale scale_pos scale_le_one depth
     scaleEq covers capacity weights assembled who
   scale := scale
-  floors n := combinedFloor setup runtime leaks bounds horizon scheduler
+  floors n := combinedFloor setup timeouts leaks bounds horizon scheduler
     (sequence n)
   depth := depth
   slack := slack
-  floors_pos n := combinedFloor_pos setup runtime leaks bounds horizon
+  floors_pos n := combinedFloor_pos setup timeouts leaks bounds horizon
     scheduler (sequence n)
   scale_nonneg n := (scale_pos n).le
   negligible := by
     simp only [scaleEq]
     exact tendsto_trembleScale_div_pow _
-      (fun n => combinedFloor_pos setup runtime leaks bounds horizon scheduler (sequence n))
-      (fun n => combinedFloor_le_one setup runtime leaks bounds horizon scheduler (sequence n))
+      (fun n => combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n))
+      (fun n => combinedFloor_le_one setup timeouts leaks bounds horizon scheduler (sequence n))
   slack_nonneg := slack_nonneg
   ownIntended := ownIntended
   fiberMass := fiberMass

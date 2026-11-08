@@ -25,23 +25,23 @@ open SourceProgram Interaction EventGraphRuntime GameTheory GameTheory.Protocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L)) (runtime : EventGraphRuntime (graph setup))
+  (setup : Setup (Player := Player) (L := L)) (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (scheduler : (application setup timeouts leaks).Scheduler)
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
 
 local notation "Initial" => initialLaw setup
-local notation "app" => application setup runtime leaks
-local notation "raw" => bounds.rawMenu runtime leaks
+local notation "app" => application setup timeouts leaks
+local notation "raw" => bounds.rawMenu timeouts leaks
 local notation "model" => ReactiveApplication.ResponseMenu.information
-  (bounds.rawMenu runtime leaks) Initial horizon scheduler
+  (bounds.rawMenu timeouts leaks) Initial horizon scheduler
 
-variable {setup runtime leaks bounds horizon scheduler parameter utility excludedPayoff}
+variable {setup timeouts leaks bounds horizon scheduler parameter utility excludedPayoff}
 
-variable (spec : ClientSpec setup runtime leaks bounds horizon scheduler
+variable (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
   parameter utility excludedPayoff)
 
 namespace ClientSpec
@@ -194,7 +194,7 @@ theorem clients_noCharges (state : (app).ProtocolState)
     (supported : state ∈ ((app).finish Initial horizon scheduler compiled.clients none).support)
     (who : Player) :
     TerminalAudit.charge (app).stateTraffic
-      (runtime.countAudit leaks spec.evidenceService.sample) state who = 0 := by
+      ((countAudit timeouts) leaks spec.evidenceService.sample) state who = 0 := by
   rw [← compiled.clients_stateLaw] at supported
   obtain ⟨history, reached, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
   exact compiled.noCharges history reached who
@@ -251,7 +251,7 @@ theorem ledgerClients_noCharges
     (supported : state ∈ ((app).finish Initial horizon scheduler
       compiled.ledgerClients none).support) (who : Player) :
     TerminalAudit.charge (app).stateTraffic
-      (runtime.countAudit leaks spec.evidenceService.sample) state who = 0 := by
+      ((countAudit timeouts) leaks spec.evidenceService.sample) state who = 0 := by
   rw [compiled.ledgerClients_finish_eq_clients unobserved] at supported
   exact compiled.clients_noCharges state supported who
 

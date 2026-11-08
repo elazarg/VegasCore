@@ -105,19 +105,19 @@ event of an active owner. Clock advances keep the configuration, a sample
 executes the chance kernel, and an expiry is either idle or completes a
 defaulted owner's event. -/
 theorem environmentStep_drain_bind_canonicalLaw {profile : graph.BehavioralProfile}
-    (independent : ReadyIndependent profile) (runtime : EventGraphRuntime graph)
+    (independent : ReadyIndependent profile) (timeouts : EventTimeouts graph)
     (state : State graph) (command : EnvironmentCommand graph)
     (expiry : ∀ event, command = .expire event →
-      (∀ next ∈ (environmentStep runtime state (.expire event)).support,
+      (∀ next ∈ (environmentStep timeouts state (.expire event)).support,
         next.config = state.config) ∨
       ∃ owner, graph.actor? event = some owner ∧ owner ∈ state.config.defaulted) :
-    ((environmentStep runtime state command).map State.drain).bind
+    ((environmentStep timeouts state command).map State.drain).bind
         (fun next => canonicalLaw profile next.config) =
       canonicalLaw profile state.config := by
   rw [State.drain_bind_canonicalLaw independent]
-  have pointwise : (∀ next ∈ (environmentStep runtime state command).support,
+  have pointwise : (∀ next ∈ (environmentStep timeouts state command).support,
       canonicalLaw profile next.config = canonicalLaw profile state.config) →
-      (environmentStep runtime state command).bind (fun next => canonicalLaw profile next.config) =
+      (environmentStep timeouts state command).bind (fun next => canonicalLaw profile next.config) =
         canonicalLaw profile state.config := by
     intro same
     rw [bind_congr_on_support _ same]
@@ -134,7 +134,7 @@ theorem environmentStep_drain_bind_canonicalLaw {profile : graph.BehavioralProfi
       · cases view : nodeView graph event with
         | sample payload law outputEq codeEq =>
             have ownerless := nodeView_sample_actor outputEq codeEq
-            rw [environmentStep_executeSample_eq runtime state event ready payload law outputEq
+            rw [environmentStep_executeSample_eq timeouts state event ready payload law outputEq
               codeEq view, PMF.bind_map]
             have stepLaw : eventStep profile state.config event ready =
                 state.config.step event ready
@@ -147,20 +147,20 @@ theorem environmentStep_drain_bind_canonicalLaw {profile : graph.BehavioralProfi
             rw [← independent.eventStep_bind_canonicalLaw _ state.config rfl event ready, stepLaw]
             rfl
         | bind owner payload outputEq codeEq =>
-            rw [environmentStep_executeSample_of_nonsample runtime state event ready
+            rw [environmentStep_executeSample_of_nonsample timeouts state event ready
               (fun _ _ _ _ impossible => by rw [view] at impossible; cases impossible),
               PMF.pure_bind]
         | resolve owner payload binding checks outputEq codeEq =>
-            rw [environmentStep_executeSample_of_nonsample runtime state event ready
+            rw [environmentStep_executeSample_of_nonsample timeouts state event ready
               (fun _ _ _ _ impossible => by rw [view] at impossible; cases impossible),
               PMF.pure_bind]
-      · rw [environmentStep_executeSample_of_not_ready runtime state event ready, PMF.pure_bind]
+      · rw [environmentStep_executeSample_of_not_ready timeouts state event ready, PMF.pure_bind]
   | expire event =>
       apply pointwise
       intro next member
       rcases expiry event rfl with idle | ⟨owner, acting, inactive⟩
       · rw [idle next member]
-      · rcases environmentStep_expire_config_eq_or_mem_step runtime state next event member with
+      · rcases environmentStep_expire_config_eq_or_mem_step timeouts state next event member with
           same | ⟨ready, action, stepped⟩
         · rw [same]
         · exact State.canonicalLaw_of_mem_step_defaulted independent _ _ event ready owner acting

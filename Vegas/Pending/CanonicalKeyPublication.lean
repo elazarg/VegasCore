@@ -62,24 +62,24 @@ def OpensPublications (profile : graph.BehavioralProfile) : Prop :=
 canonical key law of a ready-independent opening profile. -/
 theorem handle_canonicalLaw_of_publications {profile : graph.BehavioralProfile}
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
-    (runtime : EventGraphRuntime graph) (state next : State graph)
+    (timeouts : EventTimeouts graph) (state next : State graph)
     (message : Message Player (Payload graph))
     (publications : ∀ event, state.config.cut.Ready event →
       (graph.outputLayout event).IsPublication)
-    (accepted : handle runtime state message = some next) :
+    (accepted : handle timeouts state message = some next) :
     canonicalLaw profile next.config = canonicalLaw profile state.config := by
   rcases message with ⟨id, packet⟩
   cases packet with
   | malformed raw => simp [handle] at accepted
   | commitment event candidate =>
       obtain ⟨_, ready, _, owner, payload, outputEq, _⟩ :=
-        (handle_commitment_iff runtime state next id event candidate).mp accepted
+        (handle_commitment_iff timeouts state next id event candidate).mp accepted
       have publication := publications event ready
       rw [outputEq] at publication
       exact publication.elim
   | opening event candidate raw =>
       obtain ⟨ready, action, stepped, _, _, owner, payload, binding, checks, outputEq, codeEq, _,
-        actionEq⟩ := handle_opening_config_step runtime state next id event candidate raw accepted
+        actionEq⟩ := handle_opening_config_step timeouts state next id event candidate raw accepted
       have acting := nodeView_resolve_actor outputEq codeEq
       by_cases inactive : owner ∈ state.config.defaulted
       · exact State.canonicalLaw_of_mem_step_defaulted independent _ _ event ready owner acting
@@ -94,13 +94,13 @@ theorem handle_canonicalLaw_of_publications {profile : graph.BehavioralProfile}
 the canonical key law of a ready-independent profile at every supported
 successor, when no active owner's ready publication is due. -/
 theorem environmentStep_canonicalLaw_of_publications {profile : graph.BehavioralProfile}
-    (independent : ReadyIndependent profile) (runtime : EventGraphRuntime graph)
+    (independent : ReadyIndependent profile) (timeouts : EventTimeouts graph)
     (state next : State graph) (command : EnvironmentCommand graph)
     (publications : ∀ event, state.config.cut.Ready event →
       (graph.outputLayout event).IsPublication)
     (timely : ∀ event owner, state.config.cut.Ready event → graph.actor? event = some owner →
-      owner ∉ state.config.defaulted → state.WithinDeadline runtime event)
-    (moved : next ∈ (environmentStep runtime state command).support) :
+      owner ∉ state.config.defaulted → state.WithinDeadline timeouts event)
+    (moved : next ∈ (environmentStep timeouts state command).support) :
     canonicalLaw profile next.config = canonicalLaw profile state.config := by
   cases command with
   | advanceClock =>
@@ -115,23 +115,23 @@ theorem environmentStep_canonicalLaw_of_publications {profile : graph.Behavioral
             rw [outputEq] at publication
             exact publication.elim
         | bind owner payload outputEq codeEq =>
-            rw [environmentStep_executeSample_of_nonsample runtime state event ready
+            rw [environmentStep_executeSample_of_nonsample timeouts state event ready
               (fun _ _ _ _ impossible => by rw [view] at impossible; cases impossible),
               PMF.mem_support_pure_iff] at moved
             subst next
             rfl
         | resolve owner payload binding checks outputEq codeEq =>
-            rw [environmentStep_executeSample_of_nonsample runtime state event ready
+            rw [environmentStep_executeSample_of_nonsample timeouts state event ready
               (fun _ _ _ _ impossible => by rw [view] at impossible; cases impossible),
               PMF.mem_support_pure_iff] at moved
             subst next
             rfl
-      · rw [environmentStep_executeSample_of_not_ready runtime state event ready,
+      · rw [environmentStep_executeSample_of_not_ready timeouts state event ready,
           PMF.mem_support_pure_iff] at moved
         subst next
         rfl
   | expire event =>
-      rcases environmentStep_expire_config_eq_or_mem_step runtime state next event moved with
+      rcases environmentStep_expire_config_eq_or_mem_step timeouts state next event moved with
         same | ⟨ready, action, stepped⟩
       · rw [same]
       · obtain ⟨owner, acting⟩ := actor_of_publication (publications event ready)
@@ -146,7 +146,7 @@ theorem environmentStep_canonicalLaw_of_publications {profile : graph.Behavioral
               exact within.elim
           | some entered =>
               rw [activated] at within
-              rw [environmentStep_expire_of_not_due runtime state event ready entered activated
+              rw [environmentStep_expire_of_not_due timeouts state event ready entered activated
                 (by omega), PMF.mem_support_pure_iff] at moved
               subst next
               rfl
@@ -157,17 +157,17 @@ successor, when no active owner's ready publication is due. -/
 theorem reactive_environmentStep_canonicalLaw_of_publications
     {profile : graph.BehavioralProfile}
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
-    (runtime : EventGraphRuntime graph)
+    (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (command : (runtime.reactiveApplication leaks).Command)
+    (execution next : ((reactiveApplication timeouts) leaks).Execution)
+    (command : ((reactiveApplication timeouts) leaks).Command)
     (publications : ∀ event, execution.application.config.cut.Ready event →
       (graph.outputLayout event).IsPublication)
     (timely : ∀ event owner, execution.application.config.cut.Ready event →
       graph.actor? event = some owner → owner ∉ execution.application.config.defaulted →
-      execution.application.WithinDeadline runtime event)
+      execution.application.WithinDeadline timeouts event)
     (moved : next ∈
-      (execution.environmentStep (runtime.reactiveApplication leaks) command).support) :
+      (execution.environmentStep ((reactiveApplication timeouts) leaks) command).support) :
     canonicalLaw profile next.application.config =
       canonicalLaw profile execution.application.config := by
   unfold ReactiveApplication.Execution.environmentStep at moved
@@ -188,7 +188,7 @@ theorem reactive_environmentStep_canonicalLaw_of_publications
           simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
             found]
       | some message =>
-          cases result : (runtime.reactiveApplication leaks).handle execution.application
+          cases result : ((reactiveApplication timeouts) leaks).handle execution.application
               message with
           | none =>
               simp only [ReactiveApplication.Execution.includePending,
@@ -198,16 +198,16 @@ theorem reactive_environmentStep_canonicalLaw_of_publications
                 MessageNetwork.includePending, found, result, Option.getD_some]
               obtain ⟨native, handled, drained⟩ := reactiveHandle_call result
               rw [← drained, State.drain_canonicalLaw independent]
-              exact handle_canonicalLaw_of_publications independent opens runtime _ _ _
+              exact handle_canonicalLaw_of_publications independent opens timeouts _ _ _
                 publications handled
   | application operation =>
       rw [PMF.support_map] at supported
       obtain ⟨state, changed, rfl⟩ := supported
-      change state ∈ ((environmentStep runtime execution.application operation).map
+      change state ∈ ((environmentStep timeouts execution.application operation).map
         State.drain).support at changed
       obtain ⟨native, nativeMoved, rfl⟩ := PMF.support_map .. ▸ changed
       exact (State.drain_canonicalLaw independent native).trans
-        (environmentStep_canonicalLaw_of_publications independent runtime _ _ operation
+        (environmentStep_canonicalLaw_of_publications independent timeouts _ _ operation
           publications timely nativeMoved)
 
 /-- **Publication rounds preserve the canonical key law.** A ledger round at a
@@ -217,25 +217,25 @@ scheduler and player policies, when no active owner's ready publication is
 due. -/
 theorem reactive_round_canonicalLaw_of_publications {profile : graph.BehavioralProfile}
     (independent : ReadyIndependent profile) (opens : OpensPublications profile)
-    (runtime : EventGraphRuntime graph)
+    (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (execution next : (runtime.reactiveApplication leaks).Execution)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
+    (execution next : ((reactiveApplication timeouts) leaks).Execution)
     (publications : ∀ event, execution.application.config.cut.Ready event →
       (graph.outputLayout event).IsPublication)
     (timely : ∀ event owner, execution.application.config.cut.Ready event →
       graph.actor? event = some owner → owner ∉ execution.application.config.defaulted →
-      execution.application.WithinDeadline runtime event)
+      execution.application.WithinDeadline timeouts event)
     (reached : next ∈
-      ((runtime.reactiveApplication leaks).round scheduler players execution).support) :
+      (((reactiveApplication timeouts) leaks).round scheduler players execution).support) :
     canonicalLaw profile next.application.config =
       canonicalLaw profile execution.application.config := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
   have middleLaw := reactive_environmentStep_canonicalLaw_of_publications independent opens
-    runtime leaks execution middle command publications timely moved
+    timeouts leaks execution middle command publications timely moved
   change next ∈ (app.resume players (command.actor? app) middle).support at resumed
   cases actor : command.actor? app with
   | none =>
@@ -248,7 +248,7 @@ theorem reactive_round_canonicalLaw_of_publications {profile : graph.BehavioralP
       change next ∈ (app.invoke players who middle).support at resumed
       rw [ReactiveApplication.invoke, PMF.support_map] at resumed
       obtain ⟨response, _, rfl⟩ := resumed
-      rw [(reactive_respond_application runtime leaks middle who response).1]
+      rw [(reactive_respond_application timeouts leaks middle who response).1]
       exact middleLaw
 
 end Vegas.EventGraphRuntime

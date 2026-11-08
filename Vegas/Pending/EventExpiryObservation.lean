@@ -17,15 +17,15 @@ variable {graph : Vegas.EventGraph Player L}
 /-- Expiry is determined by public readiness and clock metadata. Its failure
 completion is independent of hidden candidates. -/
 theorem environmentStep_expire_playerView_congr
-    (runtime : EventGraphRuntime graph) (focal : Player) (event : graph.EventId)
+    (timeouts : EventTimeouts graph) (focal : Player) (event : graph.EventId)
     (left right leftNext rightNext : State graph)
     (publicEq : left.publicView = right.publicView)
     (observationEq : graph.playerObserve focal left.config =
       graph.playerObserve focal right.config)
     (candidatesEq : (fun slot => left.candidates.lookup (focal, slot)) =
       fun slot => right.candidates.lookup (focal, slot))
-    (leftSupported : leftNext ∈ (environmentStep runtime left (.expire event)).support)
-    (rightSupported : rightNext ∈ (environmentStep runtime right (.expire event)).support) :
+    (leftSupported : leftNext ∈ (environmentStep timeouts left (.expire event)).support)
+    (rightSupported : rightNext ∈ (environmentStep timeouts right (.expire event)).support) :
     leftNext.playerView focal = rightNext.playerView focal := by
   have views : left.playerView focal = right.playerView focal := by
     unfold State.playerView
@@ -43,9 +43,9 @@ theorem environmentStep_expire_playerView_congr
     | none =>
         have rightActivated : right.activatedAt event = none := by
           rw [← activatedEq]; exact leftActivated
-        rw [environmentStep_expire_of_not_activated runtime left event leftReady leftActivated,
+        rw [environmentStep_expire_of_not_activated timeouts left event leftReady leftActivated,
           PMF.mem_support_pure_iff _ _] at leftSupported
-        rw [environmentStep_expire_of_not_activated runtime right event rightReady rightActivated,
+        rw [environmentStep_expire_of_not_activated timeouts right event rightReady rightActivated,
           PMF.mem_support_pure_iff _ _] at rightSupported
         subst leftNext
         subst rightNext
@@ -53,25 +53,25 @@ theorem environmentStep_expire_playerView_congr
     | some entered =>
         have rightActivated : right.activatedAt event = some entered := by
           rw [← activatedEq]; exact leftActivated
-        by_cases due : runtime.deadline event ≤ left.clock - entered
-        · have rightDue : runtime.deadline event ≤ right.clock - entered := by
+        by_cases due : timeouts.duration event ≤ left.clock - entered
+        · have rightDue : timeouts.duration event ≤ right.clock - entered := by
             rw [← clockEq]; exact due
           cases view : nodeView graph event with
           | sample payload law outputEq codeEq =>
-              rw [environmentStep_expire_sample_eq runtime left event leftReady entered
+              rw [environmentStep_expire_sample_eq timeouts left event leftReady entered
                 leftActivated due payload law outputEq codeEq view,
                 PMF.mem_support_pure_iff _ _] at leftSupported
-              rw [environmentStep_expire_sample_eq runtime right event rightReady entered
+              rw [environmentStep_expire_sample_eq timeouts right event rightReady entered
                 rightActivated rightDue payload law outputEq codeEq view,
                 PMF.mem_support_pure_iff _ _] at rightSupported
               subst leftNext
               subst rightNext
               exact views
           | bind owner payload outputEq codeEq =>
-              rw [environmentStep_expire_bind_eq runtime left event leftReady entered
+              rw [environmentStep_expire_bind_eq timeouts left event leftReady entered
                 leftActivated due owner payload outputEq codeEq view,
                 PMF.mem_support_pure_iff _ _] at leftSupported
-              rw [environmentStep_expire_bind_eq runtime right event rightReady entered
+              rw [environmentStep_expire_bind_eq timeouts right event rightReady entered
                 rightActivated rightDue owner payload outputEq codeEq view,
                 PMF.mem_support_pure_iff _ _] at rightSupported
               subst leftNext
@@ -83,10 +83,10 @@ theorem environmentStep_expire_playerView_congr
                     outputEq codeEq, right.config.completion_bind_none_defaultEvent event
                     owner payload outputEq codeEq, statusEq])
           | resolve owner payload binding checks outputEq codeEq =>
-              rw [environmentStep_expire_resolve_eq runtime left event leftReady entered
+              rw [environmentStep_expire_resolve_eq timeouts left event leftReady entered
                 leftActivated due owner payload binding checks outputEq codeEq view,
                 PMF.mem_support_pure_iff _ _] at leftSupported
-              rw [environmentStep_expire_resolve_eq runtime right event rightReady entered
+              rw [environmentStep_expire_resolve_eq timeouts right event rightReady entered
                 rightActivated rightDue owner payload binding checks outputEq codeEq view,
                 PMF.mem_support_pure_iff _ _] at rightSupported
               subst leftNext
@@ -97,19 +97,19 @@ theorem environmentStep_expire_playerView_congr
                   rw [left.config.completion_resolve_defaultEvent event owner payload binding
                     checks outputEq codeEq, right.config.completion_resolve_defaultEvent event
                     owner payload binding checks outputEq codeEq, statusEq])
-        · have rightNotDue : ¬runtime.deadline event ≤ right.clock - entered := by
+        · have rightNotDue : ¬timeouts.duration event ≤ right.clock - entered := by
             rw [← clockEq]; exact due
-          rw [environmentStep_expire_of_not_due runtime left event leftReady entered leftActivated
+          rw [environmentStep_expire_of_not_due timeouts left event leftReady entered leftActivated
             due, PMF.mem_support_pure_iff _ _] at leftSupported
-          rw [environmentStep_expire_of_not_due runtime right event rightReady entered
+          rw [environmentStep_expire_of_not_due timeouts right event rightReady entered
             rightActivated rightNotDue, PMF.mem_support_pure_iff _ _] at rightSupported
           subst leftNext
           subst rightNext
           exact views
   · have rightNotReady : ¬right.config.cut.Ready event := by rw [← cuts]; exact leftReady
-    rw [environmentStep_expire_of_not_ready runtime left event leftReady,
+    rw [environmentStep_expire_of_not_ready timeouts left event leftReady,
       PMF.mem_support_pure_iff _ _] at leftSupported
-    rw [environmentStep_expire_of_not_ready runtime right event rightNotReady,
+    rw [environmentStep_expire_of_not_ready timeouts right event rightNotReady,
       PMF.mem_support_pure_iff _ _] at rightSupported
     subst leftNext
     subst rightNext

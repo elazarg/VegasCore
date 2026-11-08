@@ -14,12 +14,12 @@ open SourceProgram EventGraphRuntime Interaction GameTheory GameTheory.Protocol
   GameTheory.Math.Probability
 
 private theorem pending_head_ticks (view : app.EnvironmentView) :
-    runtime.reactiveTicks leaks (app.pendingHeadCommand view) = 0 := by
+    (reactiveTicks timeouts) leaks (app.pendingHeadCommand view) = 0 := by
   unfold ReactiveApplication.pendingHeadCommand
   split <;> rfl
 
 theorem command_ticks (cursor : Nat) (view : app.EnvironmentView) :
-    runtime.reactiveTicks leaks (command cursor view) =
+    (reactiveTicks timeouts) leaks (command cursor view) =
       if cursor % width = width - 1 then 1 else 0 := by
   have bounded : cursor % width < width := Nat.mod_lt _ (by decide)
   dsimp only [command, width, packetBudget, cycles] at *
@@ -42,18 +42,18 @@ structure ClockAligned (inputs : compiled.Inputs) (origin : Nat) (execution : ap
 theorem clock_aligned_invariant (inputs : compiled.Inputs) (origin : Nat) :
     app.ServiceInvariant scheduler (ClockAligned inputs origin) where
   respond execution owner response aligned := by
-    refine ⟨(reactiveStateInvariant runtime leaks inputs).respond execution owner response
+    refine ⟨(reactiveStateInvariant timeouts leaks inputs).respond execution owner response
       aligned.valid, ?_⟩
-    have progress := reactive_respond_progress runtime leaks inputs execution owner response
+    have progress := reactive_respond_progress timeouts leaks inputs execution owner response
       aligned.valid
     rw [progress.clock, Nat.add_zero, app.respond_environmentRecall]
     exact aligned.clock
   environment execution next selected aligned supported moved := by
-    refine ⟨(reactiveStateInvariant runtime leaks inputs).environmentStep execution next
+    refine ⟨(reactiveStateInvariant timeouts leaks inputs).environmentStep execution next
       selected aligned.valid moved, ?_⟩
     have chosen : selected = command execution.environmentRecall.length
         (execution.observeEnvironment app) := (PMF.mem_support_pure_iff _ _).mp supported
-    have progress := reactive_environment_progress runtime leaks inputs execution next
+    have progress := reactive_environment_progress timeouts leaks inputs execution next
       selected aligned.valid moved
     rw [progress.clock, chosen, command_ticks, aligned.clock,
       app.environmentStep_environmentRecall execution next selected moved,

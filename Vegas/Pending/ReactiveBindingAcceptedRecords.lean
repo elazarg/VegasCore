@@ -17,17 +17,17 @@ namespace Vegas.EventGraphRuntime.BindingMemory
 open Interaction EventGraph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {graph : Vegas.EventGraph Player L} {runtime : EventGraphRuntime graph}
+  {graph : Vegas.EventGraph Player L} {timeouts : EventTimeouts graph}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
 
 /-- Every accepted own binding output is successful when the original signed
 submissions are recorded by a repair with the same accepted handle table. -/
 theorem RecordsSubmittedBindings.accepted_output_succeeded
-    {memory : BindingMemory runtime leaks} {who : Player}
-    {original repaired : (runtime.reactiveApplication leaks).Execution}
-    (recorded : memory.RecordsSubmittedBindings runtime leaks who original repaired)
-    (signed : SignedCommitments runtime leaks original)
-    (count : runtime.CountRecall leaks original)
+    {memory : BindingMemory timeouts leaks} {who : Player}
+    {original repaired : ((reactiveApplication timeouts) leaks).Execution}
+    (recorded : memory.RecordsSubmittedBindings timeouts leaks who original repaired)
+    (signed : SignedCommitments timeouts leaks original)
+    (count : (CountRecall timeouts) leaks original)
     (valid : repaired.application.BindingInvariant)
     (acceptedEq : repaired.application.accepted = original.application.accepted)
     (event : graph.EventId) (payload : L.Ty)

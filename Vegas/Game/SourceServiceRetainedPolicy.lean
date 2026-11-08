@@ -21,23 +21,23 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 variable {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 variable [Fintype Player]
 
 /-- The retained menu uses only bounded raw responses. -/
 theorem canonicalMenu_in_raw (bounds : MessageBounds (serviceGraph setup mode)) :
-    (bounds.canonicalMenu (serviceRuntime setup mode deadline) leaks).IncludedIn
-      (bounds.rawMenu (serviceRuntime setup mode deadline) leaks) := by
+    (bounds.canonicalMenu (serviceTimeouts setup mode duration) leaks).IncludedIn
+      (bounds.rawMenu (serviceTimeouts setup mode duration) leaks) := by
   intro who past view response member
   obtain ⟨original, allowed, normal⟩ :=
-      ((serviceRuntime setup mode deadline).reactiveNormalization leaks).menu_mem
-      (bounds.rawMenu (serviceRuntime setup mode deadline) leaks) who past view response |>.mp
-      (bounds.canonicalActions_effective (serviceRuntime setup mode deadline) leaks who past
+      ((reactiveNormalization (serviceTimeouts setup mode duration)) leaks).menu_mem
+      (bounds.rawMenu (serviceTimeouts setup mode duration) leaks) who past view response |>.mp
+      (bounds.canonicalActions_effective (serviceTimeouts setup mode duration) leaks who past
           view member)
   rw [← normal]
-  exact bounds.rawMenu_closed (serviceRuntime setup mode deadline) leaks who past view
+  exact bounds.rawMenu_closed (serviceTimeouts setup mode duration) leaks who past view
       original allowed
 
 omit [Fintype Player] in
@@ -45,7 +45,7 @@ omit [Fintype Player] in
 handle, regardless of the eventual publication guard result. -/
 theorem sourceService_resolutionPacket_allowed
     (bounds : MessageBounds (serviceGraph setup mode))
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (execution : (serviceApplication setup mode duration leaks).Execution)
     (valid : execution.application.BindingInvariant)
     (values : bounds.CandidateValues execution.application)
     (handles : bounds.AcceptedHandles execution.application)
@@ -55,17 +55,17 @@ theorem sourceService_resolutionPacket_allowed
     (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
     (choice : (serviceGraph setup mode).Action event) (packet : Payload (serviceGraph setup mode))
     (sent : reactiveResolutionPacket who event payload binding checks outputEq
-      choice (execution.observe (serviceApplication setup mode deadline leaks) who).application =
+      choice (execution.observe (serviceApplication setup mode duration leaks) who).application =
           some packet) :
     bounds.AllowsPacket packet := by
   rcases reactiveResolutionPacket_shape who event payload binding checks outputEq choice
-      (execution.observe (serviceApplication setup mode deadline leaks) who).application with
+      (execution.observe (serviceApplication setup mode duration leaks) who).application with
     ⟨candidate, raw, opened⟩ | quiet
   · have same : packet = .opening event candidate raw := Option.some.inj (sent.symm.trans opened)
     subst packet
     obtain ⟨_active, _disclose, _named, value, stored, accepted, _owned, rawEq⟩ :=
       reactiveResolutionPacket_opening_spec who event payload binding checks outputEq choice
-        (execution.observe (serviceApplication setup mode deadline leaks) who).application event
+        (execution.observe (serviceApplication setup mode duration leaks) who).application event
         candidate raw opened
     subst raw
     refine ⟨handles binding.field candidate accepted, ?_⟩

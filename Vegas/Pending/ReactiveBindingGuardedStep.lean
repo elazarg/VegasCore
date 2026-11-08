@@ -19,23 +19,23 @@ open Interaction EventGraph GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  {runtime : EventGraphRuntime graph}
+  {timeouts : EventTimeouts graph}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
-  {memory : BindingMemory runtime leaks} {owner : Player}
-  {original repaired : (runtime.reactiveApplication leaks).Execution}
+  {memory : BindingMemory timeouts leaks} {owner : Player}
+  {original repaired : ((reactiveApplication timeouts) leaks).Execution}
 
 /-- Semantic evidence normalization does not inspect unrelated hidden bindings.
 Forwarded certificates use the same known envelope on the two executions. -/
-theorem normalized_opening_eq (frame : Frame runtime leaks memory owner original repaired)
+theorem normalized_opening_eq (frame : Frame timeouts leaks memory owner original repaired)
     (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
     (owned : candidate.1 = owner)
     (leftFixed : original.application.candidates.lookup candidate = .openable raw)
     (rightFixed : repaired.application.candidates.lookup candidate = .openable raw) :
     (disclosureSubmission (.opening event candidate raw)).normalizeReactive owner
-        ((runtime.reactiveApplication leaks).observePlayer original.application owner)
+        (((reactiveApplication timeouts) leaks).observePlayer original.application owner)
         (original.network.known owner) =
       (disclosureSubmission (.opening event candidate raw)).normalizeReactive owner
-        ((runtime.reactiveApplication leaks).observePlayer repaired.application owner)
+        (((reactiveApplication timeouts) leaks).observePlayer repaired.application owner)
         (repaired.network.known owner) := by
   have leftLocal : original.application.candidates.lookup (owner, candidate.2) =
       .openable raw := by simpa only [← owned, Prod.mk.eta] using leftFixed
@@ -60,25 +60,25 @@ theorem normalized_opening_eq (frame : Frame runtime leaks memory owner original
 /-- The finite effective menu admits the same normalized successful opening
 after repair. Raw payload bounds and known forwarding references are unchanged. -/
 theorem normalized_opening_available [Fintype Player]
-    (frame : Frame runtime leaks memory owner original repaired) (bounds : MessageBounds graph)
-    (leftRecall : original.InputRecall (runtime.reactiveApplication leaks))
-    (rightRecall : repaired.InputRecall (runtime.reactiveApplication leaks))
+    (frame : Frame timeouts leaks memory owner original repaired) (bounds : MessageBounds graph)
+    (leftRecall : original.InputRecall ((reactiveApplication timeouts) leaks))
+    (rightRecall : repaired.InputRecall ((reactiveApplication timeouts) leaks))
     (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
     (owned : candidate.1 = owner)
     (leftFixed : original.application.candidates.lookup candidate = .openable raw)
     (rightFixed : repaired.application.candidates.lookup candidate = .openable raw)
     (available : (⟨some ((disclosureSubmission (.opening event candidate raw)).normalizeReactive
       owner
-        ((runtime.reactiveApplication leaks).observePlayer original.application owner)
-        (original.network.known owner))⟩ : (runtime.reactiveApplication leaks).Action) ∈
-          (bounds.menu runtime leaks).actions owner (original.logs owner)
-            (original.observe (runtime.reactiveApplication leaks) owner)) :
+        (((reactiveApplication timeouts) leaks).observePlayer original.application owner)
+        (original.network.known owner))⟩ : ((reactiveApplication timeouts) leaks).Action) ∈
+          (bounds.menu timeouts leaks).actions owner (original.logs owner)
+            (original.observe ((reactiveApplication timeouts) leaks) owner)) :
     (⟨some ((disclosureSubmission (.opening event candidate raw)).normalizeReactive owner
-        ((runtime.reactiveApplication leaks).observePlayer repaired.application owner)
-        (repaired.network.known owner))⟩ : (runtime.reactiveApplication leaks).Action) ∈
-          (bounds.menu runtime leaks).actions owner (repaired.logs owner)
-            (repaired.observe (runtime.reactiveApplication leaks) owner) := by
-  let app := runtime.reactiveApplication leaks
+        (((reactiveApplication timeouts) leaks).observePlayer repaired.application owner)
+        (repaired.network.known owner))⟩ : ((reactiveApplication timeouts) leaks).Action) ∈
+          (bounds.menu timeouts leaks).actions owner (repaired.logs owner)
+            (repaired.observe ((reactiveApplication timeouts) leaks) owner) := by
+  let app := (reactiveApplication timeouts) leaks
   have leftKnown := app.known_from_recall original owner leftRecall
   have rightKnown := app.known_from_recall repaired owner rightRecall
   change original.network.known owner = ReactiveApplication.ResponseMenu.knownPackets
@@ -90,10 +90,10 @@ theorem normalized_opening_available [Fintype Player]
         ReactiveApplication.ResponseMenu.knownPackets
           (repaired.logs owner) (repaired.observe app owner) := by
     rw [← leftKnown, ← rightKnown, frame.network]
-  have allowed := ((bounds.menu_mem runtime leaks owner _ _ _).mp available).1
+  have allowed := ((bounds.menu_mem timeouts leaks owner _ _ _).mp available).1
   rw [frame.normalized_opening_eq event candidate raw owned leftFixed rightFixed,
     sameKnown] at allowed
-  apply (bounds.menu_mem runtime leaks owner _ _ _).mpr
+  apply (bounds.menu_mem timeouts leaks owner _ _ _).mpr
   refine ⟨allowed, ?_⟩
   change (⟨some (((disclosureSubmission (.opening event candidate raw)).normalizeReactive owner
       (app.observePlayer repaired.application owner)

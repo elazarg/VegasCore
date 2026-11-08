@@ -20,7 +20,7 @@ open SourceProgram GameTheory GameTheory.Enforcement GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {Parameter : Type} (parameter : State L setup.context → Parameter)
 
@@ -28,12 +28,12 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 theorem exclusionBase_add
     (valuation transfer : Parameter × PublicOutcome setup.program → Player → ℝ)
     (exitValuation exitTransfer : Player → ℝ)
-    (state : (application setup runtime leaks).ProtocolState) (who : Player) :
-    exclusionBase setup runtime parameter
+    (state : (application setup timeouts leaks).ProtocolState) (who : Player) :
+    exclusionBase setup timeouts parameter
         (fun outcome owner => valuation outcome owner + transfer outcome owner)
         (fun owner => exitValuation owner + exitTransfer owner) leaks state who =
-      exclusionBase setup runtime parameter valuation exitValuation leaks state who +
-        exclusionBase setup runtime parameter transfer exitTransfer leaks state who := by
+      exclusionBase setup timeouts parameter valuation exitValuation leaks state who +
+        exclusionBase setup timeouts parameter transfer exitTransfer leaks state who := by
   cases state with
   | none => simp only [exclusionBase, add_zero]
   | some control =>
@@ -41,7 +41,7 @@ theorem exclusionBase_add
       split_ifs
       · rfl
       · unfold exclusionReadoutUtility exclusionTerminalUtility
-        cases sourceReadout setup runtime leaks (some control) with
+        cases sourceReadout setup timeouts leaks (some control) with
         | none => simp only [Option.elim_none, add_zero]
         | some terminal =>
             dsimp only [Option.elim_some]
@@ -53,12 +53,12 @@ full typed source readout, even when the readout is absent. -/
 theorem exclusionBase_valuation_factors
     (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)
     (exitValuation : Player → ℝ)
-    (law : PMF (application setup runtime leaks).ProtocolState)
+    (law : PMF (application setup timeouts leaks).ProtocolState)
     (clear : ∀ control, some control ∈ law.support →
       control.execution.application.config.defaulted = ∅) :
     ∀ state ∈ law.support,
-      exclusionBase setup runtime parameter valuation exitValuation leaks state =
-        fun who => (sourceReadout setup runtime leaks state).elim 0
+      exclusionBase setup timeouts parameter valuation exitValuation leaks state =
+        fun who => (sourceReadout setup timeouts leaks state).elim 0
           (fun terminal => valuation (setup.parameterOutcome parameter terminal) who) := by
   intro state supported
   funext who
@@ -68,14 +68,14 @@ theorem exclusionBase_valuation_factors
       have active : who ∉ control.execution.application.config.defaulted := by
         rw [clear control supported]
         exact Finset.notMem_empty _
-      rw [exclusionBase_of_not_defaulted setup runtime parameter valuation exitValuation leaks
+      rw [exclusionBase_of_not_defaulted setup timeouts parameter valuation exitValuation leaks
         control who active]
-      cases read : sourceReadout setup runtime leaks (some control) with
+      cases read : sourceReadout setup timeouts leaks (some control) with
       | none => rfl
       | some terminal =>
           apply exclusionTerminalUtility_of_not_defaulted
           change who ∉ terminal.defaults.defaulted
-          rw [serviceSourceReadout_defaults setup .sequential runtime.deadline leaks control
+          rw [serviceSourceReadout_defaults setup .sequential timeouts.duration leaks control
             terminal read]
           exact active
 
@@ -84,56 +84,58 @@ all cash and audit correlations. -/
 theorem jointCashLaw_of_utility_law {Observation : Type}
     (valuation transfer : Parameter × PublicOutcome setup.program → Player → ℝ)
     (exitValuation exitTransfer : Player → ℝ)
-    (law : PMF (application setup runtime leaks).ProtocolState)
+    (law : PMF (application setup timeouts leaks).ProtocolState)
     (reference : PMF (Option (Config Player L setup.program.terminalCtx) × (Player → ℝ)))
     (factors : ∀ state ∈ law.support,
-      exclusionBase setup runtime parameter valuation exitValuation leaks state =
-        fun who => (sourceReadout setup runtime leaks state).elim 0
+      exclusionBase setup timeouts parameter valuation exitValuation leaks state =
+        fun who => (sourceReadout setup timeouts leaks state).elim 0
           (fun terminal => valuation (setup.parameterOutcome parameter terminal) who))
-    (observe : (application setup runtime leaks).ProtocolState → Observation)
+    (observe : (application setup timeouts leaks).ProtocolState → Observation)
     (audit : Observation → PMF (Player → Bool)) (deposit : Player → ℝ)
     (utilityLaw :
       (TerminalAudit.jointSettlement law
-        (exclusionBase setup runtime parameter
+        (exclusionBase setup timeouts parameter
           (fun outcome who => valuation outcome who + transfer outcome who)
           (fun who => exitValuation who + exitTransfer who) leaks) observe audit deposit).map
-        (fun realized => (sourceReadout setup runtime leaks realized.1, realized.2)) =
+        (fun realized => (sourceReadout setup timeouts leaks realized.1, realized.2)) =
         reference.map (utilityReadout (fun readout who =>
           readout.elim 0 (fun terminal =>
             valuation (setup.parameterOutcome parameter terminal) who)))) :
     (TerminalAudit.jointSettlement law
-      (exclusionBase setup runtime parameter transfer exitTransfer leaks) observe audit deposit).map
-      (fun realized => (sourceReadout setup runtime leaks realized.1, realized.2)) = reference := by
-  have baseAdd : exclusionBase setup runtime parameter
+      (exclusionBase setup timeouts parameter transfer exitTransfer leaks) observe audit
+        deposit).map
+      (fun realized => (sourceReadout setup timeouts leaks realized.1, realized.2)) = reference
+        := by
+  have baseAdd : exclusionBase setup timeouts parameter
       (fun outcome who => valuation outcome who + transfer outcome who)
       (fun who => exitValuation who + exitTransfer who) leaks = fun state who =>
-      exclusionBase setup runtime parameter valuation exitValuation leaks state who +
-        exclusionBase setup runtime parameter transfer exitTransfer leaks state who := by
+      exclusionBase setup timeouts parameter valuation exitValuation leaks state who +
+        exclusionBase setup timeouts parameter transfer exitTransfer leaks state who := by
     funext state who
     exact exclusionBase_add parameter valuation transfer exitValuation exitTransfer state who
   rw [baseAdd] at utilityLaw
   exact TerminalAudit.jointSettlement_readout_eq_of_utility_law law
-    (exclusionBase setup runtime parameter valuation exitValuation leaks) _
-    (sourceReadout setup runtime leaks) _ factors observe audit deposit reference utilityLaw
+    (exclusionBase setup timeouts parameter valuation exitValuation leaks) _
+    (sourceReadout setup timeouts leaks) _ factors observe audit deposit reference utilityLaw
 
 /-- Declared valuation plus actual audited program receipts has the native
 total utility, including the separately declared exit valuation and transfer. -/
 theorem exclusionBase_expect_monetaryUtility {Observation : Type}
     (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)
     (exitValuation : Player → ℝ)
-    (observe : (application setup runtime leaks).ProtocolState → Observation)
+    (observe : (application setup timeouts leaks).ProtocolState → Observation)
     (audit : Observation → PMF (Player → Bool)) (deposit : Player → ℝ)
-    (state : (application setup runtime leaks).ProtocolState) (who : Player) :
+    (state : (application setup timeouts leaks).ProtocolState) (who : Player) :
     expect (TerminalAudit.settlement
-        (exclusionBase setup runtime parameter
+        (exclusionBase setup timeouts parameter
           (fun outcome owner => setup.transfers outcome.2 owner)
           (fun owner => (setup.exitTransfers owner : ℝ)) leaks)
         observe audit deposit state)
       (fun receipts => monetaryUtility
-        (exclusionBase setup runtime parameter valuation exitValuation leaks)
+        (exclusionBase setup timeouts parameter valuation exitValuation leaks)
         (state, receipts) who) =
       TerminalAudit.utility
-        (exclusionBase setup runtime parameter (setup.parameterPaymentUtility valuation)
+        (exclusionBase setup timeouts parameter (setup.parameterPaymentUtility valuation)
           (fun owner => exitValuation owner + (setup.exitTransfers owner : ℝ)) leaks)
         observe audit deposit state who := by
   rw [TerminalAudit.settlement_expect_monetaryUtility]

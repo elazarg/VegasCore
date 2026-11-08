@@ -68,24 +68,24 @@ private theorem silent_step_eq_failure (state : EventGraphRuntime.State (service
         rw [EventCode.resolve_eval?, absent]
         rfl
 
-private theorem expire_silent_eq (runtime : EventGraphRuntime (serviceGraph setup mode))
+private theorem expire_silent_eq (timeouts : EventTimeouts (serviceGraph setup mode))
     (state : EventGraphRuntime.State (serviceGraph setup mode)) (event :
       (serviceGraph setup mode).EventId)
     (ready : state.config.cut.Ready event) (action : (serviceGraph setup mode).Action event)
     (silent : SilentAction event action) (entered : Nat)
     (activated : state.activatedAt event = some entered)
-    (due : runtime.deadline event ≤ state.clock - entered) :
-    environmentStep runtime state (.expire event) =
+    (due : timeouts.duration event ≤ state.clock - entered) :
+    environmentStep timeouts state (.expire event) =
       PMF.pure (state.completeFailure event ready) := by
   cases node : nodeView (serviceGraph setup mode) event with
   | sample payload law outputEq codeEq =>
       simp only [SilentAction, node] at silent
   | bind owner payload outputEq codeEq =>
-      rw [environmentStep_expire_bind_eq runtime state event ready entered activated due
+      rw [environmentStep_expire_bind_eq timeouts state event ready entered activated due
         owner payload outputEq codeEq node]
       simp only [EventGraphRuntime.State.completeFailure, node]
   | resolve owner payload binding checks outputEq codeEq =>
-      rw [environmentStep_expire_resolve_eq runtime state event ready entered activated due
+      rw [environmentStep_expire_resolve_eq timeouts state event ready entered activated due
         owner payload binding checks outputEq codeEq node]
       simp only [EventGraphRuntime.State.completeFailure, node]
 
@@ -123,20 +123,20 @@ private theorem environment_pending_subset (app : ReactiveApplication Player)
 
 /-- At an initialized execution where `event` is untouched, a player whose
 prior submissions were at its turn has no pending call for it. -/
-theorem Untouched.no_pending_of_ownSubmissions (runtime : EventGraphRuntime
+theorem Untouched.no_pending_of_ownSubmissions (timeouts : EventTimeouts
     (serviceGraph setup mode))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
     (event : (serviceGraph setup mode).EventId) (execution :
-      (runtime.reactiveApplication leaks).Execution)
-    (supported : execution ∈ ((runtime.reactiveApplication leaks).roundsFrom
+      ((reactiveApplication timeouts) leaks).Execution)
+    (supported : execution ∈ (((reactiveApplication timeouts) leaks).roundsFrom
       (serviceInitialLaw setup mode) scheduler players execution.environmentRecall.length).support)
     (untouched : Untouched setup leaks event execution)
     (owner : Player) (truthful : OwnSubmissionsAtTurn setup leaks execution owner) :
     ∀ message ∈ execution.network.pending, message.sender = owner →
       message.payload.call.event? (serviceGraph setup mode) ≠ some event := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   obtain ⟨trace⟩ := app.raw_trace_roundsFrom
     (serviceInitialLaw setup mode) execution.environmentRecall.length
     scheduler players execution.environmentRecall.length le_rfl execution supported
@@ -147,7 +147,7 @@ theorem Untouched.no_pending_of_ownSubmissions (runtime : EventGraphRuntime
   have old : entry ∈ execution.logs owner := sender ▸ entryPresent
   have call : material.call.packet = message.payload.call :=
     congrArg (fun value => value.call) packet
-  have submitted : runtime.submittedEvent? leaks entry.action = some event := by
+  have submitted : (submittedEvent? timeouts) leaks entry.action = some event := by
     simp only [EventGraphRuntime.submittedEvent?, transmitted]
     rw [call]
     exact named
@@ -157,28 +157,28 @@ theorem Untouched.no_pending_of_ownSubmissions (runtime : EventGraphRuntime
 
 /-- At an untouched initialized boundary, a player whose prior submissions
 were at its turn has no pending call for the head event. -/
-theorem CompletionBoundary.no_pending_of_ownSubmissions (runtime : EventGraphRuntime (graph setup))
+theorem CompletionBoundary.no_pending_of_ownSubmissions (timeouts : EventTimeouts (graph setup))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (scheduler : (application setup runtime leaks).Scheduler)
-    (players : Player → (application setup runtime leaks).Policy)
-    (event : (graph setup).EventId) (execution : (application setup runtime leaks).Execution)
+    (scheduler : (application setup timeouts leaks).Scheduler)
+    (players : Player → (application setup timeouts leaks).Policy)
+    (event : (graph setup).EventId) (execution : (application setup timeouts leaks).Execution)
     (boundary : CompletionBoundary setup leaks scheduler players event.val execution)
     (owner : Player) (truthful : OwnSubmissionsAtTurn setup leaks execution owner) :
     ∀ message ∈ execution.network.pending, message.sender = owner →
       message.payload.call.event? (graph setup) ≠ some event :=
-  Untouched.no_pending_of_ownSubmissions runtime leaks scheduler players event execution
+  Untouched.no_pending_of_ownSubmissions timeouts leaks scheduler players event execution
     boundary.supported (boundary.untouched event le_rfl) owner truthful
 
-private theorem respond_no_owned_pending (runtime : EventGraphRuntime (serviceGraph setup mode))
+private theorem respond_no_owned_pending (timeouts : EventTimeouts (serviceGraph setup mode))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (execution : (runtime.reactiveApplication leaks).Execution) (owner : Player)
+    (execution : ((reactiveApplication timeouts) leaks).Execution) (owner : Player)
     (event : (serviceGraph setup mode).EventId) (actor : Player)
-    (response : (runtime.reactiveApplication leaks).Action)
+    (response : ((reactiveApplication timeouts) leaks).Action)
     (safe : ∀ message ∈ execution.network.pending, message.sender = owner →
       message.payload.call.event? (serviceGraph setup mode) ≠ some event)
     (silent : actor = owner → response.transmission = none) :
     ∀ message ∈
-      (execution.respond (runtime.reactiveApplication leaks) actor response).network.pending,
+      (execution.respond ((reactiveApplication timeouts) leaks) actor response).network.pending,
       message.sender = owner → message.payload.call.event?
         (serviceGraph setup mode) ≠ some event := by
   by_cases same : actor = owner
@@ -195,9 +195,9 @@ private theorem respond_no_owned_pending (runtime : EventGraphRuntime (serviceGr
         · obtain rfl := List.mem_singleton.mp fresh
           exact same sender
 
-private theorem pending_call_rejected (runtime : EventGraphRuntime (serviceGraph setup mode))
+private theorem pending_call_rejected (timeouts : EventTimeouts (serviceGraph setup mode))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (execution : (runtime.reactiveApplication leaks).Execution)
+    (execution : ((reactiveApplication timeouts) leaks).Execution)
     (event : (serviceGraph setup mode).EventId) (solitary :
       (serviceGraph setup mode).Solitary event)
         (ready : execution.application.config.cut.Ready event)
@@ -206,20 +206,20 @@ private theorem pending_call_rejected (runtime : EventGraphRuntime (serviceGraph
       message.payload.call.event? (serviceGraph setup mode) ≠ some event)
     (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
     (pending : message ∈ execution.network.pending) :
-    (runtime.reactiveApplication leaks).handle execution.application message = none := by
+    ((reactiveApplication timeouts) leaks).handle execution.application message = none := by
   apply reactiveHandle_none
-  cases handled : handle runtime execution.application ⟨message.id, message.payload.call⟩ with
+  cases handled : handle timeouts execution.application ⟨message.id, message.payload.call⟩ with
   | none => rfl
   | some next =>
       obtain ⟨query, named, queryReady, _action, _moved⟩ :=
-        handle_config_mem_step runtime execution.application next _ handled
+        handle_config_mem_step timeouts execution.application next _ handled
       have same := solitary _ queryReady ready
       subst query
-      have authored := handle_sender_actor runtime execution.application next _ handled event named
+      have authored := handle_sender_actor timeouts execution.application next _ handled event named
       have sender : message.sender = owner := Option.some.inj (authored.symm.trans owned)
       exact (safe message pending sender named).elim
 
-private theorem environment_silent_result (runtime : EventGraphRuntime (serviceGraph setup mode))
+private theorem environment_silent_result (timeouts : EventTimeouts (serviceGraph setup mode))
     {Result : Type*} (continuation : (serviceGraph setup mode).Config → PMF Result)
     (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup mode),
       continuation state.drain.config = continuation state.config)
@@ -230,13 +230,13 @@ private theorem environment_silent_result (runtime : EventGraphRuntime (serviceG
     (owner : Player) (owned : (serviceGraph setup mode).actor? event = some owner)
     (action : (serviceGraph setup mode).Action event) (silent : SilentAction event action)
     (quiescent : ∀ query, ¬ state.AutomaticReady query)
-    (moved : next ∈ (environmentStep runtime state operation).support) :
+    (moved : next ∈ (environmentStep timeouts state operation).support) :
     next.drain.config = state.config ∨
       event ∈ next.drain.config.cut.completed ∧
         continuation next.drain.config =
         (state.config.step event ready action).bind fun after =>
           continuation after := by
-  rcases completionStep_environmentStep runtime state next operation moved with
+  rcases completionStep_environmentStep timeouts state next operation moved with
     ⟨same, _⟩ | ⟨query, queryReady, queryAction, queryMoved, _⟩
   · have cleared : ∀ query, ¬ next.AutomaticReady query := by
       simpa only [EventGraphRuntime.State.AutomaticReady, same] using quiescent
@@ -253,32 +253,32 @@ private theorem environment_silent_result (runtime : EventGraphRuntime (serviceG
       exact ready.1 (same ▸ done)
     have expires : operation = .expire event := by
       by_contra other
-      exact ready.1 ((environmentStep_owned_completed_iff runtime state next operation event owner
+      exact ready.1 ((environmentStep_owned_completed_iff timeouts state next operation event owner
         owned other moved).mp done)
     subst operation
     obtain ⟨entered, activated, due⟩ : ∃ entered, state.activatedAt event = some entered ∧
-        runtime.deadline event ≤ state.clock - entered := by
+        timeouts.duration event ≤ state.clock - entered := by
       cases activated : state.activatedAt event with
       | none =>
-          rw [environmentStep_expire_of_not_activated runtime state event ready activated,
+          rw [environmentStep_expire_of_not_activated timeouts state event ready activated,
             PMF.mem_support_pure_iff] at moved
           exact (advancing (congrArg EventGraphRuntime.State.config moved)).elim
       | some entered =>
-          by_cases due : runtime.deadline event ≤ state.clock - entered
+          by_cases due : timeouts.duration event ≤ state.clock - entered
           · exact ⟨entered, rfl, due⟩
-          · rw [environmentStep_expire_of_not_due runtime state event ready entered activated due,
+          · rw [environmentStep_expire_of_not_due timeouts state event ready entered activated due,
               PMF.mem_support_pure_iff] at moved
             exact (advancing (congrArg EventGraphRuntime.State.config moved)).elim
-    have expired := expire_silent_eq runtime state event ready action silent entered activated due
+    have expired := expire_silent_eq timeouts state event ready action silent entered activated due
     rw [expired, PMF.mem_support_pure_iff] at moved
     subst next
     refine Or.inr ⟨(state.completeFailure event ready).drainFuel_completed_subset _ done, ?_⟩
     rw [drained, silent_step_eq_failure state event ready action silent, PMF.pure_bind]
 
 
-private theorem include_silent_config (runtime : EventGraphRuntime (serviceGraph setup mode))
+private theorem include_silent_config (timeouts : EventTimeouts (serviceGraph setup mode))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (execution : (runtime.reactiveApplication leaks).Execution)
+    (execution : ((reactiveApplication timeouts) leaks).Execution)
     (event : (serviceGraph setup mode).EventId) (solitary :
       (serviceGraph setup mode).Solitary event)
         (ready : execution.application.config.cut.Ready event)
@@ -286,27 +286,27 @@ private theorem include_silent_config (runtime : EventGraphRuntime (serviceGraph
     (safe : ∀ message ∈ execution.network.pending, message.sender = owner →
       message.payload.call.event? (serviceGraph setup mode) ≠ some event)
     (id : MessageId Player) :
-    (execution.includePending (runtime.reactiveApplication leaks) id).application.config =
+    (execution.includePending ((reactiveApplication timeouts) leaks) id).application.config =
       execution.application.config := by
   cases found : execution.network.lookup id with
   | none =>
       simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
         found]
   | some message =>
-      have rejected := pending_call_rejected runtime leaks execution event solitary ready owner
+      have rejected := pending_call_rejected timeouts leaks execution event solitary ready owner
         owned safe
         message (List.mem_of_find?_eq_some found)
       simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
         found, rejected, Option.getD_none]
 
-private theorem round_silent_result (runtime : EventGraphRuntime (serviceGraph setup mode))
+private theorem round_silent_result (timeouts : EventTimeouts (serviceGraph setup mode))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     {Result : Type*} (continuation : (serviceGraph setup mode).Config → PMF Result)
     (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup mode),
       continuation state.drain.config = continuation state.config)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
-    (execution next : (runtime.reactiveApplication leaks).Execution)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
+    (execution next : ((reactiveApplication timeouts) leaks).Execution)
     (event : (serviceGraph setup mode).EventId) (solitary :
       (serviceGraph setup mode).Solitary event)
         (ready : execution.application.config.cut.Ready event)
@@ -318,7 +318,7 @@ private theorem round_silent_result (runtime : EventGraphRuntime (serviceGraph s
     (quiet : ∀ past view, view.application.publicView.ownTurn? owner = some event →
       players owner past view = PMF.pure ⟨none⟩)
     (reached : next ∈
-      ((runtime.reactiveApplication leaks).round scheduler players execution).support) :
+      (((reactiveApplication timeouts) leaks).round scheduler players execution).support) :
     (next.application.config = execution.application.config ∧
       ∀ message ∈ next.network.pending, message.sender = owner →
         message.payload.call.event? (serviceGraph setup mode) ≠ some event) ∨
@@ -326,7 +326,7 @@ private theorem round_silent_result (runtime : EventGraphRuntime (serviceGraph s
       continuation next.application.config =
       (execution.application.config.step event ready action).bind fun after =>
         continuation after) := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   obtain ⟨command, _, dispatched⟩ :=
     Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨middle, moved, resumed⟩ :=
@@ -348,7 +348,7 @@ private theorem round_silent_result (runtime : EventGraphRuntime (serviceGraph s
       simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
         PMF.mem_support_pure_iff] at moved
       subst middle
-      refine Or.inl ⟨include_silent_config runtime leaks execution event solitary ready owner
+      refine Or.inl ⟨include_silent_config timeouts leaks execution event solitary ready owner
         owned safe id,
         ?_⟩
       exact fun message present => safe message (sub present)
@@ -358,10 +358,10 @@ private theorem round_silent_result (runtime : EventGraphRuntime (serviceGraph s
       subst next
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      change state ∈ ((environmentStep runtime execution.application operation).map
+      change state ∈ ((environmentStep timeouts execution.application operation).map
         EventGraphRuntime.State.drain).support at changed
       obtain ⟨native, nativeMoved, rfl⟩ := PMF.support_map .. ▸ changed
-      rcases environment_silent_result runtime continuation drained execution.application native
+      rcases environment_silent_result timeouts continuation drained execution.application native
         operation
           event solitary ready owner owned action silent quiescent nativeMoved with same | done
       · exact Or.inl ⟨same, safe⟩
@@ -370,8 +370,8 @@ private theorem round_silent_result (runtime : EventGraphRuntime (serviceGraph s
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ moved
       obtain ⟨selected, _, rfl⟩ := PMF.support_map .. ▸ supported
       obtain ⟨response, chosen, rfl⟩ := PMF.support_map .. ▸ resumed
-      refine Or.inl ⟨(runtime.reactive_respond_application leaks _ actor response).1, ?_⟩
-      apply respond_no_owned_pending runtime leaks _ owner event actor response
+      refine Or.inl ⟨((reactive_respond_application timeouts) leaks _ actor response).1, ?_⟩
+      apply respond_no_owned_pending timeouts leaks _ owner event actor response
       · exact safe
       · intro same
         subst actor
@@ -381,31 +381,31 @@ private theorem round_silent_result (runtime : EventGraphRuntime (serviceGraph s
         exact congrArg ReactiveApplication.Action.transmission chosen
 
 
-private theorem runUntil_silent_result (runtime : EventGraphRuntime (serviceGraph setup mode))
+private theorem runUntil_silent_result (timeouts : EventTimeouts (serviceGraph setup mode))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     {Result : Type*} (continuation : (serviceGraph setup mode).Config → PMF Result)
     (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup mode),
       continuation state.drain.config = continuation state.config)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
     (event : (serviceGraph setup mode).EventId) (solitary :
       (serviceGraph setup mode).Solitary event) (owner : Player)
     (owned : (serviceGraph setup mode).actor? event = some owner)
     (action : (serviceGraph setup mode).Action event) (silent : SilentAction event action)
     (quiet : ∀ past view, view.application.publicView.ownTurn? owner = some event →
       players owner past view = PMF.pure ⟨none⟩) :
-    ∀ (count : Nat) (execution stopped : (runtime.reactiveApplication leaks).Execution)
+    ∀ (count : Nat) (execution stopped : ((reactiveApplication timeouts) leaks).Execution)
       (ready : execution.application.config.cut.Ready event),
       (∀ query, ¬ execution.application.AutomaticReady query) →
       (∀ message ∈ execution.network.pending, message.sender = owner →
         message.payload.call.event? (serviceGraph setup mode) ≠ some event) →
-      stopped ∈ ((runtime.reactiveApplication leaks).runUntil scheduler players
+      stopped ∈ (((reactiveApplication timeouts) leaks).runUntil scheduler players
         (fun final => event ∈ final.application.config.cut.completed) count execution).support →
       event ∈ stopped.application.config.cut.completed →
       continuation stopped.application.config =
       (execution.application.config.step event ready action).bind fun after =>
         continuation after := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   intro count
   induction count with
   | zero =>
@@ -418,7 +418,7 @@ private theorem runUntil_silent_result (runtime : EventGraphRuntime (serviceGrap
       simp only [ReactiveApplication.runUntil, running, ↓reduceIte] at reached
       obtain ⟨middle, moved, rest⟩ :=
         Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      rcases round_silent_result runtime leaks continuation drained scheduler players execution
+      rcases round_silent_result timeouts leaks continuation drained scheduler players execution
         middle event
           solitary ready owner owned action silent quiescent safe quiet moved with
         ⟨same, safeMiddle⟩ | ⟨completed, continuation⟩
@@ -438,36 +438,36 @@ private theorem runUntil_silent_result (runtime : EventGraphRuntime (serviceGrap
 omission, even when expiry automatically completes further events. The initial
 execution may be any actual raw idle history. -/
 theorem silent_runUntil_bind_continuation
-    (runtime : EventGraphRuntime (serviceGraph setup mode))
+    (timeouts : EventTimeouts (serviceGraph setup mode))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     {Result : Type*} (continuation : (serviceGraph setup mode).Config → PMF Result)
     (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup mode),
       continuation state.drain.config = continuation state.config)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
     (horizon : Nat)
-    (complete : CompletesPlay runtime leaks (serviceInitialLaw setup mode) horizon scheduler)
+    (complete : CompletesPlay timeouts leaks (serviceInitialLaw setup mode) horizon scheduler)
     (event : (serviceGraph setup mode).EventId) (solitary :
       (serviceGraph setup mode).Solitary event) (owner : Player)
     (owned : (serviceGraph setup mode).actor? event = some owner)
     (action : (serviceGraph setup mode).Action event) (silent : SilentAction event action)
-    (execution : (runtime.reactiveApplication leaks).Execution)
+    (execution : ((reactiveApplication timeouts) leaks).Execution)
     (ready : execution.application.config.cut.Ready event)
     {remaining : Nat}
-    (trace : ((runtime.reactiveApplication leaks).protocol
+    (trace : (((reactiveApplication timeouts) leaks).protocol
       (serviceInitialLaw setup mode) horizon scheduler).Trace
       (some ⟨remaining, none, execution⟩))
     (safe : ∀ message ∈ execution.network.pending, message.sender = owner →
       message.payload.call.event? (serviceGraph setup mode) ≠ some event)
     (quiet : ∀ past view, view.application.publicView.ownTurn? owner = some event →
       players owner past view = PMF.pure ⟨none⟩) :
-    (((runtime.reactiveApplication leaks).runUntilHorizon scheduler players
+    ((((reactiveApplication timeouts) leaks).runUntilHorizon scheduler players
         (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
       fun stopped =>
         continuation stopped.application.config) =
       (execution.application.config.step event ready action).bind fun after =>
         continuation after := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   have accounted : execution.environmentRecall.length + remaining = horizon :=
     app.raw_trace_horizon (serviceInitialLaw setup mode) horizon scheduler trace
   have countEq : horizon - execution.environmentRecall.length = remaining := by omega
@@ -478,7 +478,7 @@ theorem silent_runUntil_bind_continuation
     (fun final => event ∈ final.application.config.cut.completed)
       (horizon - execution.environmentRecall.length) execution).support at reachedRemaining
   rw [countEq] at reachedRemaining
-  apply runUntil_silent_result runtime leaks continuation drained scheduler players event solitary
+  apply runUntil_silent_result timeouts leaks continuation drained scheduler players event solitary
     owner owned
     action
     silent quiet remaining execution stopped ready facts.quiescent safe reachedRemaining
@@ -502,26 +502,27 @@ theorem silent_runUntil_bind_continuation
 omission, even when expiry automatically completes further events. The initial
 execution may be any actual raw idle history. -/
 theorem silent_runUntil_bind_runPlan
-    (runtime : EventGraphRuntime (graph setup))
+    (timeouts : EventTimeouts (graph setup))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (profile : (graph setup).BehavioralProfile)
-    (scheduler : (application setup runtime leaks).Scheduler)
-    (players : Player → (application setup runtime leaks).Policy)
+    (scheduler : (application setup timeouts leaks).Scheduler)
+    (players : Player → (application setup timeouts leaks).Policy)
     (horizon : Nat)
-    (complete : CompletesPlay runtime leaks (initialLaw setup) horizon scheduler)
+    (complete : CompletesPlay timeouts leaks (initialLaw setup) horizon scheduler)
     (event : (graph setup).EventId) (owner : Player)
     (owned : (graph setup).actor? event = some owner)
     (action : (graph setup).Action event) (silent : SilentAction event action)
-    (execution : (application setup runtime leaks).Execution)
+    (execution : (application setup timeouts leaks).Execution)
     (ready : execution.application.config.cut.Ready event)
     {remaining : Nat}
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace
       (some ⟨remaining, none, execution⟩))
     (safe : ∀ message ∈ execution.network.pending, message.sender = owner →
       message.payload.call.event? (graph setup) ≠ some event)
     (quiet : ∀ past view, view.application.publicView.ownTurn? owner = some event →
       players owner past view = PMF.pure ⟨none⟩) :
-    (((application setup runtime leaks).runUntilHorizon scheduler players
+    (((application setup timeouts leaks).runUntilHorizon scheduler players
         (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
       fun stopped =>
         (graph setup).runPlan ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
@@ -529,7 +530,7 @@ theorem silent_runUntil_bind_runPlan
       (execution.application.config.step event ready action).bind fun after =>
         (graph setup).runPlan ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
           after.remaining after :=
-  silent_runUntil_bind_continuation runtime leaks
+  silent_runUntil_bind_continuation timeouts leaks
     (fun config => (graph setup).runPlan
       ((graph setup).policyPlan profile (graph setup).canonicalScheduler) config.remaining config)
     (fun state => (EventGraphRuntime.State.drain_runPlan_canonical setup.eventGraph profile

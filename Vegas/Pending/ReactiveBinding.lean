@@ -24,26 +24,26 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 /-- Every operation preserves a previously fixed candidate lookup. -/
-theorem fixedCandidateLookupInvariant (runtime : EventGraphRuntime graph)
+theorem fixedCandidateLookupInvariant (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (original : State graph) (candidate : Handle graph)
     (fixed : original.candidates.lookup candidate ≠ .fresh) :
-    (runtime.reactiveApplication leaks).Invariant (fun state =>
+    ((reactiveApplication timeouts) leaks).Invariant (fun state =>
       state.candidates.lookup candidate = original.candidates.lookup candidate) := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   constructor
   · intro state actor material same
-    exact (runtime.reactive_respond_candidate_fixed leaks (.initial app state) actor
+    exact ((reactive_respond_candidate_fixed timeouts) leaks (.initial app state) actor
       ⟨some material⟩ candidate (by
         change state.candidates.lookup candidate ≠ .fresh
         rwa [same])).trans same
   · intro state message target same accepted
     obtain ⟨native, handled, targetEq⟩ := reactiveHandle_call accepted
     rw [← targetEq, native.drain_tables.2.1]
-    exact (handle_lookup_of_not_fresh runtime state native
+    exact (handle_lookup_of_not_fresh timeouts state native
       ⟨message.id, message.payload.call⟩ candidate (by rwa [same]) handled).trans same
   · intro state command target same supported
-    rw [(reactiveApplication_environment_tables runtime leaks state target command supported).2]
+    rw [(reactiveApplication_environment_tables timeouts leaks state target command supported).2]
     exact same
 
 end Vegas.EventGraphRuntime

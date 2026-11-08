@@ -22,59 +22,59 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
-  [Finite (onePacketProtocol setup runtime leaks bounds horizon scheduler).History]
+  (scheduler : (application setup timeouts leaks).Scheduler)
+  [Finite (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History]
 
 /-- The mass the initial law gives the application state of a native state. -/
-def initialMass : (application setup runtime leaks).ProtocolState → ℝ
+def initialMass : (application setup timeouts leaks).ProtocolState → ℝ
   | none => 0
   | some control => (initialLaw setup control.execution.application).toReal
 
 open Classical in
 /-- The positive initial masses of the states of the native histories. -/
 def initialMasses : Finset ℝ :=
-  let := Fintype.ofFinite (onePacketProtocol setup runtime leaks bounds horizon scheduler).History
-  ((Finset.univ : Finset (onePacketProtocol setup runtime leaks bounds horizon
+  let := Fintype.ofFinite (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History
+  ((Finset.univ : Finset (onePacketProtocol setup timeouts leaks bounds horizon
     scheduler).History).image
-    fun history => initialMass setup runtime leaks history.state).filter (0 < ·)
+    fun history => initialMass setup timeouts leaks history.state).filter (0 < ·)
 
 /-- **The initial floor.** The smallest positive initial mass of the state of a
 native history; one when there is none. -/
 def initialFloor : ℝ :=
-  if nonempty : (initialMasses setup runtime leaks bounds horizon scheduler).Nonempty then
-    (initialMasses setup runtime leaks bounds horizon scheduler).min' nonempty
+  if nonempty : (initialMasses setup timeouts leaks bounds horizon scheduler).Nonempty then
+    (initialMasses setup timeouts leaks bounds horizon scheduler).min' nonempty
   else 1
 
-theorem initialFloor_pos : 0 < initialFloor setup runtime leaks bounds horizon scheduler := by
+theorem initialFloor_pos : 0 < initialFloor setup timeouts leaks bounds horizon scheduler := by
   classical
   unfold initialFloor
   split
   · rename_i nonempty
-    have member := (initialMasses setup runtime leaks bounds horizon scheduler).min'_mem nonempty
+    have member := (initialMasses setup timeouts leaks bounds horizon scheduler).min'_mem nonempty
     unfold initialMasses at member
     exact (Finset.mem_filter.mp member).2
   · exact zero_lt_one
 
 /-- **Supported initial states are above the initial floor.** -/
-theorem initialFloor_le {state : (application setup runtime leaks).State}
+theorem initialFloor_le {state : (application setup timeouts leaks).State}
     (supported : state ∈ (initialLaw setup).support) :
-    initialFloor setup runtime leaks bounds horizon scheduler ≤ (initialLaw setup state).toReal :=
+    initialFloor setup timeouts leaks bounds horizon scheduler ≤ (initialLaw setup state).toReal :=
       by
   classical
-  let := Fintype.ofFinite (onePacketProtocol setup runtime leaks bounds horizon scheduler).History
-  obtain ⟨trace⟩ := (bounds.onePacketMenu runtime leaks).trace_initial (initialLaw setup)
+  let := Fintype.ofFinite (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History
+  obtain ⟨trace⟩ := (bounds.onePacketMenu timeouts leaks).trace_initial (initialLaw setup)
     horizon scheduler state supported
   have positive : 0 < (initialLaw setup state).toReal :=
     ENNReal.toReal_pos ((PMF.mem_support_iff _ _).mp supported) (PMF.apply_ne_top _ _)
-  have member : (initialLaw setup state).toReal ∈ initialMasses setup runtime leaks bounds horizon
+  have member : (initialLaw setup state).toReal ∈ initialMasses setup timeouts leaks bounds horizon
       scheduler := by
     unfold initialMasses
     refine Finset.mem_filter.mpr ⟨Finset.mem_image.mpr ⟨⟨_, trace⟩, Finset.mem_univ _, rfl⟩,
       positive⟩
-  have nonempty : (initialMasses setup runtime leaks bounds horizon scheduler).Nonempty := ⟨_,
+  have nonempty : (initialMasses setup timeouts leaks bounds horizon scheduler).Nonempty := ⟨_,
     member⟩
   unfold initialFloor
   rw [dite_eq_left_of_eq_true (eq_true nonempty)]

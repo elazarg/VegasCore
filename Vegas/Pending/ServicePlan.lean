@@ -53,11 +53,11 @@ def serviceTicks (plan : List (ServiceInstruction graph)) : Nat :=
     serviceTicks (instruction :: rest) = instruction.ticks + serviceTicks rest := rfl
 
 /-- Uniform upper bound on all local deadline lengths. -/
-def maxDeadline (runtime : EventGraphRuntime graph) : Nat :=
-  Finset.univ.sup runtime.deadline
+def maxDuration (timeouts : EventTimeouts graph) : Nat :=
+  Finset.univ.sup timeouts.duration
 
 /-- At most one full deadline window per graph event is needed for completion. -/
-def serviceEpochs (runtime : EventGraphRuntime graph) : Nat :=
-  graph.order.eventCount * (runtime.maxDeadline + 1)
+def serviceEpochs (timeouts : EventTimeouts graph) : Nat :=
+  graph.order.eventCount * ((maxDuration timeouts) + 1)
 
 end Vegas.EventGraphRuntime

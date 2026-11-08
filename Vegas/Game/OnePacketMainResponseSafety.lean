@@ -29,14 +29,14 @@ private theorem isFailure_cast {Player : Type} {L : IExpr}
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 private theorem resolution_failure_of_intended_impossible
     {bounds : MessageBounds (graph setup)} {horizon : Nat}
-    {scheduler : (application setup runtime leaks).Scheduler}
-    {control : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    {scheduler : (application setup timeouts leaks).Scheduler}
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     {event : (graph setup).EventId} {owner : Player} {payload : L.Ty}
     {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
@@ -50,8 +50,8 @@ private theorem resolution_failure_of_intended_impossible
     (intended : ProtocolState.Intended setup.program point)
     (failed : EventGraph.EventCode.resolveOutput? binding checks true
       control.execution.application.config.store = some .failure) : False := by
-  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime)
-    (failureProfile setup.program) (bounds.onePacketMenu runtime leaks) horizon scheduler
+  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts)
+    (failureProfile setup.program) (bounds.onePacketMenu timeouts leaks) horizon scheduler
     trace control rfl
   have pointEq := Option.some.inj ((decodedPoint_eq residual).symm.trans decoded)
   have active : owner ∉ control.execution.application.config.defaulted := by
@@ -103,42 +103,43 @@ theorem firstResponse_not_main_of_publicFailure_of_settles
     (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment) (focal : Player)
-    (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
+    (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
     (bound : (graph setup).EventId → Nat)
-    {remaining : Nat} {who : Player} {execution : (application setup runtime leaks).Execution}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    {remaining : Nat} {who : Player} {execution : (application setup timeouts leaks).Execution}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
     (clear : execution.application.config.defaulted = ∅)
-    (regular : RegularTrace setup runtime leaks bounds horizon scheduler source focal trace)
+    (regular : RegularTrace setup timeouts leaks bounds horizon scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point)
     (event : (graph setup).EventId)
-    (pending : pendingEvent setup runtime leaks who (some (execution.logs who,
-      execution.observe (application setup runtime leaks) who)) = some event)
-    (fits : execution.application.publicView.InclusionFitsDeadline runtime bound event)
-    (choice : (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+    (pending : pendingEvent setup timeouts leaks who (some (execution.logs who,
+      execution.observe (application setup timeouts leaks) who)) = some event)
+    (fits : execution.application.publicView.InclusionFitsDeadline timeouts bound event)
+    (choice : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler).Choice who
-      (some (execution.logs who, execution.observe (application setup runtime leaks) who)))
-    (response : (application setup runtime leaks).Action) (selected : choice.1 = some response)
-    (after : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+      (some (execution.logs who, execution.observe (application setup timeouts leaks) who)))
+    (response : (application setup timeouts leaks).Action) (selected : choice.1 = some response)
+    (after : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, none,
-        execution.respond (application setup runtime leaks) who response⟩))
-    (next : (application setup runtime leaks).Execution)
+        execution.respond (application setup timeouts leaks) who response⟩))
+    (next : (application setup timeouts leaks).Execution)
     (settles : SettlesFreshCalls setup leaks who event bound next)
-    (control : (application setup runtime leaks).Control) (nextExecution : control.execution = next)
-    (target : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (control : (application setup timeouts leaks).Control) (nextExecution : control.execution =
+      next)
+    (target : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control)) (isPrefix : TracePrefix after target)
     (failed : next.application.PublicFailure event) :
-    choice ∉ (honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler source
+    choice ∉ (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler source
       who
-      (some (execution.logs who, execution.observe (application setup runtime leaks)
+      (some (execution.logs who, execution.observe (application setup timeouts leaks)
         who))).support := by
   intro supported
   obtain ⟨point, decoded, intended⟩ :=
-    intended_of_clear_regular_notOwes (runtime := runtime) wellFormed source focal trace clear
+    intended_of_clear_regular_notOwes (timeouts := timeouts) wellFormed source focal trace clear
       regular notOwed
-  have forced : ForcedState setup runtime leaks who (some ⟨remaining, some who, execution⟩) :=
-    (forcedState_iff_decodedPoint (runtime := runtime) _).mpr
+  have forced : ForcedState setup timeouts leaks who (some ⟨remaining, some who, execution⟩) :=
+    (forcedState_iff_decodedPoint (timeouts := timeouts) _).mpr
       ⟨point, decoded, forcedPoint_of_intended who intended⟩
   have responderNotOwed : ∀ found, decodedPoint setup execution.application.config = some found →
       ¬ ProtocolState.OwesFailure who setup.program found := by
@@ -146,14 +147,15 @@ theorem firstResponse_not_main_of_publicFailure_of_settles
     have same := Option.some.inj (decoded.symm.trans foundDecoded)
     subst found
     exact ProtocolState.Intended.not_owesFailure who setup.program point intended
-  have turn := (pendingEvent_spec (runtime := runtime) pending).1
+  have turn := (pendingEvent_spec (timeouts := timeouts) pending).1
   obtain ⟨action, material, chosen, submits, bindSuccess⟩ :=
-    honestChoice_canonical_of_debtFree (runtime := runtime) wellFormed covers capacity source
+    honestChoice_canonical_of_debtFree (timeouts := timeouts) wellFormed covers capacity source
       trace who forced
       responderNotOwed event pending bound fits choice supported
   have sameResponse := Option.some.inj (selected.symm.trans chosen)
   subst response
-  obtain ⟨output, witness, stored⟩ := canonical_firstResponse_result_of_settles (runtime := runtime)
+  obtain ⟨output, witness, stored⟩ := canonical_firstResponse_result_of_settles (timeouts :=
+    timeouts)
     bounds horizon scheduler bound trace event turn fits action material submits after control
     target isPrefix next nextExecution settles
   have good : ¬ ((graph setup).outputLayout event).IsFailure output := by
@@ -184,7 +186,7 @@ theorem firstResponse_not_main_of_publicFailure_of_settles
             intended resolved).elim
   have outputStored := (stored failed.completed).1
   have facts := legalFacts setup leaks horizon scheduler control
-    ((bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler target)
+    ((bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler target)
   have valid := facts.binding
   rw [nextExecution] at valid
   exact (OutputSucceeded.not_publicFailure ⟨output, outputStored, good⟩ valid) failed

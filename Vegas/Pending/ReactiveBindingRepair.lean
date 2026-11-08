@@ -37,26 +37,26 @@ theorem reactiveFreshSlot_congr (left right : PlayerView graph)
 
 /-- Inclusion freezes a submitted candidate again; it cannot consume any new
 slot, whether the application accepts or rejects the packet. -/
-theorem reactive_include_fixed_binding_candidates (runtime : EventGraphRuntime graph)
+theorem reactive_include_fixed_binding_candidates (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution)
+    (execution : ((reactiveApplication timeouts) leaks).Execution)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
     (evidence : Option (OpeningFact graph)) {token : Option (ReadinessToken graph)}
     (found : execution.network.lookup id =
       some ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩)
     (fixed : execution.application.candidates.lookup candidate ≠ .fresh) :
-    (execution.includePending (runtime.reactiveApplication leaks) id).application.candidates =
+    (execution.includePending ((reactiveApplication timeouts) leaks) id).application.candidates =
       execution.application.candidates := by
   simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
     found]
-  cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+  cases accepted : ((reactiveApplication timeouts) leaks).handle execution.application
       ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩ with
   | none => rfl
   | some next =>
       change next.candidates = execution.application.candidates
       obtain ⟨native, handled, after⟩ := reactiveHandle_call accepted
       rw [← after, (native.drain_tables).2.1,
-        (handle_commitment_tables runtime execution.application native id event candidate
+        (handle_commitment_tables timeouts execution.application native id event candidate
           handled).1]
       exact execution.application.candidates.freeze_eq_self_of_not_fresh candidate fixed
 
@@ -84,9 +84,9 @@ private theorem complete_binding_public_congr
 
 /-- Commitment inclusion preserves the public frame without requiring that
 another player exists. The private candidate meanings may differ. -/
-theorem reactive_include_binding_public_congr (runtime : EventGraphRuntime graph)
+theorem reactive_include_binding_public_congr (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (left right : (runtime.reactiveApplication leaks).Execution)
+    (left right : ((reactiveApplication timeouts) leaks).Execution)
     (network : left.network = right.network)
     (publicEq : left.application.publicView = right.application.publicView)
     (owner : Player) (event : graph.EventId) (payload : L.Ty)
@@ -99,17 +99,17 @@ theorem reactive_include_binding_public_congr (runtime : EventGraphRuntime graph
     (found : left.network.lookup id =
       some ⟨id, ⟨.commitment event candidate, evidence, some ⟨event⟩⟩⟩)
     (ready : left.application.config.cut.Ready event)
-    (timely : left.application.WithinDeadline runtime event)
+    (timely : left.application.WithinDeadline timeouts event)
     (vacant : left.application.accepted (.inr event) = none)
     (unused : left.application.HandleUnused candidate) :
-    (left.includePending (runtime.reactiveApplication leaks) id).application.publicView =
-      (right.includePending (runtime.reactiveApplication leaks) id).application.publicView := by
+    (left.includePending ((reactiveApplication timeouts) leaks) id).application.publicView =
+      (right.includePending ((reactiveApplication timeouts) leaks) id).application.publicView := by
   have ready' : right.application.config.cut.Ready event := by
     rw [← State.publicView_eventReady, ← publicEq, State.publicView_eventReady]
     exact ready
   have acceptedEq : left.application.accepted = right.application.accepted :=
     congrArg PublicView.accepted publicEq
-  have timely' : right.application.WithinDeadline runtime event := by
+  have timely' : right.application.WithinDeadline timeouts event := by
     unfold State.WithinDeadline at timely ⊢
     rw [← show left.application.clock = right.application.clock from
       congrArg PublicView.clock publicEq,
@@ -129,20 +129,22 @@ theorem reactive_include_binding_public_congr (runtime : EventGraphRuntime graph
   swap
   · have inactive : id.1 ∈ left.application.config.defaulted := Classical.not_not.mp active
     have inactive' : id.1 ∈ right.application.config.defaulted := defaults ▸ inactive
-    have rejected : handle runtime left.application ⟨id, .commitment event candidate⟩ = none := by
+    have rejected : handle timeouts left.application ⟨id, .commitment event candidate⟩ = none := by
       simp only [handle, Message.sender, ite_eq_left inactive]
-    have rejected' : handle runtime right.application ⟨id, .commitment event candidate⟩ = none := by
+    have rejected' : handle timeouts right.application ⟨id, .commitment event candidate⟩ = none
+      := by
       simp only [handle, Message.sender, ite_eq_left inactive']
-    have actual := reactiveHandle_none (runtime := runtime) (leaks := leaks)
+    have actual := reactiveHandle_none (timeouts := timeouts) (leaks := leaks)
       (message := ⟨id, ⟨.commitment event candidate, evidence, some ⟨event⟩⟩⟩) rejected
-    have actual' := reactiveHandle_none (runtime := runtime) (leaks := leaks)
+    have actual' := reactiveHandle_none (timeouts := timeouts) (leaks := leaks)
       (message := ⟨id, ⟨.commitment event candidate, evidence, some ⟨event⟩⟩⟩) rejected'
     simpa only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
       found, found', actual, actual', Option.getD_none] using publicEq
   have active' : id.1 ∉ right.application.config.defaulted := defaults ▸ active
-  have handled := runtime.handle_commitment_eq left.application id event candidate owner payload
+  have handled := (handle_commitment_eq timeouts) left.application id event candidate owner payload
     outputEq codeEq node ready timely active sender owned vacant unused
-  have handled' := runtime.handle_commitment_eq right.application id event candidate owner payload
+  have handled' := (handle_commitment_eq timeouts) right.application id event candidate owner
+    payload
     outputEq codeEq node ready' timely' active' sender owned vacant' unused'
   simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
     found, found', reactiveApplication_handle, WitnessedPacket.tokenValid_commitment,

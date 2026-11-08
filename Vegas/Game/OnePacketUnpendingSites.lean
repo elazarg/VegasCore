@@ -21,38 +21,38 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
-  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  (scheduler : (application setup timeouts leaks).Scheduler)
+  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
 
 local notation "onePacketN" =>
-  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
 
-variable {setup runtime leaks bounds horizon scheduler} in
-omit [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+variable {setup timeouts leaks bounds horizon scheduler} in
+omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
 /-- **The state of an unpending site.** A history of a decision site of who
 with no pending event of who ends at a control with who's recall and view,
 where who has no turn, or has a turn whose event its recall has submitted for. -/
 theorem unpending_cases {who : Player} {site : (onePacketN).InformationSite who}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView} (atSite : site.1 = some (past, view))
-    (unpending : pendingEvent setup runtime leaks who site.1 = none)
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))
+    (unpending : pendingEvent setup timeouts leaks who site.1 = none)
     (history : (onePacketN).InformationHistory who site.1) :
-    ∃ control : (application setup runtime leaks).Control, history.1.state = some control ∧
+    ∃ control : (application setup timeouts leaks).Control, history.1.state = some control ∧
       control.execution.logs who = past ∧
-      control.execution.observe (application setup runtime leaks) who = view ∧
+      control.execution.observe (application setup timeouts leaks) who = view ∧
       (view.application.publicView.ownTurn? who = none ∨
         ∃ event, view.application.publicView.ownTurn? who = some event ∧
-          runtime.eventRecorded leaks past event = true) := by
+          (eventRecorded timeouts) leaks past event = true) := by
   obtain ⟨⟨state, trace⟩, info⟩ := history
   have seen := info.trans atSite
   rw [onePacket_infoOf] at seen
@@ -69,7 +69,7 @@ theorem unpending_cases {who : Player} {site : (onePacketN).InformationSite who}
         | some event =>
             refine Or.inr ⟨event, rfl, ?_⟩
             simp only [pendingEvent, turn, Option.filter_some] at unpending
-            cases recorded : runtime.eventRecorded leaks past event with
+            cases recorded : (eventRecorded timeouts) leaks past event with
             | true => rfl
             | false => simp [recorded] at unpending
       · simp [ReactiveApplication.observe, active] at seen

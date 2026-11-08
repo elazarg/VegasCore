@@ -29,14 +29,14 @@ instance (view : PublicView graph) (event : graph.EventId) :
 
 /-- Commitment acceptance depends only on public metadata, including for
 unopenable handles. This test does not inspect a candidate's hidden meaning. -/
-def BindingIncludable (runtime : EventGraphRuntime graph) (view : PublicView graph)
+def BindingIncludable (timeouts : EventTimeouts graph) (view : PublicView graph)
     (message : Message Player (Payload graph)) : Prop :=
   message.sender ∉ view.observation.defaulted ∧ match message.payload with
   | .commitment event candidate =>
       view.EventReady event ∧
       (match view.activatedAt event with
         | none => False
-        | some entered => view.clock - entered < runtime.deadline event) ∧
+        | some entered => view.clock - entered < timeouts.duration event) ∧
       (match nodeView graph event with
         | .bind owner _ _ _ => message.sender = owner ∧ candidate.1 = owner ∧
             view.accepted (.inr event) = none ∧ ∀ field, view.accepted field ≠ some candidate
@@ -143,20 +143,20 @@ theorem PublicView.tokenFor_of_eventReady (view : PublicView graph) (packet : Pa
     view.tokenFor packet = some ⟨event⟩ :=
   view.tokenFor_eq_some packet event named ready.2
 
-theorem State.publicView_bindingIncludable (runtime : EventGraphRuntime graph)
+theorem State.publicView_bindingIncludable (timeouts : EventTimeouts graph)
     (state : State graph) (id : MessageId Player) (event : graph.EventId)
     (candidate : Handle graph) :
-    state.publicView.BindingIncludable runtime ⟨id, .commitment event candidate⟩ ↔
-      (handle runtime state ⟨id, .commitment event candidate⟩).isSome := by
+    state.publicView.BindingIncludable timeouts ⟨id, .commitment event candidate⟩ ↔
+      (handle timeouts state ⟨id, .commitment event candidate⟩).isSome := by
   classical
   simp only [PublicView.BindingIncludable, state.publicView_eventReady]
   change (id.1 ∉ state.config.defaulted ∧ state.config.cut.Ready event ∧
-    state.WithinDeadline runtime event ∧ _) ↔ _
+    state.WithinDeadline timeouts event ∧ _) ↔ _
   by_cases inactive : id.1 ∈ state.config.defaulted
   · simp [inactive, handle, Message.sender]
   simp only [inactive, not_false_eq_true, true_and]
   by_cases ready : state.config.cut.Ready event
-  · by_cases timely : state.WithinDeadline runtime event
+  · by_cases timely : state.WithinDeadline timeouts event
     · cases view : nodeView graph event <;>
         simp [handle, Message.sender, inactive, ready, timely, view,
           State.publicView, State.HandleUnused]

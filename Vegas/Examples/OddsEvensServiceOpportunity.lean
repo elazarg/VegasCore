@@ -50,11 +50,11 @@ theorem recorded_offers_invariant (inputs : compiled.Inputs) :
     have beforeCycle : cycle ≤ execution.application.clock := by
       rw [valid.1.clock, Nat.zero_add]
       exact cycle_le_before_offer owner cycle execution.environmentRecall.length (by omega)
-    have progress := reactive_respond_progress runtime leaks inputs execution who action
+    have progress := reactive_respond_progress timeouts leaks inputs execution who action
       valid.1.valid
     have ready := ((progress.invariant.activated_iff event).mp (by
       rw [activated]; rfl)).1
-    have origin := reactive_respond_activationOrigin runtime leaks execution who action
+    have origin := reactive_respond_activationOrigin timeouts leaks execution who action
       event entered activated ready.1
     rcases origin with retained | fresh
     · exact valid.2 event owner entered cycle acting retained older odd earlier
@@ -70,11 +70,11 @@ theorem recorded_offers_invariant (inputs : compiled.Inputs) :
       rw [valid.1.clock, Nat.zero_add]
       apply cycle_le_before_offer owner cycle execution.environmentRecall.length
       omega
-    have progress := reactive_environment_progress runtime leaks inputs execution next selected
+    have progress := reactive_environment_progress timeouts leaks inputs execution next selected
       valid.1.valid moved
     have ready := ((progress.invariant.activated_iff event).mp (by
       rw [activated]; rfl)).1
-    have origin := reactive_environmentStep_activationOrigin runtime leaks execution next
+    have origin := reactive_environmentStep_activationOrigin timeouts leaks execution next
       selected moved event entered activated ready.1
     have prior : execution.application.activatedAt event = some entered := by
       rcases origin with retained | fresh
@@ -101,7 +101,7 @@ theorem recorded_offers_invariant (inputs : compiled.Inputs) :
         exact (cursor_arithmetic cycle (ownerSlot owner) (ownerSlot_bounds owner)).1
 
 theorem opportunity :
-    Opportunity runtime leaks initial horizon scheduler (fun _ => 3) := by
+    Opportunity timeouts leaks initial horizon scheduler (fun _ => 3) := by
   intro control trace event owner entered acting ready activated elapsed
   have invariant : app.ServiceInvariant scheduler (fun execution =>
       ∃ inputs, ClockAligned inputs 0 execution ∧ RecordedOffers execution) := {

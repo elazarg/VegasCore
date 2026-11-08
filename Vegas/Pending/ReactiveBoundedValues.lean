@@ -89,30 +89,30 @@ theorem candidateValues_submit (state : State graph) (who : Player)
       exact registered candidate raw (by simpa only [submitStep, packet] using opened)
 
 /-- Native packet handling cannot introduce a new candidate value. -/
-theorem candidateValues_handle (runtime : EventGraphRuntime graph)
+theorem candidateValues_handle (timeouts : EventTimeouts graph)
     (state next : State graph) (message : Message Player (Payload graph))
     (valid : bounds.CandidateValues state)
-    (accepted : handle runtime state message = some next) : bounds.CandidateValues next := by
+    (accepted : handle timeouts state message = some next) : bounds.CandidateValues next := by
   rcases message with ⟨id, packet⟩
   cases packet with
   | commitment event selected =>
       intro candidate raw opened
-      rw [(handle_commitment_tables runtime state next id event selected accepted).1] at opened
+      rw [(handle_commitment_tables timeouts state next id event selected accepted).1] at opened
       exact valid candidate raw ((CommitmentCandidates.lookup_freeze_openable_iff ..).mp opened)
   | opening event candidate raw =>
-      have tables := handle_resolution_tables runtime state next _ (by intros; simp) accepted
+      have tables := handle_resolution_tables timeouts state next _ (by intros; simp) accepted
       simpa only [CandidateValues, tables.2] using valid
   | malformed raw => simp [handle] at accepted
 
-theorem candidateValues_respond (runtime : EventGraphRuntime graph)
+theorem candidateValues_respond (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
-    (response : (runtime.reactiveApplication leaks).Action)
+    (execution : ((reactiveApplication timeouts) leaks).Execution) (who : Player)
+    (response : ((reactiveApplication timeouts) leaks).Action)
     (valid : bounds.CandidateValues execution.application)
     (allowed : ∀ material, response.transmission = some material →
       bounds.AllowsOpening material.call.opening) :
     bounds.CandidateValues
-      (execution.respond (runtime.reactiveApplication leaks) who response).application := by
+      (execution.respond ((reactiveApplication timeouts) leaks) who response).application := by
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact valid
@@ -122,12 +122,12 @@ theorem candidateValues_respond (runtime : EventGraphRuntime graph)
 
 /-- Inclusion and environment service retain candidate-value coverage through
 the native automatic drain. -/
-theorem candidateValues_environment (runtime : EventGraphRuntime graph)
+theorem candidateValues_environment (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (command : (runtime.reactiveApplication leaks).Command)
+    (execution next : ((reactiveApplication timeouts) leaks).Execution)
+    (command : ((reactiveApplication timeouts) leaks).Command)
     (valid : bounds.CandidateValues execution.application)
-    (reached : next ∈ (execution.environmentStep (runtime.reactiveApplication leaks)
+    (reached : next ∈ (execution.environmentStep ((reactiveApplication timeouts) leaks)
       command).support) : bounds.CandidateValues next.application := by
   cases command with
   | wait =>
@@ -146,44 +146,44 @@ theorem candidateValues_environment (runtime : EventGraphRuntime graph)
       | none => exact valid
       | some message =>
           change bounds.CandidateValues
-            (((runtime.reactiveApplication leaks).handle execution.application
+            ((((reactiveApplication timeouts) leaks).handle execution.application
               message).getD execution.application)
-          cases accepted : (runtime.reactiveApplication leaks).handle execution.application
+          cases accepted : ((reactiveApplication timeouts) leaks).handle execution.application
               message with
           | none => exact valid
           | some state =>
               obtain ⟨native, handled, rfl⟩ := reactiveHandle_call accepted
-              have covered := bounds.candidateValues_handle runtime execution.application native
+              have covered := bounds.candidateValues_handle timeouts execution.application native
                 ⟨message.id, message.payload.call⟩ valid handled
               simpa only [Option.getD_some, CandidateValues, native.drain_tables.2.1] using covered
   | application command =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
       simpa only [CandidateValues,
-        (reactiveApplication_environment_tables runtime leaks execution.application state command
+        (reactiveApplication_environment_tables timeouts leaks execution.application state command
           changed).2] using valid
 
 variable [Fintype Player]
 
-theorem candidateValues_raw_history (runtime : EventGraphRuntime graph)
+theorem candidateValues_raw_history (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (initial : PMF (State graph)) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
     (covered : ∀ state ∈ initial.support, bounds.CandidateValues state) :
-    ∀ {state} (_trace : ((bounds.rawMenu runtime leaks).protocol initial
+    ∀ {state} (_trace : ((bounds.rawMenu timeouts leaks).protocol initial
       horizon scheduler).Trace state),
       ReactiveApplication.serviceInvariant
         (fun execution => bounds.CandidateValues execution.application) state := by
-  have invariant : (bounds.rawMenu runtime leaks).ServiceInvariant scheduler
+  have invariant : (bounds.rawMenu timeouts leaks).ServiceInvariant scheduler
       (fun execution => bounds.CandidateValues execution.application) := {
     respond := fun execution who response valid legal =>
-      bounds.candidateValues_respond runtime leaks execution who response valid (by
+      bounds.candidateValues_respond timeouts leaks execution who response valid (by
         intro material submitted
         rw [rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem] at legal
         rw [submitted] at legal
         exact ((bounds.submissions_mem _ _).mp legal).1.2)
     environment := fun execution next command valid _ reached =>
-      bounds.candidateValues_environment runtime leaks execution next command valid reached }
+      bounds.candidateValues_environment timeouts leaks execution next command valid reached }
   intro state trace
   exact invariant.history initial horizon covered trace
 

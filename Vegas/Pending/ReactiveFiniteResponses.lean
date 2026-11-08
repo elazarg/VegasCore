@@ -180,25 +180,25 @@ theorem normalize_submission_mem (who : Player) (view : PlayerView graph)
       (submission.call.candidateAfter who view.candidates) known _ member.2⟩
 
 
-def rawMenu (runtime : EventGraphRuntime graph)
+def rawMenu (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
-    (runtime.reactiveApplication leaks).ResponseMenu :=
+    ((reactiveApplication timeouts) leaks).ResponseMenu :=
   ReactiveApplication.ResponseMenu.fromSubmissions (fun _ past view =>
     bounds.submissions (ReactiveApplication.ResponseMenu.knownPackets past view))
 
-def menu (runtime : EventGraphRuntime graph)
+def menu (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
-    (runtime.reactiveApplication leaks).ResponseMenu :=
-  (runtime.reactiveNormalization leaks).menu (bounds.rawMenu runtime leaks)
+    ((reactiveApplication timeouts) leaks).ResponseMenu :=
+  ((reactiveNormalization timeouts) leaks).menu (bounds.rawMenu timeouts leaks)
 
-theorem rawMenu_closed (runtime : EventGraphRuntime graph)
+theorem rawMenu_closed (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (response : (runtime.reactiveApplication leaks).Action)
-    (member : response ∈ (bounds.rawMenu runtime leaks).actions who past view) :
-    (runtime.reactiveNormalization leaks).action who past view response ∈
-      (bounds.rawMenu runtime leaks).actions who past view := by
+    (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
+    (response : ((reactiveApplication timeouts) leaks).Action)
+    (member : response ∈ (bounds.rawMenu timeouts leaks).actions who past view) :
+    ((reactiveNormalization timeouts) leaks).action who past view response ∈
+      (bounds.rawMenu timeouts leaks).actions who past view := by
   classical
   rw [rawMenu, ReactiveApplication.ResponseMenu.fromSubmissions_mem] at member ⊢
   rcases response with ⟨transmission⟩
@@ -208,23 +208,23 @@ theorem rawMenu_closed (runtime : EventGraphRuntime graph)
 
 /-- Every complete effective response is a bounded raw response. The normal
 form changes only private representations and remains within the same bounds. -/
-theorem menu_in_raw (runtime : EventGraphRuntime graph)
+theorem menu_in_raw (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
-    (bounds.menu runtime leaks).IncludedIn (bounds.rawMenu runtime leaks) := by
+    (bounds.menu timeouts leaks).IncludedIn (bounds.rawMenu timeouts leaks) := by
   intro who past view response member
-  obtain ⟨original, allowed, normal⟩ := (runtime.reactiveNormalization leaks).menu_mem
-    (bounds.rawMenu runtime leaks) who past view response |>.mp member
+  obtain ⟨original, allowed, normal⟩ := ((reactiveNormalization timeouts) leaks).menu_mem
+    (bounds.rawMenu timeouts leaks) who past view response |>.mp member
   rw [← normal]
-  exact bounds.rawMenu_closed runtime leaks who past view original allowed
+  exact bounds.rawMenu_closed timeouts leaks who past view original allowed
 
 /-- Exact completeness: every bounded normal response is admitted, including
 all packet errors; every admitted response is bounded and normal. -/
-theorem menu_mem (runtime : EventGraphRuntime graph)
+theorem menu_mem (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (response : (runtime.reactiveApplication leaks).Action) :
-    response ∈ (bounds.menu runtime leaks).actions who past view ↔
+    (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
+    (response : ((reactiveApplication timeouts) leaks).Action) :
+    response ∈ (bounds.menu timeouts leaks).actions who past view ↔
       (match response.transmission with
       | none => True
       | some submission =>
@@ -232,9 +232,9 @@ theorem menu_mem (runtime : EventGraphRuntime graph)
             bounds.AllowsOpening submission.call.opening) ∧
             bounds.AllowsEvidence (ReactiveApplication.ResponseMenu.knownPackets past view)
               submission.evidence) ∧
-      (runtime.reactiveNormalization leaks).action who past view response = response := by
+      ((reactiveNormalization timeouts) leaks).action who past view response = response := by
   rw [menu, ReactiveApplication.SubmissionNormalization.menu_mem_iff_of_closed
-    _ _ _ _ _ (bounds.rawMenu_closed runtime leaks who past view), rawMenu,
+    _ _ _ _ _ (bounds.rawMenu_closed timeouts leaks who past view), rawMenu,
     ReactiveApplication.ResponseMenu.fromSubmissions_mem]
   cases response.transmission with
   | none => rfl

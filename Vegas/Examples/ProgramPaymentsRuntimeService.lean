@@ -78,7 +78,7 @@ def rosterService (bonus : Int) : SourceServiceSpec Player simpleExpr where
   leaks := leaks bonus
   bounds := bounds bonus
   rosters := rosters bonus
-  network := (runtime (setup bonus)).idleNetwork (leaks bonus)
+  network := (idleNetwork (timeouts (setup bonus))) (leaks bonus)
   values := binding_values_covered bonus
   initialValues := initial_values_covered bonus
   capacity := by change 2 ≤ 2; decide

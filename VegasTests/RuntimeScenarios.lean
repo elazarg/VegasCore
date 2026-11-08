@@ -32,7 +32,7 @@ namespace VegasTests.RuntimeScenarios
 open Vegas Vegas.EventGraphRuntime Vegas.Examples.OddsEvens Interaction
   GameTheory.Math.Probability
 
-private abbrev runtime := Vegas.Examples.OddsEvensService.runtime
+private abbrev timeouts := Vegas.Examples.OddsEvensService.timeouts
 private abbrev app := Vegas.Examples.OddsEvensService.app
 private abbrev event (n : Fin 4) : compiled.EventId := n
 private def initial : app.Execution :=
@@ -69,10 +69,10 @@ private def bound (bit : Bool) : EventGraphRuntime.State compiled :=
     candidates := (submitted bit).candidates.freeze (candidate even) }
 
 private theorem firstAccepted (bit : Bool) :
-    EventGraphRuntime.handle runtime (submitted bit)
+    EventGraphRuntime.handle timeouts (submitted bit)
       ⟨(even, 0), .commitment (event 0) (candidate even)⟩ =
       some (bound bit) := by
-  rw [EventGraphRuntime.handle_commitment_eq runtime (submitted bit) (even, 0) (event 0)
+  rw [EventGraphRuntime.handle_commitment_eq timeouts (submitted bit) (even, 0) (event 0)
     (candidate even) even .bool rfl rfl rfl (firstReady bit) (by change 0 < 6; decide) (by
       change even ∉ (∅ : Finset Player); simp)
     rfl rfl rfl (firstUnused bit)]
@@ -192,9 +192,9 @@ private def bothBound (e o : Bool) : EventGraphRuntime.State compiled :=
       (some (candidate odd))
     candidates := (secondSubmitted e o).candidates.freeze (candidate odd) }
 
-example (e o : Bool) : EventGraphRuntime.handle runtime (secondSubmitted e o)
+example (e o : Bool) : EventGraphRuntime.handle timeouts (secondSubmitted e o)
     ⟨(odd, 0), .commitment (event 1) (candidate odd)⟩ = some (bothBound e o) := by
-  rw [EventGraphRuntime.handle_commitment_eq runtime (secondSubmitted e o) (odd, 0) (event 1)
+  rw [EventGraphRuntime.handle_commitment_eq timeouts (secondSubmitted e o) (odd, 0) (event 1)
     (candidate odd) odd .bool rfl rfl rfl (secondReady e o) (by change 0 < 6; decide)
     (by cases e <;> cases o <;> decide)
     rfl rfl rfl (secondUnused e o)]
@@ -207,10 +207,10 @@ private theorem evenOpeningReady (e o : Bool) :
 private def evenOpened (e o : Bool) : EventGraphRuntime.State compiled :=
   (bothBound e o).complete (event 2) (evenOpeningReady e o) true (.success e)
 
-example (e o : Bool) : EventGraphRuntime.handle runtime (bothBound e o)
+example (e o : Bool) : EventGraphRuntime.handle timeouts (bothBound e o)
     ⟨(even, 2), .opening (event 2) (candidate even) (raw e)⟩ = some (evenOpened e o) := by
   unfold raw
-  rw [EventGraphRuntime.handle_opening_eq runtime (bothBound e o) (even, 2) (event 2)
+  rw [EventGraphRuntime.handle_opening_eq timeouts (bothBound e o) (even, 2) (event 2)
     (candidate even) even .bool _ _ rfl rfl rfl (evenOpeningReady e o)
     (by change 0 < 6; decide) (by cases e <;> cases o <;> decide)
     rfl rfl rfl e rfl rfl (.success e) rfl]
@@ -223,10 +223,10 @@ private theorem oddOpeningReady (e o : Bool) :
 private def finished (e o : Bool) : EventGraphRuntime.State compiled :=
   (evenOpened e o).complete (event 3) (oddOpeningReady e o) true (.success o)
 
-example (e o : Bool) : EventGraphRuntime.handle runtime (evenOpened e o)
+example (e o : Bool) : EventGraphRuntime.handle timeouts (evenOpened e o)
     ⟨(odd, 1), .opening (event 3) (candidate odd) (raw o)⟩ = some (finished e o) := by
   unfold raw
-  rw [EventGraphRuntime.handle_opening_eq runtime (evenOpened e o) (odd, 1) (event 3)
+  rw [EventGraphRuntime.handle_opening_eq timeouts (evenOpened e o) (odd, 1) (event 3)
     (candidate odd) odd .bool _ _ rfl rfl rfl (oddOpeningReady e o)
     (by change 0 < 6; decide) (by cases e <;> cases o <;> decide)
     rfl rfl rfl o rfl rfl (.success o) rfl]
@@ -304,7 +304,7 @@ private theorem beforeTimeoutDrain (e : Bool) (clock : Nat) :
 example (e : Bool) (clock : Nat) :
     app.environment (beforeTimeout e clock) .advanceClock =
       PMF.pure (beforeTimeout e (clock + 1)) := by
-  change (environmentStep runtime (beforeTimeout e clock) .advanceClock).map State.drain = _
+  change (environmentStep timeouts (beforeTimeout e clock) .advanceClock).map State.drain = _
   simp only [environmentStep, PMF.pure_map]
   exact congrArg PMF.pure (beforeTimeoutDrain e (clock + 1))
 
@@ -315,8 +315,8 @@ private theorem timeoutReady (e : Bool) :
 example (e : Bool) (clock : Nat) (before : clock < 6) :
     app.environment (beforeTimeout e clock) (.expire (event 1)) =
       PMF.pure (beforeTimeout e clock) := by
-  change (environmentStep runtime (beforeTimeout e clock) (.expire (event 1))).map State.drain = _
-  rw [environmentStep_expire_of_not_due runtime
+  change (environmentStep timeouts (beforeTimeout e clock) (.expire (event 1))).map State.drain = _
+  rw [environmentStep_expire_of_not_due timeouts
     (beforeTimeout e clock) (event 1) (timeoutReady e) 0 rfl
     (by change ¬ 6 ≤ clock - 0; omega), PMF.pure_map]
   exact congrArg PMF.pure (beforeTimeoutDrain e clock)
@@ -326,8 +326,8 @@ private def timedOut (e : Bool) : EventGraphRuntime.State compiled :=
 
 example (e : Bool) : app.environment (beforeTimeout e 6) (.expire (event 1)) =
     PMF.pure (timedOut e) := by
-  change (environmentStep runtime (beforeTimeout e 6) (.expire (event 1))).map State.drain = _
-  rw [environmentStep_expire_bind_eq runtime _ (event 1)
+  change (environmentStep timeouts (beforeTimeout e 6) (.expire (event 1))).map State.drain = _
+  rw [environmentStep_expire_bind_eq timeouts _ (event 1)
     (timeoutReady e) 0 rfl (by change 6 ≤ 6; decide) odd .bool rfl rfl rfl, PMF.pure_map]
   apply congrArg PMF.pure
   change (timedOut e).drain = timedOut e
@@ -363,7 +363,7 @@ example (e : Bool) : app.handle (timedOut e)
   rw [EventGraphRuntime.reactiveApplication_handle]
   simp only [WitnessedPacket.tokenValid_opening, ↓reduceIte]
   unfold raw
-  rw [EventGraphRuntime.handle_opening_eq runtime (timedOut e) (even, 1) (event 2)
+  rw [EventGraphRuntime.handle_opening_eq timeouts (timedOut e) (even, 1) (event 2)
     (candidate even) even .bool _ _ rfl rfl rfl (survivorReady e)
     (by change 0 < 6; decide) (by cases e <;> decide)
     rfl rfl rfl e rfl rfl (.success e) rfl, Option.map_some]
@@ -379,7 +379,7 @@ example (e : Bool) :
   refine ⟨rfl, rfl, ?_, ?_⟩ <;> cases e <;> decide
 
 example (e : Bool) (remaining : Nat) (actor : Option Player) :
-    exclusionBase setup runtime (fun _ => ()) sourceUtility (fun _ => 0)
+    exclusionBase setup timeouts (fun _ => ()) sourceUtility (fun _ => 0)
       Vegas.Examples.OddsEvensService.leaks
       (some ⟨remaining, actor, {initial with application := timedOut e}⟩) odd = 0 := by
   apply exclusionBase_of_defaulted
@@ -529,7 +529,7 @@ example (bit choice : Bool) : Vegas.Examples.OddsEvensLedgerClient.ordinaryRespo
     change odd ∉ (disclosedIncluded bit).application.config.defaulted
     rw [disclosed_application]
     cases bit <;> decide
-  have correct := runtime.canonicalServiceDecision_binding
+  have correct := (canonicalServiceDecision_binding timeouts)
     Vegas.Examples.OddsEvensService.leaks odd [] nativeView (event 1) .bool
     rfl rfl rfl active 0 selected (PublicationResult.success choice)
   exact correct

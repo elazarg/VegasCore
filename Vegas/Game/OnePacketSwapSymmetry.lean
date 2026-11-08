@@ -40,7 +40,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {allowed : Set (graph setup).Inputs}
 
@@ -78,29 +78,30 @@ namespace EventGraphRuntime.HiddenSwap
 variable (swap : HiddenSwap (graph setup))
 
 /-- The swap of a control state: of its execution. -/
-def control (current : (application setup runtime leaks).Control) : (application setup runtime
+def control (current : (application setup timeouts leaks).Control) : (application setup timeouts
   leaks).Control :=
   ⟨current.remaining, current.actor, swap.execution current.execution⟩
 
 /-- **The swap of a protocol state.** -/
-def protocolState : (application setup runtime leaks).ProtocolState →
-    (application setup runtime leaks).ProtocolState :=
+def protocolState : (application setup timeouts leaks).ProtocolState →
+    (application setup timeouts leaks).ProtocolState :=
   Option.map swap.control
 
 /-- **The swap of a joint action**: of every response. -/
-def joint (responses : Player → Option (application setup runtime leaks).Action) :
-    Player → Option (application setup runtime leaks).Action :=
+def joint (responses : Player → Option (application setup timeouts leaks).Action) :
+    Player → Option (application setup timeouts leaks).Action :=
   fun who => (responses who).map swap.action
 
 theorem control_involutive :
-    Function.Involutive (swap.control (runtime := runtime) (setup := setup) (leaks := leaks)) := by
+    Function.Involutive (swap.control (timeouts := timeouts) (setup := setup) (leaks := leaks))
+      := by
   rintro ⟨remaining, actor, current⟩
   change (⟨remaining, actor, swap.execution (swap.execution current)⟩ :
-    (application setup runtime leaks).Control) = _
+    (application setup timeouts leaks).Control) = _
   rw [swap.execution_involutive]
 
 theorem protocolState_involutive :
-    Function.Involutive (swap.protocolState (runtime := runtime) (setup := setup) (leaks :=
+    Function.Involutive (swap.protocolState (timeouts := timeouts) (setup := setup) (leaks :=
       leaks)) := by
   intro state
   cases state with
@@ -108,7 +109,7 @@ theorem protocolState_involutive :
   | some current => exact congrArg some (swap.control_involutive current)
 
 theorem joint_involutive :
-    Function.Involutive (swap.joint (runtime := runtime) (setup := setup) (leaks := leaks)) := by
+    Function.Involutive (swap.joint (timeouts := timeouts) (setup := setup) (leaks := leaks)) := by
   intro responses
   funext who
   simp only [joint, Option.map_map]
@@ -116,14 +117,14 @@ theorem joint_involutive :
   | none => rfl
   | some response => exact congrArg some (swap.action_involutive response)
 
-theorem getD_joint (responses : Player → Option (application setup runtime leaks).Action)
+theorem getD_joint (responses : Player → Option (application setup timeouts leaks).Action)
     (who : Player) :
     (swap.joint responses who).getD ⟨none⟩ = swap.action ((responses
       who).getD ⟨none⟩) := by
   simp only [joint]
   cases responses who <;> rfl
 
-theorem requestFixed_action (response : (application setup runtime leaks).Action) :
+theorem requestFixed_action (response : (application setup timeouts leaks).Action) :
     swap.RequestFixed (swap.action response) ↔ swap.RequestFixed response := by
   rcases response with ⟨transmission⟩
   cases transmission with
@@ -140,10 +141,10 @@ theorem requestFixed_action (response : (application setup runtime leaks).Action
 
 end EventGraphRuntime.HiddenSwap
 
-variable (setup runtime) in
+variable (setup timeouts) in
 /-- **The swap guard** at an execution of the supplied runtime. -/
 structure SwapGuard (swap : HiddenSwap (graph setup)) (allowed : Set (graph setup).Inputs)
-    (current : (application setup runtime leaks).Execution) : Prop where
+    (current : (application setup timeouts leaks).Execution) : Prop where
   inputs : current.application.config.inputs ∈ allowed
   compatible : ∀ event candidate,
     current.application.accepted (.inr event) = some candidate →
@@ -156,12 +157,12 @@ structure SwapGuard (swap : HiddenSwap (graph setup)) (allowed : Set (graph setu
     event ∈ current.application.config.cut.completed →
       current.application.accepted (.inr event) ≠ none
 
-variable (setup runtime) in
+variable (setup timeouts) in
 /-- The swap guard at a protocol state; nothing is asked before setup. -/
 def SwapGuardState (swap : HiddenSwap (graph setup)) (allowed : Set (graph setup).Inputs) :
-    (application setup runtime leaks).ProtocolState → Prop
+    (application setup timeouts leaks).ProtocolState → Prop
   | none => True
-  | some current => SwapGuard setup runtime swap allowed current.execution
+  | some current => SwapGuard setup timeouts swap allowed current.execution
 
 /-- Accepted handles are never removed. -/
 def AcceptedGrows (before after : EventGraphRuntime.State (graph setup)) : Prop :=
@@ -169,7 +170,7 @@ def AcceptedGrows (before after : EventGraphRuntime.State (graph setup)) : Prop 
 
 variable (leaks) in
 theorem acceptedGrows_step :
-    (runtime.reactiveApplication leaks).StepRelation (AcceptedGrows (setup := setup)) where
+    ((reactiveApplication timeouts) leaks).StepRelation (AcceptedGrows (setup := setup)) where
   refl _ _ _ held := held
   submit state who material field candidate held := by
     change (submitStep (material.call.register state who) who
@@ -188,14 +189,14 @@ theorem acceptedGrows_step :
         simp [handle] at call
     | opening named other raw =>
         rw [packet] at call
-        have tables := handle_resolution_tables runtime state native _
+        have tables := handle_resolution_tables timeouts state native _
           (fun _ _ same => by cases same) call
         rw [tables.1]
         exact held
     | commitment named other =>
         rw [packet] at call
         obtain ⟨_, vacant, table, _⟩ :=
-          handle_commitment_accepted runtime state native message.id named other call
+          handle_commitment_accepted timeouts state native message.id named other call
         rw [table]
         by_cases same : field = .inr named
         · subst same
@@ -204,7 +205,7 @@ theorem acceptedGrows_step :
         · rw [Function.update_of_ne same]
           exact held
   environment state command next reached field candidate held := by
-    rw [(reactiveApplication_environment_tables runtime leaks state next command reached).1]
+    rw [(reactiveApplication_environment_tables timeouts leaks state next command reached).1]
     exact held
 
 /-- Every handle accepted at an event completed it. -/
@@ -221,7 +222,7 @@ def AcceptedFresh (before after : EventGraphRuntime.State (graph setup)) : Prop 
 
 variable (leaks) in
 theorem acceptedFresh_step :
-    (runtime.reactiveApplication leaks).StepRelation (AcceptedFresh (setup := setup)) where
+    ((reactiveApplication timeouts) leaks).StepRelation (AcceptedFresh (setup := setup)) where
   refl _ _ _ held vacant := by
     rw [vacant] at held
     cases held
@@ -242,14 +243,14 @@ theorem acceptedFresh_step :
         simp [handle] at call
     | opening named other raw =>
         rw [packet] at call
-        have tables := handle_resolution_tables runtime state native _
+        have tables := handle_resolution_tables timeouts state native _
           (fun _ _ same => by cases same) call
         rw [tables.1, vacant] at held
         cases held
     | commitment named other =>
         rw [packet] at call
         obtain ⟨ready, _, table, completed⟩ :=
-          handle_commitment_accepted runtime state native message.id named other call
+          handle_commitment_accepted timeouts state native message.id named other call
         by_cases same : field = .inr named
         · exact ⟨named, same, ready,
             EventGraph.completed_subset_of_history_prefix native.config native.drain.config
@@ -257,23 +258,23 @@ theorem acceptedFresh_step :
         · rw [table, Function.update_of_ne same, vacant] at held
           cases held
   environment state command next reached field candidate held vacant := by
-    rw [(reactiveApplication_environment_tables runtime leaks state next command reached).1,
+    rw [(reactiveApplication_environment_tables timeouts leaks state next command reached).1,
       vacant] at held
     cases held
 
 /-- Accepted handles keep completing their events along every transition. -/
-theorem acceptedCompleted_transition (initial : PMF (application setup runtime leaks).State)
-    (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
-    (before after : (application setup runtime leaks).Control)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    (reached : some after ∈ ((application setup runtime leaks).transition initial horizon scheduler
+theorem acceptedCompleted_transition (initial : PMF (application setup timeouts leaks).State)
+    (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
+    (before after : (application setup timeouts leaks).Control)
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    (reached : some after ∈ ((application setup timeouts leaks).transition initial horizon scheduler
       (some before) joint).support)
     (valid : AcceptedCompleted before.execution.application) :
     AcceptedCompleted after.execution.application := by
-  have fresh := (acceptedFresh_step (runtime := runtime) leaks).transition initial horizon
+  have fresh := (acceptedFresh_step (timeouts := timeouts) leaks).transition initial horizon
     scheduler before after joint
     reached
-  have path := reactive_protocol_graph_steps runtime leaks initial horizon scheduler before after
+  have path := reactive_protocol_graph_steps timeouts leaks initial horizon scheduler before after
     joint reached
   have completed := EventGraph.completed_subset_of_history_prefix _ _
     (EventGraph.Config.Step.path_history_prefix path)
@@ -287,10 +288,10 @@ theorem acceptedCompleted_transition (initial : PMF (application setup runtime l
       exact completed (valid event old earlier)
 
 /-- An initial law whose states complete every event with an accepted handle. -/
-class InitialAcceptedCompleted (initial : PMF (application setup runtime leaks).State) : Prop where
+class InitialAcceptedCompleted (initial : PMF (application setup timeouts leaks).State) : Prop where
   initial_accepted : ∀ state ∈ initial.support, AcceptedCompleted (setup := setup) state
 
-instance : InitialAcceptedCompleted (runtime := runtime) (leaks := leaks) (initialLaw setup) where
+instance : InitialAcceptedCompleted (timeouts := timeouts) (leaks := leaks) (initialLaw setup) where
   initial_accepted state member event candidate held := by
     rw [initialLaw, serviceInitialLaw, PMF.support_map] at member
     obtain ⟨_, _, rfl⟩ := member
@@ -311,25 +312,25 @@ theorem revealFixed_of_grows (swap : HiddenSwap (graph setup))
 
 /-- **The swap guard reaches back** along every transition. -/
 theorem swapGuard_of_transition (swap : HiddenSwap (graph setup))
-    (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler)
-    (before after : (application setup runtime leaks).Control)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    (reached : some after ∈ ((application setup runtime leaks).transition initial horizon scheduler
+    (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
+    (scheduler : (application setup timeouts leaks).Scheduler)
+    (before after : (application setup timeouts leaks).Control)
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    (reached : some after ∈ ((application setup timeouts leaks).transition initial horizon scheduler
       (some before) joint).support)
-    (guarded : SwapGuard setup runtime swap allowed after.execution) :
-    SwapGuard setup runtime swap allowed before.execution := by
-  have grows := (acceptedGrows_step (runtime := runtime) leaks).transition initial horizon
+    (guarded : SwapGuard setup timeouts swap allowed after.execution) :
+    SwapGuard setup timeouts swap allowed before.execution := by
+  have grows := (acceptedGrows_step (timeouts := timeouts) leaks).transition initial horizon
     scheduler before after joint
     reached
-  have path := reactive_protocol_graph_steps runtime leaks initial horizon scheduler before after
+  have path := reactive_protocol_graph_steps timeouts leaks initial horizon scheduler before after
     joint reached
   have completed := EventGraph.completed_subset_of_history_prefix _ _
     (EventGraph.Config.Step.path_history_prefix path)
-  have fresh := (acceptedFresh_step (runtime := runtime) leaks).transition initial horizon
+  have fresh := (acceptedFresh_step (timeouts := timeouts) leaks).transition initial horizon
     scheduler before after joint
     reached
-  obtain ⟨next, nextEq, prefixes⟩ := (application setup runtime leaks).transition_recall_prefix
+  obtain ⟨next, nextEq, prefixes⟩ := (application setup timeouts leaks).transition_recall_prefix
     initial
     horizon scheduler before (some after) joint reached
   cases Option.some.inj nextEq
@@ -361,28 +362,28 @@ theorem swapGuard_of_transition (swap : HiddenSwap (graph setup))
 when the source is guarded and the accepted handles after inclusion are
 compatible. -/
 theorem inclusionFixed_of_guard (swap : HiddenSwap (graph setup))
-    (current : (application setup runtime leaks).Execution) (id : MessageId Player)
+    (current : (application setup timeouts leaks).Execution) (id : MessageId Player)
     (envelope : Message Player (WitnessedPacket (graph setup)))
     (found : current.network.lookup id = some envelope)
     (valid : envelope.payload.tokenValid = true)
-    (sourceGuard : SwapGuard setup runtime swap allowed current)
+    (sourceGuard : SwapGuard setup timeouts swap allowed current)
     (targetCompatible : ∀ event candidate,
-      (current.includePending (application setup runtime leaks) id).application.accepted (.inr
+      (current.includePending (application setup timeouts leaks) id).application.accepted (.inr
         event) =
         some candidate → BindCompatible swap event candidate) :
-    InclusionFixed runtime swap current.application
+    InclusionFixed timeouts swap current.application
       ⟨envelope.id, envelope.payload.call⟩ := by
   refine ⟨fun next event candidate handled call => ?_,
     fun event _ ready => sourceGuard.reveals event (Or.inl ready)⟩
   have applicationEq :
-      (current.includePending (application setup runtime leaks) id).application = next.drain := by
+      (current.includePending (application setup timeouts leaks) id).application = next.drain := by
     unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
     rw [found]
-    change ((application setup runtime leaks).handle current.application envelope).getD
+    change ((application setup timeouts leaks).handle current.application envelope).getD
       current.application = next.drain
-    rw [reactiveApplication_handle_of_tokenValid runtime leaks _ envelope valid, handled]
+    rw [reactiveApplication_handle_of_tokenValid timeouts leaks _ envelope valid, handled]
     rfl
-  have accepted := handle_commitment_accepted runtime current.application next
+  have accepted := handle_commitment_accepted timeouts current.application next
     envelope.id event candidate
     (by rw [← call]; exact handled)
   apply targetCompatible event candidate
@@ -392,15 +393,15 @@ theorem inclusionFixed_of_guard (swap : HiddenSwap (graph setup))
 no accepted handle before, since accepted handles completed their events, so
 the guard at the target fixes its failure. -/
 theorem expiryFixed_of_guard (swap : HiddenSwap (graph setup))
-    (current next : (application setup runtime leaks).Execution) (event : (graph setup).EventId)
+    (current next : (application setup timeouts leaks).Execution) (event : (graph setup).EventId)
     (entered : Nat)
-    (stepped : next ∈ (current.environmentStep (application setup runtime leaks)
+    (stepped : next ∈ (current.environmentStep (application setup timeouts leaks)
       (.application (.expire event))).support)
     (ready : current.application.config.cut.Ready event)
     (activated : current.application.activatedAt event = some entered)
-    (due : runtime.deadline event ≤ current.application.clock - entered)
+    (due : timeouts.duration event ≤ current.application.clock - entered)
     (valid : AcceptedCompleted current.application)
-    (guarded : SwapGuard setup runtime swap allowed next) :
+    (guarded : SwapGuard setup timeouts swap allowed next) :
     swap.values.ExpiryFixed event := by
   by_contra notFixed
   have vacant : current.application.accepted (.inr event) = none := by
@@ -412,17 +413,17 @@ theorem expiryFixed_of_guard (swap : HiddenSwap (graph setup))
       unfold ReactiveApplication.Execution.environmentStep at stepped
       simp only [PMF.support_map, Set.mem_image] at stepped
       obtain ⟨_, ⟨expired, member, rfl⟩, rfl⟩ := stepped
-      change expired ∈ ((environmentStep runtime current.application
+      change expired ∈ ((environmentStep timeouts current.application
         (.expire event)).map State.drain).support at member
       obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ member
       have completed : event ∈ native.config.cut.completed := by
-        rw [environmentStep_expire_bind_eq runtime _ event ready entered activated due owner
+        rw [environmentStep_expire_bind_eq timeouts _ event ready entered activated due owner
           payload outputEq codeEq view, PMF.mem_support_pure_iff] at moved
         subst native
         exact (EventOrder.Cut.mem_complete _ event ready event).mpr (Or.inl rfl)
       have retained : native.drain.accepted (.inr event) = none := by
         rw [native.drain_tables.1,
-          (environmentStep_tables runtime current.application native (.expire event) moved).1]
+          (environmentStep_tables timeouts current.application native (.expire event) moved).1]
         exact vacant
       exact guarded.expired event notFixed
         (EventGraph.completed_subset_of_history_prefix _ _
@@ -438,18 +439,18 @@ theorem expiryFixed_of_guard (swap : HiddenSwap (graph setup))
 
 /-- **Transitions into guarded states commute with the swap.** -/
 theorem transition_swap (swap : HiddenSwap (graph setup))
-    (initial : PMF (application setup runtime leaks).State)
+    (initial : PMF (application setup timeouts leaks).State)
     (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
       state.swap swap ∈ initial.support)
     (failures : ∀ event, swap.values.ExpiryFixed event)
-    (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
-    (source target : (application setup runtime leaks).ProtocolState)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    (reached : target ∈ ((application setup runtime leaks).transition initial horizon scheduler
+    (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
+    (source target : (application setup timeouts leaks).ProtocolState)
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    (reached : target ∈ ((application setup timeouts leaks).transition initial horizon scheduler
       source
       joint).support)
-    (guarded : SwapGuardState setup runtime swap allowed target) :
-    swap.protocolState target ∈ ((application setup runtime leaks).transition
+    (guarded : SwapGuardState setup timeouts swap allowed target) :
+    swap.protocolState target ∈ ((application setup timeouts leaks).transition
       initial horizon scheduler
       (swap.protocolState source) (swap.joint
         joint)).support := by
@@ -459,7 +460,7 @@ theorem transition_swap (swap : HiddenSwap (graph setup))
       obtain ⟨state, member, rfl⟩ := reached
       change some (swap.control ⟨horizon, none,
         ReactiveApplication.Execution.initial _ state⟩) ∈
-        ((application setup runtime leaks).transition initial horizon scheduler none _).support
+        ((application setup timeouts leaks).transition initial horizon scheduler none _).support
       rw [ReactiveApplication.transition, PMF.support_map]
       exact ⟨state.swap swap, initialClosed state member guarded.inputs, rfl⟩
   | some before =>
@@ -467,12 +468,12 @@ theorem transition_swap (swap : HiddenSwap (graph setup))
       cases target with
       | none =>
           exfalso
-          obtain ⟨next, nextEq, _⟩ := (application setup runtime leaks).transition_recall_prefix
+          obtain ⟨next, nextEq, _⟩ := (application setup timeouts leaks).transition_recall_prefix
             initial
             horizon scheduler ⟨remaining, actor, current⟩ none joint reached
           cases nextEq
       | some after =>
-      have sourceGuard := swapGuard_of_transition (runtime := runtime) swap initial horizon
+      have sourceGuard := swapGuard_of_transition (timeouts := timeouts) swap initial horizon
         scheduler
         ⟨remaining, actor, current⟩ after joint reached guarded
       cases actor with
@@ -480,19 +481,19 @@ theorem transition_swap (swap : HiddenSwap (graph setup))
           cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp reached)
           change some (swap.control ⟨remaining, none, current.respond _ who
             _⟩) ∈
-            ((application setup runtime leaks).transition initial horizon scheduler
+            ((application setup timeouts leaks).transition initial horizon scheduler
               (some ⟨remaining, some who, swap.execution current⟩) _).support
           rw [ReactiveApplication.transition, PMF.mem_support_pure_iff]
           change _ = some (⟨remaining, none, (swap.execution current).respond _ who
             ((swap.joint joint who).getD ⟨none⟩)⟩ : (application setup
-              runtime leaks).Control)
+              timeouts leaks).Control)
           rw [swap.getD_joint, swap.respond_execution]
           · rfl
-          · change SwapGuard setup runtime swap allowed (current.respond (application setup
-              runtime leaks) who
+          · change SwapGuard setup timeouts swap allowed (current.respond (application setup
+              timeouts leaks) who
               ((joint who).getD ⟨none⟩)) at guarded
             generalize (joint who).getD ⟨none⟩ = response at guarded ⊢
-            have member : ∃ recalled ∈ (current.respond (application setup runtime leaks) who
+            have member : ∃ recalled ∈ (current.respond (application setup timeouts leaks) who
                 response).logs who, recalled.action = response := by
               rcases response with ⟨transmission⟩
               cases transmission <;>
@@ -513,7 +514,7 @@ theorem transition_swap (swap : HiddenSwap (graph setup))
               obtain ⟨next, stepped, nextEq⟩ := moved
               cases Option.some.inj nextEq
               change some (swap.control ⟨remaining, _, next⟩) ∈
-                ((application setup runtime leaks).transition initial horizon scheduler
+                ((application setup timeouts leaks).transition initial horizon scheduler
                   (some ⟨remaining + 1, none, swap.execution current⟩) _).support
               rw [ReactiveApplication.transition, PMF.mem_support_bind_iff]
               refine ⟨command, ?_, ?_⟩
@@ -524,7 +525,7 @@ theorem transition_swap (swap : HiddenSwap (graph setup))
                 · exact ⟨next, stepped, rfl⟩
                 · intro id envelope commandEq found valid
                   subst commandEq
-                  refine inclusionFixed_of_guard (runtime := runtime) swap current id envelope
+                  refine inclusionFixed_of_guard (timeouts := timeouts) swap current id envelope
                     found valid sourceGuard
                     fun event candidate held => guarded.compatible event
                       candidate ?_
@@ -538,12 +539,12 @@ theorem transition_swap (swap : HiddenSwap (graph setup))
 
 /-- A response recorded at a guarded state has a fixed evidence request. -/
 theorem requestFixed_of_respond (swap : HiddenSwap (graph setup))
-    (current : (application setup runtime leaks).Execution) (who : Player)
-    (response : (application setup runtime leaks).Action)
-    (guarded : SwapGuard setup runtime swap allowed
-      (current.respond (application setup runtime leaks) who response)) :
+    (current : (application setup timeouts leaks).Execution) (who : Player)
+    (response : (application setup timeouts leaks).Action)
+    (guarded : SwapGuard setup timeouts swap allowed
+      (current.respond (application setup timeouts leaks) who response)) :
     swap.RequestFixed response := by
-  have member : ∃ recalled ∈ (current.respond (application setup runtime leaks) who
+  have member : ∃ recalled ∈ (current.respond (application setup timeouts leaks) who
       response).logs who, recalled.action = response := by
     rcases response with ⟨transmission⟩
     cases transmission <;>
@@ -557,33 +558,33 @@ variable [Fintype Player]
 
 /-- **The guard holds before every transition into a guarded state.** -/
 theorem swapGuardState_of_step (bounds : MessageBounds (graph setup))
-    (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler) (swap : HiddenSwap (graph setup))
-    {source target : (application setup runtime leaks).ProtocolState}
-    {joint : Player → Option (application setup runtime leaks).Action}
-    (isLegal : ((bounds.onePacketMenu runtime leaks).protocol initial horizon
+    (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
+    (scheduler : (application setup timeouts leaks).Scheduler) (swap : HiddenSwap (graph setup))
+    {source target : (application setup timeouts leaks).ProtocolState}
+    {joint : Player → Option (application setup timeouts leaks).Action}
+    (isLegal : ((bounds.onePacketMenu timeouts leaks).protocol initial horizon
       scheduler).Legal source joint)
-    (reached : target ∈ (((bounds.onePacketMenu runtime leaks).protocol initial horizon
+    (reached : target ∈ (((bounds.onePacketMenu timeouts leaks).protocol initial horizon
       scheduler).step source ⟨joint, isLegal⟩).support)
-    (guarded : SwapGuardState setup runtime swap allowed target) :
-    SwapGuardState setup runtime swap allowed source := by
+    (guarded : SwapGuardState setup timeouts swap allowed target) :
+    SwapGuardState setup timeouts swap allowed source := by
   cases source with
   | none => trivial
   | some before =>
-      obtain ⟨after, rfl, _⟩ := (application setup runtime leaks).transition_recall_prefix initial
+      obtain ⟨after, rfl, _⟩ := (application setup timeouts leaks).transition_recall_prefix initial
         horizon scheduler before target joint reached
-      exact swapGuard_of_transition (runtime := runtime) swap initial horizon scheduler before
+      exact swapGuard_of_transition (timeouts := timeouts) swap initial horizon scheduler before
         after joint reached
         guarded
 
 /-- **Accepted handles completed their events** along every history from an
 initial law whose states have this property. -/
 theorem acceptedCompleted_of_trace (bounds : MessageBounds (graph setup))
-    (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler)
-    [InitialAcceptedCompleted (runtime := runtime) (leaks := leaks) initial] :
-    ∀ {state} (_trace : ((bounds.onePacketMenu runtime leaks).protocol initial horizon
-      scheduler).Trace state) (control : (application setup runtime leaks).Control),
+    (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
+    (scheduler : (application setup timeouts leaks).Scheduler)
+    [InitialAcceptedCompleted (timeouts := timeouts) (leaks := leaks) initial] :
+    ∀ {state} (_trace : ((bounds.onePacketMenu timeouts leaks).protocol initial horizon
+      scheduler).Trace state) (control : (application setup timeouts leaks).Control),
       state = some control → AcceptedCompleted control.execution.application := by
   intro state trace
   induction trace with
@@ -593,7 +594,7 @@ theorem acceptedCompleted_of_trace (bounds : MessageBounds (graph setup))
       subst initialized
       cases before with
       | none =>
-          change some control ∈ ((application setup runtime leaks).transition initial horizon
+          change some control ∈ ((application setup timeouts leaks).transition initial horizon
             scheduler
             none joint).support at realized
           rw [ReactiveApplication.transition, PMF.support_map] at realized
@@ -601,28 +602,28 @@ theorem acceptedCompleted_of_trace (bounds : MessageBounds (graph setup))
           cases Option.some.inj same
           exact InitialAcceptedCompleted.initial_accepted state member
       | some before =>
-          exact acceptedCompleted_transition (runtime := runtime) initial horizon scheduler before
+          exact acceptedCompleted_transition (timeouts := timeouts) initial horizon scheduler before
             control joint
             realized (ih before rfl)
 
 /-- A failure-fixing hidden swap is a guarded state symmetry when the initial
 law and bounded values are closed under it. -/
 def onePacketSwapSymmetry (bounds : MessageBounds (graph setup))
-    (initial : PMF (application setup runtime leaks).State)
+    (initial : PMF (application setup timeouts leaks).State)
     (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler) (swap : HiddenSwap (graph setup))
+    (scheduler : (application setup timeouts leaks).Scheduler) (swap : HiddenSwap (graph setup))
     (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
       state.swap swap ∈ initial.support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event) :
-    ((bounds.onePacketMenu runtime leaks).protocol initial horizon
+    ((bounds.onePacketMenu timeouts leaks).protocol initial horizon
       scheduler).StateSymmetry where
   map := swap.protocolState
   act _ := swap.joint
-  Guard := SwapGuardState setup runtime swap allowed
+  Guard := SwapGuardState setup timeouts swap allowed
   map_init := rfl
   guard_source _ isLegal reached guarded :=
-    swapGuardState_of_step (runtime := runtime) bounds initial horizon scheduler swap isLegal
+    swapGuardState_of_step (timeouts := timeouts) bounds initial horizon scheduler swap isLegal
       reached guarded
   legal := by
     intro source target joint _ isLegal reached guarded
@@ -640,7 +641,8 @@ def onePacketSwapSymmetry (bounds : MessageBounds (graph setup))
             rw [chosen] at legalHere
             exact absurd legalHere.1 (by intro impossible; cases impossible)
     | some before =>
-        obtain ⟨after, rfl, _⟩ := (application setup runtime leaks).transition_recall_prefix initial
+        obtain ⟨after, rfl, _⟩ := (application setup timeouts leaks).transition_recall_prefix
+          initial
           horizon scheduler before target joint reached
         rcases before with ⟨remaining, actor, current⟩
         refine ⟨isLegal.1, fun who => ?_⟩
@@ -658,32 +660,34 @@ def onePacketSwapSymmetry (bounds : MessageBounds (graph setup))
             have actorEq : actor = some who := active
             subst actorEq
             cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp reached)
-            have fixed := requestFixed_of_respond (runtime := runtime) swap current who _ guarded
+            have fixed := requestFixed_of_respond (timeouts := timeouts) swap current who _ guarded
             change swap.RequestFixed ((joint who).getD ⟨none⟩) at fixed
             rw [chosen] at fixed
-            change swap.action response ∈ bounds.onePacketActions runtime leaks who
+            change swap.action response ∈ bounds.onePacketActions timeouts leaks who
               ((current.logs who).map swap.entry)
-              ((swap.execution current).observe (application setup runtime leaks) who)
+              ((swap.execution current).observe (application setup timeouts leaks) who)
             rw [swap.observe_execution]
             exact bounds.swap_mem_onePacketActions swap who _ _ rfl response available fixed
               bounded
   realized := by
     intro source target joint prior isLegal reached guarded
-    exact transition_swap (runtime := runtime) swap initial initialClosed failures horizon scheduler
+    exact transition_swap (timeouts := timeouts) swap initial initialClosed failures horizon
+      scheduler
       source target joint reached guarded
 
 /-- **The one-packet swap symmetry is involutive.** -/
 theorem onePacketSwapSymmetry_involutive (bounds : MessageBounds (graph setup))
-    (initial : PMF (application setup runtime leaks).State)
+    (initial : PMF (application setup timeouts leaks).State)
     (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler) (swap : HiddenSwap (graph setup))
+    (scheduler : (application setup timeouts leaks).Scheduler) (swap : HiddenSwap (graph setup))
     (initialClosed : ∀ state ∈ initial.support, state.config.inputs ∈ allowed →
       state.swap swap ∈ initial.support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event)
     (allowedClosed : ∀ inputs ∈ allowed,
       (fun input => swap.values.value (.inl input) (inputs input)) ∈ allowed) :
-    (onePacketSwapSymmetry (runtime := runtime) bounds initial horizon scheduler swap initialClosed
+    (onePacketSwapSymmetry (timeouts := timeouts) bounds initial horizon scheduler swap
+      initialClosed
       bounded failures).Involutive where
   map_map state _ := swap.protocolState_involutive state
   guard_map state guarded := by

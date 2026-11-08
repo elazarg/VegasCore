@@ -36,7 +36,8 @@ private theorem old_response_mem_before (inputs : compiled.Inputs)
   have invariant : (app).PolicyInvariant players predicate := {
     respond := by
       intro execution actor action prior _
-      have progress := reactive_respond_progress runtime leaks inputs execution actor action prior.1
+      have progress := reactive_respond_progress timeouts leaks inputs execution actor action
+        prior.1
       have monotone : execution.application.clock ≤
           (execution.respond app actor action).application.clock := by
         rw [progress.clock]
@@ -51,7 +52,7 @@ private theorem old_response_mem_before (inputs : compiled.Inputs)
         exact prior.2.1
     environment := by
       intro execution next command prior moved
-      have progress := reactive_environment_progress runtime leaks inputs execution next command
+      have progress := reactive_environment_progress timeouts leaks inputs execution next command
         prior.1 moved
       have monotone : execution.application.clock ≤ next.application.clock := by
         rw [progress.clock]
@@ -305,7 +306,7 @@ theorem emission_receipt (current : app.Control)
 /-- The concrete forced-exit service supplies protected inclusion on every raw
 history; the bound does not require successful application acceptance. -/
 theorem protectedInclusion :
-    ProtectedInclusion runtime leaks initial horizon scheduler (fun _ => 2) := by
+    ProtectedInclusion timeouts leaks initial horizon scheduler (fun _ => 2) := by
   intro current trace event owner _acting earlier later entry message recalled emitted _sender
     _event _ready _sole _unfinished elapsed
   have member : entry ∈ current.execution.logs owner := by

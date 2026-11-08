@@ -36,7 +36,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- Keeping fixed meanings is transitive. -/
@@ -47,16 +47,17 @@ theorem keepsFixedCandidates_trans {first second third : EventGraphRuntime.State
 
 /-- A transition from a state with no actor either keeps the execution or is a
 scheduler round of the execution. -/
-theorem transition_idle_cases (initial : PMF (application setup runtime leaks).State) (horizon :
+theorem transition_idle_cases (initial : PMF (application setup timeouts leaks).State) (horizon :
   Nat)
-    (scheduler : (application setup runtime leaks).Scheduler) (control : (application setup
-      runtime leaks).Control)
-    (idle : control.actor = none) (joint : Player → Option (application setup runtime leaks).Action)
-    {next : (application setup runtime leaks).Control}
-    (reached : some next ∈ ((application setup runtime leaks).transition initial horizon scheduler
+    (scheduler : (application setup timeouts leaks).Scheduler) (control : (application setup
+      timeouts leaks).Control)
+    (idle : control.actor = none) (joint : Player → Option (application setup timeouts
+      leaks).Action)
+    {next : (application setup timeouts leaks).Control}
+    (reached : some next ∈ ((application setup timeouts leaks).transition initial horizon scheduler
       (some control) joint).support) :
     next.execution = control.execution ∨ ∃ command,
-      next.execution ∈ (control.execution.environmentStep (application setup runtime leaks)
+      next.execution ∈ (control.execution.environmentStep (application setup timeouts leaks)
         command).support := by
   rcases control with ⟨remaining, current, execution⟩
   cases idle
@@ -71,29 +72,30 @@ theorem transition_idle_cases (initial : PMF (application setup runtime leaks).S
       exact Or.inr ⟨command, supported⟩
 
 /-- A transition from a state with no actor keeps the network inputs. -/
-theorem transition_idle_inputs (initial : PMF (application setup runtime leaks).State) (horizon :
+theorem transition_idle_inputs (initial : PMF (application setup timeouts leaks).State) (horizon :
   Nat)
-    (scheduler : (application setup runtime leaks).Scheduler) (control : (application setup
-      runtime leaks).Control)
-    (idle : control.actor = none) (joint : Player → Option (application setup runtime leaks).Action)
-    {next : (application setup runtime leaks).Control}
-    (reached : some next ∈ ((application setup runtime leaks).transition initial horizon scheduler
+    (scheduler : (application setup timeouts leaks).Scheduler) (control : (application setup
+      timeouts leaks).Control)
+    (idle : control.actor = none) (joint : Player → Option (application setup timeouts
+      leaks).Action)
+    {next : (application setup timeouts leaks).Control}
+    (reached : some next ∈ ((application setup timeouts leaks).transition initial horizon scheduler
       (some control) joint).support) :
     next.execution.network.inputs = control.execution.network.inputs := by
-  rcases transition_idle_cases (runtime := runtime) initial horizon scheduler control idle joint
+  rcases transition_idle_cases (timeouts := timeouts) initial horizon scheduler control idle joint
     reached with
     same | ⟨command, moved⟩
   · rw [same]
-  · exact (application setup runtime leaks).environmentStep_inputs _ _ command moved
+  · exact (application setup timeouts leaks).environmentStep_inputs _ _ command moved
 
-variable (setup runtime) in
+variable (setup timeouts) in
 /-- **Sent content.** The unsettled content is the mass that the intended
 assessment, at `sender`'s view of the decoded point of the configuration of
 `control`, gives the content of `message`'s call at a contract state `sent`,
 from which `control` keeps every fixed meaning, and at which a commitment
 handle of `sender` in the call is fixed. -/
 def SentContent (assessment : setup.intendedModel.BehavioralAssessment)
-    (control : (application setup runtime leaks).Control) (sender : Player)
+    (control : (application setup timeouts leaks).Control) (sender : Player)
     (message : Message Player (WitnessedPacket (graph setup))) (unsettled : ℝ) : Prop :=
   ∃ sent : EventGraphRuntime.State (graph setup),
     KeepsFixedCandidates sent control.execution.application ∧
@@ -103,11 +105,11 @@ def SentContent (assessment : setup.intendedModel.BehavioralAssessment)
         (decodedPoint setup control.execution.application.config))).map Subtype.val)
       (callContent setup sent message.payload.call)).toReal
 
-variable (setup runtime) in
+variable (setup timeouts) in
 /-- **The period invariant** of an observer `who` at a native control state,
 for an unsettled content. -/
 structure PeriodInvariant (assessment : setup.intendedModel.BehavioralAssessment)
-    (who : Player) (control : (application setup runtime leaks).Control) (unsettled : ℝ) : Prop
+    (who : Player) (control : (application setup timeouts leaks).Control) (unsettled : ℝ) : Prop
       where
   named : ∀ message ∈ control.execution.network.inputs, message.sender ≠ who →
     ∀ event, message.payload.call.event? (graph setup) = some event →
@@ -124,19 +126,19 @@ structure PeriodInvariant (assessment : setup.intendedModel.BehavioralAssessment
         message.payload.call.event? (graph setup) ≠ some event) ∨
       ∃ message ∈ control.execution.network.inputs, message.sender = sender ∧
         message.payload.call.event? (graph setup) = some event ∧
-        SentContent setup runtime assessment control sender message unsettled
+        SentContent setup timeouts assessment control sender message unsettled
   quiet : (∀ event, control.execution.application.config.cut.Ready event →
     ∀ sender, (graph setup).actor? event = some sender → sender = who) → unsettled = 1
 
 /-- The period invariant transfers to a state with the same inputs and
 configuration whose contract state keeps every fixed meaning. -/
 theorem PeriodInvariant.transport {assessment : setup.intendedModel.BehavioralAssessment}
-    {who : Player} {control next : (application setup runtime leaks).Control} {unsettled : ℝ}
-    (invariant : PeriodInvariant setup runtime assessment who control unsettled)
+    {who : Player} {control next : (application setup timeouts leaks).Control} {unsettled : ℝ}
+    (invariant : PeriodInvariant setup timeouts assessment who control unsettled)
     (inputs : next.execution.network.inputs = control.execution.network.inputs)
     (config : next.execution.application.config = control.execution.application.config)
     (kept : KeepsFixedCandidates control.execution.application next.execution.application) :
-    PeriodInvariant setup runtime assessment who next unsettled where
+    PeriodInvariant setup timeouts assessment who next unsettled where
   named message member := by
     rw [inputs] at member
     rw [config]
@@ -160,14 +162,14 @@ theorem PeriodInvariant.transport {assessment : setup.intendedModel.BehavioralAs
 
 /-- The period invariant survives an emission of `who` itself. -/
 theorem PeriodInvariant.emitOwn {assessment : setup.intendedModel.BehavioralAssessment}
-    {who : Player} {control next : (application setup runtime leaks).Control} {unsettled : ℝ}
-    (invariant : PeriodInvariant setup runtime assessment who control unsettled)
-    (envelope : Message Player (application setup runtime leaks).Payload) (own : envelope.sender =
+    {who : Player} {control next : (application setup timeouts leaks).Control} {unsettled : ℝ}
+    (invariant : PeriodInvariant setup timeouts assessment who control unsettled)
+    (envelope : Message Player (application setup timeouts leaks).Payload) (own : envelope.sender =
       who)
     (inputs : next.execution.network.inputs = control.execution.network.inputs ++ [envelope])
     (config : next.execution.application.config = control.execution.application.config)
     (kept : KeepsFixedCandidates control.execution.application next.execution.application) :
-    PeriodInvariant setup runtime assessment who next unsettled := by
+    PeriodInvariant setup timeouts assessment who next unsettled := by
   have old : ∀ message ∈ next.execution.network.inputs, message.sender ≠ who →
       message ∈ control.execution.network.inputs := fun message member other => by
     rw [inputs, List.mem_append, List.mem_singleton] at member
@@ -196,66 +198,69 @@ theorem PeriodInvariant.emitOwn {assessment : setup.intendedModel.BehavioralAsse
       exact ready)
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- The source view of a player at an initialized state is its view of the
 decoded point. -/
 theorem sourceViewOf_eq_decodedPoint (who : Player)
-    {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+    {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
       control)) :
-    sourceViewOf setup runtime leaks who (control.execution.observe (application setup runtime
+    sourceViewOf setup timeouts leaks who (control.execution.observe (application setup timeouts
       leaks) who) =
       setup.protocolObserve who (decodedPoint setup control.execution.application.config) := by
-  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts) (failureProfile
     setup.program)
-    (bounds.onePacketMenu runtime leaks) horizon scheduler trace control rfl
+    (bounds.onePacketMenu timeouts leaks) horizon scheduler trace control rfl
   rw [decodedPoint_eq residual]
-  exact projectView_observe setup runtime leaks who control.execution rank
+  exact projectView_observe setup timeouts leaks who control.execution rank
     residual.checkpoint.ordered _
     residual.decode (control.execution.logs who)
 
 /-- **The period invariant** holds at every state of a native history of the
 one-packet game ending in a forced state of `who`. -/
 theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) (who : Player) :
-    ∀ {state} (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
-      (control : (application setup runtime leaks).Control), state = some control →
-      ForcedState setup runtime leaks who (some control) →
-      PeriodInvariant setup runtime assessment who control
-        (unsettledContent setup runtime leaks bounds horizon scheduler assessment who trace)
+    ∀ {state} (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
+      state)
+      (control : (application setup timeouts leaks).Control), state = some control →
+      ForcedState setup timeouts leaks who (some control) →
+      PeriodInvariant setup timeouts assessment who control
+        (unsettledContent setup timeouts leaks bounds horizon scheduler assessment who trace)
   | _, .start, _, current, _ => by cases current
   | _, .extend (source := before) (target := after) prior joint legal realized, control,
       current, forced => by
       have recursive := fun next same forcedNext =>
         periodInvariant assessment who prior next same forcedNext
       subst current
-      change some control ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+      change some control ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+        horizon
         scheduler before joint).support at realized
-      have kept := (keepsFixedCandidates_step runtime leaks).transition (initialLaw setup)
+      have kept := (keepsFixedCandidates_step timeouts leaks).transition (initialLaw setup)
         horizon scheduler
       cases before with
       | none =>
-          obtain rfl := trace_eq_start_of_none (runtime := runtime) prior
+          obtain rfl := trace_eq_start_of_none (timeouts := timeouts) prior
           change some control ∈ ((initialLaw setup).map fun state => some
-            (⟨horizon, none, ReactiveApplication.Execution.initial (application setup runtime leaks)
-              state⟩ : (application setup runtime leaks).Control)).support at realized
+            (⟨horizon, none, ReactiveApplication.Execution.initial (application setup timeouts
+              leaks)
+              state⟩ : (application setup timeouts leaks).Control)).support at realized
           obtain ⟨state, _, same⟩ := PMF.support_map .. ▸ realized
           cases Option.some.inj same
           refine ⟨fun _ member => (List.not_mem_nil member).elim,
             fun _ member => (List.not_mem_nil member).elim, fun _ _ _ _ _ => Or.inl ⟨rfl,
               fun _ member => (List.not_mem_nil member).elim⟩, fun _ => rfl⟩
       | some current =>
-          have forcedBefore := forcedState_of_transition (runtime := runtime) prior joint realized
+          have forcedBefore := forcedState_of_transition (timeouts := timeouts) prior joint realized
             forced
           have earlier := recursive current rfl forcedBefore
           have keep := kept current control joint realized
           cases acting : current.actor with
           | some actor =>
-              rw [transition_respond (runtime := runtime) current acting joint,
+              rw [transition_respond (timeouts := timeouts) current acting joint,
                 PMF.mem_support_pure_iff] at realized
               cases Option.some.inj realized
               have localLegal := legal.2 actor
-              have active : (application setup runtime leaks).actor (some current) = some actor :=
+              have active : (application setup timeouts leaks).actor (some current) = some actor :=
                 acting
               obtain ⟨response, picked⟩ : ∃ response, joint actor = some response := by
                 cases chosen : joint actor with
@@ -265,88 +270,90 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                 | some response => exact ⟨response, rfl⟩
               rw [picked] at localLegal
               simp only [picked, Option.getD_some] at keep ⊢
-              have member : response ∈ bounds.onePacketActions runtime leaks actor
+              have member : response ∈ bounds.onePacketActions timeouts leaks actor
                   (current.execution.logs actor)
-                  (current.execution.observe (application setup runtime leaks) actor) :=
+                  (current.execution.observe (application setup timeouts leaks) actor) :=
                     localLegal.2
-              have configEq := (runtime.reactive_respond_application leaks
+              have configEq := ((reactive_respond_application timeouts) leaks
                 current.execution actor response).1
               rcases response with ⟨transmission⟩
               cases transmission with
               | none =>
-                  have stepEq : unsettledStep setup runtime leaks assessment who
-                      (unsettledContent setup runtime leaks bounds horizon scheduler assessment
+                  have stepEq : unsettledStep setup timeouts leaks assessment who
+                      (unsettledContent setup timeouts leaks bounds horizon scheduler assessment
                         who prior)
                       (some current) joint (some { current with
                         actor := none
-                        execution := current.execution.respond (application setup runtime leaks)
+                        execution := current.execution.respond (application setup timeouts leaks)
                           actor
                           ((joint actor).getD ⟨none⟩) }) =
-                      unsettledContent setup runtime leaks bounds horizon scheduler assessment who
+                      unsettledContent setup timeouts leaks bounds horizon scheduler assessment who
                         prior := by
                     simp only [unsettledStep, acting, picked, Option.getD_some, contentFactor]
                     split_ifs <;> ring
-                  change PeriodInvariant setup runtime assessment who _ (unsettledStep setup
-                    runtime leaks
+                  change PeriodInvariant setup timeouts assessment who _ (unsettledStep setup
+                    timeouts leaks
                     assessment who _ (some current) joint _)
                   rw [stepEq]
                   exact earlier.transport rfl configEq keep
               | some material =>
-                  have inputsEq : (current.execution.respond (application setup runtime leaks) actor
+                  have inputsEq : (current.execution.respond (application setup timeouts leaks)
+                    actor
                       ⟨some material⟩).network.inputs = current.execution.network.inputs ++
                         [⟨(actor, current.execution.network.nextSerial actor),
-                          (application setup runtime leaks).packet ((application setup runtime
+                          (application setup timeouts leaks).packet ((application setup timeouts
                             leaks).submit
                             current.execution.application actor material) actor
                             (current.execution.network.known actor) material⟩] := rfl
                   by_cases own : actor = who
                   · subst own
-                    have stepEq : unsettledStep setup runtime leaks assessment actor
-                        (unsettledContent setup runtime leaks bounds horizon scheduler assessment
+                    have stepEq : unsettledStep setup timeouts leaks assessment actor
+                        (unsettledContent setup timeouts leaks bounds horizon scheduler assessment
                           actor
                           prior) (some current) joint (some { current with
                           actor := none
-                          execution := current.execution.respond (application setup runtime leaks)
+                          execution := current.execution.respond (application setup timeouts leaks)
                             actor
                             ((joint actor).getD ⟨none⟩) }) =
-                        unsettledContent setup runtime leaks bounds horizon scheduler assessment
+                        unsettledContent setup timeouts leaks bounds horizon scheduler assessment
                           actor
                           prior := by
                       simp only [unsettledStep, acting, ↓reduceIte]
-                    change PeriodInvariant setup runtime assessment actor _ (unsettledStep setup
-                      runtime leaks
+                    change PeriodInvariant setup timeouts assessment actor _ (unsettledStep setup
+                      timeouts leaks
                       assessment actor _ (some current) joint _)
                     rw [stepEq]
                     exact earlier.emitOwn _ rfl inputsEq configEq keep
                   · obtain ⟨event, ready, named, acts⟩ :=
-                      onePacket_named_of_forcedObserver (runtime := runtime) bounds
+                      onePacket_named_of_forcedObserver (timeouts := timeouts) bounds
                         horizon scheduler who prior forcedBefore actor own member
-                    have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace
+                    have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
                       (initialLaw setup) horizon scheduler prior
-                    obtain ⟨inputRecall, _, _⟩ := runtime.countRecall_history leaks
+                    obtain ⟨inputRecall, _, _⟩ := (countRecall_history timeouts) leaks
                       rawTrace
                     rcases earlier.settled event ready actor acts own with
                       ⟨one, nothing⟩ |
                         ⟨message, present, sender, messageNamed, _⟩
-                    · have stepEq : unsettledStep setup runtime leaks assessment who
-                          (unsettledContent setup runtime leaks bounds horizon scheduler
+                    · have stepEq : unsettledStep setup timeouts leaks assessment who
+                          (unsettledContent setup timeouts leaks bounds horizon scheduler
                             assessment who
                             prior) (some current) joint (some { current with
                             actor := none
-                            execution := current.execution.respond (application setup runtime leaks)
+                            execution := current.execution.respond (application setup timeouts
+                              leaks)
                               actor ((joint actor).getD ⟨none⟩) }) =
-                          contentFactor setup runtime leaks assessment actor current.execution
-                            (current.execution.respond (application setup runtime leaks) actor
+                          contentFactor setup timeouts leaks assessment actor current.execution
+                            (current.execution.respond (application setup timeouts leaks) actor
                               ⟨some material⟩) ⟨some material⟩ := by
                         simp only [unsettledStep, acting, own, ↓reduceIte, picked,
                           Option.getD_some, one, one_mul]
-                      change PeriodInvariant setup runtime assessment who _ (unsettledStep setup
-                        runtime leaks
+                      change PeriodInvariant setup timeouts assessment who _ (unsettledStep setup
+                        timeouts leaks
                         assessment who _ (some current) joint _)
                       rw [stepEq]
-                      set envelope : Message Player (application setup runtime leaks).Payload :=
+                      set envelope : Message Player (application setup timeouts leaks).Payload :=
                         ⟨(actor, current.execution.network.nextSerial actor),
-                          (application setup runtime leaks).packet ((application setup runtime
+                          (application setup timeouts leaks).packet ((application setup timeouts
                             leaks).submit
                             current.execution.application actor material) actor
                             (current.execution.network.known actor) material⟩ with envelopeEq
@@ -355,7 +362,7 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                       have envelopeNamed : envelope.payload.call.event? (graph setup) =
                           some event := by rw [envelopeCall]; exact named
                       have cases_ : ∀ message ∈ (current.execution.respond
-                          (application setup runtime leaks) actor ⟨some material⟩).network.inputs,
+                          (application setup timeouts leaks) actor ⟨some material⟩).network.inputs,
                           message ∈ current.execution.network.inputs ∨ message = envelope :=
                         fun message member => by
                           rw [inputsEq, List.mem_append, List.mem_singleton] at member
@@ -364,7 +371,7 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                         fun first firstMember second secondMember other same x firstNamed
                           secondNamed => ?_, fun event' ready' sender' acts' other' => ?_,
                         fun only => ?_⟩
-                      · change _ ∈ (current.execution.respond (application setup runtime leaks)
+                      · change _ ∈ (current.execution.respond (application setup timeouts leaks)
                           actor
                           ⟨some material⟩).application.config.cut.completed ∨ _
                         rw [configEq]
@@ -388,7 +395,7 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                           exact (nothing second secondOld (same.symm.trans envelopeSender)
                             secondNamed).elim
                         · rfl
-                      · change (current.execution.respond (application setup runtime leaks) actor
+                      · change (current.execution.respond (application setup timeouts leaks) actor
                           ⟨some material⟩).application.config.cut.Ready event' at ready'
                         rw [configEq] at ready'
                         have sameEvent := setup.eventGraph.sequentialize_ready_unique _ ready' ready
@@ -397,12 +404,12 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                           Option.some.inj (acts'.symm.trans acts)
                         subst sameSender
                         have emitted : envelope ∈ (current.execution.respond
-                            (application setup runtime leaks) sender'
+                            (application setup timeouts leaks) sender'
                               ⟨some material⟩).network.inputs := by
                           rw [inputsEq]
                           exact List.mem_append_right _ (List.mem_singleton.mpr rfl)
                         refine Or.inr ⟨envelope, emitted, envelopeSender, envelopeNamed,
-                          (current.execution.respond (application setup runtime leaks)
+                          (current.execution.respond (application setup timeouts leaks)
                             sender' ⟨some material⟩).application, fun _ _ => rfl, ?_, ?_⟩
                         · intro named' handle call owned
                           rw [envelopeCall] at call
@@ -415,29 +422,30 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                           rw [call]
                           exact submitStep_commitment_fixed _ owner named' slot
                         · unfold contentFactor
-                          change ((((assessment.strategy sender' (sourceViewOf setup runtime leaks
+                          change ((((assessment.strategy sender' (sourceViewOf setup timeouts leaks
                             sender'
-                              (current.execution.observe (application setup runtime leaks)
+                              (current.execution.observe (application setup timeouts leaks)
                                 sender'))).map
-                                Subtype.val) (sentSourceAction setup runtime leaks
-                                  (current.execution.respond (application setup runtime leaks)
+                                Subtype.val) (sentSourceAction setup timeouts leaks
+                                  (current.execution.respond (application setup timeouts leaks)
                                     sender'
                                     ⟨some material⟩) ⟨some material⟩))).toReal = _
-                          rw [sourceViewOf_eq_decodedPoint (runtime := runtime) sender' prior,
+                          rw [sourceViewOf_eq_decodedPoint (timeouts := timeouts) sender' prior,
                             sentSourceAction_eq_callContent ]
                           change _ = (((assessment.strategy sender' (setup.protocolObserve sender'
                             (decodedPoint setup (current.execution.respond
-                              (application setup runtime leaks) sender'
+                              (application setup timeouts leaks) sender'
                                 ⟨some material⟩).application.config))).map Subtype.val)
                             (callContent setup _ envelope.payload.call)).toReal
                           rw [configEq, envelopeCall]
                       · exfalso
-                        change ∀ event, (current.execution.respond (application setup runtime leaks)
+                        change ∀ event, (current.execution.respond (application setup timeouts
+                          leaks)
                           actor ⟨some material⟩).application.config.cut.Ready event → _ at only
                         rw [configEq] at only
                         exact own (only event ready actor acts)
                     · exfalso
-                      have silent := onePacket_silent_of_forcedObserver (runtime := runtime)
+                      have silent := onePacket_silent_of_forcedObserver (timeouts := timeouts)
                         bounds horizon scheduler
                         who prior forcedBefore ready actor own (fun _ => ⟨message, by
                           rw [← inputRecall actor]
@@ -445,25 +453,25 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                           messageNamed⟩) _ member
                       cases silent
           | none =>
-              have inputsEq := transition_idle_inputs (runtime := runtime) (initialLaw setup)
+              have inputsEq := transition_idle_inputs (timeouts := timeouts) (initialLaw setup)
                 horizon scheduler current
                 acting joint realized
-              have path := reactive_protocol_graph_steps runtime leaks (initialLaw setup)
+              have path := reactive_protocol_graph_steps timeouts leaks (initialLaw setup)
                 horizon scheduler current control joint realized
               rcases path.cases_head with same | ⟨middle, moved, rest⟩
               · have same := same.symm
                 have dropped : control.execution.application.config.history.drop
                     current.execution.application.config.history.length = [] := by
                   rw [same, List.drop_length]
-                have stepEq : unsettledStep setup runtime leaks assessment who
-                    (unsettledContent setup runtime leaks bounds horizon scheduler assessment
+                have stepEq : unsettledStep setup timeouts leaks assessment who
+                    (unsettledContent setup timeouts leaks bounds horizon scheduler assessment
                       who prior)
                     (some current) joint (some control) =
-                    unsettledContent setup runtime leaks bounds horizon scheduler assessment who
+                    unsettledContent setup timeouts leaks bounds horizon scheduler assessment who
                       prior := by
                   simp only [unsettledStep, acting, dropped, List.any_nil, Bool.false_eq_true,
                     ↓reduceIte]
-                change PeriodInvariant setup runtime assessment who _ (unsettledStep setup runtime
+                change PeriodInvariant setup timeouts assessment who _ (unsettledStep setup timeouts
                   leaks assessment who _ (some current) joint _)
                 rw [stepEq]
                 exact earlier.transport inputsEq same keep
@@ -479,8 +487,8 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                         suffix := by
                   rw [← kept, historyEq, List.append_assoc, List.drop_left]
                   rfl
-                have one : unsettledStep setup runtime leaks assessment who
-                    (unsettledContent setup runtime leaks bounds horizon scheduler assessment who
+                have one : unsettledStep setup timeouts leaks assessment who
+                    (unsettledContent setup timeouts leaks bounds horizon scheduler assessment who
                       prior)
                     (some current) joint (some control) = 1 := by
                   simp only [unsettledStep, acting, dropped, List.any_cons]
@@ -494,7 +502,7 @@ theorem periodInvariant (assessment : setup.intendedModel.BehavioralAssessment) 
                         rw [owner] at acts
                         cases acts
                       simp [EventGraph.completion, owner, quiet]
-                change PeriodInvariant setup runtime assessment who _ (unsettledStep setup runtime
+                change PeriodInvariant setup timeouts assessment who _ (unsettledStep setup timeouts
                   leaks assessment who _ (some current) joint _)
                 rw [one]
                 have completedMono : middle.cut.completed ⊆

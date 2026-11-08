@@ -64,11 +64,11 @@ theorem canonicalFreshSlot_isSome (who : Player) (view : PlayerView graph)
   · exact ⟨serial, selected⟩
 
 /-- `reactiveDecision` with a binding submitted at `canonicalFreshSlot`. -/
-def canonicalReactiveDecision (runtime : EventGraphRuntime graph)
+def canonicalReactiveDecision (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (event : graph.EventId)
     (action : graph.Action event) (view : PlayerView graph) :
-    (runtime.reactiveApplication leaks).Action where
+    ((reactiveApplication timeouts) leaks).Action where
   transmission := if who ∈ view.publicView.observation.defaulted then none else
     match nodeView graph event with
     | .sample .. => none
@@ -86,24 +86,24 @@ def canonicalReactiveDecision (runtime : EventGraphRuntime graph)
 
 /-- `serviceDecision` over `canonicalReactiveDecision`: withheld publications
 stay silent until expiry and private response aliases are normalized. -/
-def canonicalServiceDecision (runtime : EventGraphRuntime graph)
+def canonicalServiceDecision (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (who : Player) (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
     (event : graph.EventId) (choice : graph.Action event) :
-    (runtime.reactiveApplication leaks).Action :=
-  (runtime.reactiveNormalization leaks).action who past view
-    (runtime.canonicalReactiveDecision leaks who event choice view.application)
+    ((reactiveApplication timeouts) leaks).Action :=
+  ((reactiveNormalization timeouts) leaks).action who past view
+    ((canonicalReactiveDecision timeouts) leaks who event choice view.application)
 
 /-- Away from bindings the canonical decision agrees with the uncounted decision. -/
-theorem canonicalReactiveDecision_eq_of_not_bind (runtime : EventGraphRuntime graph)
+theorem canonicalReactiveDecision_eq_of_not_bind (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (who : Player) (event : graph.EventId) (action : graph.Action event)
     (view : PlayerView graph)
     (notBind : ∀ owner payload outputEq codeEq,
       nodeView graph event ≠ .bind owner payload outputEq codeEq) :
-    runtime.canonicalReactiveDecision leaks who event action view =
-      runtime.reactiveDecision leaks who event action view := by
+    (canonicalReactiveDecision timeouts) leaks who event action view =
+      (reactiveDecision timeouts) leaks who event action view := by
   unfold canonicalReactiveDecision reactiveDecision
   congr 1
   cases node : nodeView graph event with
@@ -112,49 +112,49 @@ theorem canonicalReactiveDecision_eq_of_not_bind (runtime : EventGraphRuntime gr
   | resolve => rfl
 
 /-- A canonical client sends no traffic after its public default. -/
-theorem canonicalServiceDecision_defaulted (runtime : EventGraphRuntime graph)
+theorem canonicalServiceDecision_defaulted (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (who : Player) (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
     (event : graph.EventId) (choice : graph.Action event)
     (inactive : who ∈ view.application.publicView.observation.defaulted) :
-    runtime.canonicalServiceDecision leaks who past view event choice = ⟨none⟩ := by
+    (canonicalServiceDecision timeouts) leaks who past view event choice = ⟨none⟩ := by
   simp only [canonicalServiceDecision, canonicalReactiveDecision, ite_eq_left inactive]
   rfl
 
 /-- A transmitted canonical decision belongs to an owner who has not publicly defaulted. -/
-theorem canonicalServiceDecision_active (runtime : EventGraphRuntime graph)
+theorem canonicalServiceDecision_active (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (who : Player) (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
     (event : graph.EventId) (choice : graph.Action event)
-    (material : (runtime.reactiveApplication leaks).Submission)
-    (submits : (runtime.canonicalServiceDecision leaks who past view event choice).transmission =
+    (material : ((reactiveApplication timeouts) leaks).Submission)
+    (submits : ((canonicalServiceDecision timeouts) leaks who past view event choice).transmission =
       some material) :
     who ∉ view.application.publicView.observation.defaulted := by
   intro inactive
-  rw [runtime.canonicalServiceDecision_defaulted leaks who past view event choice inactive]
+  rw [(canonicalServiceDecision_defaulted timeouts) leaks who past view event choice inactive]
     at submits
   cases submits
 
-theorem canonicalServiceDecision_eq_of_not_bind (runtime : EventGraphRuntime graph)
+theorem canonicalServiceDecision_eq_of_not_bind (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (who : Player) (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
     (event : graph.EventId) (choice : graph.Action event)
     (notBind : ∀ owner payload outputEq codeEq,
       nodeView graph event ≠ .bind owner payload outputEq codeEq) :
-    runtime.canonicalServiceDecision leaks who past view event choice =
-      runtime.serviceDecision leaks who past view event choice := by
+    (canonicalServiceDecision timeouts) leaks who past view event choice =
+      (serviceDecision timeouts) leaks who past view event choice := by
   unfold canonicalServiceDecision serviceDecision
-  rw [runtime.canonicalReactiveDecision_eq_of_not_bind leaks who event choice view.application
+  rw [(canonicalReactiveDecision_eq_of_not_bind timeouts) leaks who event choice view.application
     notBind]
 
 /-- An admitted binding submits the canonical binding at the selected slot. -/
-theorem canonicalServiceDecision_binding (runtime : EventGraphRuntime graph)
+theorem canonicalServiceDecision_binding (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (who : Player) (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
     (event : graph.EventId) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding who payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
@@ -163,32 +163,32 @@ theorem canonicalServiceDecision_binding (runtime : EventGraphRuntime graph)
     (active : who ∉ view.application.publicView.observation.defaulted)
     (serial : Nat) (selected : canonicalFreshSlot who view.application = some serial)
     (result : PublicationResult (L.Val payload)) :
-    runtime.canonicalServiceDecision leaks who past view event
+    (canonicalServiceDecision timeouts) leaks who past view event
       (cast (congrArg EventField.Action outputEq.symm) (some result)) =
-      runtime.reactiveBinding leaks who event payload result serial := by
+      (reactiveBinding timeouts) leaks who event payload result serial := by
   have fresh := canonicalFreshSlot_spec who view.application serial selected
-  have normalized : runtime.canonicalServiceDecision leaks who past view event
+  have normalized : (canonicalServiceDecision timeouts) leaks who past view event
       (cast (congrArg EventField.Action outputEq.symm) (some result)) =
-      (runtime.reactiveNormalization leaks).action who past view
-        (runtime.reactiveBinding leaks who event payload result serial) := by
+      ((reactiveNormalization timeouts) leaks).action who past view
+        ((reactiveBinding timeouts) leaks who event payload result serial) := by
     simp only [canonicalServiceDecision, canonicalReactiveDecision, ite_eq_right active,
       node, selected, Option.map_some, cast_cast, cast_eq, Option.bind_some]
     rfl
   rw [normalized]
-  exact runtime.reactiveBinding_normal_of_fresh leaks who past view event payload result serial
+  exact (reactiveBinding_normal_of_fresh timeouts) leaks who past view event payload result serial
     fresh
 
 /-- A selected binding omission stays silent, including when candidate slots are available. -/
-theorem canonicalServiceDecision_binding_none (runtime : EventGraphRuntime graph)
+theorem canonicalServiceDecision_binding_none (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (who : Player) (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
     (event : graph.EventId) (owner : Player) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq) (graph.nodes event) =
       .bind owner payload)
     (node : nodeView graph event = .bind owner payload outputEq codeEq) :
-    runtime.canonicalServiceDecision leaks who past view event
+    (canonicalServiceDecision timeouts) leaks who past view event
       (cast (congrArg EventField.Action outputEq.symm)
         (none : Option (PublicationResult (L.Val payload)))) = ⟨none⟩ := by
   simp only [canonicalServiceDecision, canonicalReactiveDecision, node, cast_cast, cast_eq,
@@ -196,10 +196,10 @@ theorem canonicalServiceDecision_binding_none (runtime : EventGraphRuntime graph
   rfl
 
 /-- An authentic opening transmits without predicting its public guard result. -/
-theorem canonicalServiceDecision_openable (runtime : EventGraphRuntime graph)
+theorem canonicalServiceDecision_openable (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (who : Player) (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
+    (who : Player) (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
     (event : graph.EventId) (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload))
@@ -213,7 +213,7 @@ theorem canonicalServiceDecision_openable (runtime : EventGraphRuntime graph)
     (candidate : Handle graph)
     (accepted : view.application.publicView.accepted binding.field = some candidate)
     (owned : candidate.1 = who) :
-    (runtime.canonicalServiceDecision leaks who past view event
+    ((canonicalServiceDecision timeouts) leaks who past view event
       (cast (congrArg EventField.Action outputEq.symm) true)).transmission ≠ none := by
   simp only [canonicalServiceDecision, canonicalReactiveDecision, ite_eq_right active, node,
     reactiveResolutionPacket_openable who event payload binding checks outputEq view.application
@@ -222,32 +222,32 @@ theorem canonicalServiceDecision_openable (runtime : EventGraphRuntime graph)
     reduceCtorEq, not_false_eq_true]
 
 /-- The public deadline still admits inclusion of a packet for `event`. -/
-def PublicView.WithinDeadline (runtime : EventGraphRuntime graph) (view : PublicView graph)
+def PublicView.WithinDeadline (timeouts : EventTimeouts graph) (view : PublicView graph)
     (event : graph.EventId) : Prop :=
   match view.activatedAt event with
   | none => False
-  | some entered => view.clock - entered < runtime.deadline event
+  | some entered => view.clock - entered < timeouts.duration event
 
 /-- A fresh call emitted now and included within `bound event` slots is
 included strictly before `event`'s deadline. -/
-def PublicView.InclusionFitsDeadline (runtime : EventGraphRuntime graph)
+def PublicView.InclusionFitsDeadline (timeouts : EventTimeouts graph)
     (bound : graph.EventId → Nat) (view : PublicView graph) (event : graph.EventId) : Prop :=
   match view.activatedAt event with
   | none => False
-  | some entered => view.clock - entered + bound event < runtime.deadline event
+  | some entered => view.clock - entered + bound event < timeouts.duration event
 
-instance (runtime : EventGraphRuntime graph) (bound : graph.EventId → Nat)
+instance (timeouts : EventTimeouts graph) (bound : graph.EventId → Nat)
     (view : PublicView graph) (event : graph.EventId) :
-    Decidable (view.InclusionFitsDeadline runtime bound event) := by
+    Decidable (view.InclusionFitsDeadline timeouts bound event) := by
   unfold PublicView.InclusionFitsDeadline
   split <;> infer_instance
 
 omit [DecidableEq Player] in
-theorem PublicView.InclusionFitsDeadline.exists {runtime : EventGraphRuntime graph}
+theorem PublicView.InclusionFitsDeadline.exists {timeouts : EventTimeouts graph}
     {bound : graph.EventId → Nat} {view : PublicView graph} {event : graph.EventId}
-    (fits : view.InclusionFitsDeadline runtime bound event) :
+    (fits : view.InclusionFitsDeadline timeouts bound event) :
     ∃ entered, view.activatedAt event = some entered ∧
-      view.clock - entered + bound event < runtime.deadline event := by
+      view.clock - entered + bound event < timeouts.duration event := by
   unfold PublicView.InclusionFitsDeadline at fits
   cases activated : view.activatedAt event with
   | none => rw [activated] at fits; exact fits.elim
@@ -256,17 +256,17 @@ theorem PublicView.InclusionFitsDeadline.exists {runtime : EventGraphRuntime gra
       exact ⟨entered, rfl, fits⟩
 
 omit [DecidableEq Player] in
-theorem PublicView.InclusionFitsDeadline.withinDeadline {runtime : EventGraphRuntime graph}
+theorem PublicView.InclusionFitsDeadline.withinDeadline {timeouts : EventTimeouts graph}
     {bound : graph.EventId → Nat} {view : PublicView graph} {event : graph.EventId}
-    (fits : view.InclusionFitsDeadline runtime bound event) :
-    view.WithinDeadline runtime event := by
+    (fits : view.InclusionFitsDeadline timeouts bound event) :
+    view.WithinDeadline timeouts event := by
   unfold PublicView.InclusionFitsDeadline at fits
   unfold PublicView.WithinDeadline
   cases activated : view.activatedAt event with
   | none => rw [activated] at fits; exact fits
   | some entered =>
       rw [activated] at fits
-      change view.clock - entered < runtime.deadline event
+      change view.clock - entered < timeouts.duration event
       omega
 
 end Vegas.EventGraphRuntime

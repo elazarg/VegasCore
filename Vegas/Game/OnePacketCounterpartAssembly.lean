@@ -26,17 +26,17 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
-  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  {scheduler : (application setup timeouts leaks).Scheduler}
+  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
   [Finite setup.intendedProtocol.History]
 
 local notation "onePacketN" =>
-  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
 
 /-- **The honest-counterpart inputs from domination.** At the tremble scale over
 the combined floor of the source sequence to a depth, a regular counterpart of
@@ -49,32 +49,32 @@ def OnePacketCounterpartInputs.ofDomination
     {who : Player} {site : (onePacketN).InformationSite who}
     {scale : ℕ → ℝ} (scale_pos : ∀ n, 0 < scale n) (depth : ℕ)
     (scaleEq : ∀ n, scale n = trembleScale
-      (combinedFloor setup runtime leaks bounds horizon scheduler (sequence n)) depth n)
+      (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)) depth n)
     (slack : ℝ) (slack_nonneg : 0 ≤ slack)
     (counterpart : ℕ → (onePacketN).InformationHistory who site.1 →
       (onePacketN).InformationHistory who site.1)
-    (counterpart_regular : ∀ n history, ¬ RegularTrace setup runtime leaks bounds horizon scheduler
+    (counterpart_regular : ∀ n history, ¬ RegularTrace setup timeouts leaks bounds horizon scheduler
         (sequence n) who history.1.trace →
-      RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+      RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
         (counterpart n history).1.trace)
-    (dominated : ∀ n history, ¬ RegularTrace setup runtime leaks bounds horizon scheduler
+    (dominated : ∀ n history, ¬ RegularTrace setup timeouts leaks bounds horizon scheduler
       (sequence n)
         who history.1.trace →
       ((onePacketN).historyReachWeight (targetSequence n).strategy history.1).toReal ≤
-        slack * scale n / combinedFloor setup runtime leaks bounds horizon scheduler (sequence n)
+        slack * scale n / combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)
           ^ depth *
           ((onePacketN).historyReachWeight (targetSequence n).strategy
             (counterpart n history).1).toReal) :
-    OnePacketCounterpartInputs setup runtime leaks bounds horizon scheduler sequence targetSequence
+    OnePacketCounterpartInputs setup timeouts leaks bounds horizon scheduler sequence targetSequence
       site :=
   have fields := fun n => counterpart_fields_of_domination
     (fun history : (onePacketN).InformationHistory who site.1 =>
       ((onePacketN).historyReachWeight (targetSequence n).strategy history.1).toReal)
-    (counterpart n) (scale_pos n) (combinedFloor_pos setup runtime leaks bounds horizon scheduler
+    (counterpart n) (scale_pos n) (combinedFloor_pos setup timeouts leaks bounds horizon scheduler
       (sequence n))
-    (fun history => ¬ RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+    (fun history => ¬ RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
       history.1.trace) (dominated n)
-  OnePacketCounterpartInputs.ofCertificate (runtime := runtime) scale_pos depth scaleEq slack
+  OnePacketCounterpartInputs.ofCertificate (timeouts := timeouts) scale_pos depth scaleEq slack
     slack_nonneg counterpart
     (fun n history => ((onePacketN).historyReachWeight (targetSequence n).strategy
       history.1).toReal / scale n ^ 3)
@@ -83,13 +83,13 @@ def OnePacketCounterpartInputs.ofDomination
 variable [DecidableEq (CellTy Player L)]
 
 omit [Finite setup.intendedProtocol.History] [DecidableEq (CellTy Player L)]
-  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
 /-- A history at a decision input is initialized and decodes. -/
-theorem decoded_of_decision {who : Player} {past : List (application setup runtime
+theorem decoded_of_decision {who : Player} {past : List (application setup timeouts
   leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView}
+    {view : (application setup timeouts leaks).PlayerView}
     (history : (onePacketN).InformationHistory who (some (past, view))) :
     ∃ current p, history.1.state = some current ∧
       decodedPoint setup current.execution.application.config = some p := by
@@ -99,35 +99,35 @@ theorem decoded_of_decision {who : Player} {past : List (application setup runti
       rw [onePacket_infoOf] at seen
       cases seen
   | some current =>
-      obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+      obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts) (failureProfile
         setup.program)
-        (bounds.onePacketMenu runtime leaks) horizon scheduler trace current rfl
+        (bounds.onePacketMenu timeouts leaks) horizon scheduler trace current rfl
       exact ⟨current, _, rfl, decodedPoint_eq residual⟩
 
 omit [Finite setup.intendedProtocol.History] [DecidableEq (CellTy Player L)] in
 /-- **A debt-free witness.** At a site whose agent is forced and owes no failure,
 some history of the site decodes to a point at which nobody owes a failure. -/
 theorem exists_debtFree_witness {who : Player} {site : (onePacketN).InformationSite who}
-    (forced : ¬ FreeAgent setup runtime leaks bounds (initialLaw setup)
+    (forced : ¬ FreeAgent setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler ((onePacketN).agentAt site))
-    (notOwing : ¬ OwingAgent setup runtime leaks bounds (initialLaw setup)
+    (notOwing : ¬ OwingAgent setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler ((onePacketN).agentAt
       site)) :
     ∃ (witness : (onePacketN).InformationHistory who site.1)
-      (control : (application setup runtime leaks).Control) (w : ProtocolState setup.program),
+      (control : (application setup timeouts leaks).Control) (w : ProtocolState setup.program),
       witness.1.state = some control ∧
         decodedPoint setup control.execution.application.config = some w ∧
         ∀ player, ¬ ProtocolState.OwesFailure player setup.program w := by
-  have isForced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks)
+  have isForced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks)
     (initialLaw setup)
       horizon scheduler who site.1 :=
-    forcedAgent_of_not_free setup runtime leaks bounds (initialLaw setup) horizon scheduler forced
+    forcedAgent_of_not_free setup timeouts leaks bounds (initialLaw setup) horizon scheduler forced
   obtain ⟨history, info, forcedState⟩ := isForced
   obtain ⟨state, trace⟩ := history
   cases state with
   | none => exact forcedState.elim
   | some control =>
-      obtain ⟨point, decoded, forcedPoint⟩ := (forcedState_iff_decodedPoint (runtime := runtime)
+      obtain ⟨point, decoded, forcedPoint⟩ := (forcedState_iff_decodedPoint (timeouts := timeouts)
         control).mp forcedState
       refine ⟨⟨⟨some control, trace⟩, info⟩, control, point, rfl, decoded, fun player owes => ?_⟩
       by_cases same : player = who
@@ -135,10 +135,10 @@ theorem exists_debtFree_witness {who : Player} {site : (onePacketN).InformationS
         exact notOwing ⟨⟨⟨some control, trace⟩, info⟩, point, decoded, owes⟩
       · exact (forcedPoint.2 player same).2 owes
 
-variable [Finite (onePacketProtocol setup runtime leaks bounds horizon scheduler).History]
+variable [Finite (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History]
 
 omit [Finite setup.intendedProtocol.History] [DecidableEq (CellTy Player L)]
-  [Finite (onePacketProtocol setup runtime leaks bounds horizon scheduler).History] in
+  [Finite (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History] in
 /-- Along a vanishing error, the factorization error of a history length is
 eventually at most a half, and the error at most one. -/
 theorem eventually_error_small {error : ℕ → ℝ} (tendsto : Tendsto error atTop (nhds 0))
@@ -159,28 +159,29 @@ def OnePacketCounterpartInputs.ofReachComparisons
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
     {scale : ℕ → ℝ} (scale_pos : ∀ n, 0 < scale n) (scale_le_one : ∀ n, scale n ≤ 1)
     (scaleEq : ∀ n, scale n = trembleScale
-      (combinedFloor setup runtime leaks bounds horizon scheduler (sequence n)) (2 * horizon + 2) n)
+      (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)) (2 * horizon +
+        2) n)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     {targetSequence : ℕ → (onePacketN).BehavioralAssessment}
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       scale_pos
       scale_le_one weights targetSequence)
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     {who : Player} {site : (onePacketN).InformationSite who}
     (comparisons :
-      let floor := fun n => combinedFloor setup runtime leaks bounds horizon scheduler (sequence n)
+      let floor := fun n => combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)
       ∀ n (history : (onePacketN).InformationHistory who site.1),
       ∃ counterpart : (onePacketN).InformationHistory who site.1,
-        ¬ RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+        ¬ RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
           history.1.trace →
-        RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+        RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
           counterpart.1.trace ∧
         ((1 + slotError (scale n) (floor n) (trembleSlots setup bounds).card) ^
             (2 * horizon + 1) - 1 < 1 →
         ((onePacketN).historyReachWeight
-            (certificateProfile setup runtime leaks bounds horizon scheduler sequence scale
+            (certificateProfile setup timeouts leaks bounds horizon scheduler sequence scale
               scale_pos
               scale_le_one weights n) history.1).toReal ≤
           (1 + ((1 + slotError (scale n) (floor n) (trembleSlots setup bounds).card) ^
@@ -189,24 +190,26 @@ def OnePacketCounterpartInputs.ofReachComparisons
               (2 * horizon + 1) - 1)) *
             (slotError (scale n) (floor n) (trembleSlots setup bounds).card *
               (1 + slotError (scale n) (floor n) (trembleSlots setup bounds).card) *
-              counterpartFactor setup runtime leaks bounds horizon scheduler sequence scale floor
+              counterpartFactor setup timeouts leaks bounds horizon scheduler sequence scale floor
                 n ^
                 (2 * horizon + 1)) *
           ((onePacketN).historyReachWeight
-            (certificateProfile setup runtime leaks bounds horizon scheduler sequence scale
+            (certificateProfile setup timeouts leaks bounds horizon scheduler sequence scale
               scale_pos
               scale_le_one weights n) counterpart.1).toReal)) :
-    OnePacketCounterpartInputs setup runtime leaks bounds horizon scheduler sequence targetSequence
+    OnePacketCounterpartInputs setup timeouts leaks bounds horizon scheduler sequence targetSequence
       site :=
-  let floor := fun n => combinedFloor setup runtime leaks bounds horizon scheduler (sequence n)
-  have floor_pos : ∀ n, 0 < floor n := fun n => combinedFloor_pos setup runtime leaks bounds horizon
-    scheduler (sequence n)
-  have floor_le_one : ∀ n, floor n ≤ 1 := fun n => combinedFloor_le_one setup runtime leaks bounds
+  let floor := fun n => combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n)
+  have floor_pos : ∀ n, 0 < floor n := fun n => combinedFloor_pos setup timeouts leaks bounds
     horizon
     scheduler (sequence n)
-  have floored : ∀ n, floor n ≤ contentFloor setup runtime leaks bounds horizon scheduler
+  have floor_le_one : ∀ n, floor n ≤ 1 := fun n => combinedFloor_le_one setup timeouts leaks bounds
+    horizon
+    scheduler (sequence n)
+  have floored : ∀ n, floor n ≤ contentFloor setup timeouts leaks bounds horizon scheduler
     (sequence n) :=
-    fun n => combinedFloor_le_contentFloor setup runtime leaks bounds horizon scheduler (sequence n)
+    fun n => combinedFloor_le_contentFloor setup timeouts leaks bounds horizon scheduler
+      (sequence n)
   have error_tendsto : Tendsto (fun n => slotError (scale n) (floor n)
       (trembleSlots setup bounds).card) atTop (nhds 0) := by
     have tendsto := tendsto_slotError floor floor_pos floor_le_one (2 * horizon + 2)
@@ -214,14 +217,15 @@ def OnePacketCounterpartInputs.ofReachComparisons
     convert tendsto using 1
     funext n
     rw [scaleEq n]
-  have strategyEq : ∀ n, (targetSequence n).strategy = certificateProfile setup runtime leaks bounds
+  have strategyEq : ∀ n, (targetSequence n).strategy = certificateProfile setup timeouts leaks
+    bounds
       horizon scheduler sequence scale scale_pos scale_le_one weights n := assembled
   let counterpart := fun n history => Classical.choose (comparisons n history)
   let reach := fun n (history : (onePacketN).InformationHistory who site.1) =>
     ((onePacketN).historyReachWeight (targetSequence n).strategy history.1).toReal
   let power := 2 * horizon + 1
   let constant := 3 * (2 * (2 * ((trembleSlots setup bounds).card : ℝ) + 2) *
-    max (1 / initialFloor setup runtime leaks bounds horizon scheduler) 4 ^ power)
+    max (1 / initialFloor setup timeouts leaks bounds horizon scheduler) 4 ^ power)
   have bound := Classical.choose_spec (eventually_error_small error_tendsto power)
   let start := Classical.choose (eventually_error_small error_tendsto power)
   let early := ∑ n ∈ Finset.range start, ∑ history ∈
@@ -236,7 +240,7 @@ def OnePacketCounterpartInputs.ofReachComparisons
     div_nonneg (mul_nonneg (reachPos n history).le (pow_nonneg (floor_pos n).le _))
       (mul_nonneg (scale_pos n).le (reachPos n _).le)
   have constantNonneg : 0 ≤ constant := by positivity
-  OnePacketCounterpartInputs.ofDomination (runtime := runtime) scale_pos (2 * horizon + 2) scaleEq
+  OnePacketCounterpartInputs.ofDomination (timeouts := timeouts) scale_pos (2 * horizon + 2) scaleEq
     (max constant early) (le_trans constantNonneg (le_max_left _ _)) counterpart
     (fun n history irregular =>
       ((Classical.choose_spec (comparisons n history)) irregular).1)
@@ -257,7 +261,7 @@ def OnePacketCounterpartInputs.ofReachComparisons
           linarith
         have dominatedNative := spec.2 (by linarith)
         have reachEq : ∀ found : (onePacketN).InformationHistory who site.1,
-            ((onePacketN).historyReachWeight (certificateProfile setup runtime leaks bounds horizon
+            ((onePacketN).historyReachWeight (certificateProfile setup timeouts leaks bounds horizon
               scheduler sequence scale scale_pos scale_le_one weights n) found.1).toReal =
               reach n found := fun found => congrArg (fun profile =>
                 ((onePacketN).historyReachWeight profile found.1).toReal) (strategyEq n).symm
@@ -269,11 +273,11 @@ def OnePacketCounterpartInputs.ofReachComparisons
                 (2 * horizon + 1) - 1)) *
               (slotError (scale n) (floor n) (trembleSlots setup bounds).card *
                 (1 + slotError (scale n) (floor n) (trembleSlots setup bounds).card) *
-                counterpartFactor setup runtime leaks bounds horizon scheduler sequence scale
+                counterpartFactor setup timeouts leaks bounds horizon scheduler sequence scale
                   floor n ^
                   (2 * horizon + 1)) * mass) (reachEq (counterpart n history))))
         have ratio := counterpartRatio_le (scale_pos n) (scale_le_one n) (floor_pos n)
-          (floor_le_one n) (floored n) (initialFloor_pos setup runtime leaks bounds horizon
+          (floor_le_one n) (floored n) (initialFloor_pos setup timeouts leaks bounds horizon
             scheduler)
           (trembleSlots setup bounds).card errorNonneg errorLe errorLe power
         have factorLe : (1 + ((1 + slotError (scale n) (floor n)
@@ -288,13 +292,13 @@ def OnePacketCounterpartInputs.ofReachComparisons
               power - 1)) := div_nonneg (by linarith) (by linarith)
         have ratioNonneg : 0 ≤ slotError (scale n) (floor n) (trembleSlots setup bounds).card *
             (1 + slotError (scale n) (floor n) (trembleSlots setup bounds).card) *
-            counterpartFactor setup runtime leaks bounds horizon scheduler sequence scale floor n ^
+            counterpartFactor setup timeouts leaks bounds horizon scheduler sequence scale floor n ^
               power :=
           mul_nonneg (mul_nonneg errorNonneg (by linarith))
             (pow_nonneg (le_trans zero_le_one (le_max_left _ _)) _)
         calc reach n history ≤ _ := dominated
           _ ≤ 3 * (2 * (2 * ((trembleSlots setup bounds).card : ℝ) + 2) *
-                max (1 / initialFloor setup runtime leaks bounds horizon scheduler) 4 ^ power *
+                max (1 / initialFloor setup timeouts leaks bounds horizon scheduler) 4 ^ power *
                 (scale n / floor n ^ (power + 1))) * reach n (counterpart n history) :=
             mul_le_mul_of_nonneg_right (mul_le_mul factorLe ratio ratioNonneg (by norm_num))
               positiveCounterpart.le

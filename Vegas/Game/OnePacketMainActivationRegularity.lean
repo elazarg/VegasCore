@@ -21,12 +21,12 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)}
 
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks)
+  (app := application setup timeouts leaks)
     (fun native : EventGraphRuntime.State (graph setup) =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
@@ -38,57 +38,57 @@ theorem nonlate_of_mainActivationTraceAfter
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment) (focal owner : Player)
     (different : owner ≠ focal)
-    {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
+    {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
+    (opportunity : ∀ control : (application setup timeouts leaks).Control,
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      OpportunityAt runtime leaks control.execution delay)
-    (timely : runtime.AsyncTimely delay bound)
-    (start control : (application setup runtime leaks).Control)
-    (startTrace : (onePacketProtocol setup runtime leaks bounds horizon
+      OpportunityAt timeouts leaks control.execution delay)
+    (timely : (AsyncTimely timeouts) delay bound)
+    (start control : (application setup timeouts leaks).Control)
+    (startTrace : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).Trace (some start))
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).Trace (some control))
     (startPrefix : TracePrefix startTrace trace)
     (current : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (clear : control.execution.application.config.defaulted = ∅)
-    (regular : RegularTrace setup runtime leaks bounds horizon
+    (regular : RegularTrace setup timeouts leaks bounds horizon
       scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point)
-    (main : MainActivationTraceAfter setup runtime leaks bounds horizon
+    (main : MainActivationTraceAfter setup timeouts leaks bounds horizon
       scheduler source focal
       startTrace.length trace) :
-    ¬ LateDelivery setup runtime leaks owner (some (control.execution.logs owner,
-      control.execution.observe (application setup runtime leaks) owner)) := by
+    ¬ LateDelivery setup timeouts leaks owner (some (control.execution.logs owner,
+      control.execution.observe (application setup timeouts leaks) owner)) := by
   rintro ⟨past, view, event, same, pending, entry, remembered, activated⟩
   obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj same.symm)
   obtain ⟨point, decoded, intended⟩ :=
-    intended_of_clear_regular_notOwes (runtime := runtime) wellFormed source focal trace clear
+    intended_of_clear_regular_notOwes (timeouts := timeouts) wellFormed source focal trace clear
       regular notOwed
-  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts) (failureProfile
     setup.program)
-    (bounds.onePacketMenu runtime leaks) horizon scheduler trace control rfl
+    (bounds.onePacketMenu timeouts leaks) horizon scheduler trace control rfl
   have samePoint := Option.some.inj ((decodedPoint_eq residual).symm.trans decoded)
   subst point
-  have submissions := onePacket_ownSubmissionsAtTurn (runtime := runtime) bounds trace
+  have submissions := onePacket_ownSubmissionsAtTurn (timeouts := timeouts) bounds trace
     residual.checkpoint.ordered _
     residual.decode intended owner
   obtain ⟨before, prior, response, joint, legal, realized, afterPrefix, acting, chosen,
-    firstPending, never⟩ := firstActivation_response_prefix_of_recall (runtime := runtime) trace
+    firstPending, never⟩ := firstActivation_response_prefix_of_recall (timeouts := timeouts) trace
       owner event
       ⟨entry, remembered, activated⟩ submissions
   have ready := (control.execution.application.publicView_eventReady event).mp
-    (pendingEvent_spec (runtime := runtime) pending).2.1
-  have owned := (pendingEvent_spec (runtime := runtime) pending).2.2.1
+    (pendingEvent_spec (timeouts := timeouts) pending).2.1
+  have owned := (pendingEvent_spec (timeouts := timeouts) pending).2.2.1
   have unfinished : event ∉ start.execution.application.config.cut.completed := by
     intro completed
     obtain ⟨value, output⟩ := Option.isSome_iff_exists.mp
       ((start.execution.application.config.output_available event).mpr completed)
     have stored : start.execution.application.config.store (.inr event) = some value := output
-    have retained := storedValue_of_tracePrefix (runtime := runtime) startTrace startPrefix (.inr
+    have retained := storedValue_of_tracePrefix (timeouts := timeouts) startTrace startPrefix (.inr
       event) value stored
     change control.execution.application.config.outputs event = some value at retained
     exact ready.1 ((control.execution.application.config.output_available event).mp
@@ -96,140 +96,140 @@ theorem nonlate_of_mainActivationTraceAfter
   have priorPrefix : TracePrefix prior trace :=
     (TracePrefix.extend .refl joint legal realized).trans afterPrefix
   have readyBefore := (before.execution.application.publicView_eventReady event).mp
-    (pendingEvent_spec (runtime := runtime) firstPending).2.1
-  have future := foreign_ready_prefix_after_ownTurn (runtime := runtime) startTrace prior
+    (pendingEvent_spec (timeouts := timeouts) firstPending).2.1
+  have future := foreign_ready_prefix_after_ownTurn (timeouts := timeouts) startTrace prior
     startPrefix priorPrefix focal
     owner different current event turn owned unfinished readyBefore
-  have supportStep := mainActivationStep_of_tracePrefix (runtime := runtime) source focal
+  have supportStep := mainActivationStep_of_tracePrefix (timeouts := timeouts) source focal
     startTrace.length prior joint
     legal realized afterPrefix main future.length_le
-  have first : FirstActivation setup runtime leaks owner (some (before.execution.logs owner,
-      before.execution.observe (application setup runtime leaks) owner)) :=
-    ⟨before.execution.logs owner, before.execution.observe (application setup runtime leaks)
+  have first : FirstActivation setup timeouts leaks owner (some (before.execution.logs owner,
+      before.execution.observe (application setup timeouts leaks) owner)) :=
+    ⟨before.execution.logs owner, before.execution.observe (application setup timeouts leaks)
       owner, event,
       rfl, firstPending, never⟩
   have supported := supportStep owner acting different first
   rw [chosen, Option.getD_some] at supported
   obtain ⟨earlierClear, earlierRegular, earlierNotOwed⟩ := clear_regular_notOwes_of_tracePrefix
-    (runtime := runtime)
+    (timeouts := timeouts)
     wellFormed source focal owner different prior trace priorPrefix clear regular notOwed
   obtain ⟨earlyPoint, earlyDecoded, earlyIntended⟩ :=
-    intended_of_clear_regular_notOwes (runtime := runtime) wellFormed source focal prior
+    intended_of_clear_regular_notOwes (timeouts := timeouts) wellFormed source focal prior
       earlierClear earlierRegular
       earlierNotOwed
-  have forced : ForcedState setup runtime leaks owner (some before) :=
-    (forcedState_iff_decodedPoint (runtime := runtime) before).mpr
+  have forced : ForcedState setup timeouts leaks owner (some before) :=
+    (forcedState_iff_decodedPoint (timeouts := timeouts) before).mpr
       ⟨earlyPoint, earlyDecoded, forcedPoint_of_intended owner earlyIntended⟩
   have ownerNotOwed : ∀ point, decodedPoint setup before.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure owner setup.program point := by
     intro point pointDecoded
     cases Option.some.inj (earlyDecoded.symm.trans pointDecoded)
     exact ProtocolState.Intended.not_owesFailure owner setup.program earlyPoint earlyIntended
-  have offered : response ∈ bounds.onePacketActions runtime leaks owner
-      (before.execution.logs owner) (before.execution.observe (application setup runtime leaks)
+  have offered : response ∈ bounds.onePacketActions timeouts leaks owner
+      (before.execution.logs owner) (before.execution.observe (application setup timeouts leaks)
         owner) :=
     (chosen ▸ legal.2 owner).2
-  have selected : (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  have selected : (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
       owner (some (before.execution.logs owner,
-        before.execution.observe (application setup runtime leaks) owner)) response).1 = some
+        before.execution.observe (application setup timeouts leaks) owner)) response).1 = some
           response := by
     simp only [responseChoice, dite_eq_left offered]
-  have named : runtime.submittedEvent? leaks response = some event := by
+  have named : (submittedEvent? timeouts) leaks response = some event := by
     rcases before with ⟨remaining, actor, execution⟩
     dsimp only at acting
     subst actor
-    have fits := firstActivation_inclusionFits_of_counted_opportunity setup runtime leaks bounds
+    have fits := firstActivation_inclusionFits_of_counted_opportunity setup timeouts leaks bounds
       horizon
       scheduler delay bound opportunity timely prior rfl earlierClear event
-      (pendingEvent_spec (runtime := runtime) firstPending).1 never
-    obtain ⟨action, material, canonical, sends, _⟩ := honestChoice_canonical_of_debtFree (runtime
-      := runtime) wellFormed
+      (pendingEvent_spec (timeouts := timeouts) firstPending).1 never
+    obtain ⟨action, material, canonical, sends, _⟩ := honestChoice_canonical_of_debtFree (timeouts
+      := timeouts) wellFormed
       covers capacity source prior owner forced ownerNotOwed event firstPending bound fits _
       supported
     have responseEq := Option.some.inj (selected.symm.trans canonical)
     rw [responseEq]
-    rcases canonical_silentOrNames (runtime := runtime) owner (execution.logs owner)
-      (execution.observe (application setup runtime leaks) owner) event action with silent | names
+    rcases canonical_silentOrNames (timeouts := timeouts) owner (execution.logs owner)
+      (execution.observe (application setup timeouts leaks) owner) event action with silent | names
     · rw [sends] at silent
       cases silent
     · exact names
-  let recordedEntry := respondEntry setup runtime leaks before.execution owner response
-  have initialRecord := recordsEntry_respond (runtime := runtime) before.execution owner response
+  let recordedEntry := respondEntry setup timeouts leaks before.execution owner response
+  have initialRecord := recordsEntry_respond (timeouts := timeouts) before.execution owner response
     before.remaining none
   have laterRecord : ∀ {state}
-      {later : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state},
+      {later : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state},
       TracePrefix (prior.extend joint legal realized) later →
-        RecordsEntry setup runtime leaks owner recordedEntry state := by
+        RecordsEntry setup timeouts leaks owner recordedEntry state := by
     intro state later laterPrefix
     induction laterPrefix with
     | refl => exact initialRecord
     | @extend first second earlier isPrefix actions allowed reached ih =>
-        exact recordsEntry_transition (runtime := runtime) owner recordedEntry (initialLaw setup)
+        exact recordsEntry_transition (timeouts := timeouts) owner recordedEntry (initialLaw setup)
           horizon scheduler
           first second actions ih reached
   obtain ⟨earlier, later, split⟩ := laterRecord afterPrefix
   have recorded :
-      runtime.eventRecorded leaks (control.execution.logs owner) event = true :=
-    (runtime.eventRecorded_iff leaks (control.execution.logs owner) event).mpr
+      (eventRecorded timeouts) leaks (control.execution.logs owner) event = true :=
+    ((eventRecorded_iff timeouts) leaks (control.execution.logs owner) event).mpr
       ⟨recordedEntry, by rw [split]; exact List.mem_append_right _ (List.mem_cons_self ..), named⟩
-  rw [(pendingEvent_spec (runtime := runtime) pending).2.2.2] at recorded
+  rw [(pendingEvent_spec (timeouts := timeouts) pending).2.2.2] at recorded
   cases recorded
 
 private theorem main_of_no_pending
     (source : setup.intendedModel.BehavioralAssessment)
-    {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
-    {remaining : Nat} {owner : Player} {execution : (application setup runtime leaks).Execution}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+    {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
+    {remaining : Nat} {owner : Player} {execution : (application setup timeouts leaks).Execution}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       (some ⟨remaining, some owner, execution⟩))
     (point : ProtocolState setup.program)
     (decoded : decodedPoint setup execution.application.config = some point)
     (intended : ProtocolState.Intended setup.program point)
-    (noPending : pendingEvent setup runtime leaks owner (some (execution.logs owner,
-      execution.observe (application setup runtime leaks) owner)) = none)
-    (response : (application setup runtime leaks).Action)
-    (offered : response ∈ bounds.onePacketActions runtime leaks owner
-      (execution.logs owner) (execution.observe (application setup runtime leaks) owner)) :
-    responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler owner
-      (some (execution.logs owner, execution.observe (application setup runtime leaks) owner))
+    (noPending : pendingEvent setup timeouts leaks owner (some (execution.logs owner,
+      execution.observe (application setup timeouts leaks) owner)) = none)
+    (response : (application setup timeouts leaks).Action)
+    (offered : response ∈ bounds.onePacketActions timeouts leaks owner
+      (execution.logs owner) (execution.observe (application setup timeouts leaks) owner)) :
+    responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler owner
+      (some (execution.logs owner, execution.observe (application setup timeouts leaks) owner))
         response ∈
-      (honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler source owner
+      (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler source owner
         (some (execution.logs owner,
-          execution.observe (application setup runtime leaks) owner))).support := by
-  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+          execution.observe (application setup timeouts leaks) owner))).support := by
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
     horizon scheduler trace
-  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts) (failureProfile
     setup.program)
-    (bounds.onePacketMenu runtime leaks) horizon scheduler trace _ rfl
+    (bounds.onePacketMenu timeouts leaks) horizon scheduler trace _ rfl
   have samePoint := Option.some.inj ((decodedPoint_eq residual).symm.trans decoded)
   subst point
   have records : ∀ event, execution.application.publicView.ownTurn? owner = some event →
-      runtime.eventRecorded leaks (execution.logs owner) event = true := by
+      (eventRecorded timeouts) leaks (execution.logs owner) event = true := by
     intro event turn
-    cases actual : runtime.eventRecorded leaks (execution.logs owner) event with
+    cases actual : (eventRecorded timeouts) leaks (execution.logs owner) event with
     | true => rfl
     | false =>
-        have pending : pendingEvent setup runtime leaks owner (some (execution.logs owner,
-            execution.observe (application setup runtime leaks) owner)) = some event :=
-          pendingEvent_of_spec (runtime := runtime) turn actual
+        have pending : pendingEvent setup timeouts leaks owner (some (execution.logs owner,
+            execution.observe (application setup timeouts leaks) owner)) = some event :=
+          pendingEvent_of_spec (timeouts := timeouts) turn actual
         rw [noPending] at pending
         cases pending
   have silent : response.transmission = none := by
-    rcases ((bounds.mem_onePacketActions runtime leaks owner _ _ response).mp
+    rcases ((bounds.mem_onePacketActions timeouts leaks owner _ _ response).mp
       offered).2 with
       silent | ⟨material, transmits, permitted⟩
     · exact silent
     · exfalso
       have valid := ((countPermits_eq_true_iff _ _).mp permitted).1
       obtain ⟨event, named, _⟩ := (WitnessedPacket.tokenValid_iff _).mp valid
-      have submitted : runtime.submittedEvent? leaks response = some event := by
+      have submitted : (submittedEvent? timeouts) leaks response = some event := by
         unfold EventGraphRuntime.submittedEvent?
         rw [transmits]
         exact named
-      have atTurn := onePacket_submission_atTurn (runtime := runtime) bounds (failureProfile
+      have atTurn := onePacket_submission_atTurn (timeouts := timeouts) bounds (failureProfile
         setup.program) rawTrace
         residual response offered event submitted
       rcases atTurn with turn | owed
-      · exact onePacket_recorded_not_offered (runtime := runtime) trace owner event (records event
+      · exact onePacket_recorded_not_offered (timeouts := timeouts) trace owner event (records event
           turn) response
           submitted offered
       · exact ProtocolState.Intended.not_owesFailure owner setup.program _ intended
@@ -238,19 +238,19 @@ private theorem main_of_no_pending
     cases response
     cases silent
     rfl
-  have mainLaw : honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  have mainLaw : honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
     source owner
-      (some (execution.logs owner, execution.observe (application setup runtime leaks) owner)) =
-      PMF.pure (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler owner
-        (some (execution.logs owner, execution.observe (application setup runtime leaks)
+      (some (execution.logs owner, execution.observe (application setup timeouts leaks) owner)) =
+      PMF.pure (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler owner
+        (some (execution.logs owner, execution.observe (application setup timeouts leaks)
           owner))) := by
     cases turn : execution.application.publicView.ownTurn? owner with
     | none =>
-        exact honestChoice_silence_of_noTurn (runtime := runtime) source owner (execution.logs
+        exact honestChoice_silence_of_noTurn (timeouts := timeouts) source owner (execution.logs
           owner)
-          (execution.observe (application setup runtime leaks) owner) turn
+          (execution.observe (application setup timeouts leaks) owner) turn
     | some event =>
-        exact honestChoice_silence_of_recorded (runtime := runtime) source trace owner event turn
+        exact honestChoice_silence_of_recorded (timeouts := timeouts) source trace owner event turn
           (records event turn)
   rw [mainLaw, responseEq]
   exact (PMF.mem_support_pure_iff _ _).mpr rfl
@@ -262,63 +262,63 @@ theorem response_main_of_mainActivationTraceAfter
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment) (focal owner : Player)
     (different : owner ≠ focal)
-    {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
+    {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
+    (opportunity : ∀ control : (application setup timeouts leaks).Control,
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      OpportunityAt runtime leaks control.execution delay)
-    (timely : runtime.AsyncTimely delay bound)
-    (start control : (application setup runtime leaks).Control)
-    (startTrace : (onePacketProtocol setup runtime leaks bounds horizon
+      OpportunityAt timeouts leaks control.execution delay)
+    (timely : (AsyncTimely timeouts) delay bound)
+    (start control : (application setup timeouts leaks).Control)
+    (startTrace : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).Trace (some start))
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).Trace (some control))
     (startPrefix : TracePrefix startTrace trace)
     (current : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (clear : control.execution.application.config.defaulted = ∅)
-    (regular : RegularTrace setup runtime leaks bounds horizon
+    (regular : RegularTrace setup timeouts leaks bounds horizon
       scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point)
-    (main : MainActivationTraceAfter setup runtime leaks bounds horizon
+    (main : MainActivationTraceAfter setup timeouts leaks bounds horizon
       scheduler source focal
       startTrace.length trace)
     (active : control.actor = some owner)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    (legal : (onePacketProtocol setup runtime leaks bounds horizon
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    (legal : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).Legal
         (some control) joint)
-    (stepMain : MainActivationStep setup runtime leaks bounds horizon
+    (stepMain : MainActivationStep setup timeouts leaks bounds horizon
       scheduler source focal
       (some control) joint) :
-    responseChoice setup runtime leaks bounds (initialLaw setup) horizon
+    responseChoice setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler owner
       (some (control.execution.logs owner,
-        control.execution.observe (application setup runtime leaks) owner)) ((joint owner).getD
+        control.execution.observe (application setup timeouts leaks) owner)) ((joint owner).getD
           ⟨none⟩) ∈
-      (honestChoice setup runtime leaks bounds (initialLaw setup) horizon
+      (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon
         scheduler source owner
         (some (control.execution.logs owner,
-          control.execution.observe (application setup runtime leaks) owner))).support := by
-  have nonlate := nonlate_of_mainActivationTraceAfter (runtime := runtime) wellFormed covers
+          control.execution.observe (application setup timeouts leaks) owner))).support := by
+  have nonlate := nonlate_of_mainActivationTraceAfter (timeouts := timeouts) wellFormed covers
     capacity source
     focal owner different opportunity timely start control startTrace trace
     startPrefix current turn clear regular notOwed main
-  by_cases first : FirstActivation setup runtime leaks owner (some (control.execution.logs owner,
-      control.execution.observe (application setup runtime leaks) owner))
+  by_cases first : FirstActivation setup timeouts leaks owner (some (control.execution.logs owner,
+      control.execution.observe (application setup timeouts leaks) owner))
   · exact stepMain owner active different first
-  have noPending : pendingEvent setup runtime leaks owner (some (control.execution.logs owner,
-      control.execution.observe (application setup runtime leaks) owner)) = none := by
-    cases actual : pendingEvent setup runtime leaks owner (some (control.execution.logs owner,
-        control.execution.observe (application setup runtime leaks) owner)) with
+  have noPending : pendingEvent setup timeouts leaks owner (some (control.execution.logs owner,
+      control.execution.observe (application setup timeouts leaks) owner)) = none := by
+    cases actual : pendingEvent setup timeouts leaks owner (some (control.execution.logs owner,
+        control.execution.observe (application setup timeouts leaks) owner)) with
     | none => rfl
     | some event =>
-        exact ((firstActivation_or_lateDelivery (runtime := runtime) actual).elim first
+        exact ((firstActivation_or_lateDelivery (timeouts := timeouts) actual).elim first
           nonlate).elim
   obtain ⟨point, decoded, intended⟩ :=
-    intended_of_clear_regular_notOwes (runtime := runtime) wellFormed source focal trace clear
+    intended_of_clear_regular_notOwes (timeouts := timeouts) wellFormed source focal trace clear
       regular notOwed
   rcases control with ⟨remaining, actor, execution⟩
   dsimp only at active
@@ -331,7 +331,7 @@ theorem response_main_of_mainActivationTraceAfter
   | some response =>
       rw [selected] at localLegal
       simpa only [selected, Option.getD_some] using
-        main_of_no_pending (runtime := runtime) source trace point decoded intended noPending
+        main_of_no_pending (timeouts := timeouts) source trace point decoded intended noPending
           response localLegal.2
 
 /-- Before a non-main first callback, an unmarked foreign response preserves
@@ -341,45 +341,45 @@ theorem regularStep_of_native_mainActivationTraceAfter
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment) (focal owner : Player)
     (different : owner ≠ focal)
-    {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
+    {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
+    (opportunity : ∀ control : (application setup timeouts leaks).Control,
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      OpportunityAt runtime leaks control.execution delay)
-    (timely : runtime.AsyncTimely delay bound)
-    (start control : (application setup runtime leaks).Control)
-    (startTrace : (onePacketProtocol setup runtime leaks bounds horizon
+      OpportunityAt timeouts leaks control.execution delay)
+    (timely : (AsyncTimely timeouts) delay bound)
+    (start control : (application setup timeouts leaks).Control)
+    (startTrace : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).Trace (some start))
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).Trace (some control))
     (startPrefix : TracePrefix startTrace trace)
     (current : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (clear : control.execution.application.config.defaulted = ∅)
-    (regular : RegularTrace setup runtime leaks bounds horizon
+    (regular : RegularTrace setup timeouts leaks bounds horizon
       scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point)
-    (main : MainActivationTraceAfter setup runtime leaks bounds horizon
+    (main : MainActivationTraceAfter setup timeouts leaks bounds horizon
       scheduler source focal
       startTrace.length trace)
     (active : control.actor = some owner)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    (legal : (onePacketProtocol setup runtime leaks bounds horizon
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    (legal : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).Legal
         (some control) joint)
-    (stepMain : MainActivationStep setup runtime leaks bounds horizon
+    (stepMain : MainActivationStep setup timeouts leaks bounds horizon
       scheduler source focal
       (some control) joint)
-    (next : (application setup runtime leaks).Control)
-    (realized : some next ∈ ((onePacketProtocol setup runtime leaks bounds horizon
+    (next : (application setup timeouts leaks).Control)
+    (realized : some next ∈ ((onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).step
         (some control) ⟨joint, legal⟩).support) :
-    RegularStep setup runtime leaks bounds horizon
+    RegularStep setup timeouts leaks bounds horizon
       scheduler source focal
       (some control) joint (some next) := by
-  have supported := response_main_of_mainActivationTraceAfter (runtime := runtime) wellFormed
+  have supported := response_main_of_mainActivationTraceAfter (timeouts := timeouts) wellFormed
     covers capacity
     source focal owner different opportunity timely start control startTrace
     trace
@@ -387,7 +387,7 @@ theorem regularStep_of_native_mainActivationTraceAfter
   rcases control with ⟨remaining, actor, execution⟩
   dsimp only at active
   subst actor
-  exact regularStep_of_clear_regular_main (runtime := runtime) wellFormed source focal owner
+  exact regularStep_of_clear_regular_main (timeouts := timeouts) wellFormed source focal owner
     trace clear regular notOwed joint legal next realized supported
 
 /-- Actual stopped play keeps regularity whenever no foreign first callback
@@ -397,65 +397,65 @@ theorem stopped_regular_of_mainActivationTraceAfter
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
     (source : setup.intendedModel.BehavioralAssessment) (focal : Player)
-    {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
+    {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control) →
+    (opportunity : ∀ control : (application setup timeouts leaks).Control,
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control) →
       control.execution.application.config.defaulted = ∅ →
-      OpportunityAt runtime leaks control.execution delay)
-    (timely : runtime.AsyncTimely delay bound)
-    (certificate : (onePacketProtocol setup runtime leaks bounds horizon
+      OpportunityAt timeouts leaks control.execution delay)
+    (timely : (AsyncTimely timeouts) delay bound)
+    (certificate : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).WellFoundedHistories)
-    (profile : ∀ who, (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+    (profile : ∀ who, (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler).BehavioralPolicy who)
-    (extraStop : (onePacketProtocol setup runtime leaks bounds horizon
+    (extraStop : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).History → Prop)
-    (start : (onePacketProtocol setup runtime leaks bounds horizon
+    (start : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).History)
-    (control : (application setup runtime leaks).Control) (state : start.state = some control)
+    (control : (application setup timeouts leaks).Control) (state : start.state = some control)
     (current : (graph setup).EventId)
     (turn : control.execution.application.publicView.ownTurn? focal = some current)
-    (regular : RegularTrace setup runtime leaks bounds horizon
+    (regular : RegularTrace setup timeouts leaks bounds horizon
       scheduler source focal
       start.trace) :
-    ∀ final ∈ ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+    ∀ final ∈ ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler).runBehavioralUntil
         certificate profile (fun history =>
           ¬ Clear
               history.state ∨
-          DecodedState setup runtime leaks (failureProfile setup.program)
+          DecodedState setup timeouts leaks (failureProfile setup.program)
             (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history)
         start).support,
       (∃ reached, final.state = some reached) ∧ TracePrefix start.trace final.trace ∧
-        (MainActivationTraceAfter setup runtime leaks bounds horizon
+        (MainActivationTraceAfter setup timeouts leaks bounds horizon
           scheduler source focal
           start.trace.length final.trace →
-          RegularTrace setup runtime leaks bounds horizon
+          RegularTrace setup timeouts leaks bounds horizon
             scheduler source focal
             final.trace) := by
   classical
   rcases start with ⟨startState, startTrace⟩
   change startState = some control at state
   subst startState
-  let start : (onePacketProtocol setup runtime leaks bounds horizon
+  let start : (onePacketProtocol setup timeouts leaks bounds horizon
       scheduler).History :=
     ⟨some control, startTrace⟩
-  let model := onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  let model := onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
   let stopped := fun history :
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).History =>
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History =>
     ¬ Clear
         history.state ∨
-      DecodedState setup runtime leaks (failureProfile setup.program)
+      DecodedState setup timeouts leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure focal setup.program) history.state ∨ extraStop history
   let property := fun history :
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).History =>
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History =>
     (∃ reached, history.state = some reached) ∧ TracePrefix start.trace history.trace ∧
-      (MainActivationTraceAfter setup runtime leaks bounds horizon scheduler source focal
+      (MainActivationTraceAfter setup timeouts leaks bounds horizon scheduler source focal
         start.trace.length history.trace →
-        RegularTrace setup runtime leaks bounds horizon scheduler source focal history.trace)
+        RegularTrace setup timeouts leaks bounds horizon scheduler source focal history.trace)
   have initialProperty : property start := ⟨⟨control, rfl⟩, .refl, fun _ => regular⟩
   have preserved : ∀ history, ¬ stopped history →
-      ¬ (onePacketProtocol setup runtime leaks bounds horizon scheduler).terminal history.state →
+      ¬ (onePacketProtocol setup timeouts leaks bounds horizon scheduler).terminal history.state →
       property history → ∀ next ∈ (model.runBehavioralFrom profile 1 history).support,
         property next := by
     intro history going running valid next supported
@@ -473,7 +473,7 @@ theorem stopped_regular_of_mainActivationTraceAfter
     rcases history with ⟨previous, trace⟩
     change previous = some before at beforeState
     cases beforeState
-    obtain ⟨after, afterState, _recall⟩ := (application setup runtime
+    obtain ⟨after, afterState, _recall⟩ := (application setup timeouts
       leaks).transition_recall_prefix
       (initialLaw setup) horizon scheduler before target draw.1 realized
     cases afterState
@@ -499,10 +499,10 @@ theorem stopped_regular_of_mainActivationTraceAfter
           apply going
           right
           left
-          exact decodedState_of_nativeDecodedState (runtime := runtime) (failureProfile
+          exact decodedState_of_nativeDecodedState (timeouts := timeouts) (failureProfile
             setup.program)
             ⟨some before, trace⟩ decoded owed
-        exact regularStep_of_native_mainActivationTraceAfter (runtime := runtime) wellFormed
+        exact regularStep_of_native_mainActivationTraceAfter (timeouts := timeouts) wellFormed
           covers capacity source focal
           owner
           same opportunity timely control before start.trace trace valid.2.1

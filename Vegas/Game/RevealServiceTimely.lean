@@ -26,13 +26,13 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime Eve
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- Every publication at which the owner has had a turn has a recorded fresh
 call of the owner, unless its binding holds a failure. -/
 def PublicationsSettled (bound : (serviceGraph setup mode).EventId → Nat)
-    (execution : (serviceApplication setup mode deadline leaks).Execution) (owner : Player) :
+    (execution : (serviceApplication setup mode duration leaks).Execution) (owner : Player) :
     Prop :=
   ∀ event, ((serviceGraph setup mode).outputLayout event).IsPublication →
     (∃ entry ∈ execution.logs owner,
@@ -60,20 +60,20 @@ theorem effectiveAction_of_bindingHolds (config : (serviceGraph setup mode).Conf
 
 /-- The canonical opening of an effective publication transmits. -/
 theorem canonicalServiceDecision_opening_transmits {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    (control : (serviceApplication setup mode deadline leaks).Control)
-    (trace : ((serviceApplication setup mode deadline leaks).protocol
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    (control : (serviceApplication setup mode duration leaks).Control)
+    (trace : ((serviceApplication setup mode duration leaks).protocol
       (serviceInitialLaw setup mode) horizon scheduler).Trace (some control))
     (owner : Player) (event : (serviceGraph setup mode).EventId)
     (turn : control.execution.application.publicView.ownTurn? owner = some event)
     (publication : ((serviceGraph setup mode).outputLayout event).IsPublication)
     (effective : EffectiveAction control.execution.application.config event
       (EventField.openAction _ publication)) :
-    ∃ material, ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner
+    ∃ material, ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks owner
       (control.execution.logs owner)
-      (control.execution.observe (serviceApplication setup mode deadline leaks) owner) event
+      (control.execution.observe (serviceApplication setup mode duration leaks) owner) event
         (EventField.openAction _ publication)).transmission = some material := by
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   have facts := legalFacts setup leaks horizon scheduler control trace
   obtain ⟨readyView, owned⟩ :=
     control.execution.application.publicView.ownTurn?_spec owner event turn
@@ -112,25 +112,25 @@ theorem canonicalServiceDecision_opening_transmits {horizon : Nat}
         change binding.get? ((serviceGraph setup mode).playerStore owner
           control.execution.application.config.store) = _
         rw [binding.get?_playerStore owner _ rfl, stored]
-      have transmits := (serviceRuntime setup mode deadline).canonicalServiceDecision_openable
+      have transmits := (canonicalServiceDecision_openable (serviceTimeouts setup mode duration))
         leaks owner (control.execution.logs owner) (control.execution.observe app owner) event
         owner payload binding checks outputEq codeEq node active value observedStored candidate
         accepted candidateOwner
       rw [actionEq]
-      cases sent : ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner
+      cases sent : ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks owner
           (control.execution.logs owner) (control.execution.observe app owner) event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)).transmission with
       | none => exact (transmits sent).elim
       | some material => exact ⟨material, rfl⟩
 
 private theorem first_of_never
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (execution : (serviceApplication setup mode duration leaks).Execution)
     (owner : Player) (event : (serviceGraph setup mode).EventId)
     (turn : execution.application.publicView.ownTurn? owner = some event)
     (never : ∀ entry ∈ execution.logs owner,
       entry.beforeView.application.publicView.ownTurn? owner ≠ some event) :
-    serviceTurn setup mode deadline leaks owner event (execution.logs owner)
-      (execution.observe (serviceApplication setup mode deadline leaks) owner) = some 0 := by
+    serviceTurn setup mode duration leaks owner event (execution.logs owner)
+      (execution.observe (serviceApplication setup mode duration leaks) owner) = some 0 := by
   change (if execution.application.publicView.ownTurn? owner = some event then
     some ((execution.logs owner).countP fun entry =>
       decide (entry.beforeView.application.publicView.ownTurn? owner = some event)) else none) =
@@ -143,31 +143,32 @@ private theorem first_of_never
 /-- A recorded fresh call is the owner's only identifier for its event when the
 owner calls once per event. -/
 theorem FreshCall.sole {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
     {bound : (serviceGraph setup mode).EventId → Nat}
-    {control : (serviceApplication setup mode deadline leaks).Control}
-    (trace : ((serviceApplication setup mode deadline leaks).protocol
+    {control : (serviceApplication setup mode duration leaks).Control}
+    (trace : ((serviceApplication setup mode duration leaks).protocol
       (serviceInitialLaw setup mode) horizon scheduler).Trace (some control))
     (owner : Player) (event : (serviceGraph setup mode).EventId)
     (once : OneCallPerEvent setup leaks control.execution owner)
-    (earlier : List (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (later : List (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (earlier : List (serviceApplication setup mode duration leaks).PlayerEntry)
+    (entry : (serviceApplication setup mode duration leaks).PlayerEntry)
+    (later : List (serviceApplication setup mode duration leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
     (split : control.execution.logs owner = earlier ++ entry :: later)
     (call : FreshCall setup leaks owner event bound entry message) :
-    ∀ other ∈ earlier ++ later, ¬ EmitsOtherFor (serviceRuntime setup mode deadline) leaks
+    ∀ other ∈ earlier ++ later, ¬ EmitsOtherFor (serviceTimeouts setup mode duration) leaks
       other event message.id := by
-  have signed := signedCommitments_history (serviceRuntime setup mode deadline) leaks
+  have signed := signedCommitments_history (serviceTimeouts setup mode duration) leaks
     (serviceInitialLaw setup mode) (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨_, rfl⟩) horizon scheduler trace
-  have submitted (current : (serviceApplication setup mode deadline leaks).PlayerEntry)
+  have submitted (current : (serviceApplication setup mode duration leaks).PlayerEntry)
       (recorded : current ∈ control.execution.logs owner)
       (sent : Message Player (WitnessedPacket (serviceGraph setup mode)))
       (emitted : current.emitted = some sent)
       (named : sent.payload.call.event? (serviceGraph setup mode) = some event) :
-      (serviceRuntime setup mode deadline).submittedEvent? leaks current.action = some event := by
+      (submittedEvent? (serviceTimeouts setup mode duration)) leaks current.action = some event
+        := by
     obtain ⟨_sender, material, transmitted, packet⟩ :=
       signed.emissions owner current recorded sent emitted
     simp only [EventGraphRuntime.submittedEvent?, transmitted]
@@ -185,25 +186,25 @@ theorem FreshCall.sole {horizon : Nat}
     (submitted entry entryMember message call.emitted call.addressed) emittedOther call.emitted)
 
 private theorem publicationsSettled_round {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
     {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
         (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (owner : Player)
+    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
+    (players : Player → (serviceApplication setup mode duration leaks).Policy) (owner : Player)
     {turns : Nat} (reference : (serviceGraph setup mode).BehavioralProfile)
     (opens : OpensPublications reference)
-    (follows : players owner = serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+    (follows : players owner = serviceReferenceTurnPolicy setup mode duration leaks bound turns
       (firstTurnTiming setup turns mode) reference owner)
     (count : Nat) (within : count + 1 ≤ horizon)
-    (execution next : (serviceApplication setup mode deadline leaks).Execution)
-    (supported : execution ∈ ((serviceApplication setup mode deadline leaks).roundsFrom
+    (execution next : (serviceApplication setup mode duration leaks).Execution)
+    (supported : execution ∈ ((serviceApplication setup mode duration leaks).roundsFrom
       (serviceInitialLaw setup mode) scheduler players count).support)
     (called : PublicationsSettled setup leaks bound execution owner)
-    (reached : next ∈ ((serviceApplication setup mode deadline leaks).round scheduler players
+    (reached : next ∈ ((serviceApplication setup mode duration leaks).round scheduler players
       execution).support) :
     PublicationsSettled setup leaks bound next owner := by
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon scheduler
     players count (by omega) execution supported
   rw [show horizon - count = (horizon - (count + 1)) + 1 by omega] at trace
@@ -215,7 +216,7 @@ private theorem publicationsSettled_round {horizon : Nat}
     execution supported
   obtain ⟨command, selected, middle, moved, cases⟩ := round_cases setup leaks reached
   have recallEq := app.environmentStep_recall execution middle command moved
-  have keptMiddle := (keepsStore_step (serviceRuntime setup mode deadline) leaks).environmentStep
+  have keptMiddle := (keepsStore_step (serviceTimeouts setup mode duration) leaks).environmentStep
     execution middle command moved
   have calledMiddle : PublicationsSettled setup leaks bound middle owner := by
     intro event publication turned
@@ -228,7 +229,7 @@ private theorem publicationsSettled_round {horizon : Nat}
   by_cases same : who = owner
   swap
   · have recallSame := app.respond_recall_other middle who owner (Ne.symm same) response
-    have kept := (keepsStore_step (serviceRuntime setup mode deadline) leaks).respond middle who
+    have kept := (keepsStore_step (serviceTimeouts setup mode duration) leaks).respond middle who
       response
     intro event publication turned
     rw [recallSame] at turned
@@ -237,7 +238,7 @@ private theorem publicationsSettled_round {horizon : Nat}
     · exact Or.inr (BindingFails.keep kept failed)
   subst who
   obtain ⟨emitted, recalled, _⟩ := respond_recall_self setup leaks middle owner response
-  have kept := (keepsStore_step (serviceRuntime setup mode deadline) leaks).respond middle owner
+  have kept := (keepsStore_step (serviceTimeouts setup mode duration) leaks).respond middle owner
     response
   intro event publication ⟨entry, member, turn⟩
   have old (prior : ∃ entry ∈ middle.logs owner,
@@ -272,14 +273,14 @@ private theorem publicationsSettled_round {horizon : Nat}
   have activeBefore := execution.application.active_of_ready_owned facts.quiescent readyBefore
     owned
   have first := first_of_never middle owner event turnNow never
-  have firstBefore : serviceTurn setup mode deadline leaks owner event (execution.logs owner)
+  have firstBefore : serviceTurn setup mode duration leaks owner event (execution.logs owner)
       (middle.observe app owner) = some 0 := by
     rw [← recallEq]
     exact first
   have fits := firstTurn_inclusionFits contract timely trace answered owned readyBefore
     firstBefore
   have fitsMiddle : middle.application.publicView.InclusionFitsDeadline
-      (serviceRuntime setup mode deadline) bound event := by
+      (serviceTimeouts setup mode duration) bound event := by
     rw [appEq]
     exact fits
   obtain ⟨middleTrace⟩ := app.raw_trace_environment (serviceInitialLaw setup mode) horizon
@@ -298,12 +299,12 @@ private theorem publicationsSettled_round {horizon : Nat}
   obtain ⟨material, submits⟩ := canonicalServiceDecision_opening_transmits
     ⟨horizon - (count + 1), some owner, middle⟩ middleTrace owner event turnNow publication
     effectiveMiddle
-  have unrecorded : (serviceRuntime setup mode deadline).eventRecorded leaks (middle.logs owner)
+  have unrecorded : (eventRecorded (serviceTimeouts setup mode duration)) leaks (middle.logs owner)
       event = false := by
     apply Bool.eq_false_of_not_eq_true
     intro recorded
     obtain ⟨earlier, present, named⟩ :=
-      ((serviceRuntime setup mode deadline).eventRecorded_iff leaks _ event).mp recorded
+      ((eventRecorded_iff (serviceTimeouts setup mode duration)) leaks _ event).mp recorded
     have presentBefore : earlier ∈ execution.logs owner := by
       rw [← recallEq]
       exact present
@@ -311,7 +312,7 @@ private theorem publicationsSettled_round {horizon : Nat}
   rw [follows, sourceServiceTurnPolicy_firstTurn_reference owned first] at chosen
   unfold serviceReferenceOpportunity at chosen
   have fitsView : (middle.observe app owner).application.publicView.InclusionFitsDeadline
-      (serviceRuntime setup mode deadline) bound event := fitsMiddle
+      (serviceTimeouts setup mode duration) bound event := fitsMiddle
   rw [ite_eq_right (by rw [unrecorded]; exact Bool.false_ne_true), ite_eq_left fitsView,
     sourceServiceCanonicalPolicy_at_event_reference setup leaks reference owner middle event
       turnNow owned, dite_eq_right activeMiddle] at chosen
@@ -320,7 +321,7 @@ private theorem publicationsSettled_round {horizon : Nat}
   rw [opened, PMF.pure_map, PMF.pure_bind, submits, ite_eq_right (by simp),
     PMF.mem_support_pure_iff] at chosen
   subst chosen
-  have shape : (serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner
+  have shape : (canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks owner
       (middle.logs owner) (middle.observe app owner) event (EventField.openAction _ publication) =
         (⟨some material⟩ : app.Action) := by
     rw [← submits]
@@ -340,21 +341,21 @@ private theorem publicationsSettled_round {horizon : Nat}
 /-- Every publication at which a first-turn owner has had a turn carries a
 recorded fresh call, unless its binding holds a failure. -/
 theorem publicationsSettled_roundsFrom {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
     {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
         (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (owner : Player)
+    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
+    (players : Player → (serviceApplication setup mode duration leaks).Policy) (owner : Player)
     {turns : Nat} (reference : (serviceGraph setup mode).BehavioralProfile)
     (opens : OpensPublications reference)
-    (follows : players owner = serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+    (follows : players owner = serviceReferenceTurnPolicy setup mode duration leaks bound turns
       (firstTurnTiming setup turns mode) reference owner) :
     ∀ count execution, count ≤ horizon →
-      execution ∈ ((serviceApplication setup mode deadline leaks).roundsFrom
+      execution ∈ ((serviceApplication setup mode duration leaks).roundsFrom
         (serviceInitialLaw setup mode) scheduler players count).support →
       PublicationsSettled setup leaks bound execution owner := by
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   intro count
   induction count with
   | zero =>
@@ -375,27 +376,27 @@ its timing budget, a ready publication of a first-turn owner of an opening
 reference whose binding holds a value is within its deadline at every scheduler
 boundary, whatever the other players and the scheduler do. -/
 theorem honestPublication_withinDeadline {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
     {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
         (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (owner : Player)
+    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
+    (players : Player → (serviceApplication setup mode duration leaks).Policy) (owner : Player)
     {turns : Nat} (reference : (serviceGraph setup mode).BehavioralProfile)
     (opens : OpensPublications reference)
-    (follows : players owner = serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+    (follows : players owner = serviceReferenceTurnPolicy setup mode duration leaks bound turns
       (firstTurnTiming setup turns mode) reference owner)
     (count : Nat) (within : count ≤ horizon)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (supported : execution ∈ ((serviceApplication setup mode deadline leaks).roundsFrom
+    (execution : (serviceApplication setup mode duration leaks).Execution)
+    (supported : execution ∈ ((serviceApplication setup mode duration leaks).roundsFrom
       (serviceInitialLaw setup mode) scheduler players count).support)
     (event : (serviceGraph setup mode).EventId)
     (owned : (serviceGraph setup mode).actor? event = some owner)
     (ready : execution.application.config.cut.Ready event)
     (publication : ((serviceGraph setup mode).outputLayout event).IsPublication)
     (holds : BindingHolds execution.application.config event) :
-    execution.application.WithinDeadline (serviceRuntime setup mode deadline) event := by
-  let app := serviceApplication setup mode deadline leaks
+    execution.application.WithinDeadline (serviceTimeouts setup mode duration) event := by
+  let app := serviceApplication setup mode duration leaks
   obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon scheduler
     players count within execution supported
   by_cases turned : ∃ entry ∈ execution.logs owner,
@@ -412,7 +413,7 @@ theorem honestPublication_withinDeadline {horizon : Nat}
     have settled := settlesFreshCalls_history setup leaks contract.inclusion owner event owned
       trace earlier entry later message split call sole
     exact FreshCall.withinDeadline setup leaks owner event owned trace
-      (ProtectedInclusion.at (serviceRuntime setup mode deadline) leaks contract.inclusion _ trace)
+      (ProtectedInclusion.at (serviceTimeouts setup mode duration) leaks contract.inclusion _ trace)
       earlier entry later message split call sole settled ready.1
   · have never : ∀ entry ∈ execution.logs owner,
         entry.beforeView.application.publicView.ownTurn? owner ≠ some event :=

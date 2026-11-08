@@ -16,24 +16,24 @@ open SourceProgram GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Int
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   (bounds : MessageBounds (graph setup))
-  {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
+  {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
   {bound : (graph setup).EventId → Nat}
-  (inclusion : ∀ control : (application setup runtime leaks).Control,
-    ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+  (inclusion : ∀ control : (application setup timeouts leaks).Control,
+    ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon scheduler).Trace
       (some control) →
     control.execution.application.config.defaulted = ∅ →
-    ProtectedInclusionAt runtime leaks control.execution bound)
+    ProtectedInclusionAt timeouts leaks control.execution bound)
 
-local notation "menu" => bounds.onePacketMenu runtime leaks
+local notation "menu" => bounds.onePacketMenu timeouts leaks
 local notation "protocol" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup)
   horizon scheduler
 local notation "model" => ReactiveApplication.ResponseMenu.information menu (initialLaw setup)
   horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks)
+  (app := application setup timeouts leaks)
     (fun state : EventGraphRuntime.State (graph setup) =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config state) = ∅)
 
@@ -45,34 +45,34 @@ theorem counted_stopped_freshCall_receipt
     (certificate : (protocol).WellFoundedHistories)
     (profile : ∀ who, (model).BehavioralPolicy who)
     (extraStop : (protocol).History → Prop)
-    (start : (protocol).History) (current : (application setup runtime leaks).Control)
+    (start : (protocol).History) (current : (application setup timeouts leaks).Control)
     (state : start.state = some current)
     (clear : current.execution.application.config.defaulted = ∅)
     (who : Player) (event : (graph setup).EventId)
     (owned : (graph setup).actor? event = some who)
-    (entry : (application setup runtime leaks).PlayerEntry)
+    (entry : (application setup timeouts leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup)))
     (call : FreshCall setup leaks who event bound entry message) :
     ∀ stopped ∈ ((model).runBehavioralUntil certificate profile
         (fun history => ¬ Clear history.state ∨ extraStop history) start).support,
-      ∀ final, stopped.state = some final → RecordsEntry setup runtime leaks who entry (some
+      ∀ final, stopped.state = some final → RecordsEntry setup timeouts leaks who entry (some
         final) →
         event ∈ final.execution.application.config.cut.completed →
           (message.id, true) ∈ final.execution.receipts := by
   intro stopped supported final finalState records done
-  have endpoint := responseMenu_stopped_exclusion_boundary runtime leaks
+  have endpoint := responseMenu_stopped_exclusion_boundary timeouts leaks
     (initialLaw setup) horizon scheduler menu certificate profile extraStop start current
     state clear stopped supported
   have trace := finalState ▸ stopped.trace
   obtain ⟨earlier, later, split⟩ := records
-  have member : message ∈ (application setup runtime leaks).outputs (final.execution.logs who)
+  have member : message ∈ (application setup timeouts leaks).outputs (final.execution.logs who)
     := by
     rw [split]
     exact List.mem_filterMap.mpr ⟨entry, by simp, call.emitted⟩
   have sole : ∀ other ∈ earlier ++ later,
-      ¬ EmitsOtherFor runtime leaks other event message.id := by
+      ¬ EmitsOtherFor timeouts leaks other event message.id := by
     intro other present
-    apply onePacket_not_emitsOtherFor (runtime := runtime) bounds trace who event message member
+    apply onePacket_not_emitsOtherFor (timeouts := timeouts) bounds trace who event message member
       call.addressed other
     rw [split]
     rcases List.mem_append.mp present with first | last
@@ -81,7 +81,7 @@ theorem counted_stopped_freshCall_receipt
   rcases endpoint with clearStop | boundary
   · have finalClear : final.execution.application.config.defaulted = ∅ := by
       simpa only [finalState, ReactiveApplication.stateInvariant] using clearStop
-    exact (prescribed_packet_counted_clear_settles setup runtime leaks bounds horizon scheduler
+    exact (prescribed_packet_counted_clear_settles setup timeouts leaks bounds horizon scheduler
       bound
       inclusion final
       trace finalClear event who owned earlier later entry message split call sole).2 done
@@ -90,7 +90,7 @@ theorem counted_stopped_freshCall_receipt
         _fromStart, _prefix⟩ := boundary
     have same := Option.some.inj (finalState.symm.trans target)
     cases same
-    have settled := settlesFreshCalls_counted_clear_environment setup runtime leaks bounds horizon
+    have settled := settlesFreshCalls_counted_clear_environment setup timeouts leaks bounds horizon
       scheduler bound inclusion who event owned remaining execution prior priorClear command
         next moved
     exact (settled earlier entry later message split call sole).1 done

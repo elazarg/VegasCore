@@ -22,16 +22,17 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
 
 /-- Accepted packets supply the decoded actual decision. Both expiry and
 automatic service have failing decoded records; only expiry asserts global
 accepted-table equality across the complete physical command. -/
 theorem completion_cases
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    (execution next : (application setup runtime leaks).Execution)
-    (command : (application setup runtime leaks).Command)
-    (reached : next ∈ (execution.environmentStep (application setup runtime leaks) command).support)
+    (execution next : (application setup timeouts leaks).Execution)
+    (command : (application setup timeouts leaks).Command)
+    (reached : next ∈ (execution.environmentStep (application setup timeouts leaks)
+      command).support)
     (record : (graph setup).Completion) (fresh : record ∉ execution.application.config.history)
     (present : record ∈ next.application.config.history)
     {actor : Player} (acts : (graph setup).actor? record.event = some actor) :
@@ -48,9 +49,10 @@ theorem completion_cases
     (Failing (record.decision.bind (decodeEventAction setup.program record.event)) ∧
       ∃ native, native.drain = next.application ∧ record ∉ native.config.history ∧
         ((∃ message ∈ execution.network.pending, command = .include message.id ∧
-            handle runtime execution.application ⟨message.id, message.payload.call⟩ = some native) ∨
+            handle timeouts execution.application ⟨message.id, message.payload.call⟩ = some
+              native) ∨
           ∃ operation, command = .application operation ∧
-            native ∈ (environmentStep runtime execution.application operation).support) ∧
+            native ∈ (environmentStep timeouts execution.application operation).support) ∧
         record.decision = none ∧ record.defaultEvent = none ∧ actor ∈ native.config.defaulted) := by
   rcases owned_completion_cases execution next command reached record fresh present acts with
     accepted | expired | automatic
@@ -64,7 +66,7 @@ theorem completion_cases
       rw [expiredCommand] at reached
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      exact (reactiveApplication_environment_tables runtime leaks execution.application state
+      exact (reactiveApplication_environment_tables timeouts leaks execution.application state
         (.expire record.event) changed).1
     have decision := eq_of_heq (EventCompletion.mk.inj recorded).2.1
     have failed : Failing
@@ -86,7 +88,7 @@ section History
 open GameTheory.Protocol.ExecutionProtocol GameTheory.Math.Probability EventGraph
 
 variable {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
+  {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
 
 private theorem completeFailure_publication_failed
     (state : EventGraphRuntime.State (graph setup)) (event : (graph setup).EventId)
@@ -143,16 +145,17 @@ private theorem drain_publication_failed
   exact allFailed record fresh present payload outputEq
 
 private theorem expired_owner_defaulted
-    {remaining : Nat} {before after : (application setup runtime leaks).Execution}
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    {remaining : Nat} {before after : (application setup timeouts leaks).Execution}
+    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace
       (some ⟨remaining, none, before⟩))
     (event : (graph setup).EventId) (actor : Player)
     (owned : (graph setup).actor? event = some actor)
     (unfinished : event ∉ before.application.config.cut.completed)
     (completed : event ∈ after.application.config.cut.completed)
     (entered : Nat) (activated : before.application.activatedAt event = some entered)
-    (due : runtime.deadline event ≤ before.application.clock - entered)
-    (reached : after ∈ (before.environmentStep (application setup runtime leaks)
+    (due : timeouts.duration event ≤ before.application.clock - entered)
+    (reached : after ∈ (before.environmentStep (application setup timeouts leaks)
       (.application (.expire event))).support) :
     actor ∈ after.application.config.defaulted ∧ ∀ payload
       (outputEq : (graph setup).outputLayout event = .publication payload),
@@ -165,11 +168,11 @@ private theorem expired_owner_defaulted
     serviceInitialLaw_eq_inputs (mode := .sequential) setup
   rw [initialEq] at nativeTrace
   have valid : ExclusionEvidence 0 ∅ before.application :=
-    ExclusionEvidence.history runtime leaks (setup.initialLaw.map setup.eventInputs)
+    ExclusionEvidence.history timeouts leaks (setup.initialLaw.map setup.eventInputs)
       horizon scheduler nativeTrace
   obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
   obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-  change state ∈ ((environmentStep runtime before.application (.expire event)).map
+  change state ∈ ((environmentStep timeouts before.application (.expire event)).map
     State.drain).support at changed
   obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ changed
   change actor ∈ native.drain.config.defaulted ∧ _
@@ -181,11 +184,11 @@ private theorem expired_owner_defaulted
           rw [nodeView_sample_actor outputEq codeEq] at owned
           cases owned
       | bind owner payload outputEq codeEq =>
-          rw [environmentStep_expire_bind_eq runtime before.application event ready entered
+          rw [environmentStep_expire_bind_eq timeouts before.application event ready entered
             activated due owner payload outputEq codeEq node, PMF.mem_support_pure_iff] at moved
           simpa only [EventGraphRuntime.State.completeFailure, node] using moved
       | resolve owner payload binding checks outputEq codeEq =>
-          rw [environmentStep_expire_resolve_eq runtime before.application event ready entered
+          rw [environmentStep_expire_resolve_eq timeouts before.application event ready entered
             activated due owner payload binding checks outputEq codeEq node,
             PMF.mem_support_pure_iff] at moved
           simpa only [EventGraphRuntime.State.completeFailure, node] using moved
@@ -198,19 +201,20 @@ private theorem expired_owner_defaulted
       exact FieldRef.get?_preserved _ _ _
         ((before.application.completeFailure event ready).drain_store_of_some) _
         (completeFailure_publication_failed before.application event ready payload outputEq)
-  · rw [environmentStep_expire_of_not_ready runtime before.application event ready,
+  · rw [environmentStep_expire_of_not_ready timeouts before.application event ready,
       PMF.mem_support_pure_iff] at moved
     subst native
     rw [before.application.drain_eq_of_clear facts.quiescent] at completed
     exact (unfinished completed).elim
 
 
-private theorem ledger_transition {current next : (application setup runtime leaks).Control}
-    (joint : Player → Option (application setup runtime leaks).Action)
-    (realized : some next ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+private theorem ledger_transition {current next : (application setup timeouts leaks).Control}
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    (realized : some next ∈ ((application setup timeouts leaks).transition (initialLaw setup)
+      horizon
       scheduler (some current) joint).support) :
     ∀ message ∈ current.execution.network.ledger, message ∈ next.execution.network.ledger := by
-  let app := application setup runtime leaks
+  let app := application setup timeouts leaks
   cases acting : current.actor with
   | some actor =>
       rw [ReactiveApplication.transition, acting, PMF.mem_support_pure_iff]
@@ -256,9 +260,9 @@ private theorem ledger_transition {current next : (application setup runtime lea
 on the ledger or a publicly defaulted owner. In the latter case, a publication
 output retains its exact failed value. -/
 theorem completed_packet_or_defaulted : ∀ {state}
-    (_ : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+    (_ : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace state)
-    (control : (application setup runtime leaks).Control), state = some control →
+    (control : (application setup timeouts leaks).Control), state = some control →
     ∀ event ∈ control.execution.application.config.cut.completed, ∀ actor,
       (graph setup).actor? event = some actor →
       (∃ message ∈ control.execution.network.ledger, message.sender = actor ∧
@@ -271,13 +275,14 @@ theorem completed_packet_or_defaulted : ∀ {state}
   | _, .extend (source := before) prior joint _ realized, control, current => by
       have recursive := fun next same => completed_packet_or_defaulted prior next same
       subst current
-      change some control ∈ ((application setup runtime leaks).transition (initialLaw setup)
+      change some control ∈ ((application setup timeouts leaks).transition (initialLaw setup)
         horizon scheduler before joint).support at realized
       cases before with
       | none =>
           change some control ∈ ((initialLaw setup).map fun state => some
-            (⟨horizon, none, ReactiveApplication.Execution.initial (application setup runtime leaks)
-              state⟩ : (application setup runtime leaks).Control)).support at realized
+            (⟨horizon, none, ReactiveApplication.Execution.initial (application setup timeouts
+              leaks)
+              state⟩ : (application setup timeouts leaks).Control)).support at realized
           obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realized
           cases Option.some.inj same
           obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
@@ -291,11 +296,11 @@ theorem completed_packet_or_defaulted : ∀ {state}
             · exact Or.inl ⟨message, ledger_transition joint realized message onLedger,
                 sender, named⟩
             · right
-              refine ⟨runtime.reactive_protocol_defaulted_mono leaks (initialLaw setup)
+              refine ⟨(reactive_protocol_defaulted_mono timeouts) leaks (initialLaw setup)
                 horizon scheduler current control joint realized inactive.1, ?_⟩
               intro payload outputEq
               exact FieldRef.get?_preserved _ _ _
-                ((keepsStore_step runtime leaks).transition (initialLaw setup) horizon scheduler
+                ((keepsStore_step timeouts leaks).transition (initialLaw setup) horizon scheduler
                   current control joint realized) _ (inactive.2 payload outputEq)
           · have idle : current.actor = none := by
               cases acting : current.actor with
@@ -305,11 +310,11 @@ theorem completed_packet_or_defaulted : ∀ {state}
                   rw [ReactiveApplication.transition, acting, PMF.mem_support_pure_iff] at realized
                   cases Option.some.inj realized
                   apply earlier
-                  simpa only [(runtime.reactive_respond_application leaks current.execution
+                  simpa only [((reactive_respond_application timeouts) leaks current.execution
                     responder _).1] using completed
             have casesIdle : control.execution = current.execution ∨ ∃ command,
                 control.execution ∈ (current.execution.environmentStep
-                  (application setup runtime leaks) command).support := by
+                  (application setup timeouts leaks) command).support := by
               rcases current with ⟨remaining, actor, execution⟩
               cases idle
               cases remaining with
@@ -343,7 +348,7 @@ theorem completed_packet_or_defaulted : ∀ {state}
                 expired
               right
               have rawPrior := prior
-              have idleTrace : ((application setup runtime leaks).protocol (initialLaw setup)
+              have idleTrace : ((application setup timeouts leaks).protocol (initialLaw setup)
                   horizon scheduler).Trace
                     (some ⟨current.remaining, none, current.execution⟩) := by
                 rcases current with ⟨remaining, actor, execution⟩

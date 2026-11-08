@@ -45,7 +45,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {allowed : Set (graph setup).Inputs}
 
@@ -59,12 +59,12 @@ private theorem bindingResult_swap_of_raw (swap : HiddenSwap (graph setup))
 /-- **The decoded source action ignores the swap** when the swap fixes the
 value at every handle the transmission commits. -/
 theorem sentSourceAction_swap (swap : HiddenSwap (graph setup))
-    (after : (application setup runtime leaks).Execution) (action : (application setup runtime
+    (after : (application setup timeouts leaks).Execution) (action : (application setup timeouts
       leaks).Action)
     (fixed : ∀ material event handle, action.transmission = some material →
       material.call.packet = .commitment event handle → swap.raw handle = id) :
-    sentSourceAction setup runtime leaks (swap.execution after) action =
-      sentSourceAction setup runtime leaks after action := by
+    sentSourceAction setup timeouts leaks (swap.execution after) action =
+      sentSourceAction setup timeouts leaks after action := by
   rcases action with ⟨_ | material⟩
   · rfl
   · change callContent setup (after.application.swap swap) material.call.packet =
@@ -79,14 +79,14 @@ theorem sentSourceAction_swap (swap : HiddenSwap (graph setup))
     | opening | malformed => rfl
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- A one-packet commitment names a handle of its sender. -/
 theorem commitment_owner_of_onePacket {who : Player}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {observed : (application setup runtime leaks).PlayerView}
-    {response : (application setup runtime leaks).Action}
-    (member : response ∈ bounds.onePacketActions runtime leaks who past observed)
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {observed : (application setup timeouts leaks).PlayerView}
+    {response : (application setup timeouts leaks).Action}
+    (member : response ∈ bounds.onePacketActions timeouts leaks who past observed)
     {material : WitnessedSubmission (graph setup)} (sent : response.transmission = some material)
     {event : (graph setup).EventId} {handle : Handle (graph setup)}
     (packet : material.call.packet = .commitment event handle) :
@@ -108,37 +108,37 @@ theorem commitment_owner_of_onePacket {who : Player}
 it fixes. -/
 theorem contentFactor_swap (swap : HiddenSwap (graph setup))
     (assessment : setup.intendedModel.BehavioralAssessment) {actor : Player}
-    (fixes : swap.Fixes actor) (before after : (application setup runtime leaks).Execution)
-    {response : (application setup runtime leaks).Action}
-    (member : response ∈ bounds.onePacketActions runtime leaks actor
-      (before.logs actor) (before.observe (application setup runtime leaks) actor)) :
-    contentFactor setup runtime leaks assessment actor (swap.execution before) (swap.execution
+    (fixes : swap.Fixes actor) (before after : (application setup timeouts leaks).Execution)
+    {response : (application setup timeouts leaks).Action}
+    (member : response ∈ bounds.onePacketActions timeouts leaks actor
+      (before.logs actor) (before.observe (application setup timeouts leaks) actor)) :
+    contentFactor setup timeouts leaks assessment actor (swap.execution before) (swap.execution
       after)
         (swap.action response) =
-      contentFactor setup runtime leaks assessment actor before after response := by
+      contentFactor setup timeouts leaks assessment actor before after response := by
   rw [swap.action_eq_of_onePacket fixes member]
   unfold contentFactor
   rw [swap.observe_execution, swap.view_observe_of_fixes fixes,
-    sentSourceAction_swap (runtime := runtime) swap after response fun material event handle sent
+    sentSourceAction_swap (timeouts := timeouts) swap after response fun material event handle sent
       packet => by
-      have owned := commitment_owner_of_onePacket (runtime := runtime) member sent packet
+      have owned := commitment_owner_of_onePacket (timeouts := timeouts) member sent packet
       have handleEq : handle = (actor, handle.2) := by rw [← owned]
       rw [handleEq]
       exact fixes.2.2 handle.2]
 
 /-- The response of the actor of a legal joint action at a protocol state. -/
-private theorem response_of_legal {control : (application setup runtime leaks).Control}
-    {joint : Player → Option (application setup runtime leaks).Action}
-    (legal : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Legal (some control)
+private theorem response_of_legal {control : (application setup timeouts leaks).Control}
+    {joint : Player → Option (application setup timeouts leaks).Action}
+    (legal : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Legal (some control)
       joint)
     {actor : Player} (acting : control.actor = some actor) :
     ∃ response, joint actor = some response ∧
-      response ∈ bounds.onePacketActions runtime leaks actor
-        (control.execution.logs actor) (control.execution.observe (application setup runtime
+      response ∈ bounds.onePacketActions timeouts leaks actor
+        (control.execution.logs actor) (control.execution.observe (application setup timeouts
           leaks)
           actor) := by
   have localLegal := legal.2 actor
-  have active : (application setup runtime leaks).actor (some control) = some actor := acting
+  have active : (application setup timeouts leaks).actor (some control) = some actor := acting
   cases picked : joint actor with
   | none =>
       rw [picked] at localLegal
@@ -151,30 +151,31 @@ private theorem response_of_legal {control : (application setup runtime leaks).C
 the swap fixes, is unchanged by the swap. -/
 private theorem contentFactor_joint_swap (swap : HiddenSwap (graph setup))
     (assessment : setup.intendedModel.BehavioralAssessment)
-    {control : (application setup runtime leaks).Control} (after : (application setup runtime
+    {control : (application setup timeouts leaks).Control} (after : (application setup timeouts
       leaks).Execution)
-    {joint : Player → Option (application setup runtime leaks).Action}
-    (legal : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Legal (some control)
+    {joint : Player → Option (application setup timeouts leaks).Action}
+    (legal : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Legal (some control)
       joint)
     {actor : Player} (acting : control.actor = some actor) (fixes : swap.Fixes actor) :
-    contentFactor setup runtime leaks assessment actor (swap.execution control.execution)
+    contentFactor setup timeouts leaks assessment actor (swap.execution control.execution)
         (swap.execution after) ((swap.joint joint actor).getD ⟨none⟩) =
-      contentFactor setup runtime leaks assessment actor control.execution after
+      contentFactor setup timeouts leaks assessment actor control.execution after
         ((joint actor).getD ⟨none⟩) := by
-  obtain ⟨response, picked, member⟩ := response_of_legal (runtime := runtime) legal acting
+  obtain ⟨response, picked, member⟩ := response_of_legal (timeouts := timeouts) legal acting
   rw [swap.getD_joint, picked, Option.getD_some]
-  exact contentFactor_swap (runtime := runtime) swap assessment fixes control.execution after member
+  exact contentFactor_swap (timeouts := timeouts) swap assessment fixes control.execution after
+    member
 
 /-- A realized transition from a protocol state reaches a protocol state. -/
-private theorem target_some_of_realized {control : (application setup runtime leaks).Control}
-    {joint : Player → Option (application setup runtime leaks).Action}
-    (legal : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Legal (some control)
+private theorem target_some_of_realized {control : (application setup timeouts leaks).Control}
+    {joint : Player → Option (application setup timeouts leaks).Action}
+    (legal : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Legal (some control)
       joint)
-    {target : (application setup runtime leaks).ProtocolState}
-    (reached : target ∈ ((onePacketProtocol setup runtime leaks bounds horizon scheduler).step
+    {target : (application setup timeouts leaks).ProtocolState}
+    (reached : target ∈ ((onePacketProtocol setup timeouts leaks bounds horizon scheduler).step
       (some control) ⟨joint, legal⟩).support) :
     ∃ next, target = some next := by
-  obtain ⟨next, nextEq, _⟩ := (application setup runtime leaks).transition_recall_prefix
+  obtain ⟨next, nextEq, _⟩ := (application setup timeouts leaks).transition_recall_prefix
     (initialLaw setup) horizon scheduler control target joint reached
   exact ⟨next, nextEq⟩
 
@@ -183,14 +184,14 @@ when it fixes every player other than the observer. -/
 theorem transitionSourceFactor_swap (swap : HiddenSwap (graph setup))
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
     (fixesOthers : ∀ other, other ≠ who → swap.Fixes other)
-    {control next : (application setup runtime leaks).Control}
-    {joint : Player → Option (application setup runtime leaks).Action}
-    (legal : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Legal (some control)
+    {control next : (application setup timeouts leaks).Control}
+    {joint : Player → Option (application setup timeouts leaks).Action}
+    (legal : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Legal (some control)
       joint) :
-    transitionSourceFactor setup runtime leaks assessment who (some (swap.control (runtime :=
-      runtime) control))
+    transitionSourceFactor setup timeouts leaks assessment who (some (swap.control (timeouts :=
+      timeouts) control))
         (swap.joint joint) (some (swap.control next)) =
-      transitionSourceFactor setup runtime leaks assessment who (some control) joint (some next)
+      transitionSourceFactor setup timeouts leaks assessment who (some control) joint (some next)
         := by
   simp only [transitionSourceFactor, HiddenSwap.control]
   cases acting : control.actor with
@@ -201,7 +202,7 @@ theorem transitionSourceFactor_swap (swap : HiddenSwap (graph setup))
       by_cases owner : actor = who
       · simp only [owner, ↓reduceIte]
       · simp only [owner, ↓reduceIte]
-        exact contentFactor_joint_swap (runtime := runtime) swap assessment next.execution legal
+        exact contentFactor_joint_swap (timeouts := timeouts) swap assessment next.execution legal
           acting
           (fixesOthers actor owner)
 
@@ -216,14 +217,15 @@ private theorem othersSourceWeight_mapTrace_aux (swap : HiddenSwap (graph setup)
     (fixesOthers : ∀ other, other ≠ who → swap.Fixes other) (c : ℝ)
     (priorScaled : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       (initialLaw setup (state.swap swap)).toReal = c * (initialLaw setup state).toReal) :
-    ∀ {state} (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
-      (guarded : SwapGuardState setup runtime swap allowed state),
-    othersSourceWeight setup runtime leaks bounds horizon scheduler assessment who
-        ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
+    ∀ {state} (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
+      state)
+      (guarded : SwapGuardState setup timeouts swap allowed state),
+    othersSourceWeight setup timeouts leaks bounds horizon scheduler assessment who
+        ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
           swap initialClosed
           bounded failures).mapTrace trace guarded) =
       state.elim 1 (fun _ => c) *
-        othersSourceWeight setup runtime leaks bounds horizon scheduler assessment who trace
+        othersSourceWeight setup timeouts leaks bounds horizon scheduler assessment who trace
   | _, .start, _ => by
       change (1 : ℝ) = 1 * 1
       ring
@@ -244,12 +246,12 @@ private theorem othersSourceWeight_mapTrace_aux (swap : HiddenSwap (graph setup)
           rw [priorScaled initial member inputs]
           ring
       | some control =>
-          obtain ⟨next, rfl⟩ := target_some_of_realized (runtime := runtime) legal reached
-          change c * _ * transitionSourceFactor setup runtime leaks assessment who
+          obtain ⟨next, rfl⟩ := target_some_of_realized (timeouts := timeouts) legal reached
+          change c * _ * transitionSourceFactor setup timeouts leaks assessment who
               (some (swap.control control)) (swap.joint
                 joint) (some (swap.control next)) =
             c * (_ * _)
-          rw [transitionSourceFactor_swap (runtime := runtime) swap assessment who fixesOthers
+          rw [transitionSourceFactor_swap (timeouts := timeouts) swap assessment who fixesOthers
             legal]
           ring
 
@@ -266,15 +268,15 @@ theorem othersSourceWeight_mapTrace_scaled (swap : HiddenSwap (graph setup))
     (fixesOthers : ∀ other, other ≠ who → swap.Fixes other) (c : ℝ)
     (priorScaled : ∀ state ∈ (initialLaw setup).support, state.config.inputs ∈ allowed →
       (initialLaw setup (state.swap swap)).toReal = c * (initialLaw setup state).toReal)
-    {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
-    (guarded : SwapGuardState setup runtime swap allowed (some control)) :
-    othersSourceWeight setup runtime leaks bounds horizon scheduler assessment who
-        ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
+    {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
+    (guarded : SwapGuardState setup timeouts swap allowed (some control)) :
+    othersSourceWeight setup timeouts leaks bounds horizon scheduler assessment who
+        ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
           swap initialClosed
           bounded failures).mapTrace trace guarded) =
-      c * othersSourceWeight setup runtime leaks bounds horizon scheduler assessment who trace :=
-  othersSourceWeight_mapTrace_aux (runtime := runtime) swap initialClosed bounded failures
+      c * othersSourceWeight setup timeouts leaks bounds horizon scheduler assessment who trace :=
+  othersSourceWeight_mapTrace_aux (timeouts := timeouts) swap initialClosed bounded failures
     assessment who
     fixesOthers c
     priorScaled trace guarded
@@ -286,33 +288,33 @@ theorem observe_swap_of_fixes (swap : HiddenSwap (graph setup))
       state.swap swap ∈ (initialLaw setup).support)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values)
     (failures : ∀ event, swap.values.ExpiryFixed event)
-    {player : Player} (fixes : swap.Fixes player) {state : (application setup runtime
+    {player : Player} (fixes : swap.Fixes player) {state : (application setup timeouts
       leaks).ProtocolState}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
-    (guarded : SwapGuardState setup runtime swap allowed state) :
-    (application setup runtime leaks).observe player (swap.protocolState
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state)
+    (guarded : SwapGuardState setup timeouts swap allowed state) :
+    (application setup timeouts leaks).observe player (swap.protocolState
       state) =
-      (application setup runtime leaks).observe player state := by
-  have mapped := infoOf_mapTrace (runtime := runtime) swap initialClosed bounded failures player
+      (application setup timeouts leaks).observe player state := by
+  have mapped := infoOf_mapTrace (timeouts := timeouts) swap initialClosed bounded failures player
     trace
     guarded
   rw [onePacket_infoOf, onePacket_infoOf] at mapped
-  change (application setup runtime leaks).observe player (swap.protocolState
+  change (application setup timeouts leaks).observe player (swap.protocolState
     state) = _ at mapped
   rw [mapped]
-  cases observed : (application setup runtime leaks).observe player state with
+  cases observed : (application setup timeouts leaks).observe player state with
   | none => rfl
   | some current =>
       obtain ⟨past, view⟩ := current
-      have decision : (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf
+      have decision : (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf
         player
           trace = some (past, view) := by
         rw [onePacket_infoOf, observed]
-      have fixedInfo := infoOf_mapTrace_of_fixes (runtime := runtime) swap initialClosed bounded
+      have fixedInfo := infoOf_mapTrace_of_fixes (timeouts := timeouts) swap initialClosed bounded
         failures
         fixes ⟨state, trace⟩
         guarded decision
-      have direct := infoOf_mapTrace (runtime := runtime) swap initialClosed bounded failures
+      have direct := infoOf_mapTrace (timeouts := timeouts) swap initialClosed bounded failures
         player trace
         guarded
       rw [fixedInfo, onePacket_infoOf, observed] at direct
@@ -327,36 +329,36 @@ theorem regularStep_swap_iff (swap : HiddenSwap (graph setup))
     (failures : ∀ event, swap.values.ExpiryFixed event)
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
     (fixesOthers : ∀ other, other ≠ who → swap.Fixes other)
-    (forcedEq : ∀ state, (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+    (forcedEq : ∀ state, (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       state →
-      SwapGuardState setup runtime swap allowed state →
-      (ForcedState setup runtime leaks who (swap.protocolState state) ↔
-        ForcedState setup runtime leaks who state))
-    {source target : (application setup runtime leaks).ProtocolState}
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace source)
-    {joint : Player → Option (application setup runtime leaks).Action}
-    (legal : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Legal source joint)
-    (reached : target ∈ ((onePacketProtocol setup runtime leaks bounds horizon scheduler).step
+      SwapGuardState setup timeouts swap allowed state →
+      (ForcedState setup timeouts leaks who (swap.protocolState state) ↔
+        ForcedState setup timeouts leaks who state))
+    {source target : (application setup timeouts leaks).ProtocolState}
+    (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace source)
+    {joint : Player → Option (application setup timeouts leaks).Action}
+    (legal : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Legal source joint)
+    (reached : target ∈ ((onePacketProtocol setup timeouts leaks bounds horizon scheduler).step
       source
       ⟨joint, legal⟩).support)
-    (sourceGuarded : SwapGuardState setup runtime swap allowed source) :
-    RegularStep setup runtime leaks bounds horizon scheduler assessment who (swap.protocolState
-      (runtime := runtime) source)
+    (sourceGuarded : SwapGuardState setup timeouts swap allowed source) :
+    RegularStep setup timeouts leaks bounds horizon scheduler assessment who (swap.protocolState
+      (timeouts := timeouts) source)
         (swap.joint joint) (swap.protocolState target) ↔
-      RegularStep setup runtime leaks bounds horizon scheduler assessment who source joint target
+      RegularStep setup timeouts leaks bounds horizon scheduler assessment who source joint target
         := by
   cases source with
   | none => exact Iff.rfl
   | some control =>
-      obtain ⟨next, rfl⟩ := target_some_of_realized (runtime := runtime) legal reached
+      obtain ⟨next, rfl⟩ := target_some_of_realized (timeouts := timeouts) legal reached
       change (∀ actor, control.actor = some actor → actor ≠ who →
-          (forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
+          (forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
             setup) horizon
-              scheduler actor ((application setup runtime leaks).observe actor
+              scheduler actor ((application setup timeouts leaks).observe actor
                 (swap.protocolState (some control))) ∧
-            ForcedState setup runtime leaks who (swap.protocolState (some
+            ForcedState setup timeouts leaks who (swap.protocolState (some
               control))) ∧
-          0 < contentFactor setup runtime leaks assessment actor (swap.execution control.execution)
+          0 < contentFactor setup timeouts leaks assessment actor (swap.execution control.execution)
             (swap.execution next.execution) ((swap.joint joint actor).getD
               ⟨none⟩)) ↔ _
       apply forall_congr'
@@ -365,11 +367,11 @@ theorem regularStep_swap_iff (swap : HiddenSwap (graph setup))
       intro acting
       apply forall_congr'
       intro owner
-      rw [observe_swap_of_fixes (runtime := runtime) swap initialClosed bounded failures
+      rw [observe_swap_of_fixes (timeouts := timeouts) swap initialClosed bounded failures
         (fixesOthers actor
         owner) prior
           sourceGuarded, forcedEq _ prior sourceGuarded,
-        contentFactor_joint_swap (runtime := runtime) swap assessment next.execution legal acting
+        contentFactor_joint_swap (timeouts := timeouts) swap assessment next.execution legal acting
           (fixesOthers actor owner)]
 
 /-- **The image of a history is regular exactly when the history is**, when the
@@ -382,18 +384,19 @@ theorem regularTrace_mapTrace_iff (swap : HiddenSwap (graph setup))
     (failures : ∀ event, swap.values.ExpiryFixed event)
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
     (fixesOthers : ∀ other, other ≠ who → swap.Fixes other)
-    (forcedEq : ∀ state, (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+    (forcedEq : ∀ state, (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       state →
-      SwapGuardState setup runtime swap allowed state →
-      (ForcedState setup runtime leaks who (swap.protocolState state) ↔
-        ForcedState setup runtime leaks who state)) :
-    ∀ {state} (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
-      (guarded : SwapGuardState setup runtime swap allowed state),
-    RegularTrace setup runtime leaks bounds horizon scheduler assessment who
-        ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
+      SwapGuardState setup timeouts swap allowed state →
+      (ForcedState setup timeouts leaks who (swap.protocolState state) ↔
+        ForcedState setup timeouts leaks who state)) :
+    ∀ {state} (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
+      state)
+      (guarded : SwapGuardState setup timeouts swap allowed state),
+    RegularTrace setup timeouts leaks bounds horizon scheduler assessment who
+        ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
           swap initialClosed
           bounded failures).mapTrace trace guarded) ↔
-      RegularTrace setup runtime leaks bounds horizon scheduler assessment who trace
+      RegularTrace setup timeouts leaks bounds horizon scheduler assessment who trace
   | _, .start, _ => Iff.rfl
   | _, .extend (source := source) (target := target) prior joint legal reached, guarded => by
       rw [StateSymmetry.mapTrace_extend]
@@ -402,11 +405,11 @@ theorem regularTrace_mapTrace_iff (swap : HiddenSwap (graph setup))
         (regularTrace_mapTrace_iff swap initialClosed bounded failures assessment who
           fixesOthers forcedEq
           prior _)
-        (regularStep_swap_iff (runtime := runtime) swap initialClosed bounded failures assessment
+        (regularStep_swap_iff (timeouts := timeouts) swap initialClosed bounded failures assessment
           who
           fixesOthers forcedEq prior
           legal reached
-          ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
+          ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
             swap initialClosed
             bounded failures).guard_source prior legal reached guarded))
 
@@ -414,7 +417,7 @@ omit [Fintype Player] in
 /-- A player the swap fixes sees the decoded points of a configuration and of
 its swap alike. -/
 theorem observe_decodedPoint_swap_of_fixes (swap : HiddenSwap (graph setup)) {player : Player}
-    (fixes : swap.Fixes player) (execution : (application setup runtime leaks).Execution)
+    (fixes : swap.Fixes player) (execution : (application setup timeouts leaks).Execution)
     {point swapped : ProtocolState setup.program}
     (decoded : decodedPoint setup execution.application.config = some point)
     (swappedDecoded : decodedPoint setup (swap.execution execution).application.config =
@@ -423,9 +426,9 @@ theorem observe_decodedPoint_swap_of_fixes (swap : HiddenSwap (graph setup)) {pl
       ProtocolState.observe player setup.program point := by
   obtain ⟨rank, ordered, read⟩ := decodedPoint_isPrefix decoded
   obtain ⟨swappedRank, swappedOrdered, swappedRead⟩ := decodedPoint_isPrefix swappedDecoded
-  have original := projectView_observe setup runtime leaks player execution rank ordered point
+  have original := projectView_observe setup timeouts leaks player execution rank ordered point
     read []
-  have image := projectView_observe setup runtime leaks player (swap.execution execution)
+  have image := projectView_observe setup timeouts leaks player (swap.execution execution)
     swappedRank
     swappedOrdered swapped swappedRead []
   rw [swap.observe_execution, swap.view_observe_of_fixes fixes, original] at image
@@ -441,26 +444,26 @@ theorem forcedState_swap_iff (swap : HiddenSwap (graph setup))
     (failures : ∀ event, swap.values.ExpiryFixed event)
     (who : Player) (fixesOthers : ∀ other, other ≠ who → swap.Fixes other)
     (observer : Player) (distinct : observer ≠ who)
-    {state : (application setup runtime leaks).ProtocolState}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
-    (guarded : SwapGuardState setup runtime swap allowed state) :
-    ForcedState setup runtime leaks who (swap.protocolState state) ↔
-      ForcedState setup runtime leaks who state := by
+    {state : (application setup timeouts leaks).ProtocolState}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state)
+    (guarded : SwapGuardState setup timeouts swap allowed state) :
+    ForcedState setup timeouts leaks who (swap.protocolState state) ↔
+      ForcedState setup timeouts leaks who state := by
   cases state with
   | none => exact Iff.rfl
   | some control =>
-      obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+      obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts) (failureProfile
         setup.program)
-        (bounds.onePacketMenu runtime leaks) horizon scheduler trace control rfl
-      obtain ⟨swappedRank, ⟨swappedResidual⟩⟩ := protocol_sourceResidual (runtime := runtime)
-        (failureProfile setup.program) (bounds.onePacketMenu runtime leaks) horizon
-        scheduler ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon
+        (bounds.onePacketMenu timeouts leaks) horizon scheduler trace control rfl
+      obtain ⟨swappedRank, ⟨swappedResidual⟩⟩ := protocol_sourceResidual (timeouts := timeouts)
+        (failureProfile setup.program) (bounds.onePacketMenu timeouts leaks) horizon
+        scheduler ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon
           scheduler swap
           initialClosed bounded failures).mapTrace trace guarded) (swap.control
             control) rfl
       have decoded := decodedPoint_eq residual
       have swappedDecoded := decodedPoint_eq swappedResidual
-      change ForcedState setup runtime leaks who (some (swap.control
+      change ForcedState setup timeouts leaks who (some (swap.control
         control)) ↔ _
       rw [forcedState_iff_decodedPoint, forcedState_iff_decodedPoint, swappedDecoded, decoded]
       simp only [Option.some.injEq, exists_eq_left']
@@ -471,7 +474,7 @@ theorem forcedState_swap_iff (swap : HiddenSwap (graph setup))
       have sameView : ∀ other, other ≠ who →
           ProtocolState.observe other setup.program swapped =
             ProtocolState.observe other setup.program point := fun other different =>
-        observe_decodedPoint_swap_of_fixes (runtime := runtime) swap (fixesOthers other different)
+        observe_decodedPoint_swap_of_fixes (timeouts := timeouts) swap (fixesOthers other different)
           control.execution
           decoded swappedDecoded
       unfold ForcedPoint
@@ -480,14 +483,14 @@ theorem forcedState_swap_iff (swap : HiddenSwap (graph setup))
           forall_congr' fun different => and_congr (not_congr
             (ProtocolState.excluded_iff_of_observe_eq other other setup.program swapped point
               (sameView other different))) (not_congr ?_))
-      have projected : projectView setup runtime leaks other
-          (some ([], (swap.execution control.execution).observe (application setup runtime leaks)
+      have projected : projectView setup timeouts leaks other
+          (some ([], (swap.execution control.execution).observe (application setup timeouts leaks)
             other)) =
-          projectView setup runtime leaks other
-            (some ([], control.execution.observe (application setup runtime leaks) other)) := by
+          projectView setup timeouts leaks other
+            (some ([], control.execution.observe (application setup timeouts leaks) other)) := by
         rw [swap.observe_execution, swap.view_observe_of_fixes (fixesOthers
           other different)]
-      exact owesFailure_iff_of_projectView_eq (runtime := runtime) other swappedDecoded decoded
+      exact owesFailure_iff_of_projectView_eq (timeouts := timeouts) other swappedDecoded decoded
         projected
 
 /-- **The image of a history is regular exactly when the history is**, when the
@@ -500,17 +503,18 @@ theorem regularTrace_mapTrace_iff_of_fixes (swap : HiddenSwap (graph setup))
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
     (fixesOthers : ∀ other, other ≠ who → swap.Fixes other)
     (observer : Player) (distinct : observer ≠ who)
-    {state : (application setup runtime leaks).ProtocolState}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
-    (guarded : SwapGuardState setup runtime swap allowed state) :
-    RegularTrace setup runtime leaks bounds horizon scheduler assessment who
-        ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
+    {state : (application setup timeouts leaks).ProtocolState}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state)
+    (guarded : SwapGuardState setup timeouts swap allowed state) :
+    RegularTrace setup timeouts leaks bounds horizon scheduler assessment who
+        ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
           swap initialClosed
           bounded failures).mapTrace trace guarded) ↔
-      RegularTrace setup runtime leaks bounds horizon scheduler assessment who trace :=
-  regularTrace_mapTrace_iff (runtime := runtime) swap initialClosed bounded failures assessment who
+      RegularTrace setup timeouts leaks bounds horizon scheduler assessment who trace :=
+  regularTrace_mapTrace_iff (timeouts := timeouts) swap initialClosed bounded failures
+    assessment who
     fixesOthers
-    (fun _ trace guarded => forcedState_swap_iff (runtime := runtime) swap initialClosed bounded
+    (fun _ trace guarded => forcedState_swap_iff (timeouts := timeouts) swap initialClosed bounded
       failures who fixesOthers
       observer distinct trace guarded) trace guarded
 

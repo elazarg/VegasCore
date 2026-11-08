@@ -20,28 +20,28 @@ open SourceProgram GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 private theorem canonical_sent_decodes
-    (execution : (application setup runtime leaks).Execution) (who : Player)
+    (execution : (application setup timeouts leaks).Execution) (who : Player)
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
-    (action : (graph setup).Action event) (material : (application setup runtime leaks).Submission)
-    (submits : (runtime.canonicalServiceDecision leaks who (execution.logs who)
-      (execution.observe (application setup runtime leaks) who) event action).transmission =
+    (action : (graph setup).Action event) (material : (application setup timeouts leaks).Submission)
+    (submits : ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
+      (execution.observe (application setup timeouts leaks) who) event action).transmission =
         some material) :
-    sentSourceAction setup runtime leaks
-      (execution.respond (application setup runtime leaks) who
-        (runtime.canonicalServiceDecision leaks who (execution.logs who)
-          (execution.observe (application setup runtime leaks) who) event action))
-      (runtime.canonicalServiceDecision leaks who (execution.logs who)
-        (execution.observe (application setup runtime leaks) who) event action) =
+    sentSourceAction setup timeouts leaks
+      (execution.respond (application setup timeouts leaks) who
+        ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
+          (execution.observe (application setup timeouts leaks) who) event action))
+      ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
+        (execution.observe (application setup timeouts leaks) who) event action) =
       decodeEventAction setup.program event action := by
-  have afterEq : (execution.respond (application setup runtime leaks) who
-      (runtime.canonicalServiceDecision leaks who (execution.logs who)
-        (execution.observe (application setup runtime leaks) who) event action)).application =
-      (application setup runtime leaks).submit execution.application who material := by
+  have afterEq : (execution.respond (application setup timeouts leaks) who
+      ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
+        (execution.observe (application setup timeouts leaks) who) event action)).application =
+      (application setup timeouts leaks).submit execution.application who material := by
     unfold ReactiveApplication.Execution.respond
     rw [submits]
   obtain ⟨output, witness⟩ := canonical_response_witness execution who event turn action material
@@ -69,34 +69,34 @@ private theorem canonical_sent_decodes
     simp only [call, callContent, node, decision]
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- A supported source-main response has positive source content.
 Menu normalization to silence has content one. -/
 theorem contentFactor_pos_of_honestChoice
     (source : setup.intendedModel.BehavioralAssessment)
-    (who : Player) (execution : (application setup runtime leaks).Execution)
-    (response : (application setup runtime leaks).Action)
-    (choice : (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+    (who : Player) (execution : (application setup timeouts leaks).Execution)
+    (response : (application setup timeouts leaks).Action)
+    (choice : (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler).Choice who
-      (some (execution.logs who, execution.observe (application setup runtime leaks) who)))
+      (some (execution.logs who, execution.observe (application setup timeouts leaks) who)))
     (chosen : choice.1 = some response)
-    (supported : choice ∈ (honestChoice setup runtime leaks bounds (initialLaw setup) horizon
+    (supported : choice ∈ (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler source who (some (execution.logs who,
-        execution.observe (application setup runtime leaks) who))).support) :
-    0 < contentFactor setup runtime leaks source who execution
-      (execution.respond (application setup runtime leaks) who response) response := by
+        execution.observe (application setup timeouts leaks) who))).support) :
+    0 < contentFactor setup timeouts leaks source who execution
+      (execution.respond (application setup timeouts leaks) who response) response := by
   cases emits : response.transmission with
   | none => simp only [contentFactor, emits]; exact zero_lt_one
   | some material =>
       have nonsilent : response.transmission ≠ none := by rw [emits]; exact Option.some_ne_none _
-      have responseSupport : response ∈ (honestResponse setup runtime leaks source who
-          (execution.logs who) (execution.observe (application setup runtime leaks)
+      have responseSupport : response ∈ (honestResponse setup timeouts leaks source who
+          (execution.logs who) (execution.observe (application setup timeouts leaks)
             who)).support := by
         obtain ⟨original, originalSupport, same⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
         have recorded := (congrArg Subtype.val same).trans chosen
-        by_cases offered : original ∈ bounds.onePacketActions runtime leaks who
-            (execution.logs who) (execution.observe (application setup runtime leaks) who)
+        by_cases offered : original ∈ bounds.onePacketActions timeouts leaks who
+            (execution.logs who) (execution.observe (application setup timeouts leaks) who)
         · simp only [responseChoice, dite_eq_left offered, Option.some.injEq] at recorded
           exact recorded ▸ originalSupport
         · have quiet : response = ⟨none⟩ := by
@@ -115,12 +115,12 @@ theorem contentFactor_pos_of_honestChoice
             have quiet : response = ⟨none⟩ := by simpa only [encoded] using realized.symm
             exact (nonsilent (by rw [quiet])).elim
         | some action =>
-            have responseEq : runtime.canonicalServiceDecision leaks who (execution.logs who)
-                (execution.observe (application setup runtime leaks) who) event action =
+            have responseEq : (canonicalServiceDecision timeouts) leaks who (execution.logs who)
+                (execution.observe (application setup timeouts leaks) who) event action =
                   response := by
               simpa only [encoded] using realized
-            have submits : (runtime.canonicalServiceDecision leaks who (execution.logs who)
-                (execution.observe (application setup runtime leaks) who) event
+            have submits : ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
+                (execution.observe (application setup timeouts leaks) who) event
                   action).transmission =
                   some material := by rw [responseEq, emits]
             have sent := canonical_sent_decodes execution who event turn action material submits
@@ -130,17 +130,18 @@ theorem contentFactor_pos_of_honestChoice
               (decodeEventAction_encodeEventAction?_eq_some setup.program event original action
                 encodes).trans originalEq.symm
             rw [recovered] at sent
-            have positive : 0 < ((asIfHonestProfile setup runtime leaks source who
+            have positive : 0 < ((asIfHonestProfile setup timeouts leaks source who
                 (some (execution.logs who,
-                  execution.observe (application setup runtime leaks) who))) sampled).toReal :=
+                  execution.observe (application setup timeouts leaks) who))) sampled).toReal :=
               ENNReal.toReal_pos (PMF.mem_support_iff _ _ |>.mp sampledSupport)
                 (PMF.apply_ne_top _ _)
             rw [contentFactor, emits]
-            change 0 < ((asIfHonestProfile setup runtime leaks source who
+            change 0 < ((asIfHonestProfile setup timeouts leaks source who
               (some (execution.logs who,
-                execution.observe (application setup runtime leaks) who)))
-              (sentSourceAction setup runtime leaks
-                (execution.respond (application setup runtime leaks) who response) response)).toReal
+                execution.observe (application setup timeouts leaks) who)))
+              (sentSourceAction setup timeouts leaks
+                (execution.respond (application setup timeouts leaks) who response)
+                  response)).toReal
             rw [sent]
             exact positive
 

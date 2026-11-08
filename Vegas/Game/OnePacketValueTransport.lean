@@ -22,35 +22,35 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "onePacketN" =>
-  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
 
 /-- **Regular histories owe nothing.** For a well-formed setup, at a forced
 decision site of who, a regular history along which who's own completions decode
 to intended actions decodes to a point at which no player owes a failure. -/
 theorem not_owesFailure_of_regular (wellFormed : setup.WellFormed)
     (assessment : setup.intendedModel.BehavioralAssessment) {who : Player}
-    {site : (onePacketN).InformationSite who} {past : List (application setup runtime
+    {site : (onePacketN).InformationSite who} {past : List (application setup timeouts
       leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView} (atSite : site.1 = some (past, view))
-    (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
+    {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
       setup) horizon
       scheduler who site.1)
     (history : (onePacketN).InformationHistory who site.1)
-    (regular : RegularTrace setup runtime leaks bounds horizon scheduler assessment who
+    (regular : RegularTrace setup timeouts leaks bounds horizon scheduler assessment who
       history.1.trace)
-    (ownIntended : OwnCompletionsIntended (runtime := runtime) (bounds := bounds) (horizon :=
+    (ownIntended : OwnCompletionsIntended (timeouts := timeouts) (bounds := bounds) (horizon :=
       horizon)
       (scheduler := scheduler) who history.1.trace) :
-    ∀ point, nativeDecodedState setup runtime leaks history.1.state = some point →
+    ∀ point, nativeDecodedState setup timeouts leaks history.1.state = some point →
       ∀ player, ¬ ProtocolState.OwesFailure player setup.program point := by
   intro point decodedState player
-  have forcedState := forcedState_of_regular (runtime := runtime) wellFormed assessment atSite
+  have forcedState := forcedState_of_regular (timeouts := timeouts) wellFormed assessment atSite
     forced history regular
     ownIntended
   cases state : history.1.state with
@@ -59,8 +59,8 @@ theorem not_owesFailure_of_regular (wellFormed : setup.WellFormed)
       cases decodedState
   | some control =>
       rw [state] at forcedState decodedState
-      have record := publicRecord_of_forced (runtime := runtime) who control forcedState
-      obtain ⟨found, foundDecoded, intendedFound⟩ := intended_of_regular (runtime := runtime)
+      have record := publicRecord_of_forced (timeouts := timeouts) who control forcedState
+      obtain ⟨found, foundDecoded, intendedFound⟩ := intended_of_regular (timeouts := timeouts)
         wellFormed assessment who
         history.1.trace control state record regular ownIntended
       change decodedPoint setup control.execution.application.config = some point at decodedState

@@ -26,7 +26,7 @@ namespace Vegas.Examples.OddsEvensLedgerClient
 
 open OddsEvens EventGraphRuntime Interaction GameTheory.Math.Probability
 
-abbrev runtime := OddsEvensService.runtime
+abbrev timeouts := OddsEvensService.timeouts
 abbrev app := OddsEvensService.app
 
 private abbrev eventId (n : Fin 4) : compiled.EventId := n
@@ -49,14 +49,14 @@ def oddBitLaw (view : app.PlayerView) : PMF Bool :=
 def ordinaryResponse (who : Player) (past : List app.PlayerEntry)
     (view : app.PlayerView) (event : compiled.EventId) (choice : compiled.Action event) :
     app.Action :=
-  runtime.canonicalServiceDecision OddsEvensService.leaks who past view event choice
+  (canonicalServiceDecision timeouts) OddsEvensService.leaks who past view event choice
 
 private def respond (who : Player) : app.Policy := fun past view =>
   if who ∈ view.application.publicView.observation.defaulted then PMF.pure ⟨none⟩
   else match view.application.publicView.ownTurn? who with
     | none => PMF.pure ⟨none⟩
     | some event =>
-        if runtime.eventRecorded OddsEvensService.leaks
+        if (eventRecorded timeouts) OddsEvensService.leaks
             past
             event then PMF.pure ⟨none⟩
         else match event with
@@ -96,7 +96,7 @@ theorem acceptedBit?_ledgerOnly (view : app.PlayerView) :
 theorem policy_at_informed_commitment (past : List app.PlayerEntry) (view : app.PlayerView)
     (included : odd ∉ view.application.publicView.observation.defaulted)
     (turn : view.application.publicView.ownTurn? odd = some (eventId 1))
-    (unsent : runtime.eventRecorded OddsEvensService.leaks
+    (unsent : (eventRecorded timeouts) OddsEvensService.leaks
       (past.map (ReactiveApplication.PlayerEntry.ledgerOnly app)) (eventId 1) =
           false)
     (bit : Bool) (known : acceptedBit? view = some bit) :
@@ -113,9 +113,9 @@ theorem policy_at_informed_commitment (past : List app.PlayerEntry) (view : app.
   rfl
 
 private theorem recorded_ledgerOnly (past : List app.PlayerEntry) (event : compiled.EventId) :
-    runtime.eventRecorded OddsEvensService.leaks
+    (eventRecorded timeouts) OddsEvensService.leaks
       (past.map (ReactiveApplication.PlayerEntry.ledgerOnly app)) event =
-    runtime.eventRecorded OddsEvensService.leaks
+    (eventRecorded timeouts) OddsEvensService.leaks
       past event := by
   simp only [eventRecorded, List.any_map, Function.comp_def,
     ReactiveApplication.PlayerEntry.ledgerOnly]
@@ -124,7 +124,7 @@ private theorem recorded_ledgerOnly (past : List app.PlayerEntry) (event : compi
 theorem policy_of_recorded (who : Player) (past : List app.PlayerEntry) (view : app.PlayerView)
     (event : compiled.EventId)
     (turn : view.application.publicView.ownTurn? who = some event)
-    (recorded : runtime.eventRecorded OddsEvensService.leaks
+    (recorded : (eventRecorded timeouts) OddsEvensService.leaks
       past event =
         true) : policy who past view = PMF.pure ⟨none⟩ := by
   simp only [policy, ReactiveApplication.ledgerPolicy, respond,

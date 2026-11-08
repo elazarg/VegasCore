@@ -15,11 +15,11 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks)
+  (app := application setup timeouts leaks)
     (fun native : EventGraphRuntime.State (graph setup) =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
@@ -27,27 +27,27 @@ local notation "Clear" => ReactiveApplication.stateInvariant
 public exclusion or hidden own debt, so stopping there leaves its terminal law unchanged. -/
 theorem honest_debt_stopped_terminal_law_of_readout_law
     (bounds : MessageBounds (graph setup)) (wellFormed : setup.WellFormed)
-    {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
+    {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
     (assessment : setup.intendedModel.BehavioralAssessment)
-    (certificate : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+    (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
       horizon scheduler).WellFoundedHistories)
-    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
       horizon scheduler).History)
     (point : ProtocolState setup.program)
     (static : ProtocolState.StaticAt setup.program [] (Revelations.initial setup.context) point)
     (intended : ProtocolState.Intended setup.program point)
     (law : (InformationModel.runBehavioralTerminalFrom
-      (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler) certificate
-        (honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler assessment)
-        start).map (fun final => sourceReadout setup runtime leaks final.state) =
+      (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler) certificate
+        (honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler assessment)
+        start).map (fun final => sourceReadout setup timeouts leaks final.state) =
           (setup.continuationLaw (setup.intendedOpeningProfile assessment.strategy)
             (some point)).map some)
     (who : Player) :
-    let model := onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
-    let honest := honestProfile setup runtime leaks bounds (initialLaw setup) horizon scheduler
+    let model := onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
+    let honest := honestProfile setup timeouts leaks bounds (initialLaw setup) horizon scheduler
       assessment
     let stopped := fun history => ¬ Clear history.state ∨
-      DecodedState setup runtime leaks (failureProfile setup.program)
+      DecodedState setup timeouts leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure who setup.program) history.state
     model.runBehavioralUntil certificate honest stopped start =
         model.runBehavioralTerminalFrom certificate honest start ∧
@@ -55,7 +55,7 @@ theorem honest_debt_stopped_terminal_law_of_readout_law
         ¬ stopped final := by
   classical
   intro model honest stopped
-  let menu := bounds.onePacketMenu runtime leaks
+  let menu := bounds.onePacketMenu timeouts leaks
   let reachable := fun history => ∃ fuel,
     history ∈ (model.runBehavioralFrom honest fuel start).support
   have notStopped : ∀ history, reachable history → ¬ stopped history := by

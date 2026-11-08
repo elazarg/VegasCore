@@ -139,11 +139,11 @@ theorem concurrentOutcome_erase {Parameter : Type} (setup : Setup (Player := Pla
 /-- The service's instruction-order readout is the configuration reader at the
 native terminal configuration. -/
 theorem serviceRankedReadout_some (setup : Setup (Player := Player) (L := L))
-    (deadline : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (duration : (serviceGraph setup .concurrentReveals).EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player
       (WitnessedPacket (serviceGraph setup .concurrentReveals)))
-    (control : (serviceApplication setup .concurrentReveals deadline leaks).Control) :
-    serviceRankedReadout setup .concurrentReveals deadline leaks (some control) =
+    (control : (serviceApplication setup .concurrentReveals duration leaks).Control) :
+    serviceRankedReadout setup .concurrentReveals duration leaks (some control) =
       concurrentRankedRead setup control.execution.application.config := rfl
 
 end Vegas

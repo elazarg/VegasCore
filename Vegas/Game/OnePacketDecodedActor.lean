@@ -66,11 +66,12 @@ theorem decodedPoint_actor_of_quiescent {setup : Setup (Player := Player) (L := 
 
 /-- Initialized raw histories supply the activity needed for the static actor equality. -/
 theorem decodedPoint_actor_of_history {setup : Setup (Player := Player) (L := L)}
-    {runtime : EventGraphRuntime (graph setup)}
+    {timeouts : EventTimeouts (graph setup)}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    (who : Player) {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
-    {control : (application setup runtime leaks).Control}
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    (who : Player) {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace
       (some control))
     {event : (graph setup).EventId} (ready : control.execution.application.config.cut.Ready event)
     {point : ProtocolState setup.program}

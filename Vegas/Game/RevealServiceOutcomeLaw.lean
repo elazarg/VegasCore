@@ -170,25 +170,25 @@ reveals concurrent, the first-turn clients of the order-blind reference of a
 disclosing source profile have, read in instruction order, the source law of
 the parameter, public values and public defaults. -/
 theorem concurrentClients_outcome_law (setup : Setup (Player := Player) (L := L))
-    (deadline : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (duration : (serviceGraph setup .concurrentReveals).EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player
       (WitnessedPacket (serviceGraph setup .concurrentReveals)))
     {horizon turns : Nat}
-    {scheduler : (serviceApplication setup .concurrentReveals deadline leaks).Scheduler}
+    {scheduler : (serviceApplication setup .concurrentReveals duration leaks).Scheduler}
     {delay bound : (serviceGraph setup .concurrentReveals).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup .concurrentReveals deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup .concurrentReveals duration) leaks
       (serviceInitialLaw setup .concurrentReveals) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup .concurrentReveals deadline) delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup .concurrentReveals duration) delay bound)
     (source : BehavioralProfile setup.program)
     (disclosing : ∀ who, Disclosing setup.program (source who))
     {Parameter : Type} (parameter : State L setup.context → Parameter) :
-    ((serviceApplication setup .concurrentReveals deadline leaks).roundsFrom
+    ((serviceApplication setup .concurrentReveals duration leaks).roundsFrom
         (serviceInitialLaw setup .concurrentReveals) scheduler
-        (serviceReferenceTurnPolicy setup .concurrentReveals deadline leaks bound turns
+        (serviceReferenceTurnPolicy setup .concurrentReveals duration leaks bound turns
           (firstTurnTiming setup turns .concurrentReveals) (concurrentReference setup source))
         horizon).map (fun final =>
-          (serviceRankedReadout setup .concurrentReveals deadline leaks
-            ((serviceApplication setup .concurrentReveals deadline leaks).finished final)).map
+          (serviceRankedReadout setup .concurrentReveals duration leaks
+            ((serviceApplication setup .concurrentReveals duration leaks).finished final)).map
             (setup.parameterOutcome parameter)) =
       (setup.run source).map (fun final => some (setup.parameterOutcome parameter final)) := by
   have keyed (left right : (serviceGraph setup .concurrentReveals).Config)
@@ -196,7 +196,7 @@ theorem concurrentClients_outcome_law (setup : Setup (Player := Player) (L := L)
       concurrentOutcome setup parameter left = concurrentOutcome setup parameter right := by
     unfold concurrentOutcome
     rw [concurrentRankedRead_congr setup same]
-  have law := honest_roundsFrom_outcomeLaw (deadline := deadline) (leaks := leaks)
+  have law := honest_roundsFrom_outcomeLaw (duration := duration) (leaks := leaks)
     (turns := turns) contract timely
     (setup.eventGraph.withMode_concurrentReveals_revealsOnlyConcurrent setup.eventGraph_total)
     (fun _ notPublication => setup.eventGraph.withMode_concurrentReveals_leading
@@ -214,25 +214,25 @@ reveals concurrent, the first-turn clients of the order-blind reference of a
 disclosing source profile have, read in instruction order, the source law of
 every observation of the typed terminal state and public default history. -/
 theorem concurrentClients_state_law (setup : Setup (Player := Player) (L := L))
-    (deadline : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (duration : (serviceGraph setup .concurrentReveals).EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player
       (WitnessedPacket (serviceGraph setup .concurrentReveals)))
     {horizon turns : Nat}
-    {scheduler : (serviceApplication setup .concurrentReveals deadline leaks).Scheduler}
+    {scheduler : (serviceApplication setup .concurrentReveals duration leaks).Scheduler}
     {delay bound : (serviceGraph setup .concurrentReveals).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup .concurrentReveals deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup .concurrentReveals duration) leaks
       (serviceInitialLaw setup .concurrentReveals) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup .concurrentReveals deadline) delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup .concurrentReveals duration) delay bound)
     (source : BehavioralProfile setup.program)
     (disclosing : ∀ who, Disclosing setup.program (source who))
     {Outcome : Type*} (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome) :
-    ((serviceApplication setup .concurrentReveals deadline leaks).roundsFrom
+    ((serviceApplication setup .concurrentReveals duration leaks).roundsFrom
         (serviceInitialLaw setup .concurrentReveals) scheduler
-        (serviceReferenceTurnPolicy setup .concurrentReveals deadline leaks bound turns
+        (serviceReferenceTurnPolicy setup .concurrentReveals duration leaks bound turns
           (firstTurnTiming setup turns .concurrentReveals) (concurrentReference setup source))
         horizon).map (fun final =>
-          (serviceRankedReadout setup .concurrentReveals deadline leaks
-            ((serviceApplication setup .concurrentReveals deadline leaks).finished final)).map
+          (serviceRankedReadout setup .concurrentReveals duration leaks
+            ((serviceApplication setup .concurrentReveals duration leaks).finished final)).map
             (fun config => read (config.state, config.defaults))) =
       (setup.run source).map (fun final => some (read (final.state, final.defaults))) := by
   have keyed (left right : (serviceGraph setup .concurrentReveals).Config)
@@ -240,7 +240,7 @@ theorem concurrentClients_state_law (setup : Setup (Player := Player) (L := L))
       concurrentStateRead setup read left = concurrentStateRead setup read right := by
     unfold concurrentStateRead
     rw [concurrentRankedRead_congr setup same]
-  have law := honest_roundsFrom_outcomeLaw (deadline := deadline) (leaks := leaks)
+  have law := honest_roundsFrom_outcomeLaw (duration := duration) (leaks := leaks)
     (turns := turns) contract timely
     (setup.eventGraph.withMode_concurrentReveals_revealsOnlyConcurrent setup.eventGraph_total)
     (fun _ notPublication => setup.eventGraph.withMode_concurrentReveals_leading

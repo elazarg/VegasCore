@@ -20,38 +20,38 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime Eve
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+  {mode : EventGraph.ExecutionMode} {duration : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 /-- Before the ready event completes, fixing its owner's first choice agrees
 with the decided client while every other honest owner is idle. -/
 theorem reference_foreign_fixedRun {horizon : Nat}
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (reference : (serviceGraph setup mode).BehavioralProfile) (focal : Player)
-    (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (deviation : (serviceApplication setup mode duration leaks).Policy)
     (owner : Player) (event : (serviceGraph setup mode).EventId)
     (owned : (serviceGraph setup mode).actor? event = some owner)
     (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
       cut.Ready other → other = event)
     (action : (serviceGraph setup mode).Action event)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (execution : (serviceApplication setup mode duration leaks).Execution)
     (ready : execution.application.config.cut.Ready event) :
-    let baseline := serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+    let baseline := serviceReferenceTurnPolicy setup mode duration leaks bound turns
       (firstTurnTiming setup turns mode) reference
     let member := fun past view =>
-      if serviceTurn setup mode deadline leaks owner event past view = some 0 then
+      if serviceTurn setup mode duration leaks owner event past view = some 0 then
         decidedOpportunity setup leaks bound owner event action past view
       else baseline owner past view
-    ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
+    ((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
       (Function.update (Function.update baseline focal deviation) owner member)
       (fun final => event ∈ final.application.config.cut.completed) horizon execution) =
-    (serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
-      (Function.update (focalPlayers (deadline := deadline) setup leaks focal deviation) owner
+    (serviceApplication setup mode duration leaks).runUntilHorizon scheduler
+      (Function.update (focalPlayers (duration := duration) setup leaks focal deviation) owner
         (decidedTurnPolicy setup leaks bound owner event action))
       (fun final => event ∈ final.application.config.cut.completed) horizon execution := by
   intro baseline member
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   let players := Function.update baseline focal deviation
   unfold ReactiveApplication.runUntilHorizon
   apply app.runUntil_congr_of_agree scheduler (Function.update players owner member)
@@ -74,7 +74,7 @@ theorem reference_foreign_fixedRun {horizon : Nat}
       have serving := serviceOwnTurn?_of_ready setup middle.application middleReady owned
       dsimp only [member, decidedTurnPolicy, ReactiveApplication.turnScheduledPolicy]
       simp only [Fin.val_zero]
-      by_cases selected : serviceTurn setup mode deadline leaks owner event
+      by_cases selected : serviceTurn setup mode duration leaks owner event
           (middle.logs owner) (middle.observe app owner) = some 0
       · simp only [selected, ite_true]
       · simp only [selected, ite_false]
@@ -98,10 +98,10 @@ theorem reference_foreign_fixedRun {horizon : Nat}
 admission choices and equal initial deviator traffic, from initialized
 executions where the binding is ready and untouched. -/
 theorem reference_binding_traffic_congr {horizon : Nat}
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (reference : (serviceGraph setup mode).BehavioralProfile) (focal owner : Player)
-    (deviation : (serviceApplication setup mode deadline leaks).Policy) (foreign : owner ≠ focal)
+    (deviation : (serviceApplication setup mode duration leaks).Policy) (foreign : owner ≠ focal)
     (event : (serviceGraph setup mode).EventId) {payload : L.Ty}
     (outputEq : (serviceGraph setup mode).outputLayout event = .binding owner payload)
     (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
@@ -111,42 +111,42 @@ theorem reference_binding_traffic_congr {horizon : Nat}
       cut.Ready other → other = event)
     (leftChoice rightChoice : Option (PublicationResult (L.Val payload)))
     (admitted : leftChoice.isSome = rightChoice.isSome)
-    (left right : (serviceApplication setup mode deadline leaks).Execution)
+    (left right : (serviceApplication setup mode duration leaks).Execution)
     (leftReady : left.application.config.cut.Ready event)
     (rightReady : right.application.config.cut.Ready event)
-    (leftSupported : left ∈ ((serviceApplication setup mode deadline leaks).roundsFrom
+    (leftSupported : left ∈ ((serviceApplication setup mode duration leaks).roundsFrom
       (serviceInitialLaw setup mode) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+      (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
         (firstTurnTiming setup turns mode) reference) focal deviation)
       left.environmentRecall.length).support)
-    (rightSupported : right ∈ ((serviceApplication setup mode deadline leaks).roundsFrom
+    (rightSupported : right ∈ ((serviceApplication setup mode duration leaks).roundsFrom
       (serviceInitialLaw setup mode) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+      (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
         (firstTurnTiming setup turns mode) reference) focal deviation)
       right.environmentRecall.length).support)
     (leftUntouched : Untouched setup leaks event left)
     (rightUntouched : Untouched setup leaks event right)
     (leftBounded : left.environmentRecall.length ≤ horizon)
     (rightBounded : right.environmentRecall.length ≤ horizon)
-    (same : (serviceRuntime setup mode deadline).bindingTraffic leaks focal left =
-      (serviceRuntime setup mode deadline).bindingTraffic leaks focal right) :
-    (((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
+    (same : (bindingTraffic (serviceTimeouts setup mode duration)) leaks focal left =
+      (bindingTraffic (serviceTimeouts setup mode duration)) leaks focal right) :
+    (((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
       (Function.update (focalPlayers setup leaks focal deviation) owner
         (decidedTurnPolicy setup leaks bound owner event
           (cast (congrArg EventField.Action outputEq.symm) leftChoice)))
       (fun final => event ∈ final.application.config.cut.completed) horizon left).map
-        ((serviceRuntime setup mode deadline).bindingTraffic leaks focal)) =
-    (((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
+        ((bindingTraffic (serviceTimeouts setup mode duration)) leaks focal)) =
+    (((serviceApplication setup mode duration leaks).runUntilHorizon scheduler
       (Function.update (focalPlayers setup leaks focal deviation) owner
         (decidedTurnPolicy setup leaks bound owner event
           (cast (congrArg EventField.Action outputEq.symm) rightChoice)))
       (fun final => event ∈ final.application.config.cut.completed) horizon right).map
-        ((serviceRuntime setup mode deadline).bindingTraffic leaks focal)) := by
-  let app := serviceApplication setup mode deadline leaks
+        ((bindingTraffic (serviceTimeouts setup mode duration)) leaks focal)) := by
+  let app := serviceApplication setup mode duration leaks
   let players := Function.update
-    (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+    (serviceReferenceTurnPolicy setup mode duration leaks bound turns
       (firstTurnTiming setup turns mode) reference) focal deviation
-  have follows : players owner = serviceReferenceTurnPolicy setup mode deadline leaks
+  have follows : players owner = serviceReferenceTurnPolicy setup mode duration leaks
       bound turns (firstTurnTiming setup turns mode) reference owner :=
     Function.update_of_ne foreign _ _
   have facts (current : app.Execution)
@@ -159,7 +159,7 @@ theorem reference_binding_traffic_congr {horizon : Nat}
       OwnSubmissionsAtTurn setup leaks current owner ∧
       CanonicalSlotsUsed setup leaks current owner ∧
       ownerTurns owner event current = 0 ∧
-      (serviceRuntime setup mode deadline).eventRecorded leaks (current.logs owner) event =
+      (eventRecorded (serviceTimeouts setup mode duration)) leaks (current.logs owner) event =
         false := by
     obtain ⟨own, slots⟩ := canonicalSlots_roundsFrom_reference (setup := setup) (leaks := leaks)
       scheduler players owner (firstTurnTiming setup turns mode) reference follows
@@ -177,7 +177,7 @@ theorem reference_binding_traffic_congr {horizon : Nat}
     · apply Bool.eq_false_iff.mpr
       intro recorded
       obtain ⟨entry, member, submitted⟩ :=
-        ((serviceRuntime setup mode deadline).eventRecorded_iff leaks _ event).mp recorded
+        ((eventRecorded_iff (serviceTimeouts setup mode duration)) leaks _ event).mp recorded
       exact never entry member (own entry member event submitted)
   obtain ⟨⟨leftTrace⟩, leftOwn, leftSlots, leftTurns, leftRecorded⟩ :=
     facts left leftSupported leftUntouched leftBounded

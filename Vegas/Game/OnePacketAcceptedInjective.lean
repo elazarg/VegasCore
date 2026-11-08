@@ -23,24 +23,24 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   (bounds : MessageBounds (graph setup))
 
 /-- **Accepted handles are injective.** Along every history of the one-packet
 game, the table of accepted handles never accepts one handle at two fields. -/
 theorem acceptedInjective_of_trace {horizon : Nat}
-    {scheduler : (application setup runtime leaks).Scheduler}
-    {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+    {scheduler : (application setup timeouts leaks).Scheduler}
+    {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
       control)) :
     AcceptedInjective control.execution.application.accepted := by
-  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
-  have signed := signedCommitments_history runtime leaks (initialLaw setup)
+  have signed := signedCommitments_history timeouts leaks (initialLaw setup)
     (serviceInitialLaw_initialized setup) horizon scheduler rawTrace
   have prepared (event : (graph setup).EventId) (handle : Handle (graph setup))
       (accepted : control.execution.application.accepted (.inr event) = some handle) :
@@ -48,9 +48,10 @@ theorem acceptedInjective_of_trace {horizon : Nat}
         committed.payload.call = .commitment event handle ∧
           ∃ serial, handle.2 = .prepared serial := by
     obtain ⟨committed, output, call⟩ := signed.acceptedSigned event handle accepted
-    have input := output_mem_inputs_of_trace (runtime := runtime) bounds trace _ committed output
+    have input := output_mem_inputs_of_trace (timeouts := timeouts) bounds trace _ committed output
     obtain ⟨_, serial, _⟩ :=
-      commitment_facts_of_trace (runtime := runtime) bounds trace committed input event handle call
+      commitment_facts_of_trace (timeouts := timeouts) bounds trace committed input event handle
+        call
     exact ⟨committed, input, call, serial⟩
   intro left right handle leftAccepted rightAccepted
   cases left with
@@ -77,7 +78,7 @@ theorem acceptedInjective_of_trace {horizon : Nat}
       | inr rightEvent =>
           obtain ⟨rightCommitted, rightInput, rightCall, _⟩ :=
             prepared rightEvent handle rightAccepted
-          rw [commitment_unique_of_trace (runtime := runtime) bounds trace leftCommitted leftInput
+          rw [commitment_unique_of_trace (timeouts := timeouts) bounds trace leftCommitted leftInput
             rightCommitted
             rightInput leftEvent rightEvent handle leftCall rightCall]
 

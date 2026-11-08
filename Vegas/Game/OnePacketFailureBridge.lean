@@ -25,7 +25,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 
@@ -36,7 +36,7 @@ variable (profile : BehavioralProfile setup.program)
 /-- **The failed-binding record.** The configuration decodes at a prefix, and
 every completed binding event whose output is a failure makes its owner owe a
 failure at the decoded point. -/
-def FailedBindingRecord (execution : (application setup runtime leaks).Execution) : Prop :=
+def FailedBindingRecord (execution : (application setup timeouts leaks).Execution) : Prop :=
   ∃ rank, Nonempty (SourceResidual setup profile rank execution.application.config) ∧
     ∀ event ∈ execution.application.config.cut.completed, ∀ owner payload
       (outputEq : (graph setup).outputLayout event = .binding owner payload),
@@ -48,12 +48,13 @@ def FailedBindingRecord (execution : (application setup runtime leaks).Execution
 /-- The failed-binding record holds at every legal initialized history, under
 arbitrary responses and every scheduler. -/
 theorem failedBindingRecord_history (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler)
-    {control : (application setup runtime leaks).Control}
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    (scheduler : (application setup timeouts leaks).Scheduler)
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace
       (some control)) :
-    FailedBindingRecord (runtime := runtime) profile control.execution := by
-  obtain ⟨rank, residual, record⟩ := SourceFailureRecord.history (runtime := runtime) profile
+    FailedBindingRecord (timeouts := timeouts) profile control.execution := by
+  obtain ⟨rank, residual, record⟩ := SourceFailureRecord.history (timeouts := timeouts) profile
     horizon scheduler trace
   refine ⟨rank, residual, fun event completed owner payload outputEq failed => ?_⟩
   exact record event completed owner ((graph setup).actor?_of_outputLayout_binding outputEq)

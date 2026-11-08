@@ -23,16 +23,16 @@ def State.PreparedPrefix (state : State graph) (who : Player) : Prop :=
   ∀ serial, state.candidates.lookup (who, .prepared serial) = .fresh ↔
     state.publicView.bindingCount who ≤ serial
 
-variable (runtime : EventGraphRuntime graph)
+variable (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 theorem submitted_binding_fresh_iff
-    (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
+    (execution : ((reactiveApplication timeouts) leaks).Execution) (who : Player)
     (event : graph.EventId) (serial : Nat) (opening : Option (Raw L))
     (query : CandidateSlot graph) :
-    let response : (runtime.reactiveApplication leaks).Action :=
+    let response : ((reactiveApplication timeouts) leaks).Action :=
       ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩
-    let submitted := execution.respond (runtime.reactiveApplication leaks) who response
+    let submitted := execution.respond ((reactiveApplication timeouts) leaks) who response
     submitted.application.candidates.lookup (who, query) = .fresh ↔
       query ≠ .prepared serial ∧
         execution.application.candidates.lookup (who, query) = .fresh := by

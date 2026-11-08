@@ -22,9 +22,9 @@ namespace RosterCalendarInvariant
 variable (setup : Setup (Player := Player) (L := L))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (rosters : (graph setup).EventId → List Player)
-  (network : (runtime setup).NetworkPolicy leaks)
-  (calendar : ∀ (control : (application setup (Vegas.runtime setup) leaks).Control),
-    ((application setup (Vegas.runtime setup) leaks).protocol (initialLaw setup)
+  (network : (NetworkPolicy (timeouts setup)) leaks)
+  (calendar : ∀ (control : (application setup (Vegas.timeouts setup) leaks).Control),
+    ((application setup (Vegas.timeouts setup) leaks).protocol (initialLaw setup)
       (rosterPlan setup rosters).length (rosterScheduler setup leaks rosters network)).Trace
         (some control) → RosterCalendarInvariant setup leaks rosters (some control))
 
@@ -32,7 +32,7 @@ include calendar
 
 /-- Every ready owner is activated within its event's rank bound. -/
 theorem opportunity (opportunities : ActorOpportunities setup rosters) :
-    Opportunity (runtime setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
+    Opportunity (timeouts setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network) (fun event => event.val) := by
   intro control trace event owner entered owned readyView activated late
   dsimp only at late
@@ -63,7 +63,7 @@ theorem opportunity (opportunities : ActorOpportunities setup rosters) :
 /-- A sole authored identifier for a ready event receives an inclusion receipt
 before any subsequent clock advance, including after an early obsolete-block response. -/
 theorem protectedInclusion :
-    ProtectedInclusion (runtime setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
+    ProtectedInclusion (timeouts setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network) (fun _ => 0) := by
   intro control trace event owner owned earlier later entry message split emitted authored
     addressed seen sole unfinished late
@@ -94,7 +94,7 @@ theorem protectedInclusion :
 
 /-- Exhausting the fixed command horizon leaves every graph event completed. -/
 theorem completesPlay :
-    CompletesPlay (runtime setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
+    CompletesPlay (timeouts setup) leaks (initialLaw setup) (rosterPlan setup rosters).length
       (rosterScheduler setup leaks rosters network) := by
   intro control trace terminal
   obtain ⟨finished, _⟩ := terminal

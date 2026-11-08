@@ -36,15 +36,15 @@ variable [DecidableEq Player]
 
 namespace BindingMemory.Frame
 
-variable {runtime : EventGraphRuntime graph}
+variable {timeouts : EventTimeouts graph}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
-  {memory : BindingMemory runtime leaks} {owner : Player}
-  {original repaired : (runtime.reactiveApplication leaks).Execution}
+  {memory : BindingMemory timeouts leaks} {owner : Player}
+  {original repaired : ((reactiveApplication timeouts) leaks).Execution}
 
 /-- The frame preserves all persistent setup values jointly, including private
 parameters correlated across players. Repairs only replace fresh binding
 outputs; they never rewrite the initialized environment. -/
-theorem inputs (frame : Frame runtime leaks memory owner original repaired)
+theorem inputs (frame : Frame timeouts leaks memory owner original repaired)
     (onlyBindings : memory.shadow.OwnBindings owner) :
     original.application.config.inputs = repaired.application.config.inputs := by
   funext input
@@ -54,7 +54,7 @@ theorem inputs (frame : Frame runtime leaks memory owner original repaired)
     by_cases own : observer = owner
     · subst observer
       have stored := congrFun (congrArg
-        (fun view : (runtime.reactiveApplication leaks).PlayerView =>
+        (fun view : ((reactiveApplication timeouts) leaks).PlayerView =>
           view.application.observation.store) frame.observed) (.inl input)
       change memory.shadow.store (graph.playerObserve owner repaired.application.config).store
           (.inl input) = (graph.playerObserve owner original.application.config).store
@@ -82,9 +82,9 @@ theorem inputs (frame : Frame runtime leaks memory owner original repaired)
   obtain ⟨observer, visible⟩ := observes
   exact seen observer visible
 
-theorem advanceClock (frame : Frame runtime leaks memory owner original repaired) :
-    let app := runtime.reactiveApplication leaks
-    Frame runtime leaks memory owner
+theorem advanceClock (frame : Frame timeouts leaks memory owner original repaired) :
+    let app := (reactiveApplication timeouts) leaks
+    Frame timeouts leaks memory owner
       { original with
         application := { original.application with clock := original.application.clock + 1 }
         environmentRecall := original.environmentRecall ++
@@ -95,7 +95,7 @@ theorem advanceClock (frame : Frame runtime leaks memory owner original repaired
           [⟨repaired.observeEnvironment app, .application .advanceClock⟩] } := by
   refine ⟨frame.past, ?_, frame.lengths, frame.network, ?_, ?_, frame.logs, frame.slots,
     frame.successful, frame.submissions⟩
-  · exact congrArg (fun view : (runtime.reactiveApplication leaks).PlayerView =>
+  · exact congrArg (fun view : ((reactiveApplication timeouts) leaks).PlayerView =>
       { view with application := { view.application with publicView :=
         { view.application.publicView with clock := view.application.publicView.clock + 1 } } })
           frame.observed
@@ -121,17 +121,17 @@ private theorem complete_publicView (left right : State graph)
 
 /-- A completion outside the shadow is read from the real runtime on both
 sides. This covers public results and other players' private bindings. -/
-theorem complete_unmodified (frame : Frame runtime leaks memory owner original repaired)
+theorem complete_unmodified (frame : Frame timeouts leaks memory owner original repaired)
     (event : graph.EventId) (leftReady : original.application.config.cut.Ready event)
     (rightReady : repaired.application.config.cut.Ready event)
     (noValue : memory.shadow.values (.inr event) = none)
     (noAction : memory.shadow.actions event = none)
     (action : graph.Action event) (value : (graph.outputLayout event).Value) :
-    Frame runtime leaks memory owner
+    Frame timeouts leaks memory owner
       { original with application := original.application.complete event leftReady action value }
       { repaired with
         application := repaired.application.complete event rightReady action value } := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   have application := congrArg ReactiveApplication.PlayerView.application frame.observed
   have reconstructed := memory.shadow.complete_unmodified_observation owner
     original.application.config repaired.application.config
@@ -184,7 +184,7 @@ theorem complete_unmodified (frame : Frame runtime leaks memory owner original r
 /-- Public chance has an explicit common-draw coupling of the two actual
 environment steps. Its support carries the full concrete frame, including the
 reconstructed owner input, not just the opponents' separate marginal laws. -/
-theorem sample_coupling (frame : Frame runtime leaks memory owner original repaired)
+theorem sample_coupling (frame : Frame timeouts leaks memory owner original repaired)
     (clear : original.application.config.defaulted = ∅)
     (onlyBindings : memory.shadow.OwnBindings owner)
     (event : graph.EventId) (ready : original.application.config.cut.Ready event)
@@ -193,14 +193,14 @@ theorem sample_coupling (frame : Frame runtime leaks memory owner original repai
     (codeEq : cast (congrArg (EventCode graph.layout) outputEq)
       (graph.nodes event) = .sample payload law)
     (node : nodeView graph event = .sample payload law outputEq codeEq) :
-    ∃ coupled : PMF ((runtime.reactiveApplication leaks).Execution ×
-        (runtime.reactiveApplication leaks).Execution),
-      coupled.map Prod.fst = original.environmentStep (runtime.reactiveApplication leaks)
+    ∃ coupled : PMF (((reactiveApplication timeouts) leaks).Execution ×
+        ((reactiveApplication timeouts) leaks).Execution),
+      coupled.map Prod.fst = original.environmentStep ((reactiveApplication timeouts) leaks)
           (.application (.executeSample event)) ∧
-      coupled.map Prod.snd = repaired.environmentStep (runtime.reactiveApplication leaks)
+      coupled.map Prod.snd = repaired.environmentStep ((reactiveApplication timeouts) leaks)
           (.application (.executeSample event)) ∧
-      ∀ pair ∈ coupled.support, Frame runtime leaks memory owner pair.1 pair.2 := by
-  let app := runtime.reactiveApplication leaks
+      ∀ pair ∈ coupled.support, Frame timeouts leaks memory owner pair.1 pair.2 := by
+  let app := (reactiveApplication timeouts) leaks
   have rightClear : repaired.application.config.defaulted = ∅ :=
     (congrArg (fun view : PublicView graph => view.observation.defaulted)
       frame.publicView).symm.trans clear
@@ -239,11 +239,11 @@ theorem sample_coupling (frame : Frame runtime leaks memory owner original repai
       (evaluates : law.eval? execution.application.config.store = some draw) :
       execution.environmentStep app (.application (.executeSample event)) =
         draw.map (next execution ready) := by
-    have applicationLaw : environmentStep runtime execution.application (.executeSample event) =
+    have applicationLaw : environmentStep timeouts execution.application (.executeSample event) =
         draw.map (fun value => execution.application.complete event ready
           (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)
           (cast (congrArg EventField.Value outputEq.symm) value)) := by
-      rw [environmentStep_executeSample_eq runtime execution.application event ready payload
+      rw [environmentStep_executeSample_eq timeouts execution.application event ready payload
         law outputEq codeEq node, execution.application.config.step_eq_map_of_code event ready
           outputEq (.sample payload law) codeEq PUnit.unit draw evaluates, PMF.map_comp]
       rfl
@@ -251,7 +251,7 @@ theorem sample_coupling (frame : Frame runtime leaks memory owner original repai
         draw.map (fun value => execution.application.complete event ready
           (cast (congrArg EventField.Action outputEq.symm) PUnit.unit)
           (cast (congrArg EventField.Value outputEq.symm) value)) := by
-      change (environmentStep runtime execution.application (.executeSample event)).map
+      change (environmentStep timeouts execution.application (.executeSample event)).map
         State.drain = _
       rw [applicationLaw, PMF.map_comp]
       apply congrArg draw.map

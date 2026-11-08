@@ -66,14 +66,14 @@ def TurnTiming.deferralError {setup : Setup (Player := Player) (L := L)}
 section Configured
 
 variable (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
-  (deadline : (serviceGraph setup mode).EventId → Nat)
+  (duration : (serviceGraph setup mode).EventId → Nat)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- The opportunity index of `who`'s current input at `event`: the number of its
 recorded turns at `event`, when `event` is its turn now. -/
 def serviceTurn (who : Player) (event : (serviceGraph setup mode).EventId)
-    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (view : (serviceApplication setup mode deadline leaks).PlayerView) : Option Nat :=
+    (past : List (serviceApplication setup mode duration leaks).PlayerEntry)
+    (view : (serviceApplication setup mode duration leaks).PlayerView) : Option Nat :=
   if view.application.publicView.ownTurn? who = some event then
     some (past.countP fun entry =>
       decide (entry.beforeView.application.publicView.ownTurn? who = some event))
@@ -83,18 +83,18 @@ def serviceTurn (who : Player) (event : (serviceGraph setup mode).EventId)
 def serviceReferenceTurnFamily (bound : (serviceGraph setup mode).EventId → Nat)
     (reference : (serviceGraph setup mode).BehavioralProfile) (who : Player)
     (event : (serviceGraph setup mode).EventId) (turns : Nat) (slot : Fin (turns + 1)) :
-    (serviceApplication setup mode deadline leaks).Policy :=
-  (serviceApplication setup mode deadline leaks).turnScheduledPolicy
-    (serviceTurn setup mode deadline leaks who event)
-    (some slot) (serviceReferenceOpportunity setup mode deadline leaks bound reference who event)
-    (serviceApplication setup mode deadline leaks).silentPolicy
+    (serviceApplication setup mode duration leaks).Policy :=
+  (serviceApplication setup mode duration leaks).turnScheduledPolicy
+    (serviceTurn setup mode duration leaks who event)
+    (some slot) (serviceReferenceOpportunity setup mode duration leaks bound reference who event)
+    (serviceApplication setup mode duration leaks).silentPolicy
 
 /-- Make the source decision at the selected turn and remain silent otherwise. -/
 def serviceTurnFamily (bound : (serviceGraph setup mode).EventId → Nat)
     (profile : BehavioralProfile setup.program) (who : Player)
     (event : (serviceGraph setup mode).EventId) (turns : Nat) (slot : Fin (turns + 1)) :
-    (serviceApplication setup mode deadline leaks).Policy :=
-  serviceReferenceTurnFamily setup mode deadline leaks bound
+    (serviceApplication setup mode duration leaks).Policy :=
+  serviceReferenceTurnFamily setup mode duration leaks bound
     (compileEventProfile setup.program profile) who event turns slot
 
 /-- A reference's turn-counted policy: at its own turn an owner follows the
@@ -102,21 +102,21 @@ behavioral realization of the event's timing lottery; otherwise it is silent. -/
 def serviceReferenceTurnPolicy (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (timing : TurnTiming setup turns mode)
     (reference : (serviceGraph setup mode).BehavioralProfile)
-    (who : Player) : (serviceApplication setup mode deadline leaks).Policy := fun past view =>
+    (who : Player) : (serviceApplication setup mode duration leaks).Policy := fun past view =>
   match view.application.publicView.ownTurn? who with
-  | none => (serviceApplication setup mode deadline leaks).silentPolicy past view
+  | none => (serviceApplication setup mode duration leaks).silentPolicy past view
   | some event =>
       if owned : (serviceGraph setup mode).actor? event = some who then
-        ((serviceApplication setup mode deadline leaks).policyMixture (timing event who owned)
-          (serviceReferenceTurnFamily setup mode deadline leaks bound reference who event
+        ((serviceApplication setup mode duration leaks).policyMixture (timing event who owned)
+          (serviceReferenceTurnFamily setup mode duration leaks bound reference who event
             turns)).policy past view
-      else (serviceApplication setup mode deadline leaks).silentPolicy past view
+      else (serviceApplication setup mode duration leaks).silentPolicy past view
 
 /-- The turn-counted prescribed policy of the compiled source profile. -/
 def serviceTurnPolicy (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
-    (who : Player) : (serviceApplication setup mode deadline leaks).Policy :=
-  serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing
+    (who : Player) : (serviceApplication setup mode duration leaks).Policy :=
+  serviceReferenceTurnPolicy setup mode duration leaks bound turns timing
     (compileEventProfile setup.program profile) who
 
 /-- **A reference's client policy.** The turn-counted policy, completed by
@@ -125,15 +125,15 @@ follow it. -/
 def serviceReferenceClientPolicy (bound : (serviceGraph setup mode).EventId → Nat)
     (turns : Nat) (timing : TurnTiming setup turns mode)
     (reference : (serviceGraph setup mode).BehavioralProfile)
-    (who : Player) : (serviceApplication setup mode deadline leaks).Policy :=
-  (serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing reference who).recover
-    (serviceApplication setup mode deadline leaks).silentPolicy
+    (who : Player) : (serviceApplication setup mode duration leaks).Policy :=
+  (serviceReferenceTurnPolicy setup mode duration leaks bound turns timing reference who).recover
+    (serviceApplication setup mode duration leaks).silentPolicy
 
 /-- **The client policy** of the compiled source profile. -/
 def serviceClientPolicy (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
-    (who : Player) : (serviceApplication setup mode deadline leaks).Policy :=
-  serviceReferenceClientPolicy setup mode deadline leaks bound turns timing
+    (who : Player) : (serviceApplication setup mode duration leaks).Policy :=
+  serviceReferenceClientPolicy setup mode duration leaks bound turns timing
     (compileEventProfile setup.program profile) who
 
 end Configured
@@ -141,52 +141,52 @@ end Configured
 section ClientRuns
 
 variable {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 /-- Completing clients after their own off-policy responses preserves their run law. -/
 theorem sourceServiceClientPolicy_roundsFrom
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
     (count : Nat) :
-    (serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
-      scheduler (serviceClientPolicy setup mode deadline leaks bound turns timing profile) count =
-      (serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
-        scheduler (serviceTurnPolicy setup mode deadline leaks bound turns timing profile)
+    (serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
+      scheduler (serviceClientPolicy setup mode duration leaks bound turns timing profile) count =
+      (serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler (serviceTurnPolicy setup mode duration leaks bound turns timing profile)
         count := by
   unfold ReactiveApplication.roundsFrom
   congr 1
   funext state
   have completed := ReactiveApplication.Policy.recoverWhere_runRounds
-    (serviceTurnPolicy setup mode deadline leaks bound turns timing profile) (fun _ => True)
-    (fun _ => (serviceApplication setup mode deadline leaks).silentPolicy) scheduler count
-    (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks) state)
+    (serviceTurnPolicy setup mode duration leaks bound turns timing profile) (fun _ => True)
+    (fun _ => (serviceApplication setup mode duration leaks).silentPolicy) scheduler count
+    (ReactiveApplication.Execution.initial (serviceApplication setup mode duration leaks) state)
       (fun _ _ => .nil)
   simp only [ite_true] at completed
   exact completed
 
 /-- Against a unilateral deviation, completing the other clients preserves the run law. -/
 theorem sourceServiceClientPolicy_deviation_roundsFrom
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
-    (who : Player) (alternative : (serviceApplication setup mode deadline leaks).Policy)
+    (who : Player) (alternative : (serviceApplication setup mode duration leaks).Policy)
     (count : Nat) :
-    (serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+    (serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
       scheduler (Function.update
-        (serviceClientPolicy setup mode deadline leaks bound turns timing profile)
+        (serviceClientPolicy setup mode duration leaks bound turns timing profile)
         who alternative) count =
-      (serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+      (serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
         scheduler (Function.update
-          (serviceTurnPolicy setup mode deadline leaks bound turns timing profile)
+          (serviceTurnPolicy setup mode duration leaks bound turns timing profile)
           who alternative) count := by
   let players := Function.update
-    (serviceTurnPolicy setup mode deadline leaks bound turns timing profile) who alternative
+    (serviceTurnPolicy setup mode duration leaks bound turns timing profile) who alternative
   have shape : Function.update
-      (serviceClientPolicy setup mode deadline leaks bound turns timing profile) who alternative =
+      (serviceClientPolicy setup mode duration leaks bound turns timing profile) who alternative =
       fun player => if player ≠ who then (players player).recover
-        (serviceApplication setup mode deadline leaks).silentPolicy else players player := by
+        (serviceApplication setup mode duration leaks).silentPolicy else players player := by
     funext player
     by_cases same : player = who
     · subst player
@@ -198,8 +198,8 @@ theorem sourceServiceClientPolicy_deviation_roundsFrom
   congr 1
   funext state
   exact ReactiveApplication.Policy.recoverWhere_runRounds players (fun player => player ≠ who)
-    (fun _ => (serviceApplication setup mode deadline leaks).silentPolicy) scheduler count
-    (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks) state)
+    (fun _ => (serviceApplication setup mode duration leaks).silentPolicy) scheduler count
+    (ReactiveApplication.Execution.initial (serviceApplication setup mode duration leaks) state)
       (fun _ _ => .nil)
 
 end ClientRuns
@@ -207,33 +207,33 @@ end ClientRuns
 /-- The first-turn clients of a source profile have, through the supplied reader,
 the complete terminal configuration law of the profile's source run. -/
 def FirstTurnReadoutLaw (setup : Setup (Player := Player) (L := L))
-    (mode : EventGraph.ExecutionMode) (deadline : (serviceGraph setup mode).EventId → Nat)
+    (mode : EventGraph.ExecutionMode) (duration : (serviceGraph setup mode).EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (reader : (serviceApplication setup mode deadline leaks).ProtocolState →
+    (reader : (serviceApplication setup mode duration leaks).ProtocolState →
       Option (Config Player L setup.program.terminalCtx))
-    (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (horizon : Nat) (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (profile : BehavioralProfile setup.program) : Prop :=
-  ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
-    scheduler (serviceTurnPolicy setup mode deadline leaks bound turns
+  ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
+    scheduler (serviceTurnPolicy setup mode duration leaks bound turns
       (firstTurnTiming setup turns mode) profile) horizon).map
-      (fun execution => reader ((serviceApplication setup mode deadline leaks).finished
+      (fun execution => reader ((serviceApplication setup mode duration leaks).finished
         execution)) =
     (setup.run profile).map some
 
 /-- The first-turn clients of a source profile have the complete terminal
 configuration law of the profile's source run. -/
 def FirstTurnSourceLaw (setup : Setup (Player := Player) (L := L))
-    (mode : EventGraph.ExecutionMode) (deadline : (serviceGraph setup mode).EventId → Nat)
+    (mode : EventGraph.ExecutionMode) (duration : (serviceGraph setup mode).EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (horizon : Nat) (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (profile : BehavioralProfile setup.program) : Prop :=
-  ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
-    scheduler (serviceTurnPolicy setup mode deadline leaks bound turns
+  ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
+    scheduler (serviceTurnPolicy setup mode duration leaks bound turns
       (firstTurnTiming setup turns mode) profile) horizon).map
-      (fun execution => serviceSourceReadout setup mode deadline leaks
-        ((serviceApplication setup mode deadline leaks).finished execution)) =
+      (fun execution => serviceSourceReadout setup mode duration leaks
+        ((serviceApplication setup mode duration leaks).finished execution)) =
     (setup.run profile).map some
 
 variable (setup : Setup (Player := Player) (L := L))
@@ -242,15 +242,15 @@ variable (setup : Setup (Player := Player) (L := L))
 section Generic
 
 variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- An input that is not the player's turn at `event` is not an opportunity. -/
 theorem sourceServiceTurn_of_not_turn (who : Player) (event : (serviceGraph setup mode).EventId)
-    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (view : (serviceApplication setup mode deadline leaks).PlayerView)
+    (past : List (serviceApplication setup mode duration leaks).PlayerEntry)
+    (view : (serviceApplication setup mode duration leaks).PlayerView)
     (other : view.application.publicView.ownTurn? who ≠ some event) :
-    serviceTurn setup mode deadline leaks who event past view = none := by
+    serviceTurn setup mode duration leaks who event past view = none := by
   simp only [serviceTurn, other, ↓reduceIte]
 
 /-- At its own turn a player follows the event's timing mixture. -/
@@ -258,15 +258,15 @@ theorem sourceServiceTurnPolicy_turn_reference (bound : (serviceGraph setup mode
     (turns : Nat)
     (timing : TurnTiming setup turns mode)
     (reference : (serviceGraph setup mode).BehavioralProfile) (who : Player)
-    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (view : (serviceApplication setup mode deadline leaks).PlayerView)
+    (past : List (serviceApplication setup mode duration leaks).PlayerEntry)
+    (view : (serviceApplication setup mode duration leaks).PlayerView)
     (event : (serviceGraph setup mode).EventId)
     (owned : (serviceGraph setup mode).actor? event = some who)
     (serving : view.application.publicView.ownTurn? who = some event) :
-    serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing reference who past
+    serviceReferenceTurnPolicy setup mode duration leaks bound turns timing reference who past
       view =
-      ((serviceApplication setup mode deadline leaks).policyMixture (timing event who owned)
-        (serviceReferenceTurnFamily setup mode deadline leaks bound reference who event
+      ((serviceApplication setup mode duration leaks).policyMixture (timing event who owned)
+        (serviceReferenceTurnFamily setup mode duration leaks bound reference who event
           turns)).policy past
         view := by
   simp only [serviceReferenceTurnPolicy, serving, owned, ↓reduceDIte]
@@ -275,14 +275,14 @@ theorem sourceServiceTurnPolicy_turn_reference (bound : (serviceGraph setup mode
 theorem sourceServiceTurnPolicy_turn (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (timing : TurnTiming setup turns mode)
     (profile : BehavioralProfile setup.program) (who : Player)
-    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (view : (serviceApplication setup mode deadline leaks).PlayerView)
+    (past : List (serviceApplication setup mode duration leaks).PlayerEntry)
+    (view : (serviceApplication setup mode duration leaks).PlayerView)
     (event : (serviceGraph setup mode).EventId)
     (owned : (serviceGraph setup mode).actor? event = some who)
     (serving : view.application.publicView.ownTurn? who = some event) :
-    serviceTurnPolicy setup mode deadline leaks bound turns timing profile who past view =
-      ((serviceApplication setup mode deadline leaks).policyMixture (timing event who owned)
-        (serviceTurnFamily setup mode deadline leaks bound profile who event turns)).policy past
+    serviceTurnPolicy setup mode duration leaks bound turns timing profile who past view =
+      ((serviceApplication setup mode duration leaks).policyMixture (timing event who owned)
+        (serviceTurnFamily setup mode duration leaks bound profile who event turns)).policy past
         view :=
   sourceServiceTurnPolicy_turn_reference setup leaks bound turns timing
     (compileEventProfile setup.program profile) who past view event owned serving
@@ -294,9 +294,9 @@ variable {setup leaks}
 /-- At the first turn no earlier recorded response saw the event as the
 player's turn. -/
 theorem sourceServiceTurn_first {owner : Player} {event : (serviceGraph setup mode).EventId}
-    {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
-    {view : (serviceApplication setup mode deadline leaks).PlayerView}
-    (first : serviceTurn setup mode deadline leaks owner event past view = some 0) :
+    {past : List (serviceApplication setup mode duration leaks).PlayerEntry}
+    {view : (serviceApplication setup mode duration leaks).PlayerView}
+    (first : serviceTurn setup mode duration leaks owner event past view = some 0) :
     view.application.publicView.ownTurn? owner = some event ∧
       ∀ entry ∈ past, entry.beforeView.application.publicView.ownTurn? owner ≠ some event := by
   unfold serviceTurn at first
@@ -311,18 +311,18 @@ theorem sourceServiceTurn_first {owner : Player} {event : (serviceGraph setup mo
 theorem sourceServiceTurnPolicy_firstTurn_reference {bound :
     (serviceGraph setup mode).EventId → Nat}
     {turns : Nat} {reference : (serviceGraph setup mode).BehavioralProfile} {who : Player}
-    {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
-    {view : (serviceApplication setup mode deadline leaks).PlayerView}
+    {past : List (serviceApplication setup mode duration leaks).PlayerEntry}
+    {view : (serviceApplication setup mode duration leaks).PlayerView}
     {event : (serviceGraph setup mode).EventId}
     (owned : (serviceGraph setup mode).actor? event = some who)
-    (first : serviceTurn setup mode deadline leaks who event past view = some 0) :
-    serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+    (first : serviceTurn setup mode duration leaks who event past view = some 0) :
+    serviceReferenceTurnPolicy setup mode duration leaks bound turns
       (firstTurnTiming setup turns mode)
         reference who past view =
-      serviceReferenceOpportunity setup mode deadline leaks bound reference who event past view
+      serviceReferenceOpportunity setup mode duration leaks bound reference who event past view
         := by
-  let app := serviceApplication setup mode deadline leaks
-  let family := serviceReferenceTurnFamily setup mode deadline leaks bound reference who event turns
+  let app := serviceApplication setup mode duration leaks
+  let family := serviceReferenceTurnFamily setup mode duration leaks bound reference who event turns
   have pin : (app.policyMixture (PMF.pure (0 : Fin (turns + 1))) family).posterior past =
       PMF.pure 0 := by
     simpa only [List.nil_append] using app.policyMixture_posterior_pure_append
@@ -337,14 +337,14 @@ theorem sourceServiceTurnPolicy_firstTurn_reference {bound :
 /-- A pure first-turn timing retains its selection after every own transcript. -/
 theorem sourceServiceTurnPolicy_firstTurn {bound : (serviceGraph setup mode).EventId → Nat}
     {turns : Nat} {profile : BehavioralProfile setup.program} {who : Player}
-    {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
-    {view : (serviceApplication setup mode deadline leaks).PlayerView}
+    {past : List (serviceApplication setup mode duration leaks).PlayerEntry}
+    {view : (serviceApplication setup mode duration leaks).PlayerView}
     {event : (serviceGraph setup mode).EventId}
     (owned : (serviceGraph setup mode).actor? event = some who)
-    (first : serviceTurn setup mode deadline leaks who event past view = some 0) :
-    serviceTurnPolicy setup mode deadline leaks bound turns (firstTurnTiming setup turns mode)
+    (first : serviceTurn setup mode duration leaks who event past view = some 0) :
+    serviceTurnPolicy setup mode duration leaks bound turns (firstTurnTiming setup turns mode)
         profile who past view =
-      serviceCanonicalOpportunity setup mode deadline leaks bound profile who event past view := by
+      serviceCanonicalOpportunity setup mode duration leaks bound profile who event past view := by
   apply sourceServiceTurnPolicy_firstTurn_reference
     (reference := compileEventProfile setup.program profile) <;> assumption
 
@@ -353,17 +353,17 @@ theorem sourceServiceTurnPolicy_firstTurn {bound : (serviceGraph setup mode).Eve
 theorem sourceServiceTurnPolicy_laterTurn_reference {bound :
     (serviceGraph setup mode).EventId → Nat}
     {turns : Nat} {reference : (serviceGraph setup mode).BehavioralProfile} {who : Player}
-    {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
-    {view : (serviceApplication setup mode deadline leaks).PlayerView}
+    {past : List (serviceApplication setup mode duration leaks).PlayerEntry}
+    {view : (serviceApplication setup mode duration leaks).PlayerView}
     {event : (serviceGraph setup mode).EventId}
     (owned : (serviceGraph setup mode).actor? event = some who)
     (serving : view.application.publicView.ownTurn? who = some event)
-    (later : serviceTurn setup mode deadline leaks who event past view ≠ some 0) :
-    serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+    (later : serviceTurn setup mode duration leaks who event past view ≠ some 0) :
+    serviceReferenceTurnPolicy setup mode duration leaks bound turns
       (firstTurnTiming setup turns mode)
         reference who past view = PMF.pure ⟨none⟩ := by
-  let app := serviceApplication setup mode deadline leaks
-  let family := serviceReferenceTurnFamily setup mode deadline leaks bound reference who event turns
+  let app := serviceApplication setup mode duration leaks
+  let family := serviceReferenceTurnFamily setup mode duration leaks bound reference who event turns
   have pin : (app.policyMixture (PMF.pure (0 : Fin (turns + 1))) family).posterior past =
       PMF.pure 0 := by
     simpa only [List.nil_append] using app.policyMixture_posterior_pure_append
@@ -379,13 +379,13 @@ theorem sourceServiceTurnPolicy_laterTurn_reference {bound :
 /-- A pure first-turn client is silent at every later turn at the event. -/
 theorem sourceServiceTurnPolicy_laterTurn {bound : (serviceGraph setup mode).EventId → Nat}
     {turns : Nat} {profile : BehavioralProfile setup.program} {who : Player}
-    {past : List (serviceApplication setup mode deadline leaks).PlayerEntry}
-    {view : (serviceApplication setup mode deadline leaks).PlayerView}
+    {past : List (serviceApplication setup mode duration leaks).PlayerEntry}
+    {view : (serviceApplication setup mode duration leaks).PlayerView}
     {event : (serviceGraph setup mode).EventId}
     (owned : (serviceGraph setup mode).actor? event = some who)
     (serving : view.application.publicView.ownTurn? who = some event)
-    (later : serviceTurn setup mode deadline leaks who event past view ≠ some 0) :
-    serviceTurnPolicy setup mode deadline leaks bound turns (firstTurnTiming setup turns mode)
+    (later : serviceTurn setup mode duration leaks who event past view ≠ some 0) :
+    serviceTurnPolicy setup mode duration leaks bound turns (firstTurnTiming setup turns mode)
         profile who past view = PMF.pure ⟨none⟩ := by
   apply sourceServiceTurnPolicy_laterTurn_reference
     (reference := compileEventProfile setup.program profile) <;> assumption

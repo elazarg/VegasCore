@@ -27,19 +27,19 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
-  [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+  (scheduler : (application setup timeouts leaks).Scheduler)
+  [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)]
 
 local notation "onePacketN" =>
-  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
 
-omit [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+omit [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler).InfoState who)] in
 /-- **A forced debt-free first activation.** At a history of a first activation
 of `who` for its pending event, forced for `who` with no player owing a failure
@@ -49,27 +49,27 @@ rank and decodes there to a point of the intended game reached by the intended
 game. -/
 theorem firstActivation_history_facts (wellFormed : setup.WellFormed) {who : Player}
     (site : (onePacketN).InformationSite who) {event : (graph setup).EventId}
-    (pending : pendingEvent setup runtime leaks who site.1 = some event)
-    (first : ¬ LateDelivery setup runtime leaks who site.1)
+    (pending : pendingEvent setup timeouts leaks who site.1 = some event)
+    (first : ¬ LateDelivery setup timeouts leaks who site.1)
     (history : (onePacketN).InformationHistory who site.1)
-    (forced : ForcedState setup runtime leaks who history.1.state)
-    (regular : ∀ point, nativeDecodedState setup runtime leaks history.1.state = some point →
+    (forced : ForcedState setup timeouts leaks who history.1.state)
+    (regular : ∀ point, nativeDecodedState setup timeouts leaks history.1.state = some point →
       ∀ player, ¬ ProtocolState.OwesFailure player setup.program point) :
-    ∃ (remaining : Nat) (execution : (application setup runtime leaks).Execution)
+    ∃ (remaining : Nat) (execution : (application setup timeouts leaks).Execution)
       (point : ProtocolState setup.program),
       history.1.state = some ⟨remaining, some who, execution⟩ ∧
-      site.1 = some (execution.logs who, execution.observe (application setup runtime leaks)
+      site.1 = some (execution.logs who, execution.observe (application setup timeouts leaks)
         who) ∧
-      (∀ entry ∈ execution.logs who, ¬ ActivatedAt setup runtime leaks who event entry) ∧
-      execution.application.config.cut.IsPrefix (siteRank (runtime := runtime) site.1) ∧
-      sourceServicePrefix? setup (siteRank (runtime := runtime) site.1)
+      (∀ entry ∈ execution.logs who, ¬ ActivatedAt setup timeouts leaks who event entry) ∧
+      execution.application.config.cut.IsPrefix (siteRank (timeouts := timeouts) site.1) ∧
+      sourceServicePrefix? setup (siteRank (timeouts := timeouts) site.1)
         execution.application.config = some point ∧
       ProtocolState.Intended setup.program point ∧ IntendedReached setup point := by
-  let menu := bounds.onePacketMenu runtime leaks
+  let menu := bounds.onePacketMenu timeouts leaks
   obtain ⟨start, observed⟩ := history
-  change ForcedState setup runtime leaks who start.state at forced
-  change ∀ point, nativeDecodedState setup runtime leaks start.state = some point → _ at regular
-  have observedState : (application setup runtime leaks).observe who start.state = site.1 :=
+  change ForcedState setup timeouts leaks who start.state at forced
+  change ∀ point, nativeDecodedState setup timeouts leaks start.state = some point → _ at regular
+  have observedState : (application setup timeouts leaks).observe who start.state = site.1 :=
     (menu.info (initialLaw setup) horizon scheduler who start.trace).symm.trans observed
   rcases startState : start.state with _ | ⟨remaining, actor, execution⟩
   · rw [startState] at forced
@@ -84,29 +84,29 @@ theorem firstActivation_history_facts (wellFormed : setup.WellFormed) {who : Pla
   simp only [ReactiveApplication.observe, ↓reduceIte] at observedState
   have trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace
       (some ⟨remaining, some who, execution⟩) := startState ▸ start.trace
-  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩) :=
     menu.toRawTrace (initialLaw setup) horizon scheduler trace
-  have pendingAt : pendingEvent setup runtime leaks who (some (execution.logs who,
-      execution.observe (application setup runtime leaks) who)) = some event := by
+  have pendingAt : pendingEvent setup timeouts leaks who (some (execution.logs who,
+      execution.observe (application setup timeouts leaks) who)) = some event := by
     rw [observedState]
     exact pending
-  obtain ⟨turn, _, owned, _⟩ := pendingEvent_spec (runtime := runtime) pendingAt
-  have never : ∀ entry ∈ execution.logs who, ¬ ActivatedAt setup runtime leaks who event entry :=
+  obtain ⟨turn, _, owned, _⟩ := pendingEvent_spec (timeouts := timeouts) pendingAt
+  have never : ∀ entry ∈ execution.logs who, ¬ ActivatedAt setup timeouts leaks who event entry :=
     fun entry member activated => first
       ⟨_, _, event, observedState.symm, pending, entry, member, activated⟩
   -- The decoded point is intended and reached by the intended game.
-  obtain ⟨point, pointDecoded, forcedPoint⟩ := (forcedState_iff_decodedPoint (runtime := runtime)
+  obtain ⟨point, pointDecoded, forcedPoint⟩ := (forcedState_iff_decodedPoint (timeouts := timeouts)
     _).mp forced
-  obtain ⟨found, ordered, _⟩ := pendingAt_history (runtime := runtime) rawTrace
-  have rankEq : siteRank (runtime := runtime) site.1 = found := by
+  obtain ⟨found, ordered, _⟩ := pendingAt_history (timeouts := timeouts) rawTrace
+  have rankEq : siteRank (timeouts := timeouts) site.1 = found := by
     rw [← observedState]
     change (execution.application.config.history.map EventCompletion.event).length = found
     rw [List.length_map]
     exact history_length_of_isPrefix _ ordered
   have decoded : sourceServicePrefix? setup found execution.application.config = some point :=
     (decodedPoint_eq_of_isPrefix ordered).symm.trans pointDecoded
-  obtain ⟨decodedRank, ⟨residual⟩, holds⟩ := decodedState_intended_or_owes (runtime := runtime)
+  obtain ⟨decodedRank, ⟨residual⟩, holds⟩ := decodedState_intended_or_owes (timeouts := timeouts)
     wellFormed
     (failureProfile setup.program) menu horizon scheduler trace _ rfl
   have sameRank := EventOrder.Cut.IsPrefix.unique residual.checkpoint.ordered ordered
@@ -120,13 +120,13 @@ theorem firstActivation_history_facts (wellFormed : setup.WellFormed) {who : Pla
     rcases holds point decoded with intendedHere | ⟨player, owed⟩
     · exact intendedHere
     · exact (regular point pointDecoded player owed).elim
-  obtain ⟨replay, replayed⟩ := intendedHistory?_isSome_of_debtFree (runtime := runtime) wellFormed
+  obtain ⟨replay, replayed⟩ := intendedHistory?_isSome_of_debtFree (timeouts := timeouts) wellFormed
     trace _ rfl
     (fun found foundDecoded player => regular found foundDecoded player)
   have reached : IntendedReached setup point :=
-    ⟨replay, (intendedHistory?_state (runtime := runtime) trace replayed).trans pointDecoded⟩
+    ⟨replay, (intendedHistory?_state (timeouts := timeouts) trace replayed).trans pointDecoded⟩
   have freshOf : ∀ control, ¬ StoreEventFailed control.execution.application.config.store
-      event → siteFresh (runtime := runtime) who site.1 control := fun control notFailed => by
+      event → siteFresh (timeouts := timeouts) who site.1 control := fun control notFailed => by
     simpa only [siteFresh, pending] using notFailed
   rw [rankEq]
   exact ⟨remaining, execution, point, rfl, observedState.symm, never, ordered, decoded,

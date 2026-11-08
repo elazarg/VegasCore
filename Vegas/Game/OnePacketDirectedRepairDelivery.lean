@@ -17,19 +17,19 @@ open SourceProgram Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 namespace DirectedBindingFrame
 
-variable {memory : BindingMemory runtime leaks} {owner : Player}
-  {original repaired : (application setup runtime leaks).Execution}
+variable {memory : BindingMemory timeouts leaks} {owner : Player}
+  {original repaired : (application setup timeouts leaks).Execution}
 
 /-- Successful original bindings deliver the same value after directed repair.
 This permits explicitly remembered usable bindings; no empty-shadow premise is
 needed. At non-reveal turns there is no delivered value on either side. -/
 theorem deliveredValue_of_successful
-    (frame : DirectedBindingFrame (runtime := runtime) memory owner original repaired)
+    (frame : DirectedBindingFrame (timeouts := timeouts) memory owner original repaired)
     (unfailed : ∀ event payload
       (binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload))
       (checks : List (EventGraph.GuardCheck (graph setup).layout payload))
@@ -39,9 +39,9 @@ theorem deliveredValue_of_successful
       original.application.publicView.ownTurn? owner = some event →
       nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
       ∃ value, binding.get? original.application.config.store = some (.success value)) :
-    deliveredValue setup runtime leaks owner (original.observe (application setup runtime leaks)
+    deliveredValue setup timeouts leaks owner (original.observe (application setup timeouts leaks)
       owner) =
-      deliveredValue setup runtime leaks owner (repaired.observe (application setup runtime leaks)
+      deliveredValue setup timeouts leaks owner (repaired.observe (application setup timeouts leaks)
         owner) := by
   have sameTurn : repaired.application.publicView.ownTurn? owner =
       original.application.publicView.ownTurn? owner :=

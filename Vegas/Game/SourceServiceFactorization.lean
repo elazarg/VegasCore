@@ -28,16 +28,16 @@ variable {Player : Type} [DecidableEq Player]
 traffic projections, including the genuine owned initial candidate catalogue. -/
 theorem source_initial_traffic_eq
     (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-    {deadline : (serviceGraph setup mode).EventId → Nat}
+    {duration : (serviceGraph setup mode).EventId → Nat}
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     (focal : Player) (left right : State L setup.context)
     (same : (Config.initial left).view focal = (Config.initial right).view focal) :
-    (serviceRuntime setup mode deadline).bindingTraffic leaks focal
-        (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks)
+    (bindingTraffic (serviceTimeouts setup mode duration)) leaks focal
+        (ReactiveApplication.Execution.initial (serviceApplication setup mode duration leaks)
           (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
               (setup.eventInputs left))) =
-      (serviceRuntime setup mode deadline).bindingTraffic leaks focal
-        (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks)
+      (bindingTraffic (serviceTimeouts setup mode duration)) leaks focal
+        (ReactiveApplication.Execution.initial (serviceApplication setup mode duration leaks)
           (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
               (setup.eventInputs right))) := by
   have first := SourceCheckpoint.initial (mode := mode) setup left
@@ -72,22 +72,22 @@ theorem source_initial_traffic_eq
 supplied initial law, without an independence assumption on private types. -/
 theorem source_initial_traffic_factorization
     (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-    {deadline : (serviceGraph setup mode).EventId → Nat}
+    {duration : (serviceGraph setup mode).EventId → Nat}
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     (focal : Player) :
     ∃ noise : DecisionView focal setup.context → PMF _,
       setup.initialLaw.map (fun initial =>
         (Config.initial initial,
-          (serviceRuntime setup mode deadline).bindingTraffic leaks focal
-            (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks)
+          (bindingTraffic (serviceTimeouts setup mode duration)) leaks focal
+            (ReactiveApplication.Execution.initial (serviceApplication setup mode duration leaks)
               (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
                 (setup.eventInputs initial))))) =
       (setup.initialLaw.map Config.initial).bind fun source =>
         (noise (source.view focal)).map fun extra => (source, extra) := by
   classical
   let read := fun initial : State L setup.context =>
-    (serviceRuntime setup mode deadline).bindingTraffic leaks focal
-      (ReactiveApplication.Execution.initial (serviceApplication setup mode deadline leaks)
+    (bindingTraffic (serviceTimeouts setup mode duration)) leaks focal
+      (ReactiveApplication.Execution.initial (serviceApplication setup mode duration leaks)
         (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)
             (setup.eventInputs initial)))
   let noise := fun view : DecisionView focal setup.context =>

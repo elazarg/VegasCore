@@ -22,10 +22,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **One target.** Under a scheduler completing play, from a history at which
 the openable-commitment invariant holds for the binding of rank `rank`, whose
@@ -35,11 +35,11 @@ which the committed action's source action reaches the intended point
 or `target`, for every property `fresh` of controls that fails when the event
 has failed. -/
 theorem completionPoint_of_openableCommitment
-    (certificate : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+    (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
       horizon scheduler).WellFoundedHistories)
-    (players : ∀ player, ((bounds.onePacketMenu runtime leaks).information
+    (players : ∀ player, ((bounds.onePacketMenu timeouts leaks).information
       (initialLaw setup) horizon scheduler).BehavioralPolicy player)
-    {who : Player} {entry : (application setup runtime leaks).PlayerEntry}
+    {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
     {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
     {candidate : Handle (graph setup)} {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding who payload}
@@ -52,32 +52,32 @@ theorem completionPoint_of_openableCommitment
     {rank : Nat} {profile : BehavioralProfile setup.program}
     (residual : SourceResidual setup profile rank sent) {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank sent = some point)
-    (terminalCompleted : ∀ (final : (application setup runtime leaks).Control),
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (terminalCompleted : ∀ (final : (application setup timeouts leaks).Control),
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some final) →
-      (application setup runtime leaks).terminal (some final) →
+      (application setup timeouts leaks).terminal (some final) →
       final.execution.application.config = sent →
       event ∈ final.execution.application.config.cut.completed)
     {target : ProtocolState setup.program}
     (stepEq : ProtocolState.step setup.program point
       (fun _ => decodeEventAction setup.program event action) = PMF.pure target)
-    {fresh : (application setup runtime leaks).Control → Prop}
+    {fresh : (application setup timeouts leaks).Control → Prop}
     (failedStale : ∀ control, StoreEventFailed control.execution.application.config.store event →
       ¬ fresh control)
-    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).History)
-    (holds : OpenableCommitmentInvariant setup runtime leaks bounds horizon scheduler who entry
+    (holds : OpenableCommitmentInvariant setup timeouts leaks bounds horizon scheduler who entry
       message
       event candidate outputEq value sent ready action start.state) :
-    ∀ stop ∈ (((bounds.onePacketMenu runtime leaks).information (initialLaw setup)
+    ∀ stop ∈ (((bounds.onePacketMenu timeouts leaks).information (initialLaw setup)
         horizon scheduler).runBehavioralUntil certificate players
-        (LateStopped setup runtime leaks bounds horizon scheduler rank) start).support,
-      completionPoint setup runtime leaks bounds horizon scheduler rank fresh stop = none ∨
-        completionPoint setup runtime leaks bounds horizon scheduler rank fresh stop = some target
+        (LateStopped setup timeouts leaks bounds horizon scheduler rank) start).support,
+      completionPoint setup timeouts leaks bounds horizon scheduler rank fresh stop = none ∨
+        completionPoint setup timeouts leaks bounds horizon scheduler rank fresh stop = some target
           := by
   classical
   intro stop member
-  obtain ⟨final, finalState, completed⟩ := openableCommitment_stop (runtime := runtime) bounds
+  obtain ⟨final, finalState, completed⟩ := openableCommitment_stop (timeouts := timeouts) bounds
     horizon scheduler certificate players codeEq successful residual.checkpoint.ordered
       terminalCompleted start holds stop member
   rcases completed with failed | ⟨primary, inStep, drained⟩
@@ -135,17 +135,18 @@ omit [Fintype Player] in
 supplied runtime, a completed binding of `who` for which the recall of `who`
 records no submission holds a failure: a success would have an accepted handle
 of `who`, which an emitted commitment of `who` signs. -/
-theorem storeEventFailed_of_unrecorded {control : (application setup runtime leaks).Control}
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+theorem storeEventFailed_of_unrecorded {control : (application setup timeouts leaks).Control}
+    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace
       (some control))
     {who : Player} {event : (graph setup).EventId} {payload : L.Ty}
     (outputEq : (graph setup).outputLayout event = .binding who payload)
     (done : event ∈ control.execution.application.config.cut.completed)
-    (unrecorded : runtime.eventRecorded leaks (control.execution.logs who) event =
+    (unrecorded : (eventRecorded timeouts) leaks (control.execution.logs who) event =
       false) :
     StoreEventFailed control.execution.application.config.store event := by
   have facts := legalFacts setup leaks horizon scheduler _ trace
-  have signed := signedCommitments_history runtime leaks (initialLaw setup)
+  have signed := signedCommitments_history timeouts leaks (initialLaw setup)
     (serviceInitialLaw_initialized setup) horizon scheduler trace
   obtain ⟨stored, storedEq⟩ := Option.isSome_iff_exists.mp
     ((control.execution.application.config.output_available event).mpr done)
@@ -170,7 +171,7 @@ theorem storeEventFailed_of_unrecorded {control : (application setup runtime lea
       rw [ownerEq] at output
       obtain ⟨entry, member, emitted⟩ := List.mem_filterMap.mp output
       obtain ⟨_, material, sent, packet⟩ := signed.emissions who entry member message emitted
-      have recorded := (runtime.eventRecorded_iff leaks _ event).mpr ⟨entry, member, ?_⟩
+      have recorded := ((eventRecorded_iff timeouts) leaks _ event).mpr ⟨entry, member, ?_⟩
       · rw [unrecorded] at recorded
         cases recorded
       · unfold EventGraphRuntime.submittedEvent?
@@ -181,32 +182,32 @@ theorem storeEventFailed_of_unrecorded {control : (application setup runtime lea
 
 section Payoffs
 
-variable (setup runtime leaks bounds horizon scheduler)
+variable (setup timeouts leaks bounds horizon scheduler)
 
 /-- **The centered completion value** of a stop: the value at its completion
 point less `center`, and zero without one. -/
-def centeredCompletion (rank : Nat) (fresh : (application setup runtime leaks).Control → Prop)
+def centeredCompletion (rank : Nat) (fresh : (application setup timeouts leaks).Control → Prop)
     (value : ProtocolState setup.program → ℝ) (center : ℝ)
-    (stop : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (stop : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).History) : ℝ :=
-  (completionPoint setup runtime leaks bounds horizon scheduler rank fresh stop).elim 0
+  (completionPoint setup timeouts leaks bounds horizon scheduler rank fresh stop).elim 0
     fun point => value point - center
 
 /-- **The completion mass** of a stop: one when it has a completion point. -/
-def completionIndicator (rank : Nat) (fresh : (application setup runtime leaks).Control → Prop)
-    (stop : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+def completionIndicator (rank : Nat) (fresh : (application setup timeouts leaks).Control → Prop)
+    (stop : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).History) : ℝ :=
-  (completionPoint setup runtime leaks bounds horizon scheduler rank fresh stop).elim 0 fun _ => 1
+  (completionPoint setup timeouts leaks bounds horizon scheduler rank fresh stop).elim 0 fun _ => 1
 
 end Payoffs
 
 /-- The completion point reads only the state. -/
-theorem completionPoint_congr_state {rank : Nat} {fresh : (application setup runtime
+theorem completionPoint_congr_state {rank : Nat} {fresh : (application setup timeouts
   leaks).Control → Prop}
-    {first second : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+    {first second : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
       horizon scheduler).History} (same : first.state = second.state) :
-    completionPoint setup runtime leaks bounds horizon scheduler rank fresh first =
-      completionPoint setup runtime leaks bounds horizon scheduler rank fresh second := by
+    completionPoint setup timeouts leaks bounds horizon scheduler rank fresh first =
+      completionPoint setup timeouts leaks bounds horizon scheduler rank fresh second := by
   unfold completionPoint LateStopped
   rw [same]
 
@@ -226,11 +227,11 @@ Under the hypotheses of `Vegas.completionPoint_of_openableCommitment`, the
 centered completion value under play until the event completes is the value at
 the target less `center` times the completion mass. -/
 theorem expect_centeredCompletion_of_openableCommitment
-    (certificate : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+    (certificate : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
       horizon scheduler).WellFoundedHistories)
-    (players : ∀ player, ((bounds.onePacketMenu runtime leaks).information
+    (players : ∀ player, ((bounds.onePacketMenu timeouts leaks).information
       (initialLaw setup) horizon scheduler).BehavioralPolicy player)
-    {who : Player} {entry : (application setup runtime leaks).PlayerEntry}
+    {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
     {message : Message Player (WitnessedPacket (graph setup))} {event : (graph setup).EventId}
     {candidate : Handle (graph setup)} {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding who payload}
@@ -243,71 +244,71 @@ theorem expect_centeredCompletion_of_openableCommitment
     {rank : Nat} {profile : BehavioralProfile setup.program}
     (residual : SourceResidual setup profile rank sent) {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank sent = some point)
-    (terminalCompleted : ∀ (final : (application setup runtime leaks).Control),
-      ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (terminalCompleted : ∀ (final : (application setup timeouts leaks).Control),
+      ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
         scheduler).Trace (some final) →
-      (application setup runtime leaks).terminal (some final) →
+      (application setup timeouts leaks).terminal (some final) →
       final.execution.application.config = sent →
       event ∈ final.execution.application.config.cut.completed)
     {target : ProtocolState setup.program}
     (stepEq : ProtocolState.step setup.program point
       (fun _ => decodeEventAction setup.program event action) = PMF.pure target)
-    {fresh : (application setup runtime leaks).Control → Prop}
+    {fresh : (application setup timeouts leaks).Control → Prop}
     (failedStale : ∀ control, StoreEventFailed control.execution.application.config.store event →
       ¬ fresh control)
-    (start : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (start : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).History)
-    (holds : OpenableCommitmentInvariant setup runtime leaks bounds horizon scheduler who entry
+    (holds : OpenableCommitmentInvariant setup timeouts leaks bounds horizon scheduler who entry
       message
       event candidate outputEq value sent ready action start.state)
     (pointValue : ProtocolState setup.program → ℝ) (center : ℝ) :
-    expect (((bounds.onePacketMenu runtime leaks).information (initialLaw setup)
+    expect (((bounds.onePacketMenu timeouts leaks).information (initialLaw setup)
         horizon scheduler).runBehavioralUntil certificate players
-        (LateStopped setup runtime leaks bounds horizon scheduler rank) start)
-        (centeredCompletion setup runtime leaks bounds horizon scheduler rank fresh pointValue
+        (LateStopped setup timeouts leaks bounds horizon scheduler rank) start)
+        (centeredCompletion setup timeouts leaks bounds horizon scheduler rank fresh pointValue
           center) =
       (pointValue target - center) *
-        expect (((bounds.onePacketMenu runtime leaks).information (initialLaw setup)
+        expect (((bounds.onePacketMenu timeouts leaks).information (initialLaw setup)
           horizon scheduler).runBehavioralUntil certificate players
-          (LateStopped setup runtime leaks bounds horizon scheduler rank) start)
-          (completionIndicator setup runtime leaks bounds horizon scheduler rank fresh) := by
+          (LateStopped setup timeouts leaks bounds horizon scheduler rank) start)
+          (completionIndicator setup timeouts leaks bounds horizon scheduler rank fresh) := by
   rw [← expect_const_mul]
   apply expect_congr_on_support
   intro stop member
-  rcases completionPoint_of_openableCommitment (runtime := runtime) certificate players codeEq
+  rcases completionPoint_of_openableCommitment (timeouts := timeouts) certificate players codeEq
     successful
       residual decoded terminalCompleted stepEq failedStale start holds stop member with none_ |
         some_
   · simp only [centeredCompletion, completionIndicator, none_, Option.elim_none, mul_zero]
   · simp only [centeredCompletion, completionIndicator, some_, Option.elim_some, mul_one]
 
-variable (setup runtime leaks) in
+variable (setup timeouts leaks) in
 /-- **The owner has not sent.** The configuration is `sent`, the recall of
 `who` extends `past`, and it records no submission for `event`. -/
 def LateUnsent (who : Player) (event : (graph setup).EventId) (sent : (graph setup).Config)
-    (past : List (application setup runtime leaks).PlayerEntry) :
-    (application setup runtime leaks).ProtocolState → Prop
+    (past : List (application setup timeouts leaks).PlayerEntry) :
+    (application setup timeouts leaks).ProtocolState → Prop
   | none => False
   | some control => control.execution.application.config = sent ∧
       past <+: control.execution.logs who ∧
-      runtime.eventRecorded leaks (control.execution.logs who) event = false
+      (eventRecorded timeouts) leaks (control.execution.logs who) event = false
 
 omit [Fintype Player] in
 /-- A transition at which `who` does not respond keeps the recall of `who`. -/
-theorem recall_eq_of_transition {initial : PMF (application setup runtime leaks).State} {horizon :
+theorem recall_eq_of_transition {initial : PMF (application setup timeouts leaks).State} {horizon :
   Nat}
-    {scheduler : (application setup runtime leaks).Scheduler} (who : Player)
-    (before : (application setup runtime leaks).Control) (actorNe : before.actor ≠ some who)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    {after : (application setup runtime leaks).Control}
-    (reached : some after ∈ ((application setup runtime leaks).transition initial horizon scheduler
+    {scheduler : (application setup timeouts leaks).Scheduler} (who : Player)
+    (before : (application setup timeouts leaks).Control) (actorNe : before.actor ≠ some who)
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    {after : (application setup timeouts leaks).Control}
+    (reached : some after ∈ ((application setup timeouts leaks).transition initial horizon scheduler
       (some before) joint).support) :
     after.execution.logs who = before.execution.logs who := by
   rcases before with ⟨remaining, actor, execution⟩
   cases actor with
   | some responder =>
       cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp reached)
-      exact (application setup runtime leaks).respond_recall_other execution responder who
+      exact (application setup timeouts leaks).respond_recall_other execution responder who
         (fun same => actorNe (by rw [same])) _
   | none =>
       cases remaining with
@@ -319,7 +320,8 @@ theorem recall_eq_of_transition {initial : PMF (application setup runtime leaks)
           obtain ⟨next, moved, same⟩ := PMF.support_map .. ▸ supported
           cases Option.some.inj same
           change next.logs who = execution.logs who
-          rw [(application setup runtime leaks).environmentStep_recall execution next command moved]
+          rw [(application setup timeouts leaks).environmentStep_recall execution next command
+            moved]
 
 omit [Fintype Player] in
 /-- **Steps of others keep the owner unsent or fail the event.** From a state at
@@ -327,36 +329,36 @@ which `who` has not sent for its binding `event`, the ready event
 at `sent`, a transition at which `who` does not respond keeps `who` unsent, or
 completes the event with a failure. -/
 theorem lateUnsent_transition_other {who : Player} {event : (graph setup).EventId}
-    {sent : (graph setup).Config} {past : List (application setup runtime leaks).PlayerEntry}
+    {sent : (graph setup).Config} {past : List (application setup timeouts leaks).PlayerEntry}
     (ready : sent.cut.Ready event)
     {payload : L.Ty} (outputEq : (graph setup).outputLayout event = .binding who payload)
-    (before : (application setup runtime leaks).Control)
-    (holds : LateUnsent setup runtime leaks who event sent past (some before))
+    (before : (application setup timeouts leaks).Control)
+    (holds : LateUnsent setup timeouts leaks who event sent past (some before))
     (actorNe : before.actor ≠ some who)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    {after : (application setup runtime leaks).ProtocolState}
-    (reached : after ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    {after : (application setup timeouts leaks).ProtocolState}
+    (reached : after ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
       scheduler
       (some before) joint).support)
-    (afterTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+    (afterTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace
       after) :
-    LateUnsent setup runtime leaks who event sent past after ∨
-      ∃ control : (application setup runtime leaks).Control, after = some control ∧
+    LateUnsent setup timeouts leaks who event sent past after ∨
+      ∃ control : (application setup timeouts leaks).Control, after = some control ∧
         event ∈ control.execution.application.config.cut.completed ∧
         StoreEventFailed control.execution.application.config.store event := by
   obtain ⟨atSent, extends_, unrecorded⟩ := holds
   subst atSent
-  obtain ⟨next, rfl, _⟩ := (application setup runtime leaks).transition_recall_prefix (initialLaw
+  obtain ⟨next, rfl, _⟩ := (application setup timeouts leaks).transition_recall_prefix (initialLaw
     setup)
     horizon scheduler before after joint reached
-  have recallEq := recall_eq_of_transition (runtime := runtime) who before actorNe joint reached
-  have path := reactive_protocol_graph_steps runtime leaks (initialLaw setup) horizon scheduler
+  have recallEq := recall_eq_of_transition (timeouts := timeouts) who before actorNe joint reached
+  have path := reactive_protocol_graph_steps timeouts leaks (initialLaw setup) horizon scheduler
     before next joint reached
   by_cases completed : event ∈ next.execution.application.config.cut.completed
   · right
     refine ⟨next, rfl, completed,
-      storeEventFailed_of_unrecorded (runtime := runtime) afterTrace outputEq completed ?_⟩
+      storeEventFailed_of_unrecorded (timeouts := timeouts) afterTrace outputEq completed ?_⟩
     rw [recallEq]
     exact unrecorded
   · left

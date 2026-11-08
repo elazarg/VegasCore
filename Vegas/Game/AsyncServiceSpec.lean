@@ -46,7 +46,7 @@ structure AsyncServiceSpec (Player : Type) [DecidableEq Player] (L : IExpr)
   mode : EventGraph.ExecutionMode
   /-- The configured deadline duration of each event, counted by the runtime
   from the clock at which the event became ready. -/
-  deadline : (serviceGraph setup mode).EventId → Nat
+  duration : (serviceGraph setup mode).EventId → Nat
   leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))
   bounds : MessageBounds (serviceGraph setup mode)
   /-- Every binding value the source can choose has a native message form. -/
@@ -58,16 +58,17 @@ structure AsyncServiceSpec (Player : Type) [DecidableEq Player] (L : IExpr)
   /-- The number of scheduler rounds. -/
   horizon : Nat
   /-- The public scheduler: activations, inclusions, clock, sampling and expiry. -/
-  scheduler : (serviceApplication setup mode deadline leaks).Scheduler
+  scheduler : (serviceApplication setup mode duration leaks).Scheduler
   /-- Per-event reaction bound: slots before the owner's first activation. -/
   delay : (serviceGraph setup mode).EventId → Nat
   /-- Per-event inclusion bound for an owner's sole packet. -/
   bound : (serviceGraph setup mode).EventId → Nat
-  contract : AsyncContract (serviceRuntime setup mode deadline) leaks (serviceInitialLaw setup mode)
+  contract : AsyncContract (serviceTimeouts setup mode duration) leaks (serviceInitialLaw setup
+    mode)
     horizon scheduler delay bound
   /-- Every owned event's reaction and inclusion fit before its configured
   deadline. -/
-  timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound
+  timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound
   /-- The prior over initial states is finitely supported. -/
   initialFinite : setup.FiniteInitialLaw
   /-- The leak rule branches finitely. -/
@@ -86,13 +87,13 @@ variable (service : AsyncServiceSpec Player L)
 /-- All of the service's nature branches finitely: the prior, the leak rule and
 the scheduler. -/
 instance finiteNature :
-    (serviceApplication service.setup service.mode service.deadline service.leaks).FiniteNature
+    (serviceApplication service.setup service.mode service.duration service.leaks).FiniteNature
       (serviceInitialLaw service.setup service.mode) service.scheduler where
   initial_finite := serviceInitialLaw_support_finite service.setup service.mode
   scheduler_finite := service.schedulerFinite
 
 /-- The scheduler completes every event by the horizon. -/
-theorem completes : CompletesPlay (serviceRuntime service.setup service.mode service.deadline)
+theorem completes : CompletesPlay (serviceTimeouts service.setup service.mode service.duration)
     service.leaks (serviceInitialLaw service.setup service.mode) service.horizon
       service.scheduler :=
   service.contract.completes
@@ -100,9 +101,9 @@ theorem completes : CompletesPlay (serviceRuntime service.setup service.mode ser
 
 /-- The bounded raw response menu: every native response within the service's
 message bounds. -/
-abbrev rawMenu [Fintype Player] : (serviceApplication service.setup service.mode service.deadline
+abbrev rawMenu [Fintype Player] : (serviceApplication service.setup service.mode service.duration
     service.leaks).ResponseMenu :=
-  service.bounds.rawMenu (serviceRuntime service.setup service.mode service.deadline) service.leaks
+  service.bounds.rawMenu (serviceTimeouts service.setup service.mode service.duration) service.leaks
 
 
 variable (admission : CommitmentInterface service.setup.program)
@@ -115,7 +116,7 @@ abbrev sourceModel := service.setup.informationModel admission
 player follows the turn-counted policy of its disclosure-normalized source
 policy, completed by silence after its own off-policy responses
 (`Vegas.serviceClientPolicy`). -/
-def clientProfile (menu : (serviceApplication service.setup service.mode service.deadline
+def clientProfile (menu : (serviceApplication service.setup service.mode service.duration
     service.leaks).ResponseMenu)
     {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
     (source : Profile (service.sourceModel admission).behavioralSignature) :
@@ -123,7 +124,7 @@ def clientProfile (menu : (serviceApplication service.setup service.mode service
       service.scheduler).behavioralSignature := fun who =>
   menu.restrictPolicy (serviceInitialLaw service.setup service.mode) service.horizon
     service.scheduler who
-    (serviceClientPolicy service.setup service.mode service.deadline service.leaks service.bound
+    (serviceClientPolicy service.setup service.mode service.duration service.leaks service.bound
       turns timing
       (normalizeDisclosureProfile service.setup.program
         (service.setup.decodeBehavioralProfile admission
@@ -133,9 +134,9 @@ private theorem clientPolicy_congr {turns : Nat} (timing : TurnTiming service.se
     service.mode)
     (profile other : BehavioralProfile service.setup.program) (who : Player)
     (same : profile who = other who) :
-    serviceClientPolicy service.setup service.mode service.deadline service.leaks service.bound
+    serviceClientPolicy service.setup service.mode service.duration service.leaks service.bound
       turns timing profile who =
-      serviceClientPolicy service.setup service.mode service.deadline service.leaks service.bound
+      serviceClientPolicy service.setup service.mode service.duration service.leaks service.bound
         turns timing other
         who := by
   unfold serviceClientPolicy serviceReferenceClientPolicy serviceReferenceTurnPolicy
@@ -144,7 +145,7 @@ private theorem clientPolicy_congr {turns : Nat} (timing : TurnTiming service.se
   rw [same]
 
 /-- Each player's client depends only on its own source policy. -/
-theorem clientProfile_congr (menu : (serviceApplication service.setup service.mode service.deadline
+theorem clientProfile_congr (menu : (serviceApplication service.setup service.mode service.duration
     service.leaks).ResponseMenu)
     {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
     (source other : Profile (service.sourceModel admission).behavioralSignature) (who : Player)
@@ -165,7 +166,7 @@ theorem clientProfile_congr (menu : (serviceApplication service.setup service.mo
 /-- The clients of a unilateral source deviation are a unilateral deviation of
 the clients. -/
 theorem clientProfile_update (menu : (serviceApplication service.setup service.mode
-    service.deadline service.leaks).ResponseMenu)
+    service.duration service.leaks).ResponseMenu)
     {turns : Nat} (timing : TurnTiming service.setup turns service.mode)
     (source : Profile (service.sourceModel admission).behavioralSignature) (who : Player)
     (alternative : (service.sourceModel admission).BehavioralPolicy who) :

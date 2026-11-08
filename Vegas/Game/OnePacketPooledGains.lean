@@ -15,20 +15,20 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
-  [Fintype ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+  (scheduler : (application setup timeouts leaks).Scheduler)
+  [Fintype ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
     horizon scheduler).History]
-  [∀ who, DecidableEq ((onePacketModel setup runtime leaks bounds (initialLaw setup)
+  [∀ who, DecidableEq ((onePacketModel setup timeouts leaks bounds (initialLaw setup)
     horizon scheduler).InfoState who)]
 
 local notation "Initial" => initialLaw setup
-local notation "onePacketN" => onePacketModel setup runtime leaks bounds Initial horizon scheduler
-local notation "menu" => bounds.onePacketMenu runtime leaks
+local notation "onePacketN" => onePacketModel setup timeouts leaks bounds Initial horizon scheduler
+local notation "menu" => bounds.onePacketMenu timeouts leaks
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu runtime leaks) Initial horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) Initial horizon scheduler
 
 omit [Fintype (NP).History] in
 /-- The native finite local gain is the continuation-value difference in the
@@ -61,18 +61,18 @@ theorem pooledLocalGain_nonpos_of_continuation {Outcome : Type*}
       setup.intendedModel.BehavioralAssessment)
     {slots : Nat} (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
     (pooled : ∀ (alternative : ∀ p,
-        PMF (OnePacketPart setup runtime leaks bounds Initial horizon scheduler slots p)) p,
+        PMF (OnePacketPart setup timeouts leaks bounds Initial horizon scheduler slots p)) p,
       ∑ agent ∈ Finset.univ.filter
-          (fun agent => onePacketPool setup runtime leaks bounds Initial horizon scheduler agent =
+          (fun agent => onePacketPool setup timeouts leaks bounds Initial horizon scheduler agent =
             p),
         (if decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1 then
           (assessment.continuationContext
               ((menu).bounded Initial horizon scheduler).wellFoundedHistories
               ⟨agent.2.1, decision⟩ (fun final => utility (observe final) agent.1)).value
               ((assessment.strategy agent.1).withLaw agent.2.1
-                ((alternative (onePacketPool setup runtime leaks bounds Initial horizon scheduler
+                ((alternative (onePacketPool setup timeouts leaks bounds Initial horizon scheduler
                   agent)).bind
-                  (onePacketComponent setup runtime leaks bounds Initial horizon scheduler source
+                  (onePacketComponent setup timeouts leaks bounds Initial horizon scheduler source
                     scale
                     nonnegative le_one agent))) -
             (assessment.continuationContext
@@ -81,16 +81,16 @@ theorem pooledLocalGain_nonpos_of_continuation {Outcome : Type*}
                 (assessment.strategy agent.1)
         else 0) ≤ 0) :
     ∀ (alternative : ∀ p,
-        PMF (OnePacketPart setup runtime leaks bounds Initial horizon scheduler slots p)) p,
+        PMF (OnePacketPart setup timeouts leaks bounds Initial horizon scheduler slots p)) p,
       ∑ agent ∈ Finset.univ.filter
-          (fun agent => onePacketPool setup runtime leaks bounds Initial horizon scheduler agent =
+          (fun agent => onePacketPool setup timeouts leaks bounds Initial horizon scheduler agent =
             p),
         (if decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1 then
           localGain (2 * horizon + 1) observe utility assessment (who := agent.1)
             ⟨agent.2.1, decision⟩
-            ((alternative (onePacketPool setup runtime leaks bounds Initial horizon scheduler
+            ((alternative (onePacketPool setup timeouts leaks bounds Initial horizon scheduler
               agent)).bind
-              (onePacketComponent setup runtime leaks bounds Initial horizon scheduler source scale
+              (onePacketComponent setup timeouts leaks bounds Initial horizon scheduler source scale
                 nonnegative
                 le_one agent)) else 0) ≤ 0 := by
   intro alternative p
@@ -105,37 +105,37 @@ private theorem freeAgent_componentGain_nonpos {Outcome : Type*}
     (assessment : (onePacketN).BehavioralAssessment) (source :
       setup.intendedModel.BehavioralAssessment)
     {slots : Nat} (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (weights : ∀ p, PMF (OnePacketPart setup runtime leaks bounds Initial horizon scheduler slots
+    (weights : ∀ p, PMF (OnePacketPart setup timeouts leaks bounds Initial horizon scheduler slots
       p))
     (pooled : ∀ (alternative : ∀ p,
-        PMF (OnePacketPart setup runtime leaks bounds Initial horizon scheduler slots p)) p,
+        PMF (OnePacketPart setup timeouts leaks bounds Initial horizon scheduler slots p)) p,
       ∑ agent ∈ Finset.univ.filter
-          (fun agent => onePacketPool setup runtime leaks bounds Initial horizon scheduler agent =
+          (fun agent => onePacketPool setup timeouts leaks bounds Initial horizon scheduler agent =
             p),
         (if decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1 then
           localGain (2 * horizon + 1) observe utility assessment (who := agent.1)
             ⟨agent.2.1, decision⟩
-            ((alternative (onePacketPool setup runtime leaks bounds Initial horizon scheduler
+            ((alternative (onePacketPool setup timeouts leaks bounds Initial horizon scheduler
               agent)).bind
-              (onePacketComponent setup runtime leaks bounds Initial horizon scheduler source scale
+              (onePacketComponent setup timeouts leaks bounds Initial horizon scheduler source scale
                 nonnegative
                 le_one agent)) else 0) ≤ 0)
     {who : Player} (site : (onePacketN).InformationSite who)
-    (free : FreeAgent setup runtime leaks bounds Initial horizon scheduler ((onePacketN).agentAt
+    (free : FreeAgent setup timeouts leaks bounds Initial horizon scheduler ((onePacketN).agentAt
       site))
-    (alternative : PMF (OnePacketPart setup runtime leaks bounds Initial horizon scheduler slots
-      (onePacketPool setup runtime leaks bounds Initial horizon scheduler ((onePacketN).agentAt
+    (alternative : PMF (OnePacketPart setup timeouts leaks bounds Initial horizon scheduler slots
+      (onePacketPool setup timeouts leaks bounds Initial horizon scheduler ((onePacketN).agentAt
         site)))) :
     localGain (2 * horizon + 1) observe utility assessment site
-      (alternative.bind (onePacketComponent setup runtime leaks bounds Initial horizon scheduler
+      (alternative.bind (onePacketComponent setup timeouts leaks bounds Initial horizon scheduler
         source scale
         nonnegative le_one ((onePacketN).agentAt site))) ≤ 0 := by
   classical
   rcases site with ⟨info, decision⟩
   let site : (onePacketN).InformationSite who := ⟨info, decision⟩
   have singleton : Finset.univ.filter (fun agent =>
-      onePacketPool setup runtime leaks bounds Initial horizon scheduler agent =
-        onePacketPool setup runtime leaks bounds Initial horizon scheduler ((onePacketN).agentAt
+      onePacketPool setup timeouts leaks bounds Initial horizon scheduler agent =
+        onePacketPool setup timeouts leaks bounds Initial horizon scheduler ((onePacketN).agentAt
           site)) =
       {(onePacketN).agentAt site} := by
     ext agent
@@ -149,10 +149,11 @@ private theorem freeAgent_componentGain_nonpos {Outcome : Type*}
       rfl
   have bound := pooled
     (Function.update weights
-      (onePacketPool setup runtime leaks bounds Initial horizon scheduler ((onePacketN).agentAt
+      (onePacketPool setup timeouts leaks bounds Initial horizon scheduler ((onePacketN).agentAt
         site))
         alternative)
-    (onePacketPool setup runtime leaks bounds Initial horizon scheduler ((onePacketN).agentAt site))
+    (onePacketPool setup timeouts leaks bounds Initial horizon scheduler ((onePacketN).agentAt
+      site))
   rw [singleton, Finset.sum_singleton, dite_eq_left site.2] at bound
   simpa only [Function.update_self] using bound
 
@@ -163,53 +164,53 @@ private theorem nonkeyed_componentGain_eq_zero {Outcome : Type*}
     (assessment : (onePacketN).BehavioralAssessment) (source :
       setup.intendedModel.BehavioralAssessment)
     {slots : Nat} (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (weights : ∀ p, PMF (OnePacketPart setup runtime leaks bounds Initial horizon scheduler slots
+    (weights : ∀ p, PMF (OnePacketPart setup timeouts leaks bounds Initial horizon scheduler slots
       p))
     (fallback : ∀ who, (onePacketN).Policy who)
     (assembled : assessment.strategy = (onePacketN).agentBehavior (onePacketN).playedInformation
       fallback
-      (fun agent => (weights (onePacketPool setup runtime leaks bounds Initial horizon scheduler
+      (fun agent => (weights (onePacketPool setup timeouts leaks bounds Initial horizon scheduler
         agent)).bind
-        (onePacketComponent setup runtime leaks bounds Initial horizon scheduler source scale
+        (onePacketComponent setup timeouts leaks bounds Initial horizon scheduler source scale
           nonnegative
           le_one agent)))
     {who : Player} (site : (onePacketN).InformationSite who)
-    (notFree : ¬ FreeAgent setup runtime leaks bounds Initial horizon scheduler
+    (notFree : ¬ FreeAgent setup timeouts leaks bounds Initial horizon scheduler
       ((onePacketN).agentAt site))
-    (nonkeyed : ¬ LateDeliveryAgent setup runtime leaks bounds Initial horizon scheduler
+    (nonkeyed : ¬ LateDeliveryAgent setup timeouts leaks bounds Initial horizon scheduler
       ((onePacketN).agentAt
       site))
-    (alternative : PMF (OnePacketPart setup runtime leaks bounds Initial horizon scheduler slots
-      (onePacketPool setup runtime leaks bounds Initial horizon scheduler ((onePacketN).agentAt
+    (alternative : PMF (OnePacketPart setup timeouts leaks bounds Initial horizon scheduler slots
+      (onePacketPool setup timeouts leaks bounds Initial horizon scheduler ((onePacketN).agentAt
         site)))) :
     localGain (2 * horizon + 1) observe utility assessment site
-      (alternative.bind (onePacketComponent setup runtime leaks bounds Initial horizon scheduler
+      (alternative.bind (onePacketComponent setup timeouts leaks bounds Initial horizon scheduler
         source scale
         nonnegative le_one ((onePacketN).agentAt site))) = 0 := by
   classical
   let agent := (onePacketN).agentAt site
   let prescribed := fun agent : (onePacketN).InformationAgent (onePacketN).playedInformation =>
-    slotPrescribedComponent setup runtime leaks bounds Initial horizon scheduler source
+    slotPrescribedComponent setup timeouts leaks bounds Initial horizon scheduler source
       scale nonnegative le_one agent.1 agent.2.1
   let keyed := fun (agent : (onePacketN).InformationAgent (onePacketN).playedInformation)
       (option : LateOption slots) =>
-    lateComponent setup runtime leaks bounds Initial horizon scheduler source
+    lateComponent setup timeouts leaks bounds Initial horizon scheduler source
       scale nonnegative le_one agent.1 agent.2.1 option
   obtain ⟨identify, same⟩ := freeKeyedComponent_of_not_free
-    (key := agentLateKey setup runtime leaks bounds Initial horizon scheduler)
-    (keyed := LateDeliveryAgent setup runtime leaks bounds Initial horizon scheduler)
-    (unforcedLaw setup runtime leaks bounds Initial horizon scheduler scale nonnegative le_one)
+    (key := agentLateKey setup timeouts leaks bounds Initial horizon scheduler)
+    (keyed := LateDeliveryAgent setup timeouts leaks bounds Initial horizon scheduler)
+    (unforcedLaw setup timeouts leaks bounds Initial horizon scheduler scale nonnegative le_one)
     prescribed keyed notFree
-  have constant : onePacketComponent setup runtime leaks bounds Initial horizon scheduler source
+  have constant : onePacketComponent setup timeouts leaks bounds Initial horizon scheduler source
     (slots := slots)
       scale nonnegative le_one agent = fun _ => prescribed agent := by
     funext part
     exact (same part).trans
       (keyedComponent_of_not_keyed prescribed keyed (fun owned => nonkeyed owned.1) (identify part))
   have actual := (onePacketN).agentBehavior_at (onePacketN).playedInformation fallback
-    (fun agent => (weights (onePacketPool setup runtime leaks bounds Initial horizon scheduler
+    (fun agent => (weights (onePacketPool setup timeouts leaks bounds Initial horizon scheduler
       agent)).bind
-      (onePacketComponent setup runtime leaks bounds Initial horizon scheduler source scale
+      (onePacketComponent setup timeouts leaks bounds Initial horizon scheduler source scale
         nonnegative
         le_one
         agent)) agent
@@ -225,60 +226,60 @@ theorem componentGain_le_of_common_values {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
     (excludedPayoff : Player → ℝ)
-    (completes : CompletesPlay runtime leaks Initial horizon scheduler)
+    (completes : CompletesPlay timeouts leaks Initial horizon scheduler)
     (assessment : (onePacketN).BehavioralAssessment) (source :
       setup.intendedModel.BehavioralAssessment)
     {slots : Nat} (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-    (weights : ∀ p, PMF (OnePacketPart setup runtime leaks bounds Initial horizon scheduler slots
+    (weights : ∀ p, PMF (OnePacketPart setup timeouts leaks bounds Initial horizon scheduler slots
       p))
     (fallback : ∀ who, (onePacketN).Policy who)
     (assembled : assessment.strategy = (onePacketN).agentBehavior (onePacketN).playedInformation
       fallback
-      (fun agent => (weights (onePacketPool setup runtime leaks bounds Initial horizon scheduler
+      (fun agent => (weights (onePacketPool setup timeouts leaks bounds Initial horizon scheduler
         agent)).bind
-        (onePacketComponent setup runtime leaks bounds Initial horizon scheduler source scale
+        (onePacketComponent setup timeouts leaks bounds Initial horizon scheduler source scale
           nonnegative
           le_one agent)))
     (pooled : ∀ (alternative : ∀ p,
-        PMF (OnePacketPart setup runtime leaks bounds Initial horizon scheduler slots p)) p,
+        PMF (OnePacketPart setup timeouts leaks bounds Initial horizon scheduler slots p)) p,
       ∑ agent ∈ Finset.univ.filter
-          (fun agent => onePacketPool setup runtime leaks bounds Initial horizon scheduler agent =
+          (fun agent => onePacketPool setup timeouts leaks bounds Initial horizon scheduler agent =
             p),
         (if decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1 then
           localGain (2 * horizon + 1) (fun final => final.state)
-            (exclusionBase setup runtime parameter utility excludedPayoff leaks)
+            (exclusionBase setup timeouts parameter utility excludedPayoff leaks)
               assessment (who := agent.1)
             ⟨agent.2.1, decision⟩
-            ((alternative (onePacketPool setup runtime leaks bounds Initial horizon scheduler
+            ((alternative (onePacketPool setup timeouts leaks bounds Initial horizon scheduler
               agent)).bind
-              (onePacketComponent setup runtime leaks bounds Initial horizon scheduler source scale
+              (onePacketComponent setup timeouts leaks bounds Initial horizon scheduler source scale
                 nonnegative
                 le_one agent)) else 0) ≤ 0)
     (continuation : (onePacketN).InformationAgent (onePacketN).playedInformation → ℝ)
-    (score : Option (LateKey setup runtime leaks) → LateOption slots → ℝ) (error : ℝ)
+    (score : Option (LateKey setup timeouts leaks) → LateOption slots → ℝ) (error : ℝ)
     (values : ∀ agent : (onePacketN).InformationAgent (onePacketN).playedInformation,
-      ownedKeyed (FreeAgent setup runtime leaks bounds Initial horizon scheduler)
-        (LateDeliveryAgent setup runtime leaks bounds Initial horizon scheduler) agent →
-      ¬ OwingAgent setup runtime leaks bounds Initial horizon scheduler agent →
+      ownedKeyed (FreeAgent setup timeouts leaks bounds Initial horizon scheduler)
+        (LateDeliveryAgent setup timeouts leaks bounds Initial horizon scheduler) agent →
+      ¬ OwingAgent setup timeouts leaks bounds Initial horizon scheduler agent →
       ∀ decision : (onePacketN).IsDecisionInfo agent.1 agent.2.1,
         excludedPayoff agent.1 ≤ continuation agent ∧ ∀ option,
         |localValue (2 * horizon + 1) (fun final => final.state)
-            (exclusionBase setup runtime parameter utility excludedPayoff leaks)
+            (exclusionBase setup timeouts parameter utility excludedPayoff leaks)
               assessment (who := agent.1)
             ⟨agent.2.1, decision⟩
-            (lateComponent setup runtime leaks bounds Initial horizon scheduler source scale
+            (lateComponent setup timeouts leaks bounds Initial horizon scheduler source scale
               nonnegative le_one agent.1 agent.2.1 option) -
           (excludedPayoff agent.1 + score
-            (agentLateKey setup runtime leaks bounds Initial horizon scheduler agent) option *
+            (agentLateKey setup timeouts leaks bounds Initial horizon scheduler agent) option *
               (continuation agent - excludedPayoff agent.1))| ≤ error) :
     ∀ who (site : (onePacketN).InformationSite who)
-      (alternative : PMF (OnePacketPart setup runtime leaks bounds Initial horizon scheduler slots
-        (onePacketPool setup runtime leaks bounds Initial horizon scheduler ((onePacketN).agentAt
+      (alternative : PMF (OnePacketPart setup timeouts leaks bounds Initial horizon scheduler slots
+        (onePacketPool setup timeouts leaks bounds Initial horizon scheduler ((onePacketN).agentAt
           site)))),
       localGain (2 * horizon + 1) (fun final => final.state)
-        (exclusionBase setup runtime parameter utility excludedPayoff leaks) assessment
+        (exclusionBase setup timeouts parameter utility excludedPayoff leaks) assessment
           site
-        (alternative.bind (onePacketComponent setup runtime leaks bounds Initial horizon scheduler
+        (alternative.bind (onePacketComponent setup timeouts leaks bounds Initial horizon scheduler
           source
           scale
           nonnegative le_one ((onePacketN).agentAt site))) ≤
@@ -291,37 +292,38 @@ theorem componentGain_le_of_common_values {Parameter : Type}
         error 0) :=
     mul_nonneg (Nat.cast_nonneg _) (mul_nonneg (by norm_num) (le_max_right _ _))
   intro who site alternative
-  by_cases free : FreeAgent setup runtime leaks bounds Initial horizon scheduler
+  by_cases free : FreeAgent setup timeouts leaks bounds Initial horizon scheduler
     ((onePacketN).agentAt site)
-  · exact (freeAgent_componentGain_nonpos setup runtime leaks bounds horizon scheduler _ _
+  · exact (freeAgent_componentGain_nonpos setup timeouts leaks bounds horizon scheduler _ _
       assessment
       source scale nonnegative le_one weights pooledLocal site free alternative).trans boundNonneg
-  by_cases owing : OwingAgent setup runtime leaks bounds Initial horizon scheduler
+  by_cases owing : OwingAgent setup timeouts leaks bounds Initial horizon scheduler
     ((onePacketN).agentAt
     site)
-  · rw [owingAgent_localGain_eq_zero setup runtime leaks bounds horizon scheduler parameter utility
+  · rw [owingAgent_localGain_eq_zero setup timeouts leaks bounds horizon scheduler parameter utility
       excludedPayoff completes assessment site owing]
     exact boundNonneg
-  by_cases keyed : LateDeliveryAgent setup runtime leaks bounds Initial horizon scheduler
+  by_cases keyed : LateDeliveryAgent setup timeouts leaks bounds Initial horizon scheduler
     ((onePacketN).agentAt
     site)
   · have assembledGeneric := assembled
     dsimp only [onePacketComponent] at assembledGeneric
     exact freeKeyed_memberGain_le_of_common_values (T := (NP)) (N := (onePacketN))
-      (Key := Option (LateKey setup runtime leaks)) (Opt := LateOption slots)
+      (Key := Option (LateKey setup timeouts leaks)) (Opt := LateOption slots)
       (2 * horizon + 1)
       ((menu).bounded Initial horizon scheduler) ((menu).decisionRecall Initial horizon scheduler)
-      (fun final => final.state) (exclusionBase setup runtime parameter utility excludedPayoff
+      (fun final => final.state) (exclusionBase setup timeouts parameter utility excludedPayoff
         leaks) fallback
-      (FreeAgent setup runtime leaks bounds Initial horizon scheduler)
-      (LateDeliveryAgent setup runtime leaks bounds Initial horizon scheduler)
-      (agentLateKey setup runtime leaks bounds Initial horizon scheduler)
-      (OwingAgent setup runtime leaks bounds Initial horizon scheduler)
-      (unforcedLaw setup runtime leaks bounds Initial horizon scheduler scale nonnegative le_one)
-      (fun agent => slotPrescribedComponent setup runtime leaks bounds Initial horizon scheduler
+      (FreeAgent setup timeouts leaks bounds Initial horizon scheduler)
+      (LateDeliveryAgent setup timeouts leaks bounds Initial horizon scheduler)
+      (agentLateKey setup timeouts leaks bounds Initial horizon scheduler)
+      (OwingAgent setup timeouts leaks bounds Initial horizon scheduler)
+      (unforcedLaw setup timeouts leaks bounds Initial horizon scheduler scale nonnegative le_one)
+      (fun agent => slotPrescribedComponent setup timeouts leaks bounds Initial horizon scheduler
         source
         scale nonnegative le_one agent.1 agent.2.1)
-      (fun agent option => lateComponent setup runtime leaks bounds Initial horizon scheduler source
+      (fun agent option => lateComponent setup timeouts leaks bounds Initial horizon scheduler
+        source
         scale nonnegative le_one agent.1 agent.2.1 (option : LateOption slots))
       weights assessment assembledGeneric
       (fun alternative p => by
@@ -335,11 +337,11 @@ theorem componentGain_le_of_common_values {Parameter : Type}
           · rfl
           · rfl)
       excludedPayoff
-      (fun _ site debt law => owingAgent_localGain_eq_zero setup runtime leaks bounds horizon
+      (fun _ site debt law => owingAgent_localGain_eq_zero setup timeouts leaks bounds horizon
         scheduler
         parameter utility excludedPayoff completes assessment site debt law)
       continuation score error values who site ⟨keyed, free⟩ alternative
-  · rw [nonkeyed_componentGain_eq_zero setup runtime leaks bounds horizon scheduler _ _ assessment
+  · rw [nonkeyed_componentGain_eq_zero setup timeouts leaks bounds horizon scheduler _ _ assessment
       source
       scale nonnegative le_one weights fallback assembled site free keyed alternative]
     exact boundNonneg

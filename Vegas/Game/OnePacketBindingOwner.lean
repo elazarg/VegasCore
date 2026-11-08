@@ -27,23 +27,23 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- No status in a list for one contract state means none for any other. -/
 theorem commitStatuses_eq_nil_congr {event : (graph setup).EventId} {owner : Player}
     {payload : L.Ty} {first second : EventGraphRuntime.State (graph setup)}
-    {packets : List (Message Player (application setup runtime leaks).Payload)}
-    (empty : commitStatuses (runtime := runtime) event owner payload first packets = []) :
-    commitStatuses (runtime := runtime) event owner payload second packets = [] := by
+    {packets : List (Message Player (application setup timeouts leaks).Payload)}
+    (empty : commitStatuses (timeouts := timeouts) event owner payload first packets = []) :
+    commitStatuses (timeouts := timeouts) event owner payload second packets = [] := by
   unfold commitStatuses at empty ⊢
   rw [List.filterMap_eq_nil_iff] at empty ⊢
   intro message member
   have none_ := empty message member
-  have someEq := commitStatus_isSome_congr (runtime := runtime) event owner payload first second
+  have someEq := commitStatus_isSome_congr (timeouts := timeouts) event owner payload first second
     message
   rw [none_] at someEq
-  cases status : commitStatus (runtime := runtime) event owner payload second message with
+  cases status : commitStatus (timeouts := timeouts) event owner payload second message with
   | none => rfl
   | some _ => rw [status] at someEq; cases someEq
 
@@ -53,40 +53,40 @@ variable [Fintype Player] (bounds : MessageBounds (graph setup))
 a one-packet response committing to an event emits the next envelope of the
 responder carrying that commitment, no evidence, and the event's token. -/
 theorem emittedEnvelope_of_commitment {horizon : Nat}
-    {scheduler : (application setup runtime leaks).Scheduler}
-    (history : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
-    {control : (application setup runtime leaks).Control} (current : history.state = some control)
-    (who : Player) (action : (application setup runtime leaks).Action)
-    (member : action ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
+    {scheduler : (application setup timeouts leaks).Scheduler}
+    (history : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History)
+    {control : (application setup timeouts leaks).Control} (current : history.state = some control)
+    (who : Player) (action : (application setup timeouts leaks).Action)
+    (member : action ∈ bounds.onePacketActions timeouts leaks who
+      (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
         who))
-    {submission : (application setup runtime leaks).Submission}
+    {submission : (application setup timeouts leaks).Submission}
     (sent : action.transmission = some submission)
     {event : (graph setup).EventId} {candidate : Handle (graph setup)}
     (call : submission.call.packet = .commitment event candidate) :
-    emittedEnvelope (runtime := runtime) control.execution who action =
+    emittedEnvelope (timeouts := timeouts) control.execution who action =
       some ⟨(who, control.execution.network.nextSerial who),
         ⟨.commitment event candidate, none, some ⟨event⟩⟩⟩ := by
-  rcases ((bounds.mem_onePacketActions runtime leaks who _ _ action).mp member).2 with
+  rcases ((bounds.mem_onePacketActions timeouts leaks who _ _ action).mp member).2 with
     silent | ⟨material, sentMaterial, permitted⟩
   · rw [sent] at silent
     cases silent
   rw [sent] at sentMaterial
   cases sentMaterial
-  have trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+  have trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
       (some control) :=
-    current ▸ (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+    current ▸ (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
       scheduler history.trace
-  obtain ⟨inputRecall, serialRecall, _⟩ := runtime.countRecall_history leaks trace
-  have local_ := runtime.localEnvelope_eq_of_recall leaks control.execution inputRecall
+  obtain ⟨inputRecall, serialRecall, _⟩ := (countRecall_history timeouts) leaks trace
+  have local_ := (localEnvelope_eq_of_recall timeouts) leaks control.execution inputRecall
     serialRecall who submission
   obtain ⟨tokenValid, correct, _⟩ := (countPermits_eq_true_iff _ _).mp permitted
   rw [local_] at tokenValid correct
   unfold emittedEnvelope
   rw [sent]
   simp only [Option.some.injEq, Message.mk.injEq, true_and]
-  set packet := (application setup runtime leaks).packet ((application setup runtime leaks).submit
+  set packet := (application setup timeouts leaks).packet ((application setup timeouts leaks).submit
     control.execution.application who submission) who (control.execution.network.known who)
     submission with packetEq
   have packetCall : packet.call = .commitment event candidate := call
@@ -107,18 +107,18 @@ theorem emittedEnvelope_of_commitment {horizon : Nat}
 omit [Fintype Player] in
 /-- The image at a pending binding after a response. -/
 theorem bindingImage_respond {remaining : Nat} {who : Player}
-    {execution : (application setup runtime leaks).Execution} {event : (graph setup).EventId}
+    {execution : (application setup timeouts leaks).Execution} {event : (graph setup).EventId}
     {owner : Player} {payload : L.Ty}
     (pending : event ∉ execution.application.config.cut.completed)
-    (action : (application setup runtime leaks).Action) :
-    bindingImage (runtime := runtime) event owner payload (some ⟨remaining, none,
-        execution.respond (application setup runtime leaks) who action⟩) =
-      .inl ((operationalState setup runtime leaks (some ⟨remaining, some who, execution⟩)).map
-          (OperationalState.respond who (emittedEnvelope (runtime := runtime)
+    (action : (application setup timeouts leaks).Action) :
+    bindingImage (timeouts := timeouts) event owner payload (some ⟨remaining, none,
+        execution.respond (application setup timeouts leaks) who action⟩) =
+      .inl ((operationalState setup timeouts leaks (some ⟨remaining, some who, execution⟩)).map
+          (OperationalState.respond who (emittedEnvelope (timeouts := timeouts)
             execution who action)),
-        commitStatuses (runtime := runtime) event owner payload
-          (execution.respond (application setup runtime leaks) who action).application
-          (execution.respond (application setup runtime leaks) who action).network.pending) := by
+        commitStatuses (timeouts := timeouts) event owner payload
+          (execution.respond (application setup timeouts leaks) who action).application
+          (execution.respond (application setup timeouts leaks) who action).network.pending) := by
   unfold bindingImage
   rw [pendingImage_respond pending]
   rfl
@@ -126,15 +126,15 @@ theorem bindingImage_respond {remaining : Nat} {who : Player}
 omit [Fintype Player] in
 /-- Silence keeps the statuses. -/
 theorem bindingImage_respond_silent {remaining : Nat} {who : Player}
-    {execution : (application setup runtime leaks).Execution} {event : (graph setup).EventId}
+    {execution : (application setup timeouts leaks).Execution} {event : (graph setup).EventId}
     {owner : Player} {payload : L.Ty}
     (pending : event ∉ execution.application.config.cut.completed)
-    {action : (application setup runtime leaks).Action} (silent : action.transmission = none) :
-    bindingImage (runtime := runtime) event owner payload (some ⟨remaining, none,
-        execution.respond (application setup runtime leaks) who action⟩) =
-      .inl ((operationalState setup runtime leaks (some ⟨remaining, some who, execution⟩)).map
+    {action : (application setup timeouts leaks).Action} (silent : action.transmission = none) :
+    bindingImage (timeouts := timeouts) event owner payload (some ⟨remaining, none,
+        execution.respond (application setup timeouts leaks) who action⟩) =
+      .inl ((operationalState setup timeouts leaks (some ⟨remaining, some who, execution⟩)).map
           (OperationalState.respond who none),
-        commitStatuses (runtime := runtime) event owner payload execution.application
+        commitStatuses (timeouts := timeouts) event owner payload execution.application
           execution.network.pending) := by
   rw [bindingImage_respond pending]
   rcases action with ⟨transmission⟩
@@ -147,7 +147,7 @@ successful candidate, from an operational state with no pending commitment of
 the owner to the binding. -/
 def committedImage (event : (graph setup).EventId) (owner : Player)
     (candidate : Handle (graph setup)) :
-    Option (OperationalState setup runtime leaks) → BindingImage (runtime := runtime) (setup :=
+    Option (OperationalState setup timeouts leaks) → BindingImage (timeouts := timeouts) (setup :=
       setup) (leaks := leaks)
   | none => .inl (none, [])
   | some state => .inl (some (state.respond owner (some ⟨(owner,
@@ -157,34 +157,35 @@ def committedImage (event : (graph setup).EventId) (owner : Player)
 
 /-- **A successful commitment is read off the operational state and the
 handle.** -/
-theorem committed_bindingImage {horizon : Nat} {scheduler : (application setup runtime
+theorem committed_bindingImage {horizon : Nat} {scheduler : (application setup timeouts
   leaks).Scheduler}
-    (history : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
-    {remaining : Nat} {owner : Player} {execution : (application setup runtime leaks).Execution}
+    (history : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History)
+    {remaining : Nat} {owner : Player} {execution : (application setup timeouts leaks).Execution}
     (current : history.state = some ⟨remaining, some owner, execution⟩)
     {event : (graph setup).EventId} {payload : L.Ty}
     (pending : event ∉ execution.application.config.cut.completed)
-    (empty : commitStatuses (runtime := runtime) event owner payload execution.application
+    (empty : commitStatuses (timeouts := timeouts) event owner payload execution.application
       execution.network.pending =
       [])
-    (action : (application setup runtime leaks).Action)
-    (member : action ∈ bounds.onePacketActions runtime leaks owner
-      (execution.logs owner) (execution.observe (application setup runtime leaks) owner))
-    {submission : (application setup runtime leaks).Submission}
+    (action : (application setup timeouts leaks).Action)
+    (member : action ∈ bounds.onePacketActions timeouts leaks owner
+      (execution.logs owner) (execution.observe (application setup timeouts leaks) owner))
+    {submission : (application setup timeouts leaks).Submission}
     (sent : action.transmission = some submission) {candidate : Handle (graph setup)}
     (call : submission.call.packet = .commitment event candidate)
-    (succeeds : candidateSucceeds ((application setup runtime leaks).submit execution.application
+    (succeeds : candidateSucceeds ((application setup timeouts leaks).submit execution.application
       owner
       submission) candidate payload = true) :
-    bindingImage (runtime := runtime) event owner payload (some ⟨remaining, none,
-        execution.respond (application setup runtime leaks) owner action⟩) =
-      committedImage (runtime := runtime) event owner candidate
-        (operationalState setup runtime leaks (some ⟨remaining, some owner, execution⟩)) := by
-  have emitted := emittedEnvelope_of_commitment (runtime := runtime) bounds history current owner
+    bindingImage (timeouts := timeouts) event owner payload (some ⟨remaining, none,
+        execution.respond (application setup timeouts leaks) owner action⟩) =
+      committedImage (timeouts := timeouts) event owner candidate
+        (operationalState setup timeouts leaks (some ⟨remaining, some owner, execution⟩)) := by
+  have emitted := emittedEnvelope_of_commitment (timeouts := timeouts) bounds history current owner
     action member sent
     call
   rw [bindingImage_respond pending, emitted]
-  have packetEq : (application setup runtime leaks).packet ((application setup runtime leaks).submit
+  have packetEq : (application setup timeouts leaks).packet ((application setup timeouts
+    leaks).submit
       execution.application owner submission) owner (execution.network.known owner) submission =
       ⟨.commitment event candidate, none, some ⟨event⟩⟩ := by
     unfold emittedEnvelope at emitted
@@ -193,22 +194,22 @@ theorem committed_bindingImage {horizon : Nat} {scheduler : (application setup r
   rcases action with ⟨transmission⟩
   change transmission = some submission at sent
   subst sent
-  have statuses : commitStatuses (runtime := runtime) event owner payload
-      (execution.respond (application setup runtime leaks) owner ⟨some submission⟩).application
-      (execution.respond (application setup runtime leaks) owner ⟨some
+  have statuses : commitStatuses (timeouts := timeouts) event owner payload
+      (execution.respond (application setup timeouts leaks) owner ⟨some submission⟩).application
+      (execution.respond (application setup timeouts leaks) owner ⟨some
         submission⟩).network.pending =
       [((owner, execution.network.nextSerial owner), true)] := by
-    change commitStatuses (runtime := runtime) event owner payload
-      ((application setup runtime leaks).submit execution.application owner submission)
+    change commitStatuses (timeouts := timeouts) event owner payload
+      ((application setup timeouts leaks).submit execution.application owner submission)
       (execution.network.pending ++ [⟨(owner, execution.network.nextSerial owner),
-        (application setup runtime leaks).packet ((application setup runtime leaks).submit
+        (application setup timeouts leaks).packet ((application setup timeouts leaks).submit
           execution.application owner submission) owner (execution.network.known owner)
           submission⟩]) = _
     rw [packetEq]
     unfold commitStatuses
     rw [List.filterMap_append]
-    have nil := commitStatuses_eq_nil_congr (runtime := runtime) (second := (application setup
-      runtime leaks).submit
+    have nil := commitStatuses_eq_nil_congr (timeouts := timeouts) (second := (application setup
+      timeouts leaks).submit
       execution.application owner submission) empty
     unfold commitStatuses at nil
     rw [nil]
@@ -222,52 +223,52 @@ open Classical in
 commitment to the binding at a handle whose candidate succeeds, made while the
 owner has no pending commitment to it; or anything else, unclassified. -/
 def commitMove (event : (graph setup).EventId) (owner : Player) (payload : L.Ty)
-    (execution : (application setup runtime leaks).Execution)
-    (action : (application setup runtime leaks).Action) : Option (Option (Handle (graph setup))) :=
+    (execution : (application setup timeouts leaks).Execution)
+    (action : (application setup timeouts leaks).Action) : Option (Option (Handle (graph setup))) :=
   if action.transmission = none then some none
-  else if committed : ∃ (submission : (application setup runtime leaks).Submission)
+  else if committed : ∃ (submission : (application setup timeouts leaks).Submission)
       (candidate : Handle (graph setup)), action.transmission = some submission ∧
       submission.call.packet = .commitment event candidate ∧
-      candidateSucceeds ((application setup runtime leaks).submit execution.application owner
+      candidateSucceeds ((application setup timeouts leaks).submit execution.application owner
         submission) candidate payload = true ∧
-      commitStatuses (runtime := runtime) event owner payload execution.application
+      commitStatuses (timeouts := timeouts) event owner payload execution.application
         execution.network.pending = [] then
     some (some committed.choose_spec.choose)
   else none
 
 /-- The image of a move from an operational state and statuses. -/
 def moveImage (event : (graph setup).EventId) (owner : Player)
-    (image : Option (OperationalState setup runtime leaks) × List (MessageId Player × Bool)) :
-    Option (Handle (graph setup)) → BindingImage (runtime := runtime) (setup := setup) (leaks :=
+    (image : Option (OperationalState setup timeouts leaks) × List (MessageId Player × Bool)) :
+    Option (Handle (graph setup)) → BindingImage (timeouts := timeouts) (setup := setup) (leaks :=
       leaks)
   | none => .inl (image.1.map (OperationalState.respond owner none), image.2)
-  | some candidate => committedImage (runtime := runtime) event owner candidate image.1
+  | some candidate => committedImage (timeouts := timeouts) event owner candidate image.1
 
 /-- **The owner's step at a pending binding.** If the owner's decoded response,
 sorted into moves, is within `δ` in total variation of a law of moves, its control
 step read through the image is within `2 δ` of that law read through the move
 images. -/
-theorem ownerBindingStep_close {horizon : Nat} {scheduler : (application setup runtime
+theorem ownerBindingStep_close {horizon : Nat} {scheduler : (application setup timeouts
   leaks).Scheduler}
     (profile : ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player)
-    (history : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
-    {remaining : Nat} {owner : Player} {execution : (application setup runtime leaks).Execution}
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)
+    (history : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History)
+    {remaining : Nat} {owner : Player} {execution : (application setup timeouts leaks).Execution}
     (current : history.state = some ⟨remaining, some owner, execution⟩)
     {event : (graph setup).EventId} {payload : L.Ty}
     (pending : event ∉ execution.application.config.cut.completed)
     (moves : PMF (Option (Handle (graph setup)))) {δ : ℝ}
-    (close : PMF.WithinTV δ (((bounds.onePacketMenu runtime leaks).decodeProfile
+    (close : PMF.WithinTV δ (((bounds.onePacketMenu timeouts leaks).decodeProfile
         (initialLaw setup) horizon scheduler profile owner (execution.logs owner)
-        (execution.observe (application setup runtime leaks) owner)).map
-          (commitMove (runtime := runtime) event owner payload execution)) (moves.map some)) :
-    PMF.WithinTV δ (((application setup runtime leaks).controlStep (initialLaw setup) horizon
-        scheduler ((bounds.onePacketMenu runtime leaks).decodeProfile (initialLaw setup)
+        (execution.observe (application setup timeouts leaks) owner)).map
+          (commitMove (timeouts := timeouts) event owner payload execution)) (moves.map some)) :
+    PMF.WithinTV δ (((application setup timeouts leaks).controlStep (initialLaw setup) horizon
+        scheduler ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup)
           horizon scheduler profile) (some ⟨remaining, some owner, execution⟩)).map
-          (bindingImage (runtime := runtime) event owner payload))
-      (moves.map (moveImage (runtime := runtime) event owner
-        (operationalState setup runtime leaks (some ⟨remaining, some owner, execution⟩),
-          commitStatuses (runtime := runtime) event owner payload execution.application
+          (bindingImage (timeouts := timeouts) event owner payload))
+      (moves.map (moveImage (timeouts := timeouts) event owner
+        (operationalState setup timeouts leaks (some ⟨remaining, some owner, execution⟩),
+          commitStatuses (timeouts := timeouts) event owner payload execution.application
             execution.network.pending))) := by
   rw [controlStep_owner, PMF.map_comp]
   apply withinTV_map_of_partial_classes _ _ _ _ _ _ close
@@ -277,16 +278,16 @@ theorem ownerBindingStep_close {horizon : Nat} {scheduler : (application setup r
   by_cases silent : action.transmission = none
   · simp only [silent, ↓reduceIte, Option.some.injEq] at classified
     subst classified
-    rw [bindingImage_respond_silent (runtime := runtime) pending silent]
+    rw [bindingImage_respond_silent (timeouts := timeouts) pending silent]
     rfl
   · simp only [silent, ↓reduceIte] at classified
     split at classified
     · rename_i committed
       cases classified
       obtain ⟨sent, call, succeeds, empty⟩ := committed.choose_spec.choose_spec
-      have member := (bounds.onePacketMenu runtime leaks).decodeProfile_support
+      have member := (bounds.onePacketMenu timeouts leaks).decodeProfile_support
         (initialLaw setup) horizon scheduler profile owner _ _ action supported
-      rw [committed_bindingImage (runtime := runtime) bounds history current pending empty action
+      rw [committed_bindingImage (timeouts := timeouts) bounds history current pending empty action
         member sent call
         succeeds]
       rfl

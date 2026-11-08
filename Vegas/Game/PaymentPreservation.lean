@@ -22,34 +22,34 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [instDecEq : DecidableEq Player] [instFintype : Fintype Player]
   {L : IExpr} [instResult : IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (Vegas.graph setup))
+  (timeouts : EventTimeouts (Vegas.graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
-local notation "app" => application setup runtime leaks
+local notation "app" => application setup timeouts leaks
 local notation "Initial" => initialLaw setup
 
-local notation "raw" => bounds.rawMenu runtime leaks
+local notation "raw" => bounds.rawMenu timeouts leaks
 local notation "R" => ReactiveApplication.ResponseMenu.information
-  (bounds.rawMenu runtime leaks) Initial horizon scheduler
+  (bounds.rawMenu timeouts leaks) Initial horizon scheduler
 
 variable {Parameter : Type} (parameter : State L setup.context → Parameter)
 
-variable {setup runtime leaks bounds horizon scheduler parameter} in
+variable {setup timeouts leaks bounds horizon scheduler parameter} in
 /-- Audited executable receipts retain the same fixed source readers. -/
 def ClientSpec.programPaymentObservation
     {utility : Parameter × PublicOutcome setup.program → Player → ℝ}
     {exitPayoff : Player → ℝ}
-    (spec : ClientSpec setup runtime leaks bounds horizon scheduler parameter utility exitPayoff)
+    (spec : ClientSpec setup timeouts leaks bounds horizon scheduler parameter utility exitPayoff)
     (state : (app).ProtocolState) : PMF (TerminalObservation setup) :=
   (TerminalAudit.settlement
-    (exclusionBase setup runtime parameter (fun outcome who => setup.transfers outcome.2 who)
+    (exclusionBase setup timeouts parameter (fun outcome who => setup.transfers outcome.2 who)
       (fun who => (setup.exitTransfers who : ℝ)) leaks)
-    (app).stateTraffic (runtime.countAudit leaks spec.evidenceService.sample)
+    (app).stateTraffic ((countAudit timeouts) leaks spec.evidenceService.sample)
     spec.deposit state).map fun receipts =>
       TerminalObservation.read setup
-        ((sourceReadout setup runtime leaks state).map
+        ((sourceReadout setup timeouts leaks state).map
           (fun config => (config.state, config.defaults))) receipts
 
 /-- Intended source play, read jointly with the setup's executable receipts. -/
@@ -68,14 +68,14 @@ local notation "utility" => setup.parameterPaymentUtility valuation
 local notation "exitTransfer" => (fun who => (setup.exitTransfers who : ℝ))
 local notation "exitPayoff" => (fun who => exitValuation who + exitTransfer who)
 
-local notation "base" => exclusionBase setup runtime parameter utility exitPayoff leaks
-local notation "read" => sourceReadout setup runtime leaks
+local notation "base" => exclusionBase setup timeouts parameter utility exitPayoff leaks
+local notation "read" => sourceReadout setup timeouts leaks
 
 /-- Every supplied native compilation preserves realized cash jointly with
 initial inputs, terminal state and public results. Cash uses the setup's declared
 exit transfer; valuation is supplied separately. -/
 theorem intended_raw_programPayments_preserved
-    (spec : ClientSpec setup runtime leaks bounds horizon scheduler parameter utility exitPayoff)
+    (spec : ClientSpec setup timeouts leaks bounds horizon scheduler parameter utility exitPayoff)
     (intended : setup.intendedModel.BehavioralAssessment)
     (compiled : ClientCompilation spec intended) :
     ((R).runBehavioral compiled.assessment.strategy (2 * horizon + 1)).bind
@@ -83,7 +83,7 @@ theorem intended_raw_programPayments_preserved
       setup.intendedPaymentLaw intended := by
   classical
   let observe := (app).stateTraffic
-  let audit := runtime.countAudit leaks spec.evidenceService.sample
+  let audit := (countAudit timeouts) leaks spec.evidenceService.sample
   let settle := TerminalAudit.settlement base observe audit spec.deposit
   let target := compiled.assessment
   have clear := compiled.noDefaults
@@ -133,9 +133,9 @@ theorem intended_raw_programPayments_preserved
     intro control supported
     obtain ⟨final, finalSupported, same⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
     exact clear final finalSupported control same
-  have factors := exclusionBase_valuation_factors (runtime := runtime) (leaks := leaks)
+  have factors := exclusionBase_valuation_factors (timeouts := timeouts) (leaks := leaks)
     parameter valuation exitValuation targetLaw cleanSupport
-  have cash := jointCashLaw_of_utility_law (runtime := runtime) (leaks := leaks) parameter
+  have cash := jointCashLaw_of_utility_law (timeouts := timeouts) (leaks := leaks) parameter
     valuation (fun outcome who => setup.transfers outcome.2 who)
     exitValuation exitTransfer targetLaw sourceLaw factors observe audit spec.deposit utilityLaw
   have observed := congrArg (PMF.map (fun realized =>
@@ -149,14 +149,14 @@ theorem intended_raw_programPayments_preserved
 /-- The exact physical clients decoded from any supplied compilation preserve
 program receipts; no source-equilibrium premise is needed for this law. -/
 theorem ClientCompilation.clients_programPayments_preserved
-    (spec : ClientSpec setup runtime leaks bounds horizon scheduler parameter utility exitPayoff)
+    (spec : ClientSpec setup timeouts leaks bounds horizon scheduler parameter utility exitPayoff)
     (intended : setup.intendedModel.BehavioralAssessment)
     (compiled : ClientCompilation spec intended) :
     ((app).finish Initial horizon scheduler compiled.clients none).bind
         spec.programPaymentObservation =
       setup.intendedPaymentLaw intended := by
   rw [← compiled.clients_stateLaw, PMF.bind_map]
-  exact intended_raw_programPayments_preserved setup runtime leaks bounds horizon scheduler
+  exact intended_raw_programPayments_preserved setup timeouts leaks bounds horizon scheduler
     parameter valuation exitValuation spec intended compiled
 
 end Vegas

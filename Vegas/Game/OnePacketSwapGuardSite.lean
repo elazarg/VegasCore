@@ -33,10 +33,10 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 variable [DecidableEq (CellTy Player L)] {p q : ProtocolState setup.program}
   {publicAgree : PublicCellsAgree setup p q} {succeed : CommitmentCellsSucceed setup p q}
@@ -107,9 +107,9 @@ theorem bindingCellsAgree_of_replay (wellFormed : setup.WellFormed)
     (secondState : second.state = some q) (who : Player)
     (sameView : ProtocolState.observe who setup.program p =
       ProtocolState.observe who setup.program q)
-    {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
-    (replayed : intendedHistory? setup runtime leaks bounds horizon scheduler trace = some first)
+    {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
+    (replayed : intendedHistory? setup timeouts leaks bounds horizon scheduler trace = some first)
     (readyOwn : ∀ event, control.execution.application.config.cut.Ready event →
       ∀ owner payload binding checks outputEq codeEq,
         nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
@@ -134,7 +134,7 @@ theorem bindingCellsAgree_of_replay (wellFormed : setup.WellFormed)
     exact visibleCellsAgree_of_observe sameView _
       (show (cellField (CellTy.commitment owner payload)).VisibleTo owner from rfl)
   · have decoded : decodedPoint setup control.execution.application.config = some p := by
-      rw [← firstState, intendedHistory?_state (runtime := runtime) trace replayed]
+      rw [← firstState, intendedHistory?_state (timeouts := timeouts) trace replayed]
       rfl
     exact revealedCellsAgree_of_observe wellFormed firstState secondState who sameView
       (decodedPoint_revealedInto decoded completed outputEq codeEq)
@@ -149,23 +149,23 @@ theorem swapGuardState_of_replay (wellFormed : setup.WellFormed)
     (secondState : second.state = some q) (who : Player)
     (sameView : ProtocolState.observe who setup.program p =
       ProtocolState.observe who setup.program q)
-    {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
-    (replayed : intendedHistory? setup runtime leaks bounds horizon scheduler trace = some first)
+    {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
+    (replayed : intendedHistory? setup timeouts leaks bounds horizon scheduler trace = some first)
     (readyOwn : ∀ event, control.execution.application.config.cut.Ready event →
       ∀ owner payload binding checks outputEq codeEq,
         nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
           owner = who)
     {table : AcceptedHandles (graph setup)}
     (tableEq : control.execution.application.accepted = table) :
-    SwapGuardState setup runtime (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
+    SwapGuardState setup timeouts (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
         (betweenHandlePairs setup p q table))
       (swapAllowed (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
         (betweenHandlePairs setup p q table))) (some control) := by
   subst tableEq
-  have injective := acceptedInjective_of_trace (runtime := runtime) bounds trace
+  have injective := acceptedInjective_of_trace (timeouts := timeouts) bounds trace
   have agree := fun event active owner payload binding checks outputEq codeEq view =>
-    bindingCellsAgree_of_replay (runtime := runtime) (event := event) (owner := owner) (payload :=
+    bindingCellsAgree_of_replay (timeouts := timeouts) (event := event) (owner := owner) (payload :=
       payload)
       (binding := binding) (checks := checks) (outputEq := outputEq) (codeEq := codeEq)
       wellFormed firstState secondState who sameView trace replayed readyOwn active view
@@ -173,9 +173,9 @@ theorem swapGuardState_of_replay (wellFormed : setup.WellFormed)
     bindCompatible_betweenHandlePairs injective accepted, fun event active =>
     revealFixed_between injective _ (fun _ _ held => held) event (agree event active),
     fun player recalled member submission sent => ?_, HiddenSwap.expired_ofPairs _ _ _⟩
-  · exact inputs_mem_swapAllowed (runtime := runtime) firstState secondState _
+  · exact inputs_mem_swapAllowed (timeouts := timeouts) firstState secondState _
       (initialHandlesCompatible_betweenHandlePairs injective
-        (fun _ _ _ layoutEq => accepted_initial_of_trace (runtime := runtime) trace layoutEq))
+        (fun _ _ _ layoutEq => accepted_initial_of_trace (timeouts := timeouts) trace layoutEq))
       trace replayed
   · cases owned : submission.evidence with
     | none | forward => trivial
@@ -183,7 +183,7 @@ theorem swapGuardState_of_replay (wellFormed : setup.WellFormed)
         change EventGraph.pairSwap (betweenHandlePairs setup p q
           control.execution.application.accepted fact.handle) fact.raw = fact.raw
         obtain ⟨event, owner, payload, binding, checks, outputEq, codeEq, view, active,
-          onlyField⟩ := certificate_field (runtime := runtime) bounds trace player recalled member
+          onlyField⟩ := certificate_field (timeouts := timeouts) bounds trace player recalled member
             submission sent
             fact owned
         by_cases found : ∃ field, control.execution.application.accepted field =

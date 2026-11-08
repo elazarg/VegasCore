@@ -30,28 +30,28 @@ private theorem mode_predecessors_eq (setup : Setup (Player := Player) (L := L))
 the asynchronous service contract in every public-barrier dependency mode. -/
 theorem firstTurn_readout_law [Finite Player]
     (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-    {deadline : (serviceGraph setup mode).EventId → Nat}
+    {duration : (serviceGraph setup mode).EventId → Nat}
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
     (ordered : (serviceGraph setup mode).BarrierOrdered)
-    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {horizon : Nat} {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
     {delay bound : (serviceGraph setup mode).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
       (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound) (turns : Nat)
+    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound) (turns : Nat)
     (profile : BehavioralProfile setup.program)
     (authentic : ∀ who, (profile who).AuthenticDisclosures setup.program) :
-    FirstTurnSourceLaw setup mode deadline leaks horizon scheduler bound turns profile := by
+    FirstTurnSourceLaw setup mode duration leaks horizon scheduler bound turns profile := by
   let statement := fun mode : EventGraph.ExecutionMode =>
-    ∀ (deadline : (serviceGraph setup mode).EventId → Nat)
+    ∀ (duration : (serviceGraph setup mode).EventId → Nat)
       (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-      (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+      (horizon : Nat) (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
       (delay bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
       (profile : BehavioralProfile setup.program),
-      AsyncContract (serviceRuntime setup mode deadline) leaks (serviceInitialLaw setup mode)
+      AsyncContract (serviceTimeouts setup mode duration) leaks (serviceInitialLaw setup mode)
         horizon scheduler delay bound →
-      AsyncTimely (serviceRuntime setup mode deadline) delay bound →
+      AsyncTimely (serviceTimeouts setup mode duration) delay bound →
       (∀ who, (profile who).AuthenticDisclosures setup.program) →
-      FirstTurnSourceLaw setup mode deadline leaks horizon scheduler bound turns profile
+      FirstTurnSourceLaw setup mode duration leaks horizon scheduler bound turns profile
   let evaluate := fun
       (predecessors : Fin setup.eventGraph.order.eventCount →
         Finset (Fin setup.eventGraph.order.eventCount)) =>
@@ -75,11 +75,11 @@ theorem firstTurn_readout_law [Finite Player]
           | inl _ => trivial
           | inr producer => exact reads event (.inr producer) member
         payoffs := setup.eventGraph.payoffs }
-      ∀ (deadline : compiled.EventId → Nat)
+      ∀ (duration : compiled.EventId → Nat)
         (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket compiled))
         (horizon : Nat),
-        let runtime : EventGraphRuntime compiled := ⟨deadline⟩
-        let app := runtime.reactiveApplication leaks
+        let timeouts : EventTimeouts compiled := ⟨duration⟩
+        let app := (reactiveApplication timeouts) leaks
         ∀ (scheduler : app.Scheduler) (delay bound : compiled.EventId → Nat)
           (turns : Nat) (profile : BehavioralProfile setup.program),
           let initial : PMF (EventGraphRuntime.State compiled) :=
@@ -95,13 +95,13 @@ theorem firstTurn_readout_law [Finite Player]
                     if inactive : who ∈ observed.defaulted then PMF.pure ⟨none⟩ else
                       ((compileEventProfile setup.program profile) who event owned observed
                         inactive).map
-                          (runtime.canonicalServiceDecision leaks who past view event)
+                          ((canonicalServiceDecision timeouts) leaks who past view event)
                   else PMF.pure ⟨none⟩
             else PMF.pure ⟨none⟩
           let opportunity : Player → compiled.EventId → app.Policy :=
             fun who event past view =>
-              if runtime.eventRecorded leaks past event then app.silentPolicy past view else
-              if view.application.publicView.InclusionFitsDeadline runtime bound event then
+              if (eventRecorded timeouts) leaks past event then app.silentPolicy past view else
+              if view.application.publicView.InclusionFitsDeadline timeouts bound event then
                 (canonical who past view).bind fun response =>
                   if response.transmission = none then app.silentPolicy past view
                   else PMF.pure response
@@ -129,8 +129,8 @@ theorem firstTurn_readout_law [Finite Player]
                   (Revelations.initial setup.context) [] (outputEmbedding setup.program)
                     config.store config.history
               else none
-          AsyncContract runtime leaks initial horizon scheduler delay bound →
-          AsyncTimely runtime delay bound →
+          AsyncContract timeouts leaks initial horizon scheduler delay bound →
+          AsyncTimely timeouts delay bound →
           (∀ who, (profile who).AuthenticDisclosures setup.program) →
           (app.roundsFrom initial scheduler players horizon).map
             (fun execution => read (app.finished execution)) = (setup.run profile).map some
@@ -153,7 +153,7 @@ theorem firstTurn_readout_law [Finite Player]
     delta serviceTurnFamily serviceReferenceTurnFamily serviceTurn
     delta serviceCanonicalOpportunity serviceReferenceOpportunity serviceCanonicalPolicy
     delta serviceReferencePolicy serviceSourceReadout
-    delta serviceApplication serviceRuntime serviceInitialLaw
+    delta serviceApplication serviceTimeouts serviceInitialLaw
     delta serviceGraph graph EventGraph.sequentialize EventGraph.withMode
     dsimp (config := { instances := true }) only
     constructor
@@ -178,10 +178,10 @@ theorem firstTurn_readout_law [Finite Player]
         congrArg evaluate (mode_predecessors_eq setup mode ordered)
       _ = statement .sequential := (propext (representation .sequential)).symm
   have sequential : statement .sequential := by
-    intro deadline leaks horizon scheduler delay bound turns profile contract timely authentic
-    exact firstTurnSourceLaw_of_async (serviceRuntime setup .sequential deadline) leaks scheduler
+    intro duration leaks horizon scheduler delay bound turns profile contract timely authentic
+    exact firstTurnSourceLaw_of_async (serviceTimeouts setup .sequential duration) leaks scheduler
       delay bound profile contract timely authentic
   have general : statement mode := statementEq.symm ▸ sequential
-  exact general deadline leaks horizon scheduler delay bound turns profile contract timely authentic
+  exact general duration leaks horizon scheduler delay bound turns profile contract timely authentic
 
 end Vegas

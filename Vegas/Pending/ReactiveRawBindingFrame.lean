@@ -19,18 +19,18 @@ open Interaction EventGraph GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 theorem rawBinding_submit_hidden_congr
-    (left right : (runtime.reactiveApplication leaks).Execution) (owner : Player)
+    (left right : ((reactiveApplication timeouts) leaks).Execution) (owner : Player)
     (network : left.network = right.network) (receipts : left.receipts = right.receipts)
     (publicEq : left.application.publicView = right.application.publicView)
     (views : ∀ who, who ≠ owner →
       left.application.playerView who = right.application.playerView who)
     (logs : ∀ who, who ≠ owner → left.logs who = right.logs who)
     (event : graph.EventId) (serial : Nat) (first second : Option (Raw L)) :
-    let app := runtime.reactiveApplication leaks
+    let app := (reactiveApplication timeouts) leaks
     let before := left.respond app owner
       ⟨some ⟨⟨.commitment event (owner, .prepared serial), first⟩, .none⟩⟩
     let after := right.respond app owner
@@ -40,7 +40,7 @@ theorem rawBinding_submit_hidden_congr
       (∀ who, who ≠ owner →
         before.application.playerView who = after.application.playerView who) ∧
       (∀ who, who ≠ owner → before.logs who = after.logs who) := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   have foreign (execution : app.Execution) (who : Player) (different : who ≠ owner)
       (opening : Option (Raw L)) :
       let response : app.Action :=
@@ -52,8 +52,8 @@ theorem rawBinding_submit_hidden_congr
   refine ⟨?_, receipts, ?_, ?_, ?_⟩
   · simp only [ReactiveApplication.Execution.respond, reactiveApplication_packet_none,
       network, publicEq]
-  · exact (runtime.reactive_respond_application leaks left owner _).2.trans
-      (publicEq.trans (runtime.reactive_respond_application leaks right owner _).2.symm)
+  · exact ((reactive_respond_application timeouts) leaks left owner _).2.trans
+      (publicEq.trans ((reactive_respond_application timeouts) leaks right owner _).2.symm)
   · intro who different
     exact (foreign left who different first).trans
       ((views who different).trans (foreign right who different second).symm)

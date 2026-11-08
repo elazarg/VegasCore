@@ -40,12 +40,12 @@ theorem Submission.register_playerView_congr (submission : Submission graph)
   | opening event candidate raw | malformed raw =>
       cases opening <;> exact views
 
-theorem submit_playerView_congr (runtime : EventGraphRuntime graph)
+theorem submit_playerView_congr (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (left right : State graph) (who : Player) (submission : WitnessedSubmission graph)
     (views : left.playerView who = right.playerView who) :
-    ((runtime.reactiveApplication leaks).submit left who submission).playerView who =
-      ((runtime.reactiveApplication leaks).submit right who submission).playerView who := by
+    (((reactiveApplication timeouts) leaks).submit left who submission).playerView who =
+      (((reactiveApplication timeouts) leaks).submit right who submission).playerView who := by
   have registered := submission.call.register_playerView_congr left right who views
   have publicEq := congrArg PlayerView.publicView registered
   have observed := State.playerView_observation_eq _ _ who registered
@@ -58,29 +58,29 @@ theorem submit_playerView_congr (runtime : EventGraphRuntime graph)
 
 /-- The emitted packet depends on the sender's own view only: its candidate
 catalogue fixes the certificate and its public view fixes the token. -/
-theorem packet_playerView_congr (runtime : EventGraphRuntime graph)
+theorem packet_playerView_congr (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (left right : State graph) (who : Player)
     (known : List (Message Player (WitnessedPacket graph)))
     (submission : WitnessedSubmission graph)
     (views : left.playerView who = right.playerView who) :
-    (runtime.reactiveApplication leaks).packet
-        ((runtime.reactiveApplication leaks).submit left who submission) who known submission =
-      (runtime.reactiveApplication leaks).packet
-        ((runtime.reactiveApplication leaks).submit right who submission) who known
+    ((reactiveApplication timeouts) leaks).packet
+        (((reactiveApplication timeouts) leaks).submit left who submission) who known submission =
+      ((reactiveApplication timeouts) leaks).packet
+        (((reactiveApplication timeouts) leaks).submit right who submission) who known
           submission := by
-  have submitted := submit_playerView_congr runtime leaks left right who submission views
+  have submitted := submit_playerView_congr timeouts leaks left right who submission views
   exact submission.emit_local _ _ who known
     (fun slot => congrFun (congrArg PlayerView.candidates submitted) slot)
     (congrArg PlayerView.publicView submitted)
 
 /-- Clocks and failure expiry preserve equality of the owner's view. -/
-theorem maintenance_playerView_congr (runtime : EventGraphRuntime graph)
+theorem maintenance_playerView_congr (timeouts : EventTimeouts graph)
     (left right : State graph) (who : Player) (command : EnvironmentCommand graph)
     (maintenance : ∀ event, command ≠ .executeSample event)
     (views : left.playerView who = right.playerView who) :
-    (environmentStep runtime left command).map (fun next => next.playerView who) =
-      (environmentStep runtime right command).map (fun next => next.playerView who) := by
+    (environmentStep timeouts left command).map (fun next => next.playerView who) =
+      (environmentStep timeouts right command).map (fun next => next.playerView who) := by
   have publicEq : left.publicView = right.publicView := congrArg PlayerView.publicView views
   have observed := left.playerView_observation_eq right who views
   have candidates := congrArg PlayerView.candidates views
@@ -96,9 +96,9 @@ theorem maintenance_playerView_congr (runtime : EventGraphRuntime graph)
       have clocks : left.clock = right.clock := congrArg PublicView.clock publicEq
       rw [views, publicEq, clocks]
   | expire event =>
-      obtain ⟨a, ha⟩ := (environmentStep runtime left (.expire event)).support_nonempty
-      obtain ⟨b, hb⟩ := (environmentStep runtime right (.expire event)).support_nonempty
-      have same := environmentStep_expire_playerView_congr runtime who event left right a b
+      obtain ⟨a, ha⟩ := (environmentStep timeouts left (.expire event)).support_nonempty
+      obtain ⟨b, hb⟩ := (environmentStep timeouts right (.expire event)).support_nonempty
+      have same := environmentStep_expire_playerView_congr timeouts who event left right a b
         publicEq observed candidates ha hb
       simp only [environmentStep, PMF.mem_support_pure_iff _ _] at ha hb
       subst a

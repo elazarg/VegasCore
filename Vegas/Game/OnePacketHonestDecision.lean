@@ -24,7 +24,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 section Effective
@@ -79,33 +79,33 @@ theorem encodeEventAction?_commitsValue :
 /-- Canonical realizations of successful binding choices and authentic disclosures
 transmit at the supplied event and physical view. -/
 def CanonicalTransmitsAt (setup : Setup (Player := Player) (L := L))
-    (runtime : EventGraphRuntime (graph setup))
+    (timeouts : EventTimeouts (graph setup))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (who : Player) (past : List (application setup runtime leaks).PlayerEntry)
-    (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId) : Prop :=
+    (who : Player) (past : List (application setup timeouts leaks).PlayerEntry)
+    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId) : Prop :=
   ∀ action graphAction, encodeEventAction? setup.program event action = some graphAction →
     action.CommitsValue → (∀ owner name, action ≠ .reveal owner name false) →
-    (runtime.canonicalServiceDecision leaks who past view event graphAction).transmission ≠ none
+    ((canonicalServiceDecision timeouts) leaks who past view event graphAction).transmission ≠ none
 
 end Effective
 
 section Repeated
 
 /-- Every transmitting recall entry emitted the packet of its submission. -/
-def TransmissionsEmitted (execution : (application setup runtime leaks).Execution) : Prop :=
+def TransmissionsEmitted (execution : (application setup timeouts leaks).Execution) : Prop :=
   ∀ who, ∀ entry ∈ execution.logs who, ∀ material, entry.action.transmission = some material →
     ∃ message, entry.emitted = some message ∧ message.payload.call = material.call.packet
 
 /-- Transmissions are emitted at every history, under arbitrary responses and
 scheduler choices. -/
-theorem transmissionsEmitted_serviceInvariant (scheduler : (application setup runtime
+theorem transmissionsEmitted_serviceInvariant (scheduler : (application setup timeouts
   leaks).Scheduler) :
-    (application setup runtime leaks).ServiceInvariant scheduler (TransmissionsEmitted (runtime :=
-      runtime) (leaks := leaks))
+    (application setup timeouts leaks).ServiceInvariant scheduler (TransmissionsEmitted (timeouts :=
+      timeouts) (leaks := leaks))
     where
   respond execution responder action valid := by
     intro who entry member material transmits
-    rw [runtime.respond_recall leaks execution responder who action] at member
+    rw [(respond_recall timeouts) leaks execution responder who action] at member
     split at member
     · rename_i same
       subst same
@@ -117,7 +117,7 @@ theorem transmissionsEmitted_serviceInvariant (scheduler : (application setup ru
     · exact valid who entry member material transmits
   environment execution next command valid _ moved := by
     intro who entry member
-    rw [(application setup runtime leaks).environmentStep_recall
+    rw [(application setup timeouts leaks).environmentStep_recall
       execution next command moved] at member
     exact valid who entry member
 

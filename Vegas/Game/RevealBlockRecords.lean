@@ -22,7 +22,7 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime Eve
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+  {mode : EventGraph.ExecutionMode} {duration : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 /-- An accepted opening with a stored footprint stays accepted while stored
@@ -48,11 +48,11 @@ theorem openingAccepted_keep {before after : (serviceGraph setup mode).Config}
 /-- Every submission of an honest owner for a block reveal names an accepted
 opening with a stored footprint. -/
 def HonestBlockSubmissions (who : Player) (start finish : Nat)
-    (execution : (serviceApplication setup mode deadline leaks).Execution) : Prop :=
+    (execution : (serviceApplication setup mode duration leaks).Execution) : Prop :=
   ∀ owner, owner ≠ who → ∀ entry ∈ execution.logs owner,
     ∀ event : (serviceGraph setup mode).EventId,
     start ≤ event.val → event.val < finish →
-    (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action = some event →
+    (submittedEvent? (serviceTimeouts setup mode duration)) leaks entry.action = some event →
     (∀ field ∈ ((serviceGraph setup mode).nodes event).readFields,
       (execution.application.config.store field).isSome) ∧
       openingAccepted event execution.application.config.store = true
@@ -60,7 +60,7 @@ def HonestBlockSubmissions (who : Player) (start finish : Nat)
 /-- At the block start no response has submitted a block reveal, since none
 was seen ready. -/
 theorem honestBlockSubmissions_start (who : Player) (start finish : Nat)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (execution : (serviceApplication setup mode duration leaks).Execution)
     (atTurn : ∀ owner, owner ≠ who → OwnSubmissionsAtTurn setup leaks execution owner)
     (untouched : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
       event.val < finish → Untouched setup leaks event execution) :
@@ -74,7 +74,7 @@ theorem honestBlockSubmissions_start (who : Player) (start finish : Nat)
 keeps every honest owner's block submissions accepted, when honest clients open
 a reveal exactly when its opening is accepted. -/
 theorem honestBlockSubmissions_round {horizon remaining : Nat}
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (reference : (serviceGraph setup mode).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup mode).Config)
@@ -91,25 +91,25 @@ theorem honestBlockSubmissions_round {horizon remaining : Nat}
         reference owner event actor ((serviceGraph setup mode).playerObserve owner config)
           active = PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
-    (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (who : Player) (deviation : (serviceApplication setup mode duration leaks).Policy)
     (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup mode) start finish)
     (publications : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
       event.val < finish → ((serviceGraph setup mode).outputLayout event).IsPublication)
-    (current next : (serviceApplication setup mode deadline leaks).Execution)
-    (trace : ((serviceApplication setup mode deadline leaks).protocol
+    (current next : (serviceApplication setup mode duration leaks).Execution)
+    (trace : ((serviceApplication setup mode duration leaks).protocol
       (serviceInitialLaw setup mode) horizon scheduler).Trace
         (some ⟨remaining + 1, none, current⟩))
     (inside : InBlock start finish current.application.config)
     (running : ¬ BlockDone finish current.application.config)
     (valid : HonestBlockSubmissions who start finish current)
-    (reached : next ∈ ((serviceApplication setup mode deadline leaks).round scheduler
-      (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+    (reached : next ∈ ((serviceApplication setup mode duration leaks).round scheduler
+      (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
         (firstTurnTiming setup turns mode) reference) who deviation) current).support) :
     HonestBlockSubmissions who start finish next := by
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   obtain ⟨command, selected, middle, moved, cases⟩ := round_cases setup leaks reached
   have recallEq := app.environmentStep_recall current middle command moved
-  have keptMiddle := (keepsStore_step (serviceRuntime setup mode deadline) leaks).environmentStep
+  have keptMiddle := (keepsStore_step (serviceTimeouts setup mode duration) leaks).environmentStep
     current middle command moved
   have middleValid : HonestBlockSubmissions who start finish middle := by
     intro owner different entry member event early late submitted
@@ -118,7 +118,7 @@ theorem honestBlockSubmissions_round {horizon remaining : Nat}
     exact openingAccepted_keep keptMiddle available accepted
   rcases cases with ⟨_, rfl⟩ | ⟨actor, active, response, chosen, rfl⟩
   · exact middleValid
-  have kept := (keepsStore_step (serviceRuntime setup mode deadline) leaks).respond middle actor
+  have kept := (keepsStore_step (serviceTimeouts setup mode duration) leaks).respond middle actor
     response
   intro owner different entry member event early late submitted
   by_cases same : owner = actor
@@ -138,9 +138,9 @@ theorem honestBlockSubmissions_round {horizon remaining : Nat}
       scheduler remaining current middle (.activate owner) trace selected moved
     rw [active] at middleTrace
     have facts := legalFacts setup leaks horizon scheduler _ middleTrace
-    have follows : Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound
+    have follows : Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound
         turns (firstTurnTiming setup turns mode) reference) who deviation owner =
-        serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+        serviceReferenceTurnPolicy setup mode duration leaks bound turns
           (firstTurnTiming setup turns mode) reference owner := Function.update_of_ne different _ _
     rw [follows] at chosen
     have middlePublications : ∀ query, middle.application.config.cut.Ready query →
@@ -429,12 +429,12 @@ theorem completion_resolve_eq (config : (serviceGraph setup mode).Config)
 every record since `origin` classified, when honest clients open a reveal
 exactly when its opening is accepted. -/
 theorem blockRecordsSound_round {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
     {delay : (serviceGraph setup mode).EventId → Nat}
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
         (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
     (reference : (serviceGraph setup mode).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup mode).Config)
       (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
@@ -450,15 +450,15 @@ theorem blockRecordsSound_round {horizon : Nat}
         reference owner event actor ((serviceGraph setup mode).playerObserve owner config)
           active = PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store)))
-    (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (who : Player) (deviation : (serviceApplication setup mode duration leaks).Policy)
     (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup mode) start finish)
     (publications : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
       event.val < finish → ((serviceGraph setup mode).outputLayout event).IsPublication)
     (origin : (serviceGraph setup mode).Config)
-    (current next : (serviceApplication setup mode deadline leaks).Execution)
-    (supported : current ∈ ((serviceApplication setup mode deadline leaks).roundsFrom
+    (current next : (serviceApplication setup mode duration leaks).Execution)
+    (supported : current ∈ ((serviceApplication setup mode duration leaks).roundsFrom
       (serviceInitialLaw setup mode) scheduler
-      (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+      (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
         (firstTurnTiming setup turns mode) reference) who deviation)
       current.environmentRecall.length).support)
     (bounded : current.environmentRecall.length ≤ horizon)
@@ -466,19 +466,19 @@ theorem blockRecordsSound_round {horizon : Nat}
     (running : ¬ BlockDone finish current.application.config)
     (submissions : HonestBlockSubmissions who start finish current)
     (sound : BlockRecordsSound who start finish origin current.application.config)
-    (reached : next ∈ ((serviceApplication setup mode deadline leaks).round scheduler
-      (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+    (reached : next ∈ ((serviceApplication setup mode duration leaks).round scheduler
+      (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
         (firstTurnTiming setup turns mode) reference) who deviation) current).support) :
     BlockRecordsSound who start finish origin next.application.config := by
   classical
-  let app := serviceApplication setup mode deadline leaks
-  let runtime := serviceRuntime setup mode deadline
-  let players := Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound
+  let app := serviceApplication setup mode duration leaks
+  let timeouts := serviceTimeouts setup mode duration
+  let players := Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound
     turns (firstTurnTiming setup turns mode) reference) who deviation
   obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon scheduler
     players current.environmentRecall.length bounded current supported
   have facts := legalFacts setup leaks horizon scheduler _ trace
-  have signed := signedCommitments_history runtime leaks (serviceInitialLaw setup mode)
+  have signed := signedCommitments_history timeouts leaks (serviceInitialLaw setup mode)
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨_, rfl⟩) horizon scheduler trace
@@ -486,11 +486,11 @@ theorem blockRecordsSound_round {horizon : Nat}
   have nextConfig : next.application.config = middle.application.config := by
     rcases cases with ⟨_, rfl⟩ | ⟨actor, _, response, _, rfl⟩
     · rfl
-    · exact (reactive_respond_application runtime leaks middle actor response).1
+    · exact (reactive_respond_application timeouts leaks middle actor response).1
   rw [nextConfig]
   have path : Relation.ReflTransGen Config.Step current.application.config
       middle.application.config :=
-    (runtime.reactiveApplication_graphSteps leaks).environmentStep current middle command moved
+    ((reactiveApplication_graphSteps timeouts) leaks).environmentStep current middle command moved
   have keptMiddle : ∀ field value, current.application.config.store field = some value →
       middle.application.config.store field = some value :=
     fun field value stored => Config.Step.path_store_of_some path field value stored
@@ -531,7 +531,7 @@ theorem blockRecordsSound_round {horizon : Nat}
   have readyCase (ready : current.application.config.cut.Ready event) :
       start ≤ event.val ∧ event.val < finish := shaped _ inside running event ready
   have follows (owner : Player) (different : owner ≠ who) : players owner =
-      serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+      serviceReferenceTurnPolicy setup mode duration leaks bound turns
         (firstTurnTiming setup turns mode) reference owner := Function.update_of_ne different _ _
   cases command with
   | activate actor =>
@@ -582,7 +582,7 @@ theorem blockRecordsSound_round {horizon : Nat}
               | commitment named candidate =>
                   rw [call] at handled
                   obtain ⟨_, readyNamed, _, owner, payload, outputEq, codeEq, _⟩ :=
-                    (handle_commitment_iff runtime current.application native message.id named
+                    (handle_commitment_iff timeouts current.application native message.id named
                       candidate).mp handled
                   have bounds := shaped _ inside running named readyNamed
                   have publication := publications named bounds.1 bounds.2
@@ -591,7 +591,7 @@ theorem blockRecordsSound_round {horizon : Nat}
               | opening named candidate raw =>
                   rw [call] at handled
                   obtain ⟨readyNamed, action, member, _, _, owner, payload, binding, checks,
-                    outputEq, codeEq, node, actionEq⟩ := handle_opening_config_step runtime
+                    outputEq, codeEq, node, actionEq⟩ := handle_opening_config_step timeouts
                     current.application native message.id named candidate raw handled
                   rcases newRecord_step_drain current.application.config native named readyNamed
                       action member record newRecord present with
@@ -602,7 +602,7 @@ theorem blockRecordsSound_round {horizon : Nat}
                     refine Or.inr ⟨bounds.1, bounds.2, ?_⟩
                     have owned := nodeView_resolve_actor outputEq codeEq
                     obtain ⟨other, otherNamed, senderActor⟩ :=
-                      handle_event_actor runtime current.application native _ handled
+                      handle_event_actor timeouts current.application native _ handled
                     have otherEq : other = event := by
                       simpa [Payload.event?] using otherNamed.symm
                     subst otherEq
@@ -618,7 +618,8 @@ theorem blockRecordsSound_round {horizon : Nat}
                       facts.provenance.pending message pending
                     obtain ⟨_, material', transmitted, packet⟩ :=
                       signed.emissions message.sender entry entryMember message emitted
-                    have submitted : runtime.submittedEvent? leaks entry.action = some other := by
+                    have submitted : (submittedEvent? timeouts) leaks entry.action = some other
+                      := by
                       simp only [EventGraphRuntime.submittedEvent?, transmitted]
                       rw [← packet, call]
                       rfl
@@ -655,10 +656,10 @@ theorem blockRecordsSound_round {horizon : Nat}
   | application operation =>
       obtain ⟨updated, supported', rfl⟩ := PMF.support_map .. ▸ moved
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported'
-      change state ∈ ((EventGraphRuntime.environmentStep runtime current.application
+      change state ∈ ((EventGraphRuntime.environmentStep timeouts current.application
         operation).map EventGraphRuntime.State.drain).support at changed
       obtain ⟨native, nativeMoved, rfl⟩ := PMF.support_map .. ▸ changed
-      rcases completionStep_environmentStep runtime current.application native operation
+      rcases completionStep_environmentStep timeouts current.application native operation
           nativeMoved with ⟨same, _, _⟩ | ⟨stepped, readyStepped, action, member, _, _⟩
       · have fresh' : record ∉ native.config.history := by rw [same]; exact newRecord
         obtain ⟨silent, quiet, notDone, output, drainOwner⟩ :=
@@ -677,7 +678,7 @@ theorem blockRecordsSound_round {horizon : Nat}
         have owned := nodeView_resolve_actor outputEq codeEq
         by_cases isWho : owner = who
         · exact Or.inl (isWho ▸ owned)
-        rcases native_new_completion_cases runtime current.application native operation
+        rcases native_new_completion_cases timeouts current.application native operation
             nativeMoved record newRecord primary with
           ⟨_, entered, activated, due, expiredAction, expiredValue, expired, expiredEq⟩ |
             ownerless

@@ -41,43 +41,43 @@ untouched, running until it completes preserves the outcome law of a
 ready-independent reference followed by the event's owner, whatever the other
 players do. -/
 theorem soleSegment_outcomeLaw
-    (runtime : EventGraphRuntime (serviceGraph setup mode))
+    (timeouts : EventTimeouts (serviceGraph setup mode))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    {horizon turns : Nat} (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    {horizon turns : Nat} (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
     (delay bound : (serviceGraph setup mode).EventId → Nat)
-    (contract : AsyncContract runtime leaks (serviceInitialLaw setup mode) horizon scheduler
+    (contract : AsyncContract timeouts leaks (serviceInitialLaw setup mode) horizon scheduler
       delay bound)
-    (timely : AsyncTimely runtime delay bound)
+    (timely : AsyncTimely timeouts delay bound)
     (client : (serviceGraph setup mode).BehavioralProfile) (independent : ReadyIndependent client)
     {Outcome : Type*} (read : (serviceGraph setup mode).Config → Outcome)
     (keyed : ∀ left right : (serviceGraph setup mode).Config, runKey left = runKey right →
       read left = read right)
-    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (players : Player → ((reactiveApplication timeouts) leaks).Policy)
     (event : (serviceGraph setup mode).EventId)
     (follows : ∀ owner, (serviceGraph setup mode).actor? event = some owner →
-      players owner = serviceReferenceTurnPolicy setup mode runtime.deadline leaks bound turns
+      players owner = serviceReferenceTurnPolicy setup mode timeouts.duration leaks bound turns
         (firstTurnTiming setup turns mode) client owner)
     (solitary : (serviceGraph setup mode).Solitary event)
     (leading : (serviceGraph setup mode).Leading event)
     (notPublication : ¬ ((serviceGraph setup mode).outputLayout event).IsPublication)
-    (execution : (runtime.reactiveApplication leaks).Execution)
+    (execution : ((reactiveApplication timeouts) leaks).Execution)
     (ready : execution.application.config.cut.Ready event)
-    (supported : execution ∈ ((runtime.reactiveApplication leaks).roundsFrom
+    (supported : execution ∈ (((reactiveApplication timeouts) leaks).roundsFrom
       (serviceInitialLaw setup mode) scheduler players execution.environmentRecall.length).support)
     (untouched : Untouched setup leaks event execution)
     (bounded : execution.environmentRecall.length ≤ horizon) :
-    ((runtime.reactiveApplication leaks).runUntilHorizon scheduler players
+    (((reactiveApplication timeouts) leaks).runUntilHorizon scheduler players
         (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
       (fun final => outcomeLaw client read final.application.config) =
       outcomeLaw client read execution.application.config := by
   classical
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   have drained := outcomeLaw_drain independent read keyed
   have least : ∀ other, other ∉ execution.application.config.cut.completed →
       event.val ≤ other.val := fun _ unfinished => leading _ ready unfinished
   cases owned : (serviceGraph setup mode).actor? event with
   | none =>
-      exact chance_runUntil_bind_continuation runtime leaks (outcomeLaw client read) drained
+      exact chance_runUntil_bind_continuation timeouts leaks (outcomeLaw client read) drained
         scheduler players event solitary
         (fun config configReady action => step_bind_outcomeLaw_ownerless client read config event
           configReady (fun _ unfinished => leading config.cut configReady unfinished) owned action)
@@ -92,9 +92,9 @@ theorem soleSegment_outcomeLaw
         ((serviceGraph setup mode).playerObserve owner execution.application.config) active
       have callback (current : app.Execution)
           (same : current.application.config = execution.application.config) :
-          serviceReferencePolicy setup mode runtime.deadline leaks client owner
+          serviceReferencePolicy setup mode timeouts.duration leaks client owner
               (current.logs owner) (current.observe app owner) =
-            law.map (fun action => runtime.canonicalServiceDecision leaks owner
+            law.map (fun action => (canonicalServiceDecision timeouts) leaks owner
               (current.logs owner) (current.observe app owner) event action) := by
         have currentReady : current.application.config.cut.Ready event := same.symm ▸ ready
         have turn := serviceOwnTurn?_of_ready setup current.application currentReady owned
@@ -110,14 +110,14 @@ theorem soleSegment_outcomeLaw
         rw [sourceServiceCanonicalPolicy_at_event_reference setup leaks client owner current event
           turn owned, dite_eq_right currentActive]
         exact congrArg (PMF.map _) (kernel _ _ same currentActive active)
-      have mixture := serviceReference_firstTurn_mixture runtime leaks scheduler bound client
+      have mixture := serviceReference_firstTurn_mixture timeouts leaks scheduler bound client
         owner event owned solitary players (follows owner owned) execution ready supported
         untouched bounded law callback
       rw [mixture, PMF.bind_bind, outcomeLaw_actor client read execution.application.config event
         ready least owner owned active]
       apply bind_congr_on_support _
       intro action _
-      exact serviceReference_fixedAction_continuation runtime leaks scheduler delay bound client
+      exact serviceReference_fixedAction_continuation timeouts leaks scheduler delay bound client
         (outcomeLaw client read) drained contract timely owner event owned solitary players
         (follows owner owned) action execution ready supported untouched bounded
         (effectiveAction_of_not_publication _ event notPublication action)

@@ -17,14 +17,14 @@ open Interaction EventGraph
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 /-- The authentic compiler response is the unique semantic normal form
 of its matching certificate, including forwarding aliases. -/
 theorem serviceDecision_authentic_opening
-    (execution : (runtime.reactiveApplication leaks).Execution)
-    (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
+    (execution : ((reactiveApplication timeouts) leaks).Execution)
+    (recalled : execution.InputRecall ((reactiveApplication timeouts) leaks))
     (owner : Player) (event : graph.EventId) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload))
@@ -38,8 +38,8 @@ theorem serviceDecision_authentic_opening
     (fixed : execution.application.candidates.lookup candidate = .openable ⟨payload, value⟩)
     (active : owner ∉ execution.application.config.defaulted)
     (stored : binding.get? execution.application.config.store = some (.success value)) :
-    let app := runtime.reactiveApplication leaks
-    runtime.serviceDecision leaks owner (execution.logs owner) (execution.observe app owner)
+    let app := (reactiveApplication timeouts) leaks
+    (serviceDecision timeouts) leaks owner (execution.logs owner) (execution.observe app owner)
       event (cast (congrArg EventField.Action outputEq.symm) true) =
       ⟨some ((disclosureSubmission (.opening event candidate ⟨payload, value⟩)).normalizeReactive
           owner

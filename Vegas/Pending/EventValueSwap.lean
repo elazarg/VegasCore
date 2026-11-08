@@ -798,31 +798,31 @@ def RevealFixed (swap : HiddenSwap graph) (state : State graph) (event : graph.E
 /-- **Inclusion commutes with the swap** when an accepted commitment's handle is
 compatible with it at its event, and an opening addresses a ready resolution
 only if the swap fixes the binding it reads and the handle accepted for it. -/
-theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph)
+theorem handle_swap (timeouts : EventTimeouts graph) (swap : HiddenSwap graph)
     (state : State graph) (message : Message Player (Payload graph))
-    (compatible : ∀ next event candidate, handle runtime state message = some next →
+    (compatible : ∀ next event candidate, handle timeouts state message = some next →
       message.payload = .commitment event candidate → BindCompatible swap event candidate)
     (fixed : ∀ event, (∃ candidate raw, message.payload = .opening event candidate raw) →
       state.config.cut.Ready event → RevealFixed swap state event) :
-    handle runtime (state.swap swap) message = (handle runtime state message).map
+    handle timeouts (state.swap swap) message = (handle timeouts state message).map
       (State.swap swap) := by
   rcases message with ⟨id, packet⟩
   cases packet with
   | malformed raw => simp [handle]
   | commitment event candidate =>
-      cases original : handle runtime state ⟨id, .commitment event candidate⟩ with
+      cases original : handle timeouts state ⟨id, .commitment event candidate⟩ with
       | some next =>
           have compatibleHere := compatible next event candidate original rfl
           obtain ⟨active, ready, timely, owner, payload, outputEq, codeEq, view,
             sender, handleOwner,
             vacant, unused, _⟩ :=
-            (handle_commitment_iff runtime state next id event candidate).mp original
-          rw [handle_commitment_eq runtime state id event candidate owner payload outputEq codeEq
+            (handle_commitment_iff timeouts state next id event candidate).mp original
+          rw [handle_commitment_eq timeouts state id event candidate owner payload outputEq codeEq
             view ready timely
             (by simpa only [State.swap_config, Config.swap_defaulted] using active)
             sender handleOwner vacant unused, Option.some.injEq] at original
           subst original
-          rw [handle_commitment_eq runtime (state.swap swap) id event candidate owner payload
+          rw [handle_commitment_eq timeouts (state.swap swap) id event candidate owner payload
             outputEq codeEq view ready timely
             (by simpa only [State.swap_config, Config.swap_defaulted] using active)
             sender handleOwner vacant unused, Option.map_some]
@@ -839,25 +839,26 @@ theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph
             simp only [Option.map_some, resultEq, cast_cast, cast_eq]
           · exact (swap.candidates_freeze state.candidates candidate).symm
       | none =>
-          cases swapped : handle runtime (state.swap swap) ⟨id, .commitment event candidate⟩ with
+          cases swapped : handle timeouts (state.swap swap) ⟨id, .commitment event candidate⟩ with
           | none => rfl
           | some next =>
               obtain ⟨active, ready, timely, owner, payload, outputEq, codeEq, view,
             sender, handleOwner,
                 vacant, unused, _⟩ :=
-                (handle_commitment_iff runtime (state.swap swap) next id event candidate).mp swapped
-              rw [handle_commitment_eq runtime state id event candidate owner payload outputEq
+                (handle_commitment_iff timeouts (state.swap swap) next id event candidate).mp
+                  swapped
+              rw [handle_commitment_eq timeouts state id event candidate owner payload outputEq
                 codeEq view ready timely
             (by simpa only [State.swap_config, Config.swap_defaulted] using active)
                 sender handleOwner vacant unused] at original
               cases original
   | opening event candidate raw =>
-      cases original : handle runtime state ⟨id, .opening event candidate raw⟩ with
+      cases original : handle timeouts state ⟨id, .opening event candidate raw⟩ with
       | some next =>
           obtain ⟨active, ready, timely, owner, payload, binding, checks, outputEq, codeEq,
             value, result,
             view, sender, handleOwner, associated, rawEq, lookupEq, stored, resolved, nextEq⟩ :=
-            (handle_opening_iff runtime state next id event candidate raw).mp original
+            (handle_opening_iff timeouts state next id event candidate raw).mp original
           subst rawEq nextEq
           have revealFixed := fixed event ⟨candidate, _, rfl⟩ ready
           unfold RevealFixed at revealFixed
@@ -881,7 +882,7 @@ theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph
               EventCode.resolveOutput?_publicAgree binding checks true
                 (swap.values.store_publicAgree state.config.store) storeAt]
             exact resolved
-          rw [handle_opening_eq runtime (state.swap swap) id event candidate owner payload binding
+          rw [handle_opening_eq timeouts (state.swap swap) id event candidate owner payload binding
             checks outputEq codeEq view ready timely
             (by simpa only [State.swap_config, Config.swap_defaulted] using active)
             sender handleOwner associated value
@@ -891,14 +892,14 @@ theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph
               (show (graph.outputLayout event).IsPublic by rw [outputEq]; trivial)]
           rfl
       | none =>
-          cases swapped : handle runtime (state.swap swap) ⟨id, .opening event candidate raw⟩ with
+          cases swapped : handle timeouts (state.swap swap) ⟨id, .opening event candidate raw⟩ with
           | none => rfl
           | some next =>
               obtain ⟨active, ready, timely, owner, payload, binding, checks, outputEq, codeEq,
                 value,
                 result, view, sender, handleOwner, associated, rawEq, lookupEq, stored, resolved,
                 _⟩ :=
-                (handle_opening_iff runtime (state.swap swap) next id event candidate raw).mp
+                (handle_opening_iff timeouts (state.swap swap) next id event candidate raw).mp
                   swapped
               subst rawEq
               have revealFixed := fixed event ⟨candidate, _, rfl⟩ ready
@@ -923,7 +924,7 @@ theorem handle_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph
                   EventCode.resolveOutput?_publicAgree binding checks true
                     (swap.values.store_publicAgree state.config.store) storeAt] at resolved
                 exact resolved
-              rw [handle_opening_eq runtime state id event candidate owner payload binding checks
+              rw [handle_opening_eq timeouts state id event candidate owner payload binding checks
                 outputEq codeEq view ready timely
             (by simpa only [State.swap_config, Config.swap_defaulted] using active)
             sender handleOwner associated value
@@ -943,13 +944,13 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- **Environment operations commute with the swap.** Clocks, samples and
 expiries read no hidden value, and an expired binding fails on both sides. -/
-theorem environmentStep_swap (runtime : EventGraphRuntime graph) (swap : HiddenSwap graph)
+theorem environmentStep_swap (timeouts : EventTimeouts graph) (swap : HiddenSwap graph)
     (state : State graph) (command : EnvironmentCommand graph)
     (expiry : ∀ event entered, command = .expire event → state.config.cut.Ready event →
-      state.activatedAt event = some entered → runtime.deadline event ≤ state.clock - entered →
+      state.activatedAt event = some entered → timeouts.duration event ≤ state.clock - entered →
         swap.values.ExpiryFixed event) :
-    environmentStep runtime (state.swap swap) command =
-      (environmentStep runtime state command).map (State.swap swap) := by
+    environmentStep timeouts (state.swap swap) command =
+      (environmentStep timeouts state command).map (State.swap swap) := by
   cases command with
   | advanceClock =>
       simp only [environmentStep, PMF.pure_map]
@@ -974,9 +975,9 @@ theorem environmentStep_swap (runtime : EventGraphRuntime graph) (swap : HiddenS
                 intro owner payload bindingEq
                 cases outputEq.symm.trans bindingEq)
             rw [actionFixed] at stepEq
-            rw [environmentStep_executeSample_eq runtime (state.swap swap) event ready payload law
+            rw [environmentStep_executeSample_eq timeouts (state.swap swap) event ready payload law
                 outputEq codeEq view,
-              environmentStep_executeSample_eq runtime state event ready payload law outputEq
+              environmentStep_executeSample_eq timeouts state event ready payload law outputEq
                 codeEq view]
             change PMF.map _ ((state.config.swap swap.values).step event ready _) = _
             rw [stepEq, PMF.map_comp, PMF.map_comp]
@@ -987,8 +988,8 @@ theorem environmentStep_swap (runtime : EventGraphRuntime graph) (swap : HiddenS
               intro _ _ _ _ same
               rw [view] at same
               cases same
-            rw [environmentStep_executeSample_of_nonsample runtime (state.swap swap) event ready
-              nonsample, environmentStep_executeSample_of_nonsample runtime state event ready
+            rw [environmentStep_executeSample_of_nonsample timeouts (state.swap swap) event ready
+              nonsample, environmentStep_executeSample_of_nonsample timeouts state event ready
               nonsample, PMF.pure_map]
         | resolve owner payload binding checks outputEq codeEq =>
             have nonsample : ∀ payload law outputEq codeEq,
@@ -996,48 +997,48 @@ theorem environmentStep_swap (runtime : EventGraphRuntime graph) (swap : HiddenS
               intro _ _ _ _ same
               rw [view] at same
               cases same
-            rw [environmentStep_executeSample_of_nonsample runtime (state.swap swap) event ready
-              nonsample, environmentStep_executeSample_of_nonsample runtime state event ready
+            rw [environmentStep_executeSample_of_nonsample timeouts (state.swap swap) event ready
+              nonsample, environmentStep_executeSample_of_nonsample timeouts state event ready
               nonsample, PMF.pure_map]
-      · rw [environmentStep_executeSample_of_not_ready runtime (state.swap swap) event ready,
-          environmentStep_executeSample_of_not_ready runtime state event ready, PMF.pure_map]
+      · rw [environmentStep_executeSample_of_not_ready timeouts (state.swap swap) event ready,
+          environmentStep_executeSample_of_not_ready timeouts state event ready, PMF.pure_map]
   | expire event =>
       by_cases ready : state.config.cut.Ready event
       · cases activated : state.activatedAt event with
         | none =>
-            rw [environmentStep_expire_of_not_activated runtime (state.swap swap) event ready
-              activated, environmentStep_expire_of_not_activated runtime state event ready
+            rw [environmentStep_expire_of_not_activated timeouts (state.swap swap) event ready
+              activated, environmentStep_expire_of_not_activated timeouts state event ready
               activated, PMF.pure_map]
         | some entered =>
-            by_cases due : runtime.deadline event ≤ state.clock - entered
+            by_cases due : timeouts.duration event ≤ state.clock - entered
             · cases view : nodeView graph event with
               | bind owner payload outputEq codeEq =>
-                  rw [environmentStep_expire_bind_eq runtime (state.swap swap) event ready entered
+                  rw [environmentStep_expire_bind_eq timeouts (state.swap swap) event ready entered
                     activated due owner payload outputEq codeEq view,
-                    environmentStep_expire_bind_eq runtime state event ready entered activated due
+                    environmentStep_expire_bind_eq timeouts state event ready entered activated due
                     owner payload outputEq codeEq view, PMF.pure_map, State.swap_complete,
                     swap.values.action_binding event owner payload outputEq,
                     expiry event entered rfl ready activated due owner payload outputEq]
                   rfl
               | resolve owner payload binding checks outputEq codeEq =>
-                  rw [environmentStep_expire_resolve_eq runtime (state.swap swap) event ready
+                  rw [environmentStep_expire_resolve_eq timeouts (state.swap swap) event ready
                     entered activated due owner payload binding checks outputEq codeEq view,
-                    environmentStep_expire_resolve_eq runtime state event ready entered activated
+                    environmentStep_expire_resolve_eq timeouts state event ready entered activated
                     due owner payload binding checks outputEq codeEq view, PMF.pure_map,
                     State.swap_complete, swap.values.action_publication event payload outputEq,
                     swap.values.value_public (.inr event)
                       (show (graph.outputLayout event).IsPublic by rw [outputEq]; trivial)]
                   rfl
               | sample payload law outputEq codeEq =>
-                  rw [environmentStep_expire_sample_eq runtime (state.swap swap) event ready
+                  rw [environmentStep_expire_sample_eq timeouts (state.swap swap) event ready
                     entered activated due payload law outputEq codeEq view,
-                    environmentStep_expire_sample_eq runtime state event ready entered activated
+                    environmentStep_expire_sample_eq timeouts state event ready entered activated
                     due payload law outputEq codeEq view, PMF.pure_map]
-            · rw [environmentStep_expire_of_not_due runtime (state.swap swap) event ready entered
-                activated due, environmentStep_expire_of_not_due runtime state event ready entered
+            · rw [environmentStep_expire_of_not_due timeouts (state.swap swap) event ready entered
+                activated due, environmentStep_expire_of_not_due timeouts state event ready entered
                 activated due, PMF.pure_map]
-      · rw [environmentStep_expire_of_not_ready runtime (state.swap swap) event ready,
-          environmentStep_expire_of_not_ready runtime state event ready, PMF.pure_map]
+      · rw [environmentStep_expire_of_not_ready timeouts (state.swap swap) event ready,
+          environmentStep_expire_of_not_ready timeouts state event ready, PMF.pure_map]
 
 /-! ### Submissions -/
 

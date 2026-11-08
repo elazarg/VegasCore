@@ -17,16 +17,17 @@ open Interaction EventGraph GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
-theorem submitted_bindingResult (execution : (runtime.reactiveApplication leaks).Execution)
+theorem submitted_bindingResult (execution : ((reactiveApplication timeouts) leaks).Execution)
     (who : Player) (event : graph.EventId) (payload : L.Ty) (serial : Nat)
     (opening : Option (Raw L))
     (fresh : execution.application.candidates.lookup (who, .prepared serial) = .fresh) :
-    let response : (runtime.reactiveApplication leaks).Action :=
+    let response : ((reactiveApplication timeouts) leaks).Action :=
       ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩
-    (execution.respond (runtime.reactiveApplication leaks) who response).application.bindingResult
+    (execution.respond ((reactiveApplication timeouts) leaks) who
+      response).application.bindingResult
       (who, .prepared serial) payload =
       (opening.bind fun raw => raw.as? payload).elim .failure PublicationResult.success := by
   cases opening with

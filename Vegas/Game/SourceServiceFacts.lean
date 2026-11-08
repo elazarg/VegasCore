@@ -30,7 +30,7 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- The initial native law is the image of the existing typed setup inputs. -/
@@ -42,34 +42,34 @@ theorem serviceInitialLaw_eq_inputs :
   rfl
 
 /-- Every fresh submission of `who` was made at its own turn at its event. -/
-def OwnSubmissionsAtTurn (execution : (serviceApplication setup mode deadline leaks).Execution)
+def OwnSubmissionsAtTurn (execution : (serviceApplication setup mode duration leaks).Execution)
     (who : Player) : Prop := ∀ entry ∈ execution.logs who, ∀ event,
-    (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action = some event →
+    (submittedEvent? (serviceTimeouts setup mode duration)) leaks entry.action = some event →
     entry.beforeView.application.publicView.ownTurn? who = some event
 
 /-- The native facts used to transport acceptable recorded calls. -/
-structure LegalFacts (execution : (serviceApplication setup mode deadline leaks).Execution) :
+structure LegalFacts (execution : (serviceApplication setup mode duration leaks).Execution) :
     Prop where
-  stable : EntryStable (serviceRuntime setup mode deadline) leaks execution
-  eventStable : EntryEventStable (serviceRuntime setup mode deadline) leaks execution
-  storeStable : EntryStoreStable (serviceRuntime setup mode deadline) leaks execution
+  stable : EntryStable (serviceTimeouts setup mode duration) leaks execution
+  eventStable : EntryEventStable (serviceTimeouts setup mode duration) leaks execution
+  storeStable : EntryStoreStable (serviceTimeouts setup mode duration) leaks execution
   binding : execution.application.BindingInvariant
-  evidence : ((serviceRuntime setup mode deadline).packetEvidence leaks).Sound execution
-  receipts : execution.ReceiptsSound (serviceApplication setup mode deadline leaks) (fun _ => True)
+  evidence : ((packetEvidence (serviceTimeouts setup mode duration)) leaks).Sound execution
+  receipts : execution.ReceiptsSound (serviceApplication setup mode duration leaks) (fun _ => True)
   serials : execution.network.SerialsBeforeNext
   unique : execution.network.UniqueIds
-  provenance : execution.Provenance (serviceApplication setup mode deadline leaks)
-  inputs : execution.InputRecall (serviceApplication setup mode deadline leaks)
+  provenance : execution.Provenance (serviceApplication setup mode duration leaks)
+  inputs : execution.InputRecall (serviceApplication setup mode duration leaks)
   quiescent : ∀ event, ¬ execution.application.AutomaticReady event
 
 /-- Every initialized raw history supplies these facts under arbitrary responses and scheduler. -/
 theorem legalFacts (horizon : Nat)
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (control : (serviceApplication setup mode deadline leaks).Control)
-    (trace : ((serviceApplication setup mode deadline leaks).protocol
+    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
+    (control : (serviceApplication setup mode duration leaks).Control)
+    (trace : ((serviceApplication setup mode duration leaks).protocol
       (serviceInitialLaw setup mode) horizon scheduler).Trace (some control)) :
     LegalFacts setup leaks control.execution := by
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   have nativeTrace := trace
   rw [serviceInitialLaw_eq_inputs setup] at nativeTrace
   have receipts := (app.receiptServiceInvariant (fun _ => True) (fun _ => True)
@@ -77,22 +77,22 @@ theorem legalFacts (horizon : Nat)
     (by intros; trivial) scheduler).history (serviceInitialLaw setup mode) horizon
       (fun state _ => ⟨trivial, app.receiptsSound_initial (fun _ => True) state⟩) trace
   exact {
-    stable := entryStable_history (serviceRuntime setup mode deadline) leaks
+    stable := entryStable_history (serviceTimeouts setup mode duration) leaks
       (serviceInitialLaw setup mode) horizon scheduler trace
-    eventStable := entryEventStable_history (serviceRuntime setup mode deadline) leaks
+    eventStable := entryEventStable_history (serviceTimeouts setup mode duration) leaks
       (serviceInitialLaw setup mode) horizon scheduler trace
-    storeStable := entryStoreStable_history (serviceRuntime setup mode deadline) leaks
+    storeStable := entryStoreStable_history (serviceTimeouts setup mode duration) leaks
       (serviceInitialLaw setup mode) horizon scheduler trace
-    binding := (serviceRuntime setup mode deadline).reactiveBindingInvariant_history leaks
+    binding := (reactiveBindingInvariant_history (serviceTimeouts setup mode duration)) leaks
       (setup.initialLaw.map setup.eventInputs) horizon scheduler nativeTrace
-    evidence := ((serviceRuntime setup mode deadline).packetEvidence leaks).history_sound
+    evidence := ((packetEvidence (serviceTimeouts setup mode duration)) leaks).history_sound
       (serviceInitialLaw setup mode) horizon scheduler trace
     receipts := receipts.2
     serials := app.serialsBeforeNext_history scheduler (serviceInitialLaw setup mode) horizon trace
     unique := app.uniqueIds_history scheduler (serviceInitialLaw setup mode) horizon control trace
     provenance := app.history_provenance (serviceInitialLaw setup mode) horizon scheduler trace
     inputs := app.history_inputRecall (serviceInitialLaw setup mode) horizon scheduler trace
-    quiescent := (serviceRuntime setup mode deadline).reactive_history_quiescent leaks
+    quiescent := (reactive_history_quiescent (serviceTimeouts setup mode duration)) leaks
       (setup.initialLaw.map setup.eventInputs) horizon scheduler nativeTrace }
 
 omit [DecidableEq Player] in
@@ -107,8 +107,8 @@ private theorem forall₂_mem_right {α β : Type} {R : α → β → Prop} :
         exact ⟨y, List.mem_cons_of_mem _ inside, related⟩
 
 /-- No receipt names an identifier not yet allocated. -/
-theorem no_receipt_next (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (sound : execution.ReceiptsSound (serviceApplication setup mode deadline leaks) (fun _ => True))
+theorem no_receipt_next (execution : (serviceApplication setup mode duration leaks).Execution)
+    (sound : execution.ReceiptsSound (serviceApplication setup mode duration leaks) (fun _ => True))
     (serials : execution.network.SerialsBeforeNext) (who : Player) (accepted : Bool) :
     ((who, execution.network.nextSerial who), accepted) ∉ execution.receipts := by
   intro member
@@ -119,11 +119,11 @@ theorem no_receipt_next (execution : (serviceApplication setup mode deadline lea
 
 /-- The entry a response appends to its author's recall. A fresh submission
 emits the author's next identifier. -/
-theorem respond_recall_self (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (who : Player) (action : (serviceApplication setup mode deadline leaks).Action) : ∃ emitted,
-    (execution.respond (serviceApplication setup mode deadline leaks) who action).logs who =
+theorem respond_recall_self (execution : (serviceApplication setup mode duration leaks).Execution)
+    (who : Player) (action : (serviceApplication setup mode duration leaks).Action) : ∃ emitted,
+    (execution.respond (serviceApplication setup mode duration leaks) who action).logs who =
     execution.logs who ++
-    [⟨execution.observe (serviceApplication setup mode deadline leaks) who, action, emitted⟩] ∧ ∀
+    [⟨execution.observe (serviceApplication setup mode duration leaks) who, action, emitted⟩] ∧ ∀
     material, action.transmission = some material → ∀ message,
         emitted = some message → message.id = (who, execution.network.nextSerial who) := by
   rcases action with ⟨transmission⟩
@@ -133,15 +133,15 @@ theorem respond_recall_self (execution : (serviceApplication setup mode deadline
   | some material =>
       refine
           ⟨some (execution.network.submit who
-              ((serviceApplication setup mode deadline leaks).packet
-              ((serviceApplication setup mode deadline leaks).submit execution.application who
+              ((serviceApplication setup mode duration leaks).packet
+              ((serviceApplication setup mode duration leaks).submit execution.application who
               material) who (execution.network.known who) material)).1, by simp only
               [ReactiveApplication.Execution.respond, ↓reduceIte], ?_⟩
       rintro _ ⟨⟩ message ⟨⟩
       rfl
 
 private theorem settled_congr {event : (serviceGraph setup mode).EventId} {id : MessageId Player}
-    {before after : (serviceApplication setup mode deadline leaks).Execution}
+    {before after : (serviceApplication setup mode duration leaks).Execution}
     (configEq : after.application.config = before.application.config)
     (receiptsEq : after.receipts = before.receipts)
     (settled : Settled setup leaks event id before) : Settled setup leaks event id after := by
@@ -152,15 +152,15 @@ private theorem settled_congr {event : (serviceGraph setup mode).EventId} {id : 
 /-- A response preserves the settlement invariant. -/
 theorem settlesFreshCalls_respond (owner : Player) (event : (serviceGraph setup mode).EventId)
     (bound : (serviceGraph setup mode).EventId → Nat)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (execution : (serviceApplication setup mode duration leaks).Execution)
     (facts : LegalFacts setup leaks execution) (who : Player)
-    (action : (serviceApplication setup mode deadline leaks).Action)
+    (action : (serviceApplication setup mode duration leaks).Action)
     (valid : SettlesFreshCalls setup leaks owner event bound execution) :
     SettlesFreshCalls setup leaks owner event bound
-      (execution.respond (serviceApplication setup mode deadline leaks) who action) := by
-  let app := serviceApplication setup mode deadline leaks
+      (execution.respond (serviceApplication setup mode duration leaks) who action) := by
+  let app := serviceApplication setup mode duration leaks
   have configEq :=
-      ((serviceRuntime setup mode deadline).reactive_respond_application leaks execution who
+      ((reactive_respond_application (serviceTimeouts setup mode duration)) leaks execution who
           action).1
   have receiptsEq := app.respond_receipts execution who action
   intro earlier entry later message split call sole
@@ -203,9 +203,9 @@ ready, saw it as the owner's turn: every other event of the owner that the
 response saw ready is either still ready or has completed while ready together
 with this one, and an owner has at most one ready event. -/
 theorem ownTurn?_of_entry_ready
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
-    (eventStable : EntryEventStable (serviceRuntime setup mode deadline) leaks execution)
-    (who : Player) (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (execution : (serviceApplication setup mode duration leaks).Execution)
+    (eventStable : EntryEventStable (serviceTimeouts setup mode duration) leaks execution)
+    (who : Player) (entry : (serviceApplication setup mode duration leaks).PlayerEntry)
     (member : entry ∈ execution.logs who) (event : (serviceGraph setup mode).EventId)
     (owned : (serviceGraph setup mode).actor? event = some who)
     (seen : entry.beforeView.application.publicView.EventReady event)
@@ -232,18 +232,18 @@ theorem ownTurn?_of_entry_ready
 /-- A pending authentic envelope names a submission already retained in its
 sender's recall. It can therefore be attributed before an inclusion attempt. -/
 theorem eventRecorded_of_pending
-    {horizon : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {control : (serviceApplication setup mode deadline leaks).Control}
-    (trace : ((serviceApplication setup mode deadline leaks).protocol
+    {horizon : Nat} {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {control : (serviceApplication setup mode duration leaks).Control}
+    (trace : ((serviceApplication setup mode duration leaks).protocol
       (serviceInitialLaw setup mode) horizon scheduler).Trace (some control))
     (owner : Player) (event : (serviceGraph setup mode).EventId)
     (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
     (member : message ∈ control.execution.network.pending)
     (sender : message.sender = owner)
     (named : message.payload.call.event? (serviceGraph setup mode) = some event) :
-    (serviceRuntime setup mode deadline).eventRecorded leaks
+    (eventRecorded (serviceTimeouts setup mode duration)) leaks
       (control.execution.logs owner) event = true := by
-  have signed := signedCommitments_history (serviceRuntime setup mode deadline) leaks
+  have signed := signedCommitments_history (serviceTimeouts setup mode duration) leaks
     (serviceInitialLaw setup mode) (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
       exact ⟨_, rfl⟩) horizon scheduler trace
@@ -251,7 +251,7 @@ theorem eventRecorded_of_pending
     signed.provenance.pending message member
   rw [sender] at remembered
   obtain ⟨_, actual, sent, call⟩ := signed.emissions owner entry remembered message emitted
-  apply ((serviceRuntime setup mode deadline).eventRecorded_iff leaks
+  apply ((eventRecorded_iff (serviceTimeouts setup mode duration)) leaks
     (control.execution.logs owner) event).mpr
   refine ⟨entry, remembered, ?_⟩
   unfold EventGraphRuntime.submittedEvent?
@@ -267,9 +267,9 @@ open EventGraph
 variable {setup}
 
 private theorem pending_waiting_call_rejected
-    (runtime : EventGraphRuntime (serviceGraph setup mode))
+    (timeouts : EventTimeouts (serviceGraph setup mode))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (execution : (runtime.reactiveApplication leaks).Execution)
+    (execution : ((reactiveApplication timeouts) leaks).Execution)
     (event : (serviceGraph setup mode).EventId) (solitary :
       (serviceGraph setup mode).Solitary event)
     (ready : execution.application.config.cut.Ready event)
@@ -278,69 +278,69 @@ private theorem pending_waiting_call_rejected
       message.payload.call.event? (serviceGraph setup mode) ≠ some event)
     (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
     (pending : message ∈ execution.network.pending) :
-    (runtime.reactiveApplication leaks).handle execution.application message = none := by
+    ((reactiveApplication timeouts) leaks).handle execution.application message = none := by
   apply reactiveHandle_none
-  cases handled : handle runtime execution.application ⟨message.id, message.payload.call⟩ with
+  cases handled : handle timeouts execution.application ⟨message.id, message.payload.call⟩ with
   | none => rfl
   | some next =>
       obtain ⟨query, named, queryReady, _action, _moved⟩ :=
-        handle_config_mem_step runtime execution.application next _ handled
+        handle_config_mem_step timeouts execution.application next _ handled
       have same := solitary _ queryReady ready
       subst query
-      have authored := handle_sender_actor runtime execution.application next _ handled event named
+      have authored := handle_sender_actor timeouts execution.application next _ handled event named
       have sender : message.sender = owner := Option.some.inj (authored.symm.trans owned)
       exact (safe message pending sender named).elim
 
-private theorem native_waiting_config (runtime : EventGraphRuntime (serviceGraph setup mode))
+private theorem native_waiting_config (timeouts : EventTimeouts (serviceGraph setup mode))
     (state next : EventGraphRuntime.State (serviceGraph setup mode))
     (operation : EnvironmentCommand (serviceGraph setup mode))
     (event : (serviceGraph setup mode).EventId) (solitary :
       (serviceGraph setup mode).Solitary event)
     (ready : state.config.cut.Ready event)
     (owner : Player) (owned : (serviceGraph setup mode).actor? event = some owner)
-    (within : state.WithinDeadline runtime event)
+    (within : state.WithinDeadline timeouts event)
     (quiescent : ∀ query, ¬ state.AutomaticReady query)
-    (moved : next ∈ (environmentStep runtime state operation).support) :
+    (moved : next ∈ (environmentStep timeouts state operation).support) :
     next.drain.config = state.config := by
   have unfinished : event ∉ next.config.cut.completed := by
     by_cases other : operation ≠ .expire event
-    · exact fun done => ready.1 ((environmentStep_owned_completed_iff runtime state next operation
+    · exact fun done => ready.1 ((environmentStep_owned_completed_iff timeouts state next operation
         event owner owned other moved).mp done)
     · have expires : operation = .expire event := by simpa only [not_not] using other
       subst operation
       cases activated : state.activatedAt event with
       | none => simp only [EventGraphRuntime.State.WithinDeadline, activated] at within
       | some entered =>
-          have beforeDue : state.clock - entered < runtime.deadline event := by
+          have beforeDue : state.clock - entered < timeouts.duration event := by
             simpa only [EventGraphRuntime.State.WithinDeadline, activated] using within
-          rw [environmentStep_expire_of_not_due runtime state event ready entered activated
+          rw [environmentStep_expire_of_not_due timeouts state event ready entered activated
             (Nat.not_le.mpr beforeDue), PMF.mem_support_pure_iff] at moved
           cases moved
           exact ready.1
   have same := EventGraph.Config.Step.path_eq_of_ready_of_not_completed event
     (fun _ otherReady => solitary _ otherReady ready)
-    unfinished (environmentStep_graph_steps runtime state next operation moved)
+    unfinished (environmentStep_graph_steps timeouts state next operation moved)
   have cleared : ∀ query, ¬ next.AutomaticReady query := by
     simpa only [EventGraphRuntime.State.AutomaticReady, same] using quiescent
   exact (congrArg EventGraphRuntime.State.config (next.drain_eq_of_clear cleared)).trans same
 
 /-- Before its deadline, no environment command changes the unique ready owned
 configuration when the network has no call from that owner naming that event. -/
-theorem environment_waiting_config_mode (runtime : EventGraphRuntime (serviceGraph setup mode))
+theorem environment_waiting_config_mode (timeouts : EventTimeouts (serviceGraph setup mode))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (execution next : (runtime.reactiveApplication leaks).Execution)
-    (command : (runtime.reactiveApplication leaks).Command)
+    (execution next : ((reactiveApplication timeouts) leaks).Execution)
+    (command : ((reactiveApplication timeouts) leaks).Command)
     (event : (serviceGraph setup mode).EventId) (solitary :
       (serviceGraph setup mode).Solitary event)
     (owner : Player)
     (ready : execution.application.config.cut.Ready event)
     (owned : (serviceGraph setup mode).actor? event = some owner)
-    (within : execution.application.WithinDeadline runtime event)
+    (within : execution.application.WithinDeadline timeouts event)
     (quiescent : ∀ query, ¬ execution.application.AutomaticReady query)
     (safe : ∀ message ∈ execution.network.pending, message.sender = owner →
       message.payload.call.event? (serviceGraph setup mode) ≠ some event)
     (reached : next ∈
-      (execution.environmentStep (runtime.reactiveApplication leaks) command).support) :
+      (execution.environmentStep ((reactiveApplication timeouts) leaks) command).support) :
     next.application.config = execution.application.config := by
   cases command with
   | wait =>
@@ -361,37 +361,37 @@ theorem environment_waiting_config_mode (runtime : EventGraphRuntime (serviceGra
           simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
             found]
       | some message =>
-          have rejected := pending_waiting_call_rejected runtime leaks execution event solitary
+          have rejected := pending_waiting_call_rejected timeouts leaks execution event solitary
             ready owner owned safe message (List.mem_of_find?_eq_some found)
           simp only [ReactiveApplication.Execution.includePending, MessageNetwork.includePending,
             found, rejected, Option.getD_none]
   | application operation =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      change state ∈ ((environmentStep runtime execution.application operation).map
+      change state ∈ ((environmentStep timeouts execution.application operation).map
         EventGraphRuntime.State.drain).support at changed
       obtain ⟨native, nativeMoved, rfl⟩ := PMF.support_map .. ▸ changed
-      exact native_waiting_config runtime execution.application native operation event solitary
+      exact native_waiting_config timeouts execution.application native operation event solitary
         ready owner owned within quiescent nativeMoved
 
 
 /-- Before its deadline, no environment command changes the unique ready owned
 configuration when the network has no call from that owner naming that event. -/
-theorem environment_waiting_config (runtime : EventGraphRuntime (graph setup))
+theorem environment_waiting_config (timeouts : EventTimeouts (graph setup))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (execution next : (application setup runtime leaks).Execution)
-    (command : (application setup runtime leaks).Command)
+    (execution next : (application setup timeouts leaks).Execution)
+    (command : (application setup timeouts leaks).Command)
     (event : (graph setup).EventId) (owner : Player)
     (ready : execution.application.config.cut.Ready event)
     (owned : (graph setup).actor? event = some owner)
-    (within : execution.application.WithinDeadline runtime event)
+    (within : execution.application.WithinDeadline timeouts event)
     (quiescent : ∀ query, ¬ execution.application.AutomaticReady query)
     (safe : ∀ message ∈ execution.network.pending, message.sender = owner →
       message.payload.call.event? (graph setup) ≠ some event)
     (reached : next ∈
-      (execution.environmentStep (application setup runtime leaks) command).support) :
+      (execution.environmentStep (application setup timeouts leaks) command).support) :
     next.application.config = execution.application.config :=
-  environment_waiting_config_mode runtime leaks execution next command event
+  environment_waiting_config_mode timeouts leaks execution next command event
     (setup.eventGraph.sequentialize_solitary event) owner ready owned within quiescent safe reached
 
 end SolitaryWaiting

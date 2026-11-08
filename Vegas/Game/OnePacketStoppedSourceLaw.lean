@@ -22,20 +22,20 @@ open SourceProgram EventGraphRuntime GameTheory.Math.Probability
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
 variable [Fintype Player]
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : Interaction.MessageNetwork.ObservationRule Player
     (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
   {bound : (graph setup).EventId → Nat}
 
-local notation "menu" => bounds.onePacketMenu runtime leaks
+local notation "menu" => bounds.onePacketMenu timeouts leaks
 local notation "protocol" => Interaction.ReactiveApplication.ResponseMenu.protocol menu
   (initialLaw setup) horizon scheduler
 local notation "model" => Interaction.ReactiveApplication.ResponseMenu.information menu
   (initialLaw setup) horizon scheduler
 local notation "Clear" => Interaction.ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks)
+  (app := application setup timeouts leaks)
     (fun state : EventGraphRuntime.State (graph setup) =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config state) = ∅)
 
@@ -43,25 +43,25 @@ local notation "Clear" => Interaction.ReactiveApplication.stateInvariant
 reading the certified source suffix gives exactly that suffix's full source run.
 The checkpoint includes actual own choices and public default history. -/
 theorem counted_accepted_stop_runFrom
-    (inclusion : ∀ control : (application setup runtime leaks).Control,
+    (inclusion : ∀ control : (application setup timeouts leaks).Control,
       (protocol).Trace (some control) → control.execution.application.config.defaulted = ∅ →
-      ProtectedInclusionAt runtime leaks control.execution bound)
-    (completes : ∀ control : (application setup runtime leaks).Control,
+      ProtectedInclusionAt timeouts leaks control.execution bound)
+    (completes : ∀ control : (application setup timeouts leaks).Control,
       (protocol).Trace (some control) → control.execution.application.config.defaulted = ∅ →
-      (application setup runtime leaks).terminal (some control) →
+      (application setup timeouts leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
     (wholeProfile : BehavioralProfile setup.program)
     (certificate : (protocol).WellFoundedHistories)
     (players : ∀ player, (model).BehavioralPolicy player)
-    {who : Player} {entry : (application setup runtime leaks).PlayerEntry}
+    {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
     {message : Interaction.Message Player (WitnessedPacket (graph setup))}
     {event : (graph setup).EventId} {sent : (graph setup).Config}
     {action : (graph setup).Action event} {output : ((graph setup).outputLayout event).Value}
     (ready : sent.cut.Ready event)
-    (start : (protocol).History) {control : (application setup runtime leaks).Control}
+    (start : (protocol).History) {control : (application setup timeouts leaks).Control}
     (current : start.state = some control)
     (clear : control.execution.application.config.defaulted = ∅)
-    (invariant : AcceptanceInvariant setup runtime leaks bounds horizon scheduler who entry
+    (invariant : AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who entry
       message event sent action output (some control))
     (atSent : control.execution.application.config = sent)
     (owned : (graph setup).actor? event = some who)
@@ -90,7 +90,7 @@ theorem counted_accepted_stop_runFrom
             final.execution.application.config).map read) =
       (SourceProgram.runFrom program profile source).map some := by
   dsimp only
-  have stopped := counted_accepted_stop_continuation (runtime := runtime) inclusion completes
+  have stopped := counted_accepted_stop_continuation (timeouts := timeouts) inclusion completes
     (compileEventProfile setup.program wholeProfile) certificate players start current clear
     invariant atSent owned fresh
   have historyEq := checkpoint.history

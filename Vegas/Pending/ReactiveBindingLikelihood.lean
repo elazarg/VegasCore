@@ -23,19 +23,21 @@ variable {Player : Type} [DecidableEq Player]
 
 /-- Existing native fields sufficient for the silent window's joint law.
 This is a proof readout; it is not a player's observation or extra state. -/
-def bindingTraffic (runtime : EventGraphRuntime graph)
+def bindingTraffic (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (focal : Player) (execution : (runtime.reactiveApplication leaks).Execution) :=
+    (focal : Player) (execution : ((reactiveApplication timeouts) leaks).Execution) :=
   (execution.network, execution.receipts, execution.environmentRecall, execution.logs focal,
     execution.application.playerView focal, execution.application.publicView)
 
 /-- Automatic completion preserves equality of the existing native traffic readout. -/
-theorem bindingTraffic_drain (runtime : EventGraphRuntime graph)
+theorem bindingTraffic_drain (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (left right : (runtime.reactiveApplication leaks).Execution) (focal : Player)
-    (same : runtime.bindingTraffic leaks focal left = runtime.bindingTraffic leaks focal right) :
-    runtime.bindingTraffic leaks focal {left with application := left.application.drain} =
-      runtime.bindingTraffic leaks focal {right with application := right.application.drain} := by
+    (left right : ((reactiveApplication timeouts) leaks).Execution) (focal : Player)
+    (same : (bindingTraffic timeouts) leaks focal left = (bindingTraffic timeouts) leaks focal
+      right) :
+    (bindingTraffic timeouts) leaks focal {left with application := left.application.drain} =
+      (bindingTraffic timeouts) leaks focal {right with application := right.application.drain}
+        := by
   have networks := congrArg Prod.fst same
   have receipts := congrArg (fun value => value.2.1) same
   have environments := congrArg (fun value => value.2.2.1) same

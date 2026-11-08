@@ -32,14 +32,14 @@ structure RosterCalendarPhase (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)
     (event : (graph setup).EventId) (offset entryClock : Nat) (obsolete : Bool)
-    (control : (application setup (Vegas.runtime setup) leaks).Control) : Prop where
+    (control : (application setup (Vegas.timeouts setup) leaks).Control) : Prop where
   position : control.execution.environmentRecall.length =
     (rosterPlanPrefix setup rosters event.val).length + offset
   inside : offset < (rosterBlock setup rosters event).length
   remaining : control.remaining + control.execution.environmentRecall.length =
     (rosterPlan setup rosters).length
   classified : rosterBlockCompleted setup leaks rosters control.execution.environmentRecall
-      (control.execution.observeEnvironment (application setup (Vegas.runtime setup) leaks))
+      (control.execution.observeEnvironment (application setup (Vegas.timeouts setup) leaks))
       event ↔ obsolete = true
   prior : ∀ query : (graph setup).EventId, query.val < event.val →
     query ∈ control.execution.application.config.cut.completed
@@ -62,7 +62,7 @@ structure RosterCalendarPhase (setup : Setup (Player := Player) (L := L))
     owner ∈ (rosters event).take offset → ∀ entered,
       control.execution.application.config.cut.Ready event →
       control.execution.application.activatedAt event = some entered →
-      OwnerActivatedSince (runtime setup) leaks control.execution.environmentRecall event
+      OwnerActivatedSince (timeouts setup) leaks control.execution.environmentRecall event
         owner entered
   responses : ∀ who, ∀ entry ∈ control.execution.logs who, ∀ query : (graph setup).EventId,
     entry.beforeView.application.publicView.EventReady query →
@@ -73,20 +73,20 @@ structure RosterCalendarPhase (setup : Setup (Player := Player) (L := L))
   inclusion : (rosters event).length < offset →
     event ∉ control.execution.application.config.cut.completed → ∀ owner,
       (graph setup).actor? event = some owner →
-      ∀ (earlier later : List (application setup (Vegas.runtime setup) leaks).PlayerEntry)
+      ∀ (earlier later : List (application setup (Vegas.timeouts setup) leaks).PlayerEntry)
         entry message,
         control.execution.logs owner = earlier ++ entry :: later →
         entry.emitted = some message → message.sender = owner →
         message.payload.call.event? (graph setup) = some event →
         (∀ other ∈ earlier ++ later,
-          ¬ EmitsOtherFor (runtime setup) leaks other event message.id) →
+          ¬ EmitsOtherFor (timeouts setup) leaks other event message.id) →
         ∃ accepted, (message.id, accepted) ∈ control.execution.receipts
 
 /-- A public calendar position, or a completed graph at the exhausted horizon. -/
 def RosterCalendarInvariant (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player) :
-    (application setup (Vegas.runtime setup) leaks).ProtocolState → Prop
+    (application setup (Vegas.timeouts setup) leaks).ProtocolState → Prop
   | none => True
   | some control => (∃ event offset entryClock obsolete,
       RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control) ∨
@@ -101,7 +101,7 @@ theorem RosterCalendarInvariant.initial (setup : Setup (Player := Player) (L := 
     (supported : state ∈ (initialLaw setup).support) :
     RosterCalendarInvariant setup leaks rosters
       (some ⟨(rosterPlan setup rosters).length, none,
-        ReactiveApplication.Execution.initial (application setup (Vegas.runtime setup) leaks)
+        ReactiveApplication.Execution.initial (application setup (Vegas.timeouts setup) leaks)
           state⟩) := by
   obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
   have invariant := State.initial_invariant (setup.eventInputs initial)
@@ -166,21 +166,21 @@ theorem RosterCalendarPhase.respond {setup : Setup (Player := Player) (L := L)}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
     {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
     {offset entryClock : Nat} {obsolete : Bool}
-    {control : (application setup (Vegas.runtime setup) leaks).Control}
+    {control : (application setup (Vegas.timeouts setup) leaks).Control}
     (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)
     (who : Player) (active : control.actor = some who)
-    (action : (application setup (Vegas.runtime setup) leaks).Action) :
+    (action : (application setup (Vegas.timeouts setup) leaks).Action) :
     RosterCalendarPhase setup leaks rosters event offset entryClock obsolete
       { control with
         actor := none
-        execution := control.execution.respond (application setup (Vegas.runtime setup) leaks)
+        execution := control.execution.respond (application setup (Vegas.timeouts setup) leaks)
           who action } := by
   obtain ⟨configEq, publicEq⟩ :=
-    (runtime setup).reactive_respond_application leaks control.execution who action
+    (reactive_respond_application (timeouts setup)) leaks control.execution who action
   have clockEq := congrArg PublicView.clock publicEq
   have activatedEq := congrArg PublicView.activatedAt publicEq
   dsimp only [State.publicView] at clockEq activatedEq
-  have recallEq := (application setup (Vegas.runtime setup) leaks).respond_environmentRecall
+  have recallEq := (application setup (Vegas.timeouts setup) leaks).respond_environmentRecall
     control.execution who action
   obtain ⟨positive, early⟩ := phase.activation who active
   have startClock : control.execution.application.clock = entryClock := by
@@ -194,9 +194,9 @@ theorem RosterCalendarPhase.respond {setup : Setup (Player := Player) (L := L)}
       control.execution.environmentRecall.length := by rw [phase.position]; omega
   have classified := rosterBlockCompleted_append setup leaks rosters
     control.execution.environmentRecall []
-    (control.execution.observeEnvironment (application setup (Vegas.runtime setup) leaks))
+    (control.execution.observeEnvironment (application setup (Vegas.timeouts setup) leaks))
     ((control.execution.respond _ who action).observeEnvironment
-      (application setup (Vegas.runtime setup) leaks)) event recorded
+      (application setup (Vegas.timeouts setup) leaks)) event recorded
   simp only [List.append_nil] at classified
   exact {
     position := by
@@ -252,7 +252,7 @@ theorem RosterCalendarPhase.respond {setup : Setup (Player := Player) (L := L)}
       change ∀ owner, _ → _ → ∀ entered,
         (control.execution.respond _ who action).application.config.cut.Ready event →
         (control.execution.respond _ who action).application.activatedAt event = _ →
-          OwnerActivatedSince (runtime setup) leaks
+          OwnerActivatedSince (timeouts setup) leaks
             (control.execution.respond _ who action).environmentRecall event owner entered
       rw [configEq, activatedEq, recallEq]
       exact phase.opportunity
@@ -260,7 +260,7 @@ theorem RosterCalendarPhase.respond {setup : Setup (Player := Player) (L := L)}
       intro observer entry member query ready unfinished
       have unfinishedBefore : query ∉ control.execution.application.config.cut.completed := by
         simpa only [configEq] using unfinished
-      rcases (application setup (Vegas.runtime setup) leaks).respond_entry_origin
+      rcases (application setup (Vegas.timeouts setup) leaks).respond_entry_origin
         control.execution who observer action entry member with prior | ⟨_, fresh⟩
       · exact phase.responses observer entry prior query ready unfinishedBefore
       · rw [fresh] at ready ⊢
@@ -282,13 +282,13 @@ theorem RosterCalendarPhase.activate_step
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
     {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
     {offset entryClock : Nat} {obsolete : Bool}
-    {control : (application setup (Vegas.runtime setup) leaks).Control}
+    {control : (application setup (Vegas.timeouts setup) leaks).Control}
     (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)
     (early : offset < (rosters event).length) (who : Player)
     (chosen : (rosters event)[offset]? = some who) (remaining : Nat)
     (counted : control.remaining = remaining + 1)
-    (next : (application setup (Vegas.runtime setup) leaks).Execution)
-    (reached : next ∈ (control.execution.environmentStep (application setup (Vegas.runtime
+    (next : (application setup (Vegas.timeouts setup) leaks).Execution)
+    (reached : next ∈ (control.execution.environmentStep (application setup (Vegas.timeouts
       setup) leaks) (.activate who)).support) :
     RosterCalendarPhase setup leaks rosters event (offset + 1) entryClock obsolete
       ⟨remaining, some who, next⟩ := by
@@ -305,8 +305,8 @@ theorem RosterCalendarPhase.activate_step
     rw [appended, List.length_append, List.length_singleton]
   have classified := rosterBlockCompleted_record setup leaks rosters
     control.execution.environmentRecall
-    (control.execution.observeEnvironment (application setup (Vegas.runtime setup) leaks))
-    (next.observeEnvironment (application setup (Vegas.runtime setup) leaks)) event
+    (control.execution.observeEnvironment (application setup (Vegas.timeouts setup) leaks))
+    (next.observeEnvironment (application setup (Vegas.timeouts setup) leaks)) event
     (.activate who) (by rw [phase.position]; omega)
   have oldTicks : offset - ((rosters event).length + 1) = 0 := by omega
   have nextTicks : offset + 1 - ((rosters event).length + 1) = 0 := by omega
@@ -361,7 +361,7 @@ theorem RosterCalendarPhase.activate_step
       change next.application.config.cut.Ready event at ready
       change next.application.activatedAt event = some entered at activated
       rw [applicationEq] at ready activated
-      change OwnerActivatedSince (runtime setup) leaks next.environmentRecall event owner entered
+      change OwnerActivatedSince (timeouts setup) leaks next.environmentRecall event owner entered
       rw [appended]
       rw [List.take_add_one, chosen] at member
       rcases List.mem_append.mp member with prior | current
@@ -389,46 +389,46 @@ theorem RosterCalendarPhase.ending_step
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
     {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
     {offset entryClock : Nat} {obsolete : Bool}
-    {control : (application setup (Vegas.runtime setup) leaks).Control}
+    {control : (application setup (Vegas.timeouts setup) leaks).Control}
     (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)
     (atEnding : offset = (rosters event).length)
     {inputs : (graph setup).Inputs}
     (invariant : control.execution.application.Invariant inputs)
-    (command : (application setup (Vegas.runtime setup) leaks).Command)
-    (actorNone : command.actor? (application setup (Vegas.runtime setup) leaks) = none)
+    (command : (application setup (Vegas.timeouts setup) leaks).Command)
+    (actorNone : command.actor? (application setup (Vegas.timeouts setup) leaks) = none)
     (remaining : Nat) (counted : control.remaining = remaining + 1)
-    (next : (application setup (Vegas.runtime setup) leaks).Execution)
-    (reached : next ∈ (control.execution.environmentStep (application setup (Vegas.runtime
+    (next : (application setup (Vegas.timeouts setup) leaks).Execution)
+    (reached : next ∈ (control.execution.environmentStep (application setup (Vegas.timeouts
       setup) leaks) command).support)
     (progress : State.ServiceProgress inputs 0 control.execution.application next.application)
     (origin : State.ActivationOrigin control.execution.application next.application)
     (sampled : (graph setup).actor? event = none →
       event ∈ next.application.config.cut.completed)
     (receipts : ∀ owner, (graph setup).actor? event = some owner →
-      ∀ (earlier later : List (application setup (Vegas.runtime setup) leaks).PlayerEntry)
+      ∀ (earlier later : List (application setup (Vegas.timeouts setup) leaks).PlayerEntry)
         entry message,
         next.logs owner = earlier ++ entry :: later →
         entry.emitted = some message → message.sender = owner →
         message.payload.call.event? (graph setup) = some event →
         (∀ other ∈ earlier ++ later,
-          ¬ EmitsOtherFor (runtime setup) leaks other event message.id) →
+          ¬ EmitsOtherFor (timeouts setup) leaks other event message.id) →
         ∃ accepted, (message.id, accepted) ∈ next.receipts) :
     RosterCalendarPhase setup leaks rosters event (offset + 1) entryClock obsolete
-      ⟨remaining, command.actor? (application setup (Vegas.runtime setup) leaks), next⟩ := by
+      ⟨remaining, command.actor? (application setup (Vegas.timeouts setup) leaks), next⟩ := by
   have appended : next.environmentRecall = control.execution.environmentRecall ++
       [⟨control.execution.observeEnvironment _, command⟩] := by
     unfold ReactiveApplication.Execution.environmentStep at reached
     obtain ⟨updated, _, rfl⟩ := PMF.support_map .. ▸ reached
     rfl
-  have recallEq := (application setup (Vegas.runtime setup) leaks).environmentStep_recall
+  have recallEq := (application setup (Vegas.timeouts setup) leaks).environmentStep_recall
     control.execution next command reached
   have length : next.environmentRecall.length =
       control.execution.environmentRecall.length + 1 := by
     rw [appended, List.length_append, List.length_singleton]
   have classified := rosterBlockCompleted_record setup leaks rosters
     control.execution.environmentRecall
-    (control.execution.observeEnvironment (application setup (Vegas.runtime setup) leaks))
-    (next.observeEnvironment (application setup (Vegas.runtime setup) leaks)) event
+    (control.execution.observeEnvironment (application setup (Vegas.timeouts setup) leaks))
+    (next.observeEnvironment (application setup (Vegas.timeouts setup) leaks)) event
     command (by rw [phase.position]; omega)
   have oldTicks : offset - ((rosters event).length + 1) = 0 := by omega
   have nextTicks : offset + 1 - ((rosters event).length + 1) = 0 := by omega
@@ -519,7 +519,7 @@ theorem RosterCalendarPhase.ending_step
       rw [sameTake] at member
       obtain ⟨entry, inside, selected, started, seen⟩ :=
         phase.opportunity owner owned member entered oldReady oldStamp
-      change OwnerActivatedSince (runtime setup) leaks next.environmentRecall event owner entered
+      change OwnerActivatedSince (timeouts setup) leaks next.environmentRecall event owner entered
       rw [appended]
       exact ⟨entry, List.mem_append_left _ inside, selected, started, seen⟩
     responses := by
@@ -530,7 +530,7 @@ theorem RosterCalendarPhase.ending_step
         (fun done => unfinished (progress.completed done))
     activation := by
       intro who active
-      change command.actor? (application setup (Vegas.runtime setup) leaks) = some who at active
+      change command.actor? (application setup (Vegas.timeouts setup) leaks) = some who at active
       rw [actorNone] at active
       cases active
     inclusion := by
@@ -544,22 +544,22 @@ theorem RosterCalendarPhase.sample_step
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
     {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
     {offset entryClock : Nat} {obsolete : Bool}
-    {control : (application setup (Vegas.runtime setup) leaks).Control}
+    {control : (application setup (Vegas.timeouts setup) leaks).Control}
     (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)
     (atEnding : offset = (rosters event).length)
     (actorless : (graph setup).actor? event = none)
     {inputs : (graph setup).Inputs}
     (invariant : control.execution.application.Invariant inputs)
     (remaining : Nat) (counted : control.remaining = remaining + 1)
-    (next : (application setup (Vegas.runtime setup) leaks).Execution)
-    (reached : next ∈ (control.execution.environmentStep (application setup (Vegas.runtime
+    (next : (application setup (Vegas.timeouts setup) leaks).Execution)
+    (reached : next ∈ (control.execution.environmentStep (application setup (Vegas.timeouts
       setup) leaks) (.application (.executeSample event))).support) :
     RosterCalendarPhase setup leaks rosters event (offset + 1) entryClock obsolete
       ⟨remaining, none, next⟩ := by
   have progress : State.ServiceProgress inputs 0 control.execution.application next.application :=
-    (runtime setup).reactive_environment_progress leaks inputs control.execution next
+    (reactive_environment_progress (timeouts setup)) leaks inputs control.execution next
       (.application (.executeSample event)) invariant reached
-  have origin := (runtime setup).reactive_environmentStep_activationOrigin leaks
+  have origin := (reactive_environmentStep_activationOrigin (timeouts setup)) leaks
     control.execution next (.application (.executeSample event)) reached
   have completed : event ∈ next.application.config.cut.completed := by
     by_cases already : event ∈ control.execution.application.config.cut.completed
@@ -569,11 +569,11 @@ theorem RosterCalendarPhase.sample_step
           phase.prior prior ((graph setup).order.predecessor_lt dependency)⟩
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      change state ∈ ((environmentStep (runtime setup) control.execution.application
+      change state ∈ ((environmentStep (timeouts setup) control.execution.application
         (.executeSample event)).map State.drain).support at changed
       obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ changed
       exact (State.drainFuel_completed_subset native.config.remaining native)
-        (environmentStep_sample_complete (runtime setup) control.execution.application native
+        (environmentStep_sample_complete (timeouts setup) control.execution.application native
           event ready actorless moved)
   apply phase.ending_step atEnding invariant (.application (.executeSample event)) rfl
     remaining counted next reached progress origin (fun _ => completed)
@@ -587,27 +587,27 @@ theorem RosterCalendarPhase.include_step
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
     {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
     {offset entryClock : Nat} {obsolete : Bool}
-    {control : (application setup (Vegas.runtime setup) leaks).Control}
+    {control : (application setup (Vegas.timeouts setup) leaks).Control}
     (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)
     (atEnding : offset = (rosters event).length) (owner : Player)
     (owned : (graph setup).actor? event = some owner)
     {inputs : (graph setup).Inputs} (invariant : control.execution.application.Invariant inputs)
-    (origins : control.execution.Provenance (application setup (Vegas.runtime setup) leaks))
-    (recalled : control.execution.InputRecall (application setup (Vegas.runtime setup) leaks))
+    (origins : control.execution.Provenance (application setup (Vegas.timeouts setup) leaks))
+    (recalled : control.execution.InputRecall (application setup (Vegas.timeouts setup) leaks))
     (retained : control.execution.network.PendingOrPublished)
-    (sound : control.execution.ReceiptsSound (application setup (Vegas.runtime setup) leaks)
+    (sound : control.execution.ReceiptsSound (application setup (Vegas.timeouts setup) leaks)
       (fun _ => True))
     (remaining : Nat) (counted : control.remaining = remaining + 1)
-    (next : (application setup (Vegas.runtime setup) leaks).Execution)
+    (next : (application setup (Vegas.timeouts setup) leaks).Execution)
     (reached : next ∈ (control.execution.environmentStep
-      (application setup (Vegas.runtime setup) leaks)
-      ((runtime setup).reactiveLatest leaks event owner
+      (application setup (Vegas.timeouts setup) leaks)
+      ((reactiveLatest (timeouts setup)) leaks event owner
         (control.execution.observeEnvironment
-          (application setup (Vegas.runtime setup) leaks)))).support) :
+          (application setup (Vegas.timeouts setup) leaks)))).support) :
     RosterCalendarPhase setup leaks rosters event (offset + 1) entryClock obsolete
       ⟨remaining, none, next⟩ := by
-  let app := application setup (Vegas.runtime setup) leaks
-  let command := (runtime setup).reactiveLatest leaks event owner
+  let app := application setup (Vegas.timeouts setup) leaks
+  let command := (reactiveLatest (timeouts setup)) leaks event owner
     (control.execution.observeEnvironment app)
   have reachedCommand : next ∈ (control.execution.environmentStep app command).support := reached
   have commandCases : command = .wait ∨ ∃ id, command = .include id := by
@@ -620,15 +620,15 @@ theorem RosterCalendarPhase.include_step
     rcases commandCases with wait | ⟨id, included⟩
     · rw [wait]; rfl
     · rw [included]; rfl
-  have ticks : (runtime setup).reactiveTicks leaks command = 0 := by
+  have ticks : (reactiveTicks (timeouts setup)) leaks command = 0 := by
     rcases commandCases with wait | ⟨id, included⟩
     · rw [wait]; rfl
     · rw [included]; rfl
   have progress : State.ServiceProgress inputs 0 control.execution.application
       next.application := by
-    simpa only [ticks] using (runtime setup).reactive_environment_progress leaks inputs
+    simpa only [ticks] using (reactive_environment_progress (timeouts setup)) leaks inputs
       control.execution next command invariant reachedCommand
-  have origin := (runtime setup).reactive_environmentStep_activationOrigin leaks
+  have origin := (reactive_environmentStep_activationOrigin (timeouts setup)) leaks
     control.execution next command reachedCommand
   have sampled : (graph setup).actor? event = none →
       event ∈ next.application.config.cut.completed := by
@@ -644,7 +644,7 @@ theorem RosterCalendarPhase.include_step
       entry.emitted = some message → message.sender = responder →
       message.payload.call.event? (graph setup) = some event →
       (∀ other ∈ earlier ++ later,
-        ¬ EmitsOtherFor (runtime setup) leaks other event message.id) →
+        ¬ EmitsOtherFor (timeouts setup) leaks other event message.id) →
       ∃ accepted, (message.id, accepted) ∈ next.receipts := by
     intro responder owns earlier later entry message split emitted authored addressed sole
     have same : responder = owner := Option.some.inj (owns.symm.trans owned)
@@ -653,7 +653,7 @@ theorem RosterCalendarPhase.include_step
     by_cases published : message.id ∈ control.execution.network.ledger.map Message.id
     · obtain ⟨accepted, member⟩ := receipt_of_published control.execution sound _ published
       exact ⟨accepted, receiptsPrefix.subset member⟩
-    · obtain ⟨pending, latest⟩ := reactiveLatest_sole (runtime setup) leaks control.execution
+    · obtain ⟨pending, latest⟩ := reactiveLatest_sole (timeouts setup) leaks control.execution
         origins recalled retained event owner earlier later entry message split emitted
         authored addressed sole published
       have included : command = .include message.id := latest
@@ -662,9 +662,9 @@ theorem RosterCalendarPhase.include_step
       simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map]
         at includedReached
       cases (PMF.mem_support_pure_iff _ _).mp includedReached
-      exact includePending_receipt_of_pending (runtime setup) leaks control.execution message
+      exact includePending_receipt_of_pending (timeouts setup) leaks control.execution message
         pending
-  change command.actor? (application setup (Vegas.runtime setup) leaks) = none at actorNone
+  change command.actor? (application setup (Vegas.timeouts setup) leaks) = none at actorNone
   simpa only [actorNone] using phase.ending_step atEnding invariant command actorNone
     remaining counted next reachedCommand progress origin sampled receipts
 
@@ -674,22 +674,23 @@ theorem RosterCalendarPhase.expire_boundary
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
     {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
     {offset entryClock : Nat} {obsolete : Bool}
-    {control : (application setup (Vegas.runtime setup) leaks).Control}
+    {control : (application setup (Vegas.timeouts setup) leaks).Control}
     (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)
     (atExpiry : offset = (rosters event).length + event.val + 2)
     (remaining : Nat) (counted : control.remaining = remaining + 1)
-    (next : (application setup (Vegas.runtime setup) leaks).Execution)
+    (next : (application setup (Vegas.timeouts setup) leaks).Execution)
     (reached : next ∈ (control.execution.environmentStep
-      (application setup (Vegas.runtime setup) leaks) (.application (.expire event))).support)
+      (application setup (Vegas.timeouts setup) leaks) (.application (.expire event))).support)
     {inputs : (graph setup).Inputs}
     (progress : State.ServiceProgress inputs 0 control.execution.application next.application)
     (origin : State.ActivationOrigin control.execution.application next.application)
-    (stable : EntryEventStable (runtime setup) leaks control.execution)
+    (stable : EntryEventStable (timeouts setup) leaks control.execution)
     (done : event ∈ next.application.config.cut.completed) :
     RosterCalendarInvariant setup leaks rosters (some ⟨remaining, none, next⟩) := by
-  have appended := (application setup (Vegas.runtime setup) leaks).environmentStep_environmentRecall
+  have appended := (application setup (Vegas.timeouts setup)
+    leaks).environmentStep_environmentRecall
     control.execution next _ reached
-  have recallEq := (application setup (Vegas.runtime setup) leaks).environmentStep_recall
+  have recallEq := (application setup (Vegas.timeouts setup) leaks).environmentStep_recall
     control.execution next _ reached
   have length : next.environmentRecall.length = control.execution.environmentRecall.length + 1 := by
     rw [appended, List.length_append, List.length_singleton]
@@ -743,7 +744,7 @@ theorem RosterCalendarPhase.expire_boundary
       remaining := total
       classified := by
         rw [rosterBlockCompleted_at_start setup leaks rosters next.environmentRecall
-          (next.observeEnvironment (application setup (Vegas.runtime setup) leaks))
+          (next.observeEnvironment (application setup (Vegas.timeouts setup) leaks))
           following starting]
         change following ∈ next.application.publicView.observation.completionOrder ↔
           decide (following ∈ next.application.config.cut.completed) = true
@@ -828,20 +829,20 @@ theorem RosterCalendarPhase.expire_step
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
     {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
     {offset entryClock : Nat} {obsolete : Bool}
-    {control : (application setup (Vegas.runtime setup) leaks).Control}
+    {control : (application setup (Vegas.timeouts setup) leaks).Control}
     (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)
     (atExpiry : offset = (rosters event).length + event.val + 2)
     {inputs : (graph setup).Inputs} (invariant : control.execution.application.Invariant inputs)
-    (stable : EntryEventStable (runtime setup) leaks control.execution)
+    (stable : EntryEventStable (timeouts setup) leaks control.execution)
     (remaining : Nat) (counted : control.remaining = remaining + 1)
-    (next : (application setup (Vegas.runtime setup) leaks).Execution)
+    (next : (application setup (Vegas.timeouts setup) leaks).Execution)
     (reached : next ∈ (control.execution.environmentStep
-      (application setup (Vegas.runtime setup) leaks) (.application (.expire event))).support) :
+      (application setup (Vegas.timeouts setup) leaks) (.application (.expire event))).support) :
     RosterCalendarInvariant setup leaks rosters (some ⟨remaining, none, next⟩) := by
   have progress : State.ServiceProgress inputs 0 control.execution.application next.application :=
-    (runtime setup).reactive_environment_progress leaks inputs control.execution next
+    (reactive_environment_progress (timeouts setup)) leaks inputs control.execution next
       (.application (.expire event)) invariant reached
-  have origin := (runtime setup).reactive_environmentStep_activationOrigin leaks
+  have origin := (reactive_environmentStep_activationOrigin (timeouts setup)) leaks
     control.execution next (.application (.expire event)) reached
   have done : event ∈ next.application.config.cut.completed := by
     by_cases finished : event ∈ control.execution.application.config.cut.completed
@@ -864,16 +865,16 @@ theorem RosterCalendarPhase.expire_step
           rw [phase.clock]
           simp only [live, Bool.false_eq_true, ↓reduceIte]
           omega
-        have due : (runtime setup).deadline event ≤
+        have due : (timeouts setup).duration event ≤
             control.execution.application.clock - entered := by
           change event.val + 1 ≤ _
           omega
         obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
         obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-        change state ∈ ((environmentStep (runtime setup) control.execution.application
+        change state ∈ ((environmentStep (timeouts setup) control.execution.application
           (.expire event)).map State.drain).support at changed
         obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ changed
-        have completed := environmentStep_expire_complete (runtime setup)
+        have completed := environmentStep_expire_complete (timeouts setup)
           control.execution.application native event ready strategic entered activated due moved
         exact State.drainFuel_completed_subset native.config.remaining native completed
   exact phase.expire_boundary atExpiry remaining counted next reached progress origin stable done
@@ -884,19 +885,19 @@ theorem RosterCalendarPhase.tick_step
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {rosters : (graph setup).EventId → List Player} {event : (graph setup).EventId}
   {offset entryClock : Nat} {obsolete : Bool}
-  {control : (application setup (Vegas.runtime setup) leaks).Control}
+  {control : (application setup (Vegas.timeouts setup) leaks).Control}
     (phase : RosterCalendarPhase setup leaks rosters event offset entryClock obsolete control)
     (late : (rosters event).length < offset)
     (ticking : offset < (rosters event).length + event.val + 2)
     (quiescent : ∀ query, ¬ control.execution.application.AutomaticReady query)
     (remaining : Nat) (counted : control.remaining = remaining + 1)
-    (next : (application setup (Vegas.runtime setup) leaks).Execution)
+    (next : (application setup (Vegas.timeouts setup) leaks).Execution)
     (reached : next ∈ (control.execution.environmentStep
-      (application setup (Vegas.runtime setup) leaks)
+      (application setup (Vegas.timeouts setup) leaks)
       (if obsolete then .wait else .application .advanceClock)).support) :
     RosterCalendarPhase setup leaks rosters event (offset + 1) entryClock obsolete
       ⟨remaining, none, next⟩ := by
-  let app := application setup (Vegas.runtime setup) leaks
+  let app := application setup (Vegas.timeouts setup) leaks
   let command : app.Command := if obsolete then .wait else .application .advanceClock
   have native : next.application = { control.execution.application with
       clock := control.execution.application.clock + (if obsolete then 0 else 1) } := by
@@ -913,7 +914,7 @@ theorem RosterCalendarPhase.tick_step
           at reached
         obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
         obtain ⟨state, moved, rfl⟩ := PMF.support_map .. ▸ supported
-        rw [reactiveApplication_tick_eq_pure (runtime setup) leaks _ quiescent] at moved
+        rw [reactiveApplication_tick_eq_pure (timeouts setup) leaks _ quiescent] at moved
         cases (PMF.mem_support_pure_iff _ _).mp moved
         rfl
   have cfg : next.application.config = control.execution.application.config := by rw [native]

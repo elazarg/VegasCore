@@ -22,7 +22,7 @@ open Interaction Vegas.EventGraph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
-  {runtime : EventGraphRuntime graph}
+  {timeouts : EventTimeouts graph}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
@@ -48,17 +48,17 @@ def ownCandidates (who : Player) (candidates : CandidateSlot graph → Commitmen
     CandidateSlot graph → CommitmentCandidate (Raw L) :=
   fun slot => swapCandidate (swap.raw (who, slot)) (candidates slot)
 
-theorem knownPackets_entry (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (observed : (runtime.reactiveApplication leaks).PlayerView) :
+theorem knownPackets_entry (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (observed : ((reactiveApplication timeouts) leaks).PlayerView) :
     ReactiveApplication.ResponseMenu.knownPackets (past.map swap.entry) (swap.view observed) =
       ReactiveApplication.ResponseMenu.knownPackets past observed := by
   simp only [ReactiveApplication.ResponseMenu.knownPackets, ReactiveApplication.outputs,
     List.filterMap_map]
   rfl
 
-theorem submissionCount_entry (past : List (runtime.reactiveApplication leaks).PlayerEntry) :
-    (runtime.reactiveApplication leaks).submissionCount (past.map swap.entry) =
-      (runtime.reactiveApplication leaks).submissionCount past := by
+theorem submissionCount_entry (past : List ((reactiveApplication timeouts) leaks).PlayerEntry) :
+    ((reactiveApplication timeouts) leaks).submissionCount (past.map swap.entry) =
+      ((reactiveApplication timeouts) leaks).submissionCount past := by
   simp only [ReactiveApplication.submissionCount, List.countP_map]
   congr 1
   funext recalled
@@ -166,14 +166,14 @@ variable [Fintype Player] (bounds : MessageBounds graph) (swap : HiddenSwap grap
 
 /-- **Swapped one-packet responses stay available.** -/
 theorem swap_mem_onePacketActions (who : Player)
-    (past : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (observed : (runtime.reactiveApplication leaks).PlayerView)
+    (past : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (observed : ((reactiveApplication timeouts) leaks).PlayerView)
     (whoEq : observed.application.who = who)
-    (response : (runtime.reactiveApplication leaks).Action)
-    (member : response ∈ bounds.onePacketActions runtime leaks who past observed)
+    (response : ((reactiveApplication timeouts) leaks).Action)
+    (member : response ∈ bounds.onePacketActions timeouts leaks who past observed)
     (fixed : swap.RequestFixed response)
     (bounded : ∀ handle raw, raw ∈ bounds.values → swap.raw handle raw ∈ bounds.values) :
-    swap.action response ∈ bounds.onePacketActions runtime leaks who (past.map swap.entry)
+    swap.action response ∈ bounds.onePacketActions timeouts leaks who (past.map swap.entry)
       (swap.view observed) := by
   rw [mem_onePacketActions] at member ⊢
   obtain ⟨menuMember, onePacket⟩ := member
@@ -216,7 +216,7 @@ theorem swap_mem_onePacketActions (who : Player)
       · change (⟨some ((submission.swap swap).normalizeReactive who
             (PlayerView.swap swap observed.application)
             (ReactiveApplication.ResponseMenu.knownPackets (past.map swap.entry)
-              (swap.view observed)))⟩ : (runtime.reactiveApplication leaks).Action) =
+              (swap.view observed)))⟩ : ((reactiveApplication timeouts) leaks).Action) =
           ⟨some (submission.swap swap)⟩
         rw [swap.knownPackets_entry, swap.witnessedNormalize_swap who _ whoEq _ submission
           fixedHere, normalHere]
@@ -225,13 +225,13 @@ theorem swap_mem_onePacketActions (who : Player)
         · cases silent
         · cases sent
           refine ⟨submission.swap swap, rfl, ?_⟩
-          have outputsEq : (runtime.reactiveApplication leaks).outputs (past.map swap.entry) =
-              (runtime.reactiveApplication leaks).outputs past := by
+          have outputsEq : ((reactiveApplication timeouts) leaks).outputs (past.map swap.entry) =
+              ((reactiveApplication timeouts) leaks).outputs past := by
             simp only [ReactiveApplication.outputs, List.filterMap_map]
             rfl
-          have envelope : runtime.localEnvelope leaks who (past.map swap.entry)
+          have envelope : (localEnvelope timeouts) leaks who (past.map swap.entry)
               (swap.view observed) (submission.swap swap) =
-              runtime.localEnvelope leaks who past observed submission := by
+              (localEnvelope timeouts) leaks who past observed submission := by
             unfold localEnvelope
             rw [swap.submissionCount_entry, swap.knownPackets_entry]
             change Message.mk _ (WitnessedPacket.mk submission.call.packet

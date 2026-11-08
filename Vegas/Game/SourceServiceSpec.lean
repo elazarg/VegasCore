@@ -33,7 +33,7 @@ structure SourceServiceSpec (Player : Type) [DecidableEq Player] (L : IExpr)
   leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))
   bounds : MessageBounds (graph setup)
   rosters : (graph setup).EventId → List Player
-  network : (runtime setup).NetworkPolicy leaks
+  network : (NetworkPolicy (timeouts setup)) leaks
   /-- Every binding value the source can choose has a native message form. -/
   values : bounds.CoversBindingValues
   /-- Every supported initial binding table fits the candidate catalogue. -/
@@ -79,7 +79,7 @@ abbrev fuel : Nat := 2 * service.planLength + 1
 abbrev readout (final : (service.menu.protocol (initialLaw service.setup) service.planLength
     service.scheduler).History) :
     Option (Config Player L service.setup.program.terminalCtx) :=
-  sourceReadout service.setup (runtime service.setup) service.leaks final.state
+  sourceReadout service.setup (timeouts service.setup) service.leaks final.state
 
 end InformationModels
 
@@ -94,7 +94,7 @@ def toAsync : AsyncServiceSpec Player L where
   initialValues := service.initialValues
   capacity := service.capacity
   mode := .sequential
-  deadline := rankDeadline service.setup .sequential
+  duration := rankDuration service.setup .sequential
   horizon := service.planLength
   scheduler := service.scheduler
   delay := fun event => event.val

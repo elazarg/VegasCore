@@ -28,26 +28,26 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 section Invariant
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup))
-  (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
+  (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
 
-variable (setup runtime leaks) in
+variable (setup timeouts leaks) in
 /-- A recorded canonical packet retains its actual action and typed result. -/
-def AcceptanceInvariant (who : Player) (entry : (application setup runtime leaks).PlayerEntry)
+def AcceptanceInvariant (who : Player) (entry : (application setup timeouts leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup))) (event : (graph setup).EventId)
     (sent : (graph setup).Config) (action : (graph setup).Action event)
     (output : ((graph setup).outputLayout event).Value) :
-    (application setup runtime leaks).ProtocolState → Prop
+    (application setup timeouts leaks).ProtocolState → Prop
   | none => False
   | some control =>
-      Nonempty (((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+      Nonempty (((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
         horizon scheduler).Trace (some control)) ∧
-      RecordsEntry setup runtime leaks who entry (some control) ∧
+      RecordsEntry setup timeouts leaks who entry (some control) ∧
       entry.emitted = some message ∧
       sent.cut.Ready event ∧
       AcceptanceWitness event message sent action output control.execution.application ∧
@@ -59,39 +59,39 @@ def AcceptanceInvariant (who : Player) (entry : (application setup runtime leaks
             control.execution.application.config.history)
 
 theorem acceptanceInvariant_transition (who : Player)
-    (entry : (application setup runtime leaks).PlayerEntry)
+    (entry : (application setup timeouts leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket (graph setup))) (event : (graph setup).EventId)
     (sent : (graph setup).Config) (action : (graph setup).Action event)
     (output : ((graph setup).outputLayout event).Value)
-    (before after : (application setup runtime leaks).ProtocolState)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    (legal : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (before after : (application setup timeouts leaks).ProtocolState)
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    (legal : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Legal before joint)
-    (holds : AcceptanceInvariant setup runtime leaks bounds horizon scheduler who entry message
+    (holds : AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who entry message
       event
       sent action output before)
-    (reached : after ∈ (((bounds.onePacketMenu runtime leaks).protocol
+    (reached : after ∈ (((bounds.onePacketMenu timeouts leaks).protocol
       (initialLaw setup) horizon scheduler).step before ⟨joint, legal⟩).support) :
-    AcceptanceInvariant setup runtime leaks bounds horizon scheduler who entry message event
+    AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who entry message event
       sent action output after := by
   cases before with
   | none => exact holds.elim
   | some control =>
       obtain ⟨⟨trace⟩, records, emitted, sentReady, witness, stable, settled⟩ := holds
-      have afterRecords := recordsEntry_transition (runtime := runtime) who entry (initialLaw
+      have afterRecords := recordsEntry_transition (timeouts := timeouts) who entry (initialLaw
         setup) horizon scheduler
         _ after joint records reached
       cases after with
       | none => exact afterRecords.elim
       | some next =>
-          have nextTrace : ((bounds.onePacketMenu runtime leaks).protocol
+          have nextTrace : ((bounds.onePacketMenu timeouts leaks).protocol
               (initialLaw setup) horizon scheduler).Trace (some next) :=
             .extend trace joint legal reached
-          have kept := (keepsFixedCandidates_step runtime leaks).transition
+          have kept := (keepsFixedCandidates_step timeouts leaks).transition
             (initialLaw setup) horizon scheduler control next joint reached
-          have keptStore := (keepsStore_step runtime leaks).transition
+          have keptStore := (keepsStore_step timeouts leaks).transition
             (initialLaw setup) horizon scheduler control next joint reached
-          have configPath := reactive_protocol_graph_steps runtime leaks (initialLaw setup)
+          have configPath := reactive_protocol_graph_steps timeouts leaks (initialLaw setup)
             horizon scheduler control next joint reached
           have historyKept := EventGraph.Config.Step.path_history_prefix configPath
           have retained (old : (message.id, true) ∈ control.execution.receipts) :
@@ -115,13 +115,13 @@ theorem acceptanceInvariant_transition (who : Player)
           · intro receipt
             -- Which transition added the receipt, if any.
             rcases control with ⟨remaining, current, execution⟩
-            have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+            have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
                 scheduler).Trace (some ⟨remaining, current, execution⟩) :=
-              (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+              (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
                 scheduler trace
-            have inputRecall := (application setup runtime leaks).history_inputRecall
+            have inputRecall := (application setup timeouts leaks).history_inputRecall
               (initialLaw setup) horizon scheduler rawTrace
-            have unique := (application setup runtime leaks).uniqueIds_history scheduler
+            have unique := (application setup timeouts leaks).uniqueIds_history scheduler
               (initialLaw setup) horizon _ rawTrace
             cases current with
             | some responder =>
@@ -156,13 +156,13 @@ theorem acceptanceInvariant_transition (who : Player)
                           PMF.pure_map] at supported
                         cases (PMF.mem_support_pure_iff _ _).mp supported
                         change (message.id, true) ∈
-                          (execution.includePending (application setup runtime leaks)
+                          (execution.includePending (application setup timeouts leaks)
                             id).receipts at receipt
-                        change (execution.includePending (application setup runtime leaks)
+                        change (execution.includePending (application setup timeouts leaks)
                             id).application.config.outputs event = some output ∧
                           ∃ defaultEvent, (⟨event, some action, defaultEvent⟩ :
                             (graph setup).Completion) ∈
-                            (execution.includePending (application setup runtime leaks)
+                            (execution.includePending (application setup timeouts leaks)
                               id).application.config.history
                         unfold ReactiveApplication.Execution.includePending
                           MessageNetwork.includePending at receipt retained ⊢
@@ -172,7 +172,7 @@ theorem acceptanceInvariant_transition (who : Player)
                             exact retained receipt
                         | some envelope =>
                             simp only [found] at receipt retained ⊢
-                            cases accepted : (application setup runtime leaks).handle
+                            cases accepted : (application setup timeouts leaks).handle
                                 execution.application envelope with
                             | none =>
                                 simp only [accepted, Option.getD_none] at receipt retained ⊢
@@ -188,7 +188,7 @@ theorem acceptanceInvariant_transition (who : Player)
                                   obtain ⟨earlier, later, split⟩ := records
                                   change execution.logs who = _ at split
                                   have recalledOutput : message ∈
-                                      (application setup runtime leaks).outputs
+                                      (application setup timeouts leaks).outputs
                                         (execution.logs who) := by
                                     rw [split]
                                     exact List.mem_filterMap.mpr ⟨entry, by simp, emitted⟩
@@ -203,7 +203,7 @@ theorem acceptanceInvariant_transition (who : Player)
                                   subst same
                                   obtain ⟨native, call, nextEq⟩ := reactiveHandle_call accepted
                                   obtain ⟨named', eventNamed, ready, _⟩ :=
-                                    handle_config_mem_step runtime _ _ _ call
+                                    handle_config_mem_step timeouts _ _ _ call
                                   have eventEq : named' = event := by
                                     rcases witness with ⟨_, _, _, _, callEq, _⟩ |
                                       ⟨_, _, _, _, _, _, _, _, _, callEq, _⟩
@@ -216,60 +216,61 @@ theorem acceptanceInvariant_transition (who : Player)
                                       rw [callEq] at eventNamed
                                       exact (Option.some.inj eventNamed).symm
                                   subst named'
-                                  refine ⟨?_, witness.reactive_decision runtime leaks
+                                  refine ⟨?_, witness.reactive_decision timeouts leaks
                                     (stable ready.1) accepted⟩
                                   rw [← nextEq]
                                   exact native.drain_store_of_some (.inr event) output
-                                    (witness.output_eq runtime (stable ready.1) call)
+                                    (witness.output_eq timeouts (stable ready.1) call)
 
 
 /-- Every transmitting canonical decision starts the invariant for its actual typed result. -/
 theorem acceptanceInvariant_respond {remaining : Nat} {who : Player}
-    {execution : (application setup runtime leaks).Execution}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    {execution : (application setup timeouts leaks).Execution}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some ⟨remaining, some who, execution⟩))
     (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
-    (action : (graph setup).Action event) (material : (application setup runtime leaks).Submission)
-    (submits : (runtime.canonicalServiceDecision leaks who (execution.logs who)
-      (execution.observe (application setup runtime leaks) who) event action).transmission =
+    (action : (graph setup).Action event) (material : (application setup timeouts leaks).Submission)
+    (submits : ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
+      (execution.observe (application setup timeouts leaks) who) event action).transmission =
         some material)
-    (after : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
-      scheduler).Trace (some ⟨remaining, none, execution.respond (application setup runtime leaks)
-        who (runtime.canonicalServiceDecision leaks who (execution.logs who)
-          (execution.observe (application setup runtime leaks) who) event action)⟩)) :
-    ∃ output, AcceptanceInvariant setup runtime leaks bounds horizon scheduler who
-      (respondEntry setup runtime leaks execution who (runtime.canonicalServiceDecision leaks who
-        (execution.logs who) (execution.observe (application setup runtime leaks) who) event
+    (after : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace (some ⟨remaining, none, execution.respond (application setup timeouts leaks)
+        who ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
+          (execution.observe (application setup timeouts leaks) who) event action)⟩)) :
+    ∃ output, AcceptanceInvariant setup timeouts leaks bounds horizon scheduler who
+      (respondEntry setup timeouts leaks execution who ((canonicalServiceDecision timeouts)
+        leaks who
+        (execution.logs who) (execution.observe (application setup timeouts leaks) who) event
           action))
-      (sentEnvelope setup runtime leaks execution who material) event execution.application.config
-      action output (some ⟨remaining, none, execution.respond (application setup runtime leaks) who
-        (runtime.canonicalServiceDecision leaks who (execution.logs who)
-          (execution.observe (application setup runtime leaks) who) event action)⟩) := by
-  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+      (sentEnvelope setup timeouts leaks execution who material) event execution.application.config
+      action output (some ⟨remaining, none, execution.respond (application setup timeouts leaks) who
+        ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
+          (execution.observe (application setup timeouts leaks) who) event action)⟩) := by
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
     scheduler trace
-  have serials := (application setup runtime leaks).serialsBeforeNext_history scheduler
+  have serials := (application setup timeouts leaks).serialsBeforeNext_history scheduler
     (initialLaw setup) horizon rawTrace
-  have identifiers := (application setup runtime leaks).receipt_identifiers_history
+  have identifiers := (application setup timeouts leaks).receipt_identifiers_history
     (initialLaw setup) horizon scheduler _ rawTrace
   have ready := (execution.application.publicView_eventReady event).mp
     (PublicView.ownTurn?_spec _ who event turn).1
-  have respondApplication : (execution.respond (application setup runtime leaks) who
-      (runtime.canonicalServiceDecision leaks who (execution.logs who)
-        (execution.observe (application setup runtime leaks) who) event action)).application =
-      (application setup runtime leaks).submit execution.application who material := by
+  have respondApplication : (execution.respond (application setup timeouts leaks) who
+      ((canonicalServiceDecision timeouts) leaks who (execution.logs who)
+        (execution.observe (application setup timeouts leaks) who) event action)).application =
+      (application setup timeouts leaks).submit execution.application who material := by
     unfold ReactiveApplication.Execution.respond
     rw [submits]
   obtain ⟨output, witness⟩ := canonical_response_witness execution who event turn action material
     submits
   refine ⟨output, ⟨⟨after⟩,
-    recordsEntry_respond (runtime := runtime) execution who _ remaining none,
-    by rw [respondEntry_of_transmission (runtime := runtime) execution who _ material submits],
+    recordsEntry_respond (timeouts := timeouts) execution who _ remaining none,
+    by rw [respondEntry_of_transmission (timeouts := timeouts) execution who _ material submits],
       ready, ?_, ?_, ?_⟩⟩
   · rw [respondApplication]
     exact witness
   · intro _
-    exact (runtime.reactive_respond_application leaks execution who _).1
+    exact ((reactive_respond_application timeouts) leaks execution who _).1
   · intro receipt
     exfalso
     change (_, true) ∈ execution.receipts at receipt

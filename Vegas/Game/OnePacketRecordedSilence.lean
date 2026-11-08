@@ -23,23 +23,23 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- A response is silent or names the event. -/
-def SilentOrNames (event : (graph setup).EventId) (response : (application setup runtime
+def SilentOrNames (event : (graph setup).EventId) (response : (application setup timeouts
   leaks).Action) :
     Prop :=
-  response.transmission = none ∨ runtime.submittedEvent? leaks response = some event
+  response.transmission = none ∨ (submittedEvent? timeouts) leaks response = some event
 
 /-- Canonical decisions are silent or name their event. -/
-theorem canonical_silentOrNames (who : Player) (past : List (application setup runtime
+theorem canonical_silentOrNames (who : Player) (past : List (application setup timeouts
   leaks).PlayerEntry)
-    (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId)
+    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId)
     (action : (graph setup).Action event) :
-    SilentOrNames (runtime := runtime) event
-      (runtime.canonicalServiceDecision leaks who past view event action) := by
-  rcases runtime.canonicalServiceDecision_cases leaks who past view event action with
+    SilentOrNames (timeouts := timeouts) event
+      ((canonicalServiceDecision timeouts) leaks who past view event action) := by
+  rcases (canonicalServiceDecision_cases timeouts) leaks who past view event action with
     silent | named
   · left
     rw [silent]
@@ -47,11 +47,12 @@ theorem canonical_silentOrNames (who : Player) (past : List (application setup r
 
 /-- Slot-tier responses are silent or name their event. -/
 theorem slotResponse_silentOrNames (who : Player)
-    (past : List (application setup runtime leaks).PlayerEntry)
-    (view : (application setup runtime leaks).PlayerView) (event : (graph setup).EventId) (slot :
+    (past : List (application setup timeouts leaks).PlayerEntry)
+    (view : (application setup timeouts leaks).PlayerView) (event : (graph setup).EventId) (slot :
       Nat)
     (choice : Option (OwnAction Player L)) :
-    SilentOrNames (runtime := runtime) event (slotResponse setup runtime leaks who past view event
+    SilentOrNames (timeouts := timeouts) event (slotResponse setup timeouts leaks who past view
+      event
       slot choice) := by
   unfold slotResponse
   split
@@ -60,26 +61,28 @@ theorem slotResponse_silentOrNames (who : Player)
     · split
       · exact Or.inl rfl
       · exact Or.inr rfl
-    · exact canonical_silentOrNames (runtime := runtime) who past view event _
-    · exact canonical_silentOrNames (runtime := runtime) who past view event _
+    · exact canonical_silentOrNames (timeouts := timeouts) who past view event _
+    · exact canonical_silentOrNames (timeouts := timeouts) who past view event _
 
 section Recall
 
-variable (setup runtime leaks) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+variable (setup timeouts leaks) (horizon : Nat)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
 /-- Along a history, the owner has sent nothing for an event exactly when its
 recall has not recorded the event. -/
 theorem unsentFor_iff_unrecorded {who : Player}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView} {control : (application setup runtime
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView} {control : (application setup timeouts
       leaks).Control}
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace
       (some control))
-    (recallEq : control.execution.logs who = past) {key : LateKey setup runtime leaks}
-    (siteKey : lateKey setup runtime leaks who (some (past, view)) = some key)
+    (recallEq : control.execution.logs who = past) {key : LateKey setup timeouts leaks}
+    (siteKey : lateKey setup timeouts leaks who (some (past, view)) = some key)
     (event : (graph setup).EventId) :
-    UnsentFor (runtime := runtime) key event ↔ runtime.eventRecorded leaks past event = false := by
+    UnsentFor (timeouts := timeouts) key event ↔ (eventRecorded timeouts) leaks past event = false
+      := by
   simp only [lateKey, Option.some.injEq] at siteKey
   subst siteKey
   constructor
@@ -87,14 +90,14 @@ theorem unsentFor_iff_unrecorded {who : Player}
     apply Bool.eq_false_of_not_eq_true
     intro recorded
     rw [← recallEq] at recorded
-    obtain ⟨message, member, named⟩ := (history_eventRecorded_iff (runtime := runtime) trace who
+    obtain ⟨message, member, named⟩ := (history_eventRecorded_iff (timeouts := timeouts) trace who
       event).mp recorded
     rw [recallEq] at member
     obtain ⟨entry, entryMember, emitted⟩ := List.mem_filterMap.mp member
     exact unsent _ (List.mem_map_of_mem entryMember) message emitted named
   · intro unrecorded recalledEntry member message emitted named
     obtain ⟨entry, entryMember, rfl⟩ := List.mem_map.mp member
-    have recorded := (history_eventRecorded_iff (runtime := runtime) trace who event).mpr
+    have recorded := (history_eventRecorded_iff (timeouts := timeouts) trace who event).mpr
       ⟨message, by
         rw [recallEq]
         exact List.mem_filterMap.mpr ⟨entry, entryMember, emitted⟩, named⟩
@@ -105,16 +108,17 @@ theorem unsentFor_iff_unrecorded {who : Player}
 with pending event `event`, along a history whose recall of `who` is the
 input's, the late-delivery key decides `event`. -/
 theorem decidedEvent_eq_of_pending {who : Player}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView} {event : (graph setup).EventId}
-    (pending : pendingEvent setup runtime leaks who (some (past, view)) = some event)
-    {control : (application setup runtime leaks).Control}
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView} {event : (graph setup).EventId}
+    (pending : pendingEvent setup timeouts leaks who (some (past, view)) = some event)
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace
       (some control))
-    (recallEq : control.execution.logs who = past) {key : LateKey setup runtime leaks}
-    (siteKey : lateKey setup runtime leaks who (some (past, view)) = some key) :
-    decidedEvent (runtime := runtime) key = some event := by
-  obtain ⟨turn, _, owned, unrecorded⟩ := pendingEvent_spec (runtime := runtime) pending
+    (recallEq : control.execution.logs who = past) {key : LateKey setup timeouts leaks}
+    (siteKey : lateKey setup timeouts leaks who (some (past, view)) = some key) :
+    decidedEvent (timeouts := timeouts) key = some event := by
+  obtain ⟨turn, _, owned, unrecorded⟩ := pendingEvent_spec (timeouts := timeouts) pending
   simp only [lateKey, Option.some.injEq] at siteKey
   subst siteKey
   cases node : nodeView (graph setup) event with
@@ -127,55 +131,55 @@ theorem decidedEvent_eq_of_pending {who : Player}
         Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
       subst ownerEq
       unfold decidedEvent
-      rw [turnEvent_of_publicationTurn (runtime := runtime) ⟨turn, payload, binding, checks,
+      rw [turnEvent_of_publicationTurn (timeouts := timeouts) ⟨turn, payload, binding, checks,
         outputEq, codeEq, node⟩]
   | bind owner payload outputEq codeEq =>
       have ownerEq : owner = who :=
         Option.some.inj ((EventGraph.actor?_of_outputLayout_binding _ outputEq).symm.trans
           owned)
       subst ownerEq
-      have noPublication : turnEvent (runtime := runtime) (setup := setup) (leaks := leaks)
+      have noPublication : turnEvent (timeouts := timeouts) (setup := setup) (leaks := leaks)
           { owner := owner
-            current := operationalView setup runtime leaks view
+            current := operationalView setup timeouts leaks view
             recalled := past.map fun entry =>
-              (operationalView setup runtime leaks entry.beforeView, entry.emitted)
-            delivered := deliveredValue setup runtime leaks owner view } =
+              (operationalView setup timeouts leaks entry.beforeView, entry.emitted)
+            delivered := deliveredValue setup timeouts leaks owner view } =
               none := by
-        cases found : turnEvent (runtime := runtime) (setup := setup) (leaks := leaks) _ with
+        cases found : turnEvent (timeouts := timeouts) (setup := setup) (leaks := leaks) _ with
         | none => rfl
         | some other =>
-            obtain ⟨otherTurn, _, _, _, _, _, otherNode⟩ := publicationTurn_of_turnEvent (runtime
-              := runtime) found
+            obtain ⟨otherTurn, _, _, _, _, _, otherNode⟩ := publicationTurn_of_turnEvent (timeouts
+              := timeouts) found
             have same : other = event := Option.some.inj (otherTurn.symm.trans turn)
             subst same
             rw [node] at otherNode
             cases otherNode
-      have unsent : UnsentFor (runtime := runtime) (setup := setup) (leaks := leaks)
+      have unsent : UnsentFor (timeouts := timeouts) (setup := setup) (leaks := leaks)
           { owner := owner
-            current := operationalView setup runtime leaks view
+            current := operationalView setup timeouts leaks view
             recalled := past.map fun entry =>
-              (operationalView setup runtime leaks entry.beforeView, entry.emitted)
-            delivered := deliveredValue setup runtime leaks owner view }
+              (operationalView setup timeouts leaks entry.beforeView, entry.emitted)
+            delivered := deliveredValue setup timeouts leaks owner view }
               event := by
         intro recalledEntry member message emitted named
         obtain ⟨entry, entryMember, rfl⟩ := List.mem_map.mp member
-        have recorded := (history_eventRecorded_iff (runtime := runtime) trace owner event).mpr
+        have recorded := (history_eventRecorded_iff (timeouts := timeouts) trace owner event).mpr
           ⟨message, by
             rw [recallEq]
             exact List.mem_filterMap.mpr ⟨entry, entryMember, emitted⟩, named⟩
         rw [recallEq, unrecorded] at recorded
         cases recorded
-      have binding : BindingTurn (runtime := runtime) (setup := setup) (leaks := leaks)
+      have binding : BindingTurn (timeouts := timeouts) (setup := setup) (leaks := leaks)
           { owner := owner
-            current := operationalView setup runtime leaks view
+            current := operationalView setup timeouts leaks view
             recalled := past.map fun entry =>
-              (operationalView setup runtime leaks entry.beforeView, entry.emitted)
-            delivered := deliveredValue setup runtime leaks owner view }
+              (operationalView setup timeouts leaks entry.beforeView, entry.emitted)
+            delivered := deliveredValue setup timeouts leaks owner view }
               event payload :=
         ⟨turn, ⟨outputEq, codeEq, node⟩, unsent⟩
       unfold decidedEvent
       rw [noPublication]
-      cases found : bindingTurn (runtime := runtime) (setup := setup) (leaks := leaks) _ with
+      cases found : bindingTurn (timeouts := timeouts) (setup := setup) (leaks := leaks) _ with
       | none =>
           unfold bindingTurn at found
           split at found
@@ -183,109 +187,109 @@ theorem decidedEvent_eq_of_pending {who : Player}
           · rename_i noTurn
             exact (noTurn ⟨(event, payload), binding⟩).elim
       | some decided =>
-          obtain ⟨decidedTurn, _, _⟩ := bindingTurn_spec (runtime := runtime) found
+          obtain ⟨decidedTurn, _, _⟩ := bindingTurn_spec (timeouts := timeouts) found
           exact congrArg some (Option.some.inj (decidedTurn.symm.trans turn))
 
 end Recall
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Recorded events are silent.** Along every history of the one-packet game,
 once the player's recall has submitted for an event, the one-packet choice of a
 response that is silent or names the event keeps silence. -/
-theorem decoded_silent_of_recorded {control : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+theorem decoded_silent_of_recorded {control : (application setup timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
-    (recorded : runtime.eventRecorded leaks (control.execution.logs who) event = true)
-    (response : (application setup runtime leaks).Action) (named : SilentOrNames (runtime :=
-      runtime) event response) :
-    (responseChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
+    (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true)
+    (response : (application setup timeouts leaks).Action) (named : SilentOrNames (timeouts :=
+      timeouts) event response) :
+    (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
       (some (control.execution.logs who,
-        control.execution.observe (application setup runtime leaks) who)) response).1.getD ⟨none⟩ =
+        control.execution.observe (application setup timeouts leaks) who)) response).1.getD ⟨none⟩ =
       ⟨none⟩ := by
-  by_cases member : response ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
+  by_cases member : response ∈ bounds.onePacketActions timeouts leaks who
+      (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
         who)
   · rcases named with silent | names
     · simp only [responseChoice, member, ↓reduceDIte, Option.getD_some]
       rcases response with ⟨transmission⟩
       change transmission = none at silent
       rw [silent]
-    · exact (onePacket_recorded_not_offered (runtime := runtime) trace who event recorded response
+    · exact (onePacket_recorded_not_offered (timeouts := timeouts) trace who event recorded response
         names
         member).elim
   · simp only [responseChoice, member, ↓reduceDIte, Option.getD_some]
 
 /-- Laws of responses that are silent or name the event give choices that keep
 silence once the event is recorded. -/
-theorem map_responseChoice_silent {control : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+theorem map_responseChoice_silent {control : (application setup timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
-    (recorded : runtime.eventRecorded leaks (control.execution.logs who) event = true)
-    (law : PMF (application setup runtime leaks).Action)
-    (named : ∀ response ∈ law.support, SilentOrNames (runtime := runtime) event response) :
-    ∀ choice ∈ (law.map (responseChoice setup runtime leaks bounds (initialLaw setup) horizon
+    (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true)
+    (law : PMF (application setup timeouts leaks).Action)
+    (named : ∀ response ∈ law.support, SilentOrNames (timeouts := timeouts) event response) :
+    ∀ choice ∈ (law.map (responseChoice setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler
       who (some (control.execution.logs who,
-        control.execution.observe (application setup runtime leaks) who)))).support,
+        control.execution.observe (application setup timeouts leaks) who)))).support,
       choice.1.getD ⟨none⟩ = ⟨none⟩ := by
   intro choice member
   obtain ⟨response, supported, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp member
-  exact decoded_silent_of_recorded (runtime := runtime) trace who event recorded response (named
+  exact decoded_silent_of_recorded (timeouts := timeouts) trace who event recorded response (named
     response supported)
 
 /-- **The parts of a component keep silence once the event is recorded.** At the
 player's turn at an event its recall has submitted for, the as-if-honest choice,
 every late option, the slot tier and silence choose only silence. -/
 theorem parts_silent_of_recorded (assessment : setup.intendedModel.BehavioralAssessment)
-    {control : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
-    (recorded : runtime.eventRecorded leaks (control.execution.logs who) event = true) :
-    (∀ choice ∈ (honestChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
+    (recorded : (eventRecorded timeouts) leaks (control.execution.logs who) event = true) :
+    (∀ choice ∈ (honestChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
       assessment
         who (some (control.execution.logs who,
-          control.execution.observe (application setup runtime leaks) who))).support,
+          control.execution.observe (application setup timeouts leaks) who))).support,
         choice.1.getD ⟨none⟩ = ⟨none⟩) ∧
-    (∀ choice ∈ (slotChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
+    (∀ choice ∈ (slotChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
       assessment
         who (some (control.execution.logs who,
-          control.execution.observe (application setup runtime leaks) who))).support,
+          control.execution.observe (application setup timeouts leaks) who))).support,
         choice.1.getD ⟨none⟩ = ⟨none⟩) ∧
     (∀ {slots : Nat} (option : LateOption slots),
-      ∀ choice ∈ (lateChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler
+      ∀ choice ∈ (lateChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler
         assessment
         who (some (control.execution.logs who,
-          control.execution.observe (application setup runtime leaks) who)) option).support,
+          control.execution.observe (application setup timeouts leaks) who)) option).support,
         choice.1.getD ⟨none⟩ = ⟨none⟩) ∧
-    (silenceChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler who
+    (silenceChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler who
         (some (control.execution.logs who,
-          control.execution.observe (application setup runtime leaks) who))).1.getD ⟨none⟩ =
+          control.execution.observe (application setup timeouts leaks) who))).1.getD ⟨none⟩ =
       ⟨none⟩ := by
-  have turnView : (control.execution.observe (application setup runtime leaks)
+  have turnView : (control.execution.observe (application setup timeouts leaks)
       who).application.publicView.ownTurn? who = some event := turn
   refine ⟨?_, ?_, ?_, ?_⟩
-  · apply map_responseChoice_silent (runtime := runtime) trace who event recorded
+  · apply map_responseChoice_silent (timeouts := timeouts) trace who event recorded
     intro response supported
     unfold honestResponse at supported
     rw [turnView] at supported
     obtain ⟨choice, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
     split
     · exact Or.inl rfl
-    · exact canonical_silentOrNames (runtime := runtime) who _ _ event _
-  · apply map_responseChoice_silent (runtime := runtime) trace who event recorded
+    · exact canonical_silentOrNames (timeouts := timeouts) who _ _ event _
+  · apply map_responseChoice_silent (timeouts := timeouts) trace who event recorded
     intro response supported
     unfold slotTierResponse at supported
     rw [turnView] at supported
     obtain ⟨pair, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
-    exact slotResponse_silentOrNames (runtime := runtime) who _ _ event pair.1 pair.2
+    exact slotResponse_silentOrNames (timeouts := timeouts) who _ _ event pair.1 pair.2
   · intro slots option
-    apply map_responseChoice_silent (runtime := runtime) trace who event recorded
+    apply map_responseChoice_silent (timeouts := timeouts) trace who event recorded
     intro response supported
     cases option with
     | none =>
@@ -296,8 +300,8 @@ theorem parts_silent_of_recorded (assessment : setup.intendedModel.BehavioralAss
         unfold lateResponse at supported
         rw [turnView] at supported
         obtain ⟨choice, _, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp supported
-        exact slotResponse_silentOrNames (runtime := runtime) who _ _ event slot.val choice
-  · rw [silenceChoice_val (runtime := runtime) who _ rfl]
+        exact slotResponse_silentOrNames (timeouts := timeouts) who _ _ event slot.val choice
+  · rw [silenceChoice_val (timeouts := timeouts) who _ rfl]
     rfl
 
 end Vegas

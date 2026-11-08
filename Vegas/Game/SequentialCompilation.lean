@@ -23,10 +23,10 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 local notation "Initial" => initialLaw setup
 
@@ -39,7 +39,7 @@ open Classical in
 that is sequentially rational against every policy in the supplied bounded raw
 menu and preserves the joint complete source configuration and settled payoff. -/
 theorem intended_raw_sequentialEquilibrium_preserved
-    (spec : ClientSpec setup runtime leaks bounds horizon scheduler
+    (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
       parameter utility excludedPayoff)
     (intended : setup.intendedModel.BehavioralAssessment)
     (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended) :
@@ -47,20 +47,20 @@ theorem intended_raw_sequentialEquilibrium_preserved
   let := spec.finiteNature
   let := spec.finiteSource
   obtain ⟨native, nativeSE, nativeClear, nativeLaw⟩ :=
-    intended_onePacket_sequentialEquilibrium_preserved (runtime := runtime) parameter utility
+    intended_onePacket_sequentialEquilibrium_preserved (timeouts := timeouts) parameter utility
       excludedPayoff spec.wellFormed spec.independent spec.observable spec.opportunity
       spec.inclusion spec.completes spec.timely spec.exitBelow intended equilibrium
       spec.outputValues spec.inputValues spec.capacity
   obtain ⟨target, targetSE, clean, states, joint⟩ :=
-    intended_raw_sequentialEquilibrium_of_onePacket (runtime := runtime) (initial := Initial)
+    intended_raw_sequentialEquilibrium_of_onePacket (timeouts := timeouts) (initial := Initial)
       parameter utility excludedPayoff intended native nativeSE nativeLaw spec.evidenceService
       spec.observationRate spec.deliveryRate spec.delivery_nonnegative spec.coverage
       spec.lowerUtility spec.upperUtility spec.lower_le spec.le_upper spec.deposit
       spec.deposit_nonnegative spec.funded
   refine ⟨⟨target, targetSE, ?_, clean, joint⟩⟩
   intro final supported control current
-  let raw := bounds.rawMenu runtime leaks
-  let normalize := (runtime.reactiveNormalization leaks).state
+  let raw := bounds.rawMenu timeouts leaks
+  let normalize := ((reactiveNormalization timeouts) leaks).state
   have represented : normalize final.state ∈
       (((raw.information Initial horizon scheduler).runBehavioral target.strategy
         (2 * horizon + 1)).map (fun history => normalize history.state)).support :=
@@ -70,6 +70,6 @@ theorem intended_raw_sequentialEquilibrium_preserved
   rw [current] at same
   exact nativeClear original reached
     { control with execution :=
-      (runtime.reactiveNormalization leaks).execution control.execution } same
+      ((reactiveNormalization timeouts) leaks).execution control.execution } same
 
 end Vegas

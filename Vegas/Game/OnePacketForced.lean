@@ -254,14 +254,14 @@ theorem history_length_of_isPrefix {graph : EventGraph Player L} (config : graph
 section Runtime
 
 variable (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
 /-- The source view a native player view of the supplied runtime shows `who`:
 its masked store read at the length of its completion order, with its own
 completions decoded to source actions. It is `none` at a view carrying another
 player's identity and where decoding fails. -/
-def sourceViewOf (who : Player) (view : (application setup runtime leaks).PlayerView) :
+def sourceViewOf (who : Player) (view : (application setup timeouts leaks).PlayerView) :
     setup.ProtocolView who :=
   if same : view.application.who = who then
     let observed : (graph setup).PlayerObservation who := same ▸ view.application.observation
@@ -277,26 +277,28 @@ def sourceViewOf (who : Player) (view : (application setup runtime leaks).Player
 of the supplied runtime shows its owner: at a decision input, the source view of
 its current player view (`Vegas.sourceViewOf`); `none` at a non-decision
 input. -/
-def projectView (who : Player) : (application setup runtime leaks).Info → setup.ProtocolView who
+def projectView (who : Player) : (application setup timeouts leaks).Info → setup.ProtocolView who
   | none => none
-  | some (_, view) => sourceViewOf setup runtime leaks who view
+  | some (_, view) => sourceViewOf setup timeouts leaks who view
 
 /-- **The projection is the decoded point's view.** At an execution whose
 configuration decodes at its completed prefix to a source point, the projected
 view of `who`'s observation, whatever its recall, is `who`'s view of that point. -/
-theorem projectView_observe (who : Player) (execution : (application setup runtime leaks).Execution)
+theorem projectView_observe (who : Player) (execution : (application setup timeouts
+  leaks).Execution)
     (rank : Nat) (ordered : execution.application.config.cut.IsPrefix rank)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
-    (past : List (application setup runtime leaks).PlayerEntry) :
-    projectView setup runtime leaks who (some (past, execution.observe (application setup runtime
+    (past : List (application setup timeouts leaks).PlayerEntry) :
+    projectView setup timeouts leaks who (some (past, execution.observe (application setup timeouts
       leaks) who)) =
       setup.protocolObserve who (some point) := by
-  change sourceViewOf setup runtime leaks who (execution.observe (application setup runtime leaks)
+  change sourceViewOf setup timeouts leaks who (execution.observe (application setup timeouts leaks)
     who) = _
   unfold sourceViewOf
   rw [dite_eq_left
-    (show (execution.observe (application setup runtime leaks) who).application.who = who from rfl)]
+    (show (execution.observe (application setup timeouts leaks) who).application.who = who from
+      rfl)]
   change decodeViewPrefix? who setup.program
       (ContextRefs.initial setup.context (outputLayout setup.program)) (outputRef setup.program)
       ((graph setup).playerObserve who execution.application.config).completionOrder.length
@@ -310,16 +312,16 @@ theorem projectView_observe (who : Player) (execution : (application setup runti
     _ _).trans ?_
   exact decodeViewPrefix?_eq_observe who rank setup.program _ [] _ _ _ _ _ point decoded
 
-variable {setup runtime leaks}
+variable {setup timeouts leaks}
 
 /-- **Every native history decodes.** Every configuration of a history of any
 response menu of the supplied runtime, under any scheduler, has a source
 residual at some prefix, for every source profile. -/
 theorem protocol_sourceResidual (profile : BehavioralProfile setup.program)
-    (menu : (application setup runtime leaks).ResponseMenu) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler) :
+    (menu : (application setup timeouts leaks).ResponseMenu) (horizon : Nat)
+    (scheduler : (application setup timeouts leaks).Scheduler) :
     ∀ {state} (_trace : (menu.protocol (initialLaw setup) horizon scheduler).Trace state)
-      (control : (application setup runtime leaks).Control), state = some control →
+      (control : (application setup timeouts leaks).Control), state = some control →
       ∃ rank,
         Nonempty (SourceResidual setup profile rank control.execution.application.config) := by
   intro state trace control current
@@ -329,10 +331,10 @@ theorem protocol_sourceResidual (profile : BehavioralProfile setup.program)
 /-- The source point decoded from an initialized native history retains
 publication-default provenance, including through automatic completion. -/
 theorem publicationsDefaulted_of_decode
-    {menu : (application setup runtime leaks).ResponseMenu} {horizon : Nat}
-    {scheduler : (application setup runtime leaks).Scheduler}
+    {menu : (application setup timeouts leaks).ResponseMenu} {horizon : Nat}
+    {scheduler : (application setup timeouts leaks).Scheduler}
     (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
-    (control : (application setup runtime leaks).Control) (current : history.state = some control)
+    (control : (application setup timeouts leaks).Control) (current : history.state = some control)
     {rank : Nat} (ordered : control.execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank control.execution.application.config = some point) :
@@ -353,17 +355,17 @@ history's configuration, at its completed prefix, is a decoded state property
 of that history, for every source profile. -/
 theorem decodedState_of_decode (profile : BehavioralProfile setup.program)
     {property : ProtocolState setup.program → Prop}
-    {menu : (application setup runtime leaks).ResponseMenu} {horizon : Nat}
-    {scheduler : (application setup runtime leaks).Scheduler}
+    {menu : (application setup timeouts leaks).ResponseMenu} {horizon : Nat}
+    {scheduler : (application setup timeouts leaks).Scheduler}
     (history : (menu.protocol (initialLaw setup) horizon scheduler).History)
-    (control : (application setup runtime leaks).Control) (current : history.state = some control)
+    (control : (application setup timeouts leaks).Control) (current : history.state = some control)
     {rank : Nat} (ordered : control.execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank control.execution.application.config = some point)
     (holds : property point) :
-    DecodedState setup runtime leaks profile property history.state := by
+    DecodedState setup timeouts leaks profile property history.state := by
   obtain ⟨found, ⟨residual⟩⟩ :=
-    protocol_sourceResidual (runtime := runtime) profile menu horizon scheduler history.trace
+    protocol_sourceResidual (timeouts := timeouts) profile menu horizon scheduler history.trace
       control current
   rw [current]
   have same := EventOrder.Cut.IsPrefix.unique ordered residual.checkpoint.ordered
@@ -373,7 +375,7 @@ theorem decodedState_of_decode (profile : BehavioralProfile setup.program)
   subst read
   exact holds
 
-variable (setup runtime)
+variable (setup timeouts)
 
 /-- **A forced source point for `who`.** No reveal of `who` has failed, and
 every other player is neither excluded nor owes a failed reveal. `who` itself
@@ -388,32 +390,32 @@ variable (leaks)
 
 /-- An initialized native state whose configuration decodes at its completed
 prefix to a forced source point for `who`. -/
-def ForcedState (who : Player) : (application setup runtime leaks).ProtocolState → Prop
+def ForcedState (who : Player) : (application setup timeouts leaks).ProtocolState → Prop
   | none => False
   | some control => ∃ rank point, control.execution.application.config.cut.IsPrefix rank ∧
       sourceServicePrefix? setup rank control.execution.application.config = some point ∧
       ForcedPoint setup who point
 
-variable {setup runtime leaks}
+variable {setup timeouts leaks}
 
 /-- **The forced region.** An information state of `who` is forced when some
 native history at it is in a forced state for `who`. This is a property of the
 information state alone. -/
-def forcedAgent (menu : (application setup runtime leaks).ResponseMenu)
-    (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler) (who : Player)
+def forcedAgent (menu : (application setup timeouts leaks).ResponseMenu)
+    (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
+    (scheduler : (application setup timeouts leaks).Scheduler) (who : Player)
     (info : (menu.information initial horizon scheduler).InfoState who) : Prop :=
   ∃ history : (menu.protocol initial horizon scheduler).History,
     (menu.information initial horizon scheduler).infoOf who history.trace = info ∧
-      ForcedState setup runtime leaks who history.state
+      ForcedState setup timeouts leaks who history.state
 
 /-- A history in a forced state makes its information state forced. -/
-theorem forcedAgent_of_history {menu : (application setup runtime leaks).ResponseMenu}
-    {initial : PMF (application setup runtime leaks).State} {horizon : Nat}
-    {scheduler : (application setup runtime leaks).Scheduler} {who : Player}
+theorem forcedAgent_of_history {menu : (application setup timeouts leaks).ResponseMenu}
+    {initial : PMF (application setup timeouts leaks).State} {horizon : Nat}
+    {scheduler : (application setup timeouts leaks).Scheduler} {who : Player}
     (history : (menu.protocol initial horizon scheduler).History)
-    (forced : ForcedState setup runtime leaks who history.state) :
-    forcedAgent (runtime := runtime) menu initial horizon scheduler who
+    (forced : ForcedState setup timeouts leaks who history.state) :
+    forcedAgent (timeouts := timeouts) menu initial horizon scheduler who
       ((menu.information initial horizon scheduler).infoOf who history.trace) :=
   ⟨history, rfl, forced⟩
 

@@ -18,43 +18,45 @@ open GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- The public record of a forced information set holds at every history in
 that set, including histories whose hidden bindings are irregular. -/
 theorem publicRecord_of_forced_information {who : Player}
-    {site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView} (decision : site.1 = some (past, view))
-    (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
+    {site : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationSite
+      who}
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView} (decision : site.1 = some (past, view))
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
       setup) horizon
       scheduler who site.1)
-    (history : (onePacketInformation setup runtime leaks bounds horizon
+    (history : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory who
       site.1)
-    {control : (application setup runtime leaks).Control} (current : history.1.state = some
+    {control : (application setup timeouts leaks).Control} (current : history.1.state = some
       control) :
-    PublicRecord setup runtime who control := by
+    PublicRecord setup timeouts who control := by
   obtain ⟨witness, witnessInfo, witnessForced⟩ := forced
-  obtain ⟨found, foundState, viewEq⟩ := state_of_decision (runtime := runtime) history decision
+  obtain ⟨found, foundState, viewEq⟩ := state_of_decision (timeouts := timeouts) history decision
   rw [current, Option.some.injEq] at foundState
   subst found
   obtain ⟨witnessControl, witnessStateEq, witnessViewEq⟩ :=
-    state_of_decision (runtime := runtime) (site := site) ⟨witness, witnessInfo⟩ decision
+    state_of_decision (timeouts := timeouts) (site := site) ⟨witness, witnessInfo⟩ decision
   obtain ⟨⟨state, trace⟩, info⟩ := history
   change state = some control at current
   subst current
   obtain ⟨witnessState, witnessTrace⟩ := witness
   change witnessState = some witnessControl at witnessStateEq
   subst witnessStateEq
-  have record := publicRecord_of_forced (runtime := runtime) who witnessControl witnessForced
+  have record := publicRecord_of_forced (timeouts := timeouts) who witnessControl witnessForced
   have sameView := viewEq.trans witnessViewEq.symm
   have samePublic : control.execution.application.publicView =
       witnessControl.execution.application.publicView := congrArg
-    (fun observed : (application setup runtime leaks).PlayerView => observed.application.publicView)
+    (fun observed : (application setup timeouts leaks).PlayerView =>
+      observed.application.publicView)
     sameView
   have sameDefaulted : control.execution.application.config.defaulted =
       witnessControl.execution.application.config.defaulted :=

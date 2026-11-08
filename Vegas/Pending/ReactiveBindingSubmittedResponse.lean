@@ -12,20 +12,20 @@ open Interaction EventGraph
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {graph : Vegas.EventGraph Player L}
-  {runtime : EventGraphRuntime graph}
+  {timeouts : EventTimeouts graph}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)}
 
 /-- A foreign response, silence, or an opening preserves the complete submitted
 binding records. The second response may prepare additional private material. -/
-theorem RecordsSubmittedBindings.respond {memory : BindingMemory runtime leaks}
-    {who : Player} {original repaired : (runtime.reactiveApplication leaks).Execution}
-    (recorded : memory.RecordsSubmittedBindings runtime leaks who original repaired)
-    (actor : Player) (left right : (runtime.reactiveApplication leaks).Action)
+theorem RecordsSubmittedBindings.respond {memory : BindingMemory timeouts leaks}
+    {who : Player} {original repaired : ((reactiveApplication timeouts) leaks).Execution}
+    (recorded : memory.RecordsSubmittedBindings timeouts leaks who original repaired)
+    (actor : Player) (left right : ((reactiveApplication timeouts) leaks).Action)
     (nonbinding : actor ≠ who ∨ ∀ material, left.transmission = some material →
       ∀ event candidate, material.call.packet ≠ .commitment event candidate) :
-    memory.RecordsSubmittedBindings runtime leaks who
-      (original.respond (runtime.reactiveApplication leaks) actor left)
-      (repaired.respond (runtime.reactiveApplication leaks) actor right) := by
+    memory.RecordsSubmittedBindings timeouts leaks who
+      (original.respond ((reactiveApplication timeouts) leaks) actor left)
+      (repaired.respond ((reactiveApplication timeouts) leaks) actor right) := by
   intro message member sender event candidate call payload outputEq codeEq node
   have old : message ∈ original.network.inputs := by
     rcases left with ⟨transmission⟩
@@ -41,9 +41,9 @@ theorem RecordsSubmittedBindings.respond {memory : BindingMemory runtime leaks}
           · exact (harmless material rfl event candidate call).elim
   obtain ⟨remembered, firstFixed, secondFixed, succeeds, successes⟩ :=
     recorded message old sender event candidate call payload outputEq codeEq node
-  have firstStable := runtime.reactive_respond_candidate_fixed leaks original actor left
+  have firstStable := (reactive_respond_candidate_fixed timeouts) leaks original actor left
     candidate firstFixed
-  have secondStable := runtime.reactive_respond_candidate_fixed leaks repaired actor right
+  have secondStable := (reactive_respond_candidate_fixed timeouts) leaks repaired actor right
     candidate secondFixed
   refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · simpa only [State.bindingResult, firstStable] using remembered
@@ -53,12 +53,12 @@ theorem RecordsSubmittedBindings.respond {memory : BindingMemory runtime leaks}
   · simpa only [State.bindingResult, firstStable, secondStable] using successes
 
 /-- Appending private response recall does not change any submitted binding record. -/
-theorem RecordsSubmittedBindings.record {memory : BindingMemory runtime leaks}
-    {who : Player} {original repaired : (runtime.reactiveApplication leaks).Execution}
-    (recorded : memory.RecordsSubmittedBindings runtime leaks who original repaired)
-    (view : (runtime.reactiveApplication leaks).PlayerView)
-    (response : (runtime.reactiveApplication leaks).Action) :
-    (memory.record runtime leaks view response).RecordsSubmittedBindings runtime leaks who
+theorem RecordsSubmittedBindings.record {memory : BindingMemory timeouts leaks}
+    {who : Player} {original repaired : ((reactiveApplication timeouts) leaks).Execution}
+    (recorded : memory.RecordsSubmittedBindings timeouts leaks who original repaired)
+    (view : ((reactiveApplication timeouts) leaks).PlayerView)
+    (response : ((reactiveApplication timeouts) leaks).Action) :
+    (memory.record timeouts leaks view response).RecordsSubmittedBindings timeouts leaks who
       original repaired := recorded
 
 end Vegas.EventGraphRuntime.BindingMemory

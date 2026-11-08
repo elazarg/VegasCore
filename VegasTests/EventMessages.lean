@@ -21,8 +21,8 @@ private abbrev graph := VegasTests.SourceSemantics.mixedSetup.eventGraph
 private abbrev inputs : graph.Inputs :=
   VegasTests.SourceSemantics.mixedSetup.eventInputs VegasTests.SourceSemantics.mixedState
 
-private def runtime : EventGraphRuntime graph where
-  deadline _ := 10
+private def timeouts : EventTimeouts graph where
+  duration _ := 10
 
 private def initial : EventGraphRuntime.State graph :=
   EventGraphRuntime.State.initial inputs
@@ -54,7 +54,7 @@ private theorem choiceReady : prepared.config.cut.Ready choiceEvent := by
   change (EventOrder.Cut.empty graph.order).Ready choiceEvent
   decide
 
-private theorem choiceTimely : prepared.WithinDeadline runtime choiceEvent := by
+private theorem choiceTimely : prepared.WithinDeadline timeouts choiceEvent := by
   change 0 < 10
   decide
 
@@ -77,9 +77,9 @@ private def bound : EventGraphRuntime.State graph :=
     candidates := prepared.candidates.freeze choiceHandle }
 
 private theorem handle_commitment :
-    EventGraphRuntime.handle runtime prepared commitment = some bound := by
+    EventGraphRuntime.handle timeouts prepared commitment = some bound := by
   unfold commitment
-  rw [EventGraphRuntime.handle_commitment_eq runtime prepared (.alice, 0) choiceEvent
+  rw [EventGraphRuntime.handle_commitment_eq timeouts prepared (.alice, 0) choiceEvent
     choiceHandle .alice (.option .bool) rfl rfl rfl choiceReady choiceTimely
     (by change .alice ∉ (∅ : Finset TestPlayer); simp) rfl rfl rfl
     choiceUnused]
@@ -95,7 +95,7 @@ private theorem choiceRevealReady : bound.config.cut.Ready choiceReveal := by
   unfold bound prepared initial
   decide
 
-private theorem choiceRevealTimely : bound.WithinDeadline runtime choiceReveal := by
+private theorem choiceRevealTimely : bound.WithinDeadline timeouts choiceReveal := by
   change 0 < 10
   decide
 
@@ -103,9 +103,9 @@ private def choiceOpened : EventGraphRuntime.State graph :=
   bound.complete choiceReveal choiceRevealReady true (.success none)
 
 private theorem handle_choice_opening :
-    EventGraphRuntime.handle runtime bound choiceOpening = some choiceOpened := by
+    EventGraphRuntime.handle timeouts bound choiceOpening = some choiceOpened := by
   unfold choiceOpening choiceRaw
-  rw [EventGraphRuntime.handle_opening_eq runtime bound (.alice, 1) choiceReveal
+  rw [EventGraphRuntime.handle_opening_eq timeouts bound (.alice, 1) choiceReveal
     choiceHandle .alice (.option .bool) _ _ rfl rfl rfl choiceRevealReady
     choiceRevealTimely (by change .alice ∉ (∅ : Finset TestPlayer); simp)
     rfl rfl rfl none rfl rfl (.success none) rfl]
@@ -115,7 +115,7 @@ private theorem seedRevealReady : choiceOpened.config.cut.Ready seedReveal := by
   unfold choiceOpened bound prepared initial
   decide
 
-private theorem seedRevealTimely : choiceOpened.WithinDeadline runtime seedReveal := by
+private theorem seedRevealTimely : choiceOpened.WithinDeadline timeouts seedReveal := by
   change 0 < 10
   decide
 
@@ -123,32 +123,32 @@ private def seedOpened : EventGraphRuntime.State graph :=
   choiceOpened.complete seedReveal seedRevealReady true (.success true)
 
 private theorem handle_seed_opening :
-    EventGraphRuntime.handle runtime choiceOpened seedOpening = some seedOpened := by
+    EventGraphRuntime.handle timeouts choiceOpened seedOpening = some seedOpened := by
   unfold seedOpening seedRaw
-  rw [EventGraphRuntime.handle_opening_eq runtime choiceOpened (.alice, 2) seedReveal
+  rw [EventGraphRuntime.handle_opening_eq timeouts choiceOpened (.alice, 2) seedReveal
     seedHandle .alice .bool _ _ rfl rfl rfl seedRevealReady seedRevealTimely
     (by change .alice ∉ (∅ : Finset TestPlayer); simp)
     rfl rfl rfl true rfl rfl (.success true) rfl]
   rfl
 
 private def settled? : Option (EventGraphRuntime.State graph) := do
-  let afterChoice ← EventGraphRuntime.handle runtime prepared commitment
-  let afterChoiceOpening ← EventGraphRuntime.handle runtime afterChoice choiceOpening
-  EventGraphRuntime.handle runtime afterChoiceOpening seedOpening
+  let afterChoice ← EventGraphRuntime.handle timeouts prepared commitment
+  let afterChoiceOpening ← EventGraphRuntime.handle timeouts afterChoice choiceOpening
+  EventGraphRuntime.handle timeouts afterChoiceOpening seedOpening
 
 private theorem settled_eq : settled? = some seedOpened := by
   unfold settled?
   rw [handle_commitment]
   change (do
-    let afterChoiceOpening ← EventGraphRuntime.handle runtime bound choiceOpening
-    EventGraphRuntime.handle runtime afterChoiceOpening seedOpening) = some seedOpened
+    let afterChoiceOpening ← EventGraphRuntime.handle timeouts bound choiceOpening
+    EventGraphRuntime.handle timeouts afterChoiceOpening seedOpening) = some seedOpened
   rw [handle_choice_opening]
   exact handle_seed_opening
 
 private def successfulRun : PMF (EventGraphRuntime.State graph) :=
   match settled? with
   | none => PMF.pure prepared
-  | some settled => EventGraphRuntime.environmentStep runtime settled (.executeSample coinEvent)
+  | some settled => EventGraphRuntime.environmentStep timeouts settled (.executeSample coinEvent)
 
 private def payout? (state : EventGraphRuntime.State graph) :
     Option (List (TestPlayer × Int)) :=

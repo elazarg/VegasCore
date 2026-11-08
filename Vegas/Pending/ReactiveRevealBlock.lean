@@ -21,10 +21,10 @@ variable {Player : Type} [DecidableEq Player]
 
 /-- The two source choices, using matching owned evidence on the opening branch.
 Withholding emits no packet and is completed by the existing expiry command. -/
-def canonicalRevealResponse (runtime : EventGraphRuntime graph)
+def canonicalRevealResponse (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (event : graph.EventId) (candidate : Handle graph) (raw : Raw L) (disclose : Bool) :
-    (runtime.reactiveApplication leaks).Action :=
+    ((reactiveApplication timeouts) leaks).Action :=
   ⟨if disclose then some (disclosureSubmission (.opening event candidate raw))
     else none⟩
 

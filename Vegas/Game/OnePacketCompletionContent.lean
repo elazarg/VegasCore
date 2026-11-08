@@ -29,16 +29,17 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
 
 /-- Every non-failing newly recorded owned decision has an accepted packet
 with matching source content and candidate ownership, even when its physical
 command also performs further automatic completions. -/
 theorem completion_content
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-    (execution next : (application setup runtime leaks).Execution)
-    (command : (application setup runtime leaks).Command)
-    (reached : next ∈ (execution.environmentStep (application setup runtime leaks) command).support)
+    (execution next : (application setup timeouts leaks).Execution)
+    (command : (application setup timeouts leaks).Command)
+    (reached : next ∈ (execution.environmentStep (application setup timeouts leaks)
+      command).support)
     (record : (graph setup).Completion) (fresh : record ∉ execution.application.config.history)
     (present : record ∈ next.application.config.history)
     {actor : Player} (acts : (graph setup).actor? record.event = some actor)

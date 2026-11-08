@@ -35,16 +35,16 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (scheduler : (application setup timeouts leaks).Scheduler)
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
 
 local notation "onePacketN" =>
-  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
 
 /-- **The completion-point law.** From a history, under play of `installed`
 until the event of rank `rank` completes, the law of the completion point,
@@ -52,18 +52,18 @@ as a sub-probability law on source points, is `success` times stepLaw up to
 `error` against every bounded value. -/
 def CompletionPointLaw
     (installed : ∀ who,
-      (onePacketModel setup runtime leaks bounds (initialLaw setup) horizon
+      (onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
         scheduler).BehavioralPolicy who)
-    (rank : Nat) (fresh : (application setup runtime leaks).Control → Prop)
-    (history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+    (rank : Nat) (fresh : (application setup timeouts leaks).Control → Prop)
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
       horizon scheduler).History)
     (success : ℝ) (stepLaw : PMF (ProtocolState setup.program)) (error : ℝ) : Prop :=
   ∀ (value : ProtocolState setup.program → ℝ) (bound : ℝ), (∀ point, |value point| ≤ bound) →
     |expect ((onePacketN).runBehavioralUntil
-        ((bounds.onePacketMenu runtime leaks).bounded (initialLaw setup) horizon
+        ((bounds.onePacketMenu timeouts leaks).bounded (initialLaw setup) horizon
           scheduler).wellFoundedHistories installed
-        (LateStopped setup runtime leaks bounds horizon scheduler rank) history)
-        (fun stop => (completionPoint setup runtime leaks bounds horizon scheduler rank fresh
+        (LateStopped setup timeouts leaks bounds horizon scheduler rank) history)
+        (fun stop => (completionPoint setup timeouts leaks bounds horizon scheduler rank fresh
           stop).elim
           0 value) -
       success * expect stepLaw value| ≤ error * bound
@@ -71,14 +71,14 @@ def CompletionPointLaw
 /-- The completion value uses the actual completion point, with its fallback
 at every history where that point is unavailable. -/
 theorem completionValue_eq_elim (profile : BehavioralProfile setup.program)
-    (rank : Nat) (fresh : (application setup runtime leaks).Control → Prop) (who : Player)
-    (fallback : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+    (rank : Nat) (fresh : (application setup timeouts leaks).Control → Prop) (who : Player)
+    (fallback : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
       horizon scheduler).History → ℝ)
-    (history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup)
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup)
       horizon scheduler).History) :
-    completionValue setup runtime leaks bounds horizon scheduler parameter utility excludedPayoff
+    completionValue setup timeouts leaks bounds horizon scheduler parameter utility excludedPayoff
         profile rank fresh who fallback history =
-      (completionPoint setup runtime leaks bounds horizon scheduler rank fresh history).elim
+      (completionPoint setup timeouts leaks bounds horizon scheduler rank fresh history).elim
         (fallback history)
         (sourcePointValue setup parameter utility excludedPayoff profile who) := rfl
 

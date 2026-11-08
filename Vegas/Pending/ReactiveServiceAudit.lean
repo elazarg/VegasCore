@@ -22,27 +22,27 @@ variable {Player : Type} [DecidableEq Player]
 
 /-- The contract's settled record at an execution: its public view and the
 receipts of every inclusion. -/
-def settledRecord (runtime : EventGraphRuntime graph)
+def settledRecord (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (execution : (runtime.reactiveApplication leaks).Execution) : SettledRecord graph :=
+    (execution : ((reactiveApplication timeouts) leaks).Execution) : SettledRecord graph :=
   ⟨execution.application.publicView, execution.receipts⟩
 
 /-- The actual traffic history and the settled record. No private value,
 player response representation or unsampled absence is used. -/
-def serviceAuditObservation (runtime : EventGraphRuntime graph)
+def serviceAuditObservation (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (state : (runtime.reactiveApplication leaks).ProtocolState) :=
-  ((runtime.reactiveApplication leaks).stateTraffic state,
-    state.map fun control => runtime.settledRecord leaks control.execution)
+    (state : ((reactiveApplication timeouts) leaks).ProtocolState) :=
+  (((reactiveApplication timeouts) leaks).stateTraffic state,
+    state.map fun control => (settledRecord timeouts) leaks control.execution)
 
 /-- One collected verdict, with arbitrary correlation between players and
 arbitrary sampling inside the supplied authentic traffic audit, which may read
 the settled record. Before initialization nothing is collected. -/
-def serviceAudit (runtime : EventGraphRuntime graph)
+def serviceAudit (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (trafficAudit : SettledRecord graph →
-      List (runtime.reactiveApplication leaks).TrafficRecord → PMF (Player → Bool))
-    (observed : List (runtime.reactiveApplication leaks).TrafficRecord ×
+      List ((reactiveApplication timeouts) leaks).TrafficRecord → PMF (Player → Bool))
+    (observed : List ((reactiveApplication timeouts) leaks).TrafficRecord ×
       Option (SettledRecord graph)) :
     PMF (Player → Bool) :=
   match observed.2 with
@@ -51,15 +51,15 @@ def serviceAudit (runtime : EventGraphRuntime graph)
 
 /-- Collection is exactly the supplied signed-traffic verdict probability.
 Public source defaults introduce no additional audit charge. -/
-theorem serviceAudit_charge (runtime : EventGraphRuntime graph)
+theorem serviceAudit_charge (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (trafficAudit : SettledRecord graph →
-      List (runtime.reactiveApplication leaks).TrafficRecord → PMF (Player → Bool))
-    (control : (runtime.reactiveApplication leaks).Control) (who : Player) :
-    TerminalAudit.charge (runtime.serviceAuditObservation leaks)
-        (runtime.serviceAudit leaks trafficAudit) (some control) who =
-      ((((trafficAudit (runtime.settledRecord leaks control.execution)
-        ((runtime.reactiveApplication leaks).executionTraffic control.execution)).map
+      List ((reactiveApplication timeouts) leaks).TrafficRecord → PMF (Player → Bool))
+    (control : ((reactiveApplication timeouts) leaks).Control) (who : Player) :
+    TerminalAudit.charge ((serviceAuditObservation timeouts) leaks)
+        ((serviceAudit timeouts) leaks trafficAudit) (some control) who =
+      ((((trafficAudit ((settledRecord timeouts) leaks control.execution)
+        (((reactiveApplication timeouts) leaks).executionTraffic control.execution)).map
           (fun verdict => verdict who)) true).toReal) := rfl
 
 end Vegas.EventGraphRuntime

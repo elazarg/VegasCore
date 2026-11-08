@@ -27,17 +27,18 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
-local notation "Menu" => bounds.onePacketMenu runtime leaks
-local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+local notation "Menu" => bounds.onePacketMenu timeouts leaks
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  scheduler
 local notation "E" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon scheduler
+  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks)
+  (app := application setup timeouts leaks)
     (fun native : EventGraphRuntime.State (graph setup) =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
@@ -49,32 +50,32 @@ open Classical in
 /-- Replacing the continuation at public default or own latent debt by the
 declared exit value charges only foreign defaults before own debt. -/
 theorem terminal_value_sub_stopped_le_foreign_default
-    (completes : CompletesPlay runtime leaks (initialLaw setup) horizon scheduler)
+    (completes : CompletesPlay timeouts leaks (initialLaw setup) horizon scheduler)
     (certificate : (E).WellFoundedHistories)
     (players : ∀ who, (N).BehavioralPolicy who) (who : Player)
     {payoffBound : ℝ} (nonnegative : 0 ≤ payoffBound)
     (payoffBounded : ∀ final : (E).History,
-      |exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who| ≤
+      |exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state who| ≤
         payoffBound)
     (excludedBounded : |excludedPayoff who| ≤ payoffBound) (start : (E).History) :
     let stopped := fun final : (E).History => ¬ Clear final.state ∨
-      DecodedState setup runtime leaks (failureProfile setup.program)
+      DecodedState setup timeouts leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure who setup.program) final.state
     let law := (N).runBehavioralUntil certificate players stopped start
     |expect ((N).runBehavioralTerminalFrom certificate players start)
-        (fun final => exclusionBase setup runtime parameter utility excludedPayoff leaks
+        (fun final => exclusionBase setup timeouts parameter utility excludedPayoff leaks
           final.state who) -
       expect law (fun final => if stopped final then excludedPayoff who else
-        exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who)| ≤
+        exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state who)| ≤
       (2 * payoffBound) * (law.toOuterMeasure {final |
         ¬ Clear final.state ∧
         (∀ current, final.state = some current →
           who ∉ current.execution.application.config.defaulted) ∧
-        ¬ DecodedState setup runtime leaks (failureProfile setup.program)
+        ¬ DecodedState setup timeouts leaks (failureProfile setup.program)
           (ProtocolState.OwesFailure who setup.program) final.state}).toReal := by
   intro stopped law
   let payoff := fun final : (E).History =>
-    exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who
+    exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state who
   let continued := fun final : (E).History =>
     expect ((N).runBehavioralTerminalFrom certificate players final) payoff
   let value := fun final => if stopped final then excludedPayoff who else payoff final
@@ -82,7 +83,7 @@ theorem terminal_value_sub_stopped_le_foreign_default
     ¬ Clear final.state ∧
     (∀ current, final.state = some current →
       who ∉ current.execution.application.config.defaulted) ∧
-    ¬ DecodedState setup runtime leaks (failureProfile setup.program)
+    ¬ DecodedState setup timeouts leaks (failureProfile setup.program)
       (ProtocolState.OwesFailure who setup.program) final.state}
   have continuedBounded (final) : |continued final| ≤ payoffBound :=
     expect_abs_le_of_bounded nonnegative payoffBounded
@@ -101,7 +102,7 @@ theorem terminal_value_sub_stopped_le_foreign_default
     by_cases halted : stopped final
     · change continued final = if stopped final then excludedPayoff who else payoff final
       rw [ite_eq_left halted]
-      by_cases owed : DecodedState setup runtime leaks (failureProfile setup.program)
+      by_cases owed : DecodedState setup timeouts leaks (failureProfile setup.program)
           (ProtocolState.OwesFailure who setup.program) final.state
       · exact (exclusionBase_expect_of_owesFailure parameter utility excludedPayoff (Menu)
           horizon scheduler completes certificate players who final owed).2
@@ -146,7 +147,7 @@ theorem terminal_value_sub_stopped_le_foreign_default
 
 section Assembled
 
-variable [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+variable [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
   [Finite setup.intendedProtocol.History]
   {Public : Type*} {signal : State L setup.context → Public}
 
@@ -165,49 +166,49 @@ theorem assembled_terminal_stopped_comparison_bounds
     (sourceMixed : ∀ n, (sequence n).IsFullyMixed)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     (scaleEq : ∀ n, scale n = trembleScale
-      (combinedFloor setup runtime leaks bounds horizon scheduler (sequence n))
+      (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n))
       (2 * horizon + 2) n)
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount)
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler bounds.candidateCount p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive le_one weights targetSequence)
     (mixed : ∀ n, (targetSequence n).IsFullyMixed)
     (bayes : ∀ n, BehavioralAssessment.IsBayesConsistent (N) (targetSequence n)
       ((Menu).decisionRecall (initialLaw setup) horizon scheduler).decisionInformationAntichain)
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : Opportunity runtime leaks (initialLaw setup) horizon scheduler delay)
-    (inclusion : ProtectedInclusion runtime leaks (initialLaw setup) horizon scheduler bound)
-    (timely : runtime.AsyncTimely delay bound)
-    (completes : CompletesPlay runtime leaks (initialLaw setup) horizon scheduler)
+    (opportunity : Opportunity timeouts leaks (initialLaw setup) horizon scheduler delay)
+    (inclusion : ProtectedInclusion timeouts leaks (initialLaw setup) horizon scheduler bound)
+    (timely : (AsyncTimely timeouts) delay bound)
+    (completes : CompletesPlay timeouts leaks (initialLaw setup) horizon scheduler)
     {payoffBound : ℝ} (nonnegative : 0 ≤ payoffBound)
     (payoffBounded : ∀ who (final : (E).History),
-      |exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who| ≤
+      |exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state who| ≤
         payoffBound)
     (excludedBounded : ∀ who, |excludedPayoff who| ≤ payoffBound) :
     ∃ error : ℕ → ℝ, Tendsto error atTop (nhds 0) ∧
       ∀ n who (site : (N).InformationSite who),
-        ¬ Vegas.FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+        ¬ Vegas.FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
           ((N).agentAt site) →
-        ¬ Vegas.OwingAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+        ¬ Vegas.OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
           ((N).agentAt site) →
-        ∀ {past : List (application setup runtime leaks).PlayerEntry}
-          {view : (application setup runtime leaks).PlayerView}, site.1 = some (past, view) →
+        ∀ {past : List (application setup timeouts leaks).PlayerEntry}
+          {view : (application setup timeouts leaks).PlayerView}, site.1 = some (past, view) →
         ∀ {event : (graph setup).EventId},
           view.application.publicView.ownTurn? who = some event →
         let common := (targetSequence n).strategy
         let certificate :=
           ((Menu).bounded (initialLaw setup) horizon scheduler).wellFoundedHistories
         let stopped := fun final : (E).History => ¬ Clear final.state ∨
-          DecodedState setup runtime leaks (failureProfile setup.program)
+          DecodedState setup timeouts leaks (failureProfile setup.program)
             (ProtocolState.OwesFailure who setup.program) final.state
         let payoff := fun final : (E).History => if stopped final then excludedPayoff who else
-          exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who
+          exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state who
         (∀ law : PMF ((N).Choice who site.1),
           |localValue (2 * horizon + 1) (fun final => final.state)
-              (exclusionBase setup runtime parameter utility excludedPayoff leaks)
+              (exclusionBase setup timeouts parameter utility excludedPayoff leaks)
                 (targetSequence n) site law -
             expect ((targetSequence n).belief who site) (fun history =>
               expect ((N).runBehavioralUntil certificate
@@ -215,7 +216,7 @@ theorem assembled_terminal_stopped_comparison_bounds
                   ((common who).withLaw site.1 law)) stopped history.1) payoff)| ≤ error n) ∧
         ∀ law : PMF ((N).Choice who site.1),
           |localGain (2 * horizon + 1) (fun final => final.state)
-              (exclusionBase setup runtime parameter utility excludedPayoff leaks)
+              (exclusionBase setup timeouts parameter utility excludedPayoff leaks)
                 (targetSequence n) site law -
             expect ((targetSequence n).belief who site) (fun history =>
               expect ((N).runBehavioralUntil certificate
@@ -223,19 +224,19 @@ theorem assembled_terminal_stopped_comparison_bounds
                   ((common who).withLaw site.1 law)) stopped history.1) payoff -
                 expect ((N).runBehavioralUntil certificate common stopped history.1) payoff)| ≤
             2 * error n := by
-  obtain ⟨drift, driftLimit, irregular⟩ := irregular_belief_bounds_of_assembled setup runtime leaks
+  obtain ⟨drift, driftLimit, irregular⟩ := irregular_belief_bounds_of_assembled setup timeouts leaks
     bounds horizon scheduler wellFormed independent observable sequence sourceMixed scale positive
     le_one scaleEq covers coversInputs capacity weights targetSequence assembled mixed bayes
   let cost := fun n => (scale n ^ 2 + scale n) * (2 * horizon + 1)
   let error := fun n => 2 * payoffBound * (|drift n| + cost n)
   have scaleLimit : Tendsto scale atTop (nhds 0) := by
     have identity : scale = fun n => trembleScale
-        (combinedFloor setup runtime leaks bounds horizon scheduler (sequence n))
+        (combinedFloor setup timeouts leaks bounds horizon scheduler (sequence n))
         (2 * horizon + 2) n := funext scaleEq
     rw [identity]
     exact tendsto_trembleScale _
-      (fun n => combinedFloor_pos setup runtime leaks bounds horizon scheduler (sequence n))
-      (fun n => combinedFloor_le_one setup runtime leaks bounds horizon scheduler (sequence n))
+      (fun n => combinedFloor_pos setup timeouts leaks bounds horizon scheduler (sequence n))
+      (fun n => combinedFloor_le_one setup timeouts leaks bounds horizon scheduler (sequence n))
   have costLimit : Tendsto cost atTop (nhds 0) := by
     simpa [cost] using ((scaleLimit.pow 2).add scaleLimit).mul_const (2 * horizon + 1 : ℝ)
   refine ⟨error, ?_, ?_⟩
@@ -243,14 +244,14 @@ theorem assembled_terminal_stopped_comparison_bounds
   intro n who site notFree notOwing past view atSite event turn common certificate stopped payoff
   let belief := (targetSequence n).belief who site
   let bad := fun history : (N).InformationHistory who site.1 =>
-    if RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+    if RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
       history.1.trace then (0 : ℝ) else 1
   let terminalValue := fun (law : PMF ((N).Choice who site.1))
       (history : (N).InformationHistory who site.1) =>
     expect ((N).runBehavioralTerminalFrom certificate
       (Profile.update (sig := (N).behavioralSignature) common who
         ((common who).withLaw site.1 law)) history.1)
-      (fun final => exclusionBase setup runtime parameter utility excludedPayoff leaks
+      (fun final => exclusionBase setup timeouts parameter utility excludedPayoff leaks
         final.state who)
   let stoppedValue := fun (law : PMF ((N).Choice who site.1))
       (history : (N).InformationHistory who site.1) =>
@@ -270,19 +271,20 @@ theorem assembled_terminal_stopped_comparison_bounds
     intro law history
     have costNonnegative : 0 ≤ cost n :=
       mul_nonneg (add_nonneg (sq_nonneg _) (positive n).le) (by positivity)
-    by_cases regular : RegularTrace setup runtime leaks bounds horizon scheduler (sequence n)
+    by_cases regular : RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n)
         who history.1.trace
     · simp only [bad, regular, ↓reduceIte, zero_add]
       rcases history with ⟨⟨state, trace⟩, observed⟩
       obtain ⟨remaining, execution, current, recallEq, observeEq⟩ :=
-        state_of_site setup runtime leaks bounds horizon scheduler atSite ⟨⟨state, trace⟩, observed⟩
+        state_of_site setup timeouts leaks bounds horizon scheduler atSite ⟨⟨state, trace⟩,
+          observed⟩
       dsimp only at current
       subst state
       have clear : execution.application.config.defaulted = ∅ :=
-        runtime.informationHistory_clear leaks (Menu) (initialLaw setup) horizon scheduler site
+        (informationHistory_clear timeouts) leaks (Menu) (initialLaw setup) horizon scheduler site
           (Classical.not_not.mp notFree).1 ⟨⟨_, trace⟩, observed⟩ _ rfl
       have nativeTurn : execution.application.publicView.ownTurn? who = some event := by
-        change (execution.observe (application setup runtime leaks)
+        change (execution.observe (application setup timeouts leaks)
           who).application.publicView.ownTurn? who = some event
         rw [observeEq]
         exact turn
@@ -293,9 +295,9 @@ theorem assembled_terminal_stopped_comparison_bounds
         ¬ Clear final.state ∧
         (∀ control, final.state = some control →
           who ∉ control.execution.application.config.defaulted) ∧
-        ¬ DecodedState setup runtime leaks (failureProfile setup.program)
+        ¬ DecodedState setup timeouts leaks (failureProfile setup.program)
           (ProtocolState.OwesFailure who setup.program) final.state}
-      have foreignMass := assembled_foreign_exit_mass_le_rank setup runtime leaks bounds horizon
+      have foreignMass := assembled_foreign_exit_mass_le_rank setup timeouts leaks bounds horizon
         scheduler wellFormed covers capacity sequence scale positive le_one weights targetSequence
         assembled n who ((common who).withLaw site.1 law)
         (fun control prior _ => opportunity control ((Menu).toRawTrace (initialLaw setup) horizon
@@ -310,21 +312,21 @@ theorem assembled_terminal_stopped_comparison_bounds
         fun _ holds => ⟨holds.1, holds.2.1⟩
       have mass : (kernel.toOuterMeasure foreign).toReal ≤
           (scale n ^ 2 + scale n) *
-            (application setup runtime leaks).rank horizon (some ⟨remaining, some who, execution⟩)
+            (application setup timeouts leaks).rank horizon (some ⟨remaining, some who, execution⟩)
             := by
         refine (ENNReal.toReal_mono (outerMeasure_ne_top _ _)
           (MeasureTheory.measure_mono subset)).trans ?_
         exact foreignMass
-      have depth := (application setup runtime leaks).trace_bound (initialLaw setup) horizon
+      have depth := (application setup timeouts leaks).trace_bound (initialLaw setup) horizon
         scheduler ((Menu).toRawTrace (initialLaw setup) horizon scheduler trace)
-      have rankBound : ((application setup runtime leaks).rank horizon
+      have rankBound : ((application setup timeouts leaks).rank horizon
           (some ⟨remaining, some who, execution⟩) : ℝ) ≤ 2 * horizon + 1 := by
-        exact_mod_cast (show (application setup runtime leaks).rank horizon
+        exact_mod_cast (show (application setup timeouts leaks).rank horizon
           (some ⟨remaining, some who, execution⟩) ≤ 2 * horizon + 1 by omega)
       have massCost : (kernel.toOuterMeasure foreign).toReal ≤ cost n :=
         mass.trans (mul_le_mul_of_nonneg_left rankBound
           (add_nonneg (sq_nonneg _) (positive n).le))
-      have pointwise := terminal_value_sub_stopped_le_foreign_default setup runtime leaks bounds
+      have pointwise := terminal_value_sub_stopped_le_foreign_default setup timeouts leaks bounds
         horizon scheduler parameter utility excludedPayoff completes certificate installed who
         nonnegative (payoffBounded who) (excludedBounded who) ⟨_, trace⟩
       exact pointwise.trans (mul_le_mul_of_nonneg_left massCost (by positivity))
@@ -338,14 +340,14 @@ theorem assembled_terminal_stopped_comparison_bounds
       nlinarith
   have values : ∀ law : PMF ((N).Choice who site.1),
       |localValue (2 * horizon + 1) (fun final => final.state)
-          (exclusionBase setup runtime parameter utility excludedPayoff leaks)
+          (exclusionBase setup timeouts parameter utility excludedPayoff leaks)
             (targetSequence n) site law - expect belief (stoppedValue law)| ≤ error n := by
     intro law
     have actual : localValue (2 * horizon + 1) (fun final => final.state)
-        (exclusionBase setup runtime parameter utility excludedPayoff leaks)
+        (exclusionBase setup timeouts parameter utility excludedPayoff leaks)
           (targetSequence n) site law = expect belief (terminalValue law) := by
       rw [localValue_eq_continuationContext (2 * horizon + 1) (fun final => final.state)
-        (exclusionBase setup runtime parameter utility excludedPayoff leaks) (targetSequence n)
+        (exclusionBase setup timeouts parameter utility excludedPayoff leaks) (targetSequence n)
         site ((Menu).bounded (initialLaw setup) horizon scheduler),
         BehavioralAssessment.continuationContext_value, expect_bind_of_finite]
     rw [actual]

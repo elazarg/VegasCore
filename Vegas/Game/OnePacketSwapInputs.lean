@@ -40,7 +40,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
 
 section Replay
 
@@ -156,16 +156,16 @@ private theorem extendIntended?_reached {history result : setup.intendedProtocol
 
 variable [Fintype Player] {leaks : MessageNetwork.ObservationRule Player
     (WitnessedPacket (graph setup))} {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **The inputs along a replay.** Along a native history with an intended
 replay, the inputs are those of a setup draw whose cells the replay finds at
 its end. -/
 theorem replay_initialCellsAt {state}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state) :
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state) :
     ∀ {history : setup.intendedProtocol.History},
-    intendedHistory? setup runtime leaks bounds horizon scheduler trace = some history →
-    ∀ control : (application setup runtime leaks).Control, state = some control →
+    intendedHistory? setup timeouts leaks bounds horizon scheduler trace = some history →
+    ∀ control : (application setup timeouts leaks).Control, state = some control →
       ∃ initial ∈ setup.initialLaw.support,
         control.execution.application.config.inputs = setup.eventInputs initial ∧
         ∃ point, history.state = some point ∧ InitialCellsAt initial point := by
@@ -181,7 +181,7 @@ theorem replay_initialCellsAt {state}
             (decodedPoint setup control.execution.application.config) = some history
             at advanced
           have stateEq := extendIntended?_state advanced
-          change some control ∈ ((application setup runtime leaks).transition (initialLaw setup)
+          change some control ∈ ((application setup timeouts leaks).transition (initialLaw setup)
             horizon scheduler none joint).support at realized
           rw [ReactiveApplication.transition, PMF.support_map] at realized
           obtain ⟨drawn, drawnMember, drawnEq⟩ := realized
@@ -196,7 +196,7 @@ theorem replay_initialCellsAt {state}
           obtain ⟨initial, member, inputsEq, point, pointEq, found⟩ :=
             ih previousReplay current rfl
           have sameInputs := EventGraph.Config.Step.path_inputs_eq
-            (reactive_protocol_graph_steps runtime leaks (initialLaw setup) horizon scheduler
+            (reactive_protocol_graph_steps timeouts leaks (initialLaw setup) horizon scheduler
               current control joint realized)
           refine ⟨initial, member, sameInputs.trans inputsEq, ?_⟩
           change (match control.execution.application.config.history.drop
@@ -225,13 +225,13 @@ theorem inputs_mem_swapAllowed {first second : setup.intendedProtocol.History}
     (handlePairs : Handle (graph setup) → Option (Raw L × Raw L))
     (compatible : (HiddenSwap.ofPairs (betweenPairs publicAgree succeed)
       handlePairs).InitialHandlesCompatible)
-    {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
-    (replayed : intendedHistory? setup runtime leaks bounds horizon scheduler trace = some first) :
+    {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
+    (replayed : intendedHistory? setup timeouts leaks bounds horizon scheduler trace = some first) :
     control.execution.application.config.inputs ∈
       swapAllowed (HiddenSwap.ofPairs (betweenPairs publicAgree succeed) handlePairs) := by
   obtain ⟨initial, member, inputsEq, point, pointEq, found⟩ :=
-    replay_initialCellsAt (runtime := runtime) trace replayed control rfl
+    replay_initialCellsAt (timeouts := timeouts) trace replayed control rfl
   rw [firstState] at pointEq
   cases pointEq
   obtain ⟨other, otherMember, otherFound⟩ := exists_initialCellsAt second.trace secondState

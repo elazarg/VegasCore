@@ -40,29 +40,29 @@ variable {Player : Type} [DecidableEq Player]
 section Ranked
 
 variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- One round: a scheduler command, its environment step, and the response of
 the activated player, if any. -/
-theorem round_cases {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
-    {execution next : (serviceApplication setup mode deadline leaks).Execution}
+theorem round_cases {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode duration leaks).Policy}
+    {execution next : (serviceApplication setup mode duration leaks).Execution}
     (reached : next ∈
-        ((serviceApplication setup mode deadline leaks).round scheduler players
+        ((serviceApplication setup mode duration leaks).round scheduler players
         execution).support) :
     ∃ command ∈ (scheduler execution.environmentRecall
-        (execution.observeEnvironment (serviceApplication setup mode deadline leaks))).support,
+        (execution.observeEnvironment (serviceApplication setup mode duration leaks))).support,
       ∃ middle ∈
-          (execution.environmentStep (serviceApplication setup mode deadline leaks)
+          (execution.environmentStep (serviceApplication setup mode duration leaks)
               command).support,
-          (command.actor? (serviceApplication setup mode deadline leaks) = none ∧ next = middle) ∨ ∃
-          who, command.actor? (serviceApplication setup mode deadline leaks) = some who ∧ ∃ response
+          (command.actor? (serviceApplication setup mode duration leaks) = none ∧ next = middle) ∨ ∃
+          who, command.actor? (serviceApplication setup mode duration leaks) = some who ∧ ∃ response
           ∈ (players who (middle.logs who)
-              (middle.observe (serviceApplication setup mode deadline leaks) who)).support,
-              next = middle.respond (serviceApplication setup mode deadline leaks) who
+              (middle.observe (serviceApplication setup mode duration leaks) who)).support,
+              next = middle.respond (serviceApplication setup mode duration leaks) who
                   response := by
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   obtain ⟨command, selected, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
   refine ⟨command, selected, middle, moved, ?_⟩
@@ -81,9 +81,9 @@ theorem round_cases {scheduler : (serviceApplication setup mode deadline leaks).
 
 /-- An activation leaves the application unchanged. -/
 theorem activation_application
-    (execution middle : (serviceApplication setup mode deadline leaks).Execution) (who : Player)
+    (execution middle : (serviceApplication setup mode duration leaks).Execution) (who : Player)
     (moved : middle ∈
-        (execution.environmentStep (serviceApplication setup mode deadline leaks)
+        (execution.environmentStep (serviceApplication setup mode duration leaks)
         (.activate who)).support) :
     middle.application = execution.application := by
   unfold ReactiveApplication.Execution.environmentStep at moved
@@ -95,21 +95,21 @@ theorem activation_application
 
 /-- Every recorded activation was answered by its player at the public view
 the scheduler saw. -/
-def ActivationsAnswered (execution : (serviceApplication setup mode deadline leaks).Execution) :
+def ActivationsAnswered (execution : (serviceApplication setup mode duration leaks).Execution) :
     Prop := ∀ entry ∈ execution.environmentRecall, ∀ who, entry.command = .activate who → ∃ answer ∈
     execution.logs who, answer.beforeView.application.publicView = entry.beforeView.application
 
 /-- Every round answers its activation at the scheduler's public view. -/
 theorem round_activationsAnswered
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy}
-    {execution next : (serviceApplication setup mode deadline leaks).Execution}
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode duration leaks).Policy}
+    {execution next : (serviceApplication setup mode duration leaks).Execution}
     (valid : ActivationsAnswered setup leaks execution)
     (reached : next ∈
-        ((serviceApplication setup mode deadline leaks).round scheduler players
+        ((serviceApplication setup mode duration leaks).round scheduler players
         execution).support) :
     ActivationsAnswered setup leaks next := by
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   obtain ⟨command, selected, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   have recorded := app.dispatch_environmentRecall players command execution next dispatched
   obtain ⟨middle', moved', resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
@@ -155,14 +155,14 @@ variable {setup leaks} in
 /-- Every activation in completed rounds has an actual response in own recall,
 even if that response was silent or sent a packet for a different event. -/
 theorem roundsFrom_activationsAnswered
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    {players : Player → (serviceApplication setup mode deadline leaks).Policy} (count : Nat)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode duration leaks).Policy} (count : Nat)
+    (execution : (serviceApplication setup mode duration leaks).Execution)
     (supported : execution ∈
-        ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
         scheduler players count).support) :
     ActivationsAnswered setup leaks execution := by
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   induction count generalizing execution with
   | zero =>
       obtain ⟨state, _, reached⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
@@ -176,23 +176,23 @@ theorem roundsFrom_activationsAnswered
 
 /-- No recorded response has seen `event` ready. -/
 def Untouched (event : (serviceGraph setup mode).EventId)
-    (execution : (serviceApplication setup mode deadline leaks).Execution) : Prop :=
+    (execution : (serviceApplication setup mode duration leaks).Execution) : Prop :=
   ∀ who, ∀ entry ∈ execution.logs who,
     ¬ entry.beforeView.application.publicView.EventReady event
 
 /-- Every recorded response saw only events of rank at most `bound` ready. -/
-def ReadySeen (bound : Nat) (execution : (serviceApplication setup mode deadline leaks).Execution) :
+def ReadySeen (bound : Nat) (execution : (serviceApplication setup mode duration leaks).Execution) :
     Prop := ∀ who, ∀ entry ∈ execution.logs who, ∀ event : (serviceGraph setup mode).EventId,
     entry.beforeView.application.publicView.EventReady event → event.val ≤ bound
 
 /-- An execution where the events of rank below `rank` have completed, no
 recorded response has seen the event of rank `rank` ready, and which the
 players reach by complete rounds from initialization. -/
-structure CompletionBoundary (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (rank : Nat)
-    (execution : (serviceApplication setup mode deadline leaks).Execution) : Prop where
+structure CompletionBoundary (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
+    (players : Player → (serviceApplication setup mode duration leaks).Policy) (rank : Nat)
+    (execution : (serviceApplication setup mode duration leaks).Execution) : Prop where
   supported : execution ∈
-      ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+      ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
           scheduler players execution.environmentRecall.length).support
   ordered : execution.application.config.cut.IsPrefix rank
   untouched : ∀ event : (serviceGraph setup mode).EventId, rank ≤ event.val →
@@ -200,15 +200,15 @@ structure CompletionBoundary (scheduler : (serviceApplication setup mode deadlin
 
 /-- From every completion boundary within the horizon, the players' run to the
 horizon has the source continuation law of the configuration's typed prefix. -/
-def BoundaryContinuationLaw (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    (horizon : Nat) (players : Player → (serviceApplication setup mode deadline leaks).Policy)
+def BoundaryContinuationLaw (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
+    (horizon : Nat) (players : Player → (serviceApplication setup mode duration leaks).Policy)
     (profile : BehavioralProfile setup.program) : Prop := ∀ rank
-    (execution : (serviceApplication setup mode deadline leaks).Execution), CompletionBoundary setup
+    (execution : (serviceApplication setup mode duration leaks).Execution), CompletionBoundary setup
     leaks scheduler players rank execution → execution.environmentRecall.length ≤ horizon →
-    ((serviceApplication setup mode deadline leaks).runToHorizon scheduler players horizon
+    ((serviceApplication setup mode duration leaks).runToHorizon scheduler players horizon
         execution).map
-    (fun final => serviceSourceReadout setup mode deadline leaks
-        ((serviceApplication setup mode deadline leaks).finished final)) =
+    (fun final => serviceSourceReadout setup mode duration leaks
+        ((serviceApplication setup mode duration leaks).finished final)) =
     (setup.continuationLaw profile
         (serviceSourcePrefix? setup mode rank execution.application.config)).map some
 
@@ -217,15 +217,16 @@ end Ranked
 section Sequential
 
 variable (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
 variable {setup} in
 /-- Every saved ready event lies at or before the current actual sequential prefix. -/
 theorem readySeen_of_rawTrace {horizon rank : Nat}
-    {scheduler : (application setup runtime leaks).Scheduler}
-    {control : (application setup runtime leaks).Control}
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    {scheduler : (application setup timeouts leaks).Scheduler}
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace
       (some control))
     (ordered : control.execution.application.config.cut.IsPrefix rank) :
     ReadySeen setup leaks rank control.execution := by
@@ -244,9 +245,9 @@ theorem readySeen_of_rawTrace {horizon rank : Nat}
 /-- **A reached boundary.** The execution of a legal history at a scheduler
 boundary, whose configuration is a prefix at `rank`, with every event from
 `rank` on untouched and every own submission made at its author's turn. -/
-structure ReachedBoundary (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler)
-    (rank : Nat) (execution : (application setup runtime leaks).Execution) : Prop where
-  trace : Nonempty (((application setup runtime leaks).protocol (initialLaw setup) horizon
+structure ReachedBoundary (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler)
+    (rank : Nat) (execution : (application setup timeouts leaks).Execution) : Prop where
+  trace : Nonempty (((application setup timeouts leaks).protocol (initialLaw setup) horizon
     scheduler).Trace (some ⟨horizon - execution.environmentRecall.length, none, execution⟩))
   bounded : execution.environmentRecall.length ≤ horizon
   ordered : execution.application.config.cut.IsPrefix rank
@@ -257,20 +258,20 @@ structure ReachedBoundary (horizon : Nat) (scheduler : (application setup runtim
 
 /-- One scheduler round preserves the starting bound on remembered ready events
 and extends the completed prefix through its actual finite graph path. -/
-theorem round_prefix (scheduler : (application setup runtime leaks).Scheduler)
-    (players : Player → (application setup runtime leaks).Policy) (rank : Nat)
-    (execution next : (application setup runtime leaks).Execution)
+theorem round_prefix (scheduler : (application setup timeouts leaks).Scheduler)
+    (players : Player → (application setup timeouts leaks).Policy) (rank : Nat)
+    (execution next : (application setup timeouts leaks).Execution)
     (ordered : execution.application.config.cut.IsPrefix rank)
     (seen : ReadySeen setup leaks rank execution)
-    (reached : next ∈ ((application setup runtime leaks).round scheduler players
+    (reached : next ∈ ((application setup timeouts leaks).round scheduler players
       execution).support) :
     ReadySeen setup leaks rank next ∧
       ∃ actualRank, rank ≤ actualRank ∧ next.application.config.cut.IsPrefix actualRank := by
-  let app := application setup runtime leaks
+  let app := application setup timeouts leaks
   obtain ⟨command, _, dispatched⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
   obtain ⟨middle, moved, resumed⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ dispatched)
   have recallEq := app.environmentStep_recall execution middle command moved
-  have path := (runtime.reactiveApplication_graphSteps leaks).environmentStep
+  have path := ((reactiveApplication_graphSteps timeouts) leaks).environmentStep
     execution middle command moved
   have middlePrefix := EventGraph.Config.Step.path_isPrefix_sequential setup.eventGraph
     path ordered
@@ -287,7 +288,7 @@ theorem round_prefix (scheduler : (application setup runtime leaks).Scheduler)
     change next ∈ (app.invoke players who middle).support at resumed
     rw [ReactiveApplication.invoke, PMF.support_map] at resumed
     obtain ⟨response, _, rfl⟩ := resumed
-    obtain ⟨configEq, _⟩ := runtime.reactive_respond_application leaks middle who response
+    obtain ⟨configEq, _⟩ := (reactive_respond_application timeouts) leaks middle who response
     refine ⟨?_, rank, le_rfl, ?_⟩
     swap
     · rw [configEq, sameApp]
@@ -322,10 +323,10 @@ theorem round_prefix (scheduler : (application setup runtime leaks).Scheduler)
 
 /-- Every execution reached by complete rounds from initialization has a
 completed prefix, and its recorded responses saw nothing beyond it. -/
-theorem roundsFrom_ranked (scheduler : (application setup runtime leaks).Scheduler)
-    (players : Player → (application setup runtime leaks).Policy) (count : Nat)
-    (execution : (application setup runtime leaks).Execution)
-    (supported : execution ∈ ((application setup runtime leaks).roundsFrom (initialLaw setup)
+theorem roundsFrom_ranked (scheduler : (application setup timeouts leaks).Scheduler)
+    (players : Player → (application setup timeouts leaks).Policy) (count : Nat)
+    (execution : (application setup timeouts leaks).Execution)
+    (supported : execution ∈ ((application setup timeouts leaks).roundsFrom (initialLaw setup)
       scheduler
       players count).support) :
     ∃ rank, execution.application.config.cut.IsPrefix rank ∧
@@ -343,19 +344,19 @@ theorem roundsFrom_ranked (scheduler : (application setup runtime leaks).Schedul
       obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ supported)
       obtain ⟨rank, ordered, seen⟩ := ih prior priorMem
       obtain ⟨nextSeen, actualRank, lower, nextPrefix⟩ :=
-        round_prefix setup runtime leaks scheduler players rank prior execution ordered seen moved
+        round_prefix setup timeouts leaks scheduler players rank prior execution ordered seen moved
       exact ⟨actualRank, nextPrefix, fun who entry member event readyView =>
         (nextSeen who entry member event readyView).trans lower⟩
 
 
 /-- Stopping at an event's completion preserves its starting view bound. The
 endpoint is its original prefix if unfinished, or an actual strictly later prefix. -/
-theorem runUntil_completion_prefix (scheduler : (application setup runtime leaks).Scheduler)
-    (players : Player → (application setup runtime leaks).Policy) (event : (graph setup).EventId)
-    (count : Nat) (execution stopped : (application setup runtime leaks).Execution)
+theorem runUntil_completion_prefix (scheduler : (application setup timeouts leaks).Scheduler)
+    (players : Player → (application setup timeouts leaks).Policy) (event : (graph setup).EventId)
+    (count : Nat) (execution stopped : (application setup timeouts leaks).Execution)
     (ordered : execution.application.config.cut.IsPrefix event.val)
     (seen : ReadySeen setup leaks event.val execution)
-    (reached : stopped ∈ ((application setup runtime leaks).runUntil scheduler players
+    (reached : stopped ∈ ((application setup timeouts leaks).runUntil scheduler players
       (fun final => event ∈ final.application.config.cut.completed) count execution).support) :
     ReadySeen setup leaks event.val stopped ∧
       (stopped.application.config.cut.IsPrefix event.val ∨
@@ -371,7 +372,7 @@ theorem runUntil_completion_prefix (scheduler : (application setup runtime leaks
       simp only [ReactiveApplication.runUntil, unfinished, ↓reduceIte] at reached
       obtain ⟨middle, moved, rest⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
       obtain ⟨middleSeen, actualRank, lower, middlePrefix⟩ :=
-        round_prefix setup runtime leaks scheduler players event.val execution middle ordered
+        round_prefix setup timeouts leaks scheduler players event.val execution middle ordered
           seen moved
       by_cases finished : event ∈ middle.application.config.cut.completed
       · rw [ReactiveApplication.runUntil_of_stop _ _ _ _ _ middle finished] at rest
@@ -388,14 +389,14 @@ end Sequential
 
 
 variable {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- Every initialized raw native history has a residual of the same source evaluator. -/
 theorem SourceResidual.of_rawTrace (profile : BehavioralProfile setup.program)
-    (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler) :
-    ∀ {state} (_trace : ((application setup runtime leaks).protocol (initialLaw setup)
-      horizon scheduler).Trace state) (control : (application setup runtime leaks).Control),
+    (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler) :
+    ∀ {state} (_trace : ((application setup timeouts leaks).protocol (initialLaw setup)
+      horizon scheduler).Trace state) (control : (application setup timeouts leaks).Control),
       state = some control →
       ∃ rank,
         Nonempty (SourceResidual setup profile rank control.execution.application.config) := by
@@ -409,14 +410,14 @@ theorem SourceResidual.of_rawTrace (profile : BehavioralProfile setup.program)
       | none =>
           change some control ∈ ((initialLaw setup).map fun state =>
             some ⟨horizon, none, ReactiveApplication.Execution.initial
-              (application setup runtime leaks) state⟩).support at realized
+              (application setup timeouts leaks) state⟩).support at realized
           obtain ⟨state, supported, same⟩ := PMF.support_map .. ▸ realized
           cases Option.some.inj same
           obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
           exact ⟨0, ⟨SourceResidual.initial setup profile initial⟩⟩
       | some previous =>
           obtain ⟨rank, ⟨residual⟩⟩ := ih previous rfl
-          exact residual.path (reactive_protocol_graph_steps runtime leaks
+          exact residual.path (reactive_protocol_graph_steps timeouts leaks
             (initialLaw setup) horizon scheduler previous control joint realized)
 
 end Vegas

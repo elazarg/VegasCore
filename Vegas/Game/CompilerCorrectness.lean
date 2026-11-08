@@ -37,14 +37,14 @@ theorem firstTurnClientProfile_outcome_law {Outcome : Type*}
       (service.clientProfile admission service.rawMenu
         (firstTurnTiming service.setup turns service.mode) source)
       (2 * service.horizon + 1)).map
-        (fun final => (serviceSourceReadout service.setup service.mode service.deadline
+        (fun final => (serviceSourceReadout service.setup service.mode service.duration
           service.leaks final.state).map fun terminal =>
             observe (terminal.state, terminal.defaults)) =
       (service.setup.run (service.setup.decodeBehavioralProfile admission source)).map
         (fun terminal => some (observe (terminal.state, terminal.defaults))) := by
-  let app := serviceApplication service.setup service.mode service.deadline service.leaks
+  let app := serviceApplication service.setup service.mode service.duration service.leaks
   let original := service.setup.decodeBehavioralProfile admission source
-  let clients := serviceClientPolicy service.setup service.mode service.deadline service.leaks
+  let clients := serviceClientPolicy service.setup service.mode service.duration service.leaks
     service.bound turns (firstTurnTiming service.setup turns service.mode)
       (normalizeDisclosureProfile service.setup.program original)
   have physical := service.rawMenu.run_restrict_eq_finish
@@ -74,7 +74,7 @@ theorem firstTurnClientProfile_outcome_law {Outcome : Type*}
     simpa only [ReactiveApplication.finish, ReactiveApplication.roundsFrom, PMF.map_bind]
       using physical
   have projected := congrArg (PMF.map (fun final : app.ProtocolState =>
-    (serviceSourceReadout service.setup service.mode service.deadline service.leaks final).map
+    (serviceSourceReadout service.setup service.mode service.duration service.leaks final).map
       fun terminal => observe (terminal.state, terminal.defaults))) states
   simp only [PMF.map_comp, Function.comp_def] at projected
   apply projected.trans
@@ -95,7 +95,7 @@ theorem firstTurnClientProfile_graph_law {Outcome : Type*}
       (service.clientProfile admission service.rawMenu
         (firstTurnTiming service.setup turns service.mode) source)
       (2 * service.horizon + 1)).map
-        (fun final => (serviceSourceReadout service.setup service.mode service.deadline
+        (fun final => (serviceSourceReadout service.setup service.mode service.duration
           service.leaks final.state).map fun terminal =>
             observe (terminal.state, terminal.defaults)) =
       ((service.setup.eventGraph.canonicalGame

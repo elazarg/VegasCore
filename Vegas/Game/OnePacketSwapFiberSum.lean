@@ -31,10 +31,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol Intera
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)} [Fintype Player]
+  {timeouts : EventTimeouts (graph setup)} [Fintype Player]
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
   [DecidableEq (CellTy Player L)]
 
 /-- Every value of the payload type of every binding field is within the message
@@ -132,21 +132,21 @@ theorem mapHistory_mapHistory_of_swap_eq {first second : HiddenSwap (graph setup
       state.config.inputs ∈ swapAllowed second → state.swap second ∈ (initialLaw setup).support)
     (secondBounded : ∀ handle raw, raw ∈ bounds.values → second.raw handle raw ∈ bounds.values)
     (secondFailures : ∀ event, second.values.ExpiryFixed event)
-    (history : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
-    (firstGuard : SwapGuardState setup runtime first (swapAllowed first) history.state)
-    (secondGuard : SwapGuardState setup runtime second (swapAllowed second)
-      ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
+    (history : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History)
+    (firstGuard : SwapGuardState setup timeouts first (swapAllowed first) history.state)
+    (secondGuard : SwapGuardState setup timeouts second (swapAllowed second)
+      ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
         first firstClosed
         firstBounded firstFailures).mapHistory history firstGuard).state) :
-    (onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler second
+    (onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler second
       secondClosed
         secondBounded secondFailures).mapHistory
-      ((onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
+      ((onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
         first firstClosed
         firstBounded firstFailures).mapHistory history firstGuard) secondGuard = history := by
   subst same
   exact StateSymmetry.mapHistory_mapHistory
-    (onePacketSwapSymmetry_involutive (runtime := runtime) bounds (initialLaw setup) horizon
+    (onePacketSwapSymmetry_involutive (timeouts := timeouts) bounds (initialLaw setup) horizon
       scheduler second
       secondClosed secondBounded secondFailures (swapAllowed_closed second)) history firstGuard
 
@@ -154,9 +154,9 @@ theorem mapHistory_mapHistory_of_swap_eq {first second : HiddenSwap (graph setup
 section Site
 
 variable {who : Player}
-  {site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who}
+  {site : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationSite who}
   {sourceSite : setup.intendedModel.InformationSite who}
-  {past : List (application setup runtime leaks).PlayerEntry} {view : (application setup runtime
+  {past : List (application setup timeouts leaks).PlayerEntry} {view : (application setup timeouts
     leaks).PlayerView}
 
 omit [Fintype Player] [DecidableEq (CellTy Player L)] in
@@ -173,15 +173,15 @@ theorem sameView_of_site {x y : setup.intendedModel.InformationHistory who sourc
 
 variable (wellFormed : setup.WellFormed)
   {sequence : ℕ → setup.intendedModel.BehavioralAssessment} {n : ℕ}
-  (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
+  (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
     setup) horizon
     scheduler who site.1)
   (decision : site.1 = some (past, view))
-  (projected : sourceSite.1 = projectView setup runtime leaks who site.1)
-  (ownIntended : ∀ history : (onePacketInformation setup runtime leaks bounds horizon
+  (projected : sourceSite.1 = projectView setup timeouts leaks who site.1)
+  (ownIntended : ∀ history : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory who site.1,
-    RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who history.1.trace →
-    OwnCompletionsIntended (runtime := runtime) (bounds := bounds) (horizon := horizon) (scheduler
+    RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who history.1.trace →
+    OwnCompletionsIntended (timeouts := timeouts) (bounds := bounds) (horizon := horizon) (scheduler
       := scheduler)
       who history.1.trace)
   (mixed : (sequence n).IsFullyMixed)
@@ -191,28 +191,28 @@ include wellFormed forced decision ownIntended in
 /-- **A regular history of the site replays an intended history with an end
 point.** -/
 theorem replay_of_regular
-    (history : (onePacketInformation setup runtime leaks bounds horizon
+    (history : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory
       who site.1)
-    (regular : RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+    (regular : RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
       history.1.trace) :
-    ∃ (control : (application setup runtime leaks).Control) (replay :
+    ∃ (control : (application setup timeouts leaks).Control) (replay :
       setup.intendedProtocol.History)
       (point : ProtocolState setup.program), history.1.state = some control ∧
-      control.execution.observe (application setup runtime leaks) who = view ∧
-      intendedHistory? setup runtime leaks bounds horizon scheduler history.1.trace = some replay ∧
+      control.execution.observe (application setup timeouts leaks) who = view ∧
+      intendedHistory? setup timeouts leaks bounds horizon scheduler history.1.trace = some replay ∧
       replay.state = some point := by
-  have forcedState := forcedState_of_regular (runtime := runtime) wellFormed (sequence n) decision
+  have forcedState := forcedState_of_regular (timeouts := timeouts) wellFormed (sequence n) decision
     forced history
     regular (ownIntended history regular)
-  obtain ⟨control, stateEq, viewEq⟩ := state_of_decision (runtime := runtime) history decision
+  obtain ⟨control, stateEq, viewEq⟩ := state_of_decision (timeouts := timeouts) history decision
   rw [stateEq] at forcedState
-  obtain ⟨replay, replayed⟩ := intendedHistory?_isSome (runtime := runtime) (sequence n) who
+  obtain ⟨replay, replayed⟩ := intendedHistory?_isSome (timeouts := timeouts) (sequence n) who
     history.1.trace control
     stateEq forcedState regular (ownIntended history regular)
   obtain ⟨rank, point, ordered, decoded, _⟩ := forcedState
   refine ⟨control, replay, point, stateEq, viewEq, replayed, ?_⟩
-  rw [intendedHistory?_state (runtime := runtime) history.1.trace replayed, stateEq, ← decoded]
+  rw [intendedHistory?_state (timeouts := timeouts) history.1.trace replayed, stateEq, ← decoded]
   have exists_ordered : ∃ rank, control.execution.application.config.cut.IsPrefix rank :=
     ⟨rank, ordered⟩
   change decodedPoint setup _ = _
@@ -223,11 +223,11 @@ theorem replay_of_regular
 /-- The class of regular histories of the site whose replay projection is a
 given intended history. -/
 abbrev ReplayClass (point : setup.intendedModel.InformationHistory who sourceSite.1) :=
-  {history : (onePacketInformation setup runtime leaks bounds horizon
+  {history : (onePacketInformation setup timeouts leaks bounds horizon
     scheduler).InformationHistory who
       site.1 //
-    RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who history.1.trace ∧
-      replayProjection setup runtime leaks bounds horizon scheduler sourceSite site decision
+    RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who history.1.trace ∧
+      replayProjection setup timeouts leaks bounds horizon scheduler sourceSite site decision
         projected
         history = point}
 
@@ -235,17 +235,17 @@ omit [DecidableEq (CellTy Player L)] in
 include wellFormed forced ownIntended in
 /-- A member of a replay class replays its intended history. -/
 theorem replay_of_class {x : setup.intendedModel.InformationHistory who sourceSite.1}
-    (history : ReplayClass (runtime := runtime) (sequence := sequence) (n := n) decision projected
+    (history : ReplayClass (timeouts := timeouts) (sequence := sequence) (n := n) decision projected
       x) :
-    ∃ (control : (application setup runtime leaks).Control) (point : ProtocolState setup.program),
+    ∃ (control : (application setup timeouts leaks).Control) (point : ProtocolState setup.program),
       history.1.1.state = some control ∧
-      control.execution.observe (application setup runtime leaks) who = view ∧
-      intendedHistory? setup runtime leaks bounds horizon scheduler history.1.1.trace = some x.1 ∧
+      control.execution.observe (application setup timeouts leaks) who = view ∧
+      intendedHistory? setup timeouts leaks bounds horizon scheduler history.1.1.trace = some x.1 ∧
       x.1.state = some point := by
   obtain ⟨control, replay, point, stateEq, viewEq, replayed, pointEq⟩ :=
-    replay_of_regular (runtime := runtime) wellFormed forced decision ownIntended history.1
+    replay_of_regular (timeouts := timeouts) wellFormed forced decision ownIntended history.1
       history.2.1
-  have same := replayProjection_eq (runtime := runtime) decision projected history.1 replayed
+  have same := replayProjection_eq (timeouts := timeouts) decision projected history.1 replayed
   rw [history.2.2] at same
   subst same
   exact ⟨control, point, stateEq, viewEq, replayed, pointEq⟩
@@ -269,7 +269,7 @@ variable (covered : BindingFieldsCovered bounds)
 variable (view) in
 /-- The symmetry of the one-packet game given by the swap between two end points. -/
 abbrev siteSymmetry :=
-  onePacketSwapSymmetry (runtime := runtime) bounds (initialLaw setup) horizon scheduler
+  onePacketSwapSymmetry (timeouts := timeouts) bounds (initialLaw setup) horizon scheduler
     (siteSwap view wellFormed xState yState)
     (initialClosed_swapAllowed (siteSwap view wellFormed xState yState))
     (bounded_betweenHandlePairs _ _ covered)
@@ -280,18 +280,18 @@ variable {event : (graph setup).EventId}
 
 include forced ownIntended turn in
 /-- **Histories replaying `x` are guarded** by the swap toward `y`. -/
-theorem siteGuard (history : ReplayClass (runtime := runtime) (sequence := sequence) (n := n)
+theorem siteGuard (history : ReplayClass (timeouts := timeouts) (sequence := sequence) (n := n)
   decision projected x) :
-    SwapGuardState setup runtime (siteSwap view wellFormed xState yState)
+    SwapGuardState setup timeouts (siteSwap view wellFormed xState yState)
       (swapAllowed (siteSwap view wellFormed xState yState)) history.1.1.state := by
   obtain ⟨control, point, stateEq, viewEq, replayed, pointEq⟩ :=
-    replay_of_class (runtime := runtime) wellFormed forced decision projected ownIntended history
+    replay_of_class (timeouts := timeouts) wellFormed forced decision projected ownIntended history
   rw [xState] at pointEq
   cases pointEq
   obtain ⟨⟨⟨state, trace⟩, info⟩, member⟩ := history
   change state = some control at stateEq
   subst stateEq
-  refine swapGuardState_of_replay (runtime := runtime) wellFormed xState yState who
+  refine swapGuardState_of_replay (timeouts := timeouts) wellFormed xState yState who
     (sameView_of_site xState yState)
     trace replayed ?_ (table := view.application.publicView.accepted)
     (by rw [← viewEq]; rfl)
@@ -302,19 +302,19 @@ theorem siteGuard (history : ReplayClass (runtime := runtime) (sequence := seque
 
 /-- **The image of a history replaying `x` is at the site.** -/
 theorem siteImage_info
-    (history : ReplayClass (runtime := runtime) (sequence := sequence) (n := n) decision projected
+    (history : ReplayClass (timeouts := timeouts) (sequence := sequence) (n := n) decision projected
       x) :
-    (onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf who
-      ((siteSymmetry (runtime := runtime) view wellFormed xState yState covered).mapHistory
+    (onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf who
+      ((siteSymmetry (timeouts := timeouts) view wellFormed xState yState covered).mapHistory
         history.1.1
-        (siteGuard (runtime := runtime) wellFormed forced decision projected ownIntended xState
+        (siteGuard (timeouts := timeouts) wellFormed forced decision projected ownIntended xState
           yState turn
           history)).trace = site.1 := by
-  have guarded := siteGuard (runtime := runtime) wellFormed forced decision projected ownIntended
+  have guarded := siteGuard (timeouts := timeouts) wellFormed forced decision projected ownIntended
     xState yState turn
     history
   obtain ⟨control, point, stateEq, viewEq, replayed, pointEq⟩ :=
-    replay_of_class (runtime := runtime) wellFormed forced decision projected ownIntended history
+    replay_of_class (timeouts := timeouts) wellFormed forced decision projected ownIntended history
   rw [xState] at pointEq
   cases pointEq
   obtain ⟨⟨⟨state, trace⟩, info⟩, member⟩ := history
@@ -324,39 +324,39 @@ theorem siteImage_info
       ∃ payload, (graph setup).layout field = .binding handle.1 payload := by
     intro field handle accepted
     rw [← viewEq] at accepted
-    exact accepted_owner_of_trace (runtime := runtime) trace accepted
+    exact accepted_owner_of_trace (timeouts := timeouts) trace accepted
   have fixes := fixes_between (publicAgree := publicCellsAgree_of_observe
     (sameView_of_site xState yState))
     (succeed := commitmentCellsSucceed_of_intended wellFormed xState yState)
     (sameView_of_site xState yState) owned
-  exact (infoOf_mapTrace_of_fixes (runtime := runtime) _ _ _
+  exact (infoOf_mapTrace_of_fixes (timeouts := timeouts) _ _ _
     (EventGraph.ValueSwap.ofPairs_expiryFixed _) fixes ⟨some control, trace⟩ guarded
     (info.trans decision)).trans decision.symm
 
 include mixed in
 /-- **The image of a history replaying `x` is regular and replays `y`.** -/
 theorem siteImage_class
-    (history : ReplayClass (runtime := runtime) (sequence := sequence) (n := n) decision projected
+    (history : ReplayClass (timeouts := timeouts) (sequence := sequence) (n := n) decision projected
       x) :
-    RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
-        ((siteSymmetry (runtime := runtime) view wellFormed xState yState covered).mapHistory
+    RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
+        ((siteSymmetry (timeouts := timeouts) view wellFormed xState yState covered).mapHistory
           history.1.1
-          (siteGuard (runtime := runtime) wellFormed forced decision projected ownIntended xState
+          (siteGuard (timeouts := timeouts) wellFormed forced decision projected ownIntended xState
             yState turn
             history)).trace ∧
-      replayProjection setup runtime leaks bounds horizon scheduler sourceSite site decision
+      replayProjection setup timeouts leaks bounds horizon scheduler sourceSite site decision
         projected
-        ⟨_, siteImage_info (runtime := runtime) wellFormed forced decision projected ownIntended
+        ⟨_, siteImage_info (timeouts := timeouts) wellFormed forced decision projected ownIntended
           xState yState
           covered turn history⟩ = y := by
-  have guarded := siteGuard (runtime := runtime) wellFormed forced decision projected ownIntended
+  have guarded := siteGuard (timeouts := timeouts) wellFormed forced decision projected ownIntended
     xState yState turn
     history
-  have info := siteImage_info (runtime := runtime) wellFormed forced decision projected
+  have info := siteImage_info (timeouts := timeouts) wellFormed forced decision projected
     ownIntended xState yState
     covered turn history
   obtain ⟨control, point, stateEq, viewEq, replayed, pointEq⟩ :=
-    replay_of_class (runtime := runtime) wellFormed forced decision projected ownIntended history
+    replay_of_class (timeouts := timeouts) wellFormed forced decision projected ownIntended history
   rw [xState] at pointEq
   cases pointEq
   have sameView := sameView_of_site xState yState
@@ -364,28 +364,28 @@ theorem siteImage_class
   obtain ⟨⟨⟨state, trace⟩, member⟩, _⟩ := history
   change state = some control at stateEq
   subst stateEq
-  have ownTurn : (control.execution.observe (application setup runtime leaks)
+  have ownTurn : (control.execution.observe (application setup timeouts leaks)
       who).application.publicView.ownTurn? who = some event := by
     rw [viewEq]
     exact turn
-  refine ⟨regularTrace_mapTrace (runtime := runtime) wellFormed xState yState sameLength _
+  refine ⟨regularTrace_mapTrace (timeouts := timeouts) wellFormed xState yState sameLength _
     (initialClosed_swapAllowed (siteSwap view wellFormed xState yState))
     (bounded_betweenHandlePairs _ _ covered) mixed who trace guarded replayed ownTurn, ?_⟩
   apply Subtype.ext
-  exact replayProjection_eq (runtime := runtime) decision projected _
-    (intendedHistory?_mapTrace_full (runtime := runtime) wellFormed xState yState sameLength _
+  exact replayProjection_eq (timeouts := timeouts) decision projected _
+    (intendedHistory?_mapTrace_full (timeouts := timeouts) wellFormed xState yState sameLength _
       (initialClosed_swapAllowed (siteSwap view wellFormed xState yState))
       (bounded_betweenHandlePairs _ _ covered) trace guarded replayed)
 
 include mixed in
 /-- **The map of the histories replaying `x` to those replaying `y`.** -/
-def siteMap (history : ReplayClass (runtime := runtime) (sequence := sequence) (n := n) decision
+def siteMap (history : ReplayClass (timeouts := timeouts) (sequence := sequence) (n := n) decision
   projected x) :
-    ReplayClass (runtime := runtime) (sequence := sequence) (n := n) decision projected y :=
-  ⟨⟨_, siteImage_info (runtime := runtime) wellFormed forced decision projected ownIntended xState
+    ReplayClass (timeouts := timeouts) (sequence := sequence) (n := n) decision projected y :=
+  ⟨⟨_, siteImage_info (timeouts := timeouts) wellFormed forced decision projected ownIntended xState
     yState covered
       turn history⟩,
-    siteImage_class (runtime := runtime) wellFormed forced decision projected ownIntended mixed
+    siteImage_class (timeouts := timeouts) wellFormed forced decision projected ownIntended mixed
         xState yState covered
       turn history⟩
 
@@ -393,16 +393,16 @@ def siteMap (history : ReplayClass (runtime := runtime) (sequence := sequence) (
 include forced ownIntended mixed turn in
 /-- **The swap between two end points exchanges their replay classes.** -/
 theorem siteMap_siteMap
-    (history : ReplayClass (runtime := runtime) (sequence := sequence) (n := n) decision projected
+    (history : ReplayClass (timeouts := timeouts) (sequence := sequence) (n := n) decision projected
       x) :
-    siteMap (runtime := runtime) wellFormed forced decision projected ownIntended mixed yState
+    siteMap (timeouts := timeouts) wellFormed forced decision projected ownIntended mixed yState
       xState covered turn
-      (siteMap (runtime := runtime) wellFormed forced decision projected ownIntended mixed xState
+      (siteMap (timeouts := timeouts) wellFormed forced decision projected ownIntended mixed xState
         yState covered turn
         history) = history := by
   apply Subtype.ext
   apply Subtype.ext
-  exact mapHistory_mapHistory_of_swap_eq (runtime := runtime)
+  exact mapHistory_mapHistory_of_swap_eq (timeouts := timeouts)
     (hiddenSwap_between_comm view.application.publicView.accepted) _ _
     (EventGraph.ValueSwap.ofPairs_expiryFixed _) _ _
     (EventGraph.ValueSwap.ofPairs_expiryFixed _) history.1.1 _ _
@@ -415,41 +415,41 @@ include wellFormed forced ownIntended mixed xState yState covered turn in
 replaying `x` and those replaying `y` have the same total operational weight. -/
 theorem fiber_sum_eq_of_points
     {profiles : ℕ → ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player}
-    {steps : OperationalSteps setup runtime leaks bounds horizon scheduler sequence profiles who}
-    [Fintype ((onePacketInformation setup runtime leaks bounds horizon
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player}
+    {steps : OperationalSteps setup timeouts leaks bounds horizon scheduler sequence profiles who}
+    [Fintype ((onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory who
       site.1)]
     [DecidableEq (setup.intendedModel.InformationHistory who sourceSite.1)] :
-    ∑ history with RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+    ∑ history with RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
         history.1.trace ∧
-        replayProjection setup runtime leaks bounds horizon scheduler sourceSite site decision
+        replayProjection setup timeouts leaks bounds horizon scheduler sourceSite site decision
           projected
           history = x,
-      operationalWeight setup runtime leaks who (steps.mass n)
-        (operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) =
-    ∑ history with RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+      operationalWeight setup timeouts leaks who (steps.mass n)
+        (operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace) =
+    ∑ history with RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
         history.1.trace ∧
-        replayProjection setup runtime leaks bounds horizon scheduler sourceSite site decision
+        replayProjection setup timeouts leaks bounds horizon scheduler sourceSite site decision
           projected
           history = y,
-      operationalWeight setup runtime leaks who (steps.mass n)
-        (operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) := by
+      operationalWeight setup timeouts leaks who (steps.mass n)
+        (operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace) := by
   classical
-  exact fiber_sum_eq_of_swap (runtime := runtime) (steps := steps) _ x y
-    { toFun := siteMap (runtime := runtime) wellFormed forced decision projected ownIntended mixed
+  exact fiber_sum_eq_of_swap (timeouts := timeouts) (steps := steps) _ x y
+    { toFun := siteMap (timeouts := timeouts) wellFormed forced decision projected ownIntended mixed
         xState yState
         covered turn
-      invFun := siteMap (runtime := runtime) wellFormed forced decision projected ownIntended
+      invFun := siteMap (timeouts := timeouts) wellFormed forced decision projected ownIntended
         mixed yState xState
         covered turn
-      left_inv := siteMap_siteMap (runtime := runtime) wellFormed forced decision projected
+      left_inv := siteMap_siteMap (timeouts := timeouts) wellFormed forced decision projected
         ownIntended mixed xState
         yState covered turn
-      right_inv := siteMap_siteMap (runtime := runtime) wellFormed forced decision projected
+      right_inv := siteMap_siteMap (timeouts := timeouts) wellFormed forced decision projected
         ownIntended mixed yState
         xState covered turn }
-    (fun history => operationalRecord_mapTrace (runtime := runtime) _ _ _
+    (fun history => operationalRecord_mapTrace (timeouts := timeouts) _ _ _
       (EventGraph.ValueSwap.ofPairs_expiryFixed _) history.1.1.trace _)
 
 end Points
@@ -459,12 +459,12 @@ include wellFormed forced ownIntended in
 /-- Once some regular history of the site replays an intended history, every
 intended history of the intended site has an end point. -/
 theorem pointed_of_class {x : setup.intendedModel.InformationHistory who sourceSite.1}
-    (history : ReplayClass (runtime := runtime) (sequence := sequence) (n := n) decision projected
+    (history : ReplayClass (timeouts := timeouts) (sequence := sequence) (n := n) decision projected
       x)
     (other : setup.intendedModel.InformationHistory who sourceSite.1) :
     ∃ point, other.1.state = some point := by
   obtain ⟨_, point, _, _, _, pointEq⟩ :=
-    replay_of_class (runtime := runtime) wellFormed forced decision projected ownIntended history
+    replay_of_class (timeouts := timeouts) wellFormed forced decision projected ownIntended history
   have seen := ((setup.intended_info who x.1.trace).symm.trans x.2).trans
     ((setup.intended_info who other.1.trace).symm.trans other.2).symm
   rw [pointEq] at seen
@@ -486,59 +486,59 @@ bounds cover every binding field, then the regular histories replaying any two
 intended histories of the site have the same total operational weight. -/
 theorem fiber_sum_eq_between
     {profiles : ℕ → ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player}
-    {steps : OperationalSteps setup runtime leaks bounds horizon scheduler sequence profiles who}
-    [Fintype ((onePacketInformation setup runtime leaks bounds horizon
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player}
+    {steps : OperationalSteps setup timeouts leaks bounds horizon scheduler sequence profiles who}
+    [Fintype ((onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory who
       site.1)]
     [DecidableEq (setup.intendedModel.InformationHistory who sourceSite.1)]
     (covered : BindingFieldsCovered bounds)
     (x y : setup.intendedModel.InformationHistory who sourceSite.1) :
-    ∑ history with RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+    ∑ history with RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
         history.1.trace ∧
-        replayProjection setup runtime leaks bounds horizon scheduler sourceSite site decision
+        replayProjection setup timeouts leaks bounds horizon scheduler sourceSite site decision
           projected
           history = x,
-      operationalWeight setup runtime leaks who (steps.mass n)
-        (operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) =
-    ∑ history with RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+      operationalWeight setup timeouts leaks who (steps.mass n)
+        (operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace) =
+    ∑ history with RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
         history.1.trace ∧
-        replayProjection setup runtime leaks bounds horizon scheduler sourceSite site decision
+        replayProjection setup timeouts leaks bounds horizon scheduler sourceSite site decision
           projected
           history = y,
-      operationalWeight setup runtime leaks who (steps.mass n)
-        (operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) := by
+      operationalWeight setup timeouts leaks who (steps.mass n)
+        (operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace) := by
   have between : ∀ (first second : setup.intendedModel.InformationHistory who sourceSite.1),
-      Nonempty (ReplayClass (runtime := runtime) (sequence := sequence) (n := n) decision
+      Nonempty (ReplayClass (timeouts := timeouts) (sequence := sequence) (n := n) decision
         projected first) →
-      ∑ history with RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+      ∑ history with RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
           history.1.trace ∧
-          replayProjection setup runtime leaks bounds horizon scheduler sourceSite site decision
+          replayProjection setup timeouts leaks bounds horizon scheduler sourceSite site decision
             projected history = first,
-        operationalWeight setup runtime leaks who (steps.mass n)
-          (operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) =
-      ∑ history with RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+        operationalWeight setup timeouts leaks who (steps.mass n)
+          (operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace) =
+      ∑ history with RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
           history.1.trace ∧
-          replayProjection setup runtime leaks bounds horizon scheduler sourceSite site decision
+          replayProjection setup timeouts leaks bounds horizon scheduler sourceSite site decision
             projected history = second,
-        operationalWeight setup runtime leaks who (steps.mass n)
-          (operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) := by
+        operationalWeight setup timeouts leaks who (steps.mass n)
+          (operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace) := by
     classical
     rintro first second ⟨member⟩
     obtain ⟨p, firstState⟩ :=
-      pointed_of_class (runtime := runtime) wellFormed forced decision projected ownIntended
+      pointed_of_class (timeouts := timeouts) wellFormed forced decision projected ownIntended
         member first
     obtain ⟨q, secondState⟩ :=
-      pointed_of_class (runtime := runtime) wellFormed forced decision projected ownIntended
+      pointed_of_class (timeouts := timeouts) wellFormed forced decision projected ownIntended
         member second
-    exact fiber_sum_eq_of_points (runtime := runtime) wellFormed forced decision projected
+    exact fiber_sum_eq_of_points (timeouts := timeouts) wellFormed forced decision projected
       ownIntended mixed
       firstState secondState covered turn
-  by_cases firstMember : Nonempty (ReplayClass (runtime := runtime) (sequence := sequence) (n :=
+  by_cases firstMember : Nonempty (ReplayClass (timeouts := timeouts) (sequence := sequence) (n :=
     n) decision
       projected x)
   · exact between x y firstMember
-  by_cases secondMember : Nonempty (ReplayClass (runtime := runtime) (sequence := sequence) (n :=
+  by_cases secondMember : Nonempty (ReplayClass (timeouts := timeouts) (sequence := sequence) (n :=
     n) decision
       projected y)
   · exact (between y x secondMember).symm

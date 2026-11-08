@@ -24,19 +24,19 @@ open SourceProgram Interaction EventGraphRuntime GameTheory GameTheory.Protocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  (setup : Setup (Player := Player) (L := L)) (runtime : EventGraphRuntime (graph setup))
+  (setup : Setup (Player := Player) (L := L)) (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (scheduler : (application setup timeouts leaks).Scheduler)
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (utility : Parameter × PublicOutcome setup.program → Player → ℝ)
   (excludedPayoff : Player → ℝ)
 
 local notation "Initial" => initialLaw setup
-local notation "app" => application setup runtime leaks
-local notation "raw" => bounds.rawMenu runtime leaks
+local notation "app" => application setup timeouts leaks
+local notation "raw" => bounds.rawMenu timeouts leaks
 local notation "model" => ReactiveApplication.ResponseMenu.information
-  (bounds.rawMenu runtime leaks) Initial horizon scheduler
+  (bounds.rawMenu timeouts leaks) Initial horizon scheduler
 
 /-- The checked source, service and enforcement obligations of compilation.
 The source assessment is supplied separately, so one specification serves
@@ -55,18 +55,18 @@ structure ClientSpec where
   observable : setup.PublicInitialSignal signal
   delay : (graph setup).EventId → Nat
   bound : (graph setup).EventId → Nat
-  opportunity : Opportunity runtime leaks Initial horizon scheduler delay
-  inclusion : ProtectedInclusion runtime leaks Initial horizon scheduler bound
-  completes : CompletesPlay runtime leaks Initial horizon scheduler
-  timely : AsyncTimely runtime delay bound
+  opportunity : Opportunity timeouts leaks Initial horizon scheduler delay
+  inclusion : ProtectedInclusion timeouts leaks Initial horizon scheduler bound
+  completes : CompletesPlay timeouts leaks Initial horizon scheduler
+  timely : AsyncTimely timeouts delay bound
   lowerUtility : Player → ℝ
   upperUtility : Player → ℝ
   /-- Bounds cover exactly readouts of legal histories in the supplied raw menu. -/
   lower_le : ∀ history : ((raw).protocol Initial horizon scheduler).History,
-    ∀ terminal, sourceReadout setup runtime leaks history.state = some terminal →
+    ∀ terminal, sourceReadout setup timeouts leaks history.state = some terminal →
       ∀ who, lowerUtility who ≤ utility (setup.parameterOutcome parameter terminal) who
   le_upper : ∀ history : ((raw).protocol Initial horizon scheduler).History,
-    ∀ terminal, sourceReadout setup runtime leaks history.state = some terminal →
+    ∀ terminal, sourceReadout setup timeouts leaks history.state = some terminal →
       ∀ who, utility (setup.parameterOutcome parameter terminal) who ≤ upperUtility who
   exitBelow : ∀ (final : setup.intendedProtocol.History) terminal,
     setup.protocolReadout final.state = some terminal →
@@ -89,9 +89,9 @@ structure ClientSpec where
         min 0 (min (excludedPayoff who) (lowerUtility who)) ≤
       observationRate who * deliveryRate who * deposit who
 
-variable {setup runtime leaks bounds horizon scheduler parameter utility excludedPayoff}
+variable {setup timeouts leaks bounds horizon scheduler parameter utility excludedPayoff}
 
-variable (spec : ClientSpec setup runtime leaks bounds horizon scheduler
+variable (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
   parameter utility excludedPayoff)
 
 namespace ClientSpec
@@ -99,21 +99,21 @@ namespace ClientSpec
 /-- The distribution of base utilities after the terminal count-audit deduction. -/
 def settlement : (app).ProtocolState → PMF (Player → ℝ) :=
   TerminalAudit.settlement
-    (exclusionBase setup runtime parameter utility excludedPayoff leaks)
-    (app).stateTraffic (runtime.countAudit leaks spec.evidenceService.sample) spec.deposit
+    (exclusionBase setup timeouts parameter utility excludedPayoff leaks)
+    (app).stateTraffic ((countAudit timeouts) leaks spec.evidenceService.sample) spec.deposit
 
 /-- The complete source configuration, including default history, jointly with
 the settled-payoff vector of a physical state. -/
 def observation (state : (app).ProtocolState) :
     PMF (Option (Config Player L setup.program.terminalCtx) × (Player → ℝ)) :=
   (spec.settlement state).map fun payoffs =>
-    (sourceReadout setup runtime leaks state, payoffs)
+    (sourceReadout setup timeouts leaks state, payoffs)
 
 /-- A player's expected audited utility at a physical protocol state. -/
 def payoff (who : Player) (state : (app).ProtocolState) : ℝ :=
   TerminalAudit.utility
-    (exclusionBase setup runtime parameter utility excludedPayoff leaks)
-    (app).stateTraffic (runtime.countAudit leaks spec.evidenceService.sample)
+    (exclusionBase setup timeouts parameter utility excludedPayoff leaks)
+    (app).stateTraffic ((countAudit timeouts) leaks spec.evidenceService.sample)
     spec.deposit state who
 
 end ClientSpec
@@ -130,7 +130,7 @@ structure ClientCompilation (intended : setup.intendedModel.BehavioralAssessment
     ∀ control, final.state = some control → control.execution.application.config.defaulted = ∅
   noCharges : ∀ final ∈ ((model).runBehavioral assessment.strategy (2 * horizon + 1)).support,
     ∀ who, TerminalAudit.charge (app).stateTraffic
-      (runtime.countAudit leaks spec.evidenceService.sample) final.state who = 0
+      ((countAudit timeouts) leaks spec.evidenceService.sample) final.state who = 0
   outcomeLaw : ((model).runBehavioral assessment.strategy (2 * horizon + 1)).bind
       (fun final => spec.observation final.state) =
     (setup.intendedModel.runBehavioral intended.strategy

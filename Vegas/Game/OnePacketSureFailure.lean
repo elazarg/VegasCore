@@ -26,39 +26,39 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 section OnePacketCommitment
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
 /-- **Only the owner's one packet can fill a vacant binding.** At a history of
 the one-packet game whose binding event `event` of `who` has no accepted
 handle, and whose recall of `who` holds an entry emitting the commitment of
 `event` to `candidate`, one protocol transition installs, if anything, that
 candidate at the event. -/
-theorem onePacket_accepted_new {control next : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+theorem onePacket_accepted_new {control next : (application setup timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
-    {who : Player} {entry : (application setup runtime leaks).PlayerEntry}
+    {who : Player} {entry : (application setup timeouts leaks).PlayerEntry}
     {message : Message Player (WitnessedPacket (graph setup))}
-    (records : RecordsEntry setup runtime leaks who entry (some control))
+    (records : RecordsEntry setup timeouts leaks who entry (some control))
     (emitted : entry.emitted = some message) (sender : message.sender = who)
     {event : (graph setup).EventId} {candidate : Handle (graph setup)}
     (call : message.payload.call = .commitment event candidate)
     (owned : (graph setup).actor? event = some who)
     (vacant : control.execution.application.accepted (.inr event) = none)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    (reached : some next ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    (reached : some next ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
       scheduler (some control) joint).support) :
     ∀ handle, next.execution.application.accepted (.inr event) = some handle →
       handle = candidate := by
   intro installed filled
-  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control) :=
-    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
   have facts := legalFacts setup leaks horizon scheduler _ rawTrace
   have unchanged (same : next.execution.application.accepted (.inr event) =
@@ -70,7 +70,7 @@ theorem onePacket_accepted_new {control next : (application setup runtime leaks)
   | some responder =>
       cases Option.some.inj ((PMF.mem_support_pure_iff _ _).mp reached)
       exact unchanged (congrFun (congrArg PublicView.accepted
-        (runtime.reactive_respond_application leaks execution responder _).2) _)
+        ((reactive_respond_application timeouts) leaks execution responder _).2) _)
   | none =>
       cases remaining with
       | zero =>
@@ -93,11 +93,11 @@ theorem onePacket_accepted_new {control next : (application setup runtime leaks)
               obtain ⟨updated, chosen, rfl⟩ := PMF.support_map .. ▸ supported
               obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ chosen
               exact unchanged (congrFun
-                (reactiveApplication_environment_tables runtime leaks _ _ command changed).1 _)
+                (reactiveApplication_environment_tables timeouts leaks _ _ command changed).1 _)
           | «include» id =>
               simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map] at supported
               cases (PMF.mem_support_pure_iff _ _).mp supported
-              change (execution.includePending (application setup runtime leaks)
+              change (execution.includePending (application setup timeouts leaks)
                 id).application.accepted (.inr event) = some installed at filled
               unfold ReactiveApplication.Execution.includePending
                 MessageNetwork.includePending at filled
@@ -107,7 +107,7 @@ theorem onePacket_accepted_new {control next : (application setup runtime leaks)
                   exact absurd (filled.symm.trans vacant) (by simp)
               | some envelope =>
                   simp only [found] at filled
-                  cases acceptedEq : (application setup runtime leaks).handle execution.application
+                  cases acceptedEq : (application setup timeouts leaks).handle execution.application
                       envelope with
                   | none =>
                       simp only [acceptedEq, Option.getD_none] at filled
@@ -116,7 +116,7 @@ theorem onePacket_accepted_new {control next : (application setup runtime leaks)
                       simp only [acceptedEq, Option.getD_some] at filled
                       obtain ⟨native, handled, nativeEq⟩ := reactiveHandle_call acceptedEq
                       rw [← nativeEq, native.drain_tables.1] at filled
-                      rcases handle_tables_cases runtime _ _ _ handled with
+                      rcases handle_tables_cases timeouts _ _ _ handled with
                         ⟨named, chosen, payloadEq, _, acceptedTable, _⟩ | ⟨acceptedTable, _⟩
                       · change envelope.payload.call = .commitment named chosen at payloadEq
                         by_cases sameEvent : named = event
@@ -125,7 +125,7 @@ theorem onePacket_accepted_new {control next : (application setup runtime leaks)
                           cases Option.some.inj filled
                           -- The envelope is the owner's one packet for the event.
                           have envelopeSender : envelope.sender = who := by
-                            have acts := handle_sender_actor runtime _ _ _ handled named
+                            have acts := handle_sender_actor timeouts _ _ _ handled named
                               (by rw [payloadEq]; rfl)
                             exact Option.some.inj (acts.symm.trans owned)
                           have pending : envelope ∈ execution.network.pending :=
@@ -135,7 +135,7 @@ theorem onePacket_accepted_new {control next : (application setup runtime leaks)
                           rw [envelopeSender] at otherMember
                           obtain ⟨earlier, later, split⟩ := records
                           change execution.logs who = _ at split
-                          have output : message ∈ (application setup runtime leaks).outputs
+                          have output : message ∈ (application setup timeouts leaks).outputs
                               (execution.logs who) := by
                             rw [split]
                             exact List.mem_filterMap.mpr ⟨entry, by simp, emitted⟩
@@ -144,13 +144,13 @@ theorem onePacket_accepted_new {control next : (application setup runtime leaks)
                             rfl
                           have sameId : envelope.id = message.id := by
                             by_contra different
-                            exact onePacket_not_emitsOtherFor (runtime := runtime) bounds trace
+                            exact onePacket_not_emitsOtherFor (timeouts := timeouts) bounds trace
                               who named message output
                               named' other otherMember ⟨envelope, otherEmitted,
                                 envelopeSender.trans sender.symm, by rw [payloadEq]; rfl,
                                 different⟩
                           have inputRecall : execution.InputRecall
-                              (application setup runtime leaks) := facts.inputs
+                              (application setup timeouts leaks) := facts.inputs
                           rw [← inputRecall who] at output
                           have inInputs := (List.mem_filter.mp output).1
                           have sameEnvelope : envelope = message :=
@@ -168,15 +168,15 @@ theorem onePacket_accepted_new {control next : (application setup runtime leaks)
 response of the one-packet menu is permitted by the count verdict, whose call
 check rejects a malformed packet. -/
 theorem onePacket_not_malformed {who : Player}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView} {response : (application setup runtime
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView} {response : (application setup timeouts
       leaks).Action}
-    (member : response ∈ bounds.onePacketActions runtime leaks who past view)
-    {material : (application setup runtime leaks).Submission}
+    (member : response ∈ bounds.onePacketActions timeouts leaks who past view)
+    {material : (application setup timeouts leaks).Submission}
     (submits : response.transmission = some material) (raw : Raw L) :
     material.call.packet ≠ .malformed raw := by
   intro malformed
-  rcases ((bounds.mem_onePacketActions runtime leaks who past view response).mp
+  rcases ((bounds.mem_onePacketActions timeouts leaks who past view response).mp
       member).2 with silent | ⟨sent, transmits, permitted⟩
   · rw [submits] at silent
     cases silent

@@ -22,8 +22,8 @@ variable {Player : Type} [Fintype Player] [DecidableEq Player]
 def sourceServiceMenu (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (bounds : MessageBounds (graph setup)) :
-    (application setup (Vegas.runtime setup) leaks).ResponseMenu where
-  actions := bounds.compiledActions (runtime setup) leaks
-  nonempty := bounds.compiledActions_nonempty (runtime setup) leaks
+    (application setup (Vegas.timeouts setup) leaks).ResponseMenu where
+  actions := bounds.compiledActions (timeouts setup) leaks
+  nonempty := bounds.compiledActions_nonempty (timeouts setup) leaks
 
 end Vegas

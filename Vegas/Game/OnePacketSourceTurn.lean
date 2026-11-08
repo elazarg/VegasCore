@@ -345,12 +345,12 @@ private theorem eq_pure_of_support_subset {α : Type} (law : PMF α) (a : α)
       exact same)]
 
 variable {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- The view of a decoded point is the view decoded at its rank. -/
 private theorem decodeViewPrefix?_rank (who : Player)
-    (execution : (application setup runtime leaks).Execution) (rank : Nat)
+    (execution : (application setup timeouts leaks).Execution) (rank : Nat)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point) :
     decodeViewPrefix? who setup.program
@@ -390,18 +390,18 @@ private theorem intendedChoice_cases (who : Player) (point : ProtocolState setup
 /-- At an active callback whose configuration decodes at its completed prefix,
 every supported as-if-honest source choice encodes at the current event. -/
 theorem asIfHonestProfile_encodes (assessment : setup.intendedModel.BehavioralAssessment)
-    (who : Player) (execution : (application setup runtime leaks).Execution) (rank : Nat)
+    (who : Player) (execution : (application setup timeouts leaks).Execution) (rank : Nat)
     (ordered : execution.application.config.cut.IsPrefix rank)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
-    (past : List (application setup runtime leaks).PlayerEntry) (event : (graph setup).EventId)
+    (past : List (application setup timeouts leaks).PlayerEntry) (event : (graph setup).EventId)
     (turn : execution.application.publicView.ownTurn? who = some event)
     (active : who ∉ execution.application.config.defaulted)
     (choice : Option (OwnAction Player L))
-    (supported : choice ∈ (asIfHonestProfile setup runtime leaks assessment who
-      (some (past, execution.observe (application setup runtime leaks) who))).support) :
+    (supported : choice ∈ (asIfHonestProfile setup timeouts leaks assessment who
+      (some (past, execution.observe (application setup timeouts leaks) who))).support) :
     (choice.bind (encodeEventAction? setup.program event)).isSome := by
-  obtain ⟨intended, _, rfl⟩ := (mem_support_asIfHonestProfile_observe setup runtime leaks
+  obtain ⟨intended, _, rfl⟩ := (mem_support_asIfHonestProfile_observe setup timeouts leaks
     assessment who
     execution rank ordered point decoded past choice).mp supported
   have owned := (PublicView.ownTurn?_spec _ who event turn).2
@@ -414,7 +414,7 @@ theorem asIfHonestProfile_encodes (assessment : setup.intendedModel.BehavioralAs
         execution.application.config.cut.mem_completed_iff_lt_of_ready ready⟩).unique ordered
   obtain ⟨available, _, actorEq⟩ := decodeViewPrefix?_intended who rank setup.program _ _ _ _
     execution.application.config.defaults _
-    (decodeViewPrefix?_rank (runtime := runtime) who execution rank point decoded)
+    (decodeViewPrefix?_rank (timeouts := timeouts) who execution rank point decoded)
   rcases intendedChoice_cases who point intended with
     ⟨action, chosen, _, offered⟩ | ⟨_, notTurn⟩
   · rw [chosen]
@@ -435,21 +435,22 @@ theorem asIfHonestProfile_encodes (assessment : setup.intendedModel.BehavioralAs
 /-- **No action without a turn.** At an execution decoding at its completed
 prefix, where the player has no turn, as-if-honest play chooses no action. -/
 theorem asIfHonestProfile_eq_pure_none (assessment : setup.intendedModel.BehavioralAssessment)
-    (who : Player) (execution : (application setup runtime leaks).Execution) (rank : Nat)
+    (who : Player) (execution : (application setup timeouts leaks).Execution) (rank : Nat)
     (ordered : execution.application.config.cut.IsPrefix rank)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
-    (past : List (application setup runtime leaks).PlayerEntry)
+    (past : List (application setup timeouts leaks).PlayerEntry)
     (noTurn : execution.application.publicView.ownTurn? who = none) :
-    asIfHonestProfile setup runtime leaks assessment who
-        (some (past, execution.observe (application setup runtime leaks) who)) = PMF.pure none := by
+    asIfHonestProfile setup timeouts leaks assessment who
+        (some (past, execution.observe (application setup timeouts leaks) who)) = PMF.pure none
+          := by
   refine eq_pure_of_support_subset _ _ fun choice supported => ?_
-  obtain ⟨intended, _, rfl⟩ := (mem_support_asIfHonestProfile_observe setup runtime leaks
+  obtain ⟨intended, _, rfl⟩ := (mem_support_asIfHonestProfile_observe setup timeouts leaks
     assessment who
     execution rank ordered point decoded past _).mp supported
   obtain ⟨_, owned, _⟩ := decodeViewPrefix?_intended who rank setup.program _ _ _ _
     execution.application.config.defaults _
-    (decodeViewPrefix?_rank (runtime := runtime) who execution rank point decoded)
+    (decodeViewPrefix?_rank (timeouts := timeouts) who execution rank point decoded)
   rcases intendedChoice_cases who point intended with
     ⟨action, _, isTurn, _⟩ | ⟨chosen, _⟩
   · obtain ⟨event, atRank, ownerEq⟩ := owned isTurn
@@ -470,15 +471,15 @@ theorem asIfHonestProfile_eq_pure_none (assessment : setup.intendedModel.Behavio
 completed prefix, every source action as-if-honest play supports commits a
 successful value or discloses. -/
 theorem asIfHonestProfile_success (assessment : setup.intendedModel.BehavioralAssessment)
-    (who : Player) (execution : (application setup runtime leaks).Execution) (rank : Nat)
+    (who : Player) (execution : (application setup timeouts leaks).Execution) (rank : Nat)
     (ordered : execution.application.config.cut.IsPrefix rank)
     (point : ProtocolState setup.program)
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
-    (past : List (application setup runtime leaks).PlayerEntry) (action : OwnAction Player L)
-    (supported : some action ∈ (asIfHonestProfile setup runtime leaks assessment who
-      (some (past, execution.observe (application setup runtime leaks) who))).support) :
+    (past : List (application setup timeouts leaks).PlayerEntry) (action : OwnAction Player L)
+    (supported : some action ∈ (asIfHonestProfile setup timeouts leaks assessment who
+      (some (past, execution.observe (application setup timeouts leaks) who))).support) :
     action.CommitsValue ∧ ∀ owner name, action ≠ .reveal owner name false := by
-  obtain ⟨intended, _, same⟩ := (mem_support_asIfHonestProfile_observe setup runtime leaks
+  obtain ⟨intended, _, same⟩ := (mem_support_asIfHonestProfile_observe setup timeouts leaks
     assessment who
     execution rank ordered point decoded past _).mp supported
   rcases intendedChoice_cases who point intended with
@@ -495,16 +496,16 @@ theorem asIfHonestProfile_success (assessment : setup.intendedModel.BehavioralAs
 source-action mixture is the intended authentic-opening behavioral source step. -/
 theorem asIfHonest_bind_step_eq_behavioralStateStep [Fintype Player]
     (source : setup.intendedModel.BehavioralAssessment) (who : Player)
-    (execution : (application setup runtime leaks).Execution) {rank : Nat}
+    (execution : (application setup timeouts leaks).Execution) {rank : Nat}
     (ordered : execution.application.config.cut.IsPrefix rank)
     {point : ProtocolState setup.program}
     (decoded : sourceServicePrefix? setup rank execution.application.config = some point)
     (intendedPoint : ProtocolState.Intended setup.program point) {event : (graph setup).EventId}
     (turn : execution.application.publicView.ownTurn? who = some event)
     (active : who ∉ execution.application.config.defaulted)
-    (past : List (application setup runtime leaks).PlayerEntry) :
-    (asIfHonestProfile setup runtime leaks source who
-        (some (past, execution.observe (application setup runtime leaks) who))).bind
+    (past : List (application setup timeouts leaks).PlayerEntry) :
+    (asIfHonestProfile setup timeouts leaks source who
+        (some (past, execution.observe (application setup timeouts leaks) who))).bind
         (fun choice => ProtocolState.step setup.program point (fun _ => choice)) =
       ProtocolState.behavioralStateStep setup.program
         (setup.intendedOpeningProfile source.strategy) point := by
@@ -517,7 +518,7 @@ theorem asIfHonest_bind_step_eq_behavioralStateStep [Fintype Player]
         execution.application.config.cut.mem_completed_iff_lt_of_ready ready⟩).unique ordered
   obtain ⟨_, _, actorEq⟩ := decodeViewPrefix?_intended who rank setup.program _ _ _ _
     execution.application.config.defaults _
-    (decodeViewPrefix?_rank (runtime := runtime) who execution rank point decoded)
+    (decodeViewPrefix?_rank (timeouts := timeouts) who execution rank point decoded)
   have sourceOwner : eventOwner? setup.program event = some who :=
     (eventOwner?_eq_actor setup.program event).trans owned
   have acting := actorEq event atRank
@@ -554,7 +555,8 @@ theorem asIfHonest_bind_step_eq_behavioralStateStep [Fintype Player]
     rw [PMF.map_comp]
     rfl
   rw [ProtocolState.behavioralStateStep_eq_bind_of_actor setup.program _ point who acts,
-    actionLaw, asIfHonestProfile_observe setup runtime leaks source who execution rank ordered point
+    actionLaw, asIfHonestProfile_observe setup timeouts leaks source who execution rank ordered
+      point
       decoded past]
 
 end Native

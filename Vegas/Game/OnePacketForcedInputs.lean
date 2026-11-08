@@ -25,26 +25,26 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **Nothing is unsettled at the observer's own turn.** At a native history of
 the one-packet game ending in a forced state of `who` whose view shows `who`'s
 own ready event, the unsettled content is one. -/
 theorem unsettledContent_eq_one_of_ownTurn
     (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
-    {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
-    (forced : ForcedState setup runtime leaks who (some control)) {event : (graph setup).EventId}
-    (turn : (control.execution.observe (application setup runtime leaks)
+    {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
+    (forced : ForcedState setup timeouts leaks who (some control)) {event : (graph setup).EventId}
+    (turn : (control.execution.observe (application setup timeouts leaks)
       who).application.publicView.ownTurn? who = some event) :
-    unsettledContent setup runtime leaks bounds horizon scheduler assessment who trace = 1 := by
+    unsettledContent setup timeouts leaks bounds horizon scheduler assessment who trace = 1 := by
   obtain ⟨publicReady, owned⟩ := PublicView.ownTurn?_spec _ who event turn
   have ready : control.execution.application.config.cut.Ready event :=
     (State.publicView_eventReady _ event).mp publicReady
-  refine (periodInvariant (runtime := runtime) assessment who trace control rfl forced).quiet
+  refine (periodInvariant (timeouts := timeouts) assessment who trace control rfl forced).quiet
     fun other otherReady sender acts => ?_
   have sameEvent := setup.eventGraph.sequentialize_ready_unique _ otherReady ready
   subst sameEvent
@@ -53,19 +53,19 @@ theorem unsettledContent_eq_one_of_ownTurn
 section Assembly
 
 variable {who : Player}
-  {site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who}
+  {site : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationSite who}
   {sourceSite : setup.intendedModel.InformationSite who}
-  {past : List (application setup runtime leaks).PlayerEntry}
-  {view : (application setup runtime leaks).PlayerView}
+  {past : List (application setup timeouts leaks).PlayerEntry}
+  {view : (application setup timeouts leaks).PlayerView}
 
 /-- A native history of a decision site of `who` with recall `past` and view
 `view` ends at an initialized state at which `who` acts and sees `view`. -/
 theorem state_of_decision
-    (history : (onePacketInformation setup runtime leaks bounds horizon
+    (history : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory who
       site.1) (decision : site.1 = some (past, view)) :
-    ∃ control : (application setup runtime leaks).Control, history.1.state = some control ∧
-      control.execution.observe (application setup runtime leaks) who = view := by
+    ∃ control : (application setup timeouts leaks).Control, history.1.state = some control ∧
+      control.execution.observe (application setup timeouts leaks) who = view := by
   obtain ⟨⟨state, trace⟩, info⟩ := history
   have seen := info.trans decision
   rw [onePacket_infoOf] at seen
@@ -88,75 +88,75 @@ inputs. -/
 def ForcedBeliefInputs.ofForcedReplay
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
     {profiles : ℕ → ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player}
-    {steps : OperationalSteps setup runtime leaks bounds horizon scheduler sequence profiles who}
-    [Fintype ((onePacketInformation setup runtime leaks bounds horizon
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player}
+    {steps : OperationalSteps setup timeouts leaks bounds horizon scheduler sequence profiles who}
+    [Fintype ((onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory who
       site.1)]
     [DecidableEq (setup.intendedModel.InformationHistory who sourceSite.1)]
     {scale floors : ℕ → ℝ} {depth : ℕ} {slack : ℝ} {n : ℕ}
-    (forced : forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw
+    (forced : forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw
       setup) horizon
       scheduler who site.1)
     (decision : site.1 = some (past, view)) {event : (graph setup).EventId}
     (turn : view.application.publicView.ownTurn? who = some event)
-    (projected : sourceSite.1 = projectView setup runtime leaks who site.1)
+    (projected : sourceSite.1 = projectView setup timeouts leaks who site.1)
     (mixed : (sequence n).IsFullyMixed)
-    (forcedHistories : ∀ history : (onePacketInformation setup runtime leaks bounds horizon
+    (forcedHistories : ∀ history : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who site.1,
-      RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who history.1.trace →
-      ForcedState setup runtime leaks who history.1.state)
-    (replayed : ∀ history : (onePacketInformation setup runtime leaks bounds horizon
+      RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who history.1.trace →
+      ForcedState setup timeouts leaks who history.1.state)
+    (replayed : ∀ history : (onePacketInformation setup timeouts leaks bounds horizon
         scheduler).InformationHistory who site.1,
-      RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who history.1.trace →
-      ∃ replay, intendedHistory? setup runtime leaks bounds horizon scheduler history.1.trace =
+      RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who history.1.trace →
+      ∃ replay, intendedHistory? setup timeouts leaks bounds horizon scheduler history.1.trace =
         some replay)
     (fiberMass : ℝ)
-    (fiber : ∀ point, ∑ history with RegularTrace setup runtime leaks bounds horizon scheduler
+    (fiber : ∀ point, ∑ history with RegularTrace setup timeouts leaks bounds horizon scheduler
         (sequence n) who history.1.trace ∧
-        replayProjection setup runtime leaks bounds horizon scheduler sourceSite site decision
+        replayProjection setup timeouts leaks bounds horizon scheduler sourceSite site decision
           projected
           history = point,
-      operationalWeight setup runtime leaks who (steps.mass n)
-        (operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace) =
+      operationalWeight setup timeouts leaks who (steps.mass n)
+        (operationalRecord setup timeouts leaks bounds horizon scheduler history.1.trace) =
           fiberMass)
-    (counterpart : (onePacketInformation setup runtime leaks bounds horizon
+    (counterpart : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory
         who site.1 →
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationHistory who
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationHistory who
         site.1)
-    (commonWeight : (onePacketInformation setup runtime leaks bounds horizon
+    (commonWeight : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory who site.1 → ℝ)
-    (counterpart_regular : ∀ history, ¬ RegularTrace setup runtime leaks bounds horizon scheduler
+    (counterpart_regular : ∀ history, ¬ RegularTrace setup timeouts leaks bounds horizon scheduler
         (sequence n) who history.1.trace →
-      RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+      RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
         (counterpart history).1.trace)
-    (irregular_le : ∀ history, ¬ RegularTrace setup runtime leaks bounds horizon scheduler
+    (irregular_le : ∀ history, ¬ RegularTrace setup timeouts leaks bounds horizon scheduler
       (sequence n)
         who history.1.trace →
-      ((onePacketInformation setup runtime leaks bounds horizon scheduler).historyReachWeight
+      ((onePacketInformation setup timeouts leaks bounds horizon scheduler).historyReachWeight
           (profiles n) history.1).toReal ≤ scale n ^ 3 * commonWeight history)
-    (counterpart_ge : ∀ history, ¬ RegularTrace setup runtime leaks bounds horizon scheduler
+    (counterpart_ge : ∀ history, ¬ RegularTrace setup timeouts leaks bounds horizon scheduler
         (sequence n) who history.1.trace →
       scale n ^ 2 * floors n ^ depth * commonWeight history ≤
-        slack * ((onePacketInformation setup runtime leaks bounds horizon
+        slack * ((onePacketInformation setup timeouts leaks bounds horizon
           scheduler).historyReachWeight
           (profiles n) (counterpart history).1).toReal) :
-    ForcedBeliefInputs setup runtime leaks bounds horizon scheduler sequence profiles steps site
-      sourceSite (replayProjection setup runtime leaks bounds horizon scheduler sourceSite site
+    ForcedBeliefInputs setup timeouts leaks bounds horizon scheduler sequence profiles steps site
+      sourceSite (replayProjection setup timeouts leaks bounds horizon scheduler sourceSite site
         decision
         projected) scale floors depth slack n :=
-  ForcedBeliefInputs.ofReplay (runtime := runtime) forced decision projected mixed (fun history
+  ForcedBeliefInputs.ofReplay (timeouts := timeouts) forced decision projected mixed (fun history
     regular => by
       obtain ⟨replay, replayEq⟩ := replayed history regular
       have forcedHistory := forcedHistories history regular
-      obtain ⟨control, stateEq, viewEq⟩ := state_of_decision (runtime := runtime) history decision
+      obtain ⟨control, stateEq, viewEq⟩ := state_of_decision (timeouts := timeouts) history decision
       obtain ⟨⟨state, trace⟩, info⟩ := history
       change state = some control at stateEq
       subst stateEq
-      refine ⟨replay, replayEq, actorCompletionsMatch_of_forced (runtime := runtime) (sequence n)
+      refine ⟨replay, replayEq, actorCompletionsMatch_of_forced (timeouts := timeouts) (sequence n)
         who trace control
-        rfl forcedHistory, unsettledContent_eq_one_of_ownTurn (runtime := runtime) (sequence n)
+        rfl forcedHistory, unsettledContent_eq_one_of_ownTurn (timeouts := timeouts) (sequence n)
           who trace
           forcedHistory (event := event) ?_⟩
       rw [viewEq]

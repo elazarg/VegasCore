@@ -42,23 +42,24 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- **How an event with an actor completes.** When a scheduler command completes
 an event with an actor, either an included packet of that actor naming the
 event was accepted, or the decoded action of the completion is failing, as at an
 expired binding or reveal. -/
-theorem actor_completion_cause (execution next : (application setup runtime leaks).Execution)
-    (command : (application setup runtime leaks).Command)
-    (reached : next ∈ (execution.environmentStep (application setup runtime leaks) command).support)
+theorem actor_completion_cause (execution next : (application setup timeouts leaks).Execution)
+    (command : (application setup timeouts leaks).Command)
+    (reached : next ∈ (execution.environmentStep (application setup timeouts leaks)
+      command).support)
     (record : (graph setup).Completion) (fresh : record ∉ execution.application.config.history)
     (present : record ∈ next.application.config.history)
     {actor : Player} (acts : (graph setup).actor? record.event = some actor) :
     (∃ message ∈ next.network.ledger, (message.id, true) ∈ next.receipts ∧
         message.payload.call.event? (graph setup) = some record.event ∧ message.sender = actor) ∨
       Failing (record.decision.bind (decodeEventAction setup.program record.event)) := by
-  rcases owned_completion_cases (runtime := runtime) execution next command reached record fresh
+  rcases owned_completion_cases (timeouts := timeouts) execution next command reached record fresh
     present acts with accepted | expired | automatic
   · obtain ⟨accepted⟩ := accepted
     exact Or.inl ⟨accepted.message, accepted.ledger, accepted.receipt, accepted.named,
@@ -76,7 +77,7 @@ theorem actor_completion_cause (execution next : (application setup runtime leak
 completed event with an actor was completed by an accepted packet of that actor
 naming it, or that actor owes a failure at the decoded point. -/
 def ActorRecord (profile : BehavioralProfile setup.program)
-    (execution : (application setup runtime leaks).Execution) : Prop :=
+    (execution : (application setup timeouts leaks).Execution) : Prop :=
   ∃ rank, Nonempty (SourceResidual setup profile rank execution.application.config) ∧
     ∀ event ∈ execution.application.config.cut.completed, ∀ actor,
       (graph setup).actor? event = some actor →
@@ -162,20 +163,21 @@ private theorem SourceResidual.debt_of_failing_record_path
 /-- The actor record holds at every legal history of the supplied runtime, under
 arbitrary responses and every scheduler. -/
 theorem actorRecord_serviceInvariant (profile : BehavioralProfile setup.program)
-    (scheduler : (application setup runtime leaks).Scheduler) :
-    (application setup runtime leaks).ServiceInvariant scheduler (ActorRecord (runtime := runtime)
+    (scheduler : (application setup timeouts leaks).Scheduler) :
+    (application setup timeouts leaks).ServiceInvariant scheduler (ActorRecord (timeouts :=
+      timeouts)
       profile) where
   respond execution who action valid := by
-    have configEq := (runtime.reactive_respond_application leaks execution who action).1
-    have ledgerEq := (application setup runtime leaks).respond_ledger execution who action
-    have receiptsEq := (application setup runtime leaks).respond_receipts execution who action
+    have configEq := ((reactive_respond_application timeouts) leaks execution who action).1
+    have ledgerEq := (application setup timeouts leaks).respond_ledger execution who action
+    have receiptsEq := (application setup timeouts leaks).respond_receipts execution who action
     unfold ActorRecord at valid ⊢
     rw [configEq, ledgerEq, receiptsEq]
     exact valid
   environment execution next command valid _ reached := by
-    let app := application setup runtime leaks
+    let app := application setup timeouts leaks
     obtain ⟨rank, ⟨residual⟩, record⟩ := valid
-    have path := (runtime.reactiveApplication_graphSteps leaks).environmentStep
+    have path := ((reactiveApplication_graphSteps timeouts) leaks).environmentStep
       execution next command reached
     obtain ⟨nextRank, ⟨successor⟩⟩ := residual.path path
     have ledger : execution.network.ledger ⊆ next.network.ledger := by
@@ -225,12 +227,13 @@ theorem actorRecord_serviceInvariant (profile : BehavioralProfile setup.program)
 /-- The actor record holds at every legal history of the supplied runtime from
 its initial law. -/
 theorem actorRecord_history (profile : BehavioralProfile setup.program) (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler)
-    {control : (application setup runtime leaks).Control}
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    (scheduler : (application setup timeouts leaks).Scheduler)
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
+      scheduler).Trace
       (some control)) :
-    ActorRecord (runtime := runtime) profile control.execution :=
-  (actorRecord_serviceInvariant (runtime := runtime) profile scheduler).history (initialLaw setup)
+    ActorRecord (timeouts := timeouts) profile control.execution :=
+  (actorRecord_serviceInvariant (timeouts := timeouts) profile scheduler).history (initialLaw setup)
     horizon
     (fun state supported => by
       obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
@@ -250,35 +253,36 @@ completed events is a second packet for it: on a forced history its event was
 completed by an accepted packet of the player, since otherwise it would owe a
 failure. -/
 theorem onePacket_silent_of_pending (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler) (owner : Player)
-    (history : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    (scheduler : (application setup timeouts leaks).Scheduler) (owner : Player)
+    (history : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).History)
-    (forced : ForcedState setup runtime leaks owner history.state)
-    {control : (application setup runtime leaks).Control} (current : history.state = some control)
+    (forced : ForcedState setup timeouts leaks owner history.state)
+    {control : (application setup timeouts leaks).Control} (current : history.state = some control)
     {event : (graph setup).EventId} (ready : control.execution.application.config.cut.Ready event)
     (owned : (graph setup).actor? event = some owner) (other : Player) (different : other ≠ owner)
-    (response : (application setup runtime leaks).Action)
-    (member : response ∈ bounds.onePacketActions runtime leaks other
+    (response : (application setup timeouts leaks).Action)
+    (member : response ∈ bounds.onePacketActions timeouts leaks other
       (control.execution.logs other)
-      (control.execution.observe (application setup runtime leaks) other)) :
+      (control.execution.observe (application setup timeouts leaks) other)) :
     response.transmission = none := by
-  let app := application setup runtime leaks
-  rcases ((bounds.mem_onePacketActions runtime leaks other _ _ response).mp member).2 with
+  let app := application setup timeouts leaks
+  rcases ((bounds.mem_onePacketActions timeouts leaks other _ _ response).mp member).2 with
     silent | ⟨material, _, permitted⟩
   · exact silent
   exfalso
   have trace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control) :=
-    current ▸ (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+    current ▸ (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
       scheduler history.trace
   rw [current] at forced
   obtain ⟨rank, point, ordered, decoded, forcedPoint⟩ := forced
-  obtain ⟨inputRecall, serialRecall, _⟩ := runtime.countRecall_history leaks trace
+  obtain ⟨inputRecall, serialRecall, _⟩ := (countRecall_history timeouts) leaks trace
   have facts := legalFacts setup leaks horizon scheduler control trace
   obtain ⟨recordRank, ⟨residual⟩, record⟩ :=
-    actorRecord_history (runtime := runtime) (failureProfile setup.program) horizon scheduler trace
+    actorRecord_history (timeouts := timeouts) (failureProfile setup.program) horizon scheduler
+      trace
   have sameRank := EventOrder.Cut.IsPrefix.unique ordered residual.checkpoint.ordered
   subst sameRank
-  set envelope := runtime.localEnvelope leaks other (control.execution.logs other)
+  set envelope := (localEnvelope timeouts) leaks other (control.execution.logs other)
     (control.execution.observe app other) material with envelopeEq
   obtain ⟨tokenValid, correct, first⟩ := (countPermits_eq_true_iff _ _).mp permitted
   obtain ⟨named, namedEvent, tokenEq⟩ := (WitnessedPacket.tokenValid_iff _).mp tokenValid

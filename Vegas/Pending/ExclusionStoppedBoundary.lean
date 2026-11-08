@@ -16,13 +16,13 @@ open Interaction GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Finite Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
   (initial : PMF (State graph)) (horizon : Nat)
-  (scheduler : (runtime.reactiveApplication leaks).Scheduler)
-  (menu : (runtime.reactiveApplication leaks).ResponseMenu)
+  (scheduler : ((reactiveApplication timeouts) leaks).Scheduler)
+  (menu : ((reactiveApplication timeouts) leaks).ResponseMenu)
 
-local notation "nativeApp" => runtime.reactiveApplication leaks
+local notation "nativeApp" => (reactiveApplication timeouts) leaks
 local notation "protocol" => menu.protocol initial horizon scheduler
 local notation "model" => menu.information initial horizon scheduler
 local notation "Clear" => ReactiveApplication.stateInvariant
@@ -50,7 +50,7 @@ private theorem respond_clear (execution : (nativeApp).Execution) (who : Player)
     (response : (nativeApp).Action)
     (valid : execution.application.config.defaulted = ∅) :
     (execution.respond nativeApp who response).application.config.defaulted = ∅ := by
-  rw [(runtime.reactive_respond_application leaks execution who response).1]
+  rw [((reactive_respond_application timeouts) leaks execution who response).1]
   exact valid
 
 omit [Finite Player] in
@@ -73,7 +73,7 @@ private theorem transition_clear_or_environment (current : (nativeApp).Control)
   | some who =>
     simp only [ReactiveApplication.transition, PMF.mem_support_pure_iff] at realized
     refine Or.inl ⟨_, realized, ?_⟩
-    exact respond_clear runtime leaks execution who _ valid
+    exact respond_clear timeouts leaks execution who _ valid
   | none =>
     cases remaining with
     | zero =>
@@ -100,7 +100,7 @@ theorem responseMenu_stopped_exclusion_boundary
       (fun history => ¬ Clear history.state ∨ extraStop history)
       start).support,
       Clear final.state ∨
-      ClearEnvironmentBoundary runtime leaks initial horizon scheduler menu extraStop
+      ClearEnvironmentBoundary timeouts leaks initial horizon scheduler menu extraStop
         start final := by
   classical
   let stopped := fun history : (protocol).History =>
@@ -109,7 +109,7 @@ theorem responseMenu_stopped_exclusion_boundary
     (∃ current, history.state = some current) ∧
       TracePrefix start.trace history.trace ∧
       (Clear history.state ∨
-        ClearEnvironmentBoundary runtime leaks initial horizon scheduler menu extraStop
+        ClearEnvironmentBoundary timeouts leaks initial horizon scheduler menu extraStop
           start history)
   have initialProperty : property start := by
     refine ⟨⟨current, state⟩, .refl, Or.inl ?_⟩
@@ -137,7 +137,7 @@ theorem responseMenu_stopped_exclusion_boundary
     change target ∈ ((nativeApp).transition initial horizon scheduler
       (some current) draw.1).support at realized
     have clearBefore : current.execution.application.config.defaulted = ∅ := currentClear
-    rcases transition_clear_or_environment runtime leaks initial horizon scheduler current target
+    rcases transition_clear_or_environment timeouts leaks initial horizon scheduler current target
       draw.1 clearBefore realized with ⟨next, same, nextRecord⟩ |
         ⟨remaining, execution, beforeEq, command, next, chosen, moved, same⟩
     · refine ⟨⟨next, same⟩, .extend valid.2.1 draw.1 draw.2 realized, Or.inl ?_⟩

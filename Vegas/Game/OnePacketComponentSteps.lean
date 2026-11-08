@@ -41,35 +41,35 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **The mass of a response step.** It is the responder's mass, at its
 information, of the choice it made. -/
 theorem response_stepProb
     (profile : ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player)
-    {before after : (application setup runtime leaks).ProtocolState}
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace before)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    (legal : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Legal before joint)
-    (realized : after ∈ ((onePacketProtocol setup runtime leaks bounds horizon scheduler).step
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player)
+    {before after : (application setup timeouts leaks).ProtocolState}
+    (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace before)
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    (legal : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Legal before joint)
+    (realized : after ∈ ((onePacketProtocol setup timeouts leaks bounds horizon scheduler).step
       before
-      ⟨joint, legal⟩).support) (control : (application setup runtime leaks).Control)
+      ⟨joint, legal⟩).support) (control : (application setup timeouts leaks).Control)
     (initialized : before = some control) {actor : Player} (acting : control.actor = some actor) :
-    InformationModel.stepProb (onePacketInformation setup runtime leaks bounds horizon scheduler)
+    InformationModel.stepProb (onePacketInformation setup timeouts leaks bounds horizon scheduler)
         profile prior ⟨joint, legal⟩ after =
       (profile actor _ (InformationModel.choicesOfLegal
-        (onePacketInformation setup runtime leaks bounds horizon scheduler) prior ⟨joint, legal⟩
+        (onePacketInformation setup timeouts leaks bounds horizon scheduler) prior ⟨joint, legal⟩
           actor)).toReal := by
   subst initialized
-  have active : (application setup runtime leaks).actor (some control) = some actor := acting
-  rw [stepProb_of_actor (runtime := runtime) profile prior joint legal active]
-  change _ ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon scheduler
+  have active : (application setup timeouts leaks).actor (some control) = some actor := acting
+  rw [stepProb_of_actor (timeouts := timeouts) profile prior joint legal active]
+  change _ ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon scheduler
     (some control) joint).support at realized
-  rw [transition_respond (runtime := runtime) control acting joint] at realized ⊢
+  rw [transition_respond (timeouts := timeouts) control acting joint] at realized ⊢
   rw [(PMF.mem_support_pure_iff _ _).mp realized, PMF.pure_apply_self, ENNReal.toReal_one,
     mul_one]
 
@@ -89,28 +89,29 @@ theorem slotCombination_nonneg {scale main alternative slot : ℝ} (nonnegative 
   have : 0 ≤ 1 - scale := by linarith
   positivity
 
-variable (setup runtime leaks bounds) in
+variable (setup timeouts leaks bounds) in
 /-- **A slot-trembled choice near its content.** If the main, alternative and
 slot-tier laws give a choice its content factor times given factors, the
 component's mass of the choice is the content factor times their slot
 combination, up to at most the cube of the scale. -/
-theorem slotTrembledChoice_near (initial : PMF (application setup runtime leaks).State)
-    (horizon : Nat) (scheduler : (application setup runtime leaks).Scheduler) {scale : ℝ}
+theorem slotTrembledChoice_near (initial : PMF (application setup timeouts leaks).State)
+    (horizon : Nat) (scheduler : (application setup timeouts leaks).Scheduler) {scale : ℝ}
     (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) (who : Player)
-    (info : (application setup runtime leaks).Info)
+    (info : (application setup timeouts leaks).Info)
     (main alternative slot :
-      PMF ((onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info))
-    (choice : (onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info)
+      PMF ((onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who info))
+    (choice : (onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who
+      info)
     {content mainFactor alternativeFactor slotFactor : ℝ}
     (mainMass : (main choice).toReal = content * mainFactor)
     (alternativeMass : (alternative choice).toReal = content * alternativeFactor)
     (slotMass : (slot choice).toReal = content * slotFactor) :
-    |(slotTrembledChoice setup runtime leaks bounds initial horizon scheduler scale nonnegative
+    |(slotTrembledChoice setup timeouts leaks bounds initial horizon scheduler scale nonnegative
       le_one
         who info main alternative slot choice).toReal -
       content * slotCombination scale mainFactor alternativeFactor slotFactor| ≤ scale ^ 3 := by
   rw [slotTrembledChoice_apply_toReal, mainMass, alternativeMass, slotMass]
-  set uniform := ((bounds.onePacketMenu runtime leaks).uniformPolicy initial horizon
+  set uniform := ((bounds.onePacketMenu timeouts leaks).uniformPolicy initial horizon
     scheduler who info choice).toReal
   have uniformNonneg : 0 ≤ uniform := ENNReal.toReal_nonneg
   have uniformLe : uniform ≤ 1 :=
@@ -136,54 +137,55 @@ factor times that mass. Then the operational steps hold. -/
 def OperationalSteps.ofSlotComponents
     {sequence : ℕ → setup.intendedModel.BehavioralAssessment}
     {profiles : ℕ → ∀ player,
-      (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player}
+      (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy player}
     {who : Player}
-    (response : ℕ → Option (OperationalState setup runtime leaks) →
-      Option (OperationalState setup runtime leaks) → ℝ)
+    (response : ℕ → Option (OperationalState setup timeouts leaks) →
+      Option (OperationalState setup timeouts leaks) → ℝ)
     (error : ℕ → ℝ) (response_nonneg : ∀ n before after, 0 ≤ response n before after)
     (error_nonneg : ∀ n, 0 ≤ error n) (error_tendsto : Filter.Tendsto error Filter.atTop (nhds 0))
     (slotLaw : ∀ n {before after}
-      (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace before)
+      (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace before)
         joint legal
-      (_ : after ∈ ((onePacketProtocol setup runtime leaks bounds horizon scheduler).step before
-        ⟨joint, legal⟩).support) (control next : (application setup runtime leaks).Control)
+      (_ : after ∈ ((onePacketProtocol setup timeouts leaks bounds horizon scheduler).step before
+        ⟨joint, legal⟩).support) (control next : (application setup timeouts leaks).Control)
       (actor : Player), before = some control → after = some next →
       control.actor = some actor → actor ≠ who →
-      forcedAgent (runtime := runtime) (bounds.onePacketMenu runtime leaks) (initialLaw setup)
+      forcedAgent (timeouts := timeouts) (bounds.onePacketMenu timeouts leaks) (initialLaw setup)
         horizon
-        scheduler actor ((application setup runtime leaks).observe actor (some control)) →
-      ForcedState setup runtime leaks who (some control) →
-      0 < contentFactor setup runtime leaks (sequence n) actor control.execution next.execution
+        scheduler actor ((application setup timeouts leaks).observe actor (some control)) →
+      ForcedState setup timeouts leaks who (some control) →
+      0 < contentFactor setup timeouts leaks (sequence n) actor control.execution next.execution
         ((joint actor).getD ⟨none⟩) →
       ∃ (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1)
-        (main alternative slot : PMF ((onePacketInformation setup runtime leaks bounds horizon
+        (main alternative slot : PMF ((onePacketInformation setup timeouts leaks bounds horizon
           scheduler).Choice actor
-            ((onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf actor
+            ((onePacketInformation setup timeouts leaks bounds horizon scheduler).infoOf actor
               prior)))
         (mainFactor alternativeFactor slotFactor : ℝ),
-        profiles n actor ((onePacketInformation setup runtime leaks bounds horizon scheduler).infoOf
+        profiles n actor ((onePacketInformation setup timeouts leaks bounds horizon
+          scheduler).infoOf
             actor prior) =
-          slotTrembledChoice setup runtime leaks bounds (initialLaw setup) horizon scheduler scale
+          slotTrembledChoice setup timeouts leaks bounds (initialLaw setup) horizon scheduler scale
             nonnegative le_one actor _ main alternative slot ∧
         (main (InformationModel.choicesOfLegal _ prior ⟨joint, legal⟩ actor)).toReal =
-          contentFactor setup runtime leaks (sequence n) actor control.execution next.execution
+          contentFactor setup timeouts leaks (sequence n) actor control.execution next.execution
             ((joint actor).getD ⟨none⟩) * mainFactor ∧
         (alternative (InformationModel.choicesOfLegal _ prior ⟨joint, legal⟩ actor)).toReal =
-          contentFactor setup runtime leaks (sequence n) actor control.execution next.execution
+          contentFactor setup timeouts leaks (sequence n) actor control.execution next.execution
             ((joint actor).getD ⟨none⟩) * alternativeFactor ∧
         (slot (InformationModel.choicesOfLegal _ prior ⟨joint, legal⟩ actor)).toReal =
-          contentFactor setup runtime leaks (sequence n) actor control.execution next.execution
+          contentFactor setup timeouts leaks (sequence n) actor control.execution next.execution
             ((joint actor).getD ⟨none⟩) * slotFactor ∧
         slotCombination scale mainFactor alternativeFactor slotFactor =
-          response n (operationalState setup runtime leaks before) (operationalState setup runtime
+          response n (operationalState setup timeouts leaks before) (operationalState setup timeouts
             leaks after) ∧
-        scale ^ 3 ≤ error n * (contentFactor setup runtime leaks (sequence n) actor
+        scale ^ 3 ≤ error n * (contentFactor setup timeouts leaks (sequence n) actor
           control.execution
             next.execution ((joint actor).getD ⟨none⟩) *
-          response n (operationalState setup runtime leaks before) (operationalState setup runtime
+          response n (operationalState setup timeouts leaks before) (operationalState setup timeouts
             leaks after))) :
-    OperationalSteps setup runtime leaks bounds horizon scheduler sequence profiles who :=
-  OperationalSteps.ofComponents (runtime := runtime) response error response_nonneg error_nonneg
+    OperationalSteps setup timeouts leaks bounds horizon scheduler sequence profiles who :=
+  OperationalSteps.ofComponents (timeouts := timeouts) response error response_nonneg error_nonneg
     error_tendsto
     fun n before after prior joint legal realized control next actor initialized reached acting
       other forced observerForced positive => by
@@ -191,10 +193,10 @@ def OperationalSteps.ofSlotComponents
       slotFactor, policyEq, mainMass, alternativeMass, slotMass, combination, floor⟩ :=
       slotLaw n prior joint legal realized control next actor initialized reached acting other
         forced observerForced positive
-    rw [response_stepProb (runtime := runtime) (profiles n) prior joint legal realized control
+    rw [response_stepProb (timeouts := timeouts) (profiles n) prior joint legal realized control
       initialized acting,
       ← combination]
-    have near := slotTrembledChoice_near setup runtime leaks bounds (initialLaw setup) horizon
+    have near := slotTrembledChoice_near setup timeouts leaks bounds (initialLaw setup) horizon
       scheduler
       nonnegative le_one actor _ main alternative slot
       (InformationModel.choicesOfLegal _ prior ⟨joint, legal⟩ actor) mainMass alternativeMass

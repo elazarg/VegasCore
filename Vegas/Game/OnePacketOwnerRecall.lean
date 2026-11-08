@@ -35,27 +35,27 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 section Transitions
 
 /-- **A one-packet transition** is a one-packet response of the actor, a
 scheduler command, or a stutter. -/
-theorem onePacket_transition_cases {current next : (application setup runtime leaks).Control}
-    {joint : Player → Option (application setup runtime leaks).Action}
-    (legal : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Legal (some current)
+theorem onePacket_transition_cases {current next : (application setup timeouts leaks).Control}
+    {joint : Player → Option (application setup timeouts leaks).Action}
+    (legal : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Legal (some current)
       joint)
-    (reached : some next ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+    (reached : some next ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
       scheduler (some current) joint).support) :
-    (∃ who action, action ∈ bounds.onePacketActions runtime leaks who
-        (current.execution.logs who) (current.execution.observe (application setup runtime
+    (∃ who action, action ∈ bounds.onePacketActions timeouts leaks who
+        (current.execution.logs who) (current.execution.observe (application setup timeouts
           leaks) who) ∧
-      next.execution = current.execution.respond (application setup runtime leaks) who action) ∨
+      next.execution = current.execution.respond (application setup timeouts leaks) who action) ∨
     (∃ command, next.execution ∈
-      (current.execution.environmentStep (application setup runtime leaks) command).support) ∨
+      (current.execution.environmentStep (application setup timeouts leaks) command).support) ∨
     next.execution = current.execution := by
   rcases current with ⟨remaining, actor, execution⟩
   cases actor with
@@ -84,15 +84,15 @@ theorem onePacket_transition_cases {current next : (application setup runtime le
 
 /-- A one-packet commitment names a prepared handle of its sender. -/
 theorem onePacket_commitment_handle {who : Player}
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView} {response : (application setup runtime
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView} {response : (application setup timeouts
       leaks).Action}
-    (member : response ∈ bounds.onePacketActions runtime leaks who past view)
-    {material : (application setup runtime leaks).Submission}
+    (member : response ∈ bounds.onePacketActions timeouts leaks who past view)
+    {material : (application setup timeouts leaks).Submission}
     (sends : response.transmission = some material) {event : (graph setup).EventId}
     {handle : Handle (graph setup)} (packet : material.call.packet = .commitment event handle) :
     ∃ serial, handle = (who, .prepared serial) := by
-  obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions runtime leaks who _ _
+  obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions timeouts leaks who _ _
     response).mp member
   rcases permitted with silent | ⟨other, otherSends, counted⟩
   · rw [sends] at silent
@@ -100,7 +100,7 @@ theorem onePacket_commitment_handle {who : Player}
   rw [sends] at otherSends
   cases Option.some.inj otherSends
   have correct := ((countPermits_eq_true_iff _ _).mp counted).2.1
-  have callEq : (runtime.localEnvelope leaks who past view material).payload.call =
+  have callEq : ((localEnvelope timeouts) leaks who past view material).payload.call =
       material.call.packet := rfl
   unfold CountCallCorrect at correct
   rw [callEq, packet] at correct
@@ -111,7 +111,7 @@ end Transitions
 
 section Initial
 
-variable (setup runtime) in
+variable (setup timeouts) in
 /-- Every initial handle carries the meaning of its input. -/
 def InitialCandidates (state : EventGraphRuntime.State (graph setup)) : Prop :=
   ∀ player input, state.candidates.lookup (player, .initial input) =
@@ -135,13 +135,13 @@ private theorem register_lookup_initial (submission : Submission (graph setup))
   · rfl
 
 /-- A one-packet response keeps every initial handle. -/
-theorem respond_lookup_initial (execution : (application setup runtime leaks).Execution) (who :
+theorem respond_lookup_initial (execution : (application setup timeouts leaks).Execution) (who :
   Player)
-    (action : (application setup runtime leaks).Action)
-    (member : action ∈ bounds.onePacketActions runtime leaks who (execution.logs who)
-      (execution.observe (application setup runtime leaks) who))
+    (action : (application setup timeouts leaks).Action)
+    (member : action ∈ bounds.onePacketActions timeouts leaks who (execution.logs who)
+      (execution.observe (application setup timeouts leaks) who))
     (player : Player) (input : (graph setup).InputId) :
-    (execution.respond (application setup runtime leaks) who action).application.candidates.lookup
+    (execution.respond (application setup timeouts leaks) who action).application.candidates.lookup
         (player, .initial input) =
       execution.application.candidates.lookup (player, .initial input) := by
   rcases action with ⟨transmission⟩
@@ -154,7 +154,8 @@ theorem respond_lookup_initial (execution : (application setup runtime leaks).Ex
       cases packet : material.call.packet with
       | opening | malformed => simp only [submitStep]
       | commitment event handle =>
-          obtain ⟨serial, rfl⟩ := onePacket_commitment_handle (runtime := runtime) member rfl packet
+          obtain ⟨serial, rfl⟩ := onePacket_commitment_handle (timeouts := timeouts) member rfl
+            packet
           simp only [submitStep, ↓reduceIte]
           apply CommitmentCandidates.lookup_freeze_other
           intro same
@@ -162,11 +163,12 @@ theorem respond_lookup_initial (execution : (application setup runtime leaks).Ex
 
 omit [Fintype Player] in
 /-- A scheduler command of the one-packet game keeps every initial handle. -/
-theorem environment_lookup_initial (execution next : (application setup runtime leaks).Execution)
-    (command : (application setup runtime leaks).Command)
-    (reached : next ∈ (execution.environmentStep (application setup runtime leaks) command).support)
+theorem environment_lookup_initial (execution next : (application setup timeouts leaks).Execution)
+    (command : (application setup timeouts leaks).Command)
+    (reached : next ∈ (execution.environmentStep (application setup timeouts leaks)
+      command).support)
     (facts : SettledFacts setup leaks execution)
-    (clean : runtime.CountClean leaks execution)
+    (clean : (CountClean timeouts) leaks execution)
     (player : Player) (input : (graph setup).InputId) :
     next.application.candidates.lookup (player, .initial input) =
       execution.application.candidates.lookup (player, .initial input) := by
@@ -187,14 +189,14 @@ theorem environment_lookup_initial (execution next : (application setup runtime 
   | application command =>
       obtain ⟨updated, supported, rfl⟩ := PMF.support_map .. ▸ reached
       obtain ⟨state, changed, rfl⟩ := PMF.support_map .. ▸ supported
-      rw [(reactiveApplication_environment_tables runtime leaks execution.application state
+      rw [(reactiveApplication_environment_tables timeouts leaks execution.application state
         command changed).2]
   | «include» id =>
       unfold ReactiveApplication.Execution.environmentStep at reached
       rw [PMF.support_map] at reached
       obtain ⟨updated, supported, rfl⟩ := reached
       cases (PMF.mem_support_pure_iff _ _).mp supported
-      change (execution.includePending (application setup runtime leaks)
+      change (execution.includePending (application setup timeouts leaks)
         id).application.candidates.lookup _ = _
       cases found : execution.network.lookup id with
       | none =>
@@ -202,14 +204,14 @@ theorem environment_lookup_initial (execution next : (application setup runtime 
             found]
       | some message =>
           obtain ⟨_, present, _⟩ := includePending_found execution.network id message found
-          cases accepted : (application setup runtime leaks).handle execution.application message
+          cases accepted : (application setup timeouts leaks).handle execution.application message
             with
           | none =>
               simp only [ReactiveApplication.Execution.includePending,
                 MessageNetwork.includePending, found, accepted, Option.getD_none]
           | some after =>
               have applicationEq :
-                  (execution.includePending (application setup runtime leaks) id).application =
+                  (execution.includePending (application setup timeouts leaks) id).application =
                     after := by
                 simp only [ReactiveApplication.Execution.includePending,
                   MessageNetwork.includePending, found, accepted, Option.getD_some]
@@ -222,12 +224,12 @@ theorem environment_lookup_initial (execution next : (application setup runtime 
                   simp [handle] at call
               | opening event handle raw =>
                   rw [packet] at call
-                  rw [(handle_resolution_tables runtime _ _ _
+                  rw [(handle_resolution_tables timeouts _ _ _
                     (fun _ _ same => by cases same) call).2]
               | commitment event handle =>
                   rw [packet] at call
                   obtain ⟨frozen, _, _⟩ :=
-                    handle_commitment_tables runtime _ _ _ event handle call
+                    handle_commitment_tables timeouts _ _ _ event handle call
                   rw [frozen]
                   have input' := facts.carried.pending message present
                   have correct := ((countPermits_eq_true_iff _ _).mp (clean.2 message input')).2.1
@@ -242,8 +244,8 @@ theorem environment_lookup_initial (execution next : (application setup runtime 
 /-- **Initial handles carry their inputs** along every history of the one-packet
 game. -/
 theorem initialCandidates_of_trace {state}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state) :
-    ∀ control : (application setup runtime leaks).Control, state = some control →
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state) :
+    ∀ control : (application setup timeouts leaks).Control, state = some control →
       InitialCandidates setup control.execution.application := by
   induction trace with
   | start => intro _ initialized; cases initialized
@@ -252,7 +254,7 @@ theorem initialCandidates_of_trace {state}
       subst initialized
       cases before with
       | none =>
-          change some control ∈ ((application setup runtime leaks).transition (initialLaw setup)
+          change some control ∈ ((application setup timeouts leaks).transition (initialLaw setup)
             horizon scheduler none joint).support at realized
           rw [ReactiveApplication.transition, PMF.support_map] at realized
           obtain ⟨drawn, drawnMember, drawnEq⟩ := realized
@@ -264,42 +266,43 @@ theorem initialCandidates_of_trace {state}
           exact State.initial_candidate _ player (.initial input)
       | some current =>
           have previous := ih current rfl
-          have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace
+          have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace
             (initialLaw setup) horizon scheduler prior
-          have path := runtime.reactive_protocol_graph_steps leaks (initialLaw setup)
+          have path := (reactive_protocol_graph_steps timeouts) leaks (initialLaw setup)
             horizon scheduler current control joint realized
           have sameInputs := EventGraph.Config.Step.path_inputs_eq path
           intro player input
           rw [sameInputs, ← previous player input]
-          rcases onePacket_transition_cases (runtime := runtime) legal realized with
+          rcases onePacket_transition_cases (timeouts := timeouts) legal realized with
             ⟨who, action, member, nextEq⟩ | ⟨command, moved⟩ | same
           · rw [nextEq]
-            exact respond_lookup_initial (runtime := runtime) current.execution who action member
+            exact respond_lookup_initial (timeouts := timeouts) current.execution who action member
               player input
-          · exact environment_lookup_initial (runtime := runtime) current.execution _ command moved
+          · exact environment_lookup_initial (timeouts := timeouts) current.execution _ command
+              moved
               (settledFacts_history (initialLaw setup) horizon scheduler rawTrace)
-              ((bounds.onePacketMenu_countClean runtime leaks scheduler).history
+              ((bounds.onePacketMenu_countClean timeouts leaks scheduler).history
                 (initialLaw setup) horizon
-                (fun state _ => runtime.countClean_initial leaks state) prior)
+                (fun state _ => (countClean_initial timeouts) leaks state) prior)
               player input
           · rw [same]
 
 /-- Initial binding inputs retain their accepted initial handles along every history. -/
-theorem accepted_initial_of_trace {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+theorem accepted_initial_of_trace {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     {input : (graph setup).InputId} {owner : Player} {payload : L.Ty}
     (layoutEq : (graph setup).inputLayout input = .binding owner payload) :
     control.execution.application.accepted (.inl input) = some (owner, .initial input) := by
-  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
     scheduler trace
-  let invariant : (application setup runtime leaks).Invariant
+  let invariant : (application setup timeouts leaks).Invariant
       (fun state => state.accepted (.inl input) = some (owner, .initial input)) :=
     { submit := fun state who material held =>
-        ((keepsInputHandles_step runtime leaks).submit state who material input).trans held
+        ((keepsInputHandles_step timeouts leaks).submit state who material input).trans held
       handle := fun state message next held handled =>
-        ((keepsInputHandles_step runtime leaks).handle state message next handled input).trans held
+        ((keepsInputHandles_step timeouts leaks).handle state message next handled input).trans held
       environment := fun state command next held reached =>
-        ((keepsInputHandles_step runtime leaks).environment state command next reached input).trans
+        ((keepsInputHandles_step timeouts leaks).environment state command next reached input).trans
           held }
   exact invariant.history (initialLaw setup) horizon scheduler (fun state member => by
     obtain ⟨_, _, rfl⟩ := PMF.support_map .. ▸ member
@@ -309,7 +312,7 @@ end Initial
 
 section Grows
 
-variable (setup runtime) in
+variable (setup timeouts) in
 /-- An application state grows into another: stored fields stay stored, fixed
 meanings stay, and the history only grows. -/
 def StateGrows (before after : EventGraphRuntime.State (graph setup)) : Prop :=
@@ -332,17 +335,17 @@ theorem StateGrows.trans {first second third : EventGraphRuntime.State (graph se
 
 omit [Fintype Player] in
 /-- Every transition of the supplied runtime grows the application state. -/
-theorem stateGrows_transition {current next : (application setup runtime leaks).Control}
-    {joint : Player → Option (application setup runtime leaks).Action}
-    (reached : some next ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+theorem stateGrows_transition {current next : (application setup timeouts leaks).Control}
+    {joint : Player → Option (application setup timeouts leaks).Action}
+    (reached : some next ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
       scheduler (some current) joint).support) :
     StateGrows setup current.execution.application next.execution.application := by
-  refine ⟨(keepsStore_step runtime leaks).transition (initialLaw setup) horizon scheduler
+  refine ⟨(keepsStore_step timeouts leaks).transition (initialLaw setup) horizon scheduler
       current next joint reached,
-    (keepsFixedCandidates_step runtime leaks).transition (initialLaw setup) horizon
+    (keepsFixedCandidates_step timeouts leaks).transition (initialLaw setup) horizon
       scheduler current next joint reached, ?_⟩
   exact EventGraph.Config.Step.path_history_prefix
-    (runtime.reactive_protocol_graph_steps leaks (initialLaw setup) horizon scheduler
+    ((reactive_protocol_graph_steps timeouts) leaks (initialLaw setup) horizon scheduler
       current next joint reached)
 
 omit [Fintype Player] in
@@ -361,9 +364,9 @@ omit [Fintype Player] in
 /-- A recorded response stays recorded as the state grows. -/
 theorem RecordedResponse.grow {who : Player} {before after : EventGraphRuntime.State (graph setup)}
     {known : List (Message Player (WitnessedPacket (graph setup)))}
-    {entry : (application setup runtime leaks).PlayerEntry}
-    (recorded : RecordedResponse (runtime := runtime) who before known entry)
-    (keeps : KeepsFixedCandidates before after) : RecordedResponse (runtime := runtime) who after
+    {entry : (application setup timeouts leaks).PlayerEntry}
+    (recorded : RecordedResponse (timeouts := timeouts) who before known entry)
+    (keeps : KeepsFixedCandidates before after) : RecordedResponse (timeouts := timeouts) who after
       known entry := by
   rcases entry with ⟨view, ⟨transmission⟩, emitted⟩
   cases transmission with
@@ -386,17 +389,17 @@ section Record
 
 /-- Along every history, a player's prepared handles are fresh exactly when
 unnamed by its own packets. -/
-theorem freshExact_of_trace {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+theorem freshExact_of_trace {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (player : Player) (serial : Nat) :
     control.execution.application.candidates.lookup (player, .prepared serial) = .fresh ↔
-      ¬ NamedSlot player ((application setup runtime leaks).outputs (control.execution.logs
+      ¬ NamedSlot player ((application setup timeouts leaks).outputs (control.execution.logs
         player))
         serial := by
-  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
     horizon scheduler trace
-  have recalled := runtime.countRecall_history leaks rawTrace
-  rw [preparedFresh_history (runtime := runtime) horizon scheduler rawTrace player serial]
+  have recalled := (countRecall_history timeouts) leaks rawTrace
+  rw [preparedFresh_history (timeouts := timeouts) horizon scheduler rawTrace player serial]
   apply not_congr
   rw [← recalled.1 player]
   constructor
@@ -407,91 +410,92 @@ theorem freshExact_of_trace {control : (application setup runtime leaks).Control
     exact ⟨message, present, by simpa using sender, event, call⟩
 
 /-- A one-packet commitment names a slot that is fresh before the response. -/
-theorem onePacket_commitment_slotFresh {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
-    (who : Player) (response : (application setup runtime leaks).Action)
-    (member : response ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
+theorem onePacket_commitment_slotFresh {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
+    (who : Player) (response : (application setup timeouts leaks).Action)
+    (member : response ∈ bounds.onePacketActions timeouts leaks who
+      (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
         who))
-    (material : (application setup runtime leaks).Submission)
+    (material : (application setup timeouts leaks).Submission)
     (sends : response.transmission = some material) {event : (graph setup).EventId}
     {serial : Nat} (packet : material.call.packet = .commitment event (who, .prepared serial)) :
     control.execution.application.candidates.lookup (who, .prepared serial) = .fresh := by
-  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
-  have recalled := runtime.countRecall_history leaks rawTrace
-  obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions runtime leaks who _ _
+  have recalled := (countRecall_history timeouts) leaks rawTrace
+  obtain ⟨_, permitted⟩ := (bounds.mem_onePacketActions timeouts leaks who _ _
     response).mp member
-  have verdict : CountPermits ((application setup runtime leaks).outputs (control.execution.logs
+  have verdict : CountPermits ((application setup timeouts leaks).outputs (control.execution.logs
     who))
-      (runtime.localEnvelope leaks who (control.execution.logs who)
-        (control.execution.observe (application setup runtime leaks) who) material) := by
+      ((localEnvelope timeouts) leaks who (control.execution.logs who)
+        (control.execution.observe (application setup timeouts leaks) who) material) := by
     rcases permitted with silent | ⟨other, otherSends, counted⟩
     · rw [sends] at silent
       cases silent
     · rw [sends] at otherSends
       cases Option.some.inj otherSends
       exact (countPermits_eq_true_iff _ _).mp counted
-  have callEq : (runtime.localEnvelope leaks who (control.execution.logs who)
-      (control.execution.observe (application setup runtime leaks) who) material).payload.call =
+  have callEq : ((localEnvelope timeouts) leaks who (control.execution.logs who)
+      (control.execution.observe (application setup timeouts leaks) who) material).payload.call =
       material.call.packet := rfl
   have correct := verdict.2.1
   unfold CountCallCorrect at correct
   rw [callEq, packet] at correct
   obtain ⟨_, _, _, _, unused⟩ := correct
-  refine (freshExact_of_trace (runtime := runtime) trace who serial).mpr ?_
+  refine (freshExact_of_trace (timeouts := timeouts) trace who serial).mpr ?_
   rintro ⟨message, output, committed, call⟩
   have earlier := earlierOwnPacket_of_output rawTrace who
-    ((application setup runtime leaks).packet ((application setup runtime leaks).submit
+    ((application setup timeouts leaks).packet ((application setup timeouts leaks).submit
       control.execution.application who material) who (control.execution.network.known who)
         material) message output
-  rw [← runtime.localEnvelope_eq_of_recall leaks control.execution recalled.1
+  rw [← (localEnvelope_eq_of_recall timeouts) leaks control.execution recalled.1
     recalled.2.1 who material] at earlier
   exact unused message earlier committed call
 
 /-- **A response is recorded.** The entry a one-packet response appends to the
 responder's recall is recorded at the state after the response. -/
-theorem recordedResponse_respond {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
-    (who : Player) (action : (application setup runtime leaks).Action)
-    (member : action ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
+theorem recordedResponse_respond {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
+    (who : Player) (action : (application setup timeouts leaks).Action)
+    (member : action ∈ bounds.onePacketActions timeouts leaks who
+      (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
         who)) :
-    RecordedResponse (runtime := runtime) who (control.execution.respond (application setup
-      runtime leaks) who
+    RecordedResponse (timeouts := timeouts) who (control.execution.respond (application setup
+      timeouts leaks) who
         action).application
       (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
-        (control.execution.observe (application setup runtime leaks) who))
-      ⟨control.execution.observe (application setup runtime leaks) who, action,
+        (control.execution.observe (application setup timeouts leaks) who))
+      ⟨control.execution.observe (application setup timeouts leaks) who, action,
         action.transmission.map fun material =>
-          ⟨(who, control.execution.network.nextSerial who), (application setup runtime leaks).packet
-            ((application setup runtime leaks).submit control.execution.application who material)
+          ⟨(who, control.execution.network.nextSerial who), (application setup timeouts
+            leaks).packet
+            ((application setup timeouts leaks).submit control.execution.application who material)
               who
               (control.execution.network.known who) material⟩⟩ := by
-  have rawTrace := (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup)
+  have rawTrace := (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup)
     horizon scheduler trace
-  have recalled := runtime.countRecall_history leaks rawTrace
-  obtain ⟨effective, _⟩ := (bounds.mem_onePacketActions runtime leaks who _ _
+  have recalled := (countRecall_history timeouts) leaks rawTrace
+  obtain ⟨effective, _⟩ := (bounds.mem_onePacketActions timeouts leaks who _ _
     action).mp member
-  have normal := (runtime.reactiveNormalization leaks).menu_normal
-    (bounds.rawMenu runtime leaks) who _ _ action effective
+  have normal := ((reactiveNormalization timeouts) leaks).menu_normal
+    (bounds.rawMenu timeouts leaks) who _ _ action effective
   rcases action with ⟨transmission⟩
   cases transmission with
   | none => rfl
   | some material =>
       have materialNormal : material.normalizeReactive who
-          (control.execution.observe (application setup runtime leaks) who).application
+          (control.execution.observe (application setup timeouts leaks) who).application
           (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
-            (control.execution.observe (application setup runtime leaks) who)) = material :=
+            (control.execution.observe (application setup timeouts leaks) who)) = material :=
         Option.some.inj (congrArg ReactiveApplication.Action.transmission normal)
       have known : control.execution.network.known who =
           ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
-            (control.execution.observe (application setup runtime leaks) who) :=
-        (application setup runtime leaks).known_from_recall control.execution who recalled.1
-      have candidates : (fun slot => ((application setup runtime leaks).submit
+            (control.execution.observe (application setup timeouts leaks) who) :=
+        (application setup timeouts leaks).known_from_recall control.execution who recalled.1
+      have candidates : (fun slot => ((application setup timeouts leaks).submit
           control.execution.application who material).candidates.lookup (who, slot)) =
           material.call.candidateAfter who
             (fun slot => control.execution.application.candidates.lookup (who, slot)) :=
@@ -503,20 +507,21 @@ theorem recordedResponse_respond {control : (application setup runtime leaks).Co
             (fun slot => control.execution.application.candidates.lookup (who, slot))) _) =
           material.evidence at evidence
         change material.evidence = EvidenceRequest.canonical _
-          (material.emit ((application setup runtime leaks).submit control.execution.application who
+          (material.emit ((application setup timeouts leaks).submit
+            control.execution.application who
             material) who (control.execution.network.known who)).evidence
         rw [WitnessedSubmission.emit_eq_resolve, candidates, known]
         exact evidence.symm
       · have call := congrArg WitnessedSubmission.call materialNormal
         change material.call.normalizeReactive who _ = material.call at call
         have openingEq := congrArg Submission.opening call
-        change PreparationRecorded who ((application setup runtime leaks).submit
+        change PreparationRecorded who ((application setup timeouts leaks).submit
           control.execution.application who material) material.call
         cases packet : material.call.packet with
         | commitment event handle =>
-            obtain ⟨serial, rfl⟩ := onePacket_commitment_handle (runtime := runtime) member rfl
+            obtain ⟨serial, rfl⟩ := onePacket_commitment_handle (timeouts := timeouts) member rfl
               packet
-            have fresh := onePacket_commitment_slotFresh (runtime := runtime) trace who _ member
+            have fresh := onePacket_commitment_slotFresh (timeouts := timeouts) trace who _ member
               material rfl packet
             unfold PreparationRecorded
             rw [packet]
@@ -541,31 +546,31 @@ theorem recordedResponse_respond {control : (application setup runtime leaks).Co
             rw [← openingEq]
             simp only [Submission.normalizeReactive, packet, openingEffective, ↓reduceIte]
 
-variable (setup runtime leaks) in
+variable (setup timeouts leaks) in
 /-- **A recorded entry.** A recall entry of `player` taken after the entries
 `past` was taken at a state the current state grows from, at which the
 player's prepared handles were fresh exactly when unnamed by the packets of
 `past` and its initial handles carried their inputs, and its response is
 recorded at the current state. -/
-def RecalledAt (player : Player) (past : List (application setup runtime leaks).PlayerEntry)
-    (entry : (application setup runtime leaks).PlayerEntry)
+def RecalledAt (player : Player) (past : List (application setup timeouts leaks).PlayerEntry)
+    (entry : (application setup timeouts leaks).PlayerEntry)
     (current : EventGraphRuntime.State (graph setup)) : Prop :=
   ∃ before : EventGraphRuntime.State (graph setup),
     entry.beforeView.application = before.playerView player ∧
     StateGrows setup before current ∧
     (∀ serial, before.candidates.lookup (player, .prepared serial) = .fresh ↔
-      ¬ NamedSlot player ((application setup runtime leaks).outputs past) serial) ∧
+      ¬ NamedSlot player ((application setup timeouts leaks).outputs past) serial) ∧
     InitialCandidates setup before ∧
-    RecordedResponse (runtime := runtime) player current
+    RecordedResponse (timeouts := timeouts) player current
       (ReactiveApplication.ResponseMenu.knownPackets past entry.beforeView) entry
 
 omit [Fintype Player] in
-theorem RecalledAt.grow {player : Player} {past : List (application setup runtime
+theorem RecalledAt.grow {player : Player} {past : List (application setup timeouts
   leaks).PlayerEntry}
-    {entry : (application setup runtime leaks).PlayerEntry}
+    {entry : (application setup timeouts leaks).PlayerEntry}
     {current next : EventGraphRuntime.State (graph setup)}
-    (recalled : RecalledAt setup runtime leaks player past entry current)
-    (grows : StateGrows setup current next) : RecalledAt setup runtime leaks player past entry
+    (recalled : RecalledAt setup timeouts leaks player past entry current)
+    (grows : StateGrows setup current next) : RecalledAt setup timeouts leaks player past entry
       next := by
   obtain ⟨before, view, beforeGrows, fresh, initial, recorded⟩ := recalled
   exact ⟨before, view, beforeGrows.trans grows, fresh, initial, recorded.grow
@@ -591,10 +596,10 @@ private theorem forall_take_append {α : Type} {property : List α → α → Pr
 /-- **Every recall entry is recorded** along every history of the one-packet
 game. -/
 theorem recallRecord_of_trace {state}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state) :
-    ∀ control : (application setup runtime leaks).Control, state = some control →
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state) :
+    ∀ control : (application setup timeouts leaks).Control, state = some control →
       ∀ player k (inside : k < (control.execution.logs player).length),
-        RecalledAt setup runtime leaks player ((control.execution.logs player).take k)
+        RecalledAt setup timeouts leaks player ((control.execution.logs player).take k)
           (control.execution.logs player)[k] control.execution.application := by
   induction trace with
   | start => intro _ initialized; cases initialized
@@ -603,7 +608,7 @@ theorem recallRecord_of_trace {state}
       subst initialized
       cases before with
       | none =>
-          change some control ∈ ((application setup runtime leaks).transition (initialLaw setup)
+          change some control ∈ ((application setup timeouts leaks).transition (initialLaw setup)
             horizon scheduler none joint).support at realized
           rw [ReactiveApplication.transition, PMF.support_map] at realized
           obtain ⟨drawn, _, drawnEq⟩ := realized
@@ -612,15 +617,15 @@ theorem recallRecord_of_trace {state}
           exact absurd inside (Nat.not_lt_zero _)
       | some current =>
           have previous := ih current rfl
-          have grows := stateGrows_transition (runtime := runtime) (horizon := horizon) realized
+          have grows := stateGrows_transition (timeouts := timeouts) (horizon := horizon) realized
           have kept : ∀ player k (inside : k < (current.execution.logs player).length),
-              RecalledAt setup runtime leaks player ((current.execution.logs player).take k)
+              RecalledAt setup timeouts leaks player ((current.execution.logs player).take k)
                 (current.execution.logs player)[k] control.execution.application :=
             fun player k inside => (previous player k inside).grow grows
-          rcases onePacket_transition_cases (runtime := runtime) legal realized with
+          rcases onePacket_transition_cases (timeouts := timeouts) legal realized with
             ⟨who, action, member, nextEq⟩ | ⟨command, moved⟩ | same
           · intro player
-            have recallEq := runtime.respond_recall leaks current.execution who player
+            have recallEq := (respond_recall timeouts) leaks current.execution who player
               action
             rw [← nextEq] at recallEq
             rw [recallEq]
@@ -628,16 +633,16 @@ theorem recallRecord_of_trace {state}
             · rename_i same
               subst same
               apply forall_take_append (property := fun past entry =>
-                RecalledAt setup runtime leaks player past entry control.execution.application)
+                RecalledAt setup timeouts leaks player past entry control.execution.application)
                 (kept player)
               refine ⟨current.execution.application, rfl, grows, ?_,
-                initialCandidates_of_trace (runtime := runtime) prior current rfl, ?_⟩
-              · exact freshExact_of_trace (runtime := runtime) prior player
+                initialCandidates_of_trace (timeouts := timeouts) prior current rfl, ?_⟩
+              · exact freshExact_of_trace (timeouts := timeouts) prior player
               · rw [nextEq]
-                exact recordedResponse_respond (runtime := runtime) prior player action member
+                exact recordedResponse_respond (timeouts := timeouts) prior player action member
             · exact kept player
           · intro player
-            rw [(application setup runtime leaks).environmentStep_recall _ _ command moved]
+            rw [(application setup timeouts leaks).environmentStep_recall _ _ command moved]
             exact kept player
           · intro player
             rw [same]

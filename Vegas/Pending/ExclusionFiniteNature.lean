@@ -17,15 +17,15 @@ namespace Vegas.EventGraphRuntime
 open Interaction
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {graph : Vegas.EventGraph Player L} (runtime : EventGraphRuntime graph)
+  {graph : Vegas.EventGraph Player L} (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 /-- The native environment contributes no additional finiteness premise beyond
 those on actual pending observations, initialization and scheduling laws. -/
 theorem reactiveApplication_finiteNature_iff
-    (initial : PMF (runtime.reactiveApplication leaks).State)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler) :
-    (runtime.reactiveApplication leaks).FiniteNature initial scheduler ↔
+    (initial : PMF ((reactiveApplication timeouts) leaks).State)
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler) :
+    ((reactiveApplication timeouts) leaks).FiniteNature initial scheduler ↔
       leaks.FiniteSupport ∧ initial.support.Finite ∧
         ∀ past view, (scheduler past view).support.Finite := by
   constructor

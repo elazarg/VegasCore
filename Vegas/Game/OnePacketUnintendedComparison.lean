@@ -17,17 +17,18 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
-local notation "N" => onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon
+  scheduler
 local notation "NP" => ReactiveApplication.ResponseMenu.protocol
-  (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon scheduler
-local notation "Menu" => bounds.onePacketMenu runtime leaks
+  (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler
+local notation "Menu" => bounds.onePacketMenu timeouts leaks
 local notation "Clear" => ReactiveApplication.stateInvariant
-  (app := application setup runtime leaks)
+  (app := application setup timeouts leaks)
     (fun native : EventGraphRuntime.State (graph setup) =>
       EventGraph.Config.defaulted (EventGraphRuntime.State.config native) = ∅)
 
@@ -35,49 +36,49 @@ open Classical in
 /-- An unintended first-callback commitment has exclusion value on regular
 histories, so its gain is bounded by the common honest-retention error. -/
 theorem assembled_unintendedCommitment_history_comparison
-    [(application setup runtime leaks).FiniteNature (initialLaw setup) scheduler]
+    [(application setup timeouts leaks).FiniteNature (initialLaw setup) scheduler]
     [∀ who, DecidableEq ((N).InfoState who)]
     (wellFormed : setup.WellFormed) (covers : bounds.CoversOutputValues)
     (capacity : ∀ player, bindingEventCount (graph setup) player < bounds.candidateCount)
     (sequence : ℕ → setup.intendedModel.BehavioralAssessment)
     (scale : ℕ → ℝ) (positive : ∀ n, 0 < scale n) (le_one : ∀ n, scale n ≤ 1)
     {slots : Nat}
-    (weights : ℕ → ∀ p, PMF (OnePacketPart setup runtime leaks bounds (initialLaw setup)
+    (weights : ℕ → ∀ p, PMF (OnePacketPart setup timeouts leaks bounds (initialLaw setup)
       horizon scheduler slots p))
     (targetSequence : ℕ → (N).BehavioralAssessment)
-    (assembled : OnePacketAssembled setup runtime leaks bounds horizon scheduler sequence scale
+    (assembled : OnePacketAssembled setup timeouts leaks bounds horizon scheduler sequence scale
       positive le_one weights targetSequence) (n : ℕ)
     {delay bound : (graph setup).EventId → Nat}
-    (opportunity : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+    (opportunity : ∀ control : (application setup timeouts leaks).Control,
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         control) →
       control.execution.application.config.defaulted = ∅ →
-      OpportunityAt runtime leaks control.execution delay)
-    (inclusion : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+      OpportunityAt timeouts leaks control.execution delay)
+    (inclusion : ∀ control : (application setup timeouts leaks).Control,
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         control) →
       control.execution.application.config.defaulted = ∅ →
-      ProtectedInclusionAt runtime leaks control.execution bound)
-    (timely : runtime.AsyncTimely delay bound)
-    (completes : ∀ control : (application setup runtime leaks).Control,
-      (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+      ProtectedInclusionAt timeouts leaks control.execution bound)
+    (timely : (AsyncTimely timeouts) delay bound)
+    (completes : ∀ control : (application setup timeouts leaks).Control,
+      (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
         control) →
       control.execution.application.config.defaulted = ∅ →
-      (application setup runtime leaks).terminal (some control) →
+      (application setup timeouts leaks).terminal (some control) →
       control.execution.application.config.cut.Terminal)
     {who : Player} (site : (N).InformationSite who) (choice : (N).Choice who site.1)
-    (notFree : ¬ Vegas.FreeAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+    (notFree : ¬ Vegas.FreeAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
       ((N).agentAt site))
-    (notOwing : ¬ Vegas.OwingAgent setup runtime leaks bounds (initialLaw setup) horizon scheduler
+    (notOwing : ¬ Vegas.OwingAgent setup timeouts leaks bounds (initialLaw setup) horizon scheduler
       ((N).agentAt site))
-    (nonlate : ¬ LateDelivery setup runtime leaks who site.1)
-    (atTurn : CommitsAtTurn setup runtime leaks bounds horizon scheduler who site choice)
+    (nonlate : ¬ LateDelivery setup timeouts leaks who site.1)
+    (atTurn : CommitsAtTurn setup timeouts leaks bounds horizon scheduler who site choice)
     (unintendedChoice :
-      ¬ IntendedCommitment setup runtime leaks bounds horizon scheduler site choice)
-    {past : List (application setup runtime leaks).PlayerEntry}
-    {view : (application setup runtime leaks).PlayerView} (atSite : site.1 = some (past, view))
-    (response : (application setup runtime leaks).Action) (selected : choice.1 = some response)
-    (material : (application setup runtime leaks).Submission)
+      ¬ IntendedCommitment setup timeouts leaks bounds horizon scheduler site choice)
+    {past : List (application setup timeouts leaks).PlayerEntry}
+    {view : (application setup timeouts leaks).PlayerView} (atSite : site.1 = some (past, view))
+    (response : (application setup timeouts leaks).Action) (selected : choice.1 = some response)
+    (material : (application setup timeouts leaks).Submission)
     (sends : response.transmission = some material)
     (event : (graph setup).EventId) (candidate : Handle (graph setup))
     (packet : material.call.packet = .commitment event candidate)
@@ -97,12 +98,12 @@ theorem assembled_unintendedCommitment_history_comparison
     let certificate := ((Menu).bounded (initialLaw setup) horizon
       scheduler).wellFoundedHistories
     let stopped := fun final : (NP).History => ¬ Clear final.state ∨
-      DecodedState setup runtime leaks (failureProfile setup.program)
+      DecodedState setup timeouts leaks (failureProfile setup.program)
         (ProtocolState.OwesFailure who setup.program) final.state
     let payoff := fun final : (NP).History => if stopped final then excludedPayoff who else
-      exclusionBase setup runtime parameter utility excludedPayoff leaks final.state who
+      exclusionBase setup timeouts parameter utility excludedPayoff leaks final.state who
     ∀ history : (N).InformationHistory who site.1,
-      RegularTrace setup runtime leaks bounds horizon scheduler (sequence n) who
+      RegularTrace setup timeouts leaks bounds horizon scheduler (sequence n) who
         history.1.trace →
       expect ((N).runBehavioralUntil certificate
           (Profile.update (sig := (N).behavioralSignature) common who
@@ -111,20 +112,20 @@ theorem assembled_unintendedCommitment_history_comparison
       (2 * payoffBound * (1 - slotRetention (scale n))) *
         (2 * horizon + 1) + 2 * payoffBound * (1 - slotRetention (scale n)) := by
   intro common certificate stopped payoff history regular
-  have forced := forcedAgent_of_not_free setup runtime leaks bounds (initialLaw setup) horizon
+  have forced := forcedAgent_of_not_free setup timeouts leaks bounds (initialLaw setup) horizon
     scheduler notFree
-  have debtFree := siteDebtFree_of_not_owing setup runtime leaks bounds horizon scheduler notOwing
-  have ownIntended := ownCompletionsIntended_of_siteNotOwes (runtime := runtime) wellFormed
+  have debtFree := siteDebtFree_of_not_owing setup timeouts leaks bounds horizon scheduler notOwing
+  have ownIntended := ownCompletionsIntended_of_siteNotOwes (timeouts := timeouts) wellFormed
     debtFree history
-  have allDebtFree := not_owesFailure_of_regular (runtime := runtime) wellFormed (sequence n)
+  have allDebtFree := not_owesFailure_of_regular (timeouts := timeouts) wellFormed (sequence n)
     atSite forced history regular ownIntended
-  have stateForced := forcedState_of_regular (runtime := runtime) wellFormed (sequence n) atSite
+  have stateForced := forcedState_of_regular (timeouts := timeouts) wellFormed (sequence n) atSite
     forced history regular ownIntended
-  have valueEq := unintendedCommitment_stopped_value setup runtime leaks bounds horizon scheduler
+  have valueEq := unintendedCommitment_stopped_value setup timeouts leaks bounds horizon scheduler
     wellFormed completes common site choice notOwing atTurn unintendedChoice atSite response
     selected material sends event candidate packet parameter utility excludedPayoff readoutBounded
     excludedBounded history stateForced
-  have submitted : runtime.submittedEvent? leaks response = some event := by
+  have submitted : (submittedEvent? timeouts) leaks response = some event := by
     unfold EventGraphRuntime.submittedEvent?
     simp only [sends, packet, Payload.event?]
   obtain ⟨otherPast, otherView, otherResponse, otherEvent, otherAt, otherChosen, otherSubmitted,
@@ -134,21 +135,21 @@ theorem assembled_unintendedCommitment_history_comparison
   subst otherResponse
   have sameEvent := Option.some.inj (submitted.symm.trans otherSubmitted)
   subst otherEvent
-  have pending : pendingEvent setup runtime leaks who site.1 = some event := by
-    by_cases unrecorded : runtime.eventRecorded leaks past event = false
+  have pending : pendingEvent setup timeouts leaks who site.1 = some event := by
+    by_cases unrecorded : (eventRecorded timeouts) leaks past event = false
     · rw [atSite]
-      exact pendingEvent_of_spec (runtime := runtime) turn unrecorded
+      exact pendingEvent_of_spec (timeouts := timeouts) turn unrecorded
     · have recorded := Bool.eq_true_of_not_eq_false unrecorded
-      have unpending : pendingEvent setup runtime leaks who site.1 = none := by
+      have unpending : pendingEvent setup timeouts leaks who site.1 = none := by
         rw [atSite]
         simp [pendingEvent, turn, recorded]
-      have quiet := choice_eq_silence_of_unpending_notOwing (runtime := runtime) wellFormed
+      have quiet := choice_eq_silence_of_unpending_notOwing (timeouts := timeouts) wellFormed
         site notOwing atSite unpending choice
       rw [selected, Option.some.injEq] at quiet
       rw [quiet] at sends
       cases sends
   obtain ⟨remaining, execution, point, current, actualAt, never, ordered, decoded, intended,
-    reached⟩ := firstActivation_history_facts setup runtime leaks bounds horizon scheduler
+    reached⟩ := firstActivation_history_facts setup timeouts leaks bounds horizon scheduler
       wellFormed site pending nonlate history stateForced allDebtFree
   have pointDecoded := (decodedPoint_eq_of_isPrefix ordered).trans decoded
   have clear := defaulted_eq_empty_of_decodedIntended pointDecoded intended
@@ -156,7 +157,7 @@ theorem assembled_unintendedCommitment_history_comparison
     (setup.intendedOpeningProfile (sequence n).strategy) who upper le_upper
     (fun target reachable => excludedPayoff_le_of_reached setup parameter utility excludedPayoff
       wellFormed below (sequence n).strategy target reachable who) point reached).1
-  have baseline := assembled_firstActivation_value_lower setup runtime leaks bounds horizon
+  have baseline := assembled_firstActivation_value_lower setup timeouts leaks bounds horizon
     scheduler wellFormed covers capacity sequence scale positive le_one weights targetSequence
     assembled n opportunity inclusion timely completes certificate history.1 current clear event
     (by rwa [← actualAt]) never ordered decoded intended parameter utility excludedPayoff

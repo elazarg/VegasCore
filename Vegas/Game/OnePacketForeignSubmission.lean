@@ -15,10 +15,10 @@ open SourceProgram GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionP
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- A recorded submission for a still-ready foreign event identifies an actual
 first owner response after an earlier focal source turn, at a clear regular
@@ -27,61 +27,62 @@ theorem foreign_firstActivation_prefix_of_recorded
     (wellFormed : setup.WellFormed)
     (source : setup.intendedModel.BehavioralAssessment) (focal owner : Player)
     (different : owner ≠ focal)
-    (start control : (application setup runtime leaks).Control)
-    (startTrace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some
+    (start control : (application setup timeouts leaks).Control)
+    (startTrace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
       start))
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (startPrefix : TracePrefix startTrace trace)
     (current event : (graph setup).EventId)
     (turn : start.execution.application.publicView.ownTurn? focal = some current)
     (clear : control.execution.application.config.defaulted = ∅)
-    (regular : RegularTrace setup runtime leaks bounds horizon scheduler source focal trace)
+    (regular : RegularTrace setup timeouts leaks bounds horizon scheduler source focal trace)
     (notOwed : ∀ point, decodedPoint setup control.execution.application.config = some point →
       ¬ ProtocolState.OwesFailure focal setup.program point)
     (owned : (graph setup).actor? event = some owner)
     (ready : control.execution.application.config.cut.Ready event)
-    (recorded : runtime.eventRecorded leaks (control.execution.logs owner) event = true) :
-    ∃ (before : (application setup runtime leaks).Control)
-      (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some before))
-      (response : (application setup runtime leaks).Action)
-      (joint : Player → Option (application setup runtime leaks).Action)
-      (legal : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Legal (some
+    (recorded : (eventRecorded timeouts) leaks (control.execution.logs owner) event = true) :
+    ∃ (before : (application setup timeouts leaks).Control)
+      (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some
+        before))
+      (response : (application setup timeouts leaks).Action)
+      (joint : Player → Option (application setup timeouts leaks).Action)
+      (legal : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Legal (some
         before) joint)
       (realized : some ⟨before.remaining, none,
-        before.execution.respond (application setup runtime leaks) owner response⟩ ∈
-        ((onePacketProtocol setup runtime leaks bounds horizon scheduler).step
+        before.execution.respond (application setup timeouts leaks) owner response⟩ ∈
+        ((onePacketProtocol setup timeouts leaks bounds horizon scheduler).step
           (some before) ⟨joint, legal⟩).support),
       TracePrefix startTrace prior ∧ TracePrefix (prior.extend joint legal realized) trace ∧
       before.actor = some owner ∧ joint owner = some response ∧
-      pendingEvent setup runtime leaks owner (some (before.execution.logs owner,
-        before.execution.observe (application setup runtime leaks) owner)) = some event ∧
+      pendingEvent setup timeouts leaks owner (some (before.execution.logs owner,
+        before.execution.observe (application setup timeouts leaks) owner)) = some event ∧
       ∀ previous ∈ before.execution.logs owner,
-        ¬ ActivatedAt setup runtime leaks owner event previous := by
+        ¬ ActivatedAt setup timeouts leaks owner event previous := by
   obtain ⟨point, decoded, intended⟩ :=
-    intended_of_clear_regular_notOwes (runtime := runtime) wellFormed source focal trace clear
+    intended_of_clear_regular_notOwes (timeouts := timeouts) wellFormed source focal trace clear
       regular notOwed
-  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime) (failureProfile
+  obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts) (failureProfile
     setup.program)
-    (bounds.onePacketMenu runtime leaks) horizon scheduler trace control rfl
+    (bounds.onePacketMenu timeouts leaks) horizon scheduler trace control rfl
   have samePoint := Option.some.inj ((decodedPoint_eq residual).symm.trans decoded)
   subst point
-  have submissions := onePacket_ownSubmissionsAtTurn (runtime := runtime) bounds trace
+  have submissions := onePacket_ownSubmissionsAtTurn (timeouts := timeouts) bounds trace
     residual.checkpoint.ordered _
     residual.decode intended owner
   obtain ⟨entry, remembered, submitted⟩ :=
-    (runtime.eventRecorded_iff leaks (control.execution.logs owner) event).mp recorded
+    ((eventRecorded_iff timeouts) leaks (control.execution.logs owner) event).mp recorded
   have occurs : ∃ entry ∈ control.execution.logs owner,
-      ActivatedAt setup runtime leaks owner event entry :=
+      ActivatedAt setup timeouts leaks owner event entry :=
     ⟨entry, remembered, submissions entry remembered event submitted⟩
   obtain ⟨before, prior, response, joint, legal, realized, isPrefix, acting, chosen, pending,
-    never⟩ := firstActivation_response_prefix_of_recall (runtime := runtime) trace owner event
+    never⟩ := firstActivation_response_prefix_of_recall (timeouts := timeouts) trace owner event
       occurs submissions
   have unfinished : event ∉ start.execution.application.config.cut.completed := by
     intro completed
     obtain ⟨value, output⟩ := Option.isSome_iff_exists.mp
       ((start.execution.application.config.output_available event).mpr completed)
     have stored : start.execution.application.config.store (.inr event) = some value := output
-    have retained := storedValue_of_tracePrefix (runtime := runtime) startTrace startPrefix (.inr
+    have retained := storedValue_of_tracePrefix (timeouts := timeouts) startTrace startPrefix (.inr
       event) value stored
     change control.execution.application.config.outputs event = some value at retained
     exact ready.1 ((control.execution.application.config.output_available event).mp
@@ -89,8 +90,8 @@ theorem foreign_firstActivation_prefix_of_recorded
   have beforePrefix : TracePrefix prior trace :=
     (TracePrefix.extend .refl joint legal realized).trans isPrefix
   have readyBefore := (before.execution.application.publicView_eventReady event).mp
-    (pendingEvent_spec (runtime := runtime) pending).2.1
-  have future := foreign_ready_prefix_after_ownTurn (runtime := runtime) startTrace prior
+    (pendingEvent_spec (timeouts := timeouts) pending).2.1
+  have future := foreign_ready_prefix_after_ownTurn (timeouts := timeouts) startTrace prior
     startPrefix beforePrefix focal
     owner different current event turn owned unfinished readyBefore
   exact ⟨before, prior, response, joint, legal, realized, future, isPrefix, acting, chosen, pending,

@@ -22,15 +22,15 @@ variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
 /-- A network slot in which nothing is included. -/
-def idleNetwork (runtime : EventGraphRuntime graph)
+def idleNetwork (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
-    runtime.NetworkPolicy leaks := fun _ _ => PMF.pure .wait
+    (NetworkPolicy timeouts) leaks := fun _ _ => PMF.pure .wait
 
-theorem idleNetwork_instruction (runtime : EventGraphRuntime graph)
+theorem idleNetwork_instruction (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
-    (history : List (runtime.reactiveApplication leaks).EnvironmentEntry)
-    (view : (runtime.reactiveApplication leaks).EnvironmentView) :
-    runtime.interactionInstruction leaks (runtime.idleNetwork leaks) history view .wire =
+    (history : List ((reactiveApplication timeouts) leaks).EnvironmentEntry)
+    (view : ((reactiveApplication timeouts) leaks).EnvironmentView) :
+    (interactionInstruction timeouts) leaks ((idleNetwork timeouts) leaks) history view .wire =
       PMF.pure .wait := by
   simp [interactionInstruction, idleNetwork, NetworkChoice.command,
     ReactiveApplication.atMostOnceCommand, PMF.pure_map]

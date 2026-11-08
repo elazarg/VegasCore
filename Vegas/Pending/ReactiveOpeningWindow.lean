@@ -22,28 +22,28 @@ open GameTheory.Math.Probability Interaction
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
 
-def windowOpening (runtime : EventGraphRuntime graph)
+def windowOpening (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (event : graph.EventId) (candidate : Handle graph) (raw : Raw L) :
-    (runtime.reactiveApplication leaks).Action :=
+    ((reactiveApplication timeouts) leaks).Action :=
   ⟨some (disclosureSubmission (.opening event candidate raw))⟩
 
-def openingWindowPlayers (runtime : EventGraphRuntime graph)
+def openingWindowPlayers (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
     (offset : Nat) {slots : Nat} (selected : Option (Fin slots)) :
-    Player → (runtime.reactiveApplication leaks).Policy := fun who =>
-  let app := runtime.reactiveApplication leaks
+    Player → ((reactiveApplication timeouts) leaks).Policy := fun who =>
+  let app := (reactiveApplication timeouts) leaks
   if who = owner then app.scheduledPolicy offset selected
-    (fun _ _ => PMF.pure (runtime.windowOpening leaks event candidate raw)) app.silentPolicy
+    (fun _ _ => PMF.pure ((windowOpening timeouts) leaks event candidate raw)) app.silentPolicy
   else app.silentPolicy
 
-theorem windowOpening_packet (runtime : EventGraphRuntime graph)
+theorem windowOpening_packet (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (owner : Player) (event : graph.EventId) (candidate : Handle graph) (raw : Raw L)
     (state : State graph) (known : List (Message Player (WitnessedPacket graph)))
     (owned : candidate.1 = owner) (valid : state.candidates.lookup candidate = .openable raw) :
-    (runtime.reactiveApplication leaks).packet state owner known
+    ((reactiveApplication timeouts) leaks).packet state owner known
       (disclosureSubmission (.opening event candidate raw)) =
         ⟨.opening event candidate raw, some ⟨candidate, raw⟩,
           state.publicView.tokenFor (.opening event candidate raw)⟩ := by

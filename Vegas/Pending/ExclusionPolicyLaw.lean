@@ -100,7 +100,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- Acceptance has the ordinary full continuation law of its certified graph completion.
 Automatic default service may advance several instructions before that continuation starts. -/
 theorem AcceptanceWitness.reactive_runPlan (graph : Vegas.EventGraph Player L)
-    (runtime : EventGraphRuntime graph.sequentialize)
+    (timeouts : EventTimeouts graph.sequentialize)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph.sequentialize))
     (profile : graph.sequentialize.BehavioralProfile)
     {event : graph.sequentialize.EventId}
@@ -110,7 +110,7 @@ theorem AcceptanceWitness.reactive_runPlan (graph : Vegas.EventGraph Player L)
     {state next : State graph.sequentialize}
     (witness : AcceptanceWitness event message sent action output state)
     (sameConfig : state.config = sent)
-    (accepted : (runtime.reactiveApplication leaks).handle state message = some next) :
+    (accepted : ((reactiveApplication timeouts) leaks).handle state message = some next) :
     ∃ ready : sent.cut.Ready event, sent.actualDecision event action = some action ∧
       graph.sequentialize.runPlan
           (graph.sequentialize.policyPlan profile graph.sequentialize.canonicalScheduler)
@@ -120,7 +120,7 @@ theorem AcceptanceWitness.reactive_runPlan (graph : Vegas.EventGraph Player L)
           (sent.complete event ready action output).remaining
           (sent.complete event ready action output) := by
   obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
-  obtain ⟨ready, recorded, completed⟩ := witness.complete runtime sameConfig handled
+  obtain ⟨ready, recorded, completed⟩ := witness.complete timeouts sameConfig handled
   refine ⟨ready, recorded, ?_⟩
   rw [← nextEq]
   simpa only [completed] using (State.drain_runPlan_canonical graph profile native).symm
@@ -129,7 +129,7 @@ theorem AcceptanceWitness.reactive_runPlan (graph : Vegas.EventGraph Player L)
 /-- Acceptance has the continuation of its certified graph completion, for every
 continuation that automatic default completion leaves unchanged. -/
 theorem AcceptanceWitness.reactive_continuation {graph : Vegas.EventGraph Player L}
-    (runtime : EventGraphRuntime graph)
+    (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     {Result : Type*} (continuation : graph.Config → PMF Result)
     (drained : ∀ state : State graph, continuation state.drain.config = continuation state.config)
@@ -138,11 +138,11 @@ theorem AcceptanceWitness.reactive_continuation {graph : Vegas.EventGraph Player
     {output : (graph.outputLayout event).Value} {state next : State graph}
     (witness : AcceptanceWitness event message sent action output state)
     (sameConfig : state.config = sent)
-    (accepted : (runtime.reactiveApplication leaks).handle state message = some next) :
+    (accepted : ((reactiveApplication timeouts) leaks).handle state message = some next) :
     ∃ ready : sent.cut.Ready event, sent.actualDecision event action = some action ∧
       continuation next.config = continuation (sent.complete event ready action output) := by
   obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
-  obtain ⟨ready, recorded, completed⟩ := witness.complete runtime sameConfig handled
+  obtain ⟨ready, recorded, completed⟩ := witness.complete timeouts sameConfig handled
   refine ⟨ready, recorded, ?_⟩
   rw [← nextEq]
   simpa only [completed] using drained native

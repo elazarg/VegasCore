@@ -70,25 +70,25 @@ theorem window_completes_ready (inputs : compiled.Inputs) (players : OddsEvens.P
     simpa only [PMF.bind_pure] using moved
   obtain ⟨_, suffixProgress⟩ := runRounds_progress inputs players
     tail expired after
-      (reactive_environment_progress runtime leaks inputs middle expired
+      (reactive_environment_progress timeouts leaks inputs middle expired
         (.application (.expire event)) middleAligned.valid expiredReached).invariant
       finalReached
   by_cases done : event ∈ middle.application.config.cut.completed
-  · have step := reactive_environment_progress runtime leaks inputs middle expired
+  · have step := reactive_environment_progress timeouts leaks inputs middle expired
       (.application (.expire event)) middleAligned.valid expiredReached
     exact suffixProgress.completed (step.completed done)
   · have stillReady := (prefixProgress.ready_or_completed event ready).resolve_left done
     have stillActivated := prefixProgress.activated event entered activated done
-    have due : runtime.deadline event ≤ middle.application.clock - entered := by
+    have due : timeouts.duration event ≤ middle.application.clock - entered := by
       change 6 ≤ middle.application.clock - entered
       rw [middleClock]
       omega
     obtain ⟨updated, observed, rfl⟩ := PMF.support_map .. ▸ expiredReached
     obtain ⟨native, nativeMoved, rfl⟩ := PMF.support_map .. ▸ observed
-    change native ∈ ((environmentStep runtime middle.application (.expire event)).map
+    change native ∈ ((environmentStep timeouts middle.application (.expire event)).map
       State.drain).support at nativeMoved
     obtain ⟨raw, rawMoved, rfl⟩ := PMF.support_map .. ▸ nativeMoved
-    have completed := environmentStep_expire_complete runtime middle.application raw
+    have completed := environmentStep_expire_complete timeouts middle.application raw
       event stillReady (every_event_owned event) entered stillActivated due rawMoved
     exact suffixProgress.completed
       (raw.drainFuel_completed_subset raw.config.remaining completed)
@@ -171,7 +171,7 @@ theorem runRounds_complete (inputs : compiled.Inputs) (players : OddsEvens.Playe
   change 4 ≤ final.application.config.cut.completed.card
   omega
 
-theorem completesPlay : CompletesPlay runtime leaks initial horizon scheduler := by
+theorem completesPlay : CompletesPlay timeouts leaks initial horizon scheduler := by
   intro current trace terminal
   rcases current with ⟨remaining, actor, execution⟩
   obtain ⟨rfl, rfl⟩ := terminal

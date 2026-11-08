@@ -26,7 +26,7 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- Whether a candidate binds a successful value at a binding of a payload
@@ -41,7 +41,7 @@ def candidateSucceeds (state : EventGraphRuntime.State (graph setup))
 identifier and whether its candidate succeeds; nothing otherwise. -/
 def commitStatus (event : (graph setup).EventId) (owner : Player) (payload : L.Ty)
     (state : EventGraphRuntime.State (graph setup))
-    (message : Message Player (application setup runtime leaks).Payload) :
+    (message : Message Player (application setup timeouts leaks).Payload) :
     Option (MessageId Player × Bool) :=
   match message.payload.call with
   | .commitment named candidate =>
@@ -53,16 +53,16 @@ def commitStatus (event : (graph setup).EventId) (owner : Player) (payload : L.T
 /-- The statuses of the owner's commitments to the event in a list of packets. -/
 def commitStatuses (event : (graph setup).EventId) (owner : Player) (payload : L.Ty)
     (state : EventGraphRuntime.State (graph setup))
-    (packets : List (Message Player (application setup runtime leaks).Payload)) :
+    (packets : List (Message Player (application setup timeouts leaks).Payload)) :
     List (MessageId Player × Bool) :=
-  packets.filterMap (commitStatus (runtime := runtime) event owner payload state)
+  packets.filterMap (commitStatus (timeouts := timeouts) event owner payload state)
 
 /-- Whether a packet has a status does not depend on the contract state. -/
 theorem commitStatus_isSome_congr (event : (graph setup).EventId) (owner : Player)
     (payload : L.Ty) (first second : EventGraphRuntime.State (graph setup))
-    (message : Message Player (application setup runtime leaks).Payload) :
-    (commitStatus (runtime := runtime) event owner payload first message).isSome =
-      (commitStatus (runtime := runtime) event owner payload second message).isSome := by
+    (message : Message Player (application setup timeouts leaks).Payload) :
+    (commitStatus (timeouts := timeouts) event owner payload first message).isSome =
+      (commitStatus (timeouts := timeouts) event owner payload second message).isSome := by
   unfold commitStatus
   split
   · split <;> rfl
@@ -71,19 +71,20 @@ theorem commitStatus_isSome_congr (event : (graph setup).EventId) (owner : Playe
 /-- Equal statuses of a list are equal packet by packet. -/
 theorem commitStatus_eq_of_mem {event : (graph setup).EventId} {owner : Player}
     {payload : L.Ty} {first second : EventGraphRuntime.State (graph setup)} :
-    ∀ {packets : List (Message Player (application setup runtime leaks).Payload)},
-    commitStatuses (runtime := runtime) event owner payload first packets =
-      commitStatuses (runtime := runtime) event owner payload second packets →
-    ∀ message ∈ packets, commitStatus (runtime := runtime) event owner payload first message =
-      commitStatus (runtime := runtime) event owner payload second message
+    ∀ {packets : List (Message Player (application setup timeouts leaks).Payload)},
+    commitStatuses (timeouts := timeouts) event owner payload first packets =
+      commitStatuses (timeouts := timeouts) event owner payload second packets →
+    ∀ message ∈ packets, commitStatus (timeouts := timeouts) event owner payload first message =
+      commitStatus (timeouts := timeouts) event owner payload second message
   | [], _, _, member => by cases member
   | head :: rest, same, message, member => by
-      have someEq := commitStatus_isSome_congr (runtime := runtime) event owner payload first
+      have someEq := commitStatus_isSome_congr (timeouts := timeouts) event owner payload first
         second head
       unfold commitStatuses at same
-      cases firstHead : commitStatus (runtime := runtime) event owner payload first head with
+      cases firstHead : commitStatus (timeouts := timeouts) event owner payload first head with
       | none =>
-          cases secondHead : commitStatus (runtime := runtime) event owner payload second head with
+          cases secondHead : commitStatus (timeouts := timeouts) event owner payload second head
+            with
           | none =>
               rw [List.filterMap_cons_none firstHead, List.filterMap_cons_none secondHead] at same
               rcases List.mem_cons.mp member with rfl | inside
@@ -91,7 +92,8 @@ theorem commitStatus_eq_of_mem {event : (graph setup).EventId} {owner : Player}
               · exact commitStatus_eq_of_mem same message inside
           | some _ => rw [firstHead, secondHead] at someEq; cases someEq
       | some firstStatus =>
-          cases secondHead : commitStatus (runtime := runtime) event owner payload second head with
+          cases secondHead : commitStatus (timeouts := timeouts) event owner payload second head
+            with
           | none => rw [firstHead, secondHead] at someEq; cases someEq
           | some secondStatus =>
               rw [List.filterMap_cons_some firstHead, List.filterMap_cons_some secondHead]
@@ -105,21 +107,21 @@ theorem commitStatus_eq_of_mem {event : (graph setup).EventId} {owner : Player}
 theorem commitStatuses_removeFirst_congr {event : (graph setup).EventId} {owner : Player}
     {payload : L.Ty} {first second : EventGraphRuntime.State (graph setup)}
     (id : MessageId Player) :
-    ∀ {packets : List (Message Player (application setup runtime leaks).Payload)},
-    commitStatuses (runtime := runtime) event owner payload first packets =
-      commitStatuses (runtime := runtime) event owner payload second packets →
-    commitStatuses (runtime := runtime) event owner payload first (MessagePool.removeFirst id
+    ∀ {packets : List (Message Player (application setup timeouts leaks).Payload)},
+    commitStatuses (timeouts := timeouts) event owner payload first packets =
+      commitStatuses (timeouts := timeouts) event owner payload second packets →
+    commitStatuses (timeouts := timeouts) event owner payload first (MessagePool.removeFirst id
       packets) =
-      commitStatuses (runtime := runtime) event owner payload second (MessagePool.removeFirst id
+      commitStatuses (timeouts := timeouts) event owner payload second (MessagePool.removeFirst id
         packets)
   | [], _ => rfl
   | head :: rest, same => by
-      have headEq := commitStatus_eq_of_mem (runtime := runtime) same head List.mem_cons_self
-      have restEq : commitStatuses (runtime := runtime) event owner payload first rest =
-          commitStatuses (runtime := runtime) event owner payload second rest := by
+      have headEq := commitStatus_eq_of_mem (timeouts := timeouts) same head List.mem_cons_self
+      have restEq : commitStatuses (timeouts := timeouts) event owner payload first rest =
+          commitStatuses (timeouts := timeouts) event owner payload second rest := by
         unfold commitStatuses at same ⊢
         rw [List.filterMap_cons, List.filterMap_cons, headEq] at same
-        cases status : commitStatus (runtime := runtime) event owner payload second head with
+        cases status : commitStatus (timeouts := timeouts) event owner payload second head with
         | none =>
             simp only [status] at same
             exact same
@@ -139,9 +141,9 @@ theorem commitStatuses_removeFirst_congr {event : (graph setup).EventId} {owner 
 theorem commitStatuses_congr_candidates {event : (graph setup).EventId} {owner : Player}
     {payload : L.Ty} {first second : EventGraphRuntime.State (graph setup)}
     (candidates : first.candidates = second.candidates)
-    (packets : List (Message Player (application setup runtime leaks).Payload)) :
-    commitStatuses (runtime := runtime) event owner payload first packets =
-      commitStatuses (runtime := runtime) event owner payload second packets := by
+    (packets : List (Message Player (application setup timeouts leaks).Payload)) :
+    commitStatuses (timeouts := timeouts) event owner payload first packets =
+      commitStatuses (timeouts := timeouts) event owner payload second packets := by
   have succeeds : ∀ candidate, candidateSucceeds first candidate payload =
       candidateSucceeds second candidate payload := fun candidate => by
     simp only [candidateSucceeds, EventGraphRuntime.State.bindingResult, candidates]
@@ -155,40 +157,41 @@ theorem commitStatuses_congr_candidates {event : (graph setup).EventId} {owner :
 
 /-- The statuses of a protocol state. -/
 def stateStatuses (event : (graph setup).EventId) (owner : Player) (payload : L.Ty) :
-    (application setup runtime leaks).ProtocolState → List (MessageId Player × Bool)
+    (application setup timeouts leaks).ProtocolState → List (MessageId Player × Bool)
   | none => []
-  | some control => commitStatuses (runtime := runtime) event owner payload
+  | some control => commitStatuses (timeouts := timeouts) event owner payload
     control.execution.application
       control.execution.network.pending
 
 /-- The image at a pending binding. -/
 abbrev BindingImage :=
-  (Option (OperationalState setup runtime leaks) × List (MessageId Player × Bool)) ⊕ Bool
+  (Option (OperationalState setup timeouts leaks) × List (MessageId Player × Bool)) ⊕ Bool
 
 /-- Attach statuses to a pending image. -/
 def attachStatuses (statuses : List (MessageId Player × Bool)) :
-    PendingImage (runtime := runtime) (setup := setup) (leaks := leaks) → BindingImage (runtime :=
-      runtime) (setup := setup) (leaks := leaks)
+    PendingImage (timeouts := timeouts) (setup := setup) (leaks := leaks) → BindingImage
+      (timeouts :=
+      timeouts) (setup := setup) (leaks := leaks)
   | .inl state => .inl (state, statuses)
   | .inr failed => .inr failed
 
 /-- **The image at a pending binding.** The pending image, with the statuses
 of the owner's pending commitments to the event while it is pending. -/
 def bindingImage (event : (graph setup).EventId) (owner : Player) (payload : L.Ty)
-    (state : (application setup runtime leaks).ProtocolState) :
-    BindingImage (runtime := runtime) (setup := setup) (leaks := leaks) :=
-  attachStatuses (runtime := runtime) (stateStatuses (runtime := runtime) event owner payload
-    state) (pendingImage (runtime := runtime) event state)
+    (state : (application setup timeouts leaks).ProtocolState) :
+    BindingImage (timeouts := timeouts) (setup := setup) (leaks := leaks) :=
+  attachStatuses (timeouts := timeouts) (stateStatuses (timeouts := timeouts) event owner payload
+    state) (pendingImage (timeouts := timeouts) event state)
 
 /-- A step keeping the statuses is read through the pending image. -/
 theorem map_bindingImage_of_statuses {X : Type} (law : PMF X)
-    (state : X → (application setup runtime leaks).ProtocolState) {event : (graph setup).EventId}
+    (state : X → (application setup timeouts leaks).ProtocolState) {event : (graph setup).EventId}
     {owner : Player} {payload : L.Ty} (statuses : List (MessageId Player × Bool))
-    (kept : ∀ next ∈ law.support, stateStatuses (runtime := runtime) event owner payload (state
+    (kept : ∀ next ∈ law.support, stateStatuses (timeouts := timeouts) event owner payload (state
       next) = statuses) :
-    law.map (fun next => bindingImage (runtime := runtime) event owner payload (state next)) =
-      (law.map fun next => pendingImage (runtime := runtime) event (state next)).map
-        (attachStatuses (runtime := runtime) statuses) := by
+    law.map (fun next => bindingImage (timeouts := timeouts) event owner payload (state next)) =
+      (law.map fun next => pendingImage (timeouts := timeouts) event (state next)).map
+        (attachStatuses (timeouts := timeouts) statuses) := by
   rw [PMF.map_comp]
   apply map_congr_on_support
   intro next member
@@ -226,22 +229,23 @@ private theorem failed_drain (state : EventGraphRuntime.State (graph setup))
 open Classical in
 /-- Expiring a due binding fails it, read through the pending image. -/
 theorem environmentStep_expire_due_bind_image (remaining : Nat)
-    (execution : (application setup runtime leaks).Execution) {event : (graph setup).EventId}
+    (execution : (application setup timeouts leaks).Execution) {event : (graph setup).EventId}
     (ready : execution.application.config.cut.Ready event) (entered : Nat)
     (activated : execution.application.activatedAt event = some entered)
-    (due : runtime.deadline event ≤ execution.application.clock - entered)
+    (due : timeouts.duration event ≤ execution.application.clock - entered)
     {owner : Player} {payload : L.Ty}
     {outputEq : (graph setup).outputLayout event = .binding owner payload}
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind owner payload}
     (view : nodeView (graph setup) event = .bind owner payload outputEq codeEq) :
-    (execution.environmentStep (application setup runtime leaks) (.application (.expire event))).map
-        (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) =
+    (execution.environmentStep (application setup timeouts leaks) (.application (.expire
+      event))).map
+        (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) =
           PMF.pure (.inr true) := by
   unfold ReactiveApplication.Execution.environmentStep
-  change ((((EventGraphRuntime.environmentStep runtime execution.application
+  change ((((EventGraphRuntime.environmentStep timeouts execution.application
     (.expire event)).map State.drain).map _).map _).map _ = _
-  rw [environmentStep_expire_bind_eq runtime _ event ready entered activated due owner
+  rw [environmentStep_expire_bind_eq timeouts _ event ready entered activated due owner
     payload outputEq codeEq view]
   simp only [PMF.pure_map]
   have completed : event ∈ (execution.application.complete event ready
@@ -263,9 +267,9 @@ theorem environmentStep_expire_due_bind_image (remaining : Nat)
 
 /-- Contract rounds at a quiescent pending binding read off the operational state. -/
 theorem application_image_congr_bind (remaining : Nat)
-    (first second : (application setup runtime leaks).Execution)
-    (same : operationalState setup runtime leaks (some ⟨remaining + 1, none, first⟩) =
-      operationalState setup runtime leaks (some ⟨remaining + 1, none, second⟩))
+    (first second : (application setup timeouts leaks).Execution)
+    (same : operationalState setup timeouts leaks (some ⟨remaining + 1, none, first⟩) =
+      operationalState setup timeouts leaks (some ⟨remaining + 1, none, second⟩))
     {event : (graph setup).EventId}
     (ready : first.application.config.cut.Ready event)
     (quiescent : ∀ query, ¬ first.application.AutomaticReady query)
@@ -275,15 +279,15 @@ theorem application_image_congr_bind (remaining : Nat)
       ((graph setup).nodes event) = .bind owner payload}
     (view : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
     (command : EnvironmentCommand (graph setup)) :
-    (first.environmentStep (application setup runtime leaks) (.application command)).map
-        (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) =
-      (second.environmentStep (application setup runtime leaks) (.application command)).map
-        (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) := by
+    (first.environmentStep (application setup timeouts leaks) (.application command)).map
+        (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) =
+      (second.environmentStep (application setup timeouts leaks) (.application command)).map
+        (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) := by
   have pending := ready.1
   have pending' : event ∉ second.application.config.cut.completed := fun completed =>
     pending ((SameOperational.completed same event).mpr completed)
   have ready' : second.application.config.cut.Ready event :=
-    (SameOperational.ready (runtime := runtime) same event).mp ready
+    (SameOperational.ready (timeouts := timeouts) same event).mp ready
   have views : first.application.publicView = second.application.publicView :=
     SameOperational.publicView same
   have secondQuiescent : ∀ query, ¬ second.application.AutomaticReady query := by
@@ -291,36 +295,37 @@ theorem application_image_congr_bind (remaining : Nat)
     apply quiescent query
     have defaults := congrArg (fun view => view.observation.defaults.defaulted) views
     change first.application.config.defaulted = second.application.config.defaulted at defaults
-    refine ⟨(SameOperational.ready (runtime := runtime) same query).mpr eligible.1, ?_⟩
+    refine ⟨(SameOperational.ready (timeouts := timeouts) same query).mpr eligible.1, ?_⟩
     change (match (graph setup).actor? query with
       | none => False
       | some owner => owner ∈ first.application.config.defaulted)
     rw [defaults]
     exact eligible.2
   have readyIff : ∀ other, first.application.config.cut.Ready other ↔
-      second.application.config.cut.Ready other := SameOperational.ready (runtime := runtime) same
+      second.application.config.cut.Ready other := SameOperational.ready (timeouts := timeouts) same
   have stutterBoth : ∀ command,
-      EventGraphRuntime.environmentStep runtime first.application command =
+      EventGraphRuntime.environmentStep timeouts first.application command =
         PMF.pure first.application →
-      EventGraphRuntime.environmentStep runtime second.application command =
+      EventGraphRuntime.environmentStep timeouts second.application command =
         PMF.pure second.application →
-      (first.environmentStep (application setup runtime leaks) (.application command)).map
-          (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) =
-        (second.environmentStep (application setup runtime leaks) (.application command)).map
-          (fun next => pendingImage (runtime := runtime) event (some ⟨remaining, none, next⟩)) := by
+      (first.environmentStep (application setup timeouts leaks) (.application command)).map
+          (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩)) =
+        (second.environmentStep (application setup timeouts leaks) (.application command)).map
+          (fun next => pendingImage (timeouts := timeouts) event (some ⟨remaining, none, next⟩))
+            := by
     intro command firstStutter secondStutter
-    rw [environmentStep_stutter_image (runtime := runtime) remaining first pending command
+    rw [environmentStep_stutter_image (timeouts := timeouts) remaining first pending command
       quiescent firstStutter,
-      environmentStep_stutter_image (runtime := runtime) remaining second pending' command
+      environmentStep_stutter_image (timeouts := timeouts) remaining second pending' command
         secondQuiescent secondStutter, same, views]
   cases command with
   | advanceClock =>
-      rw [environmentStep_contract_image (runtime := runtime) remaining first pending _
+      rw [environmentStep_contract_image (timeouts := timeouts) remaining first pending _
           quiescent (by
           intro next member
           simp only [EventGraphRuntime.environmentStep, PMF.mem_support_pure_iff] at member
           rw [member]),
-        environmentStep_contract_image (runtime := runtime) remaining second pending' _
+        environmentStep_contract_image (timeouts := timeouts) remaining second pending' _
           secondQuiescent (by
           intro next member
           simp only [EventGraphRuntime.environmentStep, PMF.mem_support_pure_iff] at member
@@ -342,13 +347,13 @@ theorem application_image_congr_bind (remaining : Nat)
           setup.eventGraph.sequentialize_ready_unique _ sampledReady ready
         subst sameEvent
         exact stutterBoth _
-          (environmentStep_executeSample_of_nonsample runtime _ sampled ready
+          (environmentStep_executeSample_of_nonsample timeouts _ sampled ready
             (fun _ _ _ _ other => by rw [view] at other; cases other))
-          (environmentStep_executeSample_of_nonsample runtime _ sampled ready'
+          (environmentStep_executeSample_of_nonsample timeouts _ sampled ready'
             (fun _ _ _ _ other => by rw [view] at other; cases other))
       · exact stutterBoth _
-          (environmentStep_executeSample_of_not_ready runtime _ sampled sampledReady)
-          (environmentStep_executeSample_of_not_ready runtime _ sampled
+          (environmentStep_executeSample_of_not_ready timeouts _ sampled sampledReady)
+          (environmentStep_executeSample_of_not_ready timeouts _ sampled
             (fun other => sampledReady ((readyIff sampled).mpr other)))
   | expire expired =>
       by_cases expiredReady : first.application.config.cut.Ready expired
@@ -362,25 +367,25 @@ theorem application_image_congr_bind (remaining : Nat)
         cases activated : first.application.activatedAt expired with
         | none =>
             exact stutterBoth _
-              (environmentStep_expire_of_not_activated runtime _ expired ready activated)
-              (environmentStep_expire_of_not_activated runtime _ expired ready'
+              (environmentStep_expire_of_not_activated timeouts _ expired ready activated)
+              (environmentStep_expire_of_not_activated timeouts _ expired ready'
                 (by rw [← activations]; exact activated))
         | some entered =>
-            by_cases due : runtime.deadline expired ≤ first.application.clock - entered
-            · rw [environmentStep_expire_due_bind_image (runtime := runtime) remaining first ready
+            by_cases due : timeouts.duration expired ≤ first.application.clock - entered
+            · rw [environmentStep_expire_due_bind_image (timeouts := timeouts) remaining first ready
                 entered activated
                   due view,
-                environmentStep_expire_due_bind_image (runtime := runtime) remaining second ready'
+                environmentStep_expire_due_bind_image (timeouts := timeouts) remaining second ready'
                   entered
                   (by rw [← activations]; exact activated) (by rw [← clocks]; exact due) view]
             · exact stutterBoth _
-                (environmentStep_expire_of_not_due runtime _ expired ready entered
+                (environmentStep_expire_of_not_due timeouts _ expired ready entered
                   activated due)
-                (environmentStep_expire_of_not_due runtime _ expired ready' entered
+                (environmentStep_expire_of_not_due timeouts _ expired ready' entered
                   (by rw [← activations]; exact activated) (by rw [← clocks]; exact due))
       · exact stutterBoth _
-          (environmentStep_expire_of_not_ready runtime _ expired expiredReady)
-          (environmentStep_expire_of_not_ready runtime _ expired
+          (environmentStep_expire_of_not_ready timeouts _ expired expiredReady)
+          (environmentStep_expire_of_not_ready timeouts _ expired
             (fun other => expiredReady ((readyIff expired).mpr other)))
 
 /-- **Only the owner's commitment is accepted while a binding is ready.** -/
@@ -393,7 +398,7 @@ theorem handle_of_binding_ready (state : EventGraphRuntime.State (graph setup))
     (view : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
     (id : MessageId Player) (call : Payload (graph setup))
     {next : EventGraphRuntime.State (graph setup)}
-    (accepted : EventGraphRuntime.handle runtime state ⟨id, call⟩ = some next) :
+    (accepted : EventGraphRuntime.handle timeouts state ⟨id, call⟩ = some next) :
     ∃ candidate, call = .commitment event candidate ∧ id.1 = owner := by
   cases call with
   | malformed raw => simp [EventGraphRuntime.handle] at accepted
@@ -403,7 +408,7 @@ theorem handle_of_binding_ready (state : EventGraphRuntime.State (graph setup))
         subst same
         refine ⟨candidate, rfl, ?_⟩
         by_contra foreign
-        by_cases timely : state.WithinDeadline runtime named
+        by_cases timely : state.WithinDeadline timeouts named
         · simp [EventGraphRuntime.handle, namedReady, timely, view, Message.sender, foreign]
             at accepted
         · simp [EventGraphRuntime.handle, namedReady, timely] at accepted
@@ -412,7 +417,7 @@ theorem handle_of_binding_ready (state : EventGraphRuntime.State (graph setup))
       by_cases namedReady : state.config.cut.Ready named
       · have same : named = event := setup.eventGraph.sequentialize_ready_unique _ namedReady ready
         subst same
-        by_cases timely : state.WithinDeadline runtime named
+        by_cases timely : state.WithinDeadline timeouts named
         · simp [EventGraphRuntime.handle, namedReady, timely, view] at accepted
         · simp [EventGraphRuntime.handle, namedReady, timely] at accepted
       · simp [EventGraphRuntime.handle, namedReady] at accepted
@@ -429,11 +434,11 @@ theorem handle_commitment_accepted_facts (state : EventGraphRuntime.State (graph
     (view : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
     (id : MessageId Player) (candidate : Handle (graph setup))
     {next : EventGraphRuntime.State (graph setup)}
-    (accepted : EventGraphRuntime.handle runtime state
+    (accepted : EventGraphRuntime.handle timeouts state
       ⟨id, .commitment event candidate⟩ = some next) :
-    state.WithinDeadline runtime event ∧ id.1 = owner ∧ candidate.1 = owner ∧
+    state.WithinDeadline timeouts event ∧ id.1 = owner ∧ candidate.1 = owner ∧
       state.accepted (.inr event) = none ∧ state.HandleUnused candidate := by
-  by_cases timely : state.WithinDeadline runtime event
+  by_cases timely : state.WithinDeadline timeouts event
   · by_cases sender : id.1 = owner
     · by_cases owned : candidate.1 = owner
       · by_cases vacant : state.accepted (.inr event) = none
@@ -466,15 +471,16 @@ theorem handle_commitment_accepted_transfer
     (succeeds : candidateSucceeds first candidate payload =
       candidateSucceeds second candidate payload)
     {next : EventGraphRuntime.State (graph setup)}
-    (accepted : EventGraphRuntime.handle runtime first
+    (accepted : EventGraphRuntime.handle timeouts first
       ⟨id, .commitment event candidate⟩ = some next) :
-    ∃ next', EventGraphRuntime.handle runtime second
+    ∃ next', EventGraphRuntime.handle timeouts second
         ⟨id, .commitment event candidate⟩ = some next' ∧
       event ∈ next.config.cut.completed ∧ event ∈ next'.config.cut.completed ∧
       (StoreEventFailed next.config.store event ↔ StoreEventFailed next'.config.store event) := by
   obtain ⟨timely, sender, owned, vacant, unused⟩ :=
-    handle_commitment_accepted_facts (runtime := runtime) first ready view id candidate accepted
-  have firstActive := (handle_commitment_iff runtime first next id event candidate).mp accepted |>.1
+    handle_commitment_accepted_facts (timeouts := timeouts) first ready view id candidate accepted
+  have firstActive := (handle_commitment_iff timeouts first next id event candidate).mp accepted
+    |>.1
   have secondActive : id.1 ∉ second.config.defaulted := by
     have defaults := congrArg (fun view => view.observation.defaults.defaulted) publics
     change first.config.defaulted = second.config.defaulted at defaults
@@ -487,7 +493,7 @@ theorem handle_commitment_accepted_transfer
   have activations : first.activatedAt = second.activatedAt :=
     congrArg PublicView.activatedAt publics
   have clocks : first.clock = second.clock := congrArg PublicView.clock publics
-  have timely' : second.WithinDeadline runtime event := by
+  have timely' : second.WithinDeadline timeouts event := by
     unfold EventGraphRuntime.State.WithinDeadline at timely ⊢
     rw [← activations, ← clocks]
     exact timely
@@ -496,10 +502,10 @@ theorem handle_commitment_accepted_transfer
     unfold EventGraphRuntime.State.HandleUnused at unused ⊢
     rw [← acceptedEq]
     exact unused
-  rw [EventGraphRuntime.handle_commitment_eq runtime first id event candidate owner payload
+  rw [EventGraphRuntime.handle_commitment_eq timeouts first id event candidate owner payload
     outputEq codeEq view ready timely firstActive sender owned vacant unused] at accepted
   cases accepted
-  refine ⟨_, EventGraphRuntime.handle_commitment_eq runtime second id event candidate owner
+  refine ⟨_, EventGraphRuntime.handle_commitment_eq timeouts second id event candidate owner
     payload outputEq codeEq view ready' timely' secondActive sender owned vacant' unused',
     (EventOrder.Cut.mem_complete _ event ready event).mpr (Or.inl rfl),
     (EventOrder.Cut.mem_complete _ event ready' event).mpr (Or.inl rfl), ?_⟩
@@ -533,13 +539,13 @@ open Classical in
 the same operational state and the same statuses, with a binding ready, give
 every inclusion the same law of images. -/
 theorem include_bindingImage_congr (remaining : Nat)
-    (first second : (application setup runtime leaks).Execution)
-    (same : operationalState setup runtime leaks (some ⟨remaining + 1, none, first⟩) =
-      operationalState setup runtime leaks (some ⟨remaining + 1, none, second⟩))
+    (first second : (application setup timeouts leaks).Execution)
+    (same : operationalState setup timeouts leaks (some ⟨remaining + 1, none, first⟩) =
+      operationalState setup timeouts leaks (some ⟨remaining + 1, none, second⟩))
     {event : (graph setup).EventId} {owner : Player} {payload : L.Ty}
-    (statuses : commitStatuses (runtime := runtime) event owner payload first.application
+    (statuses : commitStatuses (timeouts := timeouts) event owner payload first.application
       first.network.pending =
-      commitStatuses (runtime := runtime) event owner payload second.application
+      commitStatuses (timeouts := timeouts) event owner payload second.application
         second.network.pending)
     (ready : first.application.config.cut.Ready event)
     {outputEq : (graph setup).outputLayout event = .binding owner payload}
@@ -547,42 +553,43 @@ theorem include_bindingImage_congr (remaining : Nat)
       ((graph setup).nodes event) = .bind owner payload}
     (view : nodeView (graph setup) event = .bind owner payload outputEq codeEq)
     (id : MessageId Player) :
-    (first.environmentStep (application setup runtime leaks) (.include id)).map
-        (fun next => bindingImage (runtime := runtime) event owner payload (some ⟨remaining, none,
+    (first.environmentStep (application setup timeouts leaks) (.include id)).map
+        (fun next => bindingImage (timeouts := timeouts) event owner payload (some ⟨remaining, none,
           next⟩)) =
-      (second.environmentStep (application setup runtime leaks) (.include id)).map
-        (fun next => bindingImage (runtime := runtime) event owner payload (some ⟨remaining, none,
+      (second.environmentStep (application setup timeouts leaks) (.include id)).map
+        (fun next => bindingImage (timeouts := timeouts) event owner payload (some ⟨remaining, none,
           next⟩)) := by
   have pending := ready.1
   have ready' : second.application.config.cut.Ready event :=
-    (SameOperational.ready (runtime := runtime) same event).mp ready
+    (SameOperational.ready (timeouts := timeouts) same event).mp ready
   have networks : first.network = second.network := SameOperational.network same
   have publics : first.application.publicView = second.application.publicView :=
     SameOperational.publicView same
-  have statuses' : commitStatuses (runtime := runtime) event owner payload first.application
+  have statuses' : commitStatuses (timeouts := timeouts) event owner payload first.application
     first.network.pending =
-      commitStatuses (runtime := runtime) event owner payload second.application
+      commitStatuses (timeouts := timeouts) event owner payload second.application
         first.network.pending := by
     rw [statuses, networks]
-  have rejectedBoth (message : Message Player (application setup runtime leaks).Payload)
+  have rejectedBoth (message : Message Player (application setup timeouts leaks).Payload)
       (found : first.network.lookup id = some message)
-      (firstRejected : (application setup runtime leaks).handle first.application message = none)
-      (secondRejected : (application setup runtime leaks).handle second.application message =
+      (firstRejected : (application setup timeouts leaks).handle first.application message = none)
+      (secondRejected : (application setup timeouts leaks).handle second.application message =
         none) :
-      (first.environmentStep (application setup runtime leaks) (.include id)).map
-          (fun next => bindingImage (runtime := runtime) event owner payload (some ⟨remaining,
+      (first.environmentStep (application setup timeouts leaks) (.include id)).map
+          (fun next => bindingImage (timeouts := timeouts) event owner payload (some ⟨remaining,
             none, next⟩)) =
-        (second.environmentStep (application setup runtime leaks) (.include id)).map
-          (fun next => bindingImage (runtime := runtime) event owner payload (some ⟨remaining,
+        (second.environmentStep (application setup timeouts leaks) (.include id)).map
+          (fun next => bindingImage (timeouts := timeouts) event owner payload (some ⟨remaining,
             none, next⟩)) := by
     have found' : second.network.lookup id = some message := by rw [← networks]; exact found
-    have kept (execution : (application setup runtime leaks).Execution)
+    have kept (execution : (application setup timeouts leaks).Execution)
         (lookup : execution.network.lookup id = some message)
-        (rejected : (application setup runtime leaks).handle execution.application message = none) :
-        ∀ next ∈ (execution.environmentStep (application setup runtime leaks) (.include
+        (rejected : (application setup timeouts leaks).handle execution.application message =
+          none) :
+        ∀ next ∈ (execution.environmentStep (application setup timeouts leaks) (.include
           id)).support,
-          stateStatuses (runtime := runtime) event owner payload (some ⟨remaining, none, next⟩) =
-            commitStatuses (runtime := runtime) event owner payload execution.application
+          stateStatuses (timeouts := timeouts) event owner payload (some ⟨remaining, none, next⟩) =
+            commitStatuses (timeouts := timeouts) event owner payload execution.application
               (MessagePool.removeFirst id execution.network.pending) := by
       intro next member
       simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
@@ -590,23 +597,24 @@ theorem include_bindingImage_congr (remaining : Nat)
       subst member
       simp only [stateStatuses, ReactiveApplication.Execution.includePending,
         MessageNetwork.includePending, lookup, rejected, Option.getD_none]
-    rw [map_bindingImage_of_statuses (runtime := runtime) _ _ _ (kept first found firstRejected),
-      map_bindingImage_of_statuses (runtime := runtime) _ _ _ (kept second found' secondRejected),
-      include_image_congr (runtime := runtime) remaining first second same pending id (fun other
+    rw [map_bindingImage_of_statuses (timeouts := timeouts) _ _ _ (kept first found firstRejected),
+      map_bindingImage_of_statuses (timeouts := timeouts) _ _ _ (kept second found' secondRejected),
+      include_image_congr (timeouts := timeouts) remaining first second same pending id (fun other
         member => by
         rw [found] at member
         cases member
         exact ⟨firstRejected, secondRejected⟩),
-      ← networks, commitStatuses_removeFirst_congr (runtime := runtime) id statuses']
+      ← networks, commitStatuses_removeFirst_congr (timeouts := timeouts) id statuses']
   cases found : first.network.lookup id with
   | none =>
       have found' : second.network.lookup id = none := by rw [← networks]; exact found
-      have kept (execution : (application setup runtime leaks).Execution)
+      have kept (execution : (application setup timeouts leaks).Execution)
           (lookup : execution.network.lookup id = none) :
-          ∀ next ∈ (execution.environmentStep (application setup runtime leaks) (.include
+          ∀ next ∈ (execution.environmentStep (application setup timeouts leaks) (.include
             id)).support,
-            stateStatuses (runtime := runtime) event owner payload (some ⟨remaining, none, next⟩) =
-              commitStatuses (runtime := runtime) event owner payload execution.application
+            stateStatuses (timeouts := timeouts) event owner payload (some ⟨remaining, none,
+              next⟩) =
+              commitStatuses (timeouts := timeouts) event owner payload execution.application
                 execution.network.pending := by
         intro next member
         simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
@@ -614,9 +622,9 @@ theorem include_bindingImage_congr (remaining : Nat)
         subst member
         simp only [stateStatuses, ReactiveApplication.Execution.includePending,
           MessageNetwork.includePending, lookup]
-      rw [map_bindingImage_of_statuses (runtime := runtime) _ _ _ (kept first found),
-        map_bindingImage_of_statuses (runtime := runtime) _ _ _ (kept second found'),
-        include_image_congr (runtime := runtime) remaining first second same pending id (fun other
+      rw [map_bindingImage_of_statuses (timeouts := timeouts) _ _ _ (kept first found),
+        map_bindingImage_of_statuses (timeouts := timeouts) _ _ _ (kept second found'),
+        include_image_congr (timeouts := timeouts) remaining first second same pending id (fun other
           member => by
           rw [found] at member
           cases member), ← networks, statuses']
@@ -629,24 +637,24 @@ theorem include_bindingImage_congr (remaining : Nat)
             message.sender = owner →
             candidateSucceeds one candidate payload = candidateSucceeds other candidate payload)
           {next : EventGraphRuntime.State (graph setup)}
-          (accepted : (application setup runtime leaks).handle one message = some next) :
-          ∃ next', (application setup runtime leaks).handle other message = some next' ∧
+          (accepted : (application setup timeouts leaks).handle one message = some next) :
+          ∃ next', (application setup timeouts leaks).handle other message = some next' ∧
             event ∈ next.config.cut.completed ∧ event ∈ next'.config.cut.completed ∧
             (StoreEventFailed next.config.store event ↔
               StoreEventFailed next'.config.store event) := by
         obtain ⟨valid, primary, handled, rfl⟩ :=
-          reactiveApplication_handle_eq_some runtime leaks one next message accepted
+          reactiveApplication_handle_eq_some timeouts leaks one next message accepted
         obtain ⟨candidate, call, sender⟩ :=
-          handle_of_binding_ready (runtime := runtime) one oneReady view message.id
+          handle_of_binding_ready (timeouts := timeouts) one oneReady view message.id
             message.payload.call handled
         rw [call] at handled
         obtain ⟨otherPrimary, handled', completed, completed', failed⟩ :=
-          handle_commitment_accepted_transfer (runtime := runtime) one other publicsEq oneReady
+          handle_commitment_accepted_transfer (timeouts := timeouts) one other publicsEq oneReady
             view message.id candidate (succeeds candidate call sender) handled
         refine ⟨otherPrimary.drain, ?_,
           EventGraph.Config.Step.path_completed_mono primary.drain_graph_steps completed,
           EventGraph.Config.Step.path_completed_mono otherPrimary.drain_graph_steps completed', ?_⟩
-        · rw [reactiveApplication_handle_of_tokenValid runtime leaks _ _ valid, call, handled']
+        · rw [reactiveApplication_handle_of_tokenValid timeouts leaks _ _ valid, call, handled']
           rfl
         · exact (failed_drain primary completed).trans
             (failed.trans (failed_drain otherPrimary completed').symm)
@@ -655,15 +663,15 @@ theorem include_bindingImage_congr (remaining : Nat)
           candidateSucceeds first.application candidate payload =
             candidateSucceeds second.application candidate payload := by
         intro candidate call sender
-        have statusEq := commitStatus_eq_of_mem (runtime := runtime) statuses' message member
+        have statusEq := commitStatus_eq_of_mem (timeouts := timeouts) statuses' message member
         unfold commitStatus at statusEq
         rw [call] at statusEq
         simp only [true_and, sender, ↓reduceIte, Option.some.injEq, Prod.mk.injEq] at statusEq
         exact statusEq
       have found' : second.network.lookup id = some message := by rw [← networks]; exact found
-      cases firstHandle : (application setup runtime leaks).handle first.application message with
+      cases firstHandle : (application setup timeouts leaks).handle first.application message with
       | none =>
-          cases secondHandle : (application setup runtime leaks).handle second.application message
+          cases secondHandle : (application setup timeouts leaks).handle second.application message
             with
           | none => exact rejectedBoth message found firstHandle secondHandle
           | some _ =>
@@ -685,20 +693,20 @@ theorem include_bindingImage_congr (remaining : Nat)
             attachStatuses , Sum.inr.injEq, decide_eq_decide]
           exact failed
 
-variable (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler) in
+variable (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
+  (scheduler : (application setup timeouts leaks).Scheduler) in
 /-- **Scheduler rounds at a pending binding read off the image.** Two
 executions with the same operational state and statuses, with a binding ready,
 give a scheduler round the same law of images when the first is quiescent.
 Equal public views transfer quiescence to the second execution. -/
 theorem binding_round_image_congr (remaining : Nat)
-    (first second : (application setup runtime leaks).Execution)
-    (same : operationalState setup runtime leaks (some ⟨remaining + 1, none, first⟩) =
-      operationalState setup runtime leaks (some ⟨remaining + 1, none, second⟩))
+    (first second : (application setup timeouts leaks).Execution)
+    (same : operationalState setup timeouts leaks (some ⟨remaining + 1, none, first⟩) =
+      operationalState setup timeouts leaks (some ⟨remaining + 1, none, second⟩))
     {event : (graph setup).EventId} {owner : Player} {payload : L.Ty}
-    (statuses : commitStatuses (runtime := runtime) event owner payload first.application
+    (statuses : commitStatuses (timeouts := timeouts) event owner payload first.application
       first.network.pending =
-      commitStatuses (runtime := runtime) event owner payload second.application
+      commitStatuses (timeouts := timeouts) event owner payload second.application
         second.network.pending)
     (ready : first.application.config.cut.Ready event)
     (quiescent : ∀ query, ¬ first.application.AutomaticReady query)
@@ -706,30 +714,32 @@ theorem binding_round_image_congr (remaining : Nat)
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind owner payload}
     (view : nodeView (graph setup) event = .bind owner payload outputEq codeEq) :
-    ((application setup runtime leaks).transition initial horizon scheduler
+    ((application setup timeouts leaks).transition initial horizon scheduler
         (some ⟨remaining + 1, none, first⟩) (fun _ => none)).map
-        (bindingImage (runtime := runtime) event owner payload) =
-      ((application setup runtime leaks).transition initial horizon scheduler
+        (bindingImage (timeouts := timeouts) event owner payload) =
+      ((application setup timeouts leaks).transition initial horizon scheduler
         (some ⟨remaining + 1, none, second⟩) (fun _ => none)).map
-        (bindingImage (runtime := runtime) event owner payload) := by
+        (bindingImage (timeouts := timeouts) event owner payload) := by
   have pending := ready.1
   have pending' : event ∉ second.application.config.cut.completed := fun completed =>
     pending ((SameOperational.completed same event).mpr completed)
   have networks : first.network = second.network := SameOperational.network same
   have recalls : first.environmentRecall = second.environmentRecall :=
     SameOperational.environmentRecall same
-  have views : first.observeEnvironment (application setup runtime leaks) =
-      second.observeEnvironment (application setup runtime leaks) :=
-    SameOperational.observeEnvironment (runtime := runtime) same
+  have views : first.observeEnvironment (application setup timeouts leaks) =
+      second.observeEnvironment (application setup timeouts leaks) :=
+    SameOperational.observeEnvironment (timeouts := timeouts) same
   change ((scheduler first.environmentRecall (first.observeEnvironment _)).bind fun command =>
       (first.environmentStep _ command).map fun next =>
-        some (⟨remaining, command.actor? (application setup runtime leaks), next⟩ :
-          (application setup runtime leaks).Control)).map (bindingImage (runtime := runtime) event
+        some (⟨remaining, command.actor? (application setup timeouts leaks), next⟩ :
+          (application setup timeouts leaks).Control)).map (bindingImage (timeouts := timeouts)
+            event
             owner payload) =
     ((scheduler second.environmentRecall (second.observeEnvironment _)).bind fun command =>
       (second.environmentStep _ command).map fun next =>
-        some (⟨remaining, command.actor? (application setup runtime leaks), next⟩ :
-          (application setup runtime leaks).Control)).map (bindingImage (runtime := runtime) event
+        some (⟨remaining, command.actor? (application setup timeouts leaks), next⟩ :
+          (application setup timeouts leaks).Control)).map (bindingImage (timeouts := timeouts)
+            event
             owner payload)
   rw [recalls, views, PMF.map_bind, PMF.map_bind]
   congr 1
@@ -738,17 +748,17 @@ theorem binding_round_image_congr (remaining : Nat)
   cases command with
   | activate who =>
       change (first.environmentStep _ (.activate who)).map
-          (fun next => bindingImage (runtime := runtime) event owner payload (some ⟨remaining,
+          (fun next => bindingImage (timeouts := timeouts) event owner payload (some ⟨remaining,
             some who, next⟩)) =
         (second.environmentStep _ (.activate who)).map
-          (fun next => bindingImage (runtime := runtime) event owner payload (some ⟨remaining,
+          (fun next => bindingImage (timeouts := timeouts) event owner payload (some ⟨remaining,
             some who, next⟩))
-      have kept (execution : (application setup runtime leaks).Execution) :
-          ∀ next ∈ (execution.environmentStep (application setup runtime leaks) (.activate
+      have kept (execution : (application setup timeouts leaks).Execution) :
+          ∀ next ∈ (execution.environmentStep (application setup timeouts leaks) (.activate
             who)).support,
-            stateStatuses (runtime := runtime) event owner payload (some ⟨remaining, some who,
+            stateStatuses (timeouts := timeouts) event owner payload (some ⟨remaining, some who,
               next⟩) =
-              commitStatuses (runtime := runtime) event owner payload execution.application
+              commitStatuses (timeouts := timeouts) event owner payload execution.application
                 execution.network.pending := by
         intro next member
         unfold ReactiveApplication.Execution.environmentStep at member
@@ -757,47 +767,49 @@ theorem binding_round_image_congr (remaining : Nat)
         rw [PMF.support_map] at supported
         obtain ⟨_, _, rfl⟩ := supported
         rfl
-      rw [map_bindingImage_of_statuses (runtime := runtime) _ _ _ (kept first),
-        map_bindingImage_of_statuses (runtime := runtime) _ _ _ (kept second),
-        environmentStep_activate_image (runtime := runtime) remaining first pending who,
-        environmentStep_activate_image (runtime := runtime) remaining second pending' who,
+      rw [map_bindingImage_of_statuses (timeouts := timeouts) _ _ _ (kept first),
+        map_bindingImage_of_statuses (timeouts := timeouts) _ _ _ (kept second),
+        environmentStep_activate_image (timeouts := timeouts) remaining first pending who,
+        environmentStep_activate_image (timeouts := timeouts) remaining second pending' who,
           statuses, networks, same]
   | wait =>
       change (first.environmentStep _ .wait).map
-          (fun next => bindingImage (runtime := runtime) event owner payload (some ⟨remaining,
+          (fun next => bindingImage (timeouts := timeouts) event owner payload (some ⟨remaining,
             none, next⟩)) =
         (second.environmentStep _ .wait).map
-          (fun next => bindingImage (runtime := runtime) event owner payload (some ⟨remaining,
+          (fun next => bindingImage (timeouts := timeouts) event owner payload (some ⟨remaining,
             none, next⟩))
-      have kept (execution : (application setup runtime leaks).Execution) :
-          ∀ next ∈ (execution.environmentStep (application setup runtime leaks) .wait).support,
-            stateStatuses (runtime := runtime) event owner payload (some ⟨remaining, none, next⟩) =
-              commitStatuses (runtime := runtime) event owner payload execution.application
+      have kept (execution : (application setup timeouts leaks).Execution) :
+          ∀ next ∈ (execution.environmentStep (application setup timeouts leaks) .wait).support,
+            stateStatuses (timeouts := timeouts) event owner payload (some ⟨remaining, none,
+              next⟩) =
+              commitStatuses (timeouts := timeouts) event owner payload execution.application
                 execution.network.pending := by
         intro next member
         simp only [ReactiveApplication.Execution.environmentStep, PMF.pure_map,
           PMF.mem_support_pure_iff] at member
         subst member
         rfl
-      rw [map_bindingImage_of_statuses (runtime := runtime) _ _ _ (kept first),
-        map_bindingImage_of_statuses (runtime := runtime) _ _ _ (kept second),
-        environmentStep_wait_image (runtime := runtime) remaining first pending,
-        environmentStep_wait_image (runtime := runtime) remaining second pending', same, statuses]
+      rw [map_bindingImage_of_statuses (timeouts := timeouts) _ _ _ (kept first),
+        map_bindingImage_of_statuses (timeouts := timeouts) _ _ _ (kept second),
+        environmentStep_wait_image (timeouts := timeouts) remaining first pending,
+        environmentStep_wait_image (timeouts := timeouts) remaining second pending', same, statuses]
   | «include» id =>
-      exact include_bindingImage_congr (runtime := runtime) remaining first second same statuses
+      exact include_bindingImage_congr (timeouts := timeouts) remaining first second same statuses
         ready view id
   | application command =>
       change (first.environmentStep _ (.application command)).map
-          (fun next => bindingImage (runtime := runtime) event owner payload (some ⟨remaining,
+          (fun next => bindingImage (timeouts := timeouts) event owner payload (some ⟨remaining,
             none, next⟩)) =
         (second.environmentStep _ (.application command)).map
-          (fun next => bindingImage (runtime := runtime) event owner payload (some ⟨remaining,
+          (fun next => bindingImage (timeouts := timeouts) event owner payload (some ⟨remaining,
             none, next⟩))
-      have kept (execution : (application setup runtime leaks).Execution) :
-          ∀ next ∈ (execution.environmentStep (application setup runtime leaks)
+      have kept (execution : (application setup timeouts leaks).Execution) :
+          ∀ next ∈ (execution.environmentStep (application setup timeouts leaks)
             (.application command)).support,
-            stateStatuses (runtime := runtime) event owner payload (some ⟨remaining, none, next⟩) =
-              commitStatuses (runtime := runtime) event owner payload execution.application
+            stateStatuses (timeouts := timeouts) event owner payload (some ⟨remaining, none,
+              next⟩) =
+              commitStatuses (timeouts := timeouts) event owner payload execution.application
                 execution.network.pending := by
         intro next member
         unfold ReactiveApplication.Execution.environmentStep at member
@@ -805,12 +817,12 @@ theorem binding_round_image_congr (remaining : Nat)
         obtain ⟨updated, supported, rfl⟩ := member
         rw [PMF.support_map] at supported
         obtain ⟨contract, stepped, rfl⟩ := supported
-        exact commitStatuses_congr_candidates (runtime := runtime)
-          (reactiveApplication_environment_tables runtime leaks execution.application contract
+        exact commitStatuses_congr_candidates (timeouts := timeouts)
+          (reactiveApplication_environment_tables timeouts leaks execution.application contract
             command stepped).2 _
-      rw [map_bindingImage_of_statuses (runtime := runtime) _ _ _ (kept first),
-        map_bindingImage_of_statuses (runtime := runtime) _ _ _ (kept second),
-        application_image_congr_bind (runtime := runtime) remaining first second same ready
+      rw [map_bindingImage_of_statuses (timeouts := timeouts) _ _ _ (kept first),
+        map_bindingImage_of_statuses (timeouts := timeouts) _ _ _ (kept second),
+        application_image_congr_bind (timeouts := timeouts) remaining first second same ready
           quiescent view command, statuses]
 
 end Vegas

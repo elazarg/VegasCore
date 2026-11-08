@@ -20,7 +20,7 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime Eve
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {mode : EventGraph.ExecutionMode} {deadline : (serviceGraph setup mode).EventId → Nat}
+  {mode : EventGraph.ExecutionMode} {duration : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 /-- The window of the events of ranks in `[start, finish)`. -/
@@ -106,7 +106,7 @@ equal deviator traffic and equal counters at the block's events give equal laws
 of that readout when run to the end of the block, when honest clients open a
 reveal exactly when its opening is accepted. -/
 theorem block_stopped_readoutOn_congr {horizon : Nat}
-    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (reference : (serviceGraph setup mode).BehavioralProfile)
     (decides : ∀ (config : (serviceGraph setup mode).Config)
@@ -123,16 +123,16 @@ theorem block_stopped_readoutOn_congr {horizon : Nat}
         reference owner event actor ((serviceGraph setup mode).playerObserve owner config)
           active = PMF.pure (cast (congrArg EventField.Action outputEq.symm)
             (openingAccepted event config.store))) (who : Player)
-    (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (deviation : (serviceApplication setup mode duration leaks).Policy)
     (start finish : Nat) (shaped : BlockShaped (graph := serviceGraph setup mode) start finish)
     (publications : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
       event.val < finish → ((serviceGraph setup mode).outputLayout event).IsPublication) :
     ∀ (count leftRemaining rightRemaining : Nat)
-      (left right : (serviceApplication setup mode deadline leaks).Execution),
-      ((serviceApplication setup mode deadline leaks).protocol
+      (left right : (serviceApplication setup mode duration leaks).Execution),
+      ((serviceApplication setup mode duration leaks).protocol
         (serviceInitialLaw setup mode) horizon scheduler).Trace
           (some ⟨leftRemaining + count, none, left⟩) →
-      ((serviceApplication setup mode deadline leaks).protocol
+      ((serviceApplication setup mode duration leaks).protocol
         (serviceInitialLaw setup mode) horizon scheduler).Trace
           (some ⟨rightRemaining + count, none, right⟩) →
       (¬ BlockDone finish left.application.config →
@@ -144,20 +144,20 @@ theorem block_stopped_readoutOn_congr {horizon : Nat}
       AcceptedAgree who start finish left.application.config right.application.config →
       blockReadoutOn who (blockWindow start finish) left =
         blockReadoutOn who (blockWindow start finish) right →
-      ((serviceApplication setup mode deadline leaks).runUntil scheduler
-        (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+      ((serviceApplication setup mode duration leaks).runUntil scheduler
+        (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
           (firstTurnTiming setup turns mode) reference) who deviation)
         (fun final => BlockDone finish final.application.config) count left).map
           (blockReadoutOn who (blockWindow start finish)) =
-      ((serviceApplication setup mode deadline leaks).runUntil scheduler
-        (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+      ((serviceApplication setup mode duration leaks).runUntil scheduler
+        (Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound turns
           (firstTurnTiming setup turns mode) reference) who deviation)
         (fun final => BlockDone finish final.application.config) count right).map
           (blockReadoutOn who (blockWindow start finish)) := by
   intro count leftRemaining rightRemaining left right leftTrace rightTrace leftInside
     rightInside leftValid rightValid agree same
-  let app := serviceApplication setup mode deadline leaks
-  let players := Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound
+  let app := serviceApplication setup mode duration leaks
+  let players := Function.update (serviceReferenceTurnPolicy setup mode duration leaks bound
     turns (firstTurnTiming setup turns mode) reference) who deviation
   let window := blockWindow (setup := setup) (mode := mode) start finish
   let invariant := fun (origin : app.Execution) (count : Nat) (current : app.Execution) =>
@@ -178,7 +178,7 @@ theorem block_stopped_readoutOn_congr {horizon : Nat}
       simpa only [Nat.add_assoc] using trace
     obtain ⟨nextTrace⟩ := app.raw_trace_round (serviceInitialLaw setup mode) horizon scheduler
       players (remaining + n) current next before reached
-    have path := reactive_round_graph_steps (serviceRuntime setup mode deadline) leaks scheduler
+    have path := reactive_round_graph_steps (serviceTimeouts setup mode duration) leaks scheduler
       players current next reached
     exact ⟨⟨remaining, ⟨nextTrace⟩⟩, fun unfinished => (inside running).path shaped path
       unfinished, walked.trans path, honestBlockSubmissions_round scheduler bound turns reference
@@ -206,12 +206,12 @@ theorem block_stopped_readoutOn_congr {horizon : Nat}
     have agreeNow := agree.path currentPath otherPath
     have currentFacts := legalFacts setup leaks horizon scheduler _ currentBefore
     have otherFacts := legalFacts setup leaks horizon scheduler _ otherBefore
-    have signed := signedCommitments_history (serviceRuntime setup mode deadline) leaks
+    have signed := signedCommitments_history (serviceTimeouts setup mode duration) leaks
       (serviceInitialLaw setup mode) (fun state supported => by
         obtain ⟨initial, _, rfl⟩ := PMF.support_map .. ▸ supported
         exact ⟨_, rfl⟩) horizon scheduler currentBefore
-    have sameTraffic : (serviceRuntime setup mode deadline).bindingTraffic leaks who current =
-        (serviceRuntime setup mode deadline).bindingTraffic leaks who other :=
+    have sameTraffic : (bindingTraffic (serviceTimeouts setup mode duration)) leaks who current =
+        (bindingTraffic (serviceTimeouts setup mode duration)) leaks who other :=
       congrArg Prod.fst equal
     have views : current.application.playerView who = other.application.playerView who :=
       congrArg (fun value => value.1.2.2.2.2.1) equal
@@ -254,7 +254,7 @@ theorem block_stopped_readoutOn_congr {horizon : Nat}
         currentFacts.provenance.pending message pending
       obtain ⟨_, _, transmitted, packet⟩ :=
         signed.emissions message.sender entry entryMember message emitted
-      have submitted : (serviceRuntime setup mode deadline).submittedEvent? leaks entry.action =
+      have submitted : (submittedEvent? (serviceTimeouts setup mode duration)) leaks entry.action =
           some named := by
         simp only [EventGraphRuntime.submittedEvent?, transmitted]
         rw [← packet, called]

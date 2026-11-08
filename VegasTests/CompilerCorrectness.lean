@@ -58,7 +58,7 @@ example (bonus : Int) (binding : Option (PublicationResult Bool)) (disclose : Bo
         (firstTurnTiming (setup bonus) 1 .sequential) source)
       (2 * (service bonus).horizon + 1) |>.map
         (fun history => (serviceSourceReadout (setup bonus) .sequential
-          (service bonus).deadline (leaks bonus) history.state).map fun output =>
+          (service bonus).duration (leaks bonus) history.state).map fun output =>
             ((output.state, output.defaults), (program bonus).evaluatePayoffs output.state)) =
       PMF.pure (some (terminal bonus binding disclose,
         (program bonus).evaluatePayoffs (terminal bonus binding disclose).1)) := by

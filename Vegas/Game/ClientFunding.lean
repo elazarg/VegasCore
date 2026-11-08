@@ -17,10 +17,10 @@ open SourceProgram Interaction EventGraphRuntime GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {runtime : EventGraphRuntime (graph setup)}
+  {setup : Setup (Player := Player) (L := L)} {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
   {Parameter : Type} {parameter : State L setup.context → Parameter}
   {utility : Parameter × PublicOutcome setup.program → Player → ℝ}
   {excludedPayoff : Player → ℝ}
@@ -28,10 +28,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
 /-- Any pointwise larger deposit gives another certified specification for the
 same source, runtime and evidence service. No sign assumption on the old observation-rate
 lower bound is needed. The resulting completion may differ off path. -/
-def withDeposit (spec : ClientSpec setup runtime leaks bounds horizon scheduler
+def withDeposit (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
     parameter utility excludedPayoff) (deposit : Player → ℝ)
     (larger : ∀ who, spec.deposit who ≤ deposit who) :
-    ClientSpec setup runtime leaks bounds horizon scheduler
+    ClientSpec setup timeouts leaks bounds horizon scheduler
       parameter utility excludedPayoff where
   __ := spec
   observationRate := fun who => max 0 (spec.observationRate who)

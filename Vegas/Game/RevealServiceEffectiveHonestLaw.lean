@@ -23,13 +23,13 @@ open SourceProgram EventGraph EventGraphRuntime GameTheory.Math.Probability Inte
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 section Induction
 
 variable {horizon turns : Nat} {scheduler :
-    (serviceApplication setup mode deadline leaks).Scheduler}
+    (serviceApplication setup mode duration leaks).Scheduler}
   {delay bound : (serviceGraph setup mode).EventId → Nat}
 
 /-- **The honest outcome law from every boundary.** Under the asynchronous
@@ -38,9 +38,9 @@ every other event leads, honest clients of an opening, ready-independent
 reference run, from every initialized execution whose responses saw only
 completed events or publications ready, to the reference's outcome law. -/
 theorem effective_runToHorizon_outcomeLaw
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
       (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
     (only : (serviceGraph setup mode).RevealsOnlyConcurrent)
     (leading : ∀ event, ¬ ((serviceGraph setup mode).outputLayout event).IsPublication →
       (serviceGraph setup mode).Leading event)
@@ -67,21 +67,21 @@ theorem effective_runToHorizon_outcomeLaw
       read left = read right)
     (invariant : ∀ config, read config.erase = read config)
     (twins : ∀ config, outcomeLaw effective read config = outcomeLaw reference read config) :
-    let players := serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+    let players := serviceReferenceTurnPolicy setup mode duration leaks bound turns
       (firstTurnTiming setup turns mode) effective
-    ∀ execution : (serviceApplication setup mode deadline leaks).Execution,
-      execution ∈ ((serviceApplication setup mode deadline leaks).roundsFrom
+    ∀ execution : (serviceApplication setup mode duration leaks).Execution,
+      execution ∈ ((serviceApplication setup mode duration leaks).roundsFrom
         (serviceInitialLaw setup mode) scheduler players
           execution.environmentRecall.length).support →
       execution.environmentRecall.length ≤ horizon →
       SeenWithin (fun event => ((serviceGraph setup mode).outputLayout event).IsPublication)
         execution →
-      ((serviceApplication setup mode deadline leaks).runToHorizon scheduler players horizon
+      ((serviceApplication setup mode duration leaks).runToHorizon scheduler players horizon
           execution).map (fun final => read final.application.config) =
         outcomeLaw reference read execution.application.config := by
   classical
   intro players
-  let app := serviceApplication setup mode deadline leaks
+  let app := serviceApplication setup mode duration leaks
   let publication := fun event : (serviceGraph setup mode).EventId =>
     ((serviceGraph setup mode).outputLayout event).IsPublication
   intro execution
@@ -133,7 +133,7 @@ theorem effective_runToHorizon_outcomeLaw
             rw [ih left (by omega) next (by omega) supportedNext (by omega)
               (round_seenWithin seen allPublications reached)]
             exact reactive_round_outcomeLaw_of_accepted independent opens read keyed invariant
-              (serviceRuntime setup mode deadline) leaks scheduler players execution next
+              (serviceTimeouts setup mode duration) leaks scheduler players execution next
               allPublications (fun event owner ready owned _ accepted =>
                 effectivePublication_withinDeadline contract timely players owner effective
                   decides rfl execution.environmentRecall.length bounded execution supported event
@@ -187,7 +187,7 @@ theorem effective_runToHorizon_outcomeLaw
             exact ih (horizon - stopped.environmentRecall.length) (by omega) stopped rfl
               stoppedSupported stoppedBounded seenStopped
           _ = _ := by
-            have segment := soleSegment_outcomeLaw (serviceRuntime setup mode deadline) leaks
+            have segment := soleSegment_outcomeLaw (serviceTimeouts setup mode duration) leaks
               scheduler delay bound contract timely effective effectiveIndependent read keyed
               players event (fun _ _ => rfl) solitary (leading event notPublication)
               notPublication execution ready supported (seen.untouched ready.1 notPublication)
@@ -199,9 +199,9 @@ theorem effective_runToHorizon_outcomeLaw
 `honest_runToHorizon_outcomeLaw`, the outcome of the honest clients' run to the
 horizon has the reference's outcome law from the initial configurations. -/
 theorem effective_roundsFrom_outcomeLaw
-    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup mode duration) leaks
       (serviceInitialLaw setup mode) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (timely : AsyncTimely (serviceTimeouts setup mode duration) delay bound)
     (only : (serviceGraph setup mode).RevealsOnlyConcurrent)
     (leading : ∀ event, ¬ ((serviceGraph setup mode).outputLayout event).IsPublication →
       (serviceGraph setup mode).Leading event)
@@ -228,14 +228,14 @@ theorem effective_roundsFrom_outcomeLaw
       read left = read right)
     (invariant : ∀ config, read config.erase = read config)
     (twins : ∀ config, outcomeLaw effective read config = outcomeLaw reference read config) :
-    ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
-        scheduler (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+    ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler (serviceReferenceTurnPolicy setup mode duration leaks bound turns
           (firstTurnTiming setup turns mode) effective) horizon).map
         (fun final => read final.application.config) =
       (serviceInitialLaw setup mode).bind
         (fun state => outcomeLaw reference read state.config) := by
-  let app := serviceApplication setup mode deadline leaks
-  let players := serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+  let app := serviceApplication setup mode duration leaks
+  let players := serviceReferenceTurnPolicy setup mode duration leaks bound turns
     (firstTurnTiming setup turns mode) effective
   unfold ReactiveApplication.roundsFrom
   rw [PMF.map_bind]

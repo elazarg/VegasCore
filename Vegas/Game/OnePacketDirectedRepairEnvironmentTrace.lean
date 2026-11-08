@@ -40,52 +40,52 @@ private theorem environment_step_supported {Principal : Type} [DecidableEq Princ
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 namespace DirectedBindingFrame
 
-variable {memory : BindingMemory runtime leaks} {owner : Player}
-  {original repaired nextOriginal nextRepaired : (application setup runtime leaks).Execution}
+variable {memory : BindingMemory timeouts leaks} {owner : Player}
+  {original repaired nextOriginal nextRepaired : (application setup timeouts leaks).Execution}
 
 /-- Supported scheduler commands transport through actual repaired environment
 operations. Both executions retain the same command, remaining horizon, and
 activation target, rather than an independently selected delivery schedule. -/
-theorem environment_trace (frame : DirectedBindingFrame (runtime := runtime) memory owner original
+theorem environment_trace (frame : DirectedBindingFrame (timeouts := timeouts) memory owner original
   repaired)
     (remaining : Nat)
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+    (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       (some ⟨remaining + 1, none, original⟩))
-    (imagePrior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+    (imagePrior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       (some ⟨remaining + 1, none, repaired⟩))
-    (records : operationalRecord setup runtime leaks bounds horizon scheduler prior =
-      operationalRecord setup runtime leaks bounds horizon scheduler imagePrior)
-    (command : (application setup runtime leaks).Command)
+    (records : operationalRecord setup timeouts leaks bounds horizon scheduler prior =
+      operationalRecord setup timeouts leaks bounds horizon scheduler imagePrior)
+    (command : (application setup timeouts leaks).Command)
     (chosen : command ∈ (scheduler original.environmentRecall
-      (original.observeEnvironment (application setup runtime leaks))).support)
-    (left : nextOriginal ∈ (original.environmentStep (application setup runtime leaks)
+      (original.observeEnvironment (application setup timeouts leaks))).support)
+    (left : nextOriginal ∈ (original.environmentStep (application setup timeouts leaks)
       command).support)
-    (right : nextRepaired ∈ (repaired.environmentStep (application setup runtime leaks)
+    (right : nextRepaired ∈ (repaired.environmentStep (application setup timeouts leaks)
       command).support)
-    (after : BindingMemory.Frame runtime leaks memory owner nextOriginal nextRepaired)
-    (delivered : deliveredValue setup runtime leaks owner
-        (nextOriginal.observe (application setup runtime leaks) owner) =
-      deliveredValue setup runtime leaks owner (nextRepaired.observe (application setup runtime
+    (after : BindingMemory.Frame timeouts leaks memory owner nextOriginal nextRepaired)
+    (delivered : deliveredValue setup timeouts leaks owner
+        (nextOriginal.observe (application setup timeouts leaks) owner) =
+      deliveredValue setup timeouts leaks owner (nextRepaired.observe (application setup timeouts
         leaks) owner)) :
-    DirectedBindingFrame (runtime := runtime) memory owner nextOriginal nextRepaired ∧
-      ∃ trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
-          (some ⟨remaining, command.actor? (application setup runtime leaks), nextRepaired⟩),
-        operationalRecord setup runtime leaks bounds horizon scheduler trace =
-          operationalState setup runtime leaks
-              (some ⟨remaining, command.actor? (application setup runtime leaks), nextOriginal⟩) ::
-            operationalRecord setup runtime leaks bounds horizon scheduler prior := by
+    DirectedBindingFrame (timeouts := timeouts) memory owner nextOriginal nextRepaired ∧
+      ∃ trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
+          (some ⟨remaining, command.actor? (application setup timeouts leaks), nextRepaired⟩),
+        operationalRecord setup timeouts leaks bounds horizon scheduler trace =
+          operationalState setup timeouts leaks
+              (some ⟨remaining, command.actor? (application setup timeouts leaks), nextOriginal⟩) ::
+            operationalRecord setup timeouts leaks bounds horizon scheduler prior := by
   have repairedFrame := frame.environmentStep command nextOriginal
     nextRepaired left right after
   refine ⟨repairedFrame, ?_⟩
-  let joint : Player → Option (application setup runtime leaks).Action := fun _ => none
-  have legal : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Legal
+  let joint : Player → Option (application setup timeouts leaks).Action := fun _ => none
+  have legal : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Legal
       (some ⟨remaining + 1, none, repaired⟩) joint := by
     constructor
     · simp [onePacketProtocol, ReactiveApplication.ResponseMenu.protocol,
@@ -94,19 +94,20 @@ theorem environment_trace (frame : DirectedBindingFrame (runtime := runtime) mem
       simp [joint, onePacketProtocol, ReactiveApplication.ResponseMenu.protocol,
         ReactiveApplication.actor]
   have chosenRepair : command ∈ (scheduler repaired.environmentRecall
-      (repaired.observeEnvironment (application setup runtime leaks))).support := by
+      (repaired.observeEnvironment (application setup timeouts leaks))).support := by
     rw [← frame.service, ← frame.toFrame.environment]
     exact chosen
-  have realized : some ⟨remaining, command.actor? (application setup runtime leaks), nextRepaired⟩ ∈
-      ((onePacketProtocol setup runtime leaks bounds horizon scheduler).step
+  have realized : some ⟨remaining, command.actor? (application setup timeouts leaks),
+    nextRepaired⟩ ∈
+      ((onePacketProtocol setup timeouts leaks bounds horizon scheduler).step
         (some ⟨remaining + 1, none, repaired⟩) ⟨joint, legal⟩).support := by
-    exact environment_step_supported (application setup runtime leaks)
-      (bounds.onePacketMenu runtime leaks) (initialLaw setup) horizon scheduler remaining
+    exact environment_step_supported (application setup timeouts leaks)
+      (bounds.onePacketMenu timeouts leaks) (initialLaw setup) horizon scheduler remaining
       repaired nextRepaired command joint legal chosenRepair right
   refine ⟨imagePrior.extend joint legal realized, ?_⟩
-  change operationalState setup runtime leaks
-      (some ⟨remaining, command.actor? (application setup runtime leaks), nextRepaired⟩) ::
-        operationalRecord setup runtime leaks bounds horizon scheduler imagePrior = _
+  change operationalState setup timeouts leaks
+      (some ⟨remaining, command.actor? (application setup timeouts leaks), nextRepaired⟩) ::
+        operationalRecord setup timeouts leaks bounds horizon scheduler imagePrior = _
   rw [← records, ← after.operationalState repairedFrame.recalled delivered]
 
 end DirectedBindingFrame

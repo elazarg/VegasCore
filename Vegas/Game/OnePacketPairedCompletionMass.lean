@@ -88,7 +88,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
 
 /-- Public completion order, sampled outputs and sample distributions determine
 completion mass, without a reachability or one-step premise. -/
@@ -177,30 +177,30 @@ theorem completionMass_eq_of_public
           · simp only [chance, ↓reduceDIte]
 
 variable {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
-  {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
+  {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- Complete operational endpoint equality determines the completion factor of
 any two realized native transitions, including scheduler and response rounds. -/
 theorem completionMass_eq_of_operational_transitions
-    {before after imageBefore imageAfter : (application setup runtime leaks).Control}
-    (joint imageJoint : Player → Option (application setup runtime leaks).Action)
-    (_realized : some after ∈ ((application setup runtime leaks).transition (initialLaw setup)
+    {before after imageBefore imageAfter : (application setup timeouts leaks).Control}
+    (joint imageJoint : Player → Option (application setup timeouts leaks).Action)
+    (_realized : some after ∈ ((application setup timeouts leaks).transition (initialLaw setup)
       horizon
       scheduler (some before) joint).support)
-    (_imageRealized : some imageAfter ∈ ((application setup runtime leaks).transition (initialLaw
+    (_imageRealized : some imageAfter ∈ ((application setup timeouts leaks).transition (initialLaw
       setup)
       horizon scheduler (some imageBefore) imageJoint).support)
-    (beforeOperational : operationalState setup runtime leaks (some before) =
-      operationalState setup runtime leaks (some imageBefore))
-    (afterOperational : operationalState setup runtime leaks (some after) =
-      operationalState setup runtime leaks (some imageAfter)) :
+    (beforeOperational : operationalState setup timeouts leaks (some before) =
+      operationalState setup timeouts leaks (some imageBefore))
+    (afterOperational : operationalState setup timeouts leaks (some after) =
+      operationalState setup timeouts leaks (some imageAfter)) :
     completionMass setup before.execution.application after.execution.application =
       completionMass setup imageBefore.execution.application imageAfter.execution.application := by
   apply completionMass_eq_of_public
-  · exact congrArg (fun state : OperationalState setup runtime leaks =>
+  · exact congrArg (fun state : OperationalState setup timeouts leaks =>
       state.environment.application.observation) (Option.some.inj
         beforeOperational)
-  · exact congrArg (fun state : OperationalState setup runtime leaks =>
+  · exact congrArg (fun state : OperationalState setup timeouts leaks =>
       state.environment.application.observation) (Option.some.inj
         afterOperational)
 

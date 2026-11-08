@@ -44,23 +44,23 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
   (bounds : MessageBounds (graph setup)) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
 /-- The unsettled content after one native transition: a response of another
 player multiplies its content factor in; a scheduler round completing one
 event with an actor resets it to one; anything else keeps it. -/
 def unsettledStep (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
-    (pending : ℝ) : (application setup runtime leaks).ProtocolState →
-      (Player → Option (application setup runtime leaks).Action) →
-        (application setup runtime leaks).ProtocolState → ℝ
+    (pending : ℝ) : (application setup timeouts leaks).ProtocolState →
+      (Player → Option (application setup timeouts leaks).Action) →
+        (application setup timeouts leaks).ProtocolState → ℝ
   | some before, joint, some after =>
       match before.actor with
       | some actor =>
           if actor = who then pending else
-            pending * contentFactor setup runtime leaks assessment actor before.execution
+            pending * contentFactor setup timeouts leaks assessment actor before.execution
               after.execution ((joint actor).getD ⟨none⟩)
       | none =>
           if (after.execution.application.config.history.drop
@@ -73,10 +73,10 @@ def unsettledStep (assessment : setup.intendedModel.BehavioralAssessment) (who :
 factors of other players' packets sent since the last completion of an event
 with an actor. -/
 def unsettledContent (assessment : setup.intendedModel.BehavioralAssessment) (who : Player) :
-    ∀ {state}, (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state → ℝ
+    ∀ {state}, (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state → ℝ
   | _, .start => 1
   | _, .extend (source := before) (target := after) prior joint _ _ =>
-      unsettledStep setup runtime leaks assessment who (unsettledContent
+      unsettledStep setup timeouts leaks assessment who (unsettledContent
         assessment who prior) before joint
         after
 
@@ -87,39 +87,39 @@ to the counterfactual reach of `history` times the step's source factor times
 the unsettled content `pending` before it. -/
 def ReplayStepMatches (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
     (history : setup.intendedProtocol.History) (pending : ℝ)
-    (before : (application setup runtime leaks).ProtocolState)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    (after : (application setup runtime leaks).ProtocolState) : Prop :=
-  ∀ next, advanceIntended? setup runtime leaks history before after = some next →
+    (before : (application setup timeouts leaks).ProtocolState)
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    (after : (application setup timeouts leaks).ProtocolState) : Prop :=
+  ∀ next, advanceIntended? setup timeouts leaks history before after = some next →
     setup.intendedModel.counterfactualReachProbability assessment.strategy who next.trace *
-        unsettledStep setup runtime leaks assessment who pending before joint after =
+        unsettledStep setup timeouts leaks assessment who pending before joint after =
       setup.intendedModel.counterfactualReachProbability assessment.strategy who history.trace *
-        transitionSourceFactor setup runtime leaks assessment who before joint after * pending
+        transitionSourceFactor setup timeouts leaks assessment who before joint after * pending
 
 /-- Every step of a native history matches, from the replay of its prefix. -/
 def ReplayMatches (assessment : setup.intendedModel.BehavioralAssessment) (who : Player) :
-    ∀ {state}, (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state → Prop
+    ∀ {state}, (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state → Prop
   | _, .start => True
   | _, .extend (source := before) (target := after) prior joint _ _ =>
       ReplayMatches assessment who prior ∧
-        ∀ history, intendedHistory? setup runtime leaks bounds horizon scheduler prior = some
+        ∀ history, intendedHistory? setup timeouts leaks bounds horizon scheduler prior = some
           history →
-          ReplayStepMatches setup runtime leaks assessment who history
-            (unsettledContent setup runtime leaks bounds horizon scheduler assessment who prior)
+          ReplayStepMatches setup timeouts leaks assessment who history
+            (unsettledContent setup timeouts leaks bounds horizon scheduler assessment who prior)
               before
             joint after
 
-variable {setup runtime leaks bounds horizon scheduler}
+variable {setup timeouts leaks bounds horizon scheduler}
 
 /-- A history of the one-packet game never returns to the state before
 initialization. -/
 theorem trace_eq_start_of_none :
-    ∀ (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace none),
+    ∀ (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace none),
       trace = .start
   | .start => rfl
   | .extend (source := before) _ joint _ realized => by
       exfalso
-      change none ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+      change none ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
         scheduler
         before joint).support at realized
       cases before with
@@ -129,11 +129,11 @@ theorem trace_eq_start_of_none :
       | some control =>
           cases acting : control.actor with
           | none =>
-              obtain ⟨_, impossible, _⟩ := transition_environment (runtime := runtime) control
+              obtain ⟨_, impossible, _⟩ := transition_environment (timeouts := timeouts) control
                 acting joint realized
               cases impossible
           | some actor =>
-              rw [transition_respond (runtime := runtime) control acting joint,
+              rw [transition_respond (timeouts := timeouts) control acting joint,
                 PMF.mem_support_pure_iff] at realized
               cases realized
 
@@ -143,14 +143,14 @@ matches, the source weight for `who` is the counterfactual reach of the replay
 for `who` times the unsettled content. -/
 theorem othersSourceWeight_eq_replay (assessment : setup.intendedModel.BehavioralAssessment)
     (who : Player) : ∀ {state}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace state)
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace state)
     {history : setup.intendedProtocol.History},
-    intendedHistory? setup runtime leaks bounds horizon scheduler trace = some history →
-    ReplayMatches setup runtime leaks bounds horizon scheduler assessment who trace →
-      othersSourceWeight setup runtime leaks bounds horizon scheduler assessment who trace =
+    intendedHistory? setup timeouts leaks bounds horizon scheduler trace = some history →
+    ReplayMatches setup timeouts leaks bounds horizon scheduler assessment who trace →
+      othersSourceWeight setup timeouts leaks bounds horizon scheduler assessment who trace =
         setup.intendedModel.counterfactualReachProbability assessment.strategy who
             history.trace *
-          unsettledContent setup runtime leaks bounds horizon scheduler assessment who trace
+          unsettledContent setup timeouts leaks bounds horizon scheduler assessment who trace
   | _, .start, history, replayed, _ => by
       cases replayed
       simp [othersSourceWeight, unsettledContent, ExecutionProtocol.initHistory]
@@ -170,20 +170,20 @@ content takes, and a response completes no event, so the replay does not
 move. -/
 theorem replayStepMatches_respond (assessment : setup.intendedModel.BehavioralAssessment)
     (who : Player) (history : setup.intendedProtocol.History) (pending : ℝ)
-    (control : (application setup runtime leaks).Control) {actor : Player}
+    (control : (application setup timeouts leaks).Control) {actor : Player}
     (acting : control.actor = some actor)
-    (joint : Player → Option (application setup runtime leaks).Action)
-    {after : (application setup runtime leaks).ProtocolState}
-    (realized : after ∈ ((application setup runtime leaks).transition (initialLaw setup) horizon
+    (joint : Player → Option (application setup timeouts leaks).Action)
+    {after : (application setup timeouts leaks).ProtocolState}
+    (realized : after ∈ ((application setup timeouts leaks).transition (initialLaw setup) horizon
       scheduler
       (some control) joint).support) :
-    ReplayStepMatches setup runtime leaks assessment who history pending (some control) joint
+    ReplayStepMatches setup timeouts leaks assessment who history pending (some control) joint
       after := by
-  rw [transition_respond (runtime := runtime) control acting joint,
+  rw [transition_respond (timeouts := timeouts) control acting joint,
     PMF.mem_support_pure_iff] at realized
   subst realized
   intro next advanced
-  have kept := (runtime.reactive_respond_application leaks control.execution actor
+  have kept := ((reactive_respond_application timeouts) leaks control.execution actor
     ((joint actor).getD ⟨none⟩)).1
   simp only [advanceIntended?, kept, List.drop_length] at advanced
   cases advanced
@@ -194,10 +194,10 @@ theorem replayStepMatches_respond (assessment : setup.intendedModel.BehavioralAs
 neither the replay nor the unsettled content moves. -/
 theorem replayStepMatches_unchanged (assessment : setup.intendedModel.BehavioralAssessment)
     (who : Player) (history : setup.intendedProtocol.History) (pending : ℝ)
-    (before after : (application setup runtime leaks).Control) (idle : before.actor = none)
-    (joint : Player → Option (application setup runtime leaks).Action)
+    (before after : (application setup timeouts leaks).Control) (idle : before.actor = none)
+    (joint : Player → Option (application setup timeouts leaks).Action)
     (kept : after.execution.application.config = before.execution.application.config) :
-    ReplayStepMatches setup runtime leaks assessment who history pending (some before) joint
+    ReplayStepMatches setup timeouts leaks assessment who history pending (some before) joint
       (some after) := by
   have dropped : after.execution.application.config.history.drop
       before.execution.application.config.history.length = [] := by
@@ -232,12 +232,12 @@ theorem extendIntended?_eq_some {history : setup.intendedProtocol.History}
 decoded initial point the mass the native initial law gives the initial
 state. -/
 theorem replayStepMatches_initial (assessment : setup.intendedModel.BehavioralAssessment)
-    (who : Player) (after : (application setup runtime leaks).Control)
-    (joint : Player → Option (application setup runtime leaks).Action)
+    (who : Player) (after : (application setup timeouts leaks).Control)
+    (joint : Player → Option (application setup timeouts leaks).Action)
     (initialMass : (setup.protocolStep none (fun _ => none)
         (decodedPoint setup after.execution.application.config)).toReal =
       (initialLaw setup after.execution.application).toReal) :
-    ReplayStepMatches setup runtime leaks assessment who setup.intendedProtocol.initHistory 1 none
+    ReplayStepMatches setup timeouts leaks assessment who setup.intendedProtocol.initHistory 1 none
       joint
       (some after) := by
   intro next advanced
@@ -261,8 +261,8 @@ the unsettled content after the completion, is the completion's source factor
 times the unsettled content before it. -/
 theorem replayStepMatches_completion (assessment : setup.intendedModel.BehavioralAssessment)
     (who : Player) (history : setup.intendedProtocol.History) (pending : ℝ)
-    (before after : (application setup runtime leaks).Control) (idle : before.actor = none)
-    (joint : Player → Option (application setup runtime leaks).Action)
+    (before after : (application setup timeouts leaks).Control) (idle : before.actor = none)
+    (joint : Player → Option (application setup timeouts leaks).Action)
     (completion : (graph setup).Completion)
     (dropped : after.execution.application.config.history.drop
       before.execution.application.config.history.length = [completion])
@@ -274,7 +274,7 @@ theorem replayStepMatches_completion (assessment : setup.intendedModel.Behaviora
         (if ((graph setup).actor? completion.event).isSome then 1 else pending) =
       completionMass setup before.execution.application after.execution.application *
         pending) :
-    ReplayStepMatches setup runtime leaks assessment who history pending (some before) joint
+    ReplayStepMatches setup timeouts leaks assessment who history pending (some before) joint
       (some after) := by
   intro next advanced
   simp only [advanceIntended?, dropped] at advanced

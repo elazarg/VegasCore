@@ -31,7 +31,7 @@ open GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- The owner's response with its source action fixed: the canonical compiled
@@ -40,27 +40,27 @@ inclusion bound, and silence when the decision is silent, too late, or the event
 already recorded in the owner's own recall. -/
 def decidedOpportunity (bound : (serviceGraph setup mode).EventId → Nat) (owner : Player)
     (event : (serviceGraph setup mode).EventId) (action : (serviceGraph setup mode).Action event) :
-    (serviceApplication setup mode deadline leaks).Policy := fun past view =>
-  if (serviceRuntime setup mode deadline).eventRecorded leaks past event then
-    (serviceApplication setup mode deadline leaks).silentPolicy past view
-  else if view.application.publicView.InclusionFitsDeadline (serviceRuntime setup mode deadline)
+    (serviceApplication setup mode duration leaks).Policy := fun past view =>
+  if (eventRecorded (serviceTimeouts setup mode duration)) leaks past event then
+    (serviceApplication setup mode duration leaks).silentPolicy past view
+  else if view.application.publicView.InclusionFitsDeadline (serviceTimeouts setup mode duration)
       bound event then if
-      ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner past view event
+      ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks owner past view event
           action).transmission = none then
-      (serviceApplication setup mode deadline leaks).silentPolicy past view else PMF.pure
-      ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner past view
+      (serviceApplication setup mode duration leaks).silentPolicy past view else PMF.pure
+      ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks owner past view
           event action)
-  else (serviceApplication setup mode deadline leaks).silentPolicy past view
+  else (serviceApplication setup mode duration leaks).silentPolicy past view
 
 /-- Decide `action` at the first turn at `event`, and stay silent at every other
 input. -/
 def decidedTurnPolicy (bound : (serviceGraph setup mode).EventId → Nat) (owner : Player)
     (event : (serviceGraph setup mode).EventId) (action : (serviceGraph setup mode).Action event) :
-    (serviceApplication setup mode deadline leaks).Policy :=
-  (serviceApplication setup mode deadline leaks).turnScheduledPolicy
-  (serviceTurn setup mode deadline leaks owner event) (some (0 : Fin 1))
+    (serviceApplication setup mode duration leaks).Policy :=
+  (serviceApplication setup mode duration leaks).turnScheduledPolicy
+  (serviceTurn setup mode duration leaks owner event) (some (0 : Fin 1))
   (decidedOpportunity setup leaks bound owner event action)
-  (serviceApplication setup mode deadline leaks).silentPolicy
+  (serviceApplication setup mode duration leaks).silentPolicy
 
 variable {setup}
 
@@ -90,11 +90,11 @@ variable {leaks}
 
 /-- Public binding omission and false disclosure compile to silence at every view. -/
 theorem canonicalServiceDecision_silent (who : Player)
-    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (view : (serviceApplication setup mode deadline leaks).PlayerView)
+    (past : List (serviceApplication setup mode duration leaks).PlayerEntry)
+    (view : (serviceApplication setup mode duration leaks).PlayerView)
     (event : (serviceGraph setup mode).EventId)
     (action : (serviceGraph setup mode).Action event) (silent : SilentAction event action) :
-    ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view event
+    ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who past view event
         action).transmission = none := by
   cases node : nodeView (serviceGraph setup mode) event with
   | sample payload law outputEq codeEq =>
@@ -107,7 +107,7 @@ theorem canonicalServiceDecision_silent (who : Player)
       simp only [cast_cast, cast_eq] at castBack
       rw [castBack]
       exact congrArg ReactiveApplication.Action.transmission
-        ((serviceRuntime setup mode deadline).canonicalServiceDecision_binding_none leaks who
+        ((canonicalServiceDecision_binding_none (serviceTimeouts setup mode duration)) leaks who
           past view event owner payload outputEq codeEq node)
   | resolve owner payload binding checks outputEq codeEq =>
       have withheld : cast (congrArg EventGraph.EventField.Action outputEq) action = false := by
@@ -117,16 +117,16 @@ theorem canonicalServiceDecision_silent (who : Player)
       simp only [cast_cast, cast_eq] at castBack
       rw [castBack]
       exact congrArg ReactiveApplication.Action.transmission
-        ((serviceRuntime setup mode deadline).canonicalServiceDecision_resolution_false leaks who
+        ((canonicalServiceDecision_resolution_false (serviceTimeouts setup mode duration)) leaks who
           past view event owner payload binding checks outputEq codeEq node)
 
 /-- An opportunity whose canonical response is silent is silent at the same input. -/
 theorem decidedOpportunity_silent {bound : (serviceGraph setup mode).EventId → Nat}
     {owner : Player} {event : (serviceGraph setup mode).EventId}
     (action : (serviceGraph setup mode).Action event)
-    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (view : (serviceApplication setup mode deadline leaks).PlayerView)
-    (quiet : ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner past
+    (past : List (serviceApplication setup mode duration leaks).PlayerEntry)
+    (view : (serviceApplication setup mode duration leaks).PlayerView)
+    (quiet : ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks owner past
       view event action).transmission = none) :
     decidedOpportunity setup leaks bound owner event action past view = PMF.pure ⟨none⟩ := by
   unfold decidedOpportunity
@@ -137,8 +137,8 @@ theorem decidedOpportunity_silent {bound : (serviceGraph setup mode).EventId →
 theorem decidedTurnPolicy_silent {bound : (serviceGraph setup mode).EventId → Nat}
     {owner : Player} {event : (serviceGraph setup mode).EventId}
     (action : (serviceGraph setup mode).Action event) (silent : SilentAction event action)
-    (past : List (serviceApplication setup mode deadline leaks).PlayerEntry)
-    (view : (serviceApplication setup mode deadline leaks).PlayerView) :
+    (past : List (serviceApplication setup mode duration leaks).PlayerEntry)
+    (view : (serviceApplication setup mode duration leaks).PlayerView) :
     decidedTurnPolicy setup leaks bound owner event action past view = PMF.pure ⟨none⟩ := by
   unfold decidedTurnPolicy ReactiveApplication.turnScheduledPolicy
   dsimp only
@@ -150,15 +150,15 @@ theorem decidedTurnPolicy_silent {bound : (serviceGraph setup mode).EventId → 
 section Transmission
 
 variable {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-  (runtime : EventGraphRuntime (serviceGraph setup mode))
+  (timeouts : EventTimeouts (serviceGraph setup mode))
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 /-- An effective non-silent source action produces a concrete transmission at
 an actual initialized turn, including an authentic opening whose guards reject. -/
 theorem canonicalServiceDecision_transmits_of_effective {horizon : Nat}
-    {scheduler : (runtime.reactiveApplication leaks).Scheduler}
-    (control : (runtime.reactiveApplication leaks).Control)
-    (trace : ((runtime.reactiveApplication leaks).protocol
+    {scheduler : ((reactiveApplication timeouts) leaks).Scheduler}
+    (control : ((reactiveApplication timeouts) leaks).Control)
+    (trace : (((reactiveApplication timeouts) leaks).protocol
       (serviceInitialLaw setup mode) horizon scheduler).Trace
       (some control))
     (owner : Player) (event : (serviceGraph setup mode).EventId)
@@ -166,11 +166,11 @@ theorem canonicalServiceDecision_transmits_of_effective {horizon : Nat}
     (action : (serviceGraph setup mode).Action event)
     (effective : EffectiveAction control.execution.application.config event action)
     (loud : ¬ SilentAction event action) :
-    ∃ material, (runtime.canonicalServiceDecision leaks owner (control.execution.logs owner)
-      (control.execution.observe (runtime.reactiveApplication leaks) owner) event
+    ∃ material, ((canonicalServiceDecision timeouts) leaks owner (control.execution.logs owner)
+      (control.execution.observe ((reactiveApplication timeouts) leaks) owner) event
         action).transmission =
         some material := by
-  let app := runtime.reactiveApplication leaks
+  let app := (reactiveApplication timeouts) leaks
   have facts := legalFacts setup leaks horizon scheduler control trace
   obtain ⟨readyView, owned⟩ :=
     control.execution.application.publicView.ownTurn?_spec owner event turn
@@ -201,13 +201,13 @@ theorem canonicalServiceDecision_transmits_of_effective {horizon : Nat}
           (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)) :=
         serviceInitialLaw_eq_inputs (mode := mode) setup
       rw [initialEq] at nativeTrace
-      have candidates := runtime.candidateRecall_history leaks
+      have candidates := (candidateRecall_history timeouts) leaks
         (setup.initialLaw.map setup.eventInputs) horizon scheduler nativeTrace
-      obtain ⟨serial, _, selected⟩ := runtime.reactiveFreshSlot_le_recall leaks control.execution
+      obtain ⟨serial, _, selected⟩ := (reactiveFreshSlot_le_recall timeouts) leaks control.execution
         owner candidates
       obtain ⟨chosen, chosenEq⟩ := canonicalFreshSlot_isSome owner
         (control.execution.observe app owner).application serial selected
-      rw [actionEq, runtime.canonicalServiceDecision_binding leaks owner
+      rw [actionEq, (canonicalServiceDecision_binding timeouts) leaks owner
         (control.execution.logs owner) (control.execution.observe app owner) event payload
         outputEq
         codeEq node active chosen chosenEq result]
@@ -236,14 +236,14 @@ theorem canonicalServiceDecision_transmits_of_effective {horizon : Nat}
         change binding.get? ((serviceGraph setup mode).playerStore owner
           control.execution.application.config.store) = _
         rw [binding.get?_playerStore owner _ rfl, stored]
-      have transmits := runtime.canonicalServiceDecision_openable leaks owner
+      have transmits := (canonicalServiceDecision_openable timeouts) leaks owner
         (control.execution.logs owner) (control.execution.observe app owner) event owner payload
         binding checks outputEq codeEq node active value observedStored candidate accepted
         candidateOwner
       have back := congrArg (cast (congrArg EventGraph.EventField.Action outputEq.symm)) disclose
       simp only [cast_cast, cast_eq] at back
       rw [back]
-      cases sent : (runtime.canonicalServiceDecision leaks owner (control.execution.logs owner)
+      cases sent : ((canonicalServiceDecision timeouts) leaks owner (control.execution.logs owner)
           (control.execution.observe app owner) event
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) true)).transmission with
       | none => exact (transmits sent).elim
@@ -254,7 +254,7 @@ end Transmission
 section Sequential
 
 variable {setup : Setup (Player := Player) (L := L)}
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 section Head
@@ -275,12 +275,12 @@ theorem SourceResidual.head_law {rank : Nat} {config : (graph setup).Config}
         law.bind (fun action => (config.step event ready action).bind
           fun next => sourceContinuation setup profile (rank + 1) next) ∧
       (∀ owner, (graph setup).actor? event = some owner →
-        ∀ current : (application setup runtime leaks).Execution, current.application.config =
+        ∀ current : (application setup timeouts leaks).Execution, current.application.config =
           config →
-          sourceServiceCanonicalPolicy setup runtime leaks profile owner (current.logs owner)
-              (current.observe (application setup runtime leaks) owner) =
-            law.map fun action => runtime.canonicalServiceDecision leaks owner
-              (current.logs owner) (current.observe (application setup runtime leaks) owner) event
+          sourceServiceCanonicalPolicy setup timeouts leaks profile owner (current.logs owner)
+              (current.observe (application setup timeouts leaks) owner) =
+            law.map fun action => (canonicalServiceDecision timeouts) leaks owner
+              (current.logs owner) (current.observe (application setup timeouts leaks) owner) event
               action) ∧
       ((∀ who, (profile who).AuthenticDisclosures setup.program) →
         ∀ action ∈ law.support, EffectiveAction config event action) := by

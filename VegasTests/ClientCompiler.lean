@@ -56,7 +56,7 @@ example (intended : fixture.intendedModel.BehavioralAssessment)
     (supported : state ∈ (app.finish initial horizon scheduler
       (compiled intended equilibrium).clients none).support) (who : Bool) :
     GameTheory.Enforcement.TerminalAudit.charge app.stateTraffic
-      (runtime.countAudit leaks specification.evidenceService.sample) state who = 0 :=
+      ((countAudit timeouts) leaks specification.evidenceService.sample) state who = 0 :=
   (compiled intended equilibrium).clients_noCharges state supported who
 
 example (intended : fixture.intendedModel.BehavioralAssessment)
@@ -84,14 +84,14 @@ section MonetaryCompilation
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player]
   {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)} {runtime : EventGraphRuntime (graph setup)}
+  {setup : Setup (Player := Player) (L := L)} {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
   {Parameter : Type} (parameter : State L setup.context → Parameter)
   (valuation : Parameter × PublicOutcome setup.program → Player → ℝ)
   (exitValuation : Player → ℝ)
-  (spec : ClientSpec setup runtime leaks bounds horizon scheduler parameter
+  (spec : ClientSpec setup timeouts leaks bounds horizon scheduler parameter
     (setup.parameterPaymentUtility valuation)
     (fun who => exitValuation who + (setup.exitTransfers who : ℝ)))
   (intended : setup.intendedModel.BehavioralAssessment)
@@ -99,10 +99,10 @@ variable {Player : Type} [DecidableEq Player] [Fintype Player]
     (setup.parameterPaymentUtility valuation) intended)
 
 example :
-    ((application setup runtime leaks).finish (initialLaw setup) horizon scheduler
+    ((application setup timeouts leaks).finish (initialLaw setup) horizon scheduler
         (spec.compile intended equilibrium).clients none).bind spec.programPaymentObservation =
       setup.intendedPaymentLaw intended :=
-  (spec.compile intended equilibrium).clients_programPayments_preserved setup runtime leaks bounds
+  (spec.compile intended equilibrium).clients_programPayments_preserved setup timeouts leaks bounds
     horizon scheduler parameter valuation exitValuation spec intended
 
 end MonetaryCompilation

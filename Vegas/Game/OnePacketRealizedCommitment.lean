@@ -30,10 +30,10 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
 /-- Raw data read at its own type is its value. -/
@@ -53,8 +53,8 @@ tier's response, at a prepared slot within capacity, to the source choice
 decoded from a value of the bound type, and its content factor is the
 as-if-honest mass of that source choice. -/
 theorem onePacket_commitment_realized (assessment : setup.intendedModel.BehavioralAssessment)
-    {control : (application setup runtime leaks).Control}
-    (trace : ((bounds.onePacketMenu runtime leaks).protocol (initialLaw setup) horizon
+    {control : (application setup timeouts leaks).Control}
+    (trace : ((bounds.onePacketMenu timeouts leaks).protocol (initialLaw setup) horizon
       scheduler).Trace (some control))
     (who : Player) (event : (graph setup).EventId)
     (turn : control.execution.application.publicView.ownTurn? who = some event)
@@ -62,48 +62,48 @@ theorem onePacket_commitment_realized (assessment : setup.intendedModel.Behavior
     {codeEq : cast (congrArg (EventGraph.EventCode (graph setup).layout) outputEq)
       ((graph setup).nodes event) = .bind who payload}
     (node : nodeView (graph setup) event = .bind who payload outputEq codeEq)
-    (response : (application setup runtime leaks).Action)
-    (member : response ∈ bounds.onePacketActions runtime leaks who
-      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
+    (response : (application setup timeouts leaks).Action)
+    (member : response ∈ bounds.onePacketActions timeouts leaks who
+      (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
         who))
-    (material : (application setup runtime leaks).Submission)
+    (material : (application setup timeouts leaks).Submission)
     (sends : response.transmission = some material)
-    (positive : 0 < contentFactor setup runtime leaks assessment who control.execution
-      (control.execution.respond (application setup runtime leaks) who response) response) :
+    (positive : 0 < contentFactor setup timeouts leaks assessment who control.execution
+      (control.execution.respond (application setup timeouts leaks) who response) response) :
     ∃ serial value, serial < bounds.candidateCount ∧
-      response = slotResponse setup runtime leaks who (control.execution.logs who)
-        (control.execution.observe (application setup runtime leaks) who) event serial
+      response = slotResponse setup timeouts leaks who (control.execution.logs who)
+        (control.execution.observe (application setup timeouts leaks) who) event serial
         (sourceOfValue setup event outputEq value) ∧
-      contentFactor setup runtime leaks assessment who control.execution
-          (control.execution.respond (application setup runtime leaks) who response) response =
-        (asIfHonestProfile setup runtime leaks assessment who (some (control.execution.logs who,
-          control.execution.observe (application setup runtime leaks) who))
+      contentFactor setup timeouts leaks assessment who control.execution
+          (control.execution.respond (application setup timeouts leaks) who response) response =
+        (asIfHonestProfile setup timeouts leaks assessment who (some (control.execution.logs who,
+          control.execution.observe (application setup timeouts leaks) who))
             (sourceOfValue setup event outputEq value)).toReal := by
-  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
       trace
-  have recalled := runtime.countRecall_history leaks rawTrace
+  have recalled := (countRecall_history timeouts) leaks rawTrace
   obtain ⟨named, turnNamed, _, packetEvent⟩ :=
-    onePacket_content_pos (runtime := runtime) assessment trace who response member material sends
+    onePacket_content_pos (timeouts := timeouts) assessment trace who response member material sends
       _ positive
   rw [turn] at turnNamed
   cases Option.some.inj turnNamed
-  obtain ⟨effective, permitted⟩ := (bounds.mem_onePacketActions runtime leaks who _ _
+  obtain ⟨effective, permitted⟩ := (bounds.mem_onePacketActions timeouts leaks who _ _
     response).mp member
-  have verdict : CountPermits ((application setup runtime leaks).outputs (control.execution.logs
+  have verdict : CountPermits ((application setup timeouts leaks).outputs (control.execution.logs
     who))
-      (runtime.localEnvelope leaks who (control.execution.logs who)
-        (control.execution.observe (application setup runtime leaks) who) material) := by
+      ((localEnvelope timeouts) leaks who (control.execution.logs who)
+        (control.execution.observe (application setup timeouts leaks) who) material) := by
     rcases permitted with silent | ⟨other, otherSends, counted⟩
     · rw [sends] at silent
       cases silent
     · rw [sends] at otherSends
       cases Option.some.inj otherSends
       exact (countPermits_eq_true_iff _ _).mp counted
-  have callEq : (runtime.localEnvelope leaks who (control.execution.logs who)
-      (control.execution.observe (application setup runtime leaks) who) material).payload.call =
+  have callEq : ((localEnvelope timeouts) leaks who (control.execution.logs who)
+      (control.execution.observe (application setup timeouts leaks) who) material).payload.call =
       material.call.packet := rfl
   -- The packet commits at a prepared slot of the player.
   obtain ⟨serial, packet⟩ : ∃ serial,
@@ -123,7 +123,7 @@ theorem onePacket_commitment_realized (assessment : setup.intendedModel.Behavior
         cases Option.some.inj packetEvent
         obtain ⟨_, _, owner, ⟨serial, slot⟩, _⟩ := correct
         exact ⟨serial, by rw [show candidate = (who, .prepared serial) from Prod.ext owner slot]⟩
-  have capacity := offered_commitment_capacity (runtime := runtime) who _ _ response effective
+  have capacity := offered_commitment_capacity (timeouts := timeouts) who _ _ response effective
     material sends packet
   -- No earlier packet of the player commits to the slot, so it is fresh.
   have correct := verdict.2.1
@@ -132,31 +132,31 @@ theorem onePacket_commitment_realized (assessment : setup.intendedModel.Behavior
   obtain ⟨_, evidenceNone, _, _, unused⟩ := correct
   have freshState : control.execution.application.candidates.lookup (who, .prepared serial) =
       .fresh := by
-    refine ((preparedFresh_history (runtime := runtime) horizon scheduler rawTrace) who
+    refine ((preparedFresh_history (timeouts := timeouts) horizon scheduler rawTrace) who
       serial).mpr ?_
     rintro ⟨message, input, sender, committed, call⟩
-    have output : message ∈ (application setup runtime leaks).outputs (control.execution.logs
+    have output : message ∈ (application setup timeouts leaks).outputs (control.execution.logs
       who) := by
       rw [← recalled.1 who]
       exact List.mem_filter.mpr ⟨input, by simp [sender]⟩
     have earlier := earlierOwnPacket_of_output rawTrace who
-      ((application setup runtime leaks).packet ((application setup runtime leaks).submit
+      ((application setup timeouts leaks).packet ((application setup timeouts leaks).submit
         control.execution.application who material) who (control.execution.network.known who)
           material) message output
-    rw [← runtime.localEnvelope_eq_of_recall leaks control.execution recalled.1
+    rw [← (localEnvelope_eq_of_recall timeouts) leaks control.execution recalled.1
       recalled.2.1 who material] at earlier
     exact unused message earlier committed call
-  have fresh : (control.execution.observe (application setup runtime leaks)
+  have fresh : (control.execution.observe (application setup timeouts leaks)
     who).application.candidates
       (.prepared serial) = .fresh := freshState
   -- The submission carries no evidence and an opening.
   have materialEvidence : material.evidence = .none := by
-    have normal := (runtime.reactiveNormalization leaks).menu_normal
-      (bounds.rawMenu runtime leaks) who _ _ response effective
+    have normal := ((reactiveNormalization timeouts) leaks).menu_normal
+      (bounds.rawMenu timeouts leaks) who _ _ response effective
     have materialNormal : material.normalizeReactive who
-        (control.execution.observe (application setup runtime leaks) who).application
+        (control.execution.observe (application setup timeouts leaks) who).application
         (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
-          (control.execution.observe (application setup runtime leaks) who)) = material := by
+          (control.execution.observe (application setup timeouts leaks) who)) = material := by
       have transmitted := congrArg ReactiveApplication.Action.transmission normal
       rcases response with ⟨transmission⟩
       change transmission = some material at sends
@@ -164,17 +164,17 @@ theorem onePacket_commitment_realized (assessment : setup.intendedModel.Behavior
       exact Option.some.inj transmitted
     have evidence := congrArg WitnessedSubmission.evidence materialNormal
     change EvidenceRequest.canonical (ReactiveApplication.ResponseMenu.knownPackets
-      (control.execution.logs who) (control.execution.observe (application setup runtime leaks)
+      (control.execution.logs who) (control.execution.observe (application setup timeouts leaks)
         who))
       (material.evidence.resolve who (material.call.candidateAfter who
-        (control.execution.observe (application setup runtime leaks) who).application.candidates)
+        (control.execution.observe (application setup timeouts leaks) who).application.candidates)
         (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
-          (control.execution.observe (application setup runtime leaks) who))) = material.evidence
+          (control.execution.observe (application setup timeouts leaks) who))) = material.evidence
       at evidence
     rw [show material.evidence.resolve who (material.call.candidateAfter who
-        (control.execution.observe (application setup runtime leaks) who).application.candidates)
+        (control.execution.observe (application setup timeouts leaks) who).application.candidates)
         (ReactiveApplication.ResponseMenu.knownPackets (control.execution.logs who)
-          (control.execution.observe (application setup runtime leaks) who)) = none
+          (control.execution.observe (application setup timeouts leaks) who)) = none
       from evidenceNone] at evidence
     exact evidence.symm
   -- The binding result after the response reads the opening.
@@ -185,18 +185,18 @@ theorem onePacket_commitment_realized (assessment : setup.intendedModel.Behavior
   rcases response with ⟨transmission⟩
   change transmission = _ at sends
   subst sends
-  have result := submitted_bindingResult runtime leaks control.execution who event payload
+  have result := submitted_bindingResult timeouts leaks control.execution who event payload
     serial opening freshState
-  have supported : sentSourceAction setup runtime leaks
-      (control.execution.respond (application setup runtime leaks) who
+  have supported : sentSourceAction setup timeouts leaks
+      (control.execution.respond (application setup timeouts leaks) who
         ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩)
       ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩ ∈
-      (asIfHonestProfile setup runtime leaks assessment who (some (control.execution.logs who,
-        control.execution.observe (application setup runtime leaks) who))).support := by
+      (asIfHonestProfile setup timeouts leaks assessment who (some (control.execution.logs who,
+        control.execution.observe (application setup timeouts leaks) who))).support := by
     unfold contentFactor at positive
     exact (PMF.mem_support_iff _ _).mpr (ENNReal.toReal_pos_iff.mp positive).1.ne'
-  have sentEq : sentSourceAction setup runtime leaks
-      (control.execution.respond (application setup runtime leaks) who
+  have sentEq : sentSourceAction setup timeouts leaks
+      (control.execution.respond (application setup timeouts leaks) who
         ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩)
       ⟨some ⟨⟨.commitment event (who, .prepared serial), opening⟩, .none⟩⟩ =
       decodeEventAction setup.program event (cast (congrArg EventGraph.EventField.Action
@@ -215,7 +215,7 @@ theorem onePacket_commitment_realized (assessment : setup.intendedModel.Behavior
         decodeEventAction_failing_binding setup.program event.val (by exact event.isLt)
           (by exact outputEq) (some .failure) rfl
       obtain ⟨rank, point, ordered, decoded⟩ :=
-        onePacket_decodes (runtime := runtime) (setup.intendedOpeningProfile assessment.strategy)
+        onePacket_decodes (timeouts := timeouts) (setup.intendedOpeningProfile assessment.strategy)
           trace
       obtain ⟨action, decodedAction⟩ := Option.isSome_iff_exists.mp
         (decodeEventAction_isSome setup.program event
@@ -227,7 +227,7 @@ theorem onePacket_commitment_realized (assessment : setup.intendedModel.Behavior
             cases same)
       rw [sentEq, decodedAction] at supported
       rw [decodedAction] at failing
-      obtain ⟨noFailure, noWithholding⟩ := asIfHonestProfile_success (runtime := runtime)
+      obtain ⟨noFailure, noWithholding⟩ := asIfHonestProfile_success (timeouts := timeouts)
         assessment who
         control.execution rank ordered point decoded _ action supported
       cases action with
@@ -246,7 +246,7 @@ theorem onePacket_commitment_realized (assessment : setup.intendedModel.Behavior
       have rawEq := Raw.eq_of_as?_eq_some rawRead
       subst rawEq
       refine ⟨serial, value, capacity, ?_, ?_⟩
-      · exact onePacket_commitment_eq_slotResponse setup runtime leaks bounds who _ _ event node _
+      · exact onePacket_commitment_eq_slotResponse setup timeouts leaks bounds who _ _ event node _
           member
           _ rfl serial rfl fresh value rfl
       · unfold contentFactor

@@ -34,13 +34,13 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 section Configured
 
 variable (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.ExecutionMode)
-  (deadline : (serviceGraph setup mode).EventId → Nat)
+  (duration : (serviceGraph setup mode).EventId → Nat)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- A reference graph profile's decision at the player's turn, realized by the
 canonical decision. -/
 def serviceReferencePolicy (reference : (serviceGraph setup mode).BehavioralProfile)
-    (who : Player) : (serviceApplication setup mode deadline leaks).Policy := fun past view =>
+    (who : Player) : (serviceApplication setup mode duration leaks).Policy := fun past view =>
   if identity : view.application.who = who then
     match view.application.publicView.ownTurn? who with
     | none => PMF.pure ⟨none⟩
@@ -50,7 +50,7 @@ def serviceReferencePolicy (reference : (serviceGraph setup mode).BehavioralProf
             (identity ▸ view.application.observation)
           if inactive : who ∈ observed.defaulted then PMF.pure ⟨none⟩ else
             (reference who event owned observed inactive).map
-              ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view
+              ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who past view
                 event)
         else PMF.pure ⟨none⟩
   else PMF.pure ⟨none⟩
@@ -58,8 +58,8 @@ def serviceReferencePolicy (reference : (serviceGraph setup mode).BehavioralProf
 /-- The source compiler's decision at the player's turn, realized by the
 canonical decision. -/
 def serviceCanonicalPolicy (profile : BehavioralProfile setup.program) (who : Player) :
-    (serviceApplication setup mode deadline leaks).Policy :=
-  serviceReferencePolicy setup mode deadline leaks (compileEventProfile setup.program profile) who
+    (serviceApplication setup mode duration leaks).Policy :=
+  serviceReferencePolicy setup mode duration leaks (compileEventProfile setup.program profile) who
 
 /-- One opportunity of a reference's turn-counted policy: silence once the event
 is recorded in the owner's recall or once a fresh call could no longer be
@@ -68,66 +68,66 @@ reference decision, retaining silence if it emits nothing. -/
 def serviceReferenceOpportunity (bound : (serviceGraph setup mode).EventId → Nat)
     (reference : (serviceGraph setup mode).BehavioralProfile) (who : Player)
     (event : (serviceGraph setup mode).EventId) :
-    (serviceApplication setup mode deadline leaks).Policy := fun past view =>
-  if (serviceRuntime setup mode deadline).eventRecorded leaks past event then
-    (serviceApplication setup mode deadline leaks).silentPolicy past view
-  else if view.application.publicView.InclusionFitsDeadline (serviceRuntime setup mode deadline)
+    (serviceApplication setup mode duration leaks).Policy := fun past view =>
+  if (eventRecorded (serviceTimeouts setup mode duration)) leaks past event then
+    (serviceApplication setup mode duration leaks).silentPolicy past view
+  else if view.application.publicView.InclusionFitsDeadline (serviceTimeouts setup mode duration)
       bound event then
-    (serviceReferencePolicy setup mode deadline leaks reference who past view).bind fun response =>
+    (serviceReferencePolicy setup mode duration leaks reference who past view).bind fun response =>
       if response.transmission = none then
-        (serviceApplication setup mode deadline leaks).silentPolicy past view
+        (serviceApplication setup mode duration leaks).silentPolicy past view
       else PMF.pure response
-  else (serviceApplication setup mode deadline leaks).silentPolicy past view
+  else (serviceApplication setup mode duration leaks).silentPolicy past view
 
 /-- One opportunity of the turn-counted policy of the compiled source profile. -/
 def serviceCanonicalOpportunity (bound : (serviceGraph setup mode).EventId → Nat)
     (profile : BehavioralProfile setup.program) (who : Player)
     (event : (serviceGraph setup mode).EventId) :
-    (serviceApplication setup mode deadline leaks).Policy :=
-  serviceReferenceOpportunity setup mode deadline leaks bound
+    (serviceApplication setup mode duration leaks).Policy :=
+  serviceReferenceOpportunity setup mode duration leaks bound
     (compileEventProfile setup.program profile) who event
 
 end Configured
 
 variable (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
 /-- The canonical source decision on a supplied sequential runtime. -/
 abbrev sourceServiceCanonicalPolicy : BehavioralProfile setup.program → Player →
-    (application setup runtime leaks).Policy :=
-  serviceCanonicalPolicy setup .sequential runtime.deadline leaks
+    (application setup timeouts leaks).Policy :=
+  serviceCanonicalPolicy setup .sequential timeouts.duration leaks
 
 section Generic
 
 variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
-  {deadline : (serviceGraph setup mode).EventId → Nat}
+  {duration : (serviceGraph setup mode).EventId → Nat}
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- At an owned turn, the total client is silent after public default and
 otherwise realizes the active compiled callback. -/
 theorem sourceServiceCanonicalPolicy_at_event_reference (reference :
     (serviceGraph setup mode).BehavioralProfile)
-    (who : Player) (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (who : Player) (execution : (serviceApplication setup mode duration leaks).Execution)
     (event : (serviceGraph setup mode).EventId)
     (selected : execution.application.publicView.ownTurn? who = some event)
     (owned : (serviceGraph setup mode).actor? event = some who) :
-    serviceReferencePolicy setup mode deadline leaks reference who (execution.logs who)
-        (execution.observe (serviceApplication setup mode deadline leaks) who) =
+    serviceReferencePolicy setup mode duration leaks reference who (execution.logs who)
+        (execution.observe (serviceApplication setup mode duration leaks) who) =
       if inactive : who ∈ execution.application.config.defaulted then PMF.pure ⟨none⟩ else
         (reference who event owned
           (id
             ((serviceGraph setup mode).playerObserve who execution.application.config))
           inactive).map
-          ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
+          ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who
             (execution.logs who)
-            (execution.observe (serviceApplication setup mode deadline leaks) who) event) := by
+            (execution.observe (serviceApplication setup mode duration leaks) who) event) := by
   unfold serviceReferencePolicy
   rw [dite_eq_left
-          (show (execution.observe (serviceApplication setup mode deadline leaks)
+          (show (execution.observe (serviceApplication setup mode duration leaks)
           who).application.who = who from rfl)]
   have turn :
-      (execution.observe (serviceApplication setup mode deadline leaks)
+      (execution.observe (serviceApplication setup mode duration leaks)
           who).application.publicView.ownTurn? who = some event := selected
   rw [turn]
   simp only [dite_eq_left owned]
@@ -136,20 +136,20 @@ theorem sourceServiceCanonicalPolicy_at_event_reference (reference :
 /-- At an owned turn, the total client is silent after public default and
 otherwise realizes the active compiled callback. -/
 theorem sourceServiceCanonicalPolicy_at_event (profile : BehavioralProfile setup.program)
-    (who : Player) (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (who : Player) (execution : (serviceApplication setup mode duration leaks).Execution)
     (event : (serviceGraph setup mode).EventId)
     (selected : execution.application.publicView.ownTurn? who = some event)
     (owned : (serviceGraph setup mode).actor? event = some who) :
-    serviceCanonicalPolicy setup mode deadline leaks profile who (execution.logs who)
-        (execution.observe (serviceApplication setup mode deadline leaks) who) =
+    serviceCanonicalPolicy setup mode duration leaks profile who (execution.logs who)
+        (execution.observe (serviceApplication setup mode duration leaks) who) =
       if inactive : who ∈ execution.application.config.defaulted then PMF.pure ⟨none⟩ else
         ((compileEventProfile setup.program profile) who event owned
           (id
             ((serviceGraph setup mode).playerObserve who execution.application.config))
           inactive).map
-          ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
+          ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who
             (execution.logs who)
-            (execution.observe (serviceApplication setup mode deadline leaks) who) event) :=
+            (execution.observe (serviceApplication setup mode duration leaks) who) event) :=
   sourceServiceCanonicalPolicy_at_event_reference setup leaks
     (compileEventProfile setup.program profile) who execution event selected owned
 
@@ -157,23 +157,23 @@ theorem sourceServiceCanonicalPolicy_at_event (profile : BehavioralProfile setup
 activity premise is imposed on the scheduler or source policies. -/
 theorem sourceServiceCanonicalPolicy_at_event_history_reference
     (reference : (serviceGraph setup mode).BehavioralProfile) (who : Player) {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    (control : (serviceApplication setup mode deadline leaks).Control)
-    (trace : ((serviceApplication setup mode deadline leaks).protocol
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    (control : (serviceApplication setup mode duration leaks).Control)
+    (trace : ((serviceApplication setup mode duration leaks).protocol
       (serviceInitialLaw setup mode) horizon scheduler).Trace (some control))
     (event : (serviceGraph setup mode).EventId)
     (selected : control.execution.application.publicView.ownTurn? who = some event)
     (owned : (serviceGraph setup mode).actor? event = some who) :
     ∃ active : who ∉ control.execution.application.config.defaulted,
-      serviceReferencePolicy setup mode deadline leaks reference who (control.execution.logs who)
-          (control.execution.observe (serviceApplication setup mode deadline leaks) who) =
+      serviceReferencePolicy setup mode duration leaks reference who (control.execution.logs who)
+          (control.execution.observe (serviceApplication setup mode duration leaks) who) =
         (reference who event owned
           (id
             ((serviceGraph setup mode).playerObserve who control.execution.application.config))
           active).map
-          ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
+          ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who
             (control.execution.logs who)
-            (control.execution.observe (serviceApplication setup mode deadline leaks) who)
+            (control.execution.observe (serviceApplication setup mode duration leaks) who)
             event) := by
   have facts := legalFacts setup leaks horizon scheduler control trace
   have ready := (control.execution.application.publicView_eventReady event).mp
@@ -188,23 +188,23 @@ theorem sourceServiceCanonicalPolicy_at_event_history_reference
 activity premise is imposed on the scheduler or source policies. -/
 theorem sourceServiceCanonicalPolicy_at_event_history
     (profile : BehavioralProfile setup.program) (who : Player) {horizon : Nat}
-    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
-    (control : (serviceApplication setup mode deadline leaks).Control)
-    (trace : ((serviceApplication setup mode deadline leaks).protocol
+    {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
+    (control : (serviceApplication setup mode duration leaks).Control)
+    (trace : ((serviceApplication setup mode duration leaks).protocol
       (serviceInitialLaw setup mode) horizon scheduler).Trace (some control))
     (event : (serviceGraph setup mode).EventId)
     (selected : control.execution.application.publicView.ownTurn? who = some event)
     (owned : (serviceGraph setup mode).actor? event = some who) :
     ∃ active : who ∉ control.execution.application.config.defaulted,
-      serviceCanonicalPolicy setup mode deadline leaks profile who (control.execution.logs who)
-          (control.execution.observe (serviceApplication setup mode deadline leaks) who) =
+      serviceCanonicalPolicy setup mode duration leaks profile who (control.execution.logs who)
+          (control.execution.observe (serviceApplication setup mode duration leaks) who) =
         ((compileEventProfile setup.program profile) who event owned
           (id
             ((serviceGraph setup mode).playerObserve who control.execution.application.config))
           active).map
-          ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
+          ((canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks who
             (control.execution.logs who)
-            (control.execution.observe (serviceApplication setup mode deadline leaks) who)
+            (control.execution.observe (serviceApplication setup mode duration leaks) who)
             event) := by
   apply sourceServiceCanonicalPolicy_at_event_history_reference
     (reference := compileEventProfile setup.program profile) <;> assumption
@@ -229,7 +229,7 @@ theorem serviceCanonicalPolicy_commit_of_observation {Γ : SourceCtx Player L}
     (aligned : CompiledPolicySuffix setup.program wholeProfile
       (.commit name owner fresh guard next) profile
       refs source.revelations source.registry embedding refsBefore offset)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (execution : (serviceApplication setup mode duration leaks).Execution)
     (decoded : decodeObservation? owner refs
       ((serviceGraph setup mode).playerStore owner execution.application.config.store) =
         some (sourceObserve owner source.state))
@@ -245,13 +245,13 @@ theorem serviceCanonicalPolicy_commit_of_observation {Γ : SourceCtx Player L}
         .binding owner payload := by
       change outputLayout setup.program (embedding.event headIndex) = _
       simpa [headIndex, outputLayout, eventCount] using embedding.layout_eq headIndex
-    serviceCanonicalPolicy setup mode deadline leaks wholeProfile owner (execution.logs owner)
-        (execution.observe (serviceApplication setup mode deadline leaks) owner) =
+    serviceCanonicalPolicy setup mode duration leaks wholeProfile owner (execution.logs owner)
+        (execution.observe (serviceApplication setup mode duration leaks) owner) =
       (if inactive : owner ∈ source.defaulted then PMF.pure none
         else commitKernel profile (source.view owner) inactive).map fun binding =>
-        (serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner
+        (canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks owner
         (execution.logs owner)
-        (execution.observe (serviceApplication setup mode deadline leaks) owner)
+        (execution.observe (serviceApplication setup mode duration leaks) owner)
         (embedding.event headIndex)
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) binding) := by
   dsimp only
@@ -271,9 +271,9 @@ theorem serviceCanonicalPolicy_commit_of_observation {Γ : SourceCtx Player L}
       rw [defaults]
       exact inactive
     rw [dite_eq_left nativeInactive, dite_eq_left inactive, PMF.pure_map]
-    rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_defaulted leaks owner
+    rw [(canonicalServiceDecision_defaulted (serviceTimeouts setup mode duration)) leaks owner
       (execution.logs owner)
-      (execution.observe (serviceApplication setup mode deadline leaks) owner) event _
+      (execution.observe (serviceApplication setup mode duration leaks) owner) event _
       nativeInactive]
   · have nativeActive : owner ∉ execution.application.config.defaulted := by
       change owner ∉ execution.application.config.defaults.defaulted
@@ -311,7 +311,7 @@ theorem sourceServiceCanonicalPolicy_commit {Γ : SourceCtx Player L}
     (aligned : CompiledPolicySuffix setup.program wholeProfile
       (.commit name owner fresh guard next) profile
       refs source.revelations source.registry embedding refsBefore offset)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (execution : (serviceApplication setup mode duration leaks).Execution)
     (agree : refs.Agrees source.state execution.application.config.store)
     (history : decodeHistory setup.program
       (execution.application.config.history) = source.history)
@@ -324,13 +324,13 @@ theorem sourceServiceCanonicalPolicy_commit {Γ : SourceCtx Player L}
         .binding owner payload := by
       change outputLayout setup.program (embedding.event headIndex) = _
       simpa [headIndex, outputLayout, eventCount] using embedding.layout_eq headIndex
-    serviceCanonicalPolicy setup mode deadline leaks wholeProfile owner (execution.logs owner)
-        (execution.observe (serviceApplication setup mode deadline leaks) owner) =
+    serviceCanonicalPolicy setup mode duration leaks wholeProfile owner (execution.logs owner)
+        (execution.observe (serviceApplication setup mode duration leaks) owner) =
       (if inactive : owner ∈ source.defaulted then PMF.pure none
         else commitKernel profile (source.view owner) inactive).map fun binding =>
-        (serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner
+        (canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks owner
         (execution.logs owner)
-        (execution.observe (serviceApplication setup mode deadline leaks) owner)
+        (execution.observe (serviceApplication setup mode duration leaks) owner)
         (embedding.event headIndex)
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) binding) := by
   have actor : (serviceGraph setup mode).actor? (embedding.event ⟨0, by simp [eventCount]⟩) =
@@ -360,7 +360,7 @@ theorem sourceServiceCanonicalPolicy_reveal {Γ : SourceCtx Player L}
     (aligned : CompiledPolicySuffix setup.program wholeProfile
       (.reveal published owner name fresh selected unresolved next) profile
       refs source.revelations source.registry embedding refsBefore offset)
-    (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (execution : (serviceApplication setup mode duration leaks).Execution)
     (agree : refs.Agrees source.state execution.application.config.store)
     (history : decodeHistory setup.program
       (execution.application.config.history) = source.history)
@@ -373,13 +373,13 @@ theorem sourceServiceCanonicalPolicy_reveal {Γ : SourceCtx Player L}
         .publication payload := by
       change outputLayout setup.program (embedding.event headIndex) = _
       simpa [headIndex, outputLayout, eventCount] using embedding.layout_eq headIndex
-    serviceCanonicalPolicy setup mode deadline leaks wholeProfile owner (execution.logs owner)
-        (execution.observe (serviceApplication setup mode deadline leaks) owner) =
+    serviceCanonicalPolicy setup mode duration leaks wholeProfile owner (execution.logs owner)
+        (execution.observe (serviceApplication setup mode duration leaks) owner) =
       (if inactive : owner ∈ source.defaulted then PMF.pure false
         else revealKernel profile (source.view owner) inactive).map fun disclose =>
-        (serviceRuntime setup mode deadline).canonicalServiceDecision leaks owner
+        (canonicalServiceDecision (serviceTimeouts setup mode duration)) leaks owner
         (execution.logs owner)
-        (execution.observe (serviceApplication setup mode deadline leaks) owner)
+        (execution.observe (serviceApplication setup mode duration leaks) owner)
         (embedding.event headIndex)
           (cast (congrArg EventGraph.EventField.Action outputEq.symm) disclose) := by
   dsimp only
@@ -399,9 +399,9 @@ theorem sourceServiceCanonicalPolicy_reveal {Γ : SourceCtx Player L}
       rw [defaults]
       exact inactive
     rw [dite_eq_left nativeInactive, dite_eq_left inactive, PMF.pure_map]
-    rw [(serviceRuntime setup mode deadline).canonicalServiceDecision_defaulted leaks owner
+    rw [(canonicalServiceDecision_defaulted (serviceTimeouts setup mode duration)) leaks owner
       (execution.logs owner)
-      (execution.observe (serviceApplication setup mode deadline leaks) owner) event _
+      (execution.observe (serviceApplication setup mode duration leaks) owner) event _
       nativeInactive]
   · have nativeActive : owner ∉ execution.application.config.defaulted := by
       change owner ∉ execution.application.config.defaults.defaulted

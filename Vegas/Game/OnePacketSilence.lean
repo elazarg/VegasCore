@@ -27,7 +27,7 @@ open GameTheory GameTheory.Protocol Interaction EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr}
   [IExpr.ResultTypes L] {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   (bounds : MessageBounds (graph setup))
 
@@ -36,30 +36,30 @@ forced state of `who`, while an event is ready, every one-packet response of a
 player other than `who` keeps silence, if that player is not the event's actor
 or has already emitted a packet naming the event. -/
 theorem onePacket_silent_of_forcedObserver (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler) (who : Player)
-    {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
-    (forced : ForcedState setup runtime leaks who (some control))
+    (scheduler : (application setup timeouts leaks).Scheduler) (who : Player)
+    {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
+    (forced : ForcedState setup timeouts leaks who (some control))
     {event : (graph setup).EventId} (ready : control.execution.application.config.cut.Ready event)
     (other : Player) (notWho : other ≠ who)
     (emitted : (graph setup).actor? event = some other →
-      ∃ message ∈ (application setup runtime leaks).outputs (control.execution.logs other),
+      ∃ message ∈ (application setup timeouts leaks).outputs (control.execution.logs other),
         message.payload.call.event? (graph setup) = some event)
-    (response : (application setup runtime leaks).Action)
-    (member : response ∈ bounds.onePacketActions runtime leaks other
+    (response : (application setup timeouts leaks).Action)
+    (member : response ∈ bounds.onePacketActions timeouts leaks other
       (control.execution.logs other)
-      (control.execution.observe (application setup runtime leaks) other)) :
+      (control.execution.observe (application setup timeouts leaks) other)) :
     response.transmission = none := by
-  let app := application setup runtime leaks
-  rcases ((bounds.mem_onePacketActions runtime leaks other _ _ response).mp member).2 with
+  let app := application setup timeouts leaks
+  rcases ((bounds.mem_onePacketActions timeouts leaks other _ _ response).mp member).2 with
     silent | ⟨material, _, permitted⟩
   · exact silent
   exfalso
   have rawTrace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control) :=
-    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
       scheduler trace
   obtain ⟨rank, point, ordered, decoded, forcedPoint⟩ := forced
-  obtain ⟨inputRecall, serialRecall, _⟩ := runtime.countRecall_history leaks rawTrace
+  obtain ⟨inputRecall, serialRecall, _⟩ := (countRecall_history timeouts) leaks rawTrace
   have facts := legalFacts setup leaks horizon scheduler control rawTrace
   have ledgerInputs : ∀ message ∈ control.execution.network.ledger,
       message ∈ control.execution.network.inputs := by
@@ -71,11 +71,11 @@ theorem onePacket_silent_of_forcedObserver (horizon : Nat)
     rw [← inputRecall message.sender] at recalled
     exact (List.mem_filter.mp recalled).1
   obtain ⟨recordRank, ⟨residual⟩, record⟩ :=
-    actorRecord_history (runtime := runtime) (failureProfile setup.program) horizon scheduler
+    actorRecord_history (timeouts := timeouts) (failureProfile setup.program) horizon scheduler
       rawTrace
   have sameRank := EventOrder.Cut.IsPrefix.unique ordered residual.checkpoint.ordered
   subst sameRank
-  set envelope := runtime.localEnvelope leaks other (control.execution.logs other)
+  set envelope := (localEnvelope timeouts) leaks other (control.execution.logs other)
     (control.execution.observe app other) material with envelopeEq
   obtain ⟨tokenValid, correct, first⟩ := (countPermits_eq_true_iff _ _).mp permitted
   obtain ⟨named, namedEvent, tokenEq⟩ := (WitnessedPacket.tokenValid_iff _).mp tokenValid
@@ -124,28 +124,28 @@ of the one-packet game in a forced state of `who`, every transmitting
 one-packet response of a player other than `who` names a ready event, of which
 that player is the actor. -/
 theorem onePacket_named_of_forcedObserver (horizon : Nat)
-    (scheduler : (application setup runtime leaks).Scheduler) (who : Player)
-    {control : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
-    (forced : ForcedState setup runtime leaks who (some control))
+    (scheduler : (application setup timeouts leaks).Scheduler) (who : Player)
+    {control : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
+    (forced : ForcedState setup timeouts leaks who (some control))
     (other : Player) (notWho : other ≠ who)
-    {material : (application setup runtime leaks).Submission}
-    (member : (⟨some material⟩ : (application setup runtime leaks).Action) ∈
-      bounds.onePacketActions runtime leaks other (control.execution.logs other)
-        (control.execution.observe (application setup runtime leaks) other)) :
+    {material : (application setup timeouts leaks).Submission}
+    (member : (⟨some material⟩ : (application setup timeouts leaks).Action) ∈
+      bounds.onePacketActions timeouts leaks other (control.execution.logs other)
+        (control.execution.observe (application setup timeouts leaks) other)) :
     ∃ event, control.execution.application.config.cut.Ready event ∧
       material.call.packet.event? (graph setup) = some event ∧
       (graph setup).actor? event = some other := by
-  let app := application setup runtime leaks
-  rcases ((bounds.mem_onePacketActions runtime leaks other _ _ _).mp member).2 with
+  let app := application setup timeouts leaks
+  rcases ((bounds.mem_onePacketActions timeouts leaks other _ _ _).mp member).2 with
     silent | ⟨material', transmitted, permitted⟩
   · cases silent
   cases transmitted
   have rawTrace : (app.protocol (initialLaw setup) horizon scheduler).Trace (some control) :=
-    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon
       scheduler trace
   obtain ⟨rank, point, ordered, decoded, forcedPoint⟩ := forced
-  obtain ⟨inputRecall, serialRecall, _⟩ := runtime.countRecall_history leaks rawTrace
+  obtain ⟨inputRecall, serialRecall, _⟩ := (countRecall_history timeouts) leaks rawTrace
   have facts := legalFacts setup leaks horizon scheduler control rawTrace
   have ledgerInputs : ∀ message ∈ control.execution.network.ledger,
       message ∈ control.execution.network.inputs := by
@@ -157,11 +157,11 @@ theorem onePacket_named_of_forcedObserver (horizon : Nat)
     rw [← inputRecall message.sender] at recalled
     exact (List.mem_filter.mp recalled).1
   obtain ⟨recordRank, ⟨residual⟩, record⟩ :=
-    actorRecord_history (runtime := runtime) (failureProfile setup.program) horizon scheduler
+    actorRecord_history (timeouts := timeouts) (failureProfile setup.program) horizon scheduler
       rawTrace
   have sameRank := EventOrder.Cut.IsPrefix.unique ordered residual.checkpoint.ordered
   subst sameRank
-  set envelope := runtime.localEnvelope leaks other (control.execution.logs other)
+  set envelope := (localEnvelope timeouts) leaks other (control.execution.logs other)
     (control.execution.observe app other) material with envelopeEq
   obtain ⟨tokenValid, correct, first⟩ := (countPermits_eq_true_iff _ _).mp permitted
   obtain ⟨named, namedEvent, tokenEq⟩ := (WitnessedPacket.tokenValid_iff _).mp tokenValid

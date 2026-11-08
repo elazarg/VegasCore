@@ -30,7 +30,7 @@ variable {Player : Type} [DecidableEq Player]
 is in, that event's readiness, and that it is the only ready event. -/
 structure ReadySite (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
-    (execution : (application setup (Vegas.runtime setup) leaks).Execution) where
+    (execution : (application setup (Vegas.timeouts setup) leaks).Execution) where
   event : (graph setup).EventId
   ready : execution.application.config.cut.Ready event
   sole : execution.application.publicView.SoleReady event
@@ -62,21 +62,21 @@ end Initialized
 typed state and public defaults once their first-turn source law holds. -/
 theorem sourceServiceClientPolicy_outcome_law_of_firstTurn
     {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
-    {deadline : (serviceGraph setup mode).EventId → Nat}
+    {duration : (serviceGraph setup mode).EventId → Nat}
     {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
-    {horizon turns : Nat} {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {horizon turns : Nat} {scheduler : (serviceApplication setup mode duration leaks).Scheduler}
     {bound : (serviceGraph setup mode).EventId → Nat}
     (original : BehavioralProfile setup.program)
-    (terminal : FirstTurnSourceLaw setup mode deadline leaks horizon scheduler bound turns
+    (terminal : FirstTurnSourceLaw setup mode duration leaks horizon scheduler bound turns
       (normalizeDisclosureProfile setup.program original))
     {Outcome : Type*}
     (read : State L setup.program.terminalCtx × DefaultHistory Player → Outcome) :
-    ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
-      scheduler (serviceClientPolicy setup mode deadline leaks bound turns
+    ((serviceApplication setup mode duration leaks).roundsFrom (serviceInitialLaw setup mode)
+      scheduler (serviceClientPolicy setup mode duration leaks bound turns
         (firstTurnTiming setup turns mode) (normalizeDisclosureProfile setup.program original))
       horizon).map (fun execution =>
-        (serviceSourceReadout setup mode deadline leaks
-          ((serviceApplication setup mode deadline leaks).finished execution)).map
+        (serviceSourceReadout setup mode duration leaks
+          ((serviceApplication setup mode duration leaks).finished execution)).map
           (fun final => read (final.state, final.defaults))) =
       (setup.run original).map (fun final => some (read (final.state, final.defaults))) := by
   rw [sourceServiceClientPolicy_roundsFrom]
@@ -91,17 +91,17 @@ theorem sourceServiceClientPolicy_outcome_law_of_firstTurn
 
 variable [Finite Player]
   (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
 /-- Local native completion laws give the full first-turn source configuration law. -/
 theorem firstTurnSourceLaw_of_completion_law
-    {horizon : Nat} {scheduler : (application setup runtime leaks).Scheduler}
+    {horizon : Nat} {scheduler : (application setup timeouts leaks).Scheduler}
     {bound : (graph setup).EventId → Nat} (turns : Nat)
     (profile : BehavioralProfile setup.program)
-    (completes : runtime.CompletesPlay leaks (initialLaw setup) horizon scheduler)
+    (completes : (CompletesPlay timeouts) leaks (initialLaw setup) horizon scheduler)
     (completionLaw :
-      let players := serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
+      let players := serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
         (firstTurnTiming setup turns) profile
       let plan := (graph setup).policyPlan (compileEventProfile setup.program profile)
         (graph setup).canonicalScheduler
@@ -110,31 +110,32 @@ theorem firstTurnSourceLaw_of_completion_law
         (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
         config.history
       ∀ (event : (graph setup).EventId)
-        (execution : (application setup runtime leaks).Execution),
+        (execution : (application setup timeouts leaks).Execution),
         CompletionBoundary setup leaks scheduler players event.val execution →
         execution.environmentRecall.length ≤ horizon →
-        ((application setup runtime leaks).runUntilHorizon scheduler players
+        ((application setup timeouts leaks).runUntilHorizon scheduler players
           (fun final => event ∈ final.application.config.cut.completed) horizon execution).bind
             (fun final => ((graph setup).runPlan plan final.application.config.remaining
               final.application.config).map read) =
           ((graph setup).runPlan plan execution.application.config.remaining
             execution.application.config).map read) :
-    FirstTurnSourceLaw setup .sequential runtime.deadline leaks horizon scheduler bound turns
+    FirstTurnSourceLaw setup .sequential timeouts.duration leaks horizon scheduler bound turns
       profile := by
   classical
-  let app := application setup runtime leaks
-  let players := serviceTurnPolicy setup .sequential runtime.deadline leaks bound turns
+  let app := application setup timeouts leaks
+  let players := serviceTurnPolicy setup .sequential timeouts.duration leaks bound turns
     (firstTurnTiming setup turns) profile
   let read := fun config : (graph setup).Config => decodeConfig? setup.program setup.program
     (ContextRefs.initial setup.context (outputLayout setup.program))
     (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
     config.history
   have readEq (final : app.Execution) :
-      sourceReadout setup runtime leaks (app.finished final) = read final.application.config := by
-    change serviceSourceReadout setup .sequential runtime.deadline leaks (some ⟨0, none, final⟩) = _
+      sourceReadout setup timeouts leaks (app.finished final) = read final.application.config := by
+    change serviceSourceReadout setup .sequential timeouts.duration leaks (some ⟨0, none,
+      final⟩) = _
     rw [serviceSourceReadout_eq_decode]
   change (app.roundsFrom (initialLaw setup) scheduler players horizon).map
-    (fun final => sourceReadout setup runtime leaks (app.finished final)) = _
+    (fun final => sourceReadout setup timeouts leaks (app.finished final)) = _
   rw [← initialLaw_bind_sourceContinuation setup profile, ReactiveApplication.roundsFrom,
     PMF.map_bind]
   apply bind_congr_on_support _
@@ -154,7 +155,7 @@ theorem firstTurnSourceLaw_of_completion_law
       exact Set.mem_iUnion₂.mpr ⟨_, supported, by simp [ReactiveApplication.runRounds, execution]⟩
     · intro event _ observer entry member
       cases member
-  have configLaw := CompletionBoundary.runToHorizon_law setup runtime leaks
+  have configLaw := CompletionBoundary.runToHorizon_law setup timeouts leaks
     (compileEventProfile setup.program profile) read completes completionLaw execution boundary
       (Nat.zero_le _)
   change (app.runRounds scheduler players horizon execution).map

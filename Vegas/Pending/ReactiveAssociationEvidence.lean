@@ -22,9 +22,9 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 /-- Arbitrary responses, admissions and environment commands preserve binding
 provenance in the single reactive application, including automatic completion. -/
-theorem reactiveBindingInvariant (runtime : EventGraphRuntime graph)
+theorem reactiveBindingInvariant (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph)) :
-    (runtime.reactiveApplication leaks).Invariant State.BindingInvariant where
+    ((reactiveApplication timeouts) leaks).Invariant State.BindingInvariant where
   submit state who material valid := by
     apply submitStep_bindingInvariant _ _ who material.call.packet
     rw [material.call.register_eq]
@@ -34,23 +34,23 @@ theorem reactiveBindingInvariant (runtime : EventGraphRuntime graph)
   handle state message next valid accepted := by
     obtain ⟨native, handled, nextEq⟩ := reactiveHandle_call accepted
     rw [← nextEq]
-    exact (handle_bindingInvariant runtime state native ⟨message.id, message.payload.call⟩
+    exact (handle_bindingInvariant timeouts state native ⟨message.id, message.payload.call⟩
       valid handled).drain
   environment state command next valid reached := by
-    change next ∈ ((environmentStep runtime state command).map State.drain).support at reached
+    change next ∈ ((environmentStep timeouts state command).map State.drain).support at reached
     obtain ⟨native, moved, rfl⟩ := PMF.support_map .. ▸ reached
-    exact (environmentStep_bindingInvariant runtime state native command valid moved).drain
+    exact (environmentStep_bindingInvariant timeouts state native command valid moved).drain
 
 /-- Exact binding provenance holds at every initialized raw history, including
 deviations and scheduler choices outside a reserved service. -/
-theorem reactiveBindingInvariant_history (runtime : EventGraphRuntime graph)
+theorem reactiveBindingInvariant_history (timeouts : EventTimeouts graph)
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
     (inputs : PMF graph.Inputs) (horizon : Nat)
-    (scheduler : (runtime.reactiveApplication leaks).Scheduler) {state}
-    (trace : ((runtime.reactiveApplication leaks).protocol
+    (scheduler : ((reactiveApplication timeouts) leaks).Scheduler) {state}
+    (trace : (((reactiveApplication timeouts) leaks).protocol
       (inputs.map State.initial) horizon scheduler).Trace state) :
     ReactiveApplication.stateInvariant State.BindingInvariant state :=
-  (runtime.reactiveBindingInvariant leaks).history (inputs.map State.initial) horizon scheduler
+  ((reactiveBindingInvariant timeouts) leaks).history (inputs.map State.initial) horizon scheduler
     (fun state member => by
       obtain ⟨input, _, rfl⟩ := PMF.support_map .. ▸ member
       exact State.initial_bindingInvariant input) trace

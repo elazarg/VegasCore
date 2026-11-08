@@ -56,7 +56,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] [Fintype Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
 
 open Classical in
 /-- The positive probabilities of single steps of intended play under an
@@ -186,7 +186,7 @@ end Scale
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
+  (timeouts : EventTimeouts (graph setup))
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
 
 section AsIfHonest
@@ -196,87 +196,88 @@ assessment's strategy gives at the projected source view of a native
 information state. At the owner's own bad-binding views it is the intended law
 over the intended menu of that view. -/
 def asIfHonestProfile (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
-    (info : (application setup runtime leaks).Info) : PMF (Option (OwnAction Player L)) :=
-  (assessment.strategy who (projectView setup runtime leaks who info)).map Subtype.val
+    (info : (application setup timeouts leaks).Info) : PMF (Option (OwnAction Player L)) :=
+  (assessment.strategy who (projectView setup timeouts leaks who info)).map Subtype.val
 
 /-- The native realization of as-if-honest play at a player view: at the
 owner's turn, the canonical decision of the encoded source action, and silence
 where the law chooses no action or the action does not encode at the event;
 silence when it is not the player's turn. -/
 def honestResponse (assessment : setup.intendedModel.BehavioralAssessment) (who : Player)
-    (past : List (application setup runtime leaks).PlayerEntry)
-    (view : (application setup runtime leaks).PlayerView) : PMF (application setup runtime
+    (past : List (application setup timeouts leaks).PlayerEntry)
+    (view : (application setup timeouts leaks).PlayerView) : PMF (application setup timeouts
       leaks).Action :=
   match view.application.publicView.ownTurn? who with
   | none => PMF.pure ⟨none⟩
   | some event =>
-      (asIfHonestProfile setup runtime leaks assessment who (some (past, view))).map fun choice =>
+      (asIfHonestProfile setup timeouts leaks assessment who (some (past, view))).map fun choice =>
         match choice.bind (encodeEventAction? setup.program event) with
         | none => ⟨none⟩
         | some action =>
-            runtime.canonicalServiceDecision leaks who past view event action
+            (canonicalServiceDecision timeouts) leaks who past view event action
 
 end AsIfHonest
 
 section Components
 
 variable [Fintype Player] (bounds : MessageBounds (graph setup))
-  (initial : PMF (application setup runtime leaks).State) (horizon : Nat)
-  (scheduler : (application setup runtime leaks).Scheduler)
+  (initial : PMF (application setup timeouts leaks).State) (horizon : Nat)
+  (scheduler : (application setup timeouts leaks).Scheduler)
 
 /-- The information model of the one-packet game of the supplied runtime. -/
 abbrev onePacketModel :=
-  (bounds.onePacketMenu runtime leaks).information initial horizon scheduler
+  (bounds.onePacketMenu timeouts leaks).information initial horizon scheduler
 
 open Classical in
 /-- The one-packet choice transmitting a response: the response itself when the
 one-packet menu offers it, silence otherwise, and the unique empty choice at a
 non-decision input. -/
 def responseChoice (who : Player) :
-    (info : (application setup runtime leaks).Info) → (application setup runtime leaks).Action →
-      (onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info
+    (info : (application setup timeouts leaks).Info) → (application setup timeouts leaks).Action →
+      (onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who info
   | none, _ => ⟨none, rfl⟩
   | some (past, view), response =>
-      if member : response ∈ bounds.onePacketActions runtime leaks who past view then
+      if member : response ∈ bounds.onePacketActions timeouts leaks who past view then
         ⟨some response, response, member, rfl⟩
       else
-        ⟨some ⟨none⟩, ⟨none⟩, bounds.silence_onePacket runtime leaks who past view, rfl⟩
+        ⟨some ⟨none⟩, ⟨none⟩, bounds.silence_onePacket timeouts leaks who past view, rfl⟩
 
 /-- The one-packet choice of silence. -/
-def silenceChoice (who : Player) (info : (application setup runtime leaks).Info) :
-    (onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info :=
-  responseChoice setup runtime leaks bounds initial horizon scheduler who info ⟨none⟩
+def silenceChoice (who : Player) (info : (application setup timeouts leaks).Info) :
+    (onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who info :=
+  responseChoice setup timeouts leaks bounds initial horizon scheduler who info ⟨none⟩
 
 /-- The as-if-honest response as a law over one-packet choices. -/
 def honestChoice (assessment : setup.intendedModel.BehavioralAssessment) (who : Player) :
-    (info : (application setup runtime leaks).Info) →
-      PMF ((onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info)
+    (info : (application setup timeouts leaks).Info) →
+      PMF ((onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who info)
   | none => PMF.pure ⟨none, rfl⟩
-  | some (past, view) => (honestResponse setup runtime leaks assessment who past view).map
-      (responseChoice setup runtime leaks bounds initial horizon scheduler who (some (past, view)))
+  | some (past, view) => (honestResponse setup timeouts leaks assessment who past view).map
+      (responseChoice setup timeouts leaks bounds initial horizon scheduler who (some (past, view)))
 
 /-- **A trembled component.** The square of the scale on the uniform law over
 the one-packet menu, and the rest on the mixture giving the scale to the
 alternative and the remainder to the main law. -/
 def trembledChoice (scale : ℝ) (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) (who : Player)
-    (info : (application setup runtime leaks).Info)
+    (info : (application setup timeouts leaks).Info)
     (main alternative :
-      PMF ((onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info)) :
-    PMF ((onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info) :=
+      PMF ((onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who
+        info)) :
+    PMF ((onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who info) :=
   mix (scale ^ 2) (sq_nonneg _) (pow_le_one₀ nonnegative le_one)
-    ((bounds.onePacketMenu runtime leaks).uniformPolicy initial horizon scheduler who info)
+    ((bounds.onePacketMenu timeouts leaks).uniformPolicy initial horizon scheduler who info)
     (mix scale nonnegative le_one alternative main)
 
 /-- **The prescribed component.** Send the as-if-honest response; the timing
 deviation is silence. -/
 def prescribedComponent (assessment : setup.intendedModel.BehavioralAssessment) (scale : ℝ)
     (nonnegative : 0 ≤ scale) (le_one : scale ≤ 1) (who : Player)
-    (info : (application setup runtime leaks).Info) :
-    PMF ((onePacketModel setup runtime leaks bounds initial horizon scheduler).Choice who info) :=
-  trembledChoice setup runtime leaks bounds initial horizon scheduler scale nonnegative le_one who
+    (info : (application setup timeouts leaks).Info) :
+    PMF ((onePacketModel setup timeouts leaks bounds initial horizon scheduler).Choice who info) :=
+  trembledChoice setup timeouts leaks bounds initial horizon scheduler scale nonnegative le_one who
     info
-    (honestChoice setup runtime leaks bounds initial horizon scheduler assessment who info)
-    (PMF.pure (silenceChoice setup runtime leaks bounds initial horizon scheduler who info))
+    (honestChoice setup timeouts leaks bounds initial horizon scheduler assessment who info)
+    (PMF.pure (silenceChoice setup timeouts leaks bounds initial horizon scheduler who info))
 
 end Components
 
@@ -287,18 +288,18 @@ network view and the receipts. It leaves out the masked store, the player's own
 source actions and its candidate material. -/
 abbrev OperationalView :=
   EventGraphRuntime.PublicView (graph setup) ×
-    MessageNetwork.PlayerView Player (application setup runtime leaks).Payload ×
+    MessageNetwork.PlayerView Player (application setup timeouts leaks).Payload ×
     List (MessageId Player × Bool)
 
 /-- The operational part of a player view. -/
-def operationalView (view : (application setup runtime leaks).PlayerView) :
-    OperationalView setup runtime leaks :=
+def operationalView (view : (application setup timeouts leaks).PlayerView) :
+    OperationalView setup timeouts leaks :=
   (view.application.publicView, view.messages, view.receipts)
 
 /-- The value an opening at the owner's turn delivers: at a reveal event, the
 owner's stored binding of the revealed commitment, with its field kind; nothing
 at any other event or when it is not the owner's turn. -/
-def deliveredValue (who : Player) (view : (application setup runtime leaks).PlayerView) :
+def deliveredValue (who : Player) (view : (application setup timeouts leaks).PlayerView) :
     Option (Σ kind : EventGraph.EventField Player L, Option kind.Value) :=
   match view.application.publicView.ownTurn? who with
   | none => none
@@ -313,25 +314,25 @@ structure LateKey where
   /-- The deciding player. -/
   owner : Player
   /-- The operational part of its current view. -/
-  current : OperationalView setup runtime leaks
+  current : OperationalView setup timeouts leaks
   /-- The operational part of each recalled view, with the envelope it emitted. -/
-  recalled : List (OperationalView setup runtime leaks ×
-    Option (Message Player (application setup runtime leaks).Payload))
+  recalled : List (OperationalView setup timeouts leaks ×
+    Option (Message Player (application setup timeouts leaks).Payload))
   /-- At a reveal, the value its opening delivers. -/
   delivered : Option (Σ kind : EventGraph.EventField Player L, Option kind.Value)
 
 /-- **The late-delivery key.** The owner, the operational parts of its current
 view and recall, and the delivered value at a reveal; `none` at a non-decision
 input. -/
-def lateKey (who : Player) : (application setup runtime leaks).Info → Option (LateKey setup
-  runtime leaks)
+def lateKey (who : Player) : (application setup timeouts leaks).Info → Option (LateKey setup
+  timeouts leaks)
   | none => none
   | some (past, view) => some
       { owner := who
-        current := operationalView setup runtime leaks view
+        current := operationalView setup timeouts leaks view
         recalled := past.map fun entry =>
-          (operationalView setup runtime leaks entry.beforeView, entry.emitted)
-        delivered := deliveredValue setup runtime leaks who view }
+          (operationalView setup timeouts leaks entry.beforeView, entry.emitted)
+        delivered := deliveredValue setup timeouts leaks who view }
 
 end LateKey
 

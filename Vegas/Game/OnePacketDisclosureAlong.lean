@@ -32,7 +32,7 @@ open GameTheory GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 /-- **Completing a failing reveal fails it.** From a configuration with a source
@@ -81,14 +81,14 @@ theorem revealFailed_of_failing_step {profile : BehavioralProfile setup.program}
   rw [EventGraph.Config.complete_output_same]
 
 variable [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 /-- **A failing reveal fails or waits.** If a reveal of `owner` is ready at a
 state of a history and resolves to a failure whether disclosed or not, then at
 every later state of every extension the configuration is unchanged, or the
 decoded point shows `owner`'s reveal failed. -/
-theorem revealFailed_along {control : (application setup runtime leaks).Control}
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+theorem revealFailed_along {control : (application setup timeouts leaks).Control}
+    (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     {event : (graph setup).EventId} (ready : control.execution.application.config.cut.Ready event)
     {owner : Player} {payload : L.Ty}
     {binding : EventGraph.FieldRef (graph setup).layout (.binding owner payload)}
@@ -98,9 +98,9 @@ theorem revealFailed_along {control : (application setup runtime leaks).Control}
       ((graph setup).nodes event) = .resolve owner payload binding checks}
     (failing : ∀ disclose, EventGraph.EventCode.resolveOutput? binding checks disclose
       control.execution.application.config.store = some .failure) :
-    ∀ {state} {trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace
+    ∀ {state} {trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace
       state},
-      TracePrefix prior trace → ∀ current : (application setup runtime leaks).Control,
+      TracePrefix prior trace → ∀ current : (application setup timeouts leaks).Control,
         state = some current →
         current.execution.application.config = control.execution.application.config ∨
           ∃ point, decodedPoint setup current.execution.application.config = some point ∧
@@ -133,13 +133,13 @@ theorem revealFailed_along {control : (application setup runtime leaks).Control}
       intro current same
       subst same
       cases source with
-      | none => exact (not_tracePrefix_start (runtime := runtime) before earlier).elim
+      | none => exact (not_tracePrefix_start (timeouts := timeouts) before earlier).elim
       | some previous =>
-          have path := reactive_protocol_graph_steps runtime leaks (initialLaw setup) horizon
+          have path := reactive_protocol_graph_steps timeouts leaks (initialLaw setup) horizon
             scheduler previous current joint realized
-          obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (runtime := runtime)
+          obtain ⟨rank, ⟨residual⟩⟩ := protocol_sourceResidual (timeouts := timeouts)
             (failureProfile setup.program)
-            (bounds.onePacketMenu runtime leaks) horizon scheduler before previous rfl
+            (bounds.onePacketMenu timeouts leaks) horizon scheduler before previous rfl
           rcases ih previous rfl with same | ⟨point, decoded, failed⟩
           · rcases path.cases_head with unchanged | ⟨middle, moved, rest⟩
             · exact Or.inl (unchanged.symm.trans same)
@@ -165,8 +165,8 @@ which every ready reveal belongs to `who`, and the end `w` of an intended histor
 that `who` observes like `p`. At every state along the history, the canonical
 disclosure of every player `r ≠ who` at its pending reveal transmits. -/
 theorem disclosureResolves_along (wellFormed : setup.WellFormed) {who : Player}
-    {current : (application setup runtime leaks).Control}
-    (trace : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some current))
+    {current : (application setup timeouts leaks).Control}
+    (trace : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some current))
     {p w : ProtocolState setup.program}
     (decodedP : decodedPoint setup current.execution.application.config = some p)
     {second : setup.intendedProtocol.History} (secondState : second.state = some w)
@@ -176,20 +176,20 @@ theorem disclosureResolves_along (wellFormed : setup.WellFormed) {who : Player}
       ∀ owner payload binding checks outputEq codeEq,
         nodeView (graph setup) event = .resolve owner payload binding checks outputEq codeEq →
           owner = who)
-    {control : (application setup runtime leaks).Control}
-    (prior : (onePacketProtocol setup runtime leaks bounds horizon scheduler).Trace (some control))
+    {control : (application setup timeouts leaks).Control}
+    (prior : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).Trace (some control))
     (isPrefix : TracePrefix prior trace) {r : Player} (different : r ≠ who) :
-    DisclosureResolves setup runtime leaks r (control.execution.logs r)
-      (control.execution.observe (application setup runtime leaks) r) := by
+    DisclosureResolves setup timeouts leaks r (control.execution.logs r)
+      (control.execution.observe (application setup timeouts leaks) r) := by
   intro event pending owner payload binding checks outputEq codeEq node
-  obtain ⟨turn, _, owned, _⟩ := pendingEvent_spec (runtime := runtime) (setup := setup) pending
+  obtain ⟨turn, _, owned, _⟩ := pendingEvent_spec (timeouts := timeouts) (setup := setup) pending
   have ownerEq : owner = r :=
     Option.some.inj ((nodeView_resolve_actor outputEq codeEq).symm.trans owned)
   subst ownerEq
-  have rawTrace : ((application setup runtime leaks).protocol (initialLaw setup) horizon
+  have rawTrace : ((application setup timeouts leaks).protocol (initialLaw setup) horizon
     scheduler).Trace
       (some control) :=
-    (bounds.onePacketMenu runtime leaks).toRawTrace (initialLaw setup) horizon scheduler
+    (bounds.onePacketMenu timeouts leaks).toRawTrace (initialLaw setup) horizon scheduler
       prior
   have facts := legalFacts setup leaks horizon scheduler control rawTrace
   have ready : control.execution.application.config.cut.Ready event :=
@@ -214,12 +214,12 @@ theorem disclosureResolves_along (wellFormed : setup.WellFormed) {who : Player}
       have stored := EventGraph.EventCode.binding_success_of_resolve_success binding checks true
         control.execution.application.config.store value resolved
       obtain ⟨candidate, accepted, candidateOwner, _verified, _packet⟩ :=
-        EventGraphRuntime.reactiveResolutionPacket_provenance runtime leaks
+        EventGraphRuntime.reactiveResolutionPacket_provenance timeouts leaks
           control.execution.application facts.binding owner event payload binding checks outputEq
           _ active discloses value stored
-      apply runtime.canonicalServiceDecision_openable leaks owner
+      apply (canonicalServiceDecision_openable timeouts) leaks owner
         (control.execution.logs owner)
-        (control.execution.observe (application setup runtime leaks) owner) event owner payload
+        (control.execution.observe (application setup timeouts leaks) owner) event owner payload
           binding checks outputEq codeEq node active value _ candidate accepted candidateOwner
       change binding.get? ((graph setup).playerStore owner
         control.execution.application.config.store) = _
@@ -233,7 +233,7 @@ theorem disclosureResolves_along (wellFormed : setup.WellFormed) {who : Player}
         · exact EventGraph.EventCode.resolveOutput?_false_eq_failure binding checks _
             fieldsAvailable
         · exact resolved
-      rcases revealFailed_along (runtime := runtime) (outputEq := outputEq) (codeEq := codeEq)
+      rcases revealFailed_along (timeouts := timeouts) (outputEq := outputEq) (codeEq := codeEq)
         prior ready failing
         isPrefix current rfl with same | ⟨point, decoded, failed⟩
       · have readyNow : current.execution.application.config.cut.Ready event := same ▸ ready

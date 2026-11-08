@@ -41,7 +41,7 @@ private abbrev cashRosterService (exit : Int) : SourceServiceSpec Player simpleE
   leaks := cashLeaks exit
   bounds := cashBounds exit
   rosters := fun _ => [.alice]
-  network := (runtime (cashSetup exit)).idleNetwork (cashLeaks exit)
+  network := (idleNetwork (timeouts (cashSetup exit))) (cashLeaks exit)
   values := Vegas.Examples.ProgramPaymentsRuntime.binding_values_covered 5
   initialValues := by
     intro state supported

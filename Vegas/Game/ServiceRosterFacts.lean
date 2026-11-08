@@ -51,7 +51,7 @@ theorem receipt_of_published {app : ReactiveApplication Player} (execution : app
 
 section Selection
 
-variable {graph : EventGraph Player L} (runtime : EventGraphRuntime graph)
+variable {graph : EventGraph Player L} (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 /-- When every packet of its own an owner emits for an event carries the
@@ -60,26 +60,26 @@ identifier is exactly what `reactiveLatest` selects: every pending envelope by
 that author addressed to the event was emitted by the owner, so it carries that
 identifier. -/
 theorem reactiveLatest_sole
-    (execution : (runtime.reactiveApplication leaks).Execution)
-    (origins : execution.Provenance (runtime.reactiveApplication leaks))
-    (recalled : execution.InputRecall (runtime.reactiveApplication leaks))
+    (execution : ((reactiveApplication timeouts) leaks).Execution)
+    (origins : execution.Provenance ((reactiveApplication timeouts) leaks))
+    (recalled : execution.InputRecall ((reactiveApplication timeouts) leaks))
     (retained : execution.network.PendingOrPublished)
     (event : graph.EventId) (owner : Player)
-    (earlier later : List (runtime.reactiveApplication leaks).PlayerEntry)
-    (entry : (runtime.reactiveApplication leaks).PlayerEntry)
+    (earlier later : List ((reactiveApplication timeouts) leaks).PlayerEntry)
+    (entry : ((reactiveApplication timeouts) leaks).PlayerEntry)
     (message : Message Player (WitnessedPacket graph))
     (split : execution.logs owner = earlier ++ entry :: later)
     (emitted : entry.emitted = some message) (authored : message.sender = owner)
     (addressed : message.payload.call.event? graph = some event)
-    (sole : ∀ other ∈ earlier ++ later, ¬ EmitsOtherFor runtime leaks other event message.id)
+    (sole : ∀ other ∈ earlier ++ later, ¬ EmitsOtherFor timeouts leaks other event message.id)
     (unpublished : message.id ∉ execution.network.ledger.map Message.id) :
     message ∈ execution.network.pending ∧
-      runtime.reactiveLatest leaks event owner
-        (execution.observeEnvironment (runtime.reactiveApplication leaks)) =
+      (reactiveLatest timeouts) leaks event owner
+        (execution.observeEnvironment ((reactiveApplication timeouts) leaks)) =
           .include message.id := by
-  have output : message ∈ (runtime.reactiveApplication leaks).outputs (execution.logs owner) :=
+  have output : message ∈ ((reactiveApplication timeouts) leaks).outputs (execution.logs owner) :=
     List.mem_filterMap.mpr ⟨entry, by rw [split]; simp, emitted⟩
-  have pending := ((runtime.reactiveApplication leaks).pending_iff_recalled execution owner
+  have pending := (((reactiveApplication timeouts) leaks).pending_iff_recalled execution owner
     message authored unpublished origins recalled retained).mpr output
   refine ⟨pending, ?_⟩
   unfold reactiveLatest
@@ -92,7 +92,7 @@ theorem reactiveLatest_sole
     simp only [decide_eq_true_eq] at good
     obtain ⟨selectedAuthored, selectedAddressed, selectedUnpublished⟩ := good
     have selectedPending := List.mem_reverse.mp (List.mem_of_find?_eq_some found)
-    have selectedOutput := ((runtime.reactiveApplication leaks).pending_iff_recalled execution
+    have selectedOutput := (((reactiveApplication timeouts) leaks).pending_iff_recalled execution
       owner selected selectedAuthored selectedUnpublished origins recalled retained).mp
         selectedPending
     obtain ⟨other, member, otherEmitted⟩ := List.mem_filterMap.mp selectedOutput
@@ -113,11 +113,11 @@ theorem reactiveLatest_sole
 
 /-- Including the identifier of a pending envelope records a receipt for it. -/
 theorem includePending_receipt_of_pending
-    (execution : (runtime.reactiveApplication leaks).Execution)
+    (execution : ((reactiveApplication timeouts) leaks).Execution)
     (message : Message Player (WitnessedPacket graph))
     (pending : message ∈ execution.network.pending) :
     ∃ accepted, (message.id, accepted) ∈
-      (execution.includePending (runtime.reactiveApplication leaks) message.id).receipts := by
+      (execution.includePending ((reactiveApplication timeouts) leaks) message.id).receipts := by
   unfold ReactiveApplication.Execution.includePending MessageNetwork.includePending
   cases found : execution.network.lookup message.id with
   | none =>
@@ -134,47 +134,47 @@ runtime invariant, envelope provenance, input recall, retention of known
 envelopes, and receipts for published envelopes. -/
 theorem roster_trace_facts (setup : Setup (Player := Player) (L := L))
     {mode : EventGraph.ExecutionMode}
-    {deadline : (serviceGraph setup mode).EventId → Nat}
+    {duration : (serviceGraph setup mode).EventId → Nat}
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
-    (horizon : Nat) (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
-    {control : (serviceApplication setup mode deadline leaks).Control}
+    (horizon : Nat) (scheduler : (serviceApplication setup mode duration leaks).Scheduler)
+    {control : (serviceApplication setup mode duration leaks).Control}
     (trace :
-        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        ((serviceApplication setup mode duration leaks).protocol (serviceInitialLaw setup mode)
         horizon scheduler).Trace (some control)) :
     (∃ inputs, control.execution.application.Invariant inputs) ∧
-      control.execution.Provenance (serviceApplication setup mode deadline leaks) ∧
-      control.execution.InputRecall (serviceApplication setup mode deadline leaks) ∧
+      control.execution.Provenance (serviceApplication setup mode duration leaks) ∧
+      control.execution.InputRecall (serviceApplication setup mode duration leaks) ∧
       control.execution.network.PendingOrPublished ∧
-      control.execution.ReceiptsSound (serviceApplication setup mode deadline leaks)
+      control.execution.ReceiptsSound (serviceApplication setup mode duration leaks)
           (fun _ => True) := by
   have nativeTrace :
-      ((serviceApplication setup mode deadline leaks).protocol
+      ((serviceApplication setup mode duration leaks).protocol
         ((setup.initialLaw.map setup.eventInputs).map State.initial)
         horizon scheduler).Trace (some control) := by
     rw [PMF.map_comp]
     exact trace
-  have valid := (serviceRuntime setup mode deadline).reactive_history_invariant leaks
+  have valid := (reactive_history_invariant (serviceTimeouts setup mode duration)) leaks
     (setup.initialLaw.map setup.eventInputs) horizon scheduler nativeTrace
-  have receipts : (serviceApplication setup mode deadline leaks).ServiceInvariant scheduler
-      (fun execution => execution.ReceiptsSound (serviceApplication setup mode deadline leaks)
+  have receipts : (serviceApplication setup mode duration leaks).ServiceInvariant scheduler
+      (fun execution => execution.ReceiptsSound (serviceApplication setup mode duration leaks)
           (fun _ => True)) :=
     { respond := fun execution who action valid =>
-        (serviceApplication setup mode deadline leaks).receiptsSound_respond _ execution who
+        (serviceApplication setup mode duration leaks).receiptsSound_respond _ execution who
         action valid
       environment := fun execution next command valid _ reached =>
-        (serviceApplication setup mode deadline leaks).receiptsSound_environmentStep _ execution
+        (serviceApplication setup mode duration leaks).receiptsSound_environmentStep _ execution
         next command valid (fun _ _ _ => trivial) reached }
   refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · obtain ⟨inputs, _supported, invariant⟩ := valid
     exact ⟨inputs, invariant⟩
-  · exact (serviceApplication setup mode deadline leaks).history_provenance
+  · exact (serviceApplication setup mode duration leaks).history_provenance
         (serviceInitialLaw setup mode) horizon scheduler trace
-  · exact (serviceApplication setup mode deadline leaks).history_inputRecall
+  · exact (serviceApplication setup mode duration leaks).history_inputRecall
         (serviceInitialLaw setup mode) horizon scheduler trace
-  · exact (serviceApplication setup mode deadline leaks).pendingOrPublished_history scheduler
+  · exact (serviceApplication setup mode duration leaks).pendingOrPublished_history scheduler
         (serviceInitialLaw setup mode) horizon trace
   · exact receipts.history (serviceInitialLaw setup mode) horizon
-      (fun state _ => (serviceApplication setup mode deadline leaks).receiptsSound_initial _
+      (fun state _ => (serviceApplication setup mode duration leaks).receiptsSound_initial _
           state) trace
 
 end Vegas

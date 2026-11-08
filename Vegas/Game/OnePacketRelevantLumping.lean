@@ -25,58 +25,60 @@ open GameTheory GameTheory.Protocol GameTheory.Math.Probability Interaction Even
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
   {setup : Setup (Player := Player) (L := L)}
-  {runtime : EventGraphRuntime (graph setup)}
+  {timeouts : EventTimeouts (graph setup)}
   {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
   [Fintype Player] {bounds : MessageBounds (graph setup)} {horizon : Nat}
-  {scheduler : (application setup runtime leaks).Scheduler}
+  {scheduler : (application setup timeouts leaks).Scheduler}
 
 open Classical in
 /-- **One-step lumping at relevant sites.** `Vegas.PendingLumping` with every
 site-indexed requirement asked only at the sites satisfying `relevant`. -/
-structure PendingLumpingOn (assessment : (onePacketInformation setup runtime leaks bounds horizon
+structure PendingLumpingOn (assessment : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).BehavioralAssessment) (who : Player)
-    (relevant : (onePacketInformation setup runtime leaks bounds horizon
+    (relevant : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationSite who →
       Prop) {LateOption : Type}
-    (profileOf : (onePacketInformation setup runtime leaks bounds horizon
+    (profileOf : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationSite who →
       LateOption → ∀ player,
-        (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player)
-    (failedState : LateKey setup runtime leaks → (application setup runtime leaks).ProtocolState →
+        (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy
+          player)
+    (failedState : LateKey setup timeouts leaks → (application setup timeouts leaks).ProtocolState →
       Prop) (δ : ℝ)
     (Y : Type) where
   /-- The image of a protocol state at a key. -/
-  image : LateKey setup runtime leaks → (application setup runtime leaks).ProtocolState → Y
+  image : LateKey setup timeouts leaks → (application setup timeouts leaks).ProtocolState → Y
   /-- The image kernel of a key and an option. -/
-  kernel : LateKey setup runtime leaks → LateOption → Y → PMF Y
+  kernel : LateKey setup timeouts leaks → LateOption → Y → PMF Y
   /-- The image of a forced history's state, read off its operational record. -/
-  start : LateKey setup runtime leaks → List (Option (OperationalState setup runtime leaks)) → Y
+  start : LateKey setup timeouts leaks → List (Option (OperationalState setup timeouts leaks)) → Y
   /-- The kept states for a site and its key. -/
-  keep : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who →
-    LateKey setup runtime leaks → Set (application setup runtime leaks).ProtocolState
+  keep : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationSite who →
+    LateKey setup timeouts leaks → Set (application setup timeouts leaks).ProtocolState
   /-- Failure as a function of the image. -/
-  failure : LateKey setup runtime leaks → Y → ℝ
+  failure : LateKey setup timeouts leaks → Y → ℝ
   failure_unit : ∀ key y, 0 ≤ failure key y ∧ failure key y ≤ 1
-  start_eq : ∀ site, relevant site → ∀ key, lateKey setup runtime leaks who site.1 = some key →
+  start_eq : ∀ site, relevant site → ∀ key, lateKey setup timeouts leaks who site.1 = some key →
     ∀ history ∈ (assessment.belief who site).support,
-      ForcedState setup runtime leaks who history.1.state →
+      ForcedState setup timeouts leaks who history.1.state →
         image key history.1.state =
-          start key (operationalRecord setup runtime leaks bounds horizon scheduler history.1.trace)
-  start_kept : ∀ site, relevant site → ∀ key, lateKey setup runtime leaks who site.1 = some key →
+          start key (operationalRecord setup timeouts leaks bounds horizon scheduler
+            history.1.trace)
+  start_kept : ∀ site, relevant site → ∀ key, lateKey setup timeouts leaks who site.1 = some key →
     ∀ history ∈ (assessment.belief who site).support,
-      ForcedState setup runtime leaks who history.1.state → history.1.state ∈ keep site key
-  kept : ∀ site, relevant site → ∀ key, lateKey setup runtime leaks who site.1 = some key → ∀
+      ForcedState setup timeouts leaks who history.1.state → history.1.state ∈ keep site key
+  kept : ∀ site, relevant site → ∀ key, lateKey setup timeouts leaks who site.1 = some key → ∀
     option,
-    ∀ state ∈ keep site key, ∀ next ∈ ((application setup runtime leaks).controlStep (initialLaw
+    ∀ state ∈ keep site key, ∀ next ∈ ((application setup timeouts leaks).controlStep (initialLaw
       setup)
-      horizon scheduler ((bounds.onePacketMenu runtime leaks).decodeProfile
+      horizon scheduler ((bounds.onePacketMenu timeouts leaks).decodeProfile
         (initialLaw setup) horizon scheduler (profileOf site option)) state).support,
       next ∈ keep site key
-  close : ∀ site, relevant site → ∀ key, lateKey setup runtime leaks who site.1 = some key → ∀
+  close : ∀ site, relevant site → ∀ key, lateKey setup timeouts leaks who site.1 = some key → ∀
     option,
     ∀ state ∈ keep site key, PMF.WithinTV δ
-      (((application setup runtime leaks).controlStep (initialLaw setup) horizon scheduler
-        ((bounds.onePacketMenu runtime leaks).decodeProfile (initialLaw setup) horizon
+      (((application setup timeouts leaks).controlStep (initialLaw setup) horizon scheduler
+        ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup) horizon
           scheduler (profileOf site option)) state).map (image key))
       (kernel key option (image key state))
   failure_eq : ∀ site, relevant site → ∀ key, ∀ state ∈ keep site key,
@@ -84,10 +86,10 @@ structure PendingLumpingOn (assessment : (onePacketInformation setup runtime lea
 
 section Failure
 
-variable (setup runtime leaks bounds horizon scheduler)
+variable (setup timeouts leaks bounds horizon scheduler)
 
 local notation "onePacketN" =>
-  onePacketModel setup runtime leaks bounds (initialLaw setup) horizon scheduler
+  onePacketModel setup timeouts leaks bounds (initialLaw setup) horizon scheduler
 
 /-- The failure expectation of `fuel` steps of a lumping's image kernel from the
 image read off an operational record. -/
@@ -95,14 +97,14 @@ def lumpedFailure {assessment : (onePacketN).BehavioralAssessment} {who : Player
     {LateOption : Type}
     {profileOf : (onePacketN).InformationSite who → LateOption → ∀ player,
       (onePacketN).BehavioralPolicy player}
-    {failedState : LateKey setup runtime leaks → (application setup runtime leaks).ProtocolState →
+    {failedState : LateKey setup timeouts leaks → (application setup timeouts leaks).ProtocolState →
       Prop}
     {relevant : (onePacketN).InformationSite who → Prop}
     {δ : ℝ} {Y : Type}
-    (lumping : PendingLumpingOn (runtime := runtime) assessment who relevant profileOf failedState
+    (lumping : PendingLumpingOn (timeouts := timeouts) assessment who relevant profileOf failedState
       δ Y)
-    (fuel : Nat) (key : LateKey setup runtime leaks) (option : LateOption)
-    (record : List (Option (OperationalState setup runtime leaks))) : ℝ :=
+    (fuel : Nat) (key : LateKey setup timeouts leaks) (option : LateOption)
+    (record : List (Option (OperationalState setup timeouts leaks))) : ℝ :=
   expect ((fun law => law.bind (lumping.kernel key option))^[fuel]
     (PMF.pure (lumping.start key record))) (lumping.failure key)
 
@@ -115,33 +117,35 @@ steps from a history whose state is kept for a relevant site and its key is
 within `fuel * δ` of the failure expectation of `fuel` steps of the image kernel
 from the history's image. -/
 theorem PendingLumpingOn.abs_failure_sub_le_of_keep {assessment : (onePacketInformation setup
-  runtime
+  timeouts
       leaks bounds horizon scheduler).BehavioralAssessment} {who : Player}
-    {relevant : (onePacketInformation setup runtime leaks bounds horizon
+    {relevant : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationSite who →
       Prop} {LateOption : Type}
-    {profileOf : (onePacketInformation setup runtime leaks bounds horizon
+    {profileOf : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationSite who →
       LateOption → ∀ player,
-        (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player}
-    {failedState : LateKey setup runtime leaks → (application setup runtime leaks).ProtocolState →
+        (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy
+          player}
+    {failedState : LateKey setup timeouts leaks → (application setup timeouts leaks).ProtocolState →
       Prop} {δ : ℝ}
     {Y : Type}
-    (lumping : PendingLumpingOn (runtime := runtime) assessment who relevant profileOf failedState
+    (lumping : PendingLumpingOn (timeouts := timeouts) assessment who relevant profileOf failedState
       δ Y) (fuel : Nat)
-    (site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who)
+    (site : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationSite
+      who)
     (isRelevant : relevant site)
-    (key : LateKey setup runtime leaks) (siteKey : lateKey setup runtime leaks who site.1 = some
+    (key : LateKey setup timeouts leaks) (siteKey : lateKey setup timeouts leaks who site.1 = some
       key)
     (option : LateOption)
-    (history : (onePacketProtocol setup runtime leaks bounds horizon scheduler).History)
+    (history : (onePacketProtocol setup timeouts leaks bounds horizon scheduler).History)
     (kept : history.state ∈ lumping.keep site key) :
-    |expect ((onePacketInformation setup runtime leaks bounds horizon scheduler).runBehavioralFrom
+    |expect ((onePacketInformation setup timeouts leaks bounds horizon scheduler).runBehavioralFrom
         (profileOf site option) fuel history)
         (fun final => if failedState key final.state then 1 else 0) -
       expect ((fun law => law.bind (lumping.kernel key option))^[fuel]
         (PMF.pure (lumping.image key history.state))) (lumping.failure key)| ≤ fuel * δ := by
-  have lumped := (bounds.onePacketMenu runtime leaks).run_map_withinTV (initialLaw setup)
+  have lumped := (bounds.onePacketMenu timeouts leaks).run_map_withinTV (initialLaw setup)
     horizon scheduler (profileOf site option) (lumping.image key)
       (lumping.kernel key option)
     (lumping.keep site key) δ (lumping.kept site
@@ -152,15 +156,15 @@ theorem PendingLumpingOn.abs_failure_sub_le_of_keep {assessment : (onePacketInfo
       simpa only [zero_add] using lumping.failure_unit key point)
   have lumped := by simpa only [mul_one] using tested
   rw [expect_map] at lumped
-  have sameFailure : expect ((onePacketInformation setup runtime leaks bounds horizon
+  have sameFailure : expect ((onePacketInformation setup timeouts leaks bounds horizon
       scheduler).runBehavioralFrom (profileOf site option) fuel history)
         (fun final => if failedState key final.state then 1 else 0) =
-      expect ((onePacketInformation setup runtime leaks bounds horizon scheduler).runBehavioralFrom
+      expect ((onePacketInformation setup timeouts leaks bounds horizon scheduler).runBehavioralFrom
         (profileOf site option) fuel history)
         (lumping.failure key ∘ fun final => lumping.image key final.state) := by
     apply expect_congr_on_support
     intro final reached
-    have stateLaw := (bounds.onePacketMenu runtime leaks).run_map_controlSteps
+    have stateLaw := (bounds.onePacketMenu timeouts leaks).run_map_controlSteps
       (initialLaw setup) horizon scheduler (profileOf site option) fuel history
     have inside := (iterate_bind_map_withinTV _ (lumping.image key)
       (lumping.kernel key option)
@@ -168,7 +172,7 @@ theorem PendingLumpingOn.abs_failure_sub_le_of_keep {assessment : (onePacketInfo
         isRelevant key siteKey option)
       (lumping.close site isRelevant key siteKey option) fuel history.state
         kept).1
-    have stateReached : final.state ∈ (((onePacketInformation setup runtime leaks bounds horizon
+    have stateReached : final.state ∈ (((onePacketInformation setup timeouts leaks bounds horizon
         scheduler).runBehavioralFrom (profileOf site option) fuel history).map
           ExecutionProtocol.History.state).support := by
       rw [PMF.support_map]
@@ -185,36 +189,38 @@ at relevant sites, the failure probability of each option from each forced
 history of a relevant site with key `key`, over `fuel` steps, is within
 `fuel * δ` of the failure expectation of `fuel` steps of the image kernel from
 the image read off the history's operational record. -/
-theorem PendingLumpingOn.pathwise {assessment : (onePacketInformation setup runtime leaks bounds
+theorem PendingLumpingOn.pathwise {assessment : (onePacketInformation setup timeouts leaks bounds
   horizon
       scheduler).BehavioralAssessment} {who : Player}
-    {relevant : (onePacketInformation setup runtime leaks bounds horizon
+    {relevant : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationSite who →
       Prop} {LateOption : Type}
-    {profileOf : (onePacketInformation setup runtime leaks bounds horizon
+    {profileOf : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationSite who →
       LateOption → ∀ player,
-        (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player}
-    {failedState : LateKey setup runtime leaks → (application setup runtime leaks).ProtocolState →
+        (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy
+          player}
+    {failedState : LateKey setup timeouts leaks → (application setup timeouts leaks).ProtocolState →
       Prop} {δ : ℝ}
     {Y : Type}
-    (lumping : PendingLumpingOn (runtime := runtime) assessment who relevant profileOf failedState
+    (lumping : PendingLumpingOn (timeouts := timeouts) assessment who relevant profileOf failedState
       δ Y) (fuel : Nat)
-    (site : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite who)
+    (site : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationSite
+      who)
     (isRelevant : relevant site)
-    (key : LateKey setup runtime leaks) (siteKey : lateKey setup runtime leaks who site.1 = some
+    (key : LateKey setup timeouts leaks) (siteKey : lateKey setup timeouts leaks who site.1 = some
       key)
     (option : LateOption)
-    (history : (onePacketInformation setup runtime leaks bounds horizon
+    (history : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationHistory who
       site.1)
     (supported : history ∈ (assessment.belief who site).support)
-    (forced : ForcedState setup runtime leaks who history.1.state) :
-    |expect ((onePacketInformation setup runtime leaks bounds horizon scheduler).runBehavioralFrom
+    (forced : ForcedState setup timeouts leaks who history.1.state) :
+    |expect ((onePacketInformation setup timeouts leaks bounds horizon scheduler).runBehavioralFrom
         (profileOf site option) fuel history.1)
         (fun final => if failedState key final.state then 1 else 0) -
       expect ((fun law => law.bind (lumping.kernel key option))^[fuel]
-        (PMF.pure (lumping.start key (operationalRecord setup runtime leaks
+        (PMF.pure (lumping.start key (operationalRecord setup timeouts leaks
           bounds horizon scheduler
           history.1.trace)))) (lumping.failure key)| ≤ fuel * δ := by
   have bound := lumping.abs_failure_sub_le_of_keep fuel site isRelevant key
@@ -234,53 +240,54 @@ binding turn is within `δBinding ≤ δ / 2` of a keyed law, both at allowed
 states, the native kernel lumps onto the decision image at the relevant sites,
 with failure the failed completion of the decided event. -/
 def onePacketLateLumpingOn
-    (assessment : (onePacketInformation setup runtime leaks bounds horizon
+    (assessment : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).BehavioralAssessment) (who : Player)
-    (relevant : (onePacketInformation setup runtime leaks bounds horizon
+    (relevant : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationSite who →
       Prop) {LateOption : Type}
-    (profileOf : (onePacketInformation setup runtime leaks bounds horizon
+    (profileOf : (onePacketInformation setup timeouts leaks bounds horizon
       scheduler).InformationSite who →
       LateOption → ∀ player,
-        (onePacketInformation setup runtime leaks bounds horizon scheduler).BehavioralPolicy player)
+        (onePacketInformation setup timeouts leaks bounds horizon scheduler).BehavioralPolicy
+          player)
     {δ δBinding : ℝ} (nonneg : 0 ≤ δ) (bindingNonneg : 0 ≤ δBinding)
     (bindingLe : 2 * δBinding ≤ δ)
-    (ownerKernel : LateKey setup runtime leaks → LateOption → Option (OperationalState setup
-      runtime leaks) →
-      PMF (PendingImage (runtime := runtime) (setup := setup) (leaks := leaks)))
-    (moves : LateKey setup runtime leaks → LateOption →
-      Option (OperationalState setup runtime leaks) × List (MessageId Player × Bool) →
+    (ownerKernel : LateKey setup timeouts leaks → LateOption → Option (OperationalState setup
+      timeouts leaks) →
+      PMF (PendingImage (timeouts := timeouts) (setup := setup) (leaks := leaks)))
+    (moves : LateKey setup timeouts leaks → LateOption →
+      Option (OperationalState setup timeouts leaks) × List (MessageId Player × Bool) →
         PMF (Option (Handle (graph setup))))
-    (allowed : (onePacketInformation setup runtime leaks bounds horizon scheduler).InformationSite
+    (allowed : (onePacketInformation setup timeouts leaks bounds horizon scheduler).InformationSite
       who →
-      (application setup runtime leaks).ProtocolState → Prop)
-    (allowedStart : ∀ site, relevant site → ∀ key, lateKey setup runtime leaks who site.1 = some
+      (application setup timeouts leaks).ProtocolState → Prop)
+    (allowedStart : ∀ site, relevant site → ∀ key, lateKey setup timeouts leaks who site.1 = some
       key →
       ∀ history ∈ (assessment.belief who site).support,
-        ForcedState setup runtime leaks who history.1.state → allowed site history.1.state)
+        ForcedState setup timeouts leaks who history.1.state → allowed site history.1.state)
     (allowedStep : ∀ site, relevant site → ∀ option state, allowed site state →
-      ∀ next ∈ ((application setup runtime leaks).controlStep (initialLaw setup) horizon scheduler
-        ((bounds.onePacketMenu runtime leaks).decodeProfile (initialLaw setup) horizon
+      ∀ next ∈ ((application setup timeouts leaks).controlStep (initialLaw setup) horizon scheduler
+        ((bounds.onePacketMenu timeouts leaks).decodeProfile (initialLaw setup) horizon
           scheduler (profileOf site option)) state).support, allowed site next)
-    (owner : ∀ site, relevant site → ∀ key, lateKey setup runtime leaks who site.1 = some key →
-      ∀ option, OwnerStepClose (runtime := runtime) ownerKernel key option (profileOf site option)
+    (owner : ∀ site, relevant site → ∀ key, lateKey setup timeouts leaks who site.1 = some key →
+      ∀ option, OwnerStepClose (timeouts := timeouts) ownerKernel key option (profileOf site option)
         δ (allowed site))
-    (law : ∀ site, relevant site → ∀ key, lateKey setup runtime leaks who site.1 = some key → ∀
+    (law : ∀ site, relevant site → ∀ key, lateKey setup timeouts leaks who site.1 = some key → ∀
       option,
-      OwnerBindingLaw (runtime := runtime) bounds horizon scheduler moves key option (profileOf
+      OwnerBindingLaw (timeouts := timeouts) bounds horizon scheduler moves key option (profileOf
         site option)
         δBinding (allowed site)) :
-    PendingLumpingOn (runtime := runtime) assessment who relevant profileOf
-      (DecisionFailed (runtime := runtime)) δ
-      (DecisionImage (runtime := runtime) (setup := setup) (leaks := leaks)) where
-  image := decisionImage (runtime := runtime)
-  kernel := decisionKernel (runtime := runtime) bounds horizon scheduler
+    PendingLumpingOn (timeouts := timeouts) assessment who relevant profileOf
+      (DecisionFailed (timeouts := timeouts)) δ
+      (DecisionImage (timeouts := timeouts) (setup := setup) (leaks := leaks)) where
+  image := decisionImage (timeouts := timeouts)
+  kernel := decisionKernel (timeouts := timeouts) bounds horizon scheduler
     ownerKernel moves
-  start := decisionRecordImage (runtime := runtime)
-  keep site key := {state | state ∈ decisionKept (runtime := runtime) bounds
+  start := decisionRecordImage (timeouts := timeouts)
+  keep site key := {state | state ∈ decisionKept (timeouts := timeouts) bounds
     horizon scheduler key ∧
     allowed site state}
-  failure _ := decisionFailure (runtime := runtime)
+  failure _ := decisionFailure (timeouts := timeouts)
   failure_unit _ image := by
     rcases image with pending | binding
     · rcases pending with _ | failed
@@ -292,19 +299,19 @@ def onePacketLateLumpingOn
       · cases failed <;> simp only [decisionFailure, Bool.false_eq_true, ↓reduceIte, le_refl,
           zero_le_one, and_self]
   start_eq _ _ _ siteKey history _ forced := decisionImage_of_history
-    (runtime := runtime) siteKey history forced
+    (timeouts := timeouts) siteKey history forced
   start_kept site isRelevant key siteKey history supported forced :=
-    ⟨decisionKept_of_history (runtime := runtime) siteKey history forced,
+    ⟨decisionKept_of_history (timeouts := timeouts) siteKey history forced,
       allowedStart site isRelevant key siteKey history supported forced⟩
   kept site isRelevant key _ option _ kept _ member :=
-    ⟨decisionKept_step (runtime := runtime) key (profileOf site option) kept.1 member,
+    ⟨decisionKept_step (timeouts := timeouts) key (profileOf site option) kept.1 member,
       allowedStep site isRelevant option _ kept.2 _ member⟩
   close site isRelevant key siteKey option _ kept := decisionKernel_close
-    (runtime := runtime) ownerKernel moves key
+    (timeouts := timeouts) ownerKernel moves key
     option (profileOf site option) nonneg bindingNonneg bindingLe
     (owner site isRelevant key siteKey option) (law site isRelevant key siteKey option) kept.1
     kept.2
-  failure_eq _ _ key _ kept := decisionFailed_eq (runtime := runtime) key
+  failure_eq _ _ key _ kept := decisionFailed_eq (timeouts := timeouts) key
     kept.1
 
 end Vegas

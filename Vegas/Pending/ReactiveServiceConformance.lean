@@ -25,21 +25,21 @@ open Interaction EventGraph
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
 
 /-- Packet conformance uses no private candidate value or source strategy. -/
 def freshServiceEnvelope (view : PublicView graph)
     (message : Message Player (WitnessedPacket graph)) : Prop :=
   match message.payload.call with
   | .commitment event candidate =>
-      view.BindingIncludable runtime ⟨message.id, message.payload.call⟩ ∧
+      view.BindingIncludable timeouts ⟨message.id, message.payload.call⟩ ∧
       candidate = (message.sender, .prepared (view.bindingCount message.sender)) ∧
       message.payload.evidence = none ∧ message.payload.token = some ⟨event⟩
   | .opening event candidate raw =>
       view.EventReady event ∧
       (match view.activatedAt event with
         | none => False
-        | some entered => view.clock - entered < runtime.deadline event) ∧
+        | some entered => view.clock - entered < timeouts.duration event) ∧
       certifiedOpening message.payload = true ∧
       (match nodeView graph event with
         | .resolve owner payload binding _ _ _ =>
@@ -52,8 +52,8 @@ def freshServiceEnvelope (view : PublicView graph)
 theorem freshServiceEnvelope_binding_iff (view : PublicView graph)
     (id : MessageId Player) (event : graph.EventId) (candidate : Handle graph)
     (evidence : Option (OpeningFact graph)) (token : Option (ReadinessToken graph)) :
-    runtime.freshServiceEnvelope view ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩ ↔
-      view.BindingIncludable runtime ⟨id, .commitment event candidate⟩ ∧
+    (freshServiceEnvelope timeouts) view ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩ ↔
+      view.BindingIncludable timeouts ⟨id, .commitment event candidate⟩ ∧
       candidate = (id.1, .prepared (view.bindingCount id.1)) ∧ evidence = none ∧
         token = some ⟨event⟩ := Iff.rfl
 
@@ -63,19 +63,19 @@ theorem freshServiceEnvelope_binding_packet
     (view : PublicView graph) (id : MessageId Player) (event : graph.EventId)
     (candidate : Handle graph) (evidence : Option (OpeningFact graph))
     (token : Option (ReadinessToken graph))
-    (permitted : runtime.freshServiceEnvelope view
+    (permitted : (freshServiceEnvelope timeouts) view
       ⟨id, ⟨.commitment event candidate, evidence, token⟩⟩) :
     (⟨.commitment event candidate, evidence, token⟩ : WitnessedPacket graph) =
       ⟨.commitment event (id.1, .prepared (view.bindingCount id.1)), none, some ⟨event⟩⟩ := by
   obtain ⟨_, allocated, empty, tokened⟩ :=
-    (runtime.freshServiceEnvelope_binding_iff view id event candidate evidence token).mp
+    ((freshServiceEnvelope_binding_iff timeouts) view id event candidate evidence token).mp
       permitted
   rw [allocated, empty, tokened]
 
 /-- Every conforming fresh call names a publicly ready event. -/
 theorem freshServiceEnvelope_ready (view : PublicView graph)
     (message : Message Player (WitnessedPacket graph))
-    (permitted : runtime.freshServiceEnvelope view message) :
+    (permitted : (freshServiceEnvelope timeouts) view message) :
     ∃ event, message.payload.call.event? graph = some event ∧ view.EventReady event := by
   cases call : message.payload.call with
   | commitment event candidate =>
@@ -90,7 +90,7 @@ theorem freshServiceEnvelope_ready (view : PublicView graph)
 /-- Every conforming fresh call names a ready event whose actor is its sender. -/
 theorem freshServiceEnvelope_owned (view : PublicView graph)
     (message : Message Player (WitnessedPacket graph))
-    (permitted : runtime.freshServiceEnvelope view message) :
+    (permitted : (freshServiceEnvelope timeouts) view message) :
     ∃ event, message.payload.call.event? graph = some event ∧ view.EventReady event ∧
       graph.actor? event = some message.sender := by
   cases call : message.payload.call with
@@ -135,7 +135,7 @@ theorem freshServiceEnvelope_binding_shape
     (node : nodeView graph event = .bind owner payload outputEq codeEq)
     (message : Message Player (WitnessedPacket graph))
     (named : message.payload.call.event? graph = some event)
-    (permitted : runtime.freshServiceEnvelope view message) :
+    (permitted : (freshServiceEnvelope timeouts) view message) :
     message.sender = owner ∧ message.payload =
       ⟨.commitment event (owner, .prepared (view.bindingCount owner)), none, some ⟨event⟩⟩ := by
   rcases message with ⟨id, ⟨packet, evidence, token⟩⟩
@@ -143,13 +143,13 @@ theorem freshServiceEnvelope_binding_shape
   | commitment actual candidate =>
       change some actual = some event at named
       cases Option.some.inj named
-      have allowed := (runtime.freshServiceEnvelope_binding_iff view id event candidate
+      have allowed := ((freshServiceEnvelope_binding_iff timeouts) view id event candidate
         evidence token).mp permitted
       have includable := allowed.1
       simp only [PublicView.BindingIncludable, node] at includable
       have authored : id.1 = owner := includable.2.2.2.1
       refine ⟨authored, ?_⟩
-      have canonical := runtime.freshServiceEnvelope_binding_packet view id event candidate
+      have canonical := (freshServiceEnvelope_binding_packet timeouts) view id event candidate
         evidence token permitted
       simpa only [authored] using canonical
   | opening actual candidate raw =>
@@ -172,11 +172,11 @@ theorem freshServiceEnvelope_opening_iff
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
     (candidate : Handle graph) (raw : Raw L) (evidence : Option (OpeningFact graph))
     (token : Option (ReadinessToken graph)) :
-    runtime.freshServiceEnvelope view ⟨id, ⟨.opening event candidate raw, evidence, token⟩⟩ ↔
+    (freshServiceEnvelope timeouts) view ⟨id, ⟨.opening event candidate raw, evidence, token⟩⟩ ↔
       view.EventReady event ∧
       (match view.activatedAt event with
         | none => False
-        | some entered => view.clock - entered < runtime.deadline event) ∧
+        | some entered => view.clock - entered < timeouts.duration event) ∧
       certifiedOpening (⟨.opening event candidate raw, evidence, token⟩ :
         WitnessedPacket graph) = true ∧
       id.1 = owner ∧ candidate.1 = owner ∧
@@ -196,7 +196,7 @@ theorem freshServiceEnvelope_resolution_shape
     (node : nodeView graph event = .resolve owner payload binding checks outputEq codeEq)
     (message : Message Player (WitnessedPacket graph))
     (named : message.payload.call.event? graph = some event)
-    (permitted : runtime.freshServiceEnvelope view message) :
+    (permitted : (freshServiceEnvelope timeouts) view message) :
     ∃ candidate raw, message.sender = owner ∧ candidate.1 = owner ∧
       view.accepted binding.field = some candidate ∧ raw.ty = payload ∧
       message.payload = ⟨.opening event candidate raw, some ⟨candidate, raw⟩, some ⟨event⟩⟩ := by
@@ -211,7 +211,7 @@ theorem freshServiceEnvelope_resolution_shape
       change some actual = some event at named
       cases Option.some.inj named
       obtain ⟨_, _, certified, authored, owned, associated, typed, tokened⟩ :=
-        (runtime.freshServiceEnvelope_opening_iff view id event owner payload binding checks
+        ((freshServiceEnvelope_opening_iff timeouts) view id event owner payload binding checks
           outputEq codeEq node candidate raw evidence token).mp permitted
       have evidenceEq : evidence = some ⟨candidate, raw⟩ := by
         cases evidence with

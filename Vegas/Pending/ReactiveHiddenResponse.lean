@@ -19,25 +19,25 @@ open Interaction GameTheory.Math.Probability
 
 variable {Player : Type} [DecidableEq Player]
   {L : IExpr} [IExpr.ResultTypes L] {graph : Vegas.EventGraph Player L}
-  (runtime : EventGraphRuntime graph)
+  (timeouts : EventTimeouts graph)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph))
 
 private theorem observed_eq
-    (left right : (runtime.reactiveApplication leaks).Execution) (who : Player)
+    (left right : ((reactiveApplication timeouts) leaks).Execution) (who : Player)
     (network : left.network = right.network) (receipts : left.receipts = right.receipts)
     (views : left.application.playerView who = right.application.playerView who) :
-    left.observe (runtime.reactiveApplication leaks) who =
-      right.observe (runtime.reactiveApplication leaks) who := by
-  change ReactiveApplication.PlayerView.mk (app := runtime.reactiveApplication leaks)
+    left.observe ((reactiveApplication timeouts) leaks) who =
+      right.observe ((reactiveApplication timeouts) leaks) who := by
+  change ReactiveApplication.PlayerView.mk (app := (reactiveApplication timeouts) leaks)
     _ _ _ = _
   rw [network, receipts]
   exact congrArg (fun view => (⟨right.network.observe who, view, right.receipts⟩ :
-    (runtime.reactiveApplication leaks).PlayerView)) views
+    ((reactiveApplication timeouts) leaks).PlayerView)) views
 
 private theorem response_other_playerView
-    (execution : (runtime.reactiveApplication leaks).Execution) (actor observer : Player)
-    (different : observer ≠ actor) (response : (runtime.reactiveApplication leaks).Action) :
-    (execution.respond (runtime.reactiveApplication leaks) actor response).application.playerView
+    (execution : ((reactiveApplication timeouts) leaks).Execution) (actor observer : Player)
+    (different : observer ≠ actor) (response : ((reactiveApplication timeouts) leaks).Action) :
+    (execution.respond ((reactiveApplication timeouts) leaks) actor response).application.playerView
       observer = execution.application.playerView observer := by
   rcases response with ⟨transmission⟩
   cases transmission with
@@ -48,57 +48,58 @@ private theorem response_other_playerView
           (material.call.register_other execution.application actor observer different)
 
 private theorem response_actor_playerView
-    (left right : (runtime.reactiveApplication leaks).Execution) (who : Player)
+    (left right : ((reactiveApplication timeouts) leaks).Execution) (who : Player)
     (views : left.application.playerView who = right.application.playerView who)
-    (response : (runtime.reactiveApplication leaks).Action) :
-    (left.respond (runtime.reactiveApplication leaks) who response).application.playerView who =
-      (right.respond (runtime.reactiveApplication leaks) who response).application.playerView
+    (response : ((reactiveApplication timeouts) leaks).Action) :
+    (left.respond ((reactiveApplication timeouts) leaks) who response).application.playerView who =
+      (right.respond ((reactiveApplication timeouts) leaks) who response).application.playerView
         who := by
   rcases response with ⟨transmission⟩
   cases transmission with
   | none => exact views
-  | some material => exact submit_playerView_congr runtime leaks _ _ who material views
+  | some material => exact submit_playerView_congr timeouts leaks _ _ who material views
 
 private theorem submission_packet_congr
-    (left right : (runtime.reactiveApplication leaks).Execution) (who : Player)
+    (left right : ((reactiveApplication timeouts) leaks).Execution) (who : Player)
     (network : left.network = right.network)
     (views : left.application.playerView who = right.application.playerView who)
     (submission : WitnessedSubmission graph) :
-    submission.emit ((runtime.reactiveApplication leaks).submit left.application who submission)
+    submission.emit (((reactiveApplication timeouts) leaks).submit left.application who submission)
         who (left.network.known who) =
-      submission.emit ((runtime.reactiveApplication leaks).submit right.application who submission)
+      submission.emit (((reactiveApplication timeouts) leaks).submit right.application who
+        submission)
         who (right.network.known who) := by
-  have submitted := submit_playerView_congr runtime leaks left.application right.application
+  have submitted := submit_playerView_congr timeouts leaks left.application right.application
     who submission views
   have candidates := congrArg PlayerView.candidates submitted
-  have publics : ((runtime.reactiveApplication leaks).submit left.application who
+  have publics : (((reactiveApplication timeouts) leaks).submit left.application who
         submission).publicView =
-      ((runtime.reactiveApplication leaks).submit right.application who submission).publicView :=
+      (((reactiveApplication timeouts) leaks).submit right.application who submission).publicView :=
     congrArg PlayerView.publicView submitted
   rw [WitnessedSubmission.emit_eq_resolve, WitnessedSubmission.emit_eq_resolve, network, publics]
   exact congrArg (fun table => WitnessedPacket.mk submission.call.packet
     (submission.evidence.resolve who table (right.network.known who))
-    (((runtime.reactiveApplication leaks).submit right.application who
+    ((((reactiveApplication timeouts) leaks).submit right.application who
       submission).publicView.tokenFor submission.call.packet)) candidates
 
 /-- A common opponent response preserves all opponents' local states at once.
 The private owner's candidates and recall may differ throughout. -/
 theorem reactive_respond_hidden_congr
-    (left right : (runtime.reactiveApplication leaks).Execution) (hidden actor : Player)
+    (left right : ((reactiveApplication timeouts) leaks).Execution) (hidden actor : Player)
     (foreign : actor ≠ hidden)
     (network : left.network = right.network) (receipts : left.receipts = right.receipts)
     (views : ∀ who, who ≠ hidden →
       left.application.playerView who = right.application.playerView who)
     (logs : ∀ who, who ≠ hidden → left.logs who = right.logs who)
-    (response : (runtime.reactiveApplication leaks).Action) :
-    let first := left.respond (runtime.reactiveApplication leaks) actor response
-    let second := right.respond (runtime.reactiveApplication leaks) actor response
+    (response : ((reactiveApplication timeouts) leaks).Action) :
+    let first := left.respond ((reactiveApplication timeouts) leaks) actor response
+    let second := right.respond ((reactiveApplication timeouts) leaks) actor response
     first.network = second.network ∧ first.receipts = second.receipts ∧
       (∀ who, who ≠ hidden →
         first.application.playerView who = second.application.playerView who) ∧
       (∀ who, who ≠ hidden → first.logs who = second.logs who) := by
-  let app := runtime.reactiveApplication leaks
-  have actingView := observed_eq runtime leaks left right actor network receipts
+  let app := (reactiveApplication timeouts) leaks
+  have actingView := observed_eq timeouts leaks left right actor network receipts
     (views actor foreign)
   have actingRecall := logs actor foreign
   have networks : (left.respond app actor response).network =
@@ -107,7 +108,7 @@ theorem reactive_respond_hidden_congr
     cases transmission with
     | none => exact network
     | some material =>
-        have packet := submission_packet_congr runtime leaks left right actor network
+        have packet := submission_packet_congr timeouts leaks left right actor network
           (views actor foreign) material
         change (left.network.submit actor (material.emit
           (app.submit left.application actor material) actor (left.network.known actor))).2 =
@@ -119,10 +120,10 @@ theorem reactive_respond_hidden_congr
   · intro who ordinary
     by_cases same : who = actor
     · subst who
-      exact response_actor_playerView runtime leaks left right actor (views actor foreign) response
-    · exact (response_other_playerView runtime leaks left actor who same response).trans
+      exact response_actor_playerView timeouts leaks left right actor (views actor foreign) response
+    · exact (response_other_playerView timeouts leaks left actor who same response).trans
         ((views who ordinary).trans
-          (response_other_playerView runtime leaks right actor who same response).symm)
+          (response_other_playerView timeouts leaks right actor who same response).symm)
   · intro who ordinary
     by_cases same : who = actor
     · subst who
@@ -132,7 +133,7 @@ theorem reactive_respond_hidden_congr
           simp only [ReactiveApplication.Execution.respond, ↓reduceIte,
             actingView, actingRecall]
       | some material =>
-          have packet := submission_packet_congr runtime leaks left right actor network
+          have packet := submission_packet_congr timeouts leaks left right actor network
             (views actor foreign) material
           simp only [ReactiveApplication.Execution.respond, MessageNetwork.submit,
             ↓reduceIte]

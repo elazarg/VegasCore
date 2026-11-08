@@ -76,28 +76,28 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
         (fun state => utility (setup.parameterOutcome parameter state) who)) ε intended)
     (disclosing : ∀ who, Disclosing setup.program (setup.decodeBehavioralProfile
       (CommitmentInterface.forfeiture setup.program) target who))
-    (deadline : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (duration : (serviceGraph setup .concurrentReveals).EventId → Nat)
     (leaks : MessageNetwork.ObservationRule Player
       (WitnessedPacket (serviceGraph setup .concurrentReveals)))
     {horizon turns : Nat}
-    {scheduler : (serviceApplication setup .concurrentReveals deadline leaks).Scheduler}
+    {scheduler : (serviceApplication setup .concurrentReveals duration leaks).Scheduler}
     {delay bound : (serviceGraph setup .concurrentReveals).EventId → Nat}
-    (contract : AsyncContract (serviceRuntime setup .concurrentReveals deadline) leaks
+    (contract : AsyncContract (serviceTimeouts setup .concurrentReveals duration) leaks
       (serviceInitialLaw setup .concurrentReveals) horizon scheduler delay bound)
-    (timely : AsyncTimely (serviceRuntime setup .concurrentReveals deadline) delay bound) :
-    IsεNash (concurrentLedgerGame setup deadline leaks scheduler horizon)
+    (timely : AsyncTimely (serviceTimeouts setup .concurrentReveals duration) delay bound) :
+    IsεNash (concurrentLedgerGame setup duration leaks scheduler horizon)
         (concurrentConfigPayoff setup parameter utility forfeit) ε
-        (concurrentLedgerClients setup deadline leaks bound turns
+        (concurrentLedgerClients setup duration leaks bound turns
           (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program) target)) ∧
-      (∀ config ∈ ((concurrentLedgerGame setup deadline leaks scheduler horizon).play
-          (concurrentLedgerClients setup deadline leaks bound turns
+      (∀ config ∈ ((concurrentLedgerGame setup duration leaks scheduler horizon).play
+          (concurrentLedgerClients setup duration leaks bound turns
             (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program)
               target))).support,
         config.cut.Terminal ∧ config.defaulted = ∅ ∧ ∃ terminal,
           concurrentRankedRead setup config = some terminal ∧
             ∀ who, failedReveals setup.program who (publicOutcome setup.program terminal) = 0) ∧
-      (((concurrentLedgerGame setup deadline leaks scheduler horizon).play
-          (concurrentLedgerClients setup deadline leaks bound turns
+      (((concurrentLedgerGame setup duration leaks scheduler horizon).play
+          (concurrentLedgerClients setup duration leaks bound turns
             (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program)
               target))).map fun config =>
             (concurrentRankedRead setup config,
@@ -111,8 +111,8 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
   let source := setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program) target
   let reference := concurrentReference setup source
   let graphPlay := (G.gameForm setup.concurrentInputs G.canonicalScheduler).play reference
-  let ledgerPlay := (concurrentLedgerGame setup deadline leaks scheduler horizon).play
-    (concurrentLedgerClients setup deadline leaks bound turns source)
+  let ledgerPlay := (concurrentLedgerGame setup duration leaks scheduler horizon).play
+    (concurrentLedgerClients setup duration leaks bound turns source)
   let observe := fun config : G.Config =>
     (concurrentRankedRead setup config.erase,
       concurrentConfigPayoff setup parameter utility forfeit config)
@@ -123,7 +123,7 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
   have invariant : ∀ config : G.Config, observe config.erase = observe config := by
     intro config
     simp only [observe, EventGraph.Config.erase_erase, concurrentConfigPayoff_erase]
-  have physical := effective_roundsFrom_outcomeLaw (deadline := deadline) (leaks := leaks)
+  have physical := effective_roundsFrom_outcomeLaw (duration := duration) (leaks := leaks)
     (turns := turns) contract timely
     (setup.eventGraph.withMode_concurrentReveals_revealsOnlyConcurrent setup.eventGraph_total)
     (fun _ notPublication => setup.eventGraph.withMode_concurrentReveals_leading
@@ -137,9 +137,9 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
     (concurrentEffectiveReference_outcomeLaw setup source disclosing observe invariant)
   have physicalLaw : ledgerPlay.map observe =
       graphPlay.map (fun outcome => observe outcome.1) := by
-    change (((serviceApplication setup .concurrentReveals deadline leaks).roundsFrom
+    change (((serviceApplication setup .concurrentReveals duration leaks).roundsFrom
       (serviceInitialLaw setup .concurrentReveals) scheduler
-      (concurrentLedgerClients setup deadline leaks bound turns source) horizon).map
+      (concurrentLedgerClients setup duration leaks bound turns source) horizon).map
         (fun final => final.application.config)).map observe = _
     rw [PMF.map_comp]
     exact physical.trans (concurrent_play_outcomeLaw setup reference observe).symm
@@ -189,7 +189,7 @@ theorem concurrentReveal_intended_ledger (setup : Setup (Player := Player) (L :=
       (graphClean outcome present).1] at defaults
     exact defaults
   refine ⟨concurrentReveal_ledger_isεNash setup finite wellFormed parameter utility forfeit range
-    intended target agrees ε equilibrium disclosing deadline leaks contract timely, ?_, ?_⟩
+    intended target agrees ε equilibrium disclosing duration leaks contract timely, ?_, ?_⟩
   · intro config supported
     obtain ⟨outcome, present, same⟩ := represented config supported
     have reads := congrArg Prod.fst same
