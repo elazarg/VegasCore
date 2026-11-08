@@ -430,3 +430,4 @@ import Vegas.Game.RevealRunRecords
 import Vegas.Game.RevealRunStep
 import Vegas.Game.RevealRunAgree
 import Vegas.Game.RevealRunTarget
+import Vegas.Game.RevealRunTargetPhase
