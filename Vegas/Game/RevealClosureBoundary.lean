@@ -1,6 +1,7 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 import Vegas.Game.RevealRunTargetPhase
+import Vegas.Game.FactorTransfer
 
 /-! # Phase boundaries seen through the closure
 
@@ -172,5 +173,165 @@ theorem keyTarget_closure (base : (serviceGraph setup mode).BehavioralProfile) (
         (runKey config) := by
   rw [keyTarget_runKey independent, keyTarget_runKey independent,
     lastErasedLaw_closure_deviation base who policy independent]
+
+/-- **A solitary phase through the closure, for pending events.** A solitary
+phase whose joint law, averaged target and patched policy are known for the raw
+key, from priors of phase boundaries with its event pending, has them for the
+closure key too; and its built policy keeps the target where the event has
+completed. -/
+theorem pending_closure_joint (base : (serviceGraph setup mode).BehavioralProfile)
+    (who : Player)
+    (independent : ∀ policy, LastIndependent
+      ((serviceGraph setup mode).lastDeviationProfile base who policy) who)
+    (referenceIndependent : ReadyIndependent ((serviceGraph setup mode).normalizeProfile base))
+    (relaxed : RelaxedOrder (serviceGraph setup mode))
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode deadline leaks).Policy} {horizon : Nat}
+    (event : (serviceGraph setup mode).EventId)
+    (notPublication : ¬ ((serviceGraph setup mode).outputLayout event).IsPublication)
+    (endpoint : ∀ execution, PhaseBoundary scheduler players horizon event.val execution →
+      ∀ final ∈ ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+        (fun current => event ∈ current.application.config.cut.completed) horizon
+        execution).support,
+        PhaseBoundary scheduler players horizon (event.val + 1) final)
+    (rawJoint : ∀ {Seed : Type} (prior : PMF Seed)
+      (execution : Seed → (serviceApplication setup mode deadline leaks).Execution),
+      (∀ seed ∈ prior.support, PhaseBoundary scheduler players horizon event.val (execution seed) ∧
+        event ∉ (execution seed).application.config.cut.completed) →
+      ∀ noise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _,
+      (prior.map (fun seed => (runKey (execution seed).application.config,
+          (serviceRuntime setup mode deadline).bindingTraffic leaks who (execution seed))) =
+        (prior.map fun seed => runKey (execution seed).application.config).bind fun current =>
+          (noise (keyView who current)).map fun extra => (current, extra)) →
+      ∃ (build : (serviceGraph setup mode).BehavioralPolicy who →
+          (serviceGraph setup mode).BehavioralPolicy who)
+        (nextNoise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _),
+        (prior.bind fun seed =>
+          ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+            (fun current => event ∈ current.application.config.cut.completed) horizon
+            (execution seed)).map fun final => (runKey final.application.config,
+              (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
+          (prior.bind fun seed =>
+            ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+              (fun current => event ∈ current.application.config.cut.completed) horizon
+              (execution seed)).map fun final => runKey final.application.config).bind
+            (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
+        (∀ policy, (prior.bind fun seed =>
+          ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+            (fun current => event ∈ current.application.config.cut.completed) horizon
+            (execution seed)).bind fun final =>
+              keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy) who
+                (runKey final.application.config)) =
+          prior.bind fun seed =>
+            keyTarget ((serviceGraph setup mode).lastDeviationProfile base who (build policy)) who
+              (runKey (execution seed).application.config)) ∧
+        ∀ policy (config : (serviceGraph setup mode).Config) other, other ≠ event →
+          actionLaw ((serviceGraph setup mode).lastDeviationProfile base who (build policy))
+              config other =
+            actionLaw ((serviceGraph setup mode).lastDeviationProfile base who policy) config
+              other) :
+    ∀ {Seed : Type} (prior : PMF Seed)
+      (execution : Seed → (serviceApplication setup mode deadline leaks).Execution),
+      (∀ seed ∈ prior.support, PhaseBoundary scheduler players horizon event.val (execution seed) ∧
+        ¬ event ∈ (execution seed).application.config.cut.completed) →
+      ∀ noise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _,
+      (prior.map (fun seed => (runKey (closure ((serviceGraph setup mode).normalizeProfile base)
+          who (execution seed).application.config),
+          (serviceRuntime setup mode deadline).bindingTraffic leaks who (execution seed))) =
+        (prior.map fun seed => runKey (closure ((serviceGraph setup mode).normalizeProfile base)
+          who (execution seed).application.config)).bind fun current =>
+          (noise (keyView who current)).map fun extra => (current, extra)) →
+      ∃ (build : (serviceGraph setup mode).BehavioralPolicy who →
+          (serviceGraph setup mode).BehavioralPolicy who)
+        (nextNoise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _),
+        (prior.bind fun seed =>
+          ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+            (fun current => event ∈ current.application.config.cut.completed) horizon
+            (execution seed)).map fun final => (runKey (closure
+              ((serviceGraph setup mode).normalizeProfile base) who final.application.config),
+              (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
+          (prior.bind fun seed =>
+            ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+              (fun current => event ∈ current.application.config.cut.completed) horizon
+              (execution seed)).map fun final => runKey (closure
+                ((serviceGraph setup mode).normalizeProfile base) who
+                final.application.config)).bind
+            (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
+        (∀ policy, (prior.bind fun seed =>
+          ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler players
+            (fun current => event ∈ current.application.config.cut.completed) horizon
+            (execution seed)).bind fun final =>
+              keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy) who
+                (runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
+                  final.application.config))) =
+          prior.bind fun seed =>
+            keyTarget ((serviceGraph setup mode).lastDeviationProfile base who (build policy)) who
+              (runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
+                (execution seed).application.config))) ∧
+        ∀ policy (execution : (serviceApplication setup mode deadline leaks).Execution),
+          PhaseBoundary scheduler players horizon event.val execution →
+          event ∈ execution.application.config.cut.completed →
+          keyTarget ((serviceGraph setup mode).lastDeviationProfile base who (build policy)) who
+              (runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
+                execution.application.config)) =
+            keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy) who
+              (runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
+                execution.application.config)) := by
+  classical
+  intro Seed prior execution goods noise factor
+  let G := serviceGraph setup mode
+  let R := G.normalizeProfile base
+  let app := serviceApplication setup mode deadline leaks
+  let phase := fun seed => app.runUntilHorizon scheduler players
+    (fun current => event ∈ current.application.config.cut.completed) horizon (execution seed)
+  let traffic := (serviceRuntime setup mode deadline).bindingTraffic leaks who
+  have startEq (seed : Seed) (member : seed ∈ prior.support) :
+      runKey (closure R who (execution seed).application.config) =
+        runKey (execution seed).application.config := by
+    rw [closure_eq_of_pending R who relaxed (goods seed member).1 notPublication
+      (goods seed member).2]
+  have rawFactor : prior.map (fun seed => (runKey (execution seed).application.config,
+      traffic (execution seed))) =
+      (prior.map fun seed => runKey (execution seed).application.config).bind fun current =>
+        (noise (keyView who current)).map fun extra => (current, extra) := by
+    have mapsEq : prior.map (fun seed => runKey (execution seed).application.config) =
+        prior.map (fun seed => runKey (closure R who (execution seed).application.config)) :=
+      map_congr_on_support _ fun seed member => (startEq seed member).symm
+    rw [mapsEq, ← factor]
+    apply map_congr_on_support _
+    intro seed member
+    exact Prod.ext (startEq seed member).symm rfl
+  obtain ⟨build, rawNoise, rawEnd, rawAveraged, agree⟩ := rawJoint prior execution
+    goods noise rawFactor
+  -- the end factor moves to the closure key
+  have endLaw := factored_of_finer (prior.bind phase)
+    (fun final => runKey final.application.config)
+    (fun final => runKey (closure R who final.application.config)) traffic (keyView who) rawNoise
+    (by simpa only [PMF.map_bind] using rawEnd) (closureKeyOf R who)
+    (fun final _ => (closureKeyOf_runKey referenceIndependent who _).symm)
+    (fun left leftMember right rightMember views => by
+      obtain ⟨leftSeed, leftSeedMember, leftReached⟩ := Set.mem_iUnion₂.mp
+        (PMF.support_bind .. ▸ leftMember)
+      obtain ⟨rightSeed, rightSeedMember, rightReached⟩ := Set.mem_iUnion₂.mp
+        (PMF.support_bind .. ▸ rightMember)
+      exact phaseBoundary_reflect R who
+        (endpoint _ (goods leftSeed leftSeedMember).1 left leftReached)
+        (endpoint _ (goods rightSeed rightSeedMember).1 right rightReached) views)
+  obtain ⟨fineNoise, fineLaw⟩ := endLaw
+  refine ⟨build, fineNoise, ?_, fun policy => ?_, fun policy config boundary done => ?_⟩
+  · simpa only [PMF.map_bind] using fineLaw
+  · refine Eq.trans ?_ ((rawAveraged policy).trans ?_)
+    · apply bind_congr_on_support _
+      intro seed _
+      apply bind_congr_on_support _
+      intro final _
+      exact keyTarget_closure base who policy (independent policy) _
+    · apply bind_congr_on_support _
+      intro seed member
+      rw [startEq seed member]
+  · rw [keyTarget_runKey (independent _), keyTarget_runKey (independent _)]
+    exact lastErasedLaw_patch_completed event (fun current other different =>
+      agree policy current other different) _
+      (Config.Step.path_completed_mono (closure_path R who _) done)
 
 end Vegas
