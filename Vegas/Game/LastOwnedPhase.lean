@@ -290,7 +290,7 @@ phase that completes an event of the deviator ready alone has a successor key
 and final traffic of the same factored form, and a graph policy built from the
 deviator's conditional choice there has, on average, the last-served
 erased-key law of its tail after the phase. -/
-theorem lastOwned_phase
+theorem lastOwned_phase_patched
     (scheduler : (serviceApplication setup mode deadline leaks).Scheduler) (horizon : Nat)
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (timing : TurnTiming setup turns mode)
@@ -346,7 +346,7 @@ theorem lastOwned_phase
             (fun current => event ∈ current.application.config.cut.completed) horizon
             (execution seed)).map fun final => runKey final.application.config).bind
           (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
-      ∀ policy, (prior.bind fun seed =>
+      (∀ policy, (prior.bind fun seed =>
         ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
           (Function.update
             (serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing reference)
@@ -357,7 +357,12 @@ theorem lastOwned_phase
               (runKey final.application.config)) =
         prior.bind fun seed =>
           keyTarget ((serviceGraph setup mode).lastDeviationProfile base who (build policy)) who
-            (runKey (execution seed).application.config) := by
+            (runKey (execution seed).application.config)) ∧
+      ∀ policy (config : (serviceGraph setup mode).Config) other, other ≠ event →
+        actionLaw ((serviceGraph setup mode).lastDeviationProfile base who (build policy)) config
+            other =
+          actionLaw ((serviceGraph setup mode).lastDeviationProfile base who policy) config
+            other := by
   classical
   let G := serviceGraph setup mode
   let app := serviceApplication setup mode deadline leaks
@@ -611,7 +616,8 @@ theorem lastOwned_phase
       exact pending
     obtain ⟨action, picked⟩ := (advanced other otherSupport final reached).2 otherPending
     exact ⟨action, by rw [← extras, ← finalEq]; exact picked⟩
-  refine ⟨build, nextNoise, ?_, ?_⟩
+  refine ⟨build, nextNoise, ?_, ?_, fun policy config other different =>
+    actionLaw_lastDeviationProfile_patch_of_ne base who event _ policy config different⟩
   · change (prior.bind fun seed => (phase seed).map fun final =>
       (runKey final.application.config, traffic final)) =
       (prior.bind fun seed => (phase seed).map fun final =>
@@ -670,5 +676,84 @@ theorem lastOwned_phase
           simp only [stay seed _ (Or.inr pending), PMF.bind_const]
           exact keyTarget_runKey (independent _) _
       _ = _ := PMF.bind_map _ _ _
+
+/-- **The deviator's sole event.** From a coupled prior whose deviator
+traffic is noise read from its normalized view of the order-free key, the
+phase that completes an event of the deviator ready alone has a successor key
+and final traffic of the same factored form, and a graph policy built from the
+deviator's conditional choice there has, on average, the last-served
+erased-key law of its tail after the phase. -/
+theorem lastOwned_phase
+    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler) (horizon : Nat)
+    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (timing : TurnTiming setup turns mode)
+    (reference base : (serviceGraph setup mode).BehavioralProfile) (who : Player)
+    (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (independent : ∀ policy, LastIndependent
+      ((serviceGraph setup mode).lastDeviationProfile base who policy) who)
+    (event : (serviceGraph setup mode).EventId)
+    (owned : (serviceGraph setup mode).actor? event = some who)
+    (alone : ∀ (cut : (serviceGraph setup mode).order.Cut) other, cut.Ready event →
+      cut.Ready other → other = event)
+    {Seed : Type} (prior : PMF Seed)
+    (execution : Seed → (serviceApplication setup mode deadline leaks).Execution)
+    (quiescent : ∀ seed ∈ prior.support, ∀ query,
+      ¬ (execution seed).application.AutomaticReady query)
+    (pendingPrefix : ∀ seed ∈ prior.support,
+      event ∉ (execution seed).application.config.cut.completed →
+        (execution seed).application.config.cut.IsPrefix event.val)
+    (automaticPast : ∀ seed ∈ prior.support,
+      event ∈ (execution seed).application.config.cut.completed →
+        observedAction event ((serviceGraph setup mode).normalizeObservation who
+          ((serviceGraph setup mode).playerObserve who
+            (execution seed).application.config)) = none)
+    (completes : ∀ seed ∈ prior.support, ∀ final ∈
+      ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
+        (Function.update
+          (serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing reference) who
+          deviation)
+        (fun current => event ∈ current.application.config.cut.completed) horizon
+        (execution seed)).support,
+      event ∈ final.application.config.cut.completed)
+    (noise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _)
+    (factor : prior.map (fun seed => (runKey (execution seed).application.config,
+        (serviceRuntime setup mode deadline).bindingTraffic leaks who (execution seed))) =
+      (prior.map fun seed => runKey (execution seed).application.config).bind fun current =>
+        (noise (keyView who current)).map fun extra => (current, extra)) :
+    ∃ (build : (serviceGraph setup mode).BehavioralPolicy who →
+        (serviceGraph setup mode).BehavioralPolicy who)
+      (nextNoise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _),
+      (prior.bind fun seed =>
+        ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
+          (Function.update
+            (serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing reference)
+            who deviation)
+          (fun current => event ∈ current.application.config.cut.completed) horizon
+          (execution seed)).map fun final => (runKey final.application.config,
+            (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
+        (prior.bind fun seed =>
+          ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
+            (Function.update
+              (serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing reference)
+              who deviation)
+            (fun current => event ∈ current.application.config.cut.completed) horizon
+            (execution seed)).map fun final => runKey final.application.config).bind
+          (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
+      ∀ policy, (prior.bind fun seed =>
+        ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
+          (Function.update
+            (serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing reference)
+            who deviation)
+          (fun current => event ∈ current.application.config.cut.completed) horizon
+          (execution seed)).bind fun final =>
+            keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy) who
+              (runKey final.application.config)) =
+        prior.bind fun seed =>
+          keyTarget ((serviceGraph setup mode).lastDeviationProfile base who (build policy)) who
+            (runKey (execution seed).application.config) := by
+  obtain ⟨build, nextNoise, joint, averaged, _⟩ := lastOwned_phase_patched scheduler horizon
+    bound turns timing reference base who deviation independent event owned alone prior execution
+    quiescent pendingPrefix automaticPast completes noise factor
+  exact ⟨build, nextNoise, joint, averaged⟩
 
 end Vegas
