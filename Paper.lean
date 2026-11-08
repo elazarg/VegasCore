@@ -2,6 +2,9 @@
 
 import Vegas.Source.Safety
 import Vegas.Game.IntendedNash
+import Vegas.Game.ConcurrentRevealForfeit
+import Vegas.Game.IntendedOpeningExtension
+import Vegas.Game.SourceProtocolNash
 import Vegas.Compile.EventGraphScheduling
 import Vegas.Game.EventCompilation
 import Vegas.Pending.GraphRefinement
@@ -95,6 +98,29 @@ theorem Vegas.Paper.protocol_bounded (admission : CommitmentInterface setup.prog
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.protocol_bounded
+
+/-- Play over source histories has the written-order law, for every legal
+protocol profile and every admitted source profile. -/
+theorem Vegas.Paper.protocol_readout_law [Finite Player]
+    (admission : CommitmentInterface setup.program) :
+    (∀ profile : Profile (setup.informationModel admission).behavioralSignature,
+      ((setup.informationModel admission).runBehavioral profile
+          (setup.program.instructionCount + 1)).map
+          (fun final => setup.protocolReadout final.state) =
+        (setup.run (setup.decodeBehavioralProfile admission profile)).map some) ∧
+    (∀ (profile : BehavioralProfile setup.program)
+      (permitted : ∀ who, (profile who).Admitted setup.program admission),
+      ((setup.informationModel admission).runBehavioral
+          (setup.encodeBehavioralProfile admission profile permitted)
+          (setup.program.instructionCount + 1)).map
+          (fun final => setup.protocolReadout final.state) =
+        (setup.run profile).map some) :=
+  setup.protocol_readout_law admission
+
+/-- info: 'Vegas.Paper.protocol_readout_law' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.protocol_readout_law
 
 theorem Vegas.Paper.intended_no_failed_reveals (wellFormed : setup.WellFormed)
     (history : setup.intendedProtocol.History) {terminal : TerminalConfig setup}
@@ -209,6 +235,58 @@ theorem Vegas.Paper.intended_forfeit_sequentialEquilibrium_preserved
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.intended_forfeit_sequentialEquilibrium_preserved
+
+local notation "forfeiture" => CommitmentInterface.forfeiture setup.program
+
+include finite wellFormed initialFinite in
+/-- With independent reveals concurrent, the order-blind compiled clients of a
+disclosing extension of an intended `ε`-Nash equilibrium are an `ε`-Nash
+equilibrium of the forfeited utility under every public scheduler, with
+outcomes read in instruction order, and they have the intended joint law of
+terminal configuration and payoff. -/
+theorem Vegas.Paper.concurrentReveal_intended_forfeit
+    (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
+    (intended : Profile setup.intendedModel.behavioralSignature)
+    (target : Profile (setup.informationModel forfeiture).behavioralSignature)
+    (agrees : (setup.intendedRestriction forfeiture).ExtendsProfile intended target) (ε : ℝ)
+    (equilibrium : IsεNash (setup.intendedModel.toBehavioralGameForm horizon)
+      (fun final => readoutPayoff setup base final.state) ε intended)
+    (disclosing : ∀ who, Disclosing setup.program
+      (setup.decodeBehavioralProfile forfeiture target who))
+    (scheduler : setup.concurrentRevealGraph.PublicScheduler) :
+    IsεNash (setup.concurrentRevealGraph.gameForm setup.concurrentInputs scheduler)
+        (setup.concurrentForfeitPayoff parameter utility forfeit) ε
+        (setup.concurrentRevealGraph.normalizeProfile (compileEventProfile setup.program
+          (setup.decodeBehavioralProfile forfeiture target))) ∧
+      ((setup.concurrentRevealGraph.gameForm setup.concurrentInputs scheduler).play
+          (setup.concurrentRevealGraph.normalizeProfile (compileEventProfile setup.program
+            (setup.decodeBehavioralProfile forfeiture target)))).map
+          (fun outcome => (some (setup.concurrentReadout outcome),
+            setup.concurrentForfeitPayoff parameter utility forfeit outcome)) =
+        (setup.intendedModel.runBehavioral intended horizon).map
+          (fun final => (setup.protocolReadout final.state,
+            readoutPayoff setup base final.state)) :=
+  setup.concurrentReveal_intended_forfeit finite wellFormed parameter utility forfeit range
+    intended target agrees ε equilibrium disclosing scheduler
+
+/-- info: 'Vegas.Paper.concurrentReveal_intended_forfeit' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.concurrentReveal_intended_forfeit
+
+omit [Finite Player] initialFinite in
+/-- Every intended profile has an extension that opens at every reveal. -/
+theorem Vegas.Paper.exists_disclosing_extension
+    (intended : Profile setup.intendedModel.behavioralSignature) :
+    ∃ target : Profile (setup.informationModel forfeiture).behavioralSignature,
+      (setup.intendedRestriction forfeiture).ExtendsProfile intended target ∧
+        ∀ who, Disclosing setup.program (setup.decodeBehavioralProfile forfeiture target who) :=
+  setup.exists_disclosing_extension forfeiture intended
+
+/-- info: 'Vegas.Paper.exists_disclosing_extension' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.exists_disclosing_extension
 
 end Forfeits
 end Source

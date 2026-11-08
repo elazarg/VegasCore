@@ -839,7 +839,9 @@ private theorem binding_response_matched
               bindingTraffic_respond_other foreign.symm activated _ _ (Or.inl ⟨rfl, rfl⟩)⟩
 
 
-private theorem binding_stopped_readout_congr
+/-- Decided foreign bindings of equal admission, run until the binding completes from
+equal starting readouts, give equal stopped readout laws. -/
+theorem binding_stopped_readout_congr
     {horizon count leftRemaining rightRemaining : Nat}
     (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
     (focal : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)
@@ -1143,7 +1145,8 @@ theorem sourceService_foreign_fixedRun
           apply ownTurn?_none_of_alone alone middle.application ready actor
           rw [owned]
           exact fun equal => isOwner (Option.some.inj equal).symm
-        simp only [serviceTurnPolicy, idle, ReactiveApplication.silentPolicy_apply]
+        simp only [serviceTurnPolicy, serviceReferenceTurnPolicy, idle,
+          ReactiveApplication.silentPolicy_apply]
   · intro current holds running next reached
     exact round_ready_of_pending alone (holds running) reached
   · exact fun _ => ready
@@ -1236,13 +1239,16 @@ theorem sourceService_foreign_mixture
           apply ownTurn?_none_of_alone alone middle.application ready actor
           rw [owned]
           exact fun equal => isOwner (Option.some.inj equal).symm
-        simp only [serviceTurnPolicy, idle, ReactiveApplication.silentPolicy_apply]
+        simp only [serviceTurnPolicy, serviceReferenceTurnPolicy, idle,
+          ReactiveApplication.silentPolicy_apply]
   · intro current holds running next reached
     exact round_ready_of_pending alone (holds running) reached
   · exact fun _ => boundary.ordered.ready event.isLt
 
 
-private theorem canonical_opening_exact
+/-- The canonical opening of a stored successful binding is exactly its opening
+submission. -/
+theorem canonical_opening_exact
     {event : (serviceGraph setup mode).EventId} {owner : Player} {payload : L.Ty}
     {binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload)}
     {checks : List (GuardCheck (serviceGraph setup mode).layout payload)}
@@ -1276,7 +1282,9 @@ private theorem canonical_opening_exact
     recalled owner event payload binding checks outputEq codeEq node candidate value
     accepted owned fixed active stored
 
-private theorem opening_normal_packet
+/-- The packet of a normalized opening submission names its event, candidate and raw
+value. -/
+theorem opening_normal_packet
     (execution : (serviceApplication setup mode deadline leaks).Execution)
     (owner : Player) (event : (serviceGraph setup mode).EventId)
     (candidate : Handle (serviceGraph setup mode)) (raw : Raw L)

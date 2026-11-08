@@ -123,14 +123,14 @@ variable {setup leaks}
 
 /-- One round keeps the fresh calls of a player following the turn-counted
 policy conforming. -/
-theorem freshCallsConform_round {horizon remaining : Nat}
+theorem freshCallsConform_round_reference {horizon remaining : Nat}
     {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
     {players : Player → (serviceApplication setup mode deadline leaks).Policy} {who : Player}
     {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
     {timing : TurnTiming setup turns mode}
-    {profile : BehavioralProfile setup.program}
-    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing
-        profile who)
+    {reference : (serviceGraph setup mode).BehavioralProfile}
+    (follows : players who = serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing
+        reference who)
     {execution next : (serviceApplication setup mode deadline leaks).Execution}
     (trace :
         ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
@@ -171,7 +171,7 @@ theorem freshCallsConform_round {horizon remaining : Nat}
         subst new
         change response.transmission = some material at submitted
         obtain ⟨event, action, turn, unrecorded, fits, decided⟩ :=
-          sourceServiceTurnPolicy_submission chosen submitted
+          sourceServiceTurnPolicy_submission_reference chosen submitted
         have responseEq : response = ⟨some material⟩ := by
           rcases response with ⟨transmission⟩
           change transmission = _ at submitted
@@ -200,18 +200,42 @@ theorem freshCallsConform_round {horizon remaining : Nat}
       rw [app.respond_recall_other middle responder who different response]
       exact conformMiddle
 
+/-- One round keeps the fresh calls of a player following the turn-counted
+policy conforming. -/
+theorem freshCallsConform_round {horizon remaining : Nat}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {players : Player → (serviceApplication setup mode deadline leaks).Policy} {who : Player}
+    {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
+    {timing : TurnTiming setup turns mode}
+    {profile : BehavioralProfile setup.program}
+    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing
+        profile who)
+    {execution next : (serviceApplication setup mode deadline leaks).Execution}
+    (trace :
+        ((serviceApplication setup mode deadline leaks).protocol (serviceInitialLaw setup mode)
+        horizon scheduler).Trace (some ⟨remaining + 1, none, execution⟩))
+    (atTurn : OwnSubmissionsAtTurn setup leaks execution who)
+    (valid : CanonicalSlotsUsed setup leaks execution who)
+    (conform : FreshCallsConform setup leaks execution who)
+    (reached : next ∈
+        ((serviceApplication setup mode deadline leaks).round scheduler players
+        execution).support) :
+    FreshCallsConform setup leaks next who := by
+  apply freshCallsConform_round_reference
+    (reference := compileEventProfile setup.program profile) <;> assumption
+
 /-- **Prescribed fresh calls conform to the audit.** Under every scheduler, in
-every profile in which `who` follows the turn-counted policy, deferral
+every reference in which `who` follows the turn-counted policy, deferral
 trembles included, every fresh submission of `who` satisfies the audit's
 public conformance rule on the view it was made from. -/
-theorem sourceServiceTurnPolicy_freshServiceEnvelope
+theorem sourceServiceTurnPolicy_freshServiceEnvelope_reference
     (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
     (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
     {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
     (timing : TurnTiming setup turns mode)
-    (profile : BehavioralProfile setup.program)
-    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing
-        profile who)
+    (reference : (serviceGraph setup mode).BehavioralProfile)
+    (follows : players who = serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing
+        reference who)
     (count : Nat) (execution : (serviceApplication setup mode deadline leaks).Execution)
     (reached : execution ∈
         ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
@@ -237,12 +261,40 @@ theorem sourceServiceTurnPolicy_freshServiceEnvelope
   | succ count ih =>
       rw [app.roundsFrom_succ] at reached
       obtain ⟨prior, priorMem, moved⟩ := Set.mem_iUnion₂.mp (PMF.support_bind .. ▸ reached)
-      obtain ⟨atTurn, valid⟩ := canonicalSlots_roundsFrom scheduler players who timing profile
+      obtain ⟨atTurn, valid⟩ := canonicalSlots_roundsFrom_reference scheduler players who timing
+        reference
         follows count prior priorMem
       obtain ⟨trace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) (count + 1)
           scheduler players count (Nat.le_succ count) prior priorMem
       rw [show count + 1 - count = 0 + 1 by omega] at trace
-      exact freshCallsConform_round follows trace atTurn valid (ih prior priorMem) moved
+      exact freshCallsConform_round_reference follows trace atTurn valid (ih prior priorMem) moved
+
+/-- **Prescribed fresh calls conform to the audit.** Under every scheduler, in
+every profile in which `who` follows the turn-counted policy, deferral
+trembles included, every fresh submission of `who` satisfies the audit's
+public conformance rule on the view it was made from. -/
+theorem sourceServiceTurnPolicy_freshServiceEnvelope
+    (scheduler : (serviceApplication setup mode deadline leaks).Scheduler)
+    (players : Player → (serviceApplication setup mode deadline leaks).Policy) (who : Player)
+    {bound : (serviceGraph setup mode).EventId → Nat} {turns : Nat}
+    (timing : TurnTiming setup turns mode)
+    (profile : BehavioralProfile setup.program)
+    (follows : players who = serviceTurnPolicy setup mode deadline leaks bound turns timing
+        profile who)
+    (count : Nat) (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (reached : execution ∈
+        ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler players count).support)
+    (entry : (serviceApplication setup mode deadline leaks).PlayerEntry)
+    (member : entry ∈ execution.logs who)
+    (material : (serviceApplication setup mode deadline leaks).Submission)
+    (fresh : entry.action.transmission = some material)
+    (message : Message Player (WitnessedPacket (serviceGraph setup mode)))
+    (emitted : entry.emitted = some message) :
+    (serviceRuntime setup mode deadline).freshServiceEnvelope
+    entry.beforeView.application.publicView message := by
+  apply sourceServiceTurnPolicy_freshServiceEnvelope_reference
+    (reference := compileEventProfile setup.program profile) <;> assumption
 
 end Support
 

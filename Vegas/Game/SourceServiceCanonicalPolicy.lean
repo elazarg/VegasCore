@@ -37,10 +37,10 @@ variable (setup : Setup (Player := Player) (L := L)) (mode : EventGraph.Executio
   (deadline : (serviceGraph setup mode).EventId → Nat)
   (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
-/-- The source compiler's decision at the player's turn, realized by the
+/-- A reference graph profile's decision at the player's turn, realized by the
 canonical decision. -/
-def serviceCanonicalPolicy (profile : BehavioralProfile setup.program) (who : Player) :
-    (serviceApplication setup mode deadline leaks).Policy := fun past view =>
+def serviceReferencePolicy (reference : (serviceGraph setup mode).BehavioralProfile)
+    (who : Player) : (serviceApplication setup mode deadline leaks).Policy := fun past view =>
   if identity : view.application.who = who then
     match view.application.publicView.ownTurn? who with
     | none => PMF.pure ⟨none⟩
@@ -49,29 +49,43 @@ def serviceCanonicalPolicy (profile : BehavioralProfile setup.program) (who : Pl
           let observed := id
             (identity ▸ view.application.observation)
           if inactive : who ∈ observed.defaulted then PMF.pure ⟨none⟩ else
-            ((compileEventProfile setup.program profile) who event owned observed inactive).map
+            (reference who event owned observed inactive).map
               ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who past view
                 event)
         else PMF.pure ⟨none⟩
   else PMF.pure ⟨none⟩
 
-/-- One opportunity of the turn-counted policy: silence once the event is
-recorded in the owner's recall or once a fresh call could no longer be
+/-- The source compiler's decision at the player's turn, realized by the
+canonical decision. -/
+def serviceCanonicalPolicy (profile : BehavioralProfile setup.program) (who : Player) :
+    (serviceApplication setup mode deadline leaks).Policy :=
+  serviceReferencePolicy setup mode deadline leaks (compileEventProfile setup.program profile) who
+
+/-- One opportunity of a reference's turn-counted policy: silence once the event
+is recorded in the owner's recall or once a fresh call could no longer be
 included before the deadline within `bound event` slots; otherwise make the
-canonical source decision, retaining silence if it emits nothing. -/
-def serviceCanonicalOpportunity (bound : (serviceGraph setup mode).EventId → Nat)
-    (profile : BehavioralProfile setup.program) (who : Player)
+reference decision, retaining silence if it emits nothing. -/
+def serviceReferenceOpportunity (bound : (serviceGraph setup mode).EventId → Nat)
+    (reference : (serviceGraph setup mode).BehavioralProfile) (who : Player)
     (event : (serviceGraph setup mode).EventId) :
     (serviceApplication setup mode deadline leaks).Policy := fun past view =>
   if (serviceRuntime setup mode deadline).eventRecorded leaks past event then
     (serviceApplication setup mode deadline leaks).silentPolicy past view
   else if view.application.publicView.InclusionFitsDeadline (serviceRuntime setup mode deadline)
       bound event then
-    (serviceCanonicalPolicy setup mode deadline leaks profile who past view).bind fun response =>
+    (serviceReferencePolicy setup mode deadline leaks reference who past view).bind fun response =>
       if response.transmission = none then
         (serviceApplication setup mode deadline leaks).silentPolicy past view
       else PMF.pure response
   else (serviceApplication setup mode deadline leaks).silentPolicy past view
+
+/-- One opportunity of the turn-counted policy of the compiled source profile. -/
+def serviceCanonicalOpportunity (bound : (serviceGraph setup mode).EventId → Nat)
+    (profile : BehavioralProfile setup.program) (who : Player)
+    (event : (serviceGraph setup mode).EventId) :
+    (serviceApplication setup mode deadline leaks).Policy :=
+  serviceReferenceOpportunity setup mode deadline leaks bound
+    (compileEventProfile setup.program profile) who event
 
 end Configured
 
@@ -92,6 +106,35 @@ variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.Executio
 
 /-- At an owned turn, the total client is silent after public default and
 otherwise realizes the active compiled callback. -/
+theorem sourceServiceCanonicalPolicy_at_event_reference (reference :
+    (serviceGraph setup mode).BehavioralProfile)
+    (who : Player) (execution : (serviceApplication setup mode deadline leaks).Execution)
+    (event : (serviceGraph setup mode).EventId)
+    (selected : execution.application.publicView.ownTurn? who = some event)
+    (owned : (serviceGraph setup mode).actor? event = some who) :
+    serviceReferencePolicy setup mode deadline leaks reference who (execution.logs who)
+        (execution.observe (serviceApplication setup mode deadline leaks) who) =
+      if inactive : who ∈ execution.application.config.defaulted then PMF.pure ⟨none⟩ else
+        (reference who event owned
+          (id
+            ((serviceGraph setup mode).playerObserve who execution.application.config))
+          inactive).map
+          ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
+            (execution.logs who)
+            (execution.observe (serviceApplication setup mode deadline leaks) who) event) := by
+  unfold serviceReferencePolicy
+  rw [dite_eq_left
+          (show (execution.observe (serviceApplication setup mode deadline leaks)
+          who).application.who = who from rfl)]
+  have turn :
+      (execution.observe (serviceApplication setup mode deadline leaks)
+          who).application.publicView.ownTurn? who = some event := selected
+  rw [turn]
+  simp only [dite_eq_left owned]
+  rfl
+
+/-- At an owned turn, the total client is silent after public default and
+otherwise realizes the active compiled callback. -/
 theorem sourceServiceCanonicalPolicy_at_event (profile : BehavioralProfile setup.program)
     (who : Player) (execution : (serviceApplication setup mode deadline leaks).Execution)
     (event : (serviceGraph setup mode).EventId)
@@ -106,17 +149,40 @@ theorem sourceServiceCanonicalPolicy_at_event (profile : BehavioralProfile setup
           inactive).map
           ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
             (execution.logs who)
-            (execution.observe (serviceApplication setup mode deadline leaks) who) event) := by
-  unfold serviceCanonicalPolicy
-  rw [dite_eq_left
-          (show (execution.observe (serviceApplication setup mode deadline leaks)
-          who).application.who = who from rfl)]
-  have turn :
-      (execution.observe (serviceApplication setup mode deadline leaks)
-          who).application.publicView.ownTurn? who = some event := selected
-  rw [turn]
-  simp only [dite_eq_left owned]
-  rfl
+            (execution.observe (serviceApplication setup mode deadline leaks) who) event) :=
+  sourceServiceCanonicalPolicy_at_event_reference setup leaks
+    (compileEventProfile setup.program profile) who execution event selected owned
+
+/-- Every initialized actual callback at an owned ready turn is active; no
+activity premise is imposed on the scheduler or source policies. -/
+theorem sourceServiceCanonicalPolicy_at_event_history_reference
+    (reference : (serviceGraph setup mode).BehavioralProfile) (who : Player) {horizon : Nat}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    (control : (serviceApplication setup mode deadline leaks).Control)
+    (trace : ((serviceApplication setup mode deadline leaks).protocol
+      (serviceInitialLaw setup mode) horizon scheduler).Trace (some control))
+    (event : (serviceGraph setup mode).EventId)
+    (selected : control.execution.application.publicView.ownTurn? who = some event)
+    (owned : (serviceGraph setup mode).actor? event = some who) :
+    ∃ active : who ∉ control.execution.application.config.defaulted,
+      serviceReferencePolicy setup mode deadline leaks reference who (control.execution.logs who)
+          (control.execution.observe (serviceApplication setup mode deadline leaks) who) =
+        (reference who event owned
+          (id
+            ((serviceGraph setup mode).playerObserve who control.execution.application.config))
+          active).map
+          ((serviceRuntime setup mode deadline).canonicalServiceDecision leaks who
+            (control.execution.logs who)
+            (control.execution.observe (serviceApplication setup mode deadline leaks) who)
+            event) := by
+  have facts := legalFacts setup leaks horizon scheduler control trace
+  have ready := (control.execution.application.publicView_eventReady event).mp
+    (PublicView.ownTurn?_spec _ who event selected).1
+  have active := control.execution.application.active_of_ready_owned facts.quiescent ready owned
+  refine ⟨active, ?_⟩
+  rw [sourceServiceCanonicalPolicy_at_event_reference setup leaks reference who control.execution
+    event
+    selected owned, dite_eq_right active]
 
 /-- Every initialized actual callback at an owned ready turn is active; no
 activity premise is imposed on the scheduler or source policies. -/
@@ -140,13 +206,8 @@ theorem sourceServiceCanonicalPolicy_at_event_history
             (control.execution.logs who)
             (control.execution.observe (serviceApplication setup mode deadline leaks) who)
             event) := by
-  have facts := legalFacts setup leaks horizon scheduler control trace
-  have ready := (control.execution.application.publicView_eventReady event).mp
-    (PublicView.ownTurn?_spec _ who event selected).1
-  have active := control.execution.application.active_of_ready_owned facts.quiescent ready owned
-  refine ⟨active, ?_⟩
-  rw [sourceServiceCanonicalPolicy_at_event setup leaks profile who control.execution event
-    selected owned, dite_eq_right active]
+  apply sourceServiceCanonicalPolicy_at_event_history_reference
+    (reference := compileEventProfile setup.program profile) <;> assumption
 
 /-- **The local source commitment distribution, from the owner's observation.**
 At the owner's turn at the commitment, the canonical decision follows the

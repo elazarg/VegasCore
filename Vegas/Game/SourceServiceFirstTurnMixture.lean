@@ -147,35 +147,36 @@ theorem decidedTurnPolicy_silent {bound : (serviceGraph setup mode).EventId → 
       (canonicalServiceDecision_silent owner past view event action silent)
   · rfl
 
-section Sequential
+section Transmission
 
-variable {setup : Setup (Player := Player) (L := L)}
-  (runtime : EventGraphRuntime (graph setup))
-  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
+variable {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+  (runtime : EventGraphRuntime (serviceGraph setup mode))
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode))}
 
 /-- An effective non-silent source action produces a concrete transmission at
 an actual initialized turn, including an authentic opening whose guards reject. -/
 theorem canonicalServiceDecision_transmits_of_effective {horizon : Nat}
-    {scheduler : (application setup runtime leaks).Scheduler}
-    (control : (application setup runtime leaks).Control)
-    (trace : ((application setup runtime leaks).protocol (initialLaw setup) horizon scheduler).Trace
+    {scheduler : (runtime.reactiveApplication leaks).Scheduler}
+    (control : (runtime.reactiveApplication leaks).Control)
+    (trace : ((runtime.reactiveApplication leaks).protocol
+      (serviceInitialLaw setup mode) horizon scheduler).Trace
       (some control))
-    (owner : Player) (event : (graph setup).EventId)
+    (owner : Player) (event : (serviceGraph setup mode).EventId)
     (turn : control.execution.application.publicView.ownTurn? owner = some event)
-    (action : (graph setup).Action event)
+    (action : (serviceGraph setup mode).Action event)
     (effective : EffectiveAction control.execution.application.config event action)
     (loud : ¬ SilentAction event action) :
     ∃ material, (runtime.canonicalServiceDecision leaks owner (control.execution.logs owner)
-      (control.execution.observe (application setup runtime leaks) owner) event
+      (control.execution.observe (runtime.reactiveApplication leaks) owner) event
         action).transmission =
         some material := by
-  let app := application setup runtime leaks
+  let app := runtime.reactiveApplication leaks
   have facts := legalFacts setup leaks horizon scheduler control trace
   obtain ⟨readyView, owned⟩ :=
     control.execution.application.publicView.ownTurn?_spec owner event turn
   have ready := (control.execution.application.publicView_eventReady event).mp readyView
   have active := control.execution.application.active_of_ready_owned facts.quiescent ready owned
-  cases node : nodeView (graph setup) event with
+  cases node : nodeView (serviceGraph setup mode) event with
   | sample payload law outputEq codeEq =>
       have actorNone := nodeView_sample_actor outputEq codeEq
       rw [owned] at actorNone
@@ -196,9 +197,9 @@ theorem canonicalServiceDecision_transmits_of_effective {horizon : Nat}
               (cast (congrArg EventGraph.EventField.Action outputEq.symm)) choice
             simpa only [cast_cast, cast_eq] using back
       have nativeTrace := trace
-      have initialEq : initialLaw setup = (setup.initialLaw.map setup.eventInputs).map
-          (EventGraphRuntime.State.initial (graph := graph setup)) :=
-        serviceInitialLaw_eq_inputs (mode := .sequential) setup
+      have initialEq : serviceInitialLaw setup mode = (setup.initialLaw.map setup.eventInputs).map
+          (EventGraphRuntime.State.initial (graph := serviceGraph setup mode)) :=
+        serviceInitialLaw_eq_inputs (mode := mode) setup
       rw [initialEq] at nativeTrace
       have candidates := runtime.candidateRecall_history leaks
         (setup.initialLaw.map setup.eventInputs) horizon scheduler nativeTrace
@@ -232,7 +233,7 @@ theorem canonicalServiceDecision_transmits_of_effective {horizon : Nat}
       have observedStored : binding.get?
           (control.execution.observe app owner).application.observation.store =
             some (.success value) := by
-        change binding.get? ((graph setup).playerStore owner
+        change binding.get? ((serviceGraph setup mode).playerStore owner
           control.execution.application.config.store) = _
         rw [binding.get?_playerStore owner _ rfl, stored]
       have transmits := runtime.canonicalServiceDecision_openable leaks owner
@@ -248,6 +249,13 @@ theorem canonicalServiceDecision_transmits_of_effective {horizon : Nat}
       | none => exact (transmits sent).elim
       | some material => exact ⟨material, rfl⟩
 
+end Transmission
+
+section Sequential
+
+variable {setup : Setup (Player := Player) (L := L)}
+  (runtime : EventGraphRuntime (graph setup))
+  {leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup))}
 
 section Head
 

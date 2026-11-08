@@ -19,9 +19,9 @@ open SourceProgram EventGraph Interaction GameTheory.Math.Probability
   EventGraphRuntime
 
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
-  {setup : Setup (Player := Player) (L := L)}
-  (runtime : EventGraphRuntime (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+  {setup : Setup (Player := Player) (L := L)} {mode : EventGraph.ExecutionMode}
+  (runtime : EventGraphRuntime (serviceGraph setup mode))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 private theorem ownerless_step_bind_runPlan
     (profile : (graph setup).BehavioralProfile) (config : (graph setup).Config)
@@ -54,38 +54,46 @@ private theorem ownerless_step_bind_runPlan
   rw [remaining]
 
 private theorem resume_config
-    (players : Player → (application setup runtime leaks).Policy)
-    (actor : Option Player) (execution next : (application setup runtime leaks).Execution)
-    (reached : next ∈ ((application setup runtime leaks).resume players actor execution).support) :
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (actor : Option Player) (execution next : (runtime.reactiveApplication leaks).Execution)
+    (reached : next ∈ ((runtime.reactiveApplication leaks).resume players actor
+      execution).support) :
     next.application.config = execution.application.config := by
   cases actor with
   | none =>
       cases (PMF.mem_support_pure_iff _ _).mp reached
       rfl
   | some who =>
-      change next ∈ ((application setup runtime leaks).invoke players who execution).support
+      change next ∈ ((runtime.reactiveApplication leaks).invoke players who execution).support
         at reached
       rw [ReactiveApplication.invoke, PMF.support_map] at reached
       obtain ⟨response, _, rfl⟩ := reached
       exact (runtime.reactive_respond_application leaks execution who response).1
 
 private theorem chance_environment_bind_runPlan
-    (profile : (graph setup).BehavioralProfile)
-    (state : EventGraphRuntime.State (graph setup))
-    (command : EnvironmentCommand (graph setup)) (event : (graph setup).EventId)
-    (ready : state.config.cut.Ready event) (ownerless : (graph setup).actor? event = none) :
+    {Result : Type*} (continuation : (serviceGraph setup mode).Config → PMF Result)
+    (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup mode),
+      continuation state.drain.config = continuation state.config)
+    (state : EventGraphRuntime.State (serviceGraph setup mode))
+    (command : EnvironmentCommand (serviceGraph setup mode)) (event :
+      (serviceGraph setup mode).EventId) (solitary : (serviceGraph setup mode).Solitary event)
+    (headStep : ∀ (config : (serviceGraph setup mode).Config)
+      (ready : config.cut.Ready event) (action : (serviceGraph setup mode).Action event),
+      (config.step event ready action).bind continuation = continuation config)
+    (ready : state.config.cut.Ready event) (ownerless :
+      (serviceGraph setup mode).actor? event = none) :
     (((runtime.reactiveApplication leaks).environment state command).bind fun next =>
-      (graph setup).runPlan
-        ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
-        next.config.remaining next.config) =
-      (graph setup).runPlan
-        ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
-        state.config.remaining state.config := by
-  refine (EventGraphRuntime.State.drain_bind_runPlan_canonical setup.eventGraph profile
-    (environmentStep runtime state command)).trans ?_
-  have sole (other : (graph setup).EventId) (otherReady : state.config.cut.Ready other) :
-      other = event := setup.eventGraph.sequentialize_ready_unique state.config.cut otherReady ready
-  cases node : nodeView (graph setup) event with
+      continuation next.config) =
+      continuation state.config := by
+  refine (show ((environmentStep runtime state command).map EventGraphRuntime.State.drain).bind
+      (fun next => continuation next.config) =
+        (environmentStep runtime state command).bind (fun next => continuation next.config) by
+    rw [PMF.bind_map]
+    exact bind_congr_on_support _ fun next _ => drained next).trans ?_
+  have sole (other : (serviceGraph setup mode).EventId)
+    (otherReady : state.config.cut.Ready other) :
+      other = event := solitary state.config.cut otherReady ready
+  cases node : nodeView (serviceGraph setup mode) event with
   | bind owner payload outputEq codeEq =>
       have actor := nodeView_bind_actor outputEq codeEq
       rw [ownerless] at actor
@@ -103,7 +111,7 @@ private theorem chance_environment_bind_runPlan
             subst other
             rw [environmentStep_executeSample_eq runtime state event ready payload law outputEq
               codeEq node, PMF.bind_map]
-            exact ownerless_step_bind_runPlan profile state.config event ready ownerless _
+            exact headStep state.config ready _
           · rw [environmentStep_executeSample_of_not_ready runtime state other otherReady,
               PMF.pure_bind]
       | expire other =>
@@ -126,46 +134,46 @@ private theorem chance_environment_bind_runPlan
 /-- Every native command preserves the remaining canonical law while the ready
 event is a public chance event. Sampling includes its atomic automatic tail. -/
 private theorem chance_dispatch_bind_runPlan
-    (profile : (graph setup).BehavioralProfile)
-    (players : Player → (application setup runtime leaks).Policy)
-    (execution : (application setup runtime leaks).Execution)
-    (command : (application setup runtime leaks).Command) (event : (graph setup).EventId)
+    {Result : Type*} (continuation : (serviceGraph setup mode).Config → PMF Result)
+    (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup mode),
+      continuation state.drain.config = continuation state.config)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (execution : (runtime.reactiveApplication leaks).Execution)
+    (command : (runtime.reactiveApplication leaks).Command) (event :
+      (serviceGraph setup mode).EventId) (solitary : (serviceGraph setup mode).Solitary event)
+    (headStep : ∀ (config : (serviceGraph setup mode).Config)
+      (ready : config.cut.Ready event) (action : (serviceGraph setup mode).Action event),
+      (config.step event ready action).bind continuation = continuation config)
     (ready : execution.application.config.cut.Ready event)
-    (ownerless : (graph setup).actor? event = none) :
-    (((application setup runtime leaks).dispatch players command execution).bind fun next =>
-      (graph setup).runPlan
-        ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
-        next.application.config.remaining next.application.config) =
-      (graph setup).runPlan
-        ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
-        execution.application.config.remaining execution.application.config := by
-  let app := application setup runtime leaks
-  let continuation := fun next : app.Execution => (graph setup).runPlan
-    ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
-    next.application.config.remaining next.application.config
-  change (app.dispatch players command execution).bind continuation = continuation execution
+    (ownerless : (serviceGraph setup mode).actor? event = none) :
+    (((runtime.reactiveApplication leaks).dispatch players command execution).bind fun next =>
+      continuation next.application.config) =
+      continuation execution.application.config := by
+  let app := runtime.reactiveApplication leaks
+  let onward := fun next : app.Execution => continuation next.application.config
+  change (app.dispatch players command execution).bind onward = onward execution
   unfold ReactiveApplication.dispatch
   rw [PMF.bind_bind]
   have resumed (middle : app.Execution) :
-      (app.resume players (command.actor? app) middle).bind continuation = continuation middle := by
+      (app.resume players (command.actor? app) middle).bind onward = onward middle := by
     calc
       _ = (app.resume players (command.actor? app) middle).bind
-          (fun _ => continuation middle) := by
+          (fun _ => onward middle) := by
         apply bind_congr_on_support _
         intro next reached
-        dsimp only [continuation]
+        dsimp only [onward]
         rw [resume_config runtime leaks players _ middle next reached]
       _ = _ := PMF.bind_const _ _
   simp_rw [resumed]
   have stays : (∀ next ∈ (execution.environmentStep app command).support,
       next.application.config = execution.application.config) →
-      (execution.environmentStep app command).bind continuation = continuation execution := by
+      (execution.environmentStep app command).bind onward = onward execution := by
     intro fixed
     calc
-      _ = (execution.environmentStep app command).bind (fun _ => continuation execution) := by
+      _ = (execution.environmentStep app command).bind (fun _ => onward execution) := by
         apply bind_congr_on_support _
         intro next reached
-        dsimp only [continuation]
+        dsimp only [onward]
         rw [fixed next reached]
       _ = _ := PMF.bind_const _ _
   cases command with
@@ -195,7 +203,7 @@ private theorem chance_dispatch_bind_runPlan
               obtain ⟨native, handled, _⟩ := reactiveHandle_call accepted
               obtain ⟨named, namedEq, namedReady, _, _⟩ := handle_config_mem_step runtime
                 execution.application native ⟨message.id, message.payload.call⟩ handled
-              have same := setup.eventGraph.sequentialize_ready_unique
+              have same := solitary
                 execution.application.config.cut namedReady ready
               subst named
               have actor := handle_sender_actor runtime execution.application native
@@ -203,33 +211,35 @@ private theorem chance_dispatch_bind_runPlan
               rw [ownerless] at actor
               cases actor
   | application command =>
-      change (execution.environmentStep app (.application command)).bind continuation = _
+      change (execution.environmentStep app (.application command)).bind onward = _
       simp only [ReactiveApplication.Execution.environmentStep, PMF.bind_map]
-      exact chance_environment_bind_runPlan runtime leaks profile execution.application command
-        event ready ownerless
+      exact chance_environment_bind_runPlan runtime leaks continuation drained
+        execution.application command event solitary headStep ready ownerless
 
-/-- Bounded waiting for a ready chance event preserves its complete canonical
-continuation, including runs whose budget ends before sampling. -/
-theorem chance_runUntil_bind_runPlan
-    (profile : (graph setup).BehavioralProfile)
-    (scheduler : (application setup runtime leaks).Scheduler)
-    (players : Player → (application setup runtime leaks).Policy)
-    (event : (graph setup).EventId) (ownerless : (graph setup).actor? event = none) :
-    ∀ (count : Nat) (execution : (application setup runtime leaks).Execution),
+/-- Bounded waiting for a ready solitary chance event preserves every
+continuation that automatic completion leaves unchanged and that the chance step
+preserves, including runs whose budget ends before sampling. -/
+theorem chance_runUntil_bind_continuation
+    {Result : Type*} (continuation : (serviceGraph setup mode).Config → PMF Result)
+    (drained : ∀ state : EventGraphRuntime.State (serviceGraph setup mode),
+      continuation state.drain.config = continuation state.config)
+    (scheduler : (runtime.reactiveApplication leaks).Scheduler)
+    (players : Player → (runtime.reactiveApplication leaks).Policy)
+    (event : (serviceGraph setup mode).EventId) (solitary :
+      (serviceGraph setup mode).Solitary event)
+    (headStep : ∀ (config : (serviceGraph setup mode).Config)
+      (ready : config.cut.Ready event) (action : (serviceGraph setup mode).Action event),
+      (config.step event ready action).bind continuation = continuation config) (ownerless :
+        (serviceGraph setup mode).actor? event = none) :
+    ∀ (count : Nat) (execution : (runtime.reactiveApplication leaks).Execution),
       execution.application.config.cut.Ready event →
-      (((application setup runtime leaks).runUntil scheduler players
+      (((runtime.reactiveApplication leaks).runUntil scheduler players
         (fun final => event ∈ final.application.config.cut.completed) count execution).bind
-        fun final => (graph setup).runPlan
-          ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
-          final.application.config.remaining final.application.config) =
-        (graph setup).runPlan
-          ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
-          execution.application.config.remaining execution.application.config := by
+        fun final => continuation final.application.config) =
+        continuation execution.application.config := by
   classical
-  let app := application setup runtime leaks
-  let continuation := fun next : app.Execution => (graph setup).runPlan
-    ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
-    next.application.config.remaining next.application.config
+  let app := runtime.reactiveApplication leaks
+  let onward := fun next : app.Execution => continuation next.application.config
   intro count
   induction count with
   | zero => intro execution _; simp only [ReactiveApplication.runUntil, PMF.pure_bind]
@@ -237,7 +247,7 @@ theorem chance_runUntil_bind_runPlan
       intro execution ready
       rw [ReactiveApplication.runUntil, ite_eq_right ready.1, PMF.bind_bind]
       calc
-        _ = (app.round scheduler players execution).bind continuation := by
+        _ = (app.round scheduler players execution).bind onward := by
           apply bind_congr_on_support _
           intro next reached
           by_cases completed : event ∈ next.application.config.cut.completed
@@ -253,19 +263,45 @@ theorem chance_runUntil_bind_runPlan
               exact (runtime.reactiveApplication_graphSteps leaks).environmentStep
                 execution middle command moved
             have same := EventGraph.Config.Step.path_eq_of_ready_of_not_completed event
-              (fun _ otherReady => setup.eventGraph.sequentialize_ready_unique _ otherReady ready)
+              (fun _ otherReady => solitary _ otherReady ready)
               completed path
             exact ih next (same.symm ▸ ready)
-        _ = continuation execution := by
+        _ = onward execution := by
           unfold ReactiveApplication.round
           rw [PMF.bind_bind]
           calc
             _ = (scheduler execution.environmentRecall (execution.observeEnvironment app)).bind
-                (fun _ => continuation execution) :=
+                (fun _ => onward execution) :=
               bind_congr_on_support _ (fun command _ =>
-                chance_dispatch_bind_runPlan runtime leaks profile players execution command
-                  event ready ownerless)
+                chance_dispatch_bind_runPlan runtime leaks continuation drained players
+                  execution command event solitary headStep ready ownerless)
             _ = _ := PMF.bind_const _ _
+
+/-- Bounded waiting for a ready chance event preserves its complete canonical
+continuation, including runs whose budget ends before sampling. -/
+theorem chance_runUntil_bind_runPlan (runtime : EventGraphRuntime (graph setup))
+    (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+    (profile : (graph setup).BehavioralProfile)
+    (scheduler : (application setup runtime leaks).Scheduler)
+    (players : Player → (application setup runtime leaks).Policy)
+    (event : (graph setup).EventId) (ownerless : (graph setup).actor? event = none) :
+    ∀ (count : Nat) (execution : (application setup runtime leaks).Execution),
+      execution.application.config.cut.Ready event →
+      (((application setup runtime leaks).runUntil scheduler players
+        (fun final => event ∈ final.application.config.cut.completed) count execution).bind
+        fun final => (graph setup).runPlan
+          ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
+          final.application.config.remaining final.application.config) =
+        (graph setup).runPlan
+          ((graph setup).policyPlan profile (graph setup).canonicalScheduler)
+          execution.application.config.remaining execution.application.config :=
+  chance_runUntil_bind_continuation runtime leaks
+    (fun config => (graph setup).runPlan
+      ((graph setup).policyPlan profile (graph setup).canonicalScheduler) config.remaining config)
+    (fun state => (EventGraphRuntime.State.drain_runPlan_canonical setup.eventGraph profile
+      state).symm) scheduler players event (setup.eventGraph.sequentialize_solitary event)
+    (fun config ready action => ownerless_step_bind_runPlan profile config event ready ownerless
+      action) ownerless
 
 private theorem runPlan_store_law {compiled : Vegas.EventGraph Player L}
     (plan : compiled.EventPlan) :

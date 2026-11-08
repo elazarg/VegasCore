@@ -21,37 +21,37 @@ open SourceProgram GameTheory.Math.Probability Interaction EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
 section RecordedResponses
-variable (setup : Setup (Player := Player) (L := L))
-  (runtime : EventGraphRuntime (graph setup))
-  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
+variable (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
+  (runtime : EventGraphRuntime (serviceGraph setup mode))
+  (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))
 
 /-- The envelope a response transmitting `material` emits. -/
-def sentEnvelope (execution : (application setup runtime leaks).Execution) (who : Player)
-    (material : (application setup runtime leaks).Submission) :
-    Message Player (WitnessedPacket (graph setup)) :=
+def sentEnvelope (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
+    (material : (runtime.reactiveApplication leaks).Submission) :
+    Message Player (WitnessedPacket (serviceGraph setup mode)) :=
   ⟨(who, execution.network.nextSerial who),
-    (application setup runtime leaks).packet
-      ((application setup runtime leaks).submit execution.application who material) who
+    (runtime.reactiveApplication leaks).packet
+      ((runtime.reactiveApplication leaks).submit execution.application who material) who
       (execution.network.known who) material⟩
 
 
 /-- The recall entry a response appends: the view it was made from, the
 response, and the envelope it emits. -/
-def respondEntry (execution : (application setup runtime leaks).Execution) (who : Player)
-    (response : (application setup runtime leaks).Action) : (application setup runtime
-      leaks).PlayerEntry :=
-  ⟨execution.observe (application setup runtime leaks) who, response,
+def respondEntry (execution : (runtime.reactiveApplication leaks).Execution) (who : Player)
+    (response : (runtime.reactiveApplication leaks).Action) :
+      (runtime.reactiveApplication leaks).PlayerEntry :=
+  ⟨execution.observe (runtime.reactiveApplication leaks) who, response,
     response.transmission.map (sentEnvelope setup runtime leaks execution who)⟩
 
 variable {setup runtime leaks}
 
 /-- The entry of a transmitting response records its envelope. -/
-theorem respondEntry_of_transmission (execution : (application setup runtime leaks).Execution)
-    (who : Player) (response : (application setup runtime leaks).Action)
-    (material : (application setup runtime leaks).Submission)
+theorem respondEntry_of_transmission (execution : (runtime.reactiveApplication leaks).Execution)
+    (who : Player) (response : (runtime.reactiveApplication leaks).Action)
+    (material : (runtime.reactiveApplication leaks).Submission)
     (submits : response.transmission = some material) :
     respondEntry setup runtime leaks execution who response =
-      ⟨execution.observe (application setup runtime leaks) who, response,
+      ⟨execution.observe (runtime.reactiveApplication leaks) who, response,
         some (sentEnvelope setup runtime leaks execution who material)⟩ := by
   unfold respondEntry
   rw [submits]

@@ -4,6 +4,7 @@ import Vegas.Pending.ReactiveEntryStability
 import Vegas.Pending.EventAssociationInvariant
 import Vegas.Pending.EventBindingInvariant
 import Vegas.Pending.PublicFailureEvidence
+import Vegas.EventGraph.DefaultFailure
 
 /-! # What a recorded view of a ready event keeps while the event is unfinished
 
@@ -30,15 +31,6 @@ variable {Player : Type} {L : IExpr} [IExpr.ResultTypes L]
 /-- Two events are ready together at some cut. -/
 def ReadyTogether (graph : Vegas.EventGraph Player L) (first second : graph.EventId) : Prop :=
   ∃ cut : graph.order.Cut, cut.Ready first ∧ cut.Ready second
-
-/-- A binding node's actor is its output's owner. -/
-theorem EventCode.actor_eq_of_binding {Field : Type} [DecidableEq Field]
-    {layout : Field → EventField Player L} :
-    ∀ {output : EventField Player L} (code : EventCode layout output) {owner : Player}
-      {payload : L.Ty}, output = .binding owner payload → code.actor = some owner
-  | _, .bind _ _, _, _, same => by cases same; rfl
-  | _, .resolve .., _, _, same => by cases same
-  | _, .sample .., _, _, same => by cases same
 
 /-- An event with a binding output is acted on by the binding's owner. -/
 theorem actor?_of_outputLayout_binding (graph : Vegas.EventGraph Player L)

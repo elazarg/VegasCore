@@ -1,0 +1,149 @@
+/- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
+
+import Vegas.Game.RevealServiceRankedReadout
+import Vegas.Pending.CanonicalKeyPublication
+import Vegas.EventGraph.DecisionTwin
+import Vegas.Source.InitialState
+import Vegas.EventGraph.RevealRelaxedScheduling
+
+/-! # The order-blind reference profile of concurrent reveals
+
+Clients on the service graph with independent reveals concurrent compile a
+source profile and then read their observation in instruction order. Their graph
+profile is ready independent when the source profile discloses at every reveal,
+because each compiled opening is the same opening action at every observation.
+The instruction-order reader depends only on the order-free final key, so its
+law is read from the canonical key law of that profile.
+-/
+
+noncomputable section
+
+namespace Vegas
+
+open SourceProgram EventGraph Interaction EventGraphRuntime
+
+variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
+
+/-- The compiled source profile on the concurrent-reveal service graph, reading
+each observation in instruction order. -/
+def concurrentReference (setup : Setup (Player := Player) (L := L))
+    (source : BehavioralProfile setup.program) :
+    (serviceGraph setup .concurrentReveals).BehavioralProfile :=
+  (serviceGraph setup .concurrentReveals).normalizeProfile
+    (compileEventProfile setup.program source)
+
+/-- **Ready independence of the order-blind reference.** A disclosing source
+profile compiles to a reference whose simultaneously ready events commute. -/
+theorem concurrentReference_readyIndependent (setup : Setup (Player := Player) (L := L))
+    (source : BehavioralProfile setup.program)
+    (disclosing : ∀ who, Disclosing setup.program (source who)) :
+    ReadyIndependent (concurrentReference setup source) := by
+  have opens (who : Player) (event : (serviceGraph setup .concurrentReveals).EventId)
+      (actor : (serviceGraph setup .concurrentReveals).actor? event = some who)
+      (publication : ((serviceGraph setup .concurrentReveals).outputLayout event).IsPublication)
+      (observation : (serviceGraph setup .concurrentReveals).PlayerObservation who)
+      (active : who ∉ observation.defaulted) :
+      compileEventProfile setup.program source who event actor observation active =
+        PMF.pure (EventField.openAction _ publication) :=
+    compileEventPolicy_publication setup.program who (source who) (disclosing who) event actor
+      publication observation active
+  exact (setup.eventGraph.withMode_concurrentReveals_revealsOnlyConcurrent
+    setup.eventGraph_total).readyIndependent_normalizeProfile _
+    fun who event actor publication left right leftActive rightActive => by
+      rw [opens who event actor publication left leftActive,
+        opens who event actor publication right rightActive]
+
+/-- The order-blind reference of a disclosing source profile opens every
+publication of an active owner. -/
+theorem concurrentReference_opensPublications (setup : Setup (Player := Player) (L := L))
+    (source : BehavioralProfile setup.program)
+    (disclosing : ∀ who, Disclosing setup.program (source who)) :
+    OpensPublications (concurrentReference setup source) :=
+  fun config event who actor publication active =>
+    compileEventPolicy_publication setup.program who (source who) (disclosing who) event actor
+      publication _ (fun normalized => active
+        ((serviceGraph setup .concurrentReveals).normalizeObservation_defaulted_subset who
+          ((serviceGraph setup .concurrentReveals).playerObserve who config)
+          normalized))
+
+/-- The complete source configuration read from a concurrent-reveal
+configuration in instruction order; unfinished configurations have none. -/
+def concurrentRankedRead (setup : Setup (Player := Player) (L := L))
+    (config : (serviceGraph setup .concurrentReveals).Config) :
+    Option (Config Player L setup.program.terminalCtx) :=
+  if config.cut.Terminal then
+    Vegas.decodeConfig? setup.program setup.program
+      (ContextRefs.initial setup.context (outputLayout setup.program))
+      (Revelations.initial setup.context) [] (outputEmbedding setup.program) config.store
+      (Setup.rankedHistory (graph := serviceGraph setup .concurrentReveals) config)
+  else none
+
+/-- The instruction-order reader depends only on the order-free key. -/
+theorem concurrentRankedRead_congr (setup : Setup (Player := Player) (L := L))
+    {left right : (serviceGraph setup .concurrentReveals).Config}
+    (same : runKey left = runKey right) :
+    concurrentRankedRead setup left = concurrentRankedRead setup right := by
+  have cut : left.cut = right.cut := congrArg Prod.fst same
+  have store : left.store = right.store := congrArg (fun key => key.2.1) same
+  have records : completionOf left = completionOf right := congrArg (fun key => key.2.2) same
+  have history : Setup.rankedHistory left = Setup.rankedHistory right := by
+    unfold Setup.rankedHistory
+    rw [records]
+  unfold concurrentRankedRead
+  rw [cut, store, history]
+
+/-- The ranked history of an erasure is the erased ranked history. -/
+theorem rankedHistory_erase {graph : EventGraph Player L} (config : graph.Config) :
+    Setup.rankedHistory config.erase =
+      (Setup.rankedHistory config).map (graph.eraseCompletion config.defaulted) := by
+  unfold Setup.rankedHistory
+  simp only [completionOf_erase]
+  generalize List.finRange graph.order.eventCount = events
+  induction events with
+  | nil => rfl
+  | cons head tail ih =>
+      cases found : completionOf config head <;> simp [found, ih]
+
+/-- The outcome read from a concurrent-reveal configuration in instruction
+order: the parameter, public values and defaults of the decoded source
+configuration. -/
+def concurrentOutcome {Parameter : Type} (setup : Setup (Player := Player) (L := L))
+    (parameter : State L setup.context → Parameter)
+    (config : (serviceGraph setup .concurrentReveals).Config) :
+    Option (Parameter × PublicOutcome setup.program) :=
+  (concurrentRankedRead setup config).map (setup.parameterOutcome parameter)
+
+/-- **The outcome ignores the decisions of defaulted players.** -/
+theorem concurrentOutcome_erase {Parameter : Type} (setup : Setup (Player := Player) (L := L))
+    (parameter : State L setup.context → Parameter)
+    (config : (serviceGraph setup .concurrentReveals).Config) :
+    concurrentOutcome setup parameter config.erase = concurrentOutcome setup parameter config := by
+  have defaultsEq : Vegas.EventCompletion.defaults (Setup.rankedHistory config.erase) =
+      Vegas.EventCompletion.defaults (Setup.rankedHistory config) := by
+    rw [rankedHistory_erase]
+    unfold Vegas.EventCompletion.defaults
+    simp only [List.map_map, Function.comp_def, eraseCompletion_defaultEvent]
+  unfold concurrentOutcome concurrentRankedRead
+  change (if config.cut.Terminal then _ else none).map _ =
+    (if config.cut.Terminal then _ else none).map _
+  split
+  · unfold Vegas.decodeConfig?
+    rw [Option.map_map, Option.map_map]
+    change Option.map _ (Vegas.decodeState? _ config.store) =
+      Option.map _ (Vegas.decodeState? _ config.store)
+    congr 1
+    funext state
+    simp only [Function.comp_apply, Setup.parameterOutcome, publicOutcome, defaultsEq]
+  · rfl
+
+/-- The service's instruction-order readout is the configuration reader at the
+native terminal configuration. -/
+theorem serviceRankedReadout_some (setup : Setup (Player := Player) (L := L))
+    (deadline : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (leaks : MessageNetwork.ObservationRule Player
+      (WitnessedPacket (serviceGraph setup .concurrentReveals)))
+    (control : (serviceApplication setup .concurrentReveals deadline leaks).Control) :
+    serviceRankedReadout setup .concurrentReveals deadline leaks (some control) =
+      concurrentRankedRead setup control.execution.application.config := rfl
+
+end Vegas

@@ -317,9 +317,10 @@ theorem sourceServiceClientPolicy_raw_admissible
       (serviceInitialLaw setup mode) horizon scheduler who
       (serviceClientPolicy setup mode deadline leaks bound turns timing profile who) := by
   intro control trace active response supported
-  by_cases consistent : (serviceTurnPolicy setup mode deadline leaks bound turns timing profile
-    who).Consistent (control.execution.logs who)
-  · rw [serviceClientPolicy, ReactiveApplication.Policy.recover_eq _ _ _ _ consistent]
+  by_cases consistent : (serviceReferenceTurnPolicy setup mode deadline leaks bound turns timing
+    (compileEventProfile setup.program profile) who).Consistent (control.execution.logs who)
+  · rw [serviceClientPolicy, serviceReferenceClientPolicy,
+      ReactiveApplication.Policy.recover_eq _ _ _ _ consistent]
       at supported
     obtain ⟨atTurn, slots⟩ := sourceServiceTurnPolicy_consistent_slots bounds bound turns timing
       profile trace who consistent
@@ -336,7 +337,7 @@ theorem sourceServiceClientPolicy_raw_admissible
         (bounds.rawMenu (serviceRuntime setup mode deadline) leaks) who _ _ response |>.mp effective
     rw [← normal]
     exact bounds.rawMenu_closed (serviceRuntime setup mode deadline) leaks who _ _ original allowed
-  · rw [serviceClientPolicy,
+  · rw [serviceClientPolicy, serviceReferenceClientPolicy,
       ReactiveApplication.Policy.recover_eq_recovery _ _ _ _ consistent] at supported
     exact canonicalMenu_in_raw bounds who _ _
       (bounds.silent_canonical (serviceRuntime setup mode deadline) leaks who _ _ response
