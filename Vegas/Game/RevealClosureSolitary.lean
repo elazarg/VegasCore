@@ -2,6 +2,7 @@
 
 import Vegas.Game.RevealRunPoint
 import Vegas.Game.DeviationSplit
+import Vegas.Game.RevealDeviationSimulation
 
 /-! # Solitary phases through the closure
 
@@ -106,5 +107,148 @@ theorem completed_iff_defaultedBefore (reference : (serviceGraph setup mode).Beh
     unfold EventGraphRuntime.State.AutomaticReady
     rw [owned]
     exact ⟨ready, inactive⟩
+
+/-- **A run of reveals in the deviation simulation.** From every point of a run
+of concurrent reveals, the deviation is simulated by the last-served erased-key
+laws of normalized graph deviations read at the closure key, once it is from
+the phase boundary at the run's end. -/
+theorem runPoint_simulation {horizon : Nat}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay : (serviceGraph setup mode).EventId → Nat}
+    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (base : (serviceGraph setup mode).BehavioralProfile)
+    (decides : ∀ (config : (serviceGraph setup mode).Config)
+      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
+      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup mode) event =
+        .resolve owner payload binding checks outputEq codeEq →
+      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
+        (serviceGraph setup mode).normalizeProfile base owner event actor
+          ((serviceGraph setup mode).playerObserve owner config) active =
+          PMF.pure (cast (congrArg EventField.Action outputEq.symm)
+            (openingAccepted event config.store)))
+    (referenceIndependent : ReadyIndependent ((serviceGraph setup mode).normalizeProfile base))
+    (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (independent : ∀ policy, LastIndependent
+      ((serviceGraph setup mode).lastDeviationProfile base who policy) who)
+    (relaxed : RelaxedOrder (serviceGraph setup mode))
+    (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent) {start finish : Nat}
+    (run : RevealRun (serviceGraph setup mode) start finish)
+    (tail : DeviationSimulation scheduler
+      (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+        (firstTurnTiming setup turns mode) ((serviceGraph setup mode).normalizeProfile base))
+        who deviation) horizon readErased
+      (fun execution => runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
+        execution.application.config))
+      ((serviceRuntime setup mode deadline).bindingTraffic leaks who) (keyView who)
+      (fun policy => keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy)
+        who)
+      (PhaseBoundary scheduler (Function.update (serviceReferenceTurnPolicy setup mode deadline
+        leaks bound turns (firstTurnTiming setup turns mode)
+        ((serviceGraph setup mode).normalizeProfile base)) who deviation) horizon finish)) :
+    ∀ bar, bar ≤ finish →
+      DeviationSimulation scheduler
+        (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+          (firstTurnTiming setup turns mode) ((serviceGraph setup mode).normalizeProfile base))
+          who deviation) horizon readErased
+        (fun execution => runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
+          execution.application.config))
+        ((serviceRuntime setup mode deadline).bindingTraffic leaks who) (keyView who)
+        (fun policy => keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy)
+          who)
+        (RunPoint scheduler (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks
+          bound turns (firstTurnTiming setup turns mode)
+          ((serviceGraph setup mode).normalizeProfile base)) who deviation) horizon who start
+          finish bar) := by
+  classical
+  let G := serviceGraph setup mode
+  let R := G.normalizeProfile base
+  let app := serviceApplication setup mode deadline leaks
+  let players := Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound
+    turns (firstTurnTiming setup turns mode) R) who deviation
+  suffices step : ∀ gap bar, finish - bar = gap → bar ≤ finish →
+      DeviationSimulation scheduler players horizon readErased
+        (fun execution => runKey (closure R who execution.application.config))
+        ((serviceRuntime setup mode deadline).bindingTraffic leaks who) (keyView who)
+        (fun policy => keyTarget (G.lastDeviationProfile base who policy) who)
+        (RunPoint scheduler players horizon who start finish bar) from
+    fun bar within => step _ bar rfl within
+  intro gap
+  induction gap using Nat.strong_induction_on with
+  | _ gap ih =>
+  intro bar hgap within
+  by_cases hasOwned : ∃ owned : G.EventId, bar ≤ owned.val ∧ owned.val < finish ∧
+      G.actor? owned = some who
+  · let Ranked := fun rank : Nat => ∃ owned : G.EventId, owned.val = rank ∧ bar ≤ rank ∧
+      rank < finish ∧ G.actor? owned = some who
+    have exists_ranked : ∃ rank, Ranked rank := by
+      obtain ⟨owned, early, late, mine⟩ := hasOwned
+      exact ⟨owned.val, owned, rfl, early, late, mine⟩
+    obtain ⟨target, targetRank, targetEarlyFound, targetLateFound, targetOwned⟩ :=
+      Nat.find_spec exists_ranked
+    have targetEarly : bar ≤ target.val := by rw [targetRank]; exact targetEarlyFound
+    have targetLate : target.val < finish := by rw [targetRank]; exact targetLateFound
+    have least : ∀ event : G.EventId, bar ≤ event.val → event.val < target.val →
+        G.actor? event ≠ some who := by
+      intro event early smaller mine
+      have := Nat.find_min exists_ranked (targetRank ▸ smaller)
+      exact this ⟨event, rfl, early, by omega, mine⟩
+    have tailTarget : DeviationSimulation scheduler players horizon readErased
+        (fun execution => runKey (closure R who execution.application.config))
+        ((serviceRuntime setup mode deadline).bindingTraffic leaks who) (keyView who)
+        (fun policy => keyTarget (G.lastDeviationProfile base who policy) who)
+        (RunPoint scheduler players horizon who start finish (target.val + 1)) :=
+      ih (finish - (target.val + 1)) (by omega) (target.val + 1) rfl (by omega)
+    refine DeviationSimulation.of_averaged_phase (@tailTarget)
+      (fun execution => app.runUntilHorizon scheduler players
+        (fun current => target ∈ current.application.config.cut.completed) horizon execution)
+      (fun execution _ => app.runToHorizon_eq_runUntilHorizon_bind scheduler players _ horizon
+        execution)
+      (fun execution point final reached => RunPoint.target_endpoint bound turns contract timely R
+        decides who deviation relaxed run target targetOwned targetEarly targetLate least point
+        final reached) ?_
+    intro Seed prior execution goods noise factor
+    exact targetStep_phase bound turns contract timely base decides referenceIndependent who
+      deviation independent relaxed concurrent run target targetOwned targetLate prior execution
+      (fun seed member => (goods seed member).supported)
+      (fun seed member => (goods seed member).bounded)
+      (fun seed member =>
+        ⟨(goods seed member).earlier, (goods seed member).inside,
+          fun event early smaller owned => by
+            by_cases low : event.val < bar
+            · exact (goods seed member).owned event early low owned
+            · exact (least event (by omega) smaller owned).elim,
+          fun active => (goods seed member).pending target targetEarly targetLate targetOwned
+            active,
+          (goods seed member).silent target targetEarly targetLate targetOwned⟩)
+      (fun seed member => (goods seed member).submissions) noise factor
+  · push Not at hasOwned
+    refine DeviationSimulation.of_averaged_phase (@tail)
+      (fun execution => app.runUntilHorizon scheduler players
+        (fun current => BlockDone finish current.application.config) horizon execution)
+      (fun execution _ => app.runToHorizon_eq_runUntilHorizon_bind scheduler players _ horizon
+        execution)
+      (fun execution point final reached => RunPoint.final_endpoint bound turns contract timely R
+        decides who deviation relaxed run point final reached) ?_
+    intro Seed prior execution goods noise factor
+    exact finalStep_phase bound turns contract timely base decides referenceIndependent who
+      deviation relaxed run prior execution
+      (fun seed member => (goods seed member).supported)
+      (fun seed member => (goods seed member).bounded)
+      (fun seed member =>
+        ⟨(goods seed member).earlier, (goods seed member).inside,
+          fun event early late owned => by
+            by_cases low : event.val < bar
+            · exact (goods seed member).owned event early low owned
+            · exact (hasOwned event (by omega) late owned).elim⟩)
+      (fun seed member => (goods seed member).submissions) noise factor
 
 end Vegas
