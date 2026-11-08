@@ -397,4 +397,258 @@ theorem targetStep_joint {horizon : Nat}
     rw [nextLaw]
     exact (bind_congr_on_support _ keyed).trans factored
 
+/-- A normalized deviation acts like the normalized base at settling events. -/
+theorem actionLaw_lastDeviation_of_settles {graph : Vegas.EventGraph Player L}
+    (base : graph.BehavioralProfile) (who : Player) (policy : graph.BehavioralPolicy who)
+    (config : graph.Config) (event : graph.EventId)
+    (settles : Settles (graph.normalizeProfile base) who config event) :
+    actionLaw (graph.lastDeviationProfile base who policy) config event =
+      actionLaw (graph.normalizeProfile base) config event := by
+  rcases settles.2.2.1 with foreign | inactive
+  · exact actionLaw_lastDeviationProfile_other base who policy config foreign
+  · by_cases owned : (graph.nodes event).actor = some who
+    · rw [actionLaw_of_actor _ _ owned, actionLaw_of_actor _ _ owned, dite_eq_left inactive,
+        dite_eq_left inactive]
+    · exact actionLaw_lastDeviationProfile_other base who policy config owned
+
+/-- The last-served erased-key law of a normalized deviation is read from the
+closure. -/
+theorem lastErasedLaw_closure_deviation {graph : Vegas.EventGraph Player L}
+    (base : graph.BehavioralProfile) (who : Player) (policy : graph.BehavioralPolicy who)
+    (independent : LastIndependent (graph.lastDeviationProfile base who policy) who)
+    (config : graph.Config) :
+    lastErasedLaw (graph.lastDeviationProfile base who policy) who
+        (closure (graph.normalizeProfile base) who config) =
+      lastErasedLaw (graph.lastDeviationProfile base who policy) who config :=
+  lastErasedLaw_closure independent
+    (fun current event settles => actionLaw_lastDeviation_of_settles base who policy current event
+      settles) _ config rfl
+
+/-- **A step to the deviator's next reveal as a phase.** From a coupled prior
+of step starts whose deviator traffic is noise read from the deviator's view of
+the closure key, the step to `target` has a successor closure key and final
+traffic of the same factored form, and a graph policy patched at `target` with
+the deviator's conditional choice there has, on average, the last-served
+erased-key law of its tail after the step, when honest clients and the base
+open a reveal exactly when its opening is accepted. -/
+theorem targetStep_phase {horizon : Nat}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay : (serviceGraph setup mode).EventId → Nat}
+    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (base : (serviceGraph setup mode).BehavioralProfile)
+    (decides : ∀ (config : (serviceGraph setup mode).Config)
+      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
+      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup mode) event =
+        .resolve owner payload binding checks outputEq codeEq →
+      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
+        (serviceGraph setup mode).normalizeProfile base owner event actor
+          ((serviceGraph setup mode).playerObserve owner config) active =
+          PMF.pure (cast (congrArg EventField.Action outputEq.symm)
+            (openingAccepted event config.store)))
+    (referenceIndependent : ReadyIndependent ((serviceGraph setup mode).normalizeProfile base))
+    (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (independent : ∀ policy, LastIndependent
+      ((serviceGraph setup mode).lastDeviationProfile base who policy) who)
+    (relaxed : RelaxedOrder (serviceGraph setup mode))
+    (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent) {start finish : Nat}
+    (run : RevealRun (serviceGraph setup mode) start finish)
+    (target : (serviceGraph setup mode).EventId)
+    (targetOwned : (serviceGraph setup mode).actor? target = some who)
+    (targetLate : target.val < finish)
+    {Seed : Type} (prior : PMF Seed)
+    (execution : Seed → (serviceApplication setup mode deadline leaks).Execution)
+    (supported : ∀ seed ∈ prior.support, execution seed ∈
+      ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound
+          turns (firstTurnTiming setup turns mode)
+          ((serviceGraph setup mode).normalizeProfile base)) who deviation)
+        (execution seed).environmentRecall.length).support)
+    (bounded : ∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon)
+    (begin : ∀ seed ∈ prior.support,
+      TargetStart who start finish target (execution seed).application.config)
+    (submissions : ∀ seed ∈ prior.support, HonestBlockSubmissions who start finish (execution seed))
+    (noise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _)
+    (factor : prior.map (fun seed => (runKey (closure ((serviceGraph setup mode).normalizeProfile
+        base) who (execution seed).application.config),
+        (serviceRuntime setup mode deadline).bindingTraffic leaks who (execution seed))) =
+      (prior.map fun seed => runKey (closure ((serviceGraph setup mode).normalizeProfile base)
+        who (execution seed).application.config)).bind fun current =>
+        (noise (keyView who current)).map fun extra => (current, extra)) :
+    ∃ (build : (serviceGraph setup mode).BehavioralPolicy who →
+        (serviceGraph setup mode).BehavioralPolicy who)
+      (nextNoise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _),
+      (prior.bind fun seed =>
+        ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
+          (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+            (firstTurnTiming setup turns mode) ((serviceGraph setup mode).normalizeProfile base))
+            who deviation)
+          (fun current => target ∈ current.application.config.cut.completed) horizon
+          (execution seed)).map fun final =>
+            (runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
+              final.application.config),
+            (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
+        (prior.bind fun seed =>
+          ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
+          (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+            (firstTurnTiming setup turns mode) ((serviceGraph setup mode).normalizeProfile base))
+            who deviation)
+          (fun current => target ∈ current.application.config.cut.completed) horizon
+          (execution seed)).map fun final =>
+            runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
+              final.application.config)).bind
+          (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
+      ∀ policy, (prior.bind fun seed =>
+        ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
+          (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+            (firstTurnTiming setup turns mode) ((serviceGraph setup mode).normalizeProfile base))
+            who deviation)
+          (fun current => target ∈ current.application.config.cut.completed) horizon
+          (execution seed)).bind fun final =>
+            keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy) who
+              (runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
+                final.application.config))) =
+        prior.bind fun seed =>
+          keyTarget ((serviceGraph setup mode).lastDeviationProfile base who (build policy)) who
+            (runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
+              (execution seed).application.config)) := by
+  classical
+  let G := serviceGraph setup mode
+  let R := G.normalizeProfile base
+  let app := serviceApplication setup mode deadline leaks
+  let players := Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound
+    turns (firstTurnTiming setup turns mode) R) who deviation
+  let stepRun := fun seed => app.runUntilHorizon scheduler players
+    (fun current => target ∈ current.application.config.cut.completed) horizon (execution seed)
+  let traffic := (serviceRuntime setup mode deadline).bindingTraffic leaks who
+  let point := fun current : app.Execution => runKey (closure R who current.application.config)
+  let key := fun seed => point (execution seed)
+  let P := fun policy : G.BehavioralPolicy who => G.lastDeviationProfile base who policy
+  obtain ⟨channel, nextNoise, joint, factored, ends⟩ := targetStep_joint bound turns contract
+    timely base decides referenceIndependent who deviation relaxed run target targetOwned
+    targetLate prior execution supported bounded begin submissions noise factor
+  let pick := fun extra : MessageNetwork Player app.Payload ×
+      List (MessageId Player × Bool) × List app.EnvironmentEntry × List app.PlayerEntry ×
+      PlayerView G × PublicView G => targetChoice who target
+    ⟨extra.2.2.2.2.1.who, G.normalizeObservation extra.2.2.2.2.1.who extra.2.2.2.2.1.observation⟩
+  let kernel := fun observation : Option (G.PlayerObservation who) =>
+    match observation with
+    | some seen => (channel (some seen)).map pick
+    | none => PMF.pure none
+  let build := fun tail : G.BehavioralPolicy who =>
+    patchPolicy target (ownedHead target kernel tail) tail
+  refine ⟨build, nextNoise, factored, fun policy => ?_⟩
+  have targetNode : (G.nodes target).actor = some who := targetOwned
+  have agree : ∀ (current : G.Config) other, other ≠ target →
+      actionLaw (P (build policy)) current other = actionLaw (P policy) current other :=
+    fun current other different =>
+      actionLaw_lastDeviationProfile_patch_of_ne base who target _ policy current different
+  have realized (current : RunKey G) (extra : _)
+      (member : extra ∈ (channel (keyView who current)).support)
+      (keyed : current ∈ (prior.map key).support) :
+      ∃ seed ∈ prior.support, key seed = current ∧
+        ∃ final ∈ (stepRun seed).support, traffic final = extra := by
+    have paired : (current, extra) ∈ ((prior.map key).bind fun current =>
+        (channel (keyView who current)).map fun extra => (current, extra)).support := by
+      rw [PMF.support_bind]
+      exact Set.mem_iUnion₂.mpr ⟨current, keyed, by
+        rw [PMF.support_map]
+        exact ⟨extra, member, rfl⟩⟩
+    rw [← joint, PMF.support_bind] at paired
+    obtain ⟨seed, seedMember, inner⟩ := Set.mem_iUnion₂.mp paired
+    rw [PMF.support_map] at inner
+    obtain ⟨final, reached, pairEq⟩ := inner
+    obtain ⟨keyEq, extraEq⟩ := Prod.mk.inj pairEq
+    exact ⟨seed, seedMember, keyEq, final, reached, extraEq⟩
+  apply averaged_target_of_channel prior key stepRun traffic point (keyView who) channel
+    (fun current extra => closureAdvance R who target targetOwned current (pick extra))
+    (keyTarget (P policy) who) (keyTarget (P (build policy)) who) joint ends
+  intro current keyed
+  obtain ⟨seed, member, rfl⟩ := (PMF.mem_support_map_iff _ _ _).mp keyed
+  let origin := (execution seed).application.config
+  let closed := closure R who origin
+  have keyEq : key seed = runKey closed := rfl
+  by_cases active : who ∉ origin.defaulted
+  · have pending := (begin seed member).pending active
+    obtain ⟨ready, alone⟩ := closure_target_alone base decides who relaxed concurrent run
+      (begin seed member).earlier target targetOwned targetLate (begin seed member).before active
+      pending
+    have closedActive : who ∉ closed.defaulted := (closure_shape R who _ origin rfl).2 active
+    have nonempty : closed.cut.enabled.Nonempty :=
+      ⟨target, (EventOrder.Cut.mem_enabled _ _).mpr ready⟩
+    rw [keyEq, keyTarget_runKey (independent _) closed,
+      lastErasedLaw_patch_step target agree closed ready (lastPick_eq_of_alone who closed alone
+        nonempty)]
+    unfold eventStep
+    rw [actionLaw_lastDeviationProfile_owned base who (build policy) closed targetNode
+      closedActive]
+    simp only [build, patchPolicy, ↓reduceIte]
+    rw [ownedHead_self]
+    simp only [kernel, PMF.bind_bind, PMF.bind_map]
+    rw [keyView_runKey]
+    apply bind_congr_on_support _
+    intro extra extraMember
+    obtain ⟨other, otherMember, otherKey, final, reached, trafficEq⟩ :=
+      realized _ extra (by rw [keyView_runKey]; exact extraMember) keyed
+    -- the other seed is active too, so its observed action at the target is a decision
+    have otherRecords : completionOf (closure R who (execution other).application.config) =
+        completionOf closed := congrArg (fun key => key.2.2) otherKey
+    have otherActive : who ∉ (execution other).application.config.defaulted := fun inactive =>
+      closedActive (by
+        rw [← defaulted_eq_of_completionOf_eq otherRecords]
+        exact Config.Step.path_defaulted_mono (closure_path R who _) inactive)
+    obtain ⟨otherPath, otherSound, otherDecided, _, _⟩ := runStep_facts bound turns contract
+      timely R decides who deviation start finish (run.shaped relaxed) run.publications
+      (fun cut => target ∈ cut.completed) (fun cut done => done target targetLate)
+      (execution other) (· = target)
+      (fun config path running event ready owned => ready_owned_eq_target who relaxed run
+        (begin other otherMember).earlier target targetOwned targetLate
+        (begin other otherMember).before path running ready owned)
+      (supported other otherMember) (bounded other otherMember) (begin other otherMember).inside
+      (submissions other otherMember) final reached
+    have otherDone : target ∈ final.application.config.cut.completed :=
+      runUntilHorizon_stop contract players
+        (fun current => target ∈ current.application.config.cut.completed)
+        (fun current terminal => by
+          rw [terminal]
+          exact Finset.mem_univ _)
+        (execution other) (supported other otherMember) (bounded other otherMember) final reached
+    obtain ⟨_, action, _, _, recorded, _⟩ :=
+      (run_path_closure base decides referenceIndependent who otherSound target targetOwned
+        (fun event different fresh mine => otherDecided event different fresh mine) otherActive
+        ((begin other otherMember).pending otherActive) _ otherPath .refl).2 otherDone
+    have picked : pick extra = some action := by
+      rw [← trafficEq]
+      change targetChoice who target ⟨who, _⟩ = _
+      rw [targetChoice_self]
+      exact observedAction_of_record targetOwned recorded
+    simp only [Function.comp_apply]
+    rw [picked, Option.elim_some, PMF.pure_bind,
+      step_eq_ownedStepped target targetOwned closed ready action, PMF.pure_bind,
+      ← lastErasedLaw_closure_deviation base who policy (independent policy),
+      ← keyTarget_runKey (independent policy), ← closureAdvance_runKey referenceIndependent.congr
+        target targetOwned closed ready action]
+  · push Not at active
+    have closedDone : target ∈ closed.cut.completed :=
+      closure_completes_done base decides who run (begin seed member).earlier
+        (fun _ _ _ _ => Or.inr active) target targetLate
+    rw [keyEq, keyTarget_runKey (independent _) closed,
+      lastErasedLaw_patch_completed target agree closed closedDone,
+      ← keyTarget_runKey (independent policy) closed]
+    have constant : ∀ extra ∈ (channel (keyView who (runKey closed))).support,
+        keyTarget (P policy) who (closureAdvance R who target targetOwned (runKey closed)
+          (pick extra)) = keyTarget (P policy) who (runKey closed) := by
+      intro extra _
+      rw [closureAdvance_of_defaulted base decides who run (begin seed member).earlier active
+        target targetOwned targetLate]
+    rw [bind_congr_on_support _ constant, PMF.bind_const]
+
 end Vegas
