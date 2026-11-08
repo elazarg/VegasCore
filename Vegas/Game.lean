@@ -434,3 +434,4 @@ import Vegas.Game.RevealRunTargetPhase
 import Vegas.Game.RevealClosureBoundary
 import Vegas.Game.FactorTransfer
 import Vegas.Game.DeviationSplit
+import Vegas.Game.RevealRunPoint
