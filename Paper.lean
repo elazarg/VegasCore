@@ -438,7 +438,7 @@ theorem Vegas.Paper.reactive_protocol_graph_refinement :
       ((CompletesPlay timeouts) leaks initial horizon scheduler → (protocol).terminal (some
         control) →
         (configAt control).cut.Terminal ∧ FieldsAvailable (configAt control)) :=
-  (reactive_protocol_graph_refinement timeouts) leaks inputs horizon scheduler
+  Vegas.EventGraphRuntime.reactive_protocol_graph_refinement timeouts leaks inputs horizon scheduler
 
 /-- info: 'Vegas.Paper.reactive_protocol_graph_refinement' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
