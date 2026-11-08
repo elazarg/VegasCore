@@ -1,6 +1,6 @@
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealDeviationLaw
+import Vegas.Game.RevealClosureSimulation
 import Vegas.Game.ConcurrentRevealForfeit
 import Vegas.Game.RevealServiceEffectiveOutcomeLaw
 
@@ -248,8 +248,7 @@ theorem ledger_honest_payoff_law (setup : Setup (Player := Player) (L := L)) {Pa
 
 /-- **The ledger payoff law of a deviation.** Against effective-opening clients
 of a disclosing profile, a deviation of one player has the last-served payoff law
-of a normalized deviation of the always-open compiled profile, when runs of
-reveals are pairwise independent. -/
+of a normalized deviation of the always-open compiled profile. -/
 theorem ledger_deviation_payoff_law (setup : Setup (Player := Player) (L := L))
     {Parameter : Type} (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
@@ -264,7 +263,6 @@ theorem ledger_deviation_payoff_law (setup : Setup (Player := Player) (L := L))
     (timely : AsyncTimely (serviceRuntime setup .concurrentReveals deadline) delay bound)
     (source : BehavioralProfile setup.program)
     (disclosing : ∀ who, Disclosing setup.program (source who))
-    (runs : FlatRevealRuns (serviceGraph setup .concurrentReveals))
     (who : Player)
     (deviation : (serviceApplication setup .concurrentReveals deadline leaks).Policy) :
     ∃ policy : (serviceGraph setup .concurrentReveals).BehavioralPolicy who,
@@ -285,7 +283,7 @@ theorem ledger_deviation_payoff_law (setup : Setup (Player := Player) (L := L))
   let app := serviceApplication setup .concurrentReveals deadline leaks
   have concurrent : G.RevealsOnlyConcurrent :=
     setup.eventGraph.withMode_concurrentReveals_revealsOnlyConcurrent setup.eventGraph_total
-  obtain ⟨policy, law⟩ := concurrent_deviation_erased_law (deadline := deadline)
+  obtain ⟨policy, law⟩ := closure_deviation_erased_law (deadline := deadline)
     (leaks := leaks) bound turns contract timely
     (effectiveOpening (compileEventProfile setup.program source))
     (concurrentEffectiveReference_decides setup source)
@@ -293,7 +291,7 @@ theorem ledger_deviation_payoff_law (setup : Setup (Player := Player) (L := L))
     (fun policy => concurrent.lastIndependent_normalizeProfile_of_footprint _ who
       (effectiveOpening_update_footprint (graph := G) (compileEventProfile setup.program source) who
         policy))
-    (concurrentReveals_relaxedOrder setup) runs concurrent
+    (concurrentReveals_relaxedOrder setup) concurrent
   refine ⟨policy, ?_⟩
   let read := fun key : RunKey G =>
     if found : ∃ other : G.Config, runKey other = key then
@@ -368,13 +366,12 @@ theorem ledger_deviation_payoff_law (setup : Setup (Player := Player) (L := L))
           (concurrentConfigPayoff_erase setup parameter utility forfeit) _ _
 
 /-- **Effective-opening clients are an approximate Nash equilibrium with
-concurrent reveals.** For a well-formed setup with finitely many binding values,
-a forfeit at least the payoff range, and runs of reveals that are pairwise
-independent, the first-turn effective-opening clients of a disclosing extension
-of an `ε`-Nash equilibrium of the intended game keep that equilibrium on the
-ledger with independent reveals concurrent, under every public scheduler of the
-asynchronous service contract: no player gains more than `ε` in the forfeited
-payoff read in instruction order by any native policy. -/
+concurrent reveals.** For a well-formed setup with finitely many binding values
+and a forfeit at least the payoff range, the first-turn effective-opening clients
+of a disclosing extension of an `ε`-Nash equilibrium of the intended game keep
+that equilibrium on the ledger with independent reveals concurrent, under every
+public scheduler of the asynchronous service contract: no player gains more than
+`ε` in the forfeited payoff read in instruction order by any native policy. -/
 theorem concurrentEffectiveClients_deviation_bound (setup : Setup (Player := Player) (L := L))
     [Finite Player] (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (wellFormed : setup.WellFormed) {Parameter : Type}
@@ -401,7 +398,6 @@ theorem concurrentEffectiveClients_deviation_bound (setup : Setup (Player := Pla
     (contract : AsyncContract (serviceRuntime setup .concurrentReveals deadline) leaks
       (serviceInitialLaw setup .concurrentReveals) horizon scheduler delay bound)
     (timely : AsyncTimely (serviceRuntime setup .concurrentReveals deadline) delay bound)
-    (runs : FlatRevealRuns (serviceGraph setup .concurrentReveals))
     (who : Player)
     (deviation : (serviceApplication setup .concurrentReveals deadline leaks).Policy) :
     extendedExpectedUtility (fun final player =>
@@ -423,7 +419,7 @@ theorem concurrentEffectiveClients_deviation_bound (setup : Setup (Player := Pla
   let G := serviceGraph setup .concurrentReveals
   let source := setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program) target
   obtain ⟨policy, deviationLaw⟩ := ledger_deviation_payoff_law setup parameter utility forfeit
-    deadline leaks (turns := turns) contract timely source disclosing runs who deviation
+    deadline leaks (turns := turns) contract timely source disclosing who deviation
   have graphNash := (setup.concurrentReveal_intended_forfeit finite wellFormed parameter utility
     forfeit range intended target agrees ε equilibrium disclosing (G.lastScheduler who)).1
   rw [isεNash_iff] at graphNash
@@ -454,13 +450,6 @@ theorem concurrentEffectiveClients_deviation_bound (setup : Setup (Player := Pla
     ← honest_play_payoff_law setup parameter utility forfeit source disclosing who,
     ← viaGame, ← viaGame]
   exact bound
-
-/-- **Independent reveal phases.** Within every run of consecutive reveals of
-the compiled program, the reveals are by distinct players and none reads
-another's value. -/
-def SourceProgram.Setup.IndependentRevealPhases (setup : Setup (Player := Player) (L := L)) :
-    Prop :=
-  FlatRevealRuns (serviceGraph setup .concurrentReveals)
 
 /-- **The ledger game with concurrent reveals.** Each player chooses a native
 ledger policy; the outcome is the configuration reached by the horizon. -/
@@ -523,13 +512,13 @@ private theorem concurrentConfigPayoff_le (setup : Setup (Player := Player) (L :
 
 /-- **Nash equilibria of the intended game are preserved on the ledger with
 concurrent reveals.** For a well-formed program with finitely many binding
-values and independent reveal phases, and a forfeit at least the payoff range,
+values and a forfeit at least the payoff range,
 the effective-opening clients of a disclosing extension of an `ε`-Nash
 equilibrium of the intended game are an `ε`-Nash equilibrium of the ledger game
 under every scheduler satisfying the asynchronous service contract. -/
 theorem concurrentReveal_ledger_isεNash (setup : Setup (Player := Player) (L := L))
     [Finite Player] (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
-    (wellFormed : setup.WellFormed) (phases : setup.IndependentRevealPhases) {Parameter : Type}
+    (wellFormed : setup.WellFormed) {Parameter : Type}
     (parameter : State L setup.context → Parameter)
     (utility : Parameter × PublicOutcome setup.program → Player → ℝ) (forfeit : ℝ)
     (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
@@ -576,6 +565,6 @@ theorem concurrentReveal_ledger_isεNash (setup : Setup (Player := Player) (L :=
   rw [extendedExpectedUtility_map, extendedExpectedUtility_map]
   exact concurrentEffectiveClients_deviation_bound setup finite wellFormed parameter utility
     forfeit range intended target agrees ε equilibrium disclosing deadline leaks contract timely
-    phases who replacement
+    who replacement
 
 end Vegas
