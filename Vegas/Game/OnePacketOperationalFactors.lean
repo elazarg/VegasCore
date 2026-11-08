@@ -79,8 +79,7 @@ as its next envelope. -/
 def slotPermitted (key : LateKey setup timeouts leaks) (event : (graph setup).EventId) (slot :
   Nat) :
     Bool :=
-  countPermits key.outputs ⟨(key.owner, key.outputs
-    (length (timeouts := timeouts))),
+  countPermits key.outputs ⟨(key.owner, (key.outputs (timeouts := timeouts)).length),
     ⟨.commitment event (key.owner, .prepared slot), none,
       key.current.1.tokenFor (.commitment event (key.owner, .prepared slot))⟩⟩
 
