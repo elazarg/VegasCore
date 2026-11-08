@@ -183,7 +183,7 @@ def pendingEvent (who : Player) : (application setup timeouts leaks).Info → Op
   setup).EventId
   | none => none
   | some (past, view) => (view.application.publicView.ownTurn? who).filter fun event =>
-      !timeouts.eventRecorded leaks past event
+      !(eventRecorded timeouts leaks past event)
 
 /-- **First activation.** A decision input with a pending event that was the
 owner's turn at none of its recalled views. -/

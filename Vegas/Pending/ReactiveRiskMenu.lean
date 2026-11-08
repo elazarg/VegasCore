@@ -72,7 +72,7 @@ def firstUnprotectedBindingOpportunity (who : Player)
     | none => false
     | some event =>
         match graph.outputLayout event with
-        | .binding _ _ => !timeouts.eventRecorded leaks past event &&
+        | .binding _ _ => !(eventRecorded timeouts leaks past event) &&
             !decide (view.application.publicView.InclusionFitsDeadline timeouts bound event)
         | _ => false
   else false
