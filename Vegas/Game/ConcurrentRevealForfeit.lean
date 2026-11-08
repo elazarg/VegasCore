@@ -148,7 +148,7 @@ forfeit no smaller than the payoff range, and a source profile that discloses
 at every reveal and extends an `ε`-Nash equilibrium of the intended game, the
 order-blind compiled clients are an `ε`-Nash equilibrium for the forfeited
 utility under every public scheduler, with the intended joint law of terminal
-configuration and payoff vector. -/
+configuration and payoff vector, and no public default or failed reveal. -/
 theorem concurrentReveal_intended_forfeit (setup : Setup (Player := Player) (L := L))
     [Finite Player] (finite : setup.program.FiniteBindingTypes) [setup.FiniteInitialLaw]
     (wellFormed : setup.WellFormed) {Parameter : Type}
@@ -172,6 +172,13 @@ theorem concurrentReveal_intended_forfeit (setup : Setup (Player := Player) (L :
         (setup.concurrentRevealGraph.normalizeProfile (compileEventProfile setup.program
           (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program)
             target))) ∧
+      (∀ outcome ∈ ((setup.concurrentRevealGraph.gameForm setup.concurrentInputs scheduler).play
+          (setup.concurrentRevealGraph.normalizeProfile (compileEventProfile setup.program
+            (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program)
+              target)))).support,
+        (setup.concurrentReadout outcome).defaulted = ∅ ∧
+          ∀ who, failedReveals setup.program who
+            (publicOutcome setup.program (setup.concurrentReadout outcome)) = 0) ∧
       ((setup.concurrentRevealGraph.gameForm setup.concurrentInputs scheduler).play
           (setup.concurrentRevealGraph.normalizeProfile (compileEventProfile setup.program
             (setup.decodeBehavioralProfile (CommitmentInterface.forfeiture setup.program)
@@ -194,6 +201,24 @@ theorem concurrentReveal_intended_forfeit (setup : Setup (Player := Player) (L :
   have lawExclusion := setup.concurrentReveal_intended_law finite wellFormed parameter utility
     exitPayoff (fun outcome who => leastUtility_le utility range who outcome) intended target
     agrees ε equilibrium disclosing scheduler
+  have clean : ∀ outcome ∈ (game.play honest).support,
+      (setup.concurrentReadout outcome).defaulted = ∅ ∧
+        ∀ who, failedReveals setup.program who
+          (publicOutcome setup.program (setup.concurrentReadout outcome)) = 0 := by
+    intro outcome supported
+    have pair : (some (setup.concurrentReadout outcome), exclusion outcome) ∈
+        ((setup.intendedModel.runBehavioral intended (instructionCount setup.program + 1)).map
+          (fun final => (setup.protocolReadout final.state, fun who =>
+            (setup.protocolReadout final.state).elim 0
+              (fun state => utility (setup.parameterOutcome parameter state) who)))).support := by
+      rw [← lawExclusion, PMF.support_map]
+      exact ⟨outcome, supported, rfl⟩
+    obtain ⟨final, _, same⟩ := (PMF.mem_support_map_iff _ _ _).mp pair
+    have read := congrArg Prod.fst same
+    have intendedState := setup.intendedState_trace wellFormed final.trace
+    exact ⟨Finset.eq_empty_iff_forall_notMem.mpr fun who =>
+      setup.not_defaulted_of_intendedState intendedState who read,
+      fun who => setup.failedReveals_eq_zero_of_intendedState intendedState who read⟩
   -- On honest play the two utilities agree.
   have honestEq : ∀ outcome ∈ (game.play honest).support,
       setup.concurrentForfeitPayoff parameter utility forfeit outcome = exclusion outcome := by
@@ -223,7 +248,7 @@ theorem concurrentReveal_intended_forfeit (setup : Setup (Player := Player) (L :
     rw [clean]
     simp only [Nat.cast_zero, mul_zero, sub_zero]
     rfl
-  refine ⟨?_, ?_⟩
+  refine ⟨?_, clean, ?_⟩
   · rw [IsεNash, isNash_iff] at nashExclusion ⊢
     intro who deviation
     have support (chosen : Profile game.sig) : (game.play chosen).support.Finite :=

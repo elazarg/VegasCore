@@ -2,7 +2,7 @@
 
 import Vegas.Source.Safety
 import Vegas.Game.IntendedNash
-import Vegas.Game.ConcurrentRevealForfeit
+import Vegas.Game.ConcurrentRevealPreservation
 import Vegas.Game.IntendedOpeningExtension
 import Vegas.Game.SourceProtocolNash
 import Vegas.Compile.EventGraphScheduling
@@ -172,30 +172,30 @@ def Vegas.Paper.forfeitPayoff (forfeit : ℝ) (terminal : TerminalConfig setup) 
 variable (finite : setup.program.FiniteBindingTypes) [initialFinite : setup.FiniteInitialLaw]
   (wellFormed : setup.WellFormed) (forfeit : ℝ)
 
-local notation "values" => CommitmentInterface.values setup.program
-local notation "source" => setup.informationModel values
 local notation "horizon" => setup.program.instructionCount + 1
 local notation "base" => sourcePayoff setup parameter utility
 local notation "penalized" => forfeitPayoff setup parameter utility forfeit
 
 include finite wellFormed initialFinite in
 theorem Vegas.Paper.intended_forfeit_isεNash_preserved
-    (range : setup.TerminalPayoffSpread values parameter utility forfeit)
+    (admission : CommitmentInterface setup.program)
+    (range : setup.TerminalPayoffSpread admission parameter utility forfeit)
     (intended : Profile setup.intendedModel.behavioralSignature)
-    (target : Profile (source).behavioralSignature)
-    (agrees : (setup.intendedRestriction values).ExtendsProfile intended target) (ε : ℝ)
+    (target : Profile (setup.informationModel admission).behavioralSignature)
+    (agrees : (setup.intendedRestriction admission).ExtendsProfile intended target) (ε : ℝ)
     (equilibrium : IsεNash (setup.intendedModel.toBehavioralGameForm horizon)
       (fun final => readoutPayoff setup base final.state) ε intended) :
-    IsεNash ((source).toBehavioralGameForm horizon)
+    IsεNash ((setup.informationModel admission).toBehavioralGameForm horizon)
         (fun final => readoutPayoff setup penalized final.state) ε target ∧
-      (∀ final ∈ ((source).runBehavioral target horizon).support, ∀ terminal,
+      (∀ final ∈ ((setup.informationModel admission).runBehavioral target horizon).support,
+        ∀ terminal,
         setup.protocolReadout final.state = some terminal → NoFailedReveals setup terminal) ∧
-      ((source).runBehavioral target horizon).map
+      ((setup.informationModel admission).runBehavioral target horizon).map
           (fun final => readoutAndPayoff setup penalized final.state) =
         (setup.intendedModel.runBehavioral intended horizon).map
           (fun final => readoutAndPayoff setup base final.state) := by
-  exact setup.intended_forfeit_isεNash_preserved finite wellFormed parameter utility forfeit
-    range intended target agrees ε equilibrium
+  exact setup.intended_forfeit_isεNash_preserved admission finite wellFormed parameter utility
+    forfeit range intended target agrees ε equilibrium
 
 /-- info: 'Vegas.Paper.intended_forfeit_isεNash_preserved' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -258,6 +258,11 @@ theorem Vegas.Paper.concurrentReveal_intended_forfeit
         (setup.concurrentForfeitPayoff parameter utility forfeit) ε
         (setup.concurrentRevealGraph.normalizeProfile (compileEventProfile setup.program
           (setup.decodeBehavioralProfile forfeiture target))) ∧
+      (∀ outcome ∈ ((setup.concurrentRevealGraph.gameForm setup.concurrentInputs scheduler).play
+          (setup.concurrentRevealGraph.normalizeProfile (compileEventProfile setup.program
+            (setup.decodeBehavioralProfile forfeiture target)))).support,
+        (setup.concurrentReadout outcome).defaulted = ∅ ∧
+          NoFailedReveals setup (setup.concurrentReadout outcome)) ∧
       ((setup.concurrentRevealGraph.gameForm setup.concurrentInputs scheduler).play
           (setup.concurrentRevealGraph.normalizeProfile (compileEventProfile setup.program
             (setup.decodeBehavioralProfile forfeiture target)))).map
@@ -265,23 +270,82 @@ theorem Vegas.Paper.concurrentReveal_intended_forfeit
             setup.concurrentForfeitPayoff parameter utility forfeit outcome)) =
         (setup.intendedModel.runBehavioral intended horizon).map
           (fun final => (setup.protocolReadout final.state,
-            readoutPayoff setup base final.state)) :=
-  setup.concurrentReveal_intended_forfeit finite wellFormed parameter utility forfeit range
-    intended target agrees ε equilibrium disclosing scheduler
+            readoutPayoff setup base final.state)) ∧
+      (∀ who event (actor : setup.concurrentRevealGraph.actor? event = some who),
+        (publication : (setup.concurrentRevealGraph.outputLayout event).IsPublication) →
+          ∀ (observation : setup.concurrentRevealGraph.PlayerObservation who)
+            (active : who ∉ observation.defaulted),
+            compileEventPolicy setup.program who (setup.decodeBehavioralProfile forfeiture target
+              who) event actor observation active =
+              PMF.pure (EventGraph.EventField.openAction _ publication)) := by
+  obtain ⟨nash, clean, law⟩ := setup.concurrentReveal_intended_forfeit finite wellFormed parameter
+    utility forfeit range intended target agrees ε equilibrium disclosing scheduler
+  exact ⟨nash, clean, law, fun who event actor publication observation active =>
+    compileEventPolicy_publication setup.program who
+      (setup.decodeBehavioralProfile forfeiture target who) (disclosing who) event actor
+      publication observation active⟩
 
 /-- info: 'Vegas.Paper.concurrentReveal_intended_forfeit' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms Vegas.Paper.concurrentReveal_intended_forfeit
 
+include finite wellFormed initialFinite in
+/-- The effective-opening clients preserve intended approximate Nash equilibrium,
+complete source readout and the payoff vector on the concurrent-reveal ledger.
+No public default or failed reveal occurs on supported play. -/
+theorem Vegas.Paper.concurrentReveal_intended_ledger
+    (range : ∀ high low who, utility high who - utility low who ≤ forfeit)
+    (intended : Profile setup.intendedModel.behavioralSignature)
+    (target : Profile (setup.informationModel forfeiture).behavioralSignature)
+    (agrees : (setup.intendedRestriction forfeiture).ExtendsProfile intended target) (ε : ℝ)
+    (equilibrium : IsεNash (setup.intendedModel.toBehavioralGameForm horizon)
+      (fun final => readoutPayoff setup base final.state) ε intended)
+    (disclosing : ∀ who, Disclosing setup.program
+      (setup.decodeBehavioralProfile forfeiture target who))
+    (deadline : (serviceGraph setup .concurrentReveals).EventId → Nat)
+    (leaks : MessageNetwork.ObservationRule Player
+      (WitnessedPacket (serviceGraph setup .concurrentReveals)))
+    {ledgerHorizon turns : Nat}
+    {scheduler : (serviceApplication setup .concurrentReveals deadline leaks).Scheduler}
+    {delay bound : (serviceGraph setup .concurrentReveals).EventId → Nat}
+    (contract : AsyncContract (serviceRuntime setup .concurrentReveals deadline) leaks
+      (serviceInitialLaw setup .concurrentReveals) ledgerHorizon scheduler delay bound)
+    (timely : AsyncTimely (serviceRuntime setup .concurrentReveals deadline) delay bound) :
+    IsεNash (concurrentLedgerGame setup deadline leaks scheduler ledgerHorizon)
+        (concurrentConfigPayoff setup parameter utility forfeit) ε
+        (concurrentLedgerClients setup deadline leaks bound turns
+          (setup.decodeBehavioralProfile forfeiture target)) ∧
+      (∀ config ∈ ((concurrentLedgerGame setup deadline leaks scheduler ledgerHorizon).play
+          (concurrentLedgerClients setup deadline leaks bound turns
+            (setup.decodeBehavioralProfile forfeiture target))).support,
+        config.cut.Terminal ∧ config.defaulted = ∅ ∧ ∃ terminal,
+          concurrentRankedRead setup config = some terminal ∧ NoFailedReveals setup terminal) ∧
+      (((concurrentLedgerGame setup deadline leaks scheduler ledgerHorizon).play
+          (concurrentLedgerClients setup deadline leaks bound turns
+            (setup.decodeBehavioralProfile forfeiture target))).map fun config =>
+            (concurrentRankedRead setup config,
+              concurrentConfigPayoff setup parameter utility forfeit config)) =
+        (setup.intendedModel.runBehavioral intended horizon).map
+          (fun final => (setup.protocolReadout final.state,
+            readoutPayoff setup base final.state)) :=
+  Vegas.concurrentReveal_intended_ledger setup finite wellFormed parameter utility forfeit range
+    intended target agrees ε equilibrium disclosing deadline leaks contract timely
+
+/-- info: 'Vegas.Paper.concurrentReveal_intended_ledger' depends on axioms:
+[propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms Vegas.Paper.concurrentReveal_intended_ledger
+
 omit [Finite Player] initialFinite in
 /-- Every intended profile has an extension that opens at every reveal. -/
 theorem Vegas.Paper.exists_disclosing_extension
+    (admission : CommitmentInterface setup.program)
     (intended : Profile setup.intendedModel.behavioralSignature) :
-    ∃ target : Profile (setup.informationModel forfeiture).behavioralSignature,
-      (setup.intendedRestriction forfeiture).ExtendsProfile intended target ∧
-        ∀ who, Disclosing setup.program (setup.decodeBehavioralProfile forfeiture target who) :=
-  setup.exists_disclosing_extension forfeiture intended
+    ∃ target : Profile (setup.informationModel admission).behavioralSignature,
+      (setup.intendedRestriction admission).ExtendsProfile intended target ∧
+        ∀ who, Disclosing setup.program (setup.decodeBehavioralProfile admission target who) :=
+  setup.exists_disclosing_extension admission intended
 
 /-- info: 'Vegas.Paper.exists_disclosing_extension' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/
@@ -304,10 +368,15 @@ variable {Γ : SourceCtx Player L} {openNames : Finset VarId}
 theorem Vegas.Paper.scheduled_terminalConfig_law (program : SourceProgram Player L Γ openNames)
     (scheduler : (toEventGraph program).PublicScheduler)
     (profile : BehavioralProfile program) (state : State L Γ) :
-    ((toEventGraph program).terminalOutcomes scheduler
+    (∀ (graphProfile : (toEventGraph program).BehavioralProfile)
+      (first second : (toEventGraph program).PublicScheduler),
+      (toEventGraph program).policyPlan graphProfile first =
+        (toEventGraph program).policyPlan graphProfile second) ∧
+      ((toEventGraph program).terminalOutcomes scheduler
         (compileEventProfile program profile) (encodeInputs state)).map (terminalConfig program) =
       program.run profile state :=
-  Vegas.scheduled_terminalConfig_law program scheduler profile state
+  ⟨fun graphProfile first second => toEventGraph_policyPlan_eq program graphProfile first second,
+    Vegas.scheduled_terminalConfig_law program scheduler profile state⟩
 
 /-- info: 'Vegas.Paper.scheduled_terminalConfig_law' depends on axioms:
 [propext, Classical.choice, Quot.sound] -/

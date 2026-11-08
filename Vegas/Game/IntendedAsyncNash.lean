@@ -138,6 +138,7 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds_readout {Parameter :
   let : Fintype Player := Fintype.ofFinite Player
   intro forfeited base payoff settle clients firstTurn
   obtain ⟨sourceNash, _, sourceLaw⟩ := service.setup.intended_forfeit_isεNash_preserved
+    (CommitmentInterface.values service.setup.program)
     (sourceService_finiteBindingTypes service.setup service.bounds service.values)
     wellFormed parameter utility forfeit range intended source agrees ε equilibrium
   refine ⟨(isεNash_iff_εBestResponse _ _).mpr

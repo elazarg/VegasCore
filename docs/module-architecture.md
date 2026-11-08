@@ -47,6 +47,13 @@ realizes the law with bounded-menu clients under the supplied value-coverage
 and capacity interfaces. The lower graph APIs retain genuinely nonordered
 results, including the different raw reveal-order laws in
 [ConcurrentRevealOrderLaw](../Vegas/Examples/ConcurrentRevealOrderLaw.lean).
+The [concurrent-reveal preservation theorem](../Vegas/Game/ConcurrentRevealPreservation.lean)
+uses the same native application with reveal-relaxed dependencies. Against
+arbitrary native policies, effective-opening clients preserve intended Nash
+equilibrium under the forfeit, with the complete source-configuration/payoff
+law and no defaults or failed reveals. Its graph counterpart quantifies over
+actual scheduling choices between independent reveals; neither result asserts
+concurrent SE preservation.
 The [physical deviation law](../Vegas/Game/AsyncDeviationReadout.lean)
 backtranslates every raw unilateral policy against first-turn clients to one
 behavioral source policy with the same typed-state/public-default law. Its
