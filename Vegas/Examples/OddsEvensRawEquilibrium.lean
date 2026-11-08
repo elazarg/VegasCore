@@ -85,7 +85,7 @@ theorem intended_equilibrium_preserved
       fixture.IntendedSequentialEquilibrium (fun _ => ()) OddsEvens.sourceUtility intended) :
     let raw := OddsEvens.bounds.rawMenu rt leaks
     let observe := app.stateTraffic
-    let audit := (rt).countAudit leaks
+    let audit := countAudit rt leaks
       evidenceService.sample
     let settle := specification.settlement
     ∃ target : (raw.information initial steps serviceScheduler).BehavioralAssessment,
@@ -127,7 +127,7 @@ assessment, with its complete typed/payoff law and expected payoff one hundred. 
 theorem fair_equilibrium_exists :
     let raw := OddsEvens.bounds.rawMenu rt leaks
     let observe := app.stateTraffic
-    let audit := (rt).countAudit leaks
+    let audit := countAudit rt leaks
       evidenceService.sample
     let settle := specification.settlement
     ∃ target : (raw.information initial steps serviceScheduler).BehavioralAssessment,
