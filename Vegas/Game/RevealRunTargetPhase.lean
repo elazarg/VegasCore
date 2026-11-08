@@ -424,6 +424,18 @@ theorem lastErasedLaw_closure_deviation {graph : Vegas.EventGraph Player L}
     (fun current event settles => actionLaw_lastDeviation_of_settles base who policy current event
       settles) _ config rfl
 
+/-- The starting conditions of the last step of a run: earlier events have
+completed, the configuration lies inside the run, and every reveal of the
+deviator in the run has completed. -/
+structure FinalStart (who : Player) (start finish : Nat)
+    (config : (serviceGraph setup mode).Config) : Prop where
+  earlier : ∀ event : (serviceGraph setup mode).EventId, event.val < start →
+    event ∈ config.cut.completed
+  inside : ¬ BlockDone finish config → InBlock start finish config
+  finished : ∀ event : (serviceGraph setup mode).EventId, start ≤ event.val →
+    event.val < finish → (serviceGraph setup mode).actor? event = some who →
+      event ∈ config.cut.completed
+
 /-- **A step to the deviator's next reveal as a phase.** From a coupled prior
 of step starts whose deviator traffic is noise read from the deviator's view of
 the closure key, the step to `target` has a successor closure key and final
@@ -650,5 +662,253 @@ theorem targetStep_phase {horizon : Nat}
       rw [closureAdvance_of_defaulted base decides who run (begin seed member).earlier active
         target targetOwned targetLate]
     rw [bind_congr_on_support _ constant, PMF.bind_const]
+
+/-- **The last step of a run as a phase.** From a coupled prior of last-step
+starts whose deviator traffic is noise read from the deviator's view of the
+closure key, the step to the run's end keeps the closure key, so it has a
+successor closure key and final traffic of the same factored form, and the
+target of every policy is kept on average, when honest clients and the base
+open a reveal exactly when its opening is accepted. -/
+theorem finalStep_phase {horizon : Nat}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay : (serviceGraph setup mode).EventId → Nat}
+    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (base : (serviceGraph setup mode).BehavioralProfile)
+    (decides : ∀ (config : (serviceGraph setup mode).Config)
+      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
+      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup mode) event =
+        .resolve owner payload binding checks outputEq codeEq →
+      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
+        (serviceGraph setup mode).normalizeProfile base owner event actor
+          ((serviceGraph setup mode).playerObserve owner config) active =
+          PMF.pure (cast (congrArg EventField.Action outputEq.symm)
+            (openingAccepted event config.store)))
+    (referenceIndependent : ReadyIndependent ((serviceGraph setup mode).normalizeProfile base))
+    (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (relaxed : RelaxedOrder (serviceGraph setup mode)) {start finish : Nat}
+    (run : RevealRun (serviceGraph setup mode) start finish)
+    {Seed : Type} (prior : PMF Seed)
+    (execution : Seed → (serviceApplication setup mode deadline leaks).Execution)
+    (supported : ∀ seed ∈ prior.support, execution seed ∈
+      ((serviceApplication setup mode deadline leaks).roundsFrom (serviceInitialLaw setup mode)
+        scheduler (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound
+          turns (firstTurnTiming setup turns mode)
+          ((serviceGraph setup mode).normalizeProfile base)) who deviation)
+        (execution seed).environmentRecall.length).support)
+    (bounded : ∀ seed ∈ prior.support, (execution seed).environmentRecall.length ≤ horizon)
+    (begin : ∀ seed ∈ prior.support,
+      FinalStart who start finish (execution seed).application.config)
+    (submissions : ∀ seed ∈ prior.support, HonestBlockSubmissions who start finish (execution seed))
+    (noise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _)
+    (factor : prior.map (fun seed => (runKey (closure ((serviceGraph setup mode).normalizeProfile
+        base) who (execution seed).application.config),
+        (serviceRuntime setup mode deadline).bindingTraffic leaks who (execution seed))) =
+      (prior.map fun seed => runKey (closure ((serviceGraph setup mode).normalizeProfile base)
+        who (execution seed).application.config)).bind fun current =>
+        (noise (keyView who current)).map fun extra => (current, extra)) :
+    ∃ (build : (serviceGraph setup mode).BehavioralPolicy who →
+        (serviceGraph setup mode).BehavioralPolicy who)
+      (nextNoise : Option ((serviceGraph setup mode).PlayerObservation who) → PMF _),
+      (prior.bind fun seed =>
+        ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
+          (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+            (firstTurnTiming setup turns mode) ((serviceGraph setup mode).normalizeProfile base))
+            who deviation)
+          (fun current => BlockDone finish current.application.config) horizon
+          (execution seed)).map fun final =>
+            (runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
+              final.application.config),
+            (serviceRuntime setup mode deadline).bindingTraffic leaks who final)) =
+        (prior.bind fun seed =>
+          ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
+          (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+            (firstTurnTiming setup turns mode) ((serviceGraph setup mode).normalizeProfile base))
+            who deviation)
+          (fun current => BlockDone finish current.application.config) horizon
+          (execution seed)).map fun final =>
+            runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
+              final.application.config)).bind
+          (fun current => (nextNoise (keyView who current)).map fun extra => (current, extra)) ∧
+      ∀ policy, (prior.bind fun seed =>
+        ((serviceApplication setup mode deadline leaks).runUntilHorizon scheduler
+          (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+            (firstTurnTiming setup turns mode) ((serviceGraph setup mode).normalizeProfile base))
+            who deviation)
+          (fun current => BlockDone finish current.application.config) horizon
+          (execution seed)).bind fun final =>
+            keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy) who
+              (runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
+                final.application.config))) =
+        prior.bind fun seed =>
+          keyTarget ((serviceGraph setup mode).lastDeviationProfile base who (build policy)) who
+            (runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
+              (execution seed).application.config)) := by
+  classical
+  let G := serviceGraph setup mode
+  let R := G.normalizeProfile base
+  let app := serviceApplication setup mode deadline leaks
+  let runtime := serviceRuntime setup mode deadline
+  let players := Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound
+    turns (firstTurnTiming setup turns mode) R) who deviation
+  let stop : G.order.Cut → Prop := fun cut =>
+    ∀ event : G.EventId, event.val < finish → event ∈ cut.completed
+  have stopDone : ∀ cut : G.order.Cut, (∀ event : G.EventId, event.val < finish →
+      event ∈ cut.completed) → stop cut := fun _ done => done
+  let stepRun := fun seed => app.runUntilHorizon scheduler players
+    (fun current => BlockDone finish current.application.config) horizon (execution seed)
+  let traffic := runtime.bindingTraffic leaks who
+  let point := fun current : app.Execution => runKey (closure R who current.application.config)
+  let key := fun seed => point (execution seed)
+  have readyAllowed (seed : Seed) (member : seed ∈ prior.support) :
+      ∀ config : G.Config, Relation.ReflTransGen Config.Step
+        (execution seed).application.config config → ¬ stop config.cut →
+        ∀ event, config.cut.Ready event → G.actor? event = some who → False := by
+    intro config path running event ready owned
+    have mono := Config.Step.path_completed_mono path
+    by_cases early : event.val < start
+    · exact ready.1 (mono ((begin seed member).earlier event early))
+    push Not at early
+    by_cases late : event.val < finish
+    · exact ready.1 (mono ((begin seed member).finished event early late owned))
+    push Not at late
+    obtain ⟨blocked, blockedLate, blockedPending⟩ : ∃ blocked : G.EventId,
+        blocked.val < finish ∧ blocked ∉ config.cut.completed := by
+      by_contra all
+      push Not at all
+      exact running all
+    have closing : finish < G.order.eventCount := lt_of_le_of_lt late event.isLt
+    let closer : G.EventId := ⟨finish, closing⟩
+    have closerDone : closer ∈ config.cut.completed := by
+      rcases Nat.eq_or_lt_of_le late with same | later
+      · have equal : event = closer := Fin.ext same.symm
+        subst equal
+        exact (blockedPending (ready.2 (relaxed.predecessor_of_later_not_publication
+          (run.closed _ rfl) blockedLate))).elim
+      · exact ready.2 (relaxed.predecessor_of_not_publication (run.closed closer rfl) later)
+    exact blockedPending (config.cut.predecessor_closed closerDone
+      (relaxed.predecessor_of_later_not_publication (run.closed closer rfl) blockedLate))
+  have facts (seed : Seed) (member : seed ∈ prior.support) (final : app.Execution)
+      (reached : final ∈ (stepRun seed).support) :=
+    runStep_facts bound turns contract timely R decides who deviation start finish
+      (run.shaped relaxed) run.publications stop stopDone (execution seed) (fun _ => False)
+      (fun config path running event ready owned =>
+        (readyAllowed seed member config path running event ready owned).elim)
+      (supported seed member) (bounded seed member) (begin seed member).inside
+      (submissions seed member) final reached
+  have quietOf {origin config : G.Config}
+      (decided : DecidesOnly who origin (fun _ => False) config) :
+      ∀ event : G.EventId, event ∉ origin.cut.completed → G.actor? event = some who →
+        ∀ record, completionOf config event = some record → record.decision = none :=
+    fun event fresh mine record found => decided event id fresh mine record found
+  have fixed (seed : Seed) (member : seed ∈ prior.support) (final : app.Execution)
+      (reached : final ∈ (stepRun seed).support) : point final = key seed := by
+    obtain ⟨path, sound, decided, _, _⟩ := facts seed member final reached
+    exact run_path_closure_settles base decides referenceIndependent who sound
+      (quietOf decided) _ path .refl
+  let good := fun (seed : Seed) => RunStepHolds scheduler bound turns R who deviation horizon
+    start finish (fun _ => False) (execution seed).application.config
+  have goodRound (seed : Seed) (member : seed ∈ prior.support) :
+      ∀ n current, good seed (n + 1) current → ¬ stop current.application.config.cut →
+        ∀ next ∈ (app.round scheduler players current).support, good seed n next :=
+    runStep_round bound turns contract timely R decides who deviation start finish
+      (run.shaped relaxed) run.publications stop stopDone (execution seed).application.config
+      (fun _ => False) (fun config path running event ready owned =>
+        (readyAllowed seed member config path running event ready owned).elim)
+  have goodStart (seed : Seed) (member : seed ∈ prior.support) :
+      good seed (horizon - (execution seed).environmentRecall.length) (execution seed) :=
+    ⟨supported seed member, by have := bounded seed member; omega, (begin seed member).inside,
+      submissions seed member, .refl, fun event fresh done => (fresh done).elim,
+      fun event _ fresh _ record found => (fresh ((completionOf_isSome_iff _ event).mp
+        (by rw [found]; rfl))).elim⟩
+  have coupled : ∀ left ∈ prior.support, ∀ right ∈ prior.support,
+      keyView who (key left) = keyView who (key right) →
+      traffic (execution left) = traffic (execution right) →
+      (stepRun left).map traffic = (stepRun right).map traffic := by
+    intro left leftMember right rightMember views same
+    have lengths : (execution left).environmentRecall.length =
+        (execution right).environmentRecall.length :=
+      congrArg (fun value => value.2.2.1.length) same
+    obtain ⟨leftTrace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon
+      scheduler players _ (bounded left leftMember) _ (supported left leftMember)
+    obtain ⟨rightTrace⟩ := app.raw_trace_roundsFrom (serviceInitialLaw setup mode) horizon
+      scheduler players _ (bounded right rightMember) _ (supported right rightMember)
+    have coupledRun := run_stopped_traffic_congr scheduler bound turns R decides who deviation
+      start finish (run.shaped relaxed) run.publications stop stopDone (good left) (good right)
+      (goodRound left leftMember) (goodRound right rightMember)
+      (horizon - (execution left).environmentRecall.length) 0 0 (execution left)
+      (execution right) (by simpa only [Nat.zero_add] using leftTrace)
+      (by rw [lengths]; simpa only [Nat.zero_add] using rightTrace)
+      (begin left leftMember).inside (begin right rightMember).inside
+      (submissions left leftMember) (submissions right rightMember)
+      (runTurnFacts_roundsFrom scheduler bound turns R who deviation _ _
+        (supported left leftMember))
+      (runTurnFacts_roundsFrom scheduler bound turns R who deviation _ _
+        (supported right rightMember))
+      (goodStart left leftMember) (by rw [lengths]; exact goodStart right rightMember)
+      (fun n currentRun otherRun currentGood otherGood cuts _ => by
+        obtain ⟨_, _, _, _, currentPath, currentSound, currentDecided⟩ := currentGood
+        obtain ⟨_, _, _, _, otherPath, otherSound, otherDecided⟩ := otherGood
+        exact run_agree_of_closure base decides referenceIndependent who views currentPath
+          otherPath currentSound otherSound (quietOf currentDecided) (quietOf otherDecided) cuts)
+      same
+    change (app.runUntil scheduler players (fun current => stop current.application.config.cut)
+        (horizon - (execution left).environmentRecall.length) (execution left)).map traffic =
+      (app.runUntil scheduler players (fun current => stop current.application.config.cut)
+        (horizon - (execution right).environmentRecall.length) (execution right)).map traffic
+    rw [← lengths]
+    exact coupledRun
+  obtain ⟨channel, nextNoise, joint, factored⟩ := exists_owned_phase_joint_of_realized prior key
+    (fun seed => traffic (execution seed)) (keyView who) noise factor
+    (fun seed => (stepRun seed).map traffic) coupled (fun _ => ()) (fun current _ => current)
+    (keyView who) (fun _ => False) (fun _ _ _ _ _ _ _ _ same => same)
+    (fun _ _ _ _ _ _ _ _ idle => idle.elim) (fun _ _ _ _ _ _ _ => rfl)
+  have keyed : ∀ seed ∈ prior.support,
+      (stepRun seed).map (fun final => (point final, traffic final)) =
+        ((stepRun seed).map traffic).map (fun extra => (key seed, extra)) := by
+    intro seed member
+    rw [PMF.map_comp]
+    apply map_congr_on_support _
+    intro final reached
+    simp only [Function.comp_apply, fixed seed member final reached]
+  have keyedEnds : ∀ seed ∈ prior.support,
+      (stepRun seed).map point = (stepRun seed).map (fun _ => key seed) := by
+    intro seed member
+    apply map_congr_on_support _
+    intro final reached
+    rw [fixed seed member final reached]
+  refine ⟨id, nextNoise, ?_, fun policy => ?_⟩
+  · have nextLaw : (prior.bind fun seed => (stepRun seed).map point) =
+        (prior.map key).bind (fun current => (channel (keyView who current)).map
+          fun _ => current) := by
+      calc (prior.bind fun seed => (stepRun seed).map point)
+          = prior.bind (fun seed => PMF.pure (key seed)) := by
+            rw [bind_congr_on_support _ keyedEnds]
+            simp only [pmf_map_fun_const]
+        _ = prior.map key := rfl
+        _ = (prior.map key).bind PMF.pure := (PMF.bind_pure _).symm
+        _ = _ := by
+            congr 1
+            funext current
+            rw [pmf_map_fun_const]
+    change (prior.bind fun seed => (stepRun seed).map fun final =>
+        (point final, traffic final)) = (prior.bind fun seed => (stepRun seed).map point).bind _
+    rw [nextLaw]
+    exact (bind_congr_on_support _ keyed).trans factored
+  · apply bind_congr_on_support _
+    intro seed member
+    have constant : ∀ final ∈ (stepRun seed).support,
+        keyTarget (G.lastDeviationProfile base who policy) who (point final) =
+          keyTarget (G.lastDeviationProfile base who policy) who (key seed) :=
+      fun final reached => by rw [fixed seed member final reached]
+    exact (bind_congr_on_support _ constant).trans (PMF.bind_const _ _)
 
 end Vegas
