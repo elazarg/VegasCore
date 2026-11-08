@@ -155,4 +155,149 @@ theorem solitary_phaseJoint {horizon : Nat}
         (completesOf prior execution goods) noise factor
       exact ⟨id, nextNoise, joint, averaged, fun _ _ _ _ => rfl⟩
 
+/-- At a terminal configuration nothing settles, so the closure is the
+configuration itself. -/
+theorem closure_eq_of_terminal (reference : (serviceGraph setup mode).BehavioralProfile)
+    (who : Player) {config : (serviceGraph setup mode).Config}
+    (terminal : config.cut.Terminal) : closure reference who config = config := by
+  apply closure_of_none
+  intro event settles
+  apply settles.1.1
+  rw [terminal]
+  exact Finset.mem_univ _
+
+/-- **The deviation simulation through the closure.** From every phase
+boundary of a ledger run in which honest clients open a reveal exactly when its
+opening is accepted, the deviation of one player is simulated by the
+last-served erased-key laws of normalized graph deviations of the base, read at
+the closure key. -/
+theorem closureDeviationSimulation {horizon : Nat}
+    {scheduler : (serviceApplication setup mode deadline leaks).Scheduler}
+    {delay : (serviceGraph setup mode).EventId → Nat}
+    (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
+    (contract : AsyncContract (serviceRuntime setup mode deadline) leaks
+        (serviceInitialLaw setup mode) horizon scheduler delay bound)
+    (timely : AsyncTimely (serviceRuntime setup mode deadline) delay bound)
+    (base : (serviceGraph setup mode).BehavioralProfile)
+    (decides : ∀ (config : (serviceGraph setup mode).Config)
+      (event : (serviceGraph setup mode).EventId) (owner : Player) (payload : L.Ty)
+      (binding : FieldRef (serviceGraph setup mode).layout (.binding owner payload))
+      (checks : List (GuardCheck (serviceGraph setup mode).layout payload))
+      (outputEq : (serviceGraph setup mode).outputLayout event = .publication payload)
+      (codeEq : cast (congrArg (EventCode (serviceGraph setup mode).layout) outputEq)
+        ((serviceGraph setup mode).nodes event) = .resolve owner payload binding checks),
+      nodeView (serviceGraph setup mode) event =
+        .resolve owner payload binding checks outputEq codeEq →
+      ∀ (actor : (serviceGraph setup mode).actor? event = some owner)
+        (active : owner ∉ ((serviceGraph setup mode).playerObserve owner config).defaulted),
+        (serviceGraph setup mode).normalizeProfile base owner event actor
+          ((serviceGraph setup mode).playerObserve owner config) active =
+          PMF.pure (cast (congrArg EventField.Action outputEq.symm)
+            (openingAccepted event config.store)))
+    (referenceIndependent : ReadyIndependent ((serviceGraph setup mode).normalizeProfile base))
+    (who : Player) (deviation : (serviceApplication setup mode deadline leaks).Policy)
+    (independent : ∀ policy, LastIndependent
+      ((serviceGraph setup mode).lastDeviationProfile base who policy) who)
+    (relaxed : RelaxedOrder (serviceGraph setup mode))
+    (concurrent : (serviceGraph setup mode).RevealsOnlyConcurrent) :
+    ∀ rank, rank ≤ (serviceGraph setup mode).order.eventCount →
+      DeviationSimulation scheduler
+        (Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound turns
+          (firstTurnTiming setup turns mode) ((serviceGraph setup mode).normalizeProfile base))
+          who deviation) horizon readErased
+        (fun execution => runKey (closure ((serviceGraph setup mode).normalizeProfile base) who
+          execution.application.config))
+        ((serviceRuntime setup mode deadline).bindingTraffic leaks who) (keyView who)
+        (fun policy => keyTarget ((serviceGraph setup mode).lastDeviationProfile base who policy)
+          who)
+        (PhaseBoundary scheduler (Function.update (serviceReferenceTurnPolicy setup mode deadline
+          leaks bound turns (firstTurnTiming setup turns mode)
+          ((serviceGraph setup mode).normalizeProfile base)) who deviation) horizon rank) := by
+  classical
+  let G := serviceGraph setup mode
+  let R := G.normalizeProfile base
+  let app := serviceApplication setup mode deadline leaks
+  let players := Function.update (serviceReferenceTurnPolicy setup mode deadline leaks bound
+    turns (firstTurnTiming setup turns mode) R) who deviation
+  let point := fun execution : app.Execution => runKey (closure R who execution.application.config)
+  suffices step : ∀ gap rank, G.order.eventCount - rank = gap → rank ≤ G.order.eventCount →
+      DeviationSimulation scheduler players horizon readErased point
+        ((serviceRuntime setup mode deadline).bindingTraffic leaks who) (keyView who)
+        (fun policy => keyTarget (G.lastDeviationProfile base who policy) who)
+        (PhaseBoundary scheduler players horizon rank) from
+    fun rank within => step _ rank rfl within
+  intro gap
+  induction gap using Nat.strong_induction_on with
+  | _ gap ih =>
+  intro rank hgap within
+  by_cases last : rank = G.order.eventCount
+  · subst last
+    have terminalOf (execution : app.Execution)
+        (boundary : PhaseBoundary scheduler players horizon G.order.eventCount execution) :
+        execution.application.config.cut.Terminal := by
+      unfold EventOrder.Cut.Terminal
+      ext event
+      simp only [Finset.mem_univ, iff_true]
+      exact boundary.earlier event event.isLt
+    have frozen : ∀ execution, PhaseBoundary scheduler players horizon G.order.eventCount
+        execution →
+        (app.runToHorizon scheduler players horizon execution).map
+          (fun final => readErased (point final)) =
+        PMF.pure (readErased (point execution)) := by
+      intro execution boundary
+      have terminal := terminalOf execution boundary
+      unfold ReactiveApplication.runToHorizon
+      rw [show ((app.runRounds scheduler players
+          (horizon - execution.environmentRecall.length) execution).map fun final =>
+            readErased (point final)) =
+          (app.runRounds scheduler players (horizon - execution.environmentRecall.length)
+            execution).map fun _ => readErased (point execution) from
+        map_congr_on_support _ fun final reached => by
+          simp only [point]
+          rw [runRounds_config_eq_of_terminal scheduler players _ execution final terminal
+            reached]]
+      exact pmf_map_fun_const _ _
+    have settled : ∀ execution, PhaseBoundary scheduler players horizon G.order.eventCount
+        execution →
+        keyTarget (G.lastDeviationProfile base who (base who)) who (point execution) =
+        PMF.pure (readErased (point execution)) := by
+      intro execution boundary
+      have terminal := terminalOf execution boundary
+      simp only [point]
+      rw [closure_eq_of_terminal R who terminal, keyTarget_runKey (independent _),
+        lastErasedLaw_terminal _ _ _ terminal, readErased_runKey]
+    exact DeviationSimulation.of_frozen frozen (base who) settled
+  have smaller : rank < G.order.eventCount := lt_of_le_of_ne within last
+  let event : G.EventId := ⟨rank, smaller⟩
+  by_cases publication : (G.outputLayout event).IsPublication
+  · obtain ⟨finish, run⟩ := exists_revealRun publication
+    have runStart : rank < finish := run.nonempty
+    have tail : DeviationSimulation scheduler players horizon readErased point
+        ((serviceRuntime setup mode deadline).bindingTraffic leaks who) (keyView who)
+        (fun policy => keyTarget (G.lastDeviationProfile base who policy) who)
+        (PhaseBoundary scheduler players horizon finish) :=
+      ih (G.order.eventCount - finish) (by omega) finish rfl run.bounded
+    have points : DeviationSimulation scheduler players horizon readErased point
+        ((serviceRuntime setup mode deadline).bindingTraffic leaks who) (keyView who)
+        (fun policy => keyTarget (G.lastDeviationProfile base who policy) who)
+        (RunPoint scheduler players horizon who rank finish rank) :=
+      runPoint_simulation bound turns contract timely base decides referenceIndependent who
+        deviation independent relaxed concurrent run (@tail) rank runStart.le
+    exact DeviationSimulation.mono (@points) fun execution boundary =>
+      boundary.runPoint bound turns R who deviation relaxed run
+  · have tail : DeviationSimulation scheduler players horizon readErased point
+        ((serviceRuntime setup mode deadline).bindingTraffic leaks who) (keyView who)
+        (fun policy => keyTarget (G.lastDeviationProfile base who policy) who)
+        (PhaseBoundary scheduler players horizon (rank + 1)) :=
+      ih (G.order.eventCount - (rank + 1)) (by omega) (rank + 1) rfl smaller
+    exact DeviationSimulation.of_averaged_phase (@tail)
+      (fun execution => app.runUntilHorizon scheduler players
+        (fun current => event ∈ current.application.config.cut.completed) horizon execution)
+      (fun execution _ => app.runToHorizon_eq_runUntilHorizon_bind scheduler players _ horizon
+        execution)
+      (fun execution boundary final reached => solitaryPhase_endpoint contract players concurrent
+        event publication execution boundary final reached)
+      (solitary_phaseJoint bound turns contract timely base referenceIndependent who deviation
+        independent relaxed concurrent event publication)
+
 end Vegas
