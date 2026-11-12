@@ -78,17 +78,17 @@ theorem intended_outcomeLaws_subset (spec : ClientSpec setup timeouts leaks boun
           (instructionCount setup.program + 1)).map
           (intendedReadoutExclusion setup parameter utility excludedPayoff) = law} ⊆
     {law | ∃ target : (model).BehavioralAssessment,
-      target.IsSequentialEquilibriumFor
-        ((raw).decisionInformationAntichain Initial horizon scheduler)
-        (fun who site => target.truncatedContinuationContext site
-          (fun final => spec.payoff who final.state) (2 * horizon + 1)) ∧
-      (∀ final ∈ ((model).runBehavioral target.strategy (2 * horizon + 1)).support,
+      target.IsSequentialEquilibrium
+      ((raw).decisionInformationAntichain Initial horizon scheduler)
+      ((raw).bounded Initial horizon scheduler).wellFoundedHistories
+      (fun who final => spec.payoff who final.state) ∧
+      (∀ final ∈ ((raw).run Initial horizon scheduler target.strategy).support,
         ∀ control, final.state = some control →
           control.execution.application.config.defaulted = ∅) ∧
-      (∀ final ∈ ((model).runBehavioral target.strategy (2 * horizon + 1)).support,
+      (∀ final ∈ ((raw).run Initial horizon scheduler target.strategy).support,
         ∀ who, TerminalAudit.charge (app).stateTraffic
           ((countAudit timeouts) leaks spec.evidenceService.sample) final.state who = 0) ∧
-      ((model).runBehavioral target.strategy (2 * horizon + 1)).bind
+      ((raw).run Initial horizon scheduler target.strategy).bind
         (fun final => spec.observation final.state) = law} := by
   rintro law ⟨intended, equilibrium, rfl⟩
   let compiled := spec.compile intended equilibrium

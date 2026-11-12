@@ -32,11 +32,9 @@ theorem firstTurnClientProfile_outcome_law {Outcome : Type*}
     (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (turns : Nat) (source : Profile (service.sourceModel admission).behavioralSignature)
     (observe : State L service.setup.program.terminalCtx × DefaultHistory Player → Outcome) :
-    ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
-        service.horizon service.scheduler).runBehavioral
+    (service.run service.rawMenu
       (service.clientProfile admission service.rawMenu
-        (firstTurnTiming service.setup turns service.mode) source)
-      (2 * service.horizon + 1)).map
+        (firstTurnTiming service.setup turns service.mode) source)).map
         (fun final => (serviceSourceReadout service.setup service.mode service.duration
           service.leaks final.state).map fun terminal =>
             observe (terminal.state, terminal.defaults)) =
@@ -56,14 +54,11 @@ theorem firstTurnClientProfile_outcome_law {Outcome : Type*}
   have initialized : (service.rawMenu.protocol (serviceInitialLaw service.setup service.mode)
       service.horizon service.scheduler).initHistory.state = none := rfl
   rw [initialized] at physical
-  have states : ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
-        service.horizon service.scheduler).runBehavioral
+  have states : (service.run service.rawMenu
       (service.clientProfile admission service.rawMenu
-        (firstTurnTiming service.setup turns service.mode) source)
-      (2 * service.horizon + 1)).map (fun final => final.state) =
+        (firstTurnTiming service.setup turns service.mode) source)).map (fun final => final.state) =
       (app.roundsFrom (serviceInitialLaw service.setup service.mode) service.scheduler clients
         service.horizon).map app.finished := by
-    rw [InformationModel.runBehavioral]
     change ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
         service.horizon service.scheduler).runBehavioralFrom
       (fun who => service.rawMenu.restrictPolicy (serviceInitialLaw service.setup service.mode)
@@ -90,11 +85,9 @@ theorem firstTurnClientProfile_graph_law {Outcome : Type*}
     (ordered : (serviceGraph service.setup service.mode).BarrierOrdered)
     (turns : Nat) (source : Profile (service.sourceModel admission).behavioralSignature)
     (observe : State L service.setup.program.terminalCtx × DefaultHistory Player → Outcome) :
-    ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
-        service.horizon service.scheduler).runBehavioral
+    (service.run service.rawMenu
       (service.clientProfile admission service.rawMenu
-        (firstTurnTiming service.setup turns service.mode) source)
-      (2 * service.horizon + 1)).map
+        (firstTurnTiming service.setup turns service.mode) source)).map
         (fun final => (serviceSourceReadout service.setup service.mode service.duration
           service.leaks final.state).map fun terminal =>
             observe (terminal.state, terminal.defaults)) =

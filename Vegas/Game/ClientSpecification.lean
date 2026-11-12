@@ -7,6 +7,7 @@ import Vegas.Game.OnePacketSwapFiberSum
 import Vegas.Pending.ReactiveAsyncContract
 import Vegas.Pending.ReactiveOnePacketMenu
 import Vegas.Source.PrivateInputsIndependent
+import Interaction.ReactiveResponseEvaluation
 
 /-! # Specifications and artifacts for native sequential compilation
 
@@ -122,16 +123,16 @@ end ClientSpec
 game and preserving its source readout and settled payoff law. -/
 structure ClientCompilation (intended : setup.intendedModel.BehavioralAssessment) where
   assessment : (model).BehavioralAssessment
-  equilibrium : assessment.IsSequentialEquilibriumFor
+  equilibrium : assessment.IsSequentialEquilibrium
     ((raw).decisionInformationAntichain Initial horizon scheduler)
-    (fun who site => assessment.truncatedContinuationContext site
-      (fun final => spec.payoff who final.state) (2 * horizon + 1))
-  noDefaults : ∀ final ∈ ((model).runBehavioral assessment.strategy (2 * horizon + 1)).support,
+    ((raw).bounded Initial horizon scheduler).wellFoundedHistories
+    (fun who final => spec.payoff who final.state)
+  noDefaults : ∀ final ∈ ((raw).run Initial horizon scheduler assessment.strategy).support,
     ∀ control, final.state = some control → control.execution.application.config.defaulted = ∅
-  noCharges : ∀ final ∈ ((model).runBehavioral assessment.strategy (2 * horizon + 1)).support,
+  noCharges : ∀ final ∈ ((raw).run Initial horizon scheduler assessment.strategy).support,
     ∀ who, TerminalAudit.charge (app).stateTraffic
       ((countAudit timeouts) leaks spec.evidenceService.sample) final.state who = 0
-  outcomeLaw : ((model).runBehavioral assessment.strategy (2 * horizon + 1)).bind
+  outcomeLaw : ((raw).run Initial horizon scheduler assessment.strategy).bind
       (fun final => spec.observation final.state) =
     (setup.intendedModel.runBehavioral intended.strategy
       (instructionCount setup.program + 1)).map

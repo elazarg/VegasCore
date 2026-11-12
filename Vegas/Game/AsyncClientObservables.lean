@@ -38,10 +38,8 @@ def clientSettlementLaw {turns : Nat} (timing : TurnTiming service.setup turns s
     ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
       service.leaks)
     (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
-  ((service.rawMenu.information (serviceInitialLaw service.setup service.mode) service.horizon
-    service.scheduler).runBehavioral
-      (service.clientProfile admission service.rawMenu timing source)
-      (2 * service.horizon + 1)).bind fun final =>
+  (service.run service.rawMenu
+      (service.clientProfile admission service.rawMenu timing source)).bind fun final =>
         (settle final.state).map fun payoffs =>
           TerminalObservation.read service.setup
             ((serviceSourceReadout service.setup service.mode service.duration service.leaks

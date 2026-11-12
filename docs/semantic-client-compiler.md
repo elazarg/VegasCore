@@ -13,6 +13,16 @@ supplies the information and continuation bridge for ledger-reading clients.
 
 ## Input and output
 
+Complete reactive execution uses `Interaction.ReactiveApplication.ResponseMenu.run`
+from initialization and `Interaction.ReactiveApplication.ResponseMenu.runFrom`
+from any legal history. The response menu's `gameForm` uses that complete
+execution law. `Vegas.AsyncServiceSpec.run` and `Vegas.AsyncServiceSpec.gameForm`
+also supply the service's initial law, scheduler and round horizon. Callers
+provide no evaluator fuel. The execution layer derives its step budget and
+proves agreement with the well-founded terminal law for every profile and
+legal history. The scheduler-round horizon remains part of the runtime model;
+completion of the source game still requires the stated service contract.
+
 `Vegas.ClientSpec` packages the source and runtime premises:
 
 * source well-formedness and private-input independence conditional on a signal
@@ -51,6 +61,11 @@ specification is fixed before selecting the source equilibrium.
   policies, including off-path decisions;
 * no public defaults or audit charges on its supported paths;
 * the exact joint full source-configuration/default-history and settled-payoff law.
+
+`ClientCompilation.equilibrium` is the full terminal-play sequential-equilibrium
+predicate, including the same belief-consistency requirement. The complete
+continuation laws take a legal starting history without an additional fuel
+bound or sufficiency proof.
 
 The artifact exposes physical `clients` and projected
 `ClientCompilation.ledgerClients` over the Interaction callback API. The latter

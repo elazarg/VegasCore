@@ -57,7 +57,10 @@ theorem intended_raw_sequentialEquilibrium_preserved
       spec.observationRate spec.deliveryRate spec.delivery_nonnegative spec.coverage
       spec.lowerUtility spec.upperUtility spec.lower_le spec.le_upper spec.deposit
       spec.deposit_nonnegative spec.funded
-  refine ⟨⟨target, targetSE, ?_, clean, joint⟩⟩
+  have fullSE := (target.isSequentialEquilibrium_iff_truncated_of_bounded _
+    ((bounds.rawMenu timeouts leaks).bounded Initial horizon scheduler).wellFoundedHistories
+    ((bounds.rawMenu timeouts leaks).bounded Initial horizon scheduler) _).mpr targetSE
+  refine ⟨⟨target, fullSE, ?_, clean, joint⟩⟩
   intro final supported control current
   let raw := bounds.rawMenu timeouts leaks
   let normalize := ((reactiveNormalization timeouts) leaks).state

@@ -114,17 +114,14 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds_readout {Parameter :
           (instructionCount service.setup.program + 1))
           (fun final => (service.setup.protocolReadout final.state).elim 0
             (fun state => forfeited (service.setup.parameterOutcome parameter state) who))) →
-    IsεNash ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
-        service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
+    IsεNash (service.gameForm menu)
         (fun history who => payoff history.state who)
         (ε + 2 * timing.deferralError * spread)
         (service.clientProfile (CommitmentInterface.values service.setup.program) menu timing
           source) ∧
       PMF.WithinTV timing.deferralError
-        (((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
-          service.scheduler).runBehavioral (service.clientProfile (CommitmentInterface.values
-            service.setup.program) menu timing source)
-            (2 * service.horizon + 1)).bind (fun final =>
+        ((service.run menu (service.clientProfile (CommitmentInterface.values
+            service.setup.program) menu timing source)).bind (fun final =>
               (settle final.state).map fun payoffs =>
                 (
                   (reader
@@ -255,17 +252,14 @@ theorem intended_clientProfile_isεNash_of_firstTurn_bounds {Parameter : Type}
           (instructionCount service.setup.program + 1))
           (fun final => (service.setup.protocolReadout final.state).elim 0
             (fun state => forfeited (service.setup.parameterOutcome parameter state) who))) →
-    IsεNash ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
-        service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
+    IsεNash (service.gameForm menu)
         (fun history who => payoff history.state who)
         (ε + 2 * timing.deferralError * spread)
         (service.clientProfile (CommitmentInterface.values service.setup.program) menu timing
           source) ∧
       PMF.WithinTV timing.deferralError
-        (((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
-          service.scheduler).runBehavioral (service.clientProfile (CommitmentInterface.values
-            service.setup.program) menu timing source)
-            (2 * service.horizon + 1)).bind (fun final =>
+        ((service.run menu (service.clientProfile (CommitmentInterface.values
+            service.setup.program) menu timing source)).bind (fun final =>
               (settle final.state).map fun payoffs =>
                 (
                   (serviceSourceReadout service.setup service.mode service.duration service.leaks

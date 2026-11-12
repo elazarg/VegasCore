@@ -102,6 +102,14 @@ runtime. Stronger sequential results should reuse the concrete execution and
 information definitions; they do not require a universal runtime language.
 
 
+The complete reactive evaluators in
+[ReactiveEvaluation](../Interaction/ReactiveEvaluation.lean) and
+[ReactiveResponseEvaluation](../Interaction/ReactiveResponseEvaluation.lean)
+derive their evaluator budgets from the scheduler-round horizon and prove
+equality with terminal play at every legal starting history. Compiler artifacts
+and paper-facing results use complete execution and full sequential equilibrium;
+finite-prefix fuel remains local to the corresponding proof adapters.
+
 ## Standalone checked consumers
 
 The test and example umbrellas are deliberate build roots. A standalone module's

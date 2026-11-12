@@ -584,14 +584,14 @@ def Vegas.Paper.ledgerUtility :=
 /-- Expected utility under the same audit and bounded raw ledger game. -/
 def Vegas.Paper.ledgerNash (ε : ℝ)
     (profile : Profile (ledgerModel service).behavioralSignature) : Prop :=
-  IsεNash ((ledgerModel service).toBehavioralGameForm (2 * service.horizon + 1))
+  IsεNash (service.gameForm service.rawMenu)
       (fun final who => ledgerUtility service parameter utility sample deposit final.state who)
       ε profile
 
 /-- Joint law of terminal cells, public defaults and realized audited payoffs. -/
 def Vegas.Paper.ledgerJointLaw
     (profile : Profile (ledgerModel service).behavioralSignature) :=
-  ((ledgerModel service).runBehavioral profile (2 * service.horizon + 1)).bind fun final =>
+  (service.run service.rawMenu profile).bind fun final =>
       (ledgerSettlement service parameter utility sample deposit final.state).map fun payoffs =>
         ((serviceSourceReadout service.setup service.mode service.duration service.leaks
           final.state).map (fun terminal => (terminal.state, terminal.defaults)), payoffs)
@@ -671,10 +671,9 @@ theorem Vegas.Paper.clientSettlementLaw_withinTV
 /-- Monetary clients preserve actual receipts jointly with typed cells and public defaults. -/
 theorem Vegas.Paper.payment_firstTurnClientProfile_settlement_law
     (turns : Nat) (source : Profile (service.sourceModel admission).behavioralSignature) :
-    (((ledgerModel service).runBehavioral
+    ((service.run service.rawMenu
       (service.clientProfile admission service.rawMenu
-        (firstTurnTiming service.setup turns service.mode) source)
-      (2 * service.horizon + 1)).bind fun final =>
+        (firstTurnTiming service.setup turns service.mode) source)).bind fun final =>
         (service.paymentSettlement sample deposit final.state).map fun receipts =>
           ((serviceSourceReadout service.setup service.mode service.duration service.leaks
             final.state).map (fun terminal => (terminal.state, terminal.defaults)), receipts)) =
@@ -780,7 +779,6 @@ local notation "Initial" => initialLaw setup
 local notation "raw" => bounds.rawMenu timeouts leaks
 local notation "model" => ReactiveApplication.ResponseMenu.information
   (bounds.rawMenu timeouts leaks) Initial horizon scheduler
-local notation "clientFuel" => 2 * horizon + 1
 local notation "sourceFuel" => instructionCount setup.program + 1
 local notation "sourceConfigAt" => sourceReadout setup timeouts leaks
 
@@ -808,10 +806,10 @@ theorem Vegas.Paper.compile_correct
     (intended : setup.intendedModel.BehavioralAssessment)
     (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended) :
     let compiled := spec.compile intended equilibrium
-    compiled.assessment.IsSequentialEquilibriumFor
+    compiled.assessment.IsSequentialEquilibrium
       ((raw).decisionInformationAntichain Initial horizon scheduler)
-      (fun who site => compiled.assessment.truncatedContinuationContext site
-        (fun final => spec.payoff who final.state) clientFuel) ∧
+      ((raw).bounded Initial horizon scheduler).wellFoundedHistories
+      (fun who final => spec.payoff who final.state) ∧
     (∀ who, (raw).restrictPolicy Initial horizon scheduler who (compiled.clients who) =
       compiled.assessment.strategy who) ∧
     ((app).finish Initial horizon scheduler compiled.clients none).bind spec.observation =
@@ -831,10 +829,10 @@ theorem Vegas.Paper.compile_ledger_correct
     (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended)
     (unobserved : leaks.DeliversNothing) :
     let compiled := spec.compile intended equilibrium
-    compiled.assessment.IsSequentialEquilibriumFor
+    compiled.assessment.IsSequentialEquilibrium
       ((raw).decisionInformationAntichain Initial horizon scheduler)
-      (fun who site => compiled.assessment.truncatedContinuationContext site
-        (fun final => spec.payoff who final.state) clientFuel) ∧
+      ((raw).bounded Initial horizon scheduler).wellFoundedHistories
+      (fun who final => spec.payoff who final.state) ∧
     (∀ who, ReactiveApplication.Policy.IgnoresLeakedFields app (compiled.ledgerClients who)) ∧
     (∀ (history : ((raw).protocol Initial horizon scheduler).History) who,
       (raw).restrictPolicy Initial horizon scheduler who (compiled.ledgerClients who)
@@ -906,7 +904,7 @@ def Vegas.Paper.rawProgramPaymentLaw
     (spec : ClientSpec setup timeouts leaks bounds horizon scheduler
       parameter utility excludedPayoff)
     (profile : Profile (model).behavioralSignature) : PMF (TerminalObservation setup) :=
-  ((model).runBehavioral profile clientFuel).bind fun final =>
+  ((raw).run Initial horizon scheduler profile).bind fun final =>
       spec.programPaymentObservation final.state
 
 /-- The actual physical-client execution with the same audited cash observation. -/
@@ -997,7 +995,8 @@ local notation "fairSpec" => OddsEvensRaw.specification
 
 /-- Actual bounded-ledger execution of the concrete fair-game client profile. -/
 def Vegas.Paper.fairLedgerRun (profile : Profile (fairModel).behavioralSignature) :=
-  (fairModel).runBehavioral profile (2 * OddsEvensService.horizon + 1)
+  (fairMenu).run OddsEvensService.initial OddsEvensService.horizon
+    OddsEvensService.scheduler profile
 
 /-- The concrete fair game's joint source-configuration and audited payoff law. -/
 def Vegas.Paper.fairLedgerJointLaw (profile : Profile (fairModel).behavioralSignature) :=

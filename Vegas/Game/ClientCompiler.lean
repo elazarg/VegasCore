@@ -136,11 +136,14 @@ theorem clients_sequentiallyRational (who : Player) (site : (model).InformationS
         (app).finish Initial horizon scheduler compiled.clients history.1.state)
         (spec.payoff who) := by
   let := spec.finiteNature
+  have rational := (compiled.assessment.isSequentiallyRational_iff_truncated_of_bounded
+    ((raw).bounded Initial horizon scheduler).wellFoundedHistories
+    ((raw).bounded Initial horizon scheduler) _).mp compiled.equilibrium.1
   exact (raw).sequentiallyRational_finish Initial horizon scheduler compiled.assessment
     compiled.clients compiled.clients_admissible
     (fun history other =>
       congrFun (compiled.clients_strategy other) ((model).infoOf other history.trace))
-    spec.payoff compiled.equilibrium.1 who site alternative covered
+    spec.payoff rational who site alternative covered
 
 /-- With no pending delivery, ledger clients are rational against every
 menu-admissible physical continuation under the same assessment beliefs. -/
@@ -155,19 +158,22 @@ theorem ledgerClients_sequentiallyRational (unobserved : leaks.DeliversNothing)
         (app).finish Initial horizon scheduler compiled.ledgerClients history.1.state)
         (spec.payoff who) := by
   let := spec.finiteNature
+  have rational := (compiled.assessment.isSequentiallyRational_iff_truncated_of_bounded
+    ((raw).bounded Initial horizon scheduler).wellFoundedHistories
+    ((raw).bounded Initial horizon scheduler) _).mp compiled.equilibrium.1
   exact (raw).sequentiallyRational_finish Initial horizon scheduler compiled.assessment
     compiled.ledgerClients
     ((raw).ledgerProfile_admissible Initial horizon scheduler unobserved
       compiled.assessment.strategy)
     (fun history other => compiled.ledgerClients_strategy_at_history unobserved history other)
-    spec.payoff compiled.equilibrium.1 who site alternative covered
+    spec.payoff rational who site alternative covered
 
 /-- Complete physical-state correctness, before applying any outcome reader. -/
 theorem clients_stateLaw :
-    ((model).runBehavioral compiled.assessment.strategy (2 * horizon + 1)).map History.state =
+    ((raw).run Initial horizon scheduler compiled.assessment.strategy).map History.state =
       (app).finish Initial horizon scheduler compiled.clients none :=
-  (raw).run_eq_finish Initial horizon scheduler compiled.assessment.strategy
-    (2 * horizon + 1) ((raw).protocol Initial horizon scheduler).initHistory (by rfl)
+  (raw).runFrom_stateLaw Initial horizon scheduler compiled.assessment.strategy
+    ((raw).protocol Initial horizon scheduler).initHistory
 
 /-- Correctness of the physical clients, including joint typed readout and settled payoff. -/
 theorem clients_outcomeLaw :
@@ -202,20 +208,23 @@ theorem clients_noCharges (state : (app).ProtocolState)
 /-- Ledger clients have the same complete continuation law at every legal history. -/
 theorem ledgerClients_continuation
     (unobserved : leaks.DeliversNothing)
-    (fuel : Nat) (history : ((raw).protocol Initial horizon scheduler).History)
-    (enough : (app).rank horizon history.state ≤ fuel) :
-    ((model).runBehavioralFrom compiled.assessment.strategy fuel history).map History.state =
-      (app).finish Initial horizon scheduler compiled.ledgerClients history.state :=
-  (raw).run_ledgerProfile_eq_finish Initial horizon scheduler unobserved
-    compiled.assessment.strategy fuel history enough
+    (history : ((raw).protocol Initial horizon scheduler).History) :
+    ((raw).runFrom Initial horizon scheduler compiled.assessment.strategy history).map
+        History.state =
+      (app).finish Initial horizon scheduler compiled.ledgerClients history.state := by
+  apply (raw).run_ledgerProfile_eq_finish Initial horizon scheduler unobserved
+    compiled.assessment.strategy (2 * horizon + 1) history
+  have bound := (app).trace_bound Initial horizon scheduler
+    ((raw).toRawTrace Initial horizon scheduler history.trace)
+  omega
 
 /-- The initialized physical ledger run has the selected assessment's complete state law. -/
 theorem ledgerClients_stateLaw
     (unobserved : leaks.DeliversNothing) :
-    ((model).runBehavioral compiled.assessment.strategy (2 * horizon + 1)).map History.state =
+    ((raw).run Initial horizon scheduler compiled.assessment.strategy).map History.state =
       (app).finish Initial horizon scheduler compiled.ledgerClients none :=
-  compiled.ledgerClients_continuation unobserved (2 * horizon + 1)
-    ((raw).protocol Initial horizon scheduler).initHistory (by rfl)
+  compiled.ledgerClients_continuation unobserved
+    ((raw).protocol Initial horizon scheduler).initHistory
 
 /-- Ledger and ordinary clients have identical initialized physical execution laws. -/
 theorem ledgerClients_finish_eq_clients (unobserved : leaks.DeliversNothing) :
@@ -264,10 +273,10 @@ strategies, and the joint source-configuration/settled-payoff law. -/
 theorem compile_correct (intended : setup.intendedModel.BehavioralAssessment)
     (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended) :
     let compiled := spec.compile intended equilibrium
-    compiled.assessment.IsSequentialEquilibriumFor
+    compiled.assessment.IsSequentialEquilibrium
       ((raw).decisionInformationAntichain Initial horizon scheduler)
-      (fun who site => compiled.assessment.truncatedContinuationContext site
-        (fun final => spec.payoff who final.state) (2 * horizon + 1)) ∧
+      ((raw).bounded Initial horizon scheduler).wellFoundedHistories
+      (fun who final => spec.payoff who final.state) ∧
     (∀ who, (raw).restrictPolicy Initial horizon scheduler who (compiled.clients who) =
       compiled.assessment.strategy who) ∧
     ((app).finish Initial horizon scheduler compiled.clients none).bind (spec.observation) =
@@ -283,10 +292,10 @@ theorem compile_ledger_correct (intended : setup.intendedModel.BehavioralAssessm
     (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended)
     (unobserved : leaks.DeliversNothing) :
     let compiled := spec.compile intended equilibrium
-    compiled.assessment.IsSequentialEquilibriumFor
+    compiled.assessment.IsSequentialEquilibrium
       ((raw).decisionInformationAntichain Initial horizon scheduler)
-      (fun who site => compiled.assessment.truncatedContinuationContext site
-        (fun final => spec.payoff who final.state) (2 * horizon + 1)) ∧
+      ((raw).bounded Initial horizon scheduler).wellFoundedHistories
+      (fun who final => spec.payoff who final.state) ∧
     (∀ who, ReactiveApplication.Policy.IgnoresLeakedFields (app) (compiled.ledgerClients who)) ∧
     (∀ (history : ((raw).protocol Initial horizon scheduler).History) who,
       (raw).restrictPolicy Initial horizon scheduler who (compiled.ledgerClients who)

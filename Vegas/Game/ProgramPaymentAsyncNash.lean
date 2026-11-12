@@ -195,13 +195,11 @@ theorem payment_rawClientProfile_isεNash_approximate {Parameter : Type}
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun terminal => service.setup.parameterPaymentUtility valuation
             (service.setup.parameterOutcome parameter terminal) who)) ε source →
-      IsεNash ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
-          service.horizon service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
+      IsεNash (service.gameForm service.rawMenu)
         (fun history who => service.paymentExpectedUtility parameter valuation sample deposit
           history.state who) (ε + 2 * timing.deferralError * range)
         (service.clientProfile admission service.rawMenu timing source)) ∧
-    (IsεNash ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
-          service.horizon service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
+    (IsεNash (service.gameForm service.rawMenu)
         (fun history who => service.paymentExpectedUtility parameter valuation sample deposit
           history.state who) ε
         (service.clientProfile admission service.rawMenu timing source) →
@@ -233,8 +231,7 @@ theorem payment_firstTurnClientProfile_isεNash_iff {Parameter : Type}
       (service.setup.parameterPaymentUtility valuation) sample deposit low
       (fun _ => range))
     (ε : ℝ) (source : Profile (service.sourceModel admission).behavioralSignature) :
-    IsεNash ((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
-        service.horizon service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
+    IsεNash (service.gameForm service.rawMenu)
       (fun history who => service.paymentExpectedUtility parameter valuation sample deposit
         history.state who) ε
       (service.clientProfile admission service.rawMenu
@@ -261,11 +258,9 @@ theorem payment_firstTurnClientProfile_settlement_law
     (authentic : ∀ actual observed, observed ∈ (sample actual).support → observed ⊆ actual)
     (deposit : Player → ℝ) (turns : Nat)
     (source : Profile (service.sourceModel admission).behavioralSignature) :
-    (((service.rawMenu.information (serviceInitialLaw service.setup service.mode)
-        service.horizon service.scheduler).runBehavioral
+    ((service.run service.rawMenu
       (service.clientProfile admission service.rawMenu
-        (firstTurnTiming service.setup turns service.mode) source)
-      (2 * service.horizon + 1)).bind fun final =>
+        (firstTurnTiming service.setup turns service.mode) source)).bind fun final =>
         (service.paymentSettlement sample deposit final.state).map fun receipts =>
           ((serviceSourceReadout service.setup service.mode service.duration service.leaks
             final.state).map (fun config => (config.state, config.defaults)), receipts)) =

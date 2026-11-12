@@ -9,6 +9,7 @@ import Vegas.Pending.ReactiveBoundedValues
 import Vegas.Pending.ReactiveCompiledMenu
 import Vegas.Pending.ReactiveAsyncContract
 import Vegas.Pending.ExclusionFiniteNature
+import Interaction.ReactiveResponseEvaluation
 
 /-! # Full-source services under an asynchronous scheduler
 
@@ -105,6 +106,19 @@ abbrev rawMenu [Fintype Player] : (serviceApplication service.setup service.mode
     service.leaks).ResponseMenu :=
   service.bounds.rawMenu (serviceTimeouts service.setup service.mode service.duration) service.leaks
 
+
+/-- The complete behavioral game in a supplied response menu. -/
+abbrev gameForm [Finite Player]
+    (menu : (serviceApplication service.setup service.mode service.duration
+      service.leaks).ResponseMenu) :=
+  menu.gameForm (serviceInitialLaw service.setup service.mode) service.horizon service.scheduler
+
+/-- Complete native history law under the service's scheduler and round horizon. -/
+def run [Finite Player]
+    (menu : (serviceApplication service.setup service.mode service.duration
+      service.leaks).ResponseMenu)
+    (profile : Profile (service.gameForm menu).sig) :=
+  menu.run (serviceInitialLaw service.setup service.mode) service.horizon service.scheduler profile
 
 variable (admission : CommitmentInterface service.setup.program)
 

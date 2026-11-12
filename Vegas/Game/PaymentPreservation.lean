@@ -78,7 +78,7 @@ theorem intended_raw_programPayments_preserved
     (spec : ClientSpec setup timeouts leaks bounds horizon scheduler parameter utility exitPayoff)
     (intended : setup.intendedModel.BehavioralAssessment)
     (compiled : ClientCompilation spec intended) :
-    ((R).runBehavioral compiled.assessment.strategy (2 * horizon + 1)).bind
+    ((raw).run Initial horizon scheduler compiled.assessment.strategy).bind
         (fun final => spec.programPaymentObservation final.state) =
       setup.intendedPaymentLaw intended := by
   classical
@@ -87,12 +87,12 @@ theorem intended_raw_programPayments_preserved
   let settle := TerminalAudit.settlement base observe audit spec.deposit
   let target := compiled.assessment
   have clear := compiled.noDefaults
-  have joint : ((R).runBehavioral target.strategy (2 * horizon + 1)).bind
+  have joint : ((raw).run Initial horizon scheduler target.strategy).bind
         (fun final => (settle final.state).map fun payoffs => (read final.state, payoffs)) =
       (setup.intendedModel.runBehavioral intended.strategy
         (instructionCount setup.program + 1)).map
         (intendedReadoutExclusion setup parameter utility exitPayoff) := compiled.outcomeLaw
-  let targetLaw := ((R).runBehavioral target.strategy (2 * horizon + 1)).map History.state
+  let targetLaw := ((raw).run Initial horizon scheduler target.strategy).map History.state
   let sourceLaw := (setup.intendedModel.runBehavioral intended.strategy
     (instructionCount setup.program + 1)).map (fun final =>
       let terminal := setup.protocolReadout final.state
@@ -105,7 +105,7 @@ theorem intended_raw_programPayments_preserved
           valuation (setup.parameterOutcome parameter state) who))) := by
     have left : (TerminalAudit.jointSettlement targetLaw base observe audit spec.deposit).map
         (fun realized => (read realized.1, realized.2)) =
-        ((R).runBehavioral target.strategy (2 * horizon + 1)).bind
+        ((raw).run Initial horizon scheduler target.strategy).bind
           (fun final => (settle final.state).map fun payoffs => (read final.state, payoffs)) := by
       simp only [targetLaw, TerminalAudit.jointSettlement, PMF.map_bind, PMF.bind_map,
         PMF.map_comp, Function.comp_def]

@@ -230,8 +230,7 @@ theorem isεNash_clientProfile {Parameter : Type}
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         ε source →
-      IsεNash ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
-        service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
+      IsεNash (service.gameForm menu)
         (fun history who => payoff history.state who)
         (ε + 2 * timing.deferralError * range)
         (service.clientProfile admission menu timing source) := by
@@ -284,13 +283,11 @@ theorem isεNash_clientProfile_approximate {Parameter : Type}
         (fun final who => (service.setup.protocolReadout final.state).elim 0
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         ε source →
-      IsεNash ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
-        service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
+      IsεNash (service.gameForm menu)
         (fun history who => payoff history.state who)
         (ε + 2 * timing.deferralError * range)
         (service.clientProfile admission menu timing source)) ∧
-    (IsεNash ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
-        service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
+    (IsεNash (service.gameForm menu)
         (fun history who => payoff history.state who) ε
         (service.clientProfile admission menu timing source) →
       IsεNash ((service.sourceModel admission).toBehavioralGameForm
@@ -360,17 +357,14 @@ theorem intended_clientProfile_isεNash {Parameter : Type}
       ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
         service.leaks)
       (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
-    IsεNash ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
-        service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
+    IsεNash (service.gameForm menu)
         (fun history who => payoff history.state who)
         (ε + 2 * timing.deferralError * spread)
         (service.clientProfile (CommitmentInterface.values service.setup.program) menu timing
           source) ∧
       PMF.WithinTV timing.deferralError
-        (((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
-          service.scheduler).runBehavioral (service.clientProfile (CommitmentInterface.values
-            service.setup.program) menu timing source)
-            (2 * service.horizon + 1)).bind (fun final =>
+        ((service.run menu (service.clientProfile (CommitmentInterface.values
+            service.setup.program) menu timing source)).bind (fun final =>
               (settle final.state).map fun payoffs =>
                 ((serviceSourceReadout service.setup service.mode service.duration service.leaks
                   final.state).map (fun config => (config.state, config.defaults)), payoffs)))

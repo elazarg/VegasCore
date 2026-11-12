@@ -344,8 +344,7 @@ theorem isεBestResponse_of_clientProfile {Parameter : Type}
       ((serviceAuditObservation (serviceTimeouts service.setup service.mode service.duration))
         service.leaks)
       (serviceSourceAudit service.setup service.mode service.duration service.leaks sample) deposit
-    IsεNash ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
-        service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
+    IsεNash (service.gameForm menu)
         (fun history who => payoff history.state who) ε
         (service.clientProfile admission menu timing source) →
       ∀ who, IsεBestResponse ((service.sourceModel admission).toBehavioralGameForm
@@ -387,15 +386,12 @@ theorem isεBestResponse_of_clientProfile {Parameter : Type}
   change expect _ (fun final => nativeUtility final who) - _ ≤ _ at honestAbove deviationAbove
   change _ - expect _ (fun final => nativeUtility final who) ≤ _ at honestBelow deviationBelow
   have honestNative': UtilityIntegrable nativeUtility who
-      ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
-        service.scheduler).runBehavioral
-        (service.clientProfile admission menu timing source) (2 * service.horizon + 1)) :=
+      (service.run menu
+        (service.clientProfile admission menu timing source)) :=
           honestNative
   have deviationNative' : UtilityIntegrable nativeUtility who
-      ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
-        service.scheduler).runBehavioral
-        (service.clientProfile admission menu timing (Profile.update source who alternative))
-          (2 * service.horizon + 1)) := deviationNative
+      (service.run menu
+        (service.clientProfile admission menu timing (Profile.update source who alternative))) := deviationNative
   have honestSource' : UtilityIntegrable sourceUtility who
       ((service.sourceModel admission).runBehavioral source (instructionCount
         service.setup.program + 1)) :=
@@ -471,8 +467,7 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds_readout {Parameter : 
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         ε source →
       ∀ who, IsεBestResponse
-        ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
-          service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
+        (service.gameForm menu)
         (fun history player => payoff history.state player)
         (ε + 2 * timing.deferralError * range who) who
         (service.clientProfile admission menu timing source)
@@ -710,8 +705,7 @@ theorem isεBestResponse_clientProfile_of_firstTurn_bounds {Parameter : Type}
           (fun state => utility (service.setup.parameterOutcome parameter state) who))
         ε source →
       ∀ who, IsεBestResponse
-        ((menu.information (serviceInitialLaw service.setup service.mode) service.horizon
-          service.scheduler).toBehavioralGameForm (2 * service.horizon + 1))
+        (service.gameForm menu)
         (fun history player => payoff history.state player)
         (ε + 2 * timing.deferralError * range who) who
         (service.clientProfile admission menu timing source)
