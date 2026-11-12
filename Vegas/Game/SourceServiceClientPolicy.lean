@@ -198,7 +198,7 @@ abbrev ConsistentSlots (bound : (serviceGraph setup mode).EventId → Nat) (turn
       (execution.logs who) →
     OwnSubmissionsAtTurn setup leaks execution who ∧ CanonicalSlotsUsed setup leaks execution who
 
-private theorem consistentSlots_transition
+theorem consistentSlots_transition
     (bound : (serviceGraph setup mode).EventId → Nat) (turns : Nat)
     (timing : TurnTiming setup turns mode)
     (profile : BehavioralProfile setup.program)

@@ -129,7 +129,7 @@ theorem sourceObserve_base_eq_of_observedAlike (who : Player) :
                 (sourceObserve_base_eq_of_observedAlike who next first second same)
 
 omit [IExpr.ResultTypes L] in
-private theorem config_indebted_iff_of_sourceObserve {who : Player} {Γ : SourceCtx Player L}
+theorem config_indebted_iff_of_sourceObserve {who : Player} {Γ : SourceCtx Player L}
     {unresolved : Finset VarId} {registry : Registry Γ} {revelations : Revelations Γ}
     {left right : Config Player L Γ}
     (leftStatic : left.registry = registry ∧ @left.revelations = @revelations)

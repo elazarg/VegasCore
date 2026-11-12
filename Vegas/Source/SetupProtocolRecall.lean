@@ -60,7 +60,7 @@ def ownPlay (who : Player) : {Γ : SourceCtx Player L} → {O : Finset VarId} �
       [] := by
   cases program <;> rfl
 
-private theorem eq_none_of_actor_ne (who : Player) {Γ : SourceCtx Player L} {O : Finset VarId}
+theorem eq_none_of_actor_ne (who : Player) {Γ : SourceCtx Player L} {O : Finset VarId}
     {program : SourceProgram Player L Γ O} {admission : CommitmentInterface program}
     {view : ProtocolView who program} {choice : Option (OwnAction Player L)}
     (legal : menu who program admission view choice) (other : actor who program view ≠ some who) :

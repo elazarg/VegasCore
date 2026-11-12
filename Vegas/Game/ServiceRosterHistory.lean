@@ -120,7 +120,7 @@ theorem RosterCalendarPhase.environment
     subst command
     exact phase.expire_step atExpiry invariant stable remaining counted next reached
 
-private theorem RosterCalendarInvariant.transition
+theorem RosterCalendarInvariant.transition
     (setup : Setup (Player := Player) (L := L))
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (graph setup)))
     (rosters : (graph setup).EventId → List Player)

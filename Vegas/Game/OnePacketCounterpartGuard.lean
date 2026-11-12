@@ -56,7 +56,7 @@ theorem nodup_currentConfig : {Γ : SourceCtx Player L} → {O : Finset VarId} �
       | inr rest => exact nodup_currentConfig next (List.nodup_cons.mpr ⟨fresh, unique⟩) rest
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
-private theorem config_revealedInto_iff {Γ : SourceCtx Player L} {revelations : Revelations Γ}
+theorem config_revealedInto_iff {Γ : SourceCtx Player L} {revelations : Revelations Γ}
     {left right : Config Player L Γ} (leftEq : @left.revelations = @revelations)
     (rightEq : @right.revelations = @revelations) {owner : Player} {payload : L.Ty}
     {name published : VarId} :

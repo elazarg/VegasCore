@@ -206,7 +206,7 @@ theorem BehavioralPolicy.from_toProtocol {who : Player} :
         exact PMF.map_id _
       · exact from_toProtocol next admission policy.2 permitted
 
-private theorem protocolLaw_idle {who : Player} {Γ : SourceCtx Player L} {O : Finset VarId}
+theorem protocolLaw_idle {who : Player} {Γ : SourceCtx Player L} {O : Finset VarId}
     (program : SourceProgram Player L Γ O) (admission : CommitmentInterface program)
     (view : ProtocolView who program) (inactive : ProtocolView.actor who program view ≠ some who)
     (law : PMF {action : Option (OwnAction Player L) //

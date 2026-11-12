@@ -307,7 +307,7 @@ private theorem defaults_record_step :
           exact defaults_record_step next rest target joint running supported
 
 omit [DecidableEq (CellTy Player L)] in
-private theorem intended_defaults_trace (wellFormed : setup.WellFormed) :
+theorem intended_defaults_trace (wellFormed : setup.WellFormed) :
     ∀ {state} (trace : setup.intendedProtocol.Trace state),
       setup.protocolDefaults state = ⟨List.replicate (trace.length - 1) none⟩
   | _, .start => rfl

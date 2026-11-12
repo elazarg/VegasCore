@@ -104,19 +104,13 @@ variable {L : IExpr} [R : IExpr.ResultTypes L]
 variable {graph : Vegas.EventGraph Player L}
 
 omit [DecidableEq Player] in
-private theorem not_terminal_of_ready (config : graph.Config) {event : graph.EventId}
-    (ready : config.cut.Ready event) : ¬ config.cut.Terminal := by
-  intro terminal
-  exact ready.1 (terminal.symm ▸ Finset.mem_univ event)
-
-omit [DecidableEq Player] in
 /-- A ready event that precedes every unfinished event is the canonical
 scheduler's actual choice. -/
 theorem canonical_selected_eq (config : graph.Config) (event : graph.EventId)
     (ready : config.cut.Ready event)
     (least : ∀ other, other ∉ config.cut.completed → event.val ≤ other.val) :
     config.cut.enabled.min' (enabled_nonempty_of_not_terminal config
-      (not_terminal_of_ready config ready)) = event := by
+      ready.not_terminal) = event := by
   apply le_antisymm
   · exact Finset.min'_le _ _ ((EventOrder.Cut.mem_enabled _ _).mpr ready)
   · apply least
@@ -127,7 +121,7 @@ private theorem canonicalScheduler_eq_pure (config : graph.Config) (event : grap
     (ready : config.cut.Ready event)
     (least : ∀ other, other ∉ config.cut.completed → event.val ≤ other.val) :
     graph.canonicalScheduler (graph.publicObserve config) config.cut.enabled
-        (enabled_nonempty_of_not_terminal config (not_terminal_of_ready config ready)) =
+        (enabled_nonempty_of_not_terminal config ready.not_terminal) =
       PMF.pure ⟨event, (EventOrder.Cut.mem_enabled _ _).mpr ready⟩ := by
   apply congrArg PMF.pure
   apply Subtype.ext
@@ -146,7 +140,7 @@ theorem runPlan_canonical_actor_cases (profile : graph.BehavioralProfile)
       else profile who event actor (graph.playerObserve who config) inactive).bind fun action =>
         (config.step event ready action).bind
           (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) fuel) := by
-  rw [runPlan, dite_eq_right (not_terminal_of_ready config ready)]
+  rw [runPlan, dite_eq_right ready.not_terminal]
   conv_lhs =>
     arg 1
     unfold policyPlan
@@ -205,7 +199,7 @@ theorem runPlan_canonical_ownerless (profile : graph.BehavioralProfile)
       (config.step event ready
         (EventCode.actionOfActorNone (graph.nodes event) ownerless)).bind
           (graph.runPlan (graph.policyPlan profile graph.canonicalScheduler) fuel) := by
-  rw [runPlan, dite_eq_right (not_terminal_of_ready config ready)]
+  rw [runPlan, dite_eq_right ready.not_terminal]
   conv_lhs =>
     arg 1
     unfold policyPlan

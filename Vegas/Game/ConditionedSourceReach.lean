@@ -154,7 +154,7 @@ theorem conditionInitial_stepProb_initial
   rw [← kernel]
   ring
 
-private theorem intended_historyReachWeight_root
+theorem intended_historyReachWeight_root
     (setup : Setup (Player := Player) (L := L))
     (policies : ∀ who, setup.intendedModel.BehavioralPolicy who) :
     (setup.intendedModel.historyReachWeight policies ⟨none, .start⟩).toReal = 1 := by

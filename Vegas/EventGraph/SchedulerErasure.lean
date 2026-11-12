@@ -475,14 +475,6 @@ theorem stepThen_map_runKey_comm (config : graph.Config) {left right : graph.Eve
       (cut_complete_comm rightReady leftReady different.symm),
     stepThen_map_storeRecall_comm config left right leftReady rightReady different differ]
 
-omit [DecidableEq Player] in
-private theorem not_terminal_of_ready {config : graph.Config} {event : graph.EventId}
-    (ready : config.cut.Ready event) : ¬ config.cut.Terminal := by
-  intro terminal
-  apply ready.1
-  rw [terminal]
-  exact Finset.mem_univ _
-
 /-- **(B)** Completing any ready event first and then continuing canonically
 is the canonical continuation. -/
 theorem ReadyIndependent.eventStep_bind_canonicalLaw {profile : graph.BehavioralProfile}
@@ -496,10 +488,10 @@ theorem ReadyIndependent.eventStep_bind_canonicalLaw {profile : graph.Behavioral
   | zero =>
       intro config remaining event ready
       exact absurd ((config.terminal_iff_remaining_zero).mpr remaining)
-        (not_terminal_of_ready ready)
+        ready.not_terminal
   | succ fuel ih =>
       intro config remaining event ready
-      have notTerminal := not_terminal_of_ready ready
+      have notTerminal := ready.not_terminal
       obtain ⟨least, leastReady, leastLe⟩ := exists_least_ready config notTerminal
       rw [canonicalLaw_step profile config notTerminal least leastReady leastLe]
       by_cases same : event = least
