@@ -760,6 +760,9 @@ section PhysicalClients
 and authentic evidence collection conditions. `ClientCompilation` retains the
 selected raw assessment, its sequential equilibrium, absence of public defaults
 and charges, and the joint complete source-configuration/settled-payoff law.
+Its refinement certificate retains the intended strategy and actual replay
+posterior at genuine source decisions, covers every intended decision history,
+and preserves clean-boundary continuations through the audit and raw aliases.
 -/
 
 
@@ -810,6 +813,8 @@ theorem Vegas.Paper.compile_correct
     (intended : setup.intendedModel.BehavioralAssessment)
     (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended) :
     let compiled := spec.compile intended equilibrium
+    Nonempty (ClientAssessmentRefinement setup timeouts leaks bounds horizon scheduler
+      intended compiled.assessment) ∧
     compiled.assessment.IsSequentialEquilibrium
       ((raw).decisionInformationAntichain Initial horizon scheduler)
       ((raw).bounded Initial horizon scheduler).wellFoundedHistories
@@ -833,6 +838,8 @@ theorem Vegas.Paper.compile_ledger_correct
     (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended)
     (unobserved : leaks.DeliversNothing) :
     let compiled := spec.compile intended equilibrium
+    Nonempty (ClientAssessmentRefinement setup timeouts leaks bounds horizon scheduler
+      intended compiled.assessment) ∧
     compiled.assessment.IsSequentialEquilibrium
       ((raw).decisionInformationAntichain Initial horizon scheduler)
       ((raw).bounded Initial horizon scheduler).wellFoundedHistories

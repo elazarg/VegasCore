@@ -50,12 +50,12 @@ theorem intended_raw_sequentialEquilibrium_preserved
     Nonempty (ClientCompilation spec intended) := by
   let := spec.finiteNature
   let := spec.finiteSource
-  obtain ⟨native, nativeSE, nativeClear, nativeLaw⟩ :=
+  obtain ⟨native, fidelity, nativeSE, nativeClear, nativeLaw⟩ :=
     intended_onePacket_sequentialEquilibrium_preserved (timeouts := timeouts) parameter utility
       excludedPayoff spec.wellFormed spec.independent spec.observable spec.opportunity
       spec.inclusion spec.completes spec.timely spec.exitBelow intended equilibrium
       spec.outputValues spec.inputValues spec.capacity
-  obtain ⟨target, _refinement, targetSE, clean, states, joint⟩ :=
+  obtain ⟨target, refinement, targetSE, clean, states, joint⟩ :=
     intended_raw_sequentialEquilibrium_of_onePacket (timeouts := timeouts) (initial := Initial)
       parameter utility excludedPayoff intended native nativeSE nativeLaw spec.evidenceService
       spec.observationRate spec.deliveryRate spec.delivery_nonnegative spec.coverage
@@ -64,7 +64,12 @@ theorem intended_raw_sequentialEquilibrium_preserved
   have fullSE := (target.isSequentialEquilibrium_iff_truncated_of_bounded _ _
     ((bounds.rawMenu timeouts leaks).bounded Initial horizon scheduler).wellFoundedHistories
     ((bounds.rawMenu timeouts leaks).bounded Initial horizon scheduler) _).mpr targetSE
-  refine ⟨⟨target, fullSE, ?_, clean, joint⟩⟩
+  have assessmentRefinement : ClientAssessmentRefinement setup timeouts leaks bounds horizon
+      scheduler intended target := ⟨native, fidelity, refinement,
+    bounds.exists_raw_site_of_onePacket_site timeouts leaks Initial horizon scheduler,
+    MessageBounds.ExtendsOnePacketAssessment.runFrom_history_map bounds timeouts leaks Initial
+      horizon scheduler refinement⟩
+  refine ⟨⟨target, assessmentRefinement, fullSE, ?_, clean, joint⟩⟩
   intro final supported control current
   let raw := bounds.rawMenu timeouts leaks
   let normalize := ((reactiveNormalization timeouts) leaks).state

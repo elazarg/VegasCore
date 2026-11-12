@@ -56,6 +56,7 @@ public import GameTheoryExtensions.Math.Probability.ProductTransport
 public import GameTheoryExtensions.Math.Probability.SiteDraw
 public import GameTheoryExtensions.Math.Probability.Support
 public import GameTheoryExtensions.Math.Probability.SwapTransport
+public import GameTheoryExtensions.Math.Probability.RetentionLimit
 public import GameTheoryExtensions.Math.Probability.TotalVariation
 public import GameTheoryExtensions.Math.Probability.Uniform
 public import GameTheoryExtensions.Math.Transfers

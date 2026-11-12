@@ -86,6 +86,16 @@ consumes the forced-exit theorem and the
 The [instance guide](sequential-se-instances.md) describes their exact scope.
 The [semantic client compiler](../Vegas/Game/ClientCompiler.lean) selects
 a consistent bounded-menu completion uniformly for each source equilibrium.
+The [assessment fidelity contract](../Vegas/Game/OnePacketAssessmentFidelity.lean)
+retains intended decision laws, actual replay posteriors and clean-boundary
+continuations of that common completion. Its assembly owner combines strategy,
+belief and continuation limits; source-history and decision-coverage owners
+prove that every intended decision history has a genuine native realization.
+The [raw assessment transport](../Vegas/Game/OnePacketAssessmentExtension.lean)
+keeps corresponding local laws and complete normalized history laws through
+the audit and private response aliases. The
+[physical fidelity adapter](../Vegas/Game/ClientAssessmentFidelity.lean) composes
+that certificate with the existing callback decoder.
 [Ledger assessment realization](../Interaction/ReactiveLedgerAssessment.lean)
 identifies complete physical continuations and source-independent client laws.
 The [compiler guide](semantic-client-compiler.md) distinguishes this semantic

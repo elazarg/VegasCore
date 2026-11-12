@@ -36,6 +36,16 @@ initial cells. Applying the fixed source initial-state and public-outcome
 readers therefore retains their joint law too; the utility's parameter reader
 does not restrict this typed-store conclusion.
 
+The returned artifact also retains the supplied intended assessment through
+[`ClientAssessmentRefinement`](../Vegas/Game/ClientSpecification.lean).
+At genuine first source decisions its strategy is the canonical intended law;
+its actual replay posterior is the intended posterior, including off-path
+sites. Every intended decision history has a legal native realization with
+the same decoded source state and a raw counterpart. Clean source boundaries
+retain their intended continuation readout law, with exact audit/raw-alias
+transport at corresponding histories. These certificates concern the same
+selected assessment as the equilibrium and initialized settled-payoff law.
+
 The monetary specialization
 `Vegas.intended_raw_programPayments_preserved` in
 [PaymentPreservation](../Vegas/Game/PaymentPreservation.lean)
