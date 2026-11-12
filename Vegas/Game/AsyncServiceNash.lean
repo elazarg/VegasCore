@@ -400,8 +400,11 @@ theorem isεBestResponse_of_clientProfile {Parameter : Type}
   have deviationSource' : UtilityIntegrable sourceUtility who
       ((service.sourceModel admission).runBehavioral (Profile.update source who alternative)
         (instructionCount service.setup.program + 1)) := deviationSource
-  change extendedExpectedUtility nativeUtility who _ ≤
-    extendedExpectedUtility nativeUtility who _ + _
+  change extendedExpectedUtility nativeUtility who
+      (service.run menu
+        (service.clientProfile admission menu timing (Profile.update source who alternative))) ≤
+    extendedExpectedUtility nativeUtility who
+      (service.run menu (service.clientProfile admission menu timing source)) + _
     at compared
   rw [extendedExpectedUtility_eq deviationNative', extendedExpectedUtility_eq honestNative',
     ← EReal.coe_add, EReal.coe_le_coe_iff] at compared
