@@ -3,6 +3,9 @@ module
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
 public import Vegas.Game.OnePacketExclusionPayoff
+public import Vegas.Game.OnePacketAssessmentFidelity
+public import Vegas.Game.OnePacketAssessmentExtension
+public import Vegas.Game.OnePacketRawCoverage
 public import Vegas.Game.OnePacketPublicInitialSignal
 public import Vegas.Game.OnePacketRetention
 public import Vegas.Game.OnePacketSwapFiberSum
@@ -123,10 +126,48 @@ def payoff (who : Player) (state : (app).ProtocolState) : ℝ :=
 
 end ClientSpec
 
-/-- A semantic artifact certifying equilibrium in the bounded raw response-menu
-game and preserving its source readout and settled payoff law. -/
+variable (setup timeouts leaks bounds horizon scheduler)
+
+/-- One common native assessment realizes the intended decisions and beliefs;
+the count audit and raw response aliases retain that assessment exactly. -/
+structure ClientAssessmentRefinement
+    (intended : setup.intendedModel.BehavioralAssessment)
+    (assessment : (model).BehavioralAssessment) where
+  native : (onePacketModel setup timeouts leaks bounds Initial horizon
+    scheduler).BehavioralAssessment
+  fidelity : OnePacketAssessmentFidelity setup timeouts leaks bounds horizon scheduler
+    intended native
+  extension : bounds.ExtendsOnePacketAssessment timeouts leaks Initial horizon scheduler
+    native assessment
+  rawSites : ∀ who (site : (onePacketModel setup timeouts leaks bounds Initial horizon
+      scheduler).InformationSite who),
+    ∃ rawSite : (model).InformationSite who,
+      ((reactiveNormalization timeouts) leaks).site (raw)
+        (bounds.rawMenu_recall timeouts leaks) Initial horizon scheduler who rawSite =
+      (bounds.onePacketRestriction timeouts leaks Initial horizon scheduler).site who site
+  continuation : ∀
+    (sourceHistory : ((bounds.onePacketMenu timeouts leaks).protocol Initial horizon
+      scheduler).History)
+    (rawHistory : ((raw).protocol Initial horizon scheduler).History),
+    ((reactiveNormalization timeouts) leaks).history (raw)
+        (bounds.rawMenu_recall timeouts leaks) Initial horizon scheduler rawHistory =
+      (bounds.onePacketRestriction timeouts leaks Initial horizon scheduler).history sourceHistory →
+    ((raw).runFrom Initial horizon scheduler assessment.strategy rawHistory).map
+        (((reactiveNormalization timeouts) leaks).history (raw)
+          (bounds.rawMenu_recall timeouts leaks) Initial horizon scheduler) =
+      ((bounds.onePacketMenu timeouts leaks).runFrom Initial horizon scheduler native.strategy
+        sourceHistory).map
+        (bounds.onePacketRestriction timeouts leaks Initial horizon scheduler).history
+
+variable {setup timeouts leaks bounds horizon scheduler}
+
+/-- A semantic artifact retaining the intended assessment at source decisions,
+certifying equilibrium in the bounded raw response-menu game, and preserving
+the complete source readout and settled payoff law. -/
 structure ClientCompilation (intended : setup.intendedModel.BehavioralAssessment) where
   assessment : (model).BehavioralAssessment
+  refinement : ClientAssessmentRefinement setup timeouts leaks bounds horizon scheduler
+    intended assessment
   equilibrium : assessment.IsSequentialEquilibrium
     ((raw).decisionInformationAntichain Initial horizon scheduler)
     ((raw).bounded Initial horizon scheduler).wellFoundedHistories

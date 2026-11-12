@@ -272,11 +272,13 @@ end ClientCompilation
 
 namespace ClientSpec
 
-/-- Compiler correctness within the bounded raw menu: equilibrium, exact implemented
-strategies, and the joint source-configuration/settled-payoff law. -/
+/-- Compiler correctness within the bounded raw menu: intended-assessment
+refinement, equilibrium, exact physical strategies and the joint source law. -/
 theorem compile_correct (intended : setup.intendedModel.BehavioralAssessment)
     (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended) :
     let compiled := spec.compile intended equilibrium
+    Nonempty (ClientAssessmentRefinement setup timeouts leaks bounds horizon scheduler
+      intended compiled.assessment) ∧
     compiled.assessment.IsSequentialEquilibrium
       ((raw).decisionInformationAntichain Initial horizon scheduler)
       ((raw).bounded Initial horizon scheduler).wellFoundedHistories
@@ -288,7 +290,8 @@ theorem compile_correct (intended : setup.intendedModel.BehavioralAssessment)
         (instructionCount setup.program + 1)).map
         (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
   intro compiled
-  exact ⟨compiled.equilibrium, compiled.clients_strategy, compiled.clients_outcomeLaw⟩
+  exact ⟨⟨compiled.refinement⟩, compiled.equilibrium, compiled.clients_strategy,
+    compiled.clients_outcomeLaw⟩
 
 /-- Ledger-client correctness within the bounded raw menu, with strategy agreement at every
 legal decision, when the interface does not deliver pending observations. -/
@@ -296,6 +299,8 @@ theorem compile_ledger_correct (intended : setup.intendedModel.BehavioralAssessm
     (equilibrium : setup.IntendedSequentialEquilibrium parameter utility intended)
     (unobserved : leaks.DeliversNothing) :
     let compiled := spec.compile intended equilibrium
+    Nonempty (ClientAssessmentRefinement setup timeouts leaks bounds horizon scheduler
+      intended compiled.assessment) ∧
     compiled.assessment.IsSequentialEquilibrium
       ((raw).decisionInformationAntichain Initial horizon scheduler)
       ((raw).bounded Initial horizon scheduler).wellFoundedHistories
@@ -310,7 +315,7 @@ theorem compile_ledger_correct (intended : setup.intendedModel.BehavioralAssessm
         (instructionCount setup.program + 1)).map
         (intendedReadoutExclusion setup parameter utility excludedPayoff) := by
   intro compiled
-  exact ⟨compiled.equilibrium, compiled.ledgerClients_ignoreLeakedFields,
+  exact ⟨⟨compiled.refinement⟩, compiled.equilibrium, compiled.ledgerClients_ignoreLeakedFields,
     compiled.ledgerClients_strategy_at_history unobserved,
     compiled.ledgerClients_outcomeLaw unobserved⟩
 

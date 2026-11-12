@@ -8,6 +8,7 @@ public import Vegas.Game.OnePacketCommonCompletion
 public import Vegas.Game.OnePacketComparisonRetention
 public import Vegas.Game.OnePacketOwingOptimality
 public import Vegas.Game.OnePacketExclusionPayoff
+public import Vegas.Game.OnePacketFidelityAssembly
 public import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
 public import GameTheoryExtensions.Analysis.Protocol.GainComparison
 
@@ -75,6 +76,7 @@ private theorem intended_onePacket_sequentialEquilibrium_preserved_of_bounded_ut
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount) :
     ∃ native : (N).BehavioralAssessment,
+      OnePacketAssessmentFidelity setup timeouts leaks bounds horizon scheduler intended native ∧
       native.IsSequentialEquilibriumFor
         ((Menu).decisionInformationAntichain Initial horizon scheduler)
         (fun who site => native.truncatedContinuationContext site
@@ -111,6 +113,11 @@ private theorem intended_onePacket_sequentialEquilibrium_preserved_of_bounded_ut
       vanishes
   have assembledNative : OnePacketAssembled setup timeouts leaks bounds horizon scheduler
       sourceSequence scale positive le_one weights sequence := assembled
+  have fidelity := onePacketAssembled_limit_fidelity setup timeouts leaks bounds horizon scheduler
+    wellFormed independent observable sourceSequence sourceMixed sourceBayes scale positive le_one
+    vanishes (fun _ => rfl) covers coversInputs capacity weights sequence assembledNative mixed
+    bayes intended limit sourceConverges index increasing converges opportunity inclusion completes
+    timely
   let payoffBound : ℝ := ∑ player,
     (max 0 (max (excludedPayoff player) (upperUtility player)) -
       min 0 (min (excludedPayoff player) (lowerUtility player)))
@@ -229,7 +236,7 @@ private theorem intended_onePacket_sequentialEquilibrium_preserved_of_bounded_ut
   have readoutLaw := congrArg (fun law => law.map Prod.fst) nativeLaw
   simp only [PMF.map_comp, targetObserve, sourceObserve, readoutExclusion,
     intendedReadoutExclusion, Function.comp_def] at readoutLaw
-  refine ⟨limit, nativeSE, ?_, nativeLaw⟩
+  refine ⟨limit, fidelity, nativeSE, ?_, nativeLaw⟩
   intro final supported control current
   exact onePacket_defaulted_eq_empty_of_readout_law setup timeouts leaks bounds Initial horizon
     scheduler wellFormed intended.strategy limit.strategy (2 * horizon + 1) readoutLaw final
@@ -284,6 +291,7 @@ theorem intended_onePacket_sequentialEquilibrium_preserved
     (covers : bounds.CoversOutputValues) (coversInputs : bounds.CoversInputValues)
     (capacity : ∀ who, bindingEventCount (graph setup) who < bounds.candidateCount) :
     ∃ native : (N).BehavioralAssessment,
+      OnePacketAssessmentFidelity setup timeouts leaks bounds horizon scheduler intended native ∧
       native.IsSequentialEquilibriumFor
         ((Menu).decisionInformationAntichain Initial horizon scheduler)
         (fun who site => native.truncatedContinuationContext site
@@ -337,7 +345,7 @@ theorem intended_onePacket_sequentialEquilibrium_preserved
     intro history terminal observed who
     rw [sourceAgrees history terminal observed]
     exact below history terminal observed who
-  obtain ⟨native, rational, clear, law⟩ :=
+  obtain ⟨native, fidelity, rational, clear, law⟩ :=
     intended_onePacket_sequentialEquilibrium_preserved_of_bounded_utility parameter extension
       excludedPayoff wellFormed independent observable opportunity inclusion completes timely
       (fun who => -bound who) bound
@@ -380,7 +388,7 @@ theorem intended_onePacket_sequentialEquilibrium_preserved
     funext history
     exact congrArg (fun payoff => (setup.protocolReadout history.state, payoff))
       (readoutPayoff (sourceAgrees history))
-  refine ⟨native, ?_, clear, ?_⟩
+  refine ⟨native, fidelity, ?_, clear, ?_⟩
   · have same :
         (fun who (history : (E).History) => exclusionBase setup timeouts parameter extension
           excludedPayoff leaks history.state who) =
