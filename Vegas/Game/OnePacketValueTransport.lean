@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketForcedRegular
-import Vegas.Game.OnePacketExclusionPayoff
-import Vegas.Game.IntendedAuthenticOpening
+public import Vegas.Game.OnePacketForcedRegular
+public import Vegas.Game.OnePacketExclusionPayoff
+public import Vegas.Game.IntendedAuthenticOpening
+
+@[expose] public section
 
 /-! # Regular histories owe nothing
 

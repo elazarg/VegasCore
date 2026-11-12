@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
+public import Vegas.Game.RevealService
+
+@[expose] public section
 
 /-! # One source policy over all visits of a revelation roster
 

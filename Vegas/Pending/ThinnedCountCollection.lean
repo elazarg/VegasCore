@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveCountAudit
-import Interaction.ThinnedEvidenceService
+public import Vegas.Pending.ReactiveCountAudit
+public import Interaction.ThinnedEvidenceService
+
+@[expose] public section
 
 /-! # Imperfect observation and delivery for signed count evidence -/
 

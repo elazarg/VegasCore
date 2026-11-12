@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingSubmittedInclusion
-import Vegas.Pending.ReactiveBindingRejectedInclusion
-import Vegas.Pending.ReactiveBindingFrameForeign
-import Vegas.Pending.ReactiveSignedCommitments
+public import Vegas.Pending.ReactiveBindingSubmittedInclusion
+public import Vegas.Pending.ReactiveBindingRejectedInclusion
+public import Vegas.Pending.ReactiveBindingFrameForeign
+public import Vegas.Pending.ReactiveSignedCommitments
+
+@[expose] public section
 
 /-! # Complete count-admitted opaque inclusion cases -/
 

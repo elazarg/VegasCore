@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDirectedRepairResponse
+public import Vegas.Game.OnePacketDirectedRepairResponse
+
+@[expose] public section
 
 /-! # Actual scheduler traces through directed binding repair
 

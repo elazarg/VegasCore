@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphPolicyAlignment
-import Vegas.Compile.EventGraphScheduling
-import Vegas.EventGraph.PolicyCongruence
+public import Vegas.Compile.EventGraphPolicyAlignment
+public import Vegas.Compile.EventGraphScheduling
+public import Vegas.EventGraph.PolicyCongruence
+
+@[expose] public section
 
 /-! # Exact deviation backtranslation for compiled graphs
 

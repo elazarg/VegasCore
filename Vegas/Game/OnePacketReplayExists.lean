@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketForcedInputs
-import Vegas.Game.SourcePrefixPublications
+public import Vegas.Game.OnePacketForcedInputs
+public import Vegas.Game.SourcePrefixPublications
+
+@[expose] public section
 
 /-! # Existence of the intended replay along forced regular histories
 

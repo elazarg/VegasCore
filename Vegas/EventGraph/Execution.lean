@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.Basic
+public import Vegas.EventGraph.Basic
+
+@[expose] public section
 
 /-! # Cut-based execution of event graphs
 

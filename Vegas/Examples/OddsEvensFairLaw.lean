@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensFairValue
-import Vegas.Game.OnePacketLawApproximation
-import GameTheory.Math.Probability.FiniteUniform
+public import Vegas.Examples.OddsEvensFairValue
+public import Vegas.Game.OnePacketLawApproximation
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 

@@ -30,6 +30,7 @@ def load_module(name, path):
 
 DEFS = load_module("proof_inventory_defs", ROOT / "lean-defs.py")
 POLICY = load_module("proof_inventory_policy", ROOT / "scripts/check-lean-options.py")
+BOUNDARIES = load_module("proof_inventory_imports", ROOT / "scripts/check-module-boundaries.py")
 DECLARATION = re.compile(
     r"\b(theorem|lemma|example|def|abbrev|instance|structure|inductive|class)\s+([^\s(:{\[]+)"
 )
@@ -111,7 +112,7 @@ def inventory(root, paths, width):
                         "lines": len(text.splitlines()),
                         "proof_bodies": len(bodies),
                         "body_lines": sum(item["body_lines"] for item in bodies),
-                        "imports": re.findall(r"(?m)^import\s+([\w.]+)", clean)})
+                        "imports": BOUNDARIES.imports(clean)})
         for item in bodies:
             declarations.append({key: value for key, value in
                                  {"path": path, **item}.items() if key != "body"})

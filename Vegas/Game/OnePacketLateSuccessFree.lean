@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateCompletionLaw
+public import Vegas.Game.OnePacketLateCompletionLaw
+
+@[expose] public section
 
 /-! # Value-free success after a late commitment
 

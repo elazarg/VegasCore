@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceDecodedDebt
-import Vegas.Game.SourceServiceCompletion
-import Vegas.Game.ServiceInformation
-import Vegas.Compile.EventGraphParameterReadout
-import Vegas.Source.FailedBindingDeviation
-import Vegas.Source.Exclusion
+public import Vegas.Game.SourceServiceDecodedDebt
+public import Vegas.Game.SourceServiceCompletion
+public import Vegas.Game.ServiceInformation
+public import Vegas.Compile.EventGraphParameterReadout
+public import Vegas.Source.FailedBindingDeviation
+public import Vegas.Source.Exclusion
+
+@[expose] public section
 
 /-! # The forced region and the projected source view
 

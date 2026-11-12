@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketRecallPrefix
-import Vegas.Game.OnePacketDirectedRepairPrefix
+public import Vegas.Game.OnePacketRecallPrefix
+public import Vegas.Game.OnePacketDirectedRepairPrefix
+
+@[expose] public section
 
 /-! # Unfinished foreign events have no earlier activation at an own source turn -/
 

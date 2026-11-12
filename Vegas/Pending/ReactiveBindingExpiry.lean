@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingFrameStep
+public import Vegas.Pending.ReactiveBindingFrameStep
+
+@[expose] public section
 
 /-! # Clock padding and expiry across a private binding repair
 

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.IntendedPlay
+public import Vegas.Source.IntendedPlay
+
+@[expose] public section
 
 /-! # Irrevocable failed bindings force an owner publication failure
 

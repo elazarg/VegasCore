@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnerPriorSite
-import Vegas.Game.OnePacketOwnerBounds
+public import Vegas.Game.OnePacketOwnerPriorSite
+public import Vegas.Game.OnePacketOwnerBounds
+
+@[expose] public section
 
 /-! # Owner-swap input encodings and restricted guards
 

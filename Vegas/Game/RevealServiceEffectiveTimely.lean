@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealServiceTimely
-import Vegas.Pending.EffectiveOpening
+public import Vegas.Game.RevealServiceTimely
+public import Vegas.Pending.EffectiveOpening
+
+@[expose] public section
 
 /-! # Honest accepted openings never expire
 

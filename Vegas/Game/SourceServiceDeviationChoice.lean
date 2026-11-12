@@ -1,15 +1,19 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.ObservationRecall
-import Vegas.Compile.EventGraphStep
-import Vegas.Game.SourceServiceCheckpoint
-import Vegas.Pending.ExclusionCompletion
-import GameTheoryExtensions.Math.Probability.ObservedChoice
-import Interaction.ReactiveRawRoundTrace
-import Vegas.Game.ServiceDeviationTraffic
-import Vegas.Game.SourceServiceTurnPolicy
-import Vegas.Game.SourceServiceCompletion
-import Interaction.ReactiveMixtureRounds
+public import Vegas.Source.ObservationRecall
+public import Vegas.Compile.EventGraphStep
+public import Vegas.Game.SourceServiceCheckpoint
+public import Vegas.Pending.ExclusionCompletion
+public import GameTheoryExtensions.Math.Probability.ObservedChoice
+public import Interaction.ReactiveRawRoundTrace
+public import Vegas.Game.ServiceDeviationTraffic
+public import Vegas.Game.SourceServiceTurnPolicy
+public import Vegas.Game.SourceServiceCompletion
+public import Interaction.ReactiveMixtureRounds
+
+@[expose] public section
 
 /-! # Actual disclosure choices and a deviating player at a ready event
 
@@ -151,7 +155,7 @@ theorem runUntil_deviation_focal
     exact round_ready_of_pending alone (currentHolds running) reached
   · exact holds
 
-private def actionAt (setup : Setup (Player := Player) (L := L))
+def actionAt (setup : Setup (Player := Player) (L := L))
     (mode : EventGraph.ExecutionMode)
     (event : (serviceGraph setup mode).EventId)
     {observer : Player} (observed : (serviceGraph setup mode).PlayerObservation observer) :

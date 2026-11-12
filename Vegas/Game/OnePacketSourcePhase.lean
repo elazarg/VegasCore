@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketUnintendedCommitment
-import Vegas.Game.OnePacketSilentShape
-import Vegas.Game.OnePacketPhasePotential
-import Vegas.Game.OnePacketValueTransport
-import Vegas.Game.OnePacketCommitmentCompletion
+public import Vegas.Game.OnePacketUnintendedCommitment
+public import Vegas.Game.OnePacketSilentShape
+public import Vegas.Game.OnePacketPhasePotential
+public import Vegas.Game.OnePacketValueTransport
+public import Vegas.Game.OnePacketCommitmentCompletion
+
+@[expose] public section
 
 /-! # Local native binding completion and source potentials -/
 

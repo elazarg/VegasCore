@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnerRecall
-import Vegas.Game.OnePacketFailureBridge
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Game.OnePacketCanonicalAcceptance
-import Vegas.Game.OnePacketCertificateField
-import Vegas.EventGraph.ResolutionProvenance
+public import Vegas.Game.OnePacketOwnerRecall
+public import Vegas.Game.OnePacketFailureBridge
+public import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Game.OnePacketCanonicalAcceptance
+public import Vegas.Game.OnePacketCertificateField
+public import Vegas.EventGraph.ResolutionProvenance
+
+@[expose] public section
 
 /-! # A debt-free late owner is settled
 

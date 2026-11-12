@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketStepMasses
+public import Vegas.Game.OnePacketStepMasses
+
+@[expose] public section
 
 /-! # Masses of a response at a pending reveal
 

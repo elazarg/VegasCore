@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensEquilibrium
-import GameTheory.Analysis.Protocol.BehavioralBayes
-import GameTheory.Math.Probability.FiniteUniform
+public import Vegas.Examples.OddsEvensEquilibrium
+public import GameTheory.Analysis.Protocol.BehavioralBayes
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 

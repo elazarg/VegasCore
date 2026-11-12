@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Protocol.PrivateStrategy
-import GameTheoryExtensions.Math.Probability.Uniform
-import GameTheoryExtensions.Math.Probability.Expectation
-import GameTheoryExtensions.Math.Probability.Support
-import GameTheory.Math.Probability.FiniteUniform
+public import GameTheory.Protocol.PrivateStrategy
+public import GameTheoryExtensions.Math.Probability.Uniform
+public import GameTheoryExtensions.Math.Probability.Expectation
+public import GameTheoryExtensions.Math.Probability.Support
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 

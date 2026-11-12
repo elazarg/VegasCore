@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphAssembly
-import Vegas.Compile.EventGraphPolicy
-import Vegas.EventGraph.DefaultFailure
+public import Vegas.Compile.EventGraphAssembly
+public import Vegas.Compile.EventGraphPolicy
+public import Vegas.EventGraph.DefaultFailure
+
+@[expose] public section
 
 /-! # Every compiled binding is revealed
 

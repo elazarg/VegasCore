@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.LastOwnedPhase
-import Vegas.Game.SourceServiceChanceContinuation
+public import Vegas.Game.LastOwnedPhase
+public import Vegas.Game.SourceServiceChanceContinuation
+
+@[expose] public section
 
 /-! # A visible chance event, served last
 

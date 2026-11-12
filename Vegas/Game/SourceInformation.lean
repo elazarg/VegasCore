@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.ObservationRecall
-import Vegas.Source.ProtocolChoiceFiniteness
-import GameTheoryExtensions.Analysis.Protocol.Bayes
-import GameTheory.Analysis.Protocol.CounterfactualDecomposition
-import GameTheoryExtensions.Math.Probability.Uniform
-import Vegas.Source.RevealSequence
-import GameTheory.Math.Probability.FiniteUniform
+public import Vegas.Source.ObservationRecall
+public import Vegas.Source.ProtocolChoiceFiniteness
+public import GameTheoryExtensions.Analysis.Protocol.Bayes
+public import GameTheory.Analysis.Protocol.CounterfactualDecomposition
+public import GameTheoryExtensions.Math.Probability.Uniform
+public import Vegas.Source.RevealSequence
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 

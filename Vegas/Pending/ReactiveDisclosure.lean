@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactivePolicy
-import Vegas.Pending.EventBindingInvariant
+public import Vegas.Pending.ReactivePolicy
+public import Vegas.Pending.EventBindingInvariant
+
+@[expose] public section
 
 /-! # Authentic compiled disclosures
 

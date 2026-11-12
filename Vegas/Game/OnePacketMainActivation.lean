@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketClearRegularity
-import GameTheoryExtensions.Protocol.TracePrefix
+public import Vegas.Game.OnePacketClearRegularity
+public import GameTheoryExtensions.Protocol.TracePrefix
+
+@[expose] public section
 
 /-! # Source-main first-activation conditions on actual counted traces -/
 

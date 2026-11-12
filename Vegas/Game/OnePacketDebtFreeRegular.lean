@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapRegular
-import Vegas.Game.OnePacketProjectedDecision
+public import Vegas.Game.OnePacketSwapRegular
+public import Vegas.Game.OnePacketProjectedDecision
+
+@[expose] public section
 
 /-! # Debt-free histories are regular
 

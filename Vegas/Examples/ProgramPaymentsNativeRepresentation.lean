@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.ProgramPaymentsRuntimeService
+public import Vegas.Examples.ProgramPaymentsRuntimeService
+
+@[expose] public section
 
 /-! # Accepted handles obstruct a Config-only native representation
 
@@ -20,7 +24,7 @@ open GameTheory.Protocol
 abbrev nativeGraph := Vegas.graph (setup 2)
 abbrev app := application (setup 2) (Vegas.timeouts (setup 2)) (leaks 2)
 
-private instance : NeZero nativeGraph.order.eventCount := ⟨by decide⟩
+instance : NeZero nativeGraph.order.eventCount := ⟨by decide⟩
 
 def initial : app.State :=
   EventGraphRuntime.State.initial ((setup 2).eventInputs ProgramPayments.initial)
@@ -175,7 +179,7 @@ def startTrace : protocol.Trace (some ⟨9, none, start⟩) :=
       rw [initial_law, PMF.pure_map]
       simp [start])
 
-private def environmentTrace (remaining : Nat) (execution next : app.Execution)
+def environmentTrace (remaining : Nat) (execution next : app.Execution)
     (command : app.Command) (trace : protocol.Trace (some ⟨remaining + 1, none, execution⟩))
     (scheduled : (service 2).scheduler execution.environmentRecall
       (execution.observeEnvironment app) = PMF.pure command)

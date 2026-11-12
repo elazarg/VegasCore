@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCounterpartGuard
+public import Vegas.Game.OnePacketCounterpartGuard
+
+@[expose] public section
 
 /-! # Exposure guards through every actual history prefix
 

@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceFirstTurnMixture
-import Vegas.Game.SourceServiceFacts
-import Vegas.Game.SourceServiceCompletion
-import Vegas.Pending.ReactiveAcceptedOutput
-import Vegas.Pending.ReactiveCanonicalMenu
+public import Vegas.Game.SourceServiceFirstTurnMixture
+public import Vegas.Game.SourceServiceFacts
+public import Vegas.Game.SourceServiceCompletion
+public import Vegas.Pending.ReactiveAcceptedOutput
+public import Vegas.Pending.ReactiveCanonicalMenu
+
+@[expose] public section
 
 /-! # Fresh submissions only at the author's own turn
 

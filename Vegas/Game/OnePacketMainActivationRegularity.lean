@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionStoppedBoundary
-import Vegas.Pending.ExclusionFailureOwners
-import Vegas.Game.OnePacketRareMainMass
-import Vegas.Game.OnePacketForeignFailure
-import Vegas.Game.OnePacketDebtRouting
-import Vegas.Game.OnePacketRecordedSilence
-import Vegas.Game.OnePacketSilenceMasses
-import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
+public import Vegas.Pending.ExclusionStoppedBoundary
+public import Vegas.Pending.ExclusionFailureOwners
+public import Vegas.Game.OnePacketRareMainMass
+public import Vegas.Game.OnePacketForeignFailure
+public import Vegas.Game.OnePacketDebtRouting
+public import Vegas.Game.OnePacketRecordedSilence
+public import Vegas.Game.OnePacketSilenceMasses
+public import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
+
+@[expose] public section
 
 /-! # Source-main first responses preserve actual counted regularity -/
 

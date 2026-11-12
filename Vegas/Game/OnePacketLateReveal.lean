@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateSuccessFree
-import Vegas.Game.OnePacketSourceTurn
-import Vegas.Game.OnePacketDecodedActor
-import Vegas.EventGraph.ResolutionProvenance
+public import Vegas.Game.OnePacketLateSuccessFree
+public import Vegas.Game.OnePacketSourceTurn
+public import Vegas.Game.OnePacketDecodedActor
+public import Vegas.EventGraph.ResolutionProvenance
+
+@[expose] public section
 
 /-! # Completions of a late reveal
 

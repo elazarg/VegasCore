@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSilenceMasses
-import GameTheoryExtensions.Math.Probability.Uniform
+public import Vegas.Game.OnePacketSilenceMasses
+public import GameTheoryExtensions.Math.Probability.Uniform
+
+@[expose] public section
 
 /-! # Silence masses at a pending binding
 

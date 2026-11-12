@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketUnifiedMasses
-import Vegas.Game.OnePacketSlotError
+public import Vegas.Game.OnePacketUnifiedMasses
+public import Vegas.Game.OnePacketSlotError
+
+@[expose] public section
 
 /-! # Bounds on step factors
 

@@ -1,15 +1,19 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketHonestContinuation
-import Vegas.Game.OnePacketForcedPrefix
-import Vegas.Game.OnePacketForcedRegular
-import Vegas.Game.OnePacketDebtFreeResponse
-import Vegas.Game.HonestContinuationIntended
-import GameTheory.Analysis.Protocol.RestrictionDomination
-import Interaction.ReactiveHistory
-import Vegas.Pending.ReactiveGraphSteps
-import Vegas.EventGraph.ObservationStep
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketHonestContinuation
+public import Vegas.Game.OnePacketForcedPrefix
+public import Vegas.Game.OnePacketForcedRegular
+public import Vegas.Game.OnePacketDebtFreeResponse
+public import Vegas.Game.HonestContinuationIntended
+public import GameTheory.Analysis.Protocol.RestrictionDomination
+public import Interaction.ReactiveHistory
+public import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.EventGraph.ObservationStep
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # Honest ready callbacks are recorded under counted native service -/
 
@@ -42,7 +46,7 @@ local notation "N" => onePacketModel setup timeouts leaks bounds (initialLaw set
 local notation "E" => ReactiveApplication.ResponseMenu.protocol menu (initialLaw setup) horizon
   scheduler
 
-private def ReadyTurnsRecorded (execution : (application setup timeouts leaks).Execution) : Prop :=
+def ReadyTurnsRecorded (execution : (application setup timeouts leaks).Execution) : Prop :=
   ∀ event : (graph setup).EventId, event ∉ execution.application.config.cut.completed →
     ∀ who entry, entry ∈ execution.logs who → ActivatedAt setup timeouts leaks who event entry →
       (eventRecorded timeouts) leaks (execution.logs who) event = true

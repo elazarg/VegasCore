@@ -1,16 +1,20 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketIntendedCommitmentComparison
-import Vegas.Game.OnePacketCommitmentSourcePolicy
-import Vegas.Game.OnePacketValueTransport
-import Vegas.Game.OnePacketOwnIntended
-import Vegas.Game.OnePacketPrescribedSites
-import Vegas.Game.OnePacketRecordedSilence
-import Vegas.Game.IntendedChoiceReach
-import Vegas.Game.OnePacketSourceBeliefBounds
-import Vegas.Game.OnePacketIrregularBeliefBounds
-import GameTheoryExtensions.Analysis.Protocol.SourceGainTransport
-import GameTheoryExtensions.Math.Probability.TotalVariation
+public import Vegas.Game.OnePacketIntendedCommitmentComparison
+public import Vegas.Game.OnePacketCommitmentSourcePolicy
+public import Vegas.Game.OnePacketValueTransport
+public import Vegas.Game.OnePacketOwnIntended
+public import Vegas.Game.OnePacketPrescribedSites
+public import Vegas.Game.OnePacketRecordedSilence
+public import Vegas.Game.IntendedChoiceReach
+public import Vegas.Game.OnePacketSourceBeliefBounds
+public import Vegas.Game.OnePacketIrregularBeliefBounds
+public import GameTheoryExtensions.Analysis.Protocol.SourceGainTransport
+public import GameTheoryExtensions.Math.Probability.TotalVariation
+
+@[expose] public section
 
 /-! # Source incentive comparisons for intended native commitments -/
 

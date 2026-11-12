@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealBlockReflection
+public import Vegas.Game.RevealBlockReflection
+
+@[expose] public section
 
 /-! # Phases of a graph with concurrent independent reveals
 

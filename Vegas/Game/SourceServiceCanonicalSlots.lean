@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceTurnSubmissions
-import Vegas.Pending.ReactiveCandidateBudget
-import Vegas.Pending.ReactiveCanonicalMenu
-import Interaction.ReactiveRawRoundTrace
+public import Vegas.Game.SourceServiceTurnSubmissions
+public import Vegas.Pending.ReactiveCandidateBudget
+public import Vegas.Pending.ReactiveCanonicalMenu
+public import Interaction.ReactiveRawRoundTrace
+
+@[expose] public section
 
 /-! # Canonical slots on the support of the turn-counted policy
 

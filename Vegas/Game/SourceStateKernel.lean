@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceContinuation
+public import Vegas.Game.SourceContinuation
+
+@[expose] public section
 
 /-! # One-step reductions for the actual source protocol
 

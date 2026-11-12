@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateReveal
-import Vegas.Game.OnePacketLateLumping
+public import Vegas.Game.OnePacketLateReveal
+public import Vegas.Game.OnePacketLateLumping
+
+@[expose] public section
 
 /-! # Source potentials at completed native events -/
 

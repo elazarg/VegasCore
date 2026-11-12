@@ -1,14 +1,18 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
-import Vegas.Game.SourceServiceAsyncStep
-import Vegas.Game.RevealServiceCalendarState
-import Vegas.Game.OnePacketLawApproximation
-import Vegas.Game.OnePacketExclusionPayoff
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Game.OnePacketCompletion
-import Vegas.Game.OnePacketPrescribedSupport
-import Vegas.Game.OnePacketEventFailure
+public import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
+public import Vegas.Game.SourceServiceAsyncStep
+public import Vegas.Game.RevealServiceCalendarState
+public import Vegas.Game.OnePacketLawApproximation
+public import Vegas.Game.OnePacketExclusionPayoff
+public import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Game.OnePacketCompletion
+public import Vegas.Game.OnePacketPrescribedSupport
+public import Vegas.Game.OnePacketEventFailure
+
+@[expose] public section
 
 /-! # The successful part of a late delivery
 

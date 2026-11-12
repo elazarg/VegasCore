@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketBindingOwner
-import Vegas.Game.SourceServiceFacts
-import Vegas.Pending.EventActivationOrigin
+public import Vegas.Game.OnePacketBindingOwner
+public import Vegas.Game.SourceServiceFacts
+public import Vegas.Pending.EventActivationOrigin
+
+@[expose] public section
 
 /-! # One step of the one-packet game at a late decision
 

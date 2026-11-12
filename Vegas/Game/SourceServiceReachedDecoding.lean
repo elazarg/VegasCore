@@ -1,14 +1,18 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServicePrefix
-import Vegas.Game.SourceStateKernel
-import Vegas.Compile.EventGraphPolicyLaw
-import Vegas.Compile.EventGraphStep
-import Vegas.Source.DisclosureSupport
-import Vegas.Source.Disclosure
-import Vegas.Source.ObservationRecall
-import Vegas.EventGraph.OwnedStep
-import Vegas.Pending.ExclusionCompletion
+public import Vegas.Game.SourceServicePrefix
+public import Vegas.Game.SourceStateKernel
+public import Vegas.Compile.EventGraphPolicyLaw
+public import Vegas.Compile.EventGraphStep
+public import Vegas.Source.DisclosureSupport
+public import Vegas.Source.Disclosure
+public import Vegas.Source.ObservationRecall
+public import Vegas.EventGraph.OwnedStep
+public import Vegas.Pending.ExclusionCompletion
+
+@[expose] public section
 
 /-! # Source residuals of actual graph configurations
 
@@ -121,7 +125,7 @@ variable {setup profile}
 
 /-- A native state carrying a given configuration, used to apply the checkpoint
 successor lemmas, which read only the configuration. -/
-private def configState (config : (graph setup).Config) : EventGraphRuntime.State (graph setup) :=
+def configState (config : (graph setup).Config) : EventGraphRuntime.State (graph setup) :=
   { EventGraphRuntime.State.initial (graph := graph setup) config.inputs with config := config }
 
 /-- A fixed native completion preserves its typed source residual and its

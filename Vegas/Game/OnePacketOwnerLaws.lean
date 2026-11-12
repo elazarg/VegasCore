@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateLumping
-import Vegas.Game.OnePacketLateMasses
-import Vegas.Game.OnePacketOperationalFactors
-import Vegas.Game.OnePacketBindingSite
-import GameTheoryExtensions.Math.Probability.Uniform
+public import Vegas.Game.OnePacketLateLumping
+public import Vegas.Game.OnePacketLateMasses
+public import Vegas.Game.OnePacketOperationalFactors
+public import Vegas.Game.OnePacketBindingSite
+public import GameTheoryExtensions.Math.Probability.Uniform
+
+@[expose] public section
 
 /-! # The owner's law of moves for slot-trembled late components
 

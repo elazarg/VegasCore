@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketActorMatching
+public import Vegas.Game.OnePacketActorMatching
+
+@[expose] public section
 
 /-! # Forced-belief inputs at own-turn sites
 

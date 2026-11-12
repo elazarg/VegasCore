@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.CompilerCorrectness
-import Vegas.Game.SourceProtocolNash
-import Vegas.Examples.ProgramPaymentsRuntimeService
+public import Vegas.Game.CompilerCorrectness
+public import Vegas.Game.SourceProtocolNash
+public import Vegas.Examples.ProgramPaymentsRuntimeService
+
+@[expose] public section
 
 /-! # Failed binding and withholding on the actual bounded runtime
 
@@ -20,12 +24,12 @@ open Vegas Vegas.SourceProgram Vegas.EventGraphRuntime Interaction
 open Vegas.Examples.ProgramPayments
 open Vegas.Examples.ProgramPaymentsRuntime
 
-private def chosenProfile (bonus : Int) (binding : Option (PublicationResult Bool))
+def chosenProfile (bonus : Int) (binding : Option (PublicationResult Bool))
     (disclose : Bool) :
     BehavioralProfile (program bonus) := fun _ =>
   (fun _ _ _ => PMF.pure binding, (fun _ _ _ => PMF.pure disclose, PUnit.unit))
 
-private def fullAdmission (bonus : Int) : CommitmentInterface (program bonus) :=
+def fullAdmission (bonus : Int) : CommitmentInterface (program bonus) :=
   CommitmentInterface.forfeiture (program bonus)
 
 private theorem permitted (bonus : Int) (binding : Option (PublicationResult Bool))
@@ -39,7 +43,7 @@ private theorem permitted (bonus : Int) (binding : Option (PublicationResult Boo
     | some result => cases result <;> trivial
   · trivial
 
-private def terminal (bonus : Int) (binding : Option (PublicationResult Bool)) (disclose : Bool) :
+def terminal (bonus : Int) (binding : Option (PublicationResult Bool)) (disclose : Bool) :
     State simpleExpr (program bonus).terminalCtx × DefaultHistory Player :=
   (Env.cons (if disclose then binding.getD .failure else .failure)
       (Env.cons (binding.getD .failure) initial),

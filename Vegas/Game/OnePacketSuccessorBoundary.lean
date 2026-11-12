@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketPrescribedSourceKernel
-import Vegas.Game.SourceServiceAsyncStep
-import Vegas.Pending.ReactiveCompletion
-import Vegas.Pending.ExclusionAcceptedOutput
-import Vegas.Game.OnePacketOwnSubmissions
-import Vegas.Game.SourceServiceCompletion
-import Vegas.Game.IntendedOpeningContinuation
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketPrescribedSourceKernel
+public import Vegas.Game.SourceServiceAsyncStep
+public import Vegas.Pending.ReactiveCompletion
+public import Vegas.Pending.ExclusionAcceptedOutput
+public import Vegas.Game.OnePacketOwnSubmissions
+public import Vegas.Game.SourceServiceCompletion
+public import Vegas.Game.IntendedOpeningContinuation
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # Genuine clear successor boundaries after honest source steps -/
 

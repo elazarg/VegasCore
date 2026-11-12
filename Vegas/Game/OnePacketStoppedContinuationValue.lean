@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketHonestStoppedLaw
-import Vegas.Game.StoppedHonestComparison
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketHonestStoppedLaw
+public import Vegas.Game.StoppedHonestComparison
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # Source values of stopped continuations under counted native service -/
 

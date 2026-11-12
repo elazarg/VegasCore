@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCountedService
-import Vegas.Game.OnePacketFirstActivation
-import Vegas.Pending.ExclusionStoppedBoundary
+public import Vegas.Game.OnePacketCountedService
+public import Vegas.Game.OnePacketFirstActivation
+public import Vegas.Pending.ExclusionStoppedBoundary
+
+@[expose] public section
 
 /-! # Fresh-call settlement on actual stopped native continuations -/
 

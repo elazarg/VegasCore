@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveRuntime
-import Interaction.ReactiveMessageReadout
-import Interaction.ReactiveLedgerPolicy
-import Vegas.Examples.PrivateValueAuction
-import Vegas.Compile.EventGraphAssembly
-import GameTheory.Math.Probability.Uniform
-import GameTheory.Math.Probability.FiniteUniform
+public import Vegas.Pending.ReactiveRuntime
+public import Interaction.ReactiveMessageReadout
+public import Interaction.ReactiveLedgerPolicy
+public import Vegas.Examples.PrivateValueAuction
+public import Vegas.Compile.EventGraphAssembly
+public import GameTheory.Math.Probability.Uniform
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 
@@ -25,27 +29,27 @@ open Vegas Vegas.EventGraphRuntime Interaction GameTheory.Math.Probability
 open Vegas.Examples.PrivateValueAuction
 open Vegas.Examples.CommitRevealAuction (Player)
 
-private abbrev graph := Vegas.toEventGraph program
-private abbrev firstEvent : graph.EventId := ⟨0, by decide⟩
-private def timeouts : EventTimeouts graph := ⟨fun _ => 10⟩
+abbrev graph := Vegas.toEventGraph program
+abbrev firstEvent : graph.EventId := ⟨0, by decide⟩
+def timeouts : EventTimeouts graph := ⟨fun _ => 10⟩
 
-private def leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph) :=
+def leaks : MessageNetwork.ObservationRule Player (WitnessedPacket graph) :=
   fun _ pending => (uniformLaw Bool).map fun seen =>
     if seen then (pending.map Message.id).toFinset else ∅
 
-private abbrev app := (reactiveApplication timeouts) leaks
+abbrev app := (reactiveApplication timeouts) leaks
 
-private def initialExecution : app.Execution :=
+def initialExecution : app.Execution :=
   ReactiveApplication.Execution.initial app
     (EventGraphRuntime.State.initial (Vegas.encodeInputs (initial fun _ => 0)))
 
-private def commitment : app.Action :=
+def commitment : app.Action :=
   ⟨some ⟨⟨.commitment firstEvent (.alice, .prepared 0), some ⟨.int, 7⟩⟩, .none⟩⟩
 
-private def sent : app.Execution := initialExecution.respond app .alice commitment
+def sent : app.Execution := initialExecution.respond app .alice commitment
 
-private def missed : app.Execution := sent.sampledActivation app .bob ∅
-private def observed : app.Execution := sent.sampledActivation app .bob {(.alice, 0)}
+def missed : app.Execution := sent.sampledActivation app .bob ∅
+def observed : app.Execution := sent.sampledActivation app .bob {(.alice, 0)}
 
 /-- The fixture contains a real foreign pending commitment before sampling. -/
 theorem pending_nonempty :
@@ -104,15 +108,15 @@ theorem every_scheduler_same_law (scheduler : app.Scheduler) :
   reactiveApplication_activation_scheduler timeouts leaks scheduler sent missed observed .bob
     missed_supported observed_supported
 
-private def certificate : OpeningFact graph := ⟨(.alice, .prepared 0), ⟨.int, 7⟩⟩
+def certificate : OpeningFact graph := ⟨(.alice, .prepared 0), ⟨.int, 7⟩⟩
 
-private def certifiedCommitment : app.Action :=
+def certifiedCommitment : app.Action :=
   ⟨some ⟨⟨.commitment firstEvent certificate.handle, some certificate.raw⟩, .owned certificate⟩⟩
 
-private def certifiedSent : app.Execution :=
+def certifiedSent : app.Execution :=
   initialExecution.respond app .alice certifiedCommitment
 
-private def certifiedBranch (seen : Bool) : app.Execution :=
+def certifiedBranch (seen : Bool) : app.Execution :=
   certifiedSent.sampledActivation app .bob (if seen then {(.alice, 0)} else ∅)
 
 theorem certified_branch_supported (seen : Bool) :
@@ -127,13 +131,13 @@ theorem certified_branch_supported (seen : Bool) :
   have ids : certifiedSent.network.pending.map Message.id = [(.alice, 0)] := rfl
   cases seen <;> simp [ids]
 
-private def guessedForward : app.Action :=
+def guessedForward : app.Action :=
   ⟨some ⟨⟨.malformed ⟨.int, 0⟩, none⟩, .forward (.alice, 0)⟩⟩
 
-private def forwarded (seen : Bool) : app.Execution :=
+def forwarded (seen : Bool) : app.Execution :=
   (certifiedBranch seen).respond app .bob guessedForward
 
-private def recalledEvidence (past : List app.PlayerEntry) : List (OpeningFact graph) :=
+def recalledEvidence (past : List app.PlayerEntry) : List (OpeningFact graph) :=
   past.filterMap fun entry => entry.emitted.bind fun message => message.payload.evidence
 
 /-- A fixed request for a guessed identifier materializes evidence only after
@@ -153,7 +157,7 @@ theorem ledger_projection_retains_emitted_evidence :
     ((forwarded false).observe app .bob).ledgerOnly app =
       ((forwarded true).observe app .bob).ledgerOnly app := ⟨rfl, rfl, rfl⟩
 
-private def rememberEvidence : app.Policy := fun past _ =>
+def rememberEvidence : app.Policy := fun past _ =>
   PMF.pure (if (recalledEvidence past).isEmpty then ⟨none⟩ else guessedForward)
 
 /-- Ignoring leaked fields erases their direct use, while legitimate own-output

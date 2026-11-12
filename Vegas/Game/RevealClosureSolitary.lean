@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealRunPoint
-import Vegas.Game.DeviationSplit
-import Vegas.Game.RevealDeviationSimulation
+public import Vegas.Game.RevealRunPoint
+public import Vegas.Game.DeviationSplit
+public import Vegas.Game.RevealDeviationSimulation
+
+@[expose] public section
 
 /-! # Solitary phases through the closure
 

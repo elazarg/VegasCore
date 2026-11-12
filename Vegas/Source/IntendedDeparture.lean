@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.FailedBindingDeviation
+public import Vegas.Source.FailedBindingDeviation
+
+@[expose] public section
 
 /-! # Every step from the intended game stays in it or leaves a debt
 

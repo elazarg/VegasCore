@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.MessageNetwork
+public import Interaction.MessageNetwork
+
+@[expose] public section
 
 /-! # Report material in an ordinary network observation
 

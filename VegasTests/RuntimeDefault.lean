@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveRuntime
-import Vegas.EventGraph.CanonicalStep
-import Vegas.Expr.Simple
+public import Vegas.Pending.ReactiveRuntime
+public import Vegas.EventGraph.CanonicalStep
+public import Vegas.Expr.Simple
+
+@[expose] public section
 
 /-! # Public omission and opaque unusability in the ledger runtime -/
 
@@ -12,7 +16,7 @@ namespace VegasTests
 
 open Vegas Vegas.EventGraph Vegas.EventGraphRuntime GameTheory.Math.Probability Interaction
 
-private def defaultGraph : Vegas.EventGraph Unit simpleExpr where
+def defaultGraph : Vegas.EventGraph Unit simpleExpr where
   inputCount := 0
   order := EventOrder.sequential 2
   inputLayout := fun input => Fin.elim0 input
@@ -21,22 +25,22 @@ private def defaultGraph : Vegas.EventGraph Unit simpleExpr where
   reads_available := fun _ _ member => by simp [EventCode.readFields] at member
   payoffs := []
 
-private def defaultTimeouts : EventTimeouts defaultGraph where
+def defaultTimeouts : EventTimeouts defaultGraph where
   duration _ := 1
 
-private def runtimeInitial : State defaultGraph :=
+def runtimeInitial : State defaultGraph :=
   State.initial (fun input => Fin.elim0 input)
 
-private abbrev firstEvent : defaultGraph.EventId := ⟨0, by decide⟩
+abbrev firstEvent : defaultGraph.EventId := ⟨0, by decide⟩
 
-private abbrev unusableHandle : Handle defaultGraph := ((), .prepared 0)
+abbrev unusableHandle : Handle defaultGraph := ((), .prepared 0)
 
-private def unusableCall : Message Unit (Payload defaultGraph) :=
+def unusableCall : Message Unit (Payload defaultGraph) :=
   ⟨((), 0), .commitment firstEvent unusableHandle⟩
 
-private theorem runtimeFirst_ready : runtimeInitial.config.cut.Ready firstEvent := by decide
+theorem runtimeFirst_ready : runtimeInitial.config.cut.Ready firstEvent := by decide
 
-private def runtimeOmission : State defaultGraph :=
+def runtimeOmission : State defaultGraph :=
   { runtimeInitial with clock := 1 } |>.complete firstEvent runtimeFirst_ready none .failure
 
 /-- Silence is recorded in private recall, and leaves the ledger configuration untouched. -/

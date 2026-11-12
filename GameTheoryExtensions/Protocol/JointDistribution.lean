@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Protocol.Information
+public import GameTheory.Protocol.Information
+
+@[expose] public section
 
 /-! # Joint behavioral laws and their player marginals -/
 

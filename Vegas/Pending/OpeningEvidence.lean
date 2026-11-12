@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventSubmission
+public import Vegas.Pending.EventSubmission
+
+@[expose] public section
 
 /-! # Transferable evidence attached to native calls
 

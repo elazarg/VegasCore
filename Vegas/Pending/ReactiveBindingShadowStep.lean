@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingShadow
+public import Vegas.Pending.ReactiveBindingShadow
+
+@[expose] public section
 
 /-! # The actual owner response under hidden binding repair
 

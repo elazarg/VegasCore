@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Pending.ReactiveOnePacketMenu
-import Vegas.Pending.ReactiveSignedCommitments
-import Vegas.Pending.ReactiveStateInvariant
+public import Vegas.Game.RevealService
+public import Vegas.Pending.ReactiveOnePacketMenu
+public import Vegas.Pending.ReactiveSignedCommitments
+public import Vegas.Pending.ReactiveStateInvariant
+
+@[expose] public section
 
 /-! # The field certified by an owned evidence request
 

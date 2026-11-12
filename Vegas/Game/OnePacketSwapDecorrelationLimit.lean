@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapDecorrelation
+public import Vegas.Game.OnePacketSwapDecorrelation
+
+@[expose] public section
 
 /-! # Vanishing decorrelation along a sequence
 

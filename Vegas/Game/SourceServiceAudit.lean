@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Pending.ReactiveServiceAudit
-import Interaction.ReactiveAuditCollection
+public import Vegas.Game.RevealService
+public import Vegas.Pending.ReactiveServiceAudit
+public import Interaction.ReactiveAuditCollection
+
+@[expose] public section
 
 /-! # Protocol audits of compiled source executions
 

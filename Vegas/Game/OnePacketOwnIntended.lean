@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketReplayExists
-import Vegas.Game.SourceDebtObservation
-import Vegas.Game.OnePacketDisclosureResolves
+public import Vegas.Game.OnePacketReplayExists
+public import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketDisclosureResolves
+
+@[expose] public section
 
 /-! # Own completions are intended where the player owes nothing
 

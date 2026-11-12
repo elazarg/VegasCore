@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceReachedDecoding
-import Vegas.Game.SourceServiceTurnPolicy
-import Vegas.Source.DisclosureBehavioral
-import Vegas.Pending.ReactiveCanonicalResolution
-import Vegas.Pending.ReactiveCandidateBudget
+public import Vegas.Game.SourceServiceReachedDecoding
+public import Vegas.Game.SourceServiceTurnPolicy
+public import Vegas.Source.DisclosureBehavioral
+public import Vegas.Pending.ReactiveCanonicalResolution
+public import Vegas.Pending.ReactiveCandidateBudget
+
+@[expose] public section
 
 /-! # First-turn decisions of a fixed source action
 

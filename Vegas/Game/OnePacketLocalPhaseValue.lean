@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCompletionPoint
-import Vegas.Game.OnePacketComparisonContinuationValue
-import Vegas.Game.OnePacketLateLumping
-import Vegas.Game.OnePacketSuccessorBoundary
+public import Vegas.Game.OnePacketCompletionPoint
+public import Vegas.Game.OnePacketComparisonContinuationValue
+public import Vegas.Game.OnePacketLateLumping
+public import Vegas.Game.OnePacketSuccessorBoundary
+
+@[expose] public section
 
 /-! # Continuation transport through a local source-event response -/
 

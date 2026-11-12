@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveDecisionBudget
-import GameTheoryExtensions.Analysis.Protocol.StoppedCharge
+public import Interaction.ReactiveDecisionBudget
+public import GameTheoryExtensions.Analysis.Protocol.StoppedCharge
+
+@[expose] public section
 
 /-! # Actual response counts and their stopped conditional expectation -/
 

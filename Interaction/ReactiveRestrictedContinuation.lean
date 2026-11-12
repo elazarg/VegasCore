@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveLocalContinuation
+public import Interaction.ReactiveLocalContinuation
+
+@[expose] public section
 
 /-! # Physical continuations of an admissible finite response restriction
 

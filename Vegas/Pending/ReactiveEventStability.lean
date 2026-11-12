@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveEntryStability
-import Vegas.Pending.EventAssociationInvariant
-import Vegas.Pending.EventBindingInvariant
-import Vegas.Pending.PublicFailureEvidence
-import Vegas.EventGraph.DefaultFailure
+public import Vegas.Pending.ReactiveEntryStability
+public import Vegas.Pending.EventAssociationInvariant
+public import Vegas.Pending.EventBindingInvariant
+public import Vegas.Pending.PublicFailureEvidence
+public import Vegas.EventGraph.DefaultFailure
+
+@[expose] public section
 
 /-! # What a recorded view of a ready event keeps while the event is unfinished
 

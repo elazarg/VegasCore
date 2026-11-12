@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketEnvironmentSteps
-import Vegas.Game.OnePacketSlotTrembles
+public import Vegas.Game.OnePacketEnvironmentSteps
+public import Vegas.Game.OnePacketSlotTrembles
+
+@[expose] public section
 
 /-! # Responses under slot-trembled components
 

@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.AsyncServiceSpec
-import Vegas.Game.SourceServiceCanonicalSlots
-import Vegas.Game.SourceServiceTurnPolicy
-import Vegas.Source.DisclosureBehavioral
-import Vegas.Game.SourceServiceRetainedPolicy
-import Interaction.ReactiveRecovery
+public import Vegas.Game.AsyncServiceSpec
+public import Vegas.Game.SourceServiceCanonicalSlots
+public import Vegas.Game.SourceServiceTurnPolicy
+public import Vegas.Source.DisclosureBehavioral
+public import Vegas.Game.SourceServiceRetainedPolicy
+public import Interaction.ReactiveRecovery
+
+@[expose] public section
 
 /-! # Bounded turn-counted client policies
 
@@ -186,7 +190,7 @@ theorem sourceServiceTurnPolicy_canonical_of_slots
         capacity who
         execution trace atTurn valid event turn fits.withinDeadline unsent choice
 
-private abbrev ConsistentSlots (bound : (serviceGraph setup mode).EventId → Nat) (turns
+abbrev ConsistentSlots (bound : (serviceGraph setup mode).EventId → Nat) (turns
   : Nat)
     (timing : TurnTiming setup turns mode) (profile : BehavioralProfile setup.program)
     (execution : (serviceApplication setup mode duration leaks).Execution) : Prop :=

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventValueSwap
+public import Vegas.Pending.EventValueSwap
+
+@[expose] public section
 
 /-! # Hidden swaps from pairs of values
 

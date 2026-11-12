@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCommitmentComparisons
-import Vegas.Game.OnePacketSilenceComparison
-import Vegas.Game.OnePacketDisclosureComparison
-import Vegas.Game.OnePacketUnintendedComparison
-import Vegas.Game.OnePacketNonLateChoices
-import Vegas.Game.OnePacketStoppedValueComparison
+public import Vegas.Game.OnePacketCommitmentComparisons
+public import Vegas.Game.OnePacketSilenceComparison
+public import Vegas.Game.OnePacketDisclosureComparison
+public import Vegas.Game.OnePacketUnintendedComparison
+public import Vegas.Game.OnePacketNonLateChoices
+public import Vegas.Game.OnePacketStoppedValueComparison
+
+@[expose] public section
 
 /-! # Uniform source incentive bounds at nonlate native inputs -/
 

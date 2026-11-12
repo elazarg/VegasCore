@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealRunTargetPhase
-import Vegas.Game.FactorTransfer
+public import Vegas.Game.RevealRunTargetPhase
+public import Vegas.Game.FactorTransfer
+
+@[expose] public section
 
 /-! # Phase boundaries seen through the closure
 

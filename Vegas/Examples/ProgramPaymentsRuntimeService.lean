@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.ProgramPayments
-import Vegas.Game.SourceServiceSpec
-import Vegas.Pending.ReactiveMonitoring
+public import Vegas.Examples.ProgramPayments
+public import Vegas.Game.SourceServiceSpec
+public import Vegas.Pending.ReactiveMonitoring
+
+@[expose] public section
 
 /-! # A checked native service for the conditional payment program
 

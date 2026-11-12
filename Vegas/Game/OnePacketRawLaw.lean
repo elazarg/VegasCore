@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketExtension
-import Vegas.Game.OnePacketExclusionPayoff
+public import Vegas.Game.OnePacketExtension
+public import Vegas.Game.OnePacketExclusionPayoff
+
+@[expose] public section
 
 /-! # Intended joint laws through the audited raw runtime -/
 

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketComponentSteps
+public import Vegas.Game.OnePacketComponentSteps
+
+@[expose] public section
 
 /-! # The error of slot-trembled components
 

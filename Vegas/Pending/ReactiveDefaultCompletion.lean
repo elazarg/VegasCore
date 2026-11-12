@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionNativeFailure
-import GameTheory.Analysis.Protocol.SequentialOneShot
-import Interaction.ReactiveOwnPlay
+public import Vegas.Pending.ExclusionNativeFailure
+public import GameTheory.Analysis.Protocol.SequentialOneShot
+public import Interaction.ReactiveOwnPlay
+
+@[expose] public section
 
 /-! # Whole-policy completion after public default
 

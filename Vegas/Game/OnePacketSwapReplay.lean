@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapRecord
-import Vegas.Game.SourceSwapPairs
-import Vegas.Game.OnePacketActingJoint
-import Vegas.Game.OnePacketDecodedActor
-import Vegas.Game.OnePacketReplaySteps
-import Vegas.Game.IntendedPreservation
-import Vegas.Source.ConditionedInitialHistory
+public import Vegas.Game.OnePacketSwapRecord
+public import Vegas.Game.SourceSwapPairs
+public import Vegas.Game.OnePacketActingJoint
+public import Vegas.Game.OnePacketDecodedActor
+public import Vegas.Game.OnePacketReplaySteps
+public import Vegas.Game.IntendedPreservation
+public import Vegas.Source.ConditionedInitialHistory
+
+@[expose] public section
 
 /-! # Swapped histories replay the swapped intended history
 

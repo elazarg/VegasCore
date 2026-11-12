@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensService
-import Vegas.Examples.OddsEvensServiceReceipts
-import Vegas.Examples.OddsEvensServiceCompletion
-import Vegas.Examples.OddsEvensServiceOpportunity
-import Vegas.Examples.OddsEvensFairLaw
-import Vegas.Examples.OddsEvensEquilibrium
-import Vegas.Game.SequentialCompilation
-import Vegas.Pending.ThinnedCountCollection
+public import Vegas.Examples.OddsEvensService
+public import Vegas.Examples.OddsEvensServiceReceipts
+public import Vegas.Examples.OddsEvensServiceCompletion
+public import Vegas.Examples.OddsEvensServiceOpportunity
+public import Vegas.Examples.OddsEvensFairLaw
+public import Vegas.Examples.OddsEvensEquilibrium
+public import Vegas.Game.SequentialCompilation
+public import Vegas.Pending.ThinnedCountCollection
+
+@[expose] public section
 
 /-! # Funded raw equilibrium under positive reaction and inclusion latency -/
 

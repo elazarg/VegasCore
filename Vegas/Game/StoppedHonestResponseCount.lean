@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.StoppedHonestComparison
-import Interaction.ReactiveResponseCount
+public import Vegas.Game.StoppedHonestComparison
+public import Interaction.ReactiveResponseCount
+
+@[expose] public section
 
 /-! # Honest stopped comparisons charged to actual expected responses -/
 

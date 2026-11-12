@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Pending.ReactiveFreshCallAcceptance
-import Vegas.Pending.ReactiveCanonicalDecision
-import Vegas.Pending.ReactiveAsyncContract
+public import Vegas.Game.RevealService
+public import Vegas.Pending.ReactiveFreshCallAcceptance
+public import Vegas.Pending.ReactiveCanonicalDecision
+public import Vegas.Pending.ReactiveAsyncContract
+
+@[expose] public section
 
 /-! # Acceptable protected source calls
 

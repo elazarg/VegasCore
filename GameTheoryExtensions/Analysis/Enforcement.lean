@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Math.Probability.Bounds
-import GameTheoryExtensions.Math.Probability.Support
+public import GameTheory.Math.Probability.Bounds
+public import GameTheoryExtensions.Math.Probability.Support
+
+@[expose] public section
 
 /-! # Deterrence by probabilistic sanctions
 

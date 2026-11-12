@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphAssembly
-import Vegas.Pending.EventApplication
-import VegasTests.SourceSemantics
+public import Vegas.Compile.EventGraphAssembly
+public import Vegas.Pending.EventApplication
+public import VegasTests.SourceSemantics
+
+@[expose] public section
 
 /-! # Native compiled-event message integration
 
@@ -16,41 +20,41 @@ open GameTheory.Math.Probability Interaction Vegas
 
 noncomputable section
 
-private abbrev TestPlayer := VegasTests.SourceSemantics.Player
-private abbrev graph := VegasTests.SourceSemantics.mixedSetup.eventGraph
-private abbrev inputs : graph.Inputs :=
+abbrev TestPlayer := VegasTests.SourceSemantics.Player
+abbrev graph := VegasTests.SourceSemantics.mixedSetup.eventGraph
+abbrev inputs : graph.Inputs :=
   VegasTests.SourceSemantics.mixedSetup.eventInputs VegasTests.SourceSemantics.mixedState
 
-private def timeouts : EventTimeouts graph where
+def timeouts : EventTimeouts graph where
   duration _ := 10
 
-private def initial : EventGraphRuntime.State graph :=
+def initial : EventGraphRuntime.State graph :=
   EventGraphRuntime.State.initial inputs
 
-private abbrev choiceEvent : graph.EventId := ⟨0, by decide⟩
-private abbrev choiceReveal : graph.EventId := ⟨1, by decide⟩
-private abbrev seedReveal : graph.EventId := ⟨2, by decide⟩
-private abbrev coinEvent : graph.EventId := ⟨3, by decide⟩
+abbrev choiceEvent : graph.EventId := ⟨0, by decide⟩
+abbrev choiceReveal : graph.EventId := ⟨1, by decide⟩
+abbrev seedReveal : graph.EventId := ⟨2, by decide⟩
+abbrev coinEvent : graph.EventId := ⟨3, by decide⟩
 
-private abbrev choiceHandle : EventGraphRuntime.Handle graph :=
+abbrev choiceHandle : EventGraphRuntime.Handle graph :=
   (.alice, .prepared 0)
 
-private abbrev seedHandle : EventGraphRuntime.Handle graph :=
+abbrev seedHandle : EventGraphRuntime.Handle graph :=
   (.alice, .initial ⟨0, by decide⟩)
 
-private def choiceRaw (value : Option Bool) : EventGraphRuntime.Raw simpleExpr :=
+def choiceRaw (value : Option Bool) : EventGraphRuntime.Raw simpleExpr :=
   ⟨.option .bool, value⟩
 
-private def seedRaw : EventGraphRuntime.Raw simpleExpr := ⟨.bool, true⟩
+def seedRaw : EventGraphRuntime.Raw simpleExpr := ⟨.bool, true⟩
 
-private def prepared : EventGraphRuntime.State graph :=
+def prepared : EventGraphRuntime.State graph :=
   EventGraphRuntime.privateStep initial .alice
     (.prepare 0 (choiceRaw none))
 
-private def commitment : Message TestPlayer (EventGraphRuntime.Payload graph) :=
+def commitment : Message TestPlayer (EventGraphRuntime.Payload graph) :=
   ⟨(.alice, 0), .commitment choiceEvent choiceHandle⟩
 
-private theorem choiceReady : prepared.config.cut.Ready choiceEvent := by
+theorem choiceReady : prepared.config.cut.Ready choiceEvent := by
   change (EventOrder.Cut.empty graph.order).Ready choiceEvent
   decide
 
@@ -71,7 +75,7 @@ private theorem preparedResult :
     prepared.bindingResult choiceHandle (.option .bool) = .success none := by
   rfl
 
-private def bound : EventGraphRuntime.State graph :=
+def bound : EventGraphRuntime.State graph :=
   { (prepared.complete choiceEvent choiceReady (some (.success none)) (.success none)) with
     accepted := Function.update prepared.accepted (.inr choiceEvent) (some choiceHandle)
     candidates := prepared.candidates.freeze choiceHandle }
@@ -85,13 +89,13 @@ private theorem handle_commitment :
     choiceUnused]
   simp [bound, preparedResult]
 
-private def choiceOpening : Message TestPlayer (EventGraphRuntime.Payload graph) :=
+def choiceOpening : Message TestPlayer (EventGraphRuntime.Payload graph) :=
   ⟨(.alice, 1), .opening choiceReveal choiceHandle (choiceRaw none)⟩
 
-private def seedOpening : Message TestPlayer (EventGraphRuntime.Payload graph) :=
+def seedOpening : Message TestPlayer (EventGraphRuntime.Payload graph) :=
   ⟨(.alice, 2), .opening seedReveal seedHandle seedRaw⟩
 
-private theorem choiceRevealReady : bound.config.cut.Ready choiceReveal := by
+theorem choiceRevealReady : bound.config.cut.Ready choiceReveal := by
   unfold bound prepared initial
   decide
 
@@ -99,7 +103,7 @@ private theorem choiceRevealTimely : bound.WithinDeadline timeouts choiceReveal 
   change 0 < 10
   decide
 
-private def choiceOpened : EventGraphRuntime.State graph :=
+def choiceOpened : EventGraphRuntime.State graph :=
   bound.complete choiceReveal choiceRevealReady true (.success none)
 
 private theorem handle_choice_opening :
@@ -111,7 +115,7 @@ private theorem handle_choice_opening :
     rfl rfl rfl none rfl rfl (.success none) rfl]
   rfl
 
-private theorem seedRevealReady : choiceOpened.config.cut.Ready seedReveal := by
+theorem seedRevealReady : choiceOpened.config.cut.Ready seedReveal := by
   unfold choiceOpened bound prepared initial
   decide
 
@@ -119,7 +123,7 @@ private theorem seedRevealTimely : choiceOpened.WithinDeadline timeouts seedReve
   change 0 < 10
   decide
 
-private def seedOpened : EventGraphRuntime.State graph :=
+def seedOpened : EventGraphRuntime.State graph :=
   choiceOpened.complete seedReveal seedRevealReady true (.success true)
 
 private theorem handle_seed_opening :
@@ -131,7 +135,7 @@ private theorem handle_seed_opening :
     rfl rfl rfl true rfl rfl (.success true) rfl]
   rfl
 
-private def settled? : Option (EventGraphRuntime.State graph) := do
+def settled? : Option (EventGraphRuntime.State graph) := do
   let afterChoice ← EventGraphRuntime.handle timeouts prepared commitment
   let afterChoiceOpening ← EventGraphRuntime.handle timeouts afterChoice choiceOpening
   EventGraphRuntime.handle timeouts afterChoiceOpening seedOpening
@@ -145,12 +149,12 @@ private theorem settled_eq : settled? = some seedOpened := by
   rw [handle_choice_opening]
   exact handle_seed_opening
 
-private def successfulRun : PMF (EventGraphRuntime.State graph) :=
+def successfulRun : PMF (EventGraphRuntime.State graph) :=
   match settled? with
   | none => PMF.pure prepared
   | some settled => EventGraphRuntime.environmentStep timeouts settled (.executeSample coinEvent)
 
-private def payout? (state : EventGraphRuntime.State graph) :
+def payout? (state : EventGraphRuntime.State graph) :
     Option (List (TestPlayer × Int)) :=
   if terminal : state.config.cut.Terminal then
     some (state.config.terminalPayoffs terminal)

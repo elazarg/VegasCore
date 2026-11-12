@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketTrembles
-import Vegas.Game.OnePacketCompletion
-import GameTheory.Analysis.Protocol.CounterfactualReach
-import GameTheoryExtensions.Analysis.Protocol.ReachBounds
+public import Vegas.Game.OnePacketTrembles
+public import Vegas.Game.OnePacketCompletion
+public import GameTheory.Analysis.Protocol.CounterfactualReach
+public import GameTheoryExtensions.Analysis.Protocol.ReachBounds
+
+@[expose] public section
 
 /-! # The operational factorization of one-packet reach
 

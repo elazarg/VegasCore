@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealServiceHonestLaw
-import Vegas.Game.RevealServiceReference
-import Vegas.Game.ConcurrentRevealNash
+public import Vegas.Game.RevealServiceHonestLaw
+public import Vegas.Game.RevealServiceReference
+public import Vegas.Game.ConcurrentRevealNash
+
+@[expose] public section
 
 /-! # The source outcome law of honest clients with concurrent reveals
 

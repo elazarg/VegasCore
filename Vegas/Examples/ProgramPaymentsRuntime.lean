@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.ProgramPaymentsRuntimeService
-import Vegas.Game.ProgramPaymentAsyncNash
-import Vegas.Game.SourceProtocolNash
-import Vegas.Pending.ExclusionAcceptedOutput
-import Vegas.Pending.ExclusionEvidence
-import Vegas.Pending.ReactiveAssociationEvidence
-import Vegas.Compile.EventGraphParameterReadout
+public import Vegas.Examples.ProgramPaymentsRuntimeService
+public import Vegas.Game.ProgramPaymentAsyncNash
+public import Vegas.Game.SourceProtocolNash
+public import Vegas.Pending.ExclusionAcceptedOutput
+public import Vegas.Pending.ExclusionEvidence
+public import Vegas.Pending.ReactiveAssociationEvidence
+public import Vegas.Compile.EventGraphParameterReadout
+
+@[expose] public section
 
 /-! # Executable payments change equilibrium in an actual native runtime
 
@@ -95,9 +99,9 @@ def sourceGame (bonus : Int) : UtilityGame Player where
     (fun terminal => (setup bonus).parameterPaymentUtility (runtimeValuation bonus)
       ((setup bonus).parameterOutcome (parameter bonus) terminal) who)
 
-private abbrev bindingEvent (bonus : Int) : (graph (setup bonus)).EventId :=
+abbrev bindingEvent (bonus : Int) : (graph (setup bonus)).EventId :=
   ⟨0, by change 0 < 2; decide⟩
-private abbrev publicationEvent (bonus : Int) : (graph (setup bonus)).EventId :=
+abbrev publicationEvent (bonus : Int) : (graph (setup bonus)).EventId :=
   ⟨1, by change 1 < 2; decide⟩
 
 /-- A successful publication in an initialized raw readout rules out both

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.FailedBindingDeviation
-import Vegas.Source.Exclusion
-import Vegas.Source.AuthenticOpening
+public import Vegas.Source.FailedBindingDeviation
+public import Vegas.Source.Exclusion
+public import Vegas.Source.AuthenticOpening
+
+@[expose] public section
 
 /-! # Owing a failure is observed
 

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketRecordedSilence
+public import Vegas.Game.OnePacketRecordedSilence
+
+@[expose] public section
 
 /-! # The owner's laws for the certificate's components at a late site
 

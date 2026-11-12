@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealConcurrentNash
+public import Vegas.Game.RevealConcurrentNash
+
+@[expose] public section
 
 /-! # Intended equilibrium and complete readout on the concurrent-reveal ledger
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceFirstTurnCompletion
-import Vegas.Pending.CanonicalOutcomeHead
+public import Vegas.Game.SourceServiceFirstTurnCompletion
+public import Vegas.Pending.CanonicalOutcomeHead
+
+@[expose] public section
 
 /-! # A solitary event's segment of the service run
 

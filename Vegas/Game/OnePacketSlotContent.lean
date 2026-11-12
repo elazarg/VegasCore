@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateMasses
-import Vegas.Game.OnePacketBindingSite
-import Vegas.Pending.ReactiveUnusableBinding
+public import Vegas.Game.OnePacketLateMasses
+public import Vegas.Game.OnePacketBindingSite
+public import Vegas.Pending.ReactiveUnusableBinding
+
+@[expose] public section
 
 /-! # The content of a slot-tier response
 

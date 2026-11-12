@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveRuntime
-import Vegas.Pending.EvidenceNormalization
-import Interaction.ReactiveResponseNormalization
+public import Vegas.Pending.ReactiveRuntime
+public import Vegas.Pending.EvidenceNormalization
+public import Interaction.ReactiveResponseNormalization
+
+@[expose] public section
 
 /-! # Semantic normal forms of event submissions
 

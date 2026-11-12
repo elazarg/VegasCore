@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceDeviationChoice
-import Vegas.Game.OwnedPhaseJoint
-import Vegas.EventGraph.LastKeyTarget
-import Vegas.EventGraph.PrefixRestriction
-import Vegas.EventGraph.OwnedStep
-import Vegas.Pending.LastErasedKeyLaw
-import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Game.SourceServiceDeviationChoice
+public import Vegas.Game.OwnedPhaseJoint
+public import Vegas.EventGraph.LastKeyTarget
+public import Vegas.EventGraph.PrefixRestriction
+public import Vegas.EventGraph.OwnedStep
+public import Vegas.Pending.LastErasedKeyLaw
+public import Vegas.Pending.ReactiveGraphSteps
+
+@[expose] public section
 
 /-! # The deviator's sole event, served last
 

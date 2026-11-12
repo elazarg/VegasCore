@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketStepGlue
-import Vegas.Game.SourceServiceCompletion
-import Vegas.Game.OnePacketSourceTurn
-import Vegas.Game.OnePacketSlotChoiceMasses
-import Vegas.Game.OnePacketRetention
-import Vegas.Compile.EventGraphBacktranslation
+public import Vegas.Game.OnePacketStepGlue
+public import Vegas.Game.SourceServiceCompletion
+public import Vegas.Game.OnePacketSourceTurn
+public import Vegas.Game.OnePacketSlotChoiceMasses
+public import Vegas.Game.OnePacketRetention
+public import Vegas.Compile.EventGraphBacktranslation
+
+@[expose] public section
 
 /-! # The as-if-honest and slot laws at a reveal
 

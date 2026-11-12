@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLumpingInstance
-import Vegas.Pending.EventActivationOrigin
+public import Vegas.Game.OnePacketLumpingInstance
+public import Vegas.Pending.EventActivationOrigin
+
+@[expose] public section
 
 /-! # Scheduler rounds of the one-packet game at a pending binding
 

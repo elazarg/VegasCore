@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.IntendedAsyncNash
-import Vegas.Game.AsyncDeviationReadout
-import Vegas.Game.SourceServiceChoiceSupport
-import GameTheory.Math.Probability.ExpectationMap
-import GameTheory.Math.Probability.ExpectationAlgebra
-import Vegas.Source.ValueBindingAdmission
-import Vegas.Source.BindingNormalization
+public import Vegas.Game.IntendedAsyncNash
+public import Vegas.Game.AsyncDeviationReadout
+public import Vegas.Game.SourceServiceChoiceSupport
+public import GameTheory.Math.Probability.ExpectationMap
+public import GameTheory.Math.Probability.ExpectationAlgebra
+public import Vegas.Source.ValueBindingAdmission
+public import Vegas.Source.BindingNormalization
+
+@[expose] public section
 
 /-! # The first-turn deviation bound under an arbitrary contract builder
 

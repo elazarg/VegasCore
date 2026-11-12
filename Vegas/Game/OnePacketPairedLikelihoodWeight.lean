@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketPairedWeight
-import Vegas.Game.OnePacketPairedRecord
-import Vegas.Game.OnePacketPairedCompletionMass
-import Vegas.Game.OnePacketPairedResponseWeight
+public import Vegas.Game.OnePacketPairedWeight
+public import Vegas.Game.OnePacketPairedRecord
+public import Vegas.Game.OnePacketPairedCompletionMass
+public import Vegas.Game.OnePacketPairedResponseWeight
+
+@[expose] public section
 
 /-! # Source likelihoods of paired actual histories -/
 

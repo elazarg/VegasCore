@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
-import Vegas.Game.OnePacketCompletion
-import Vegas.Pending.ReactiveGraphSteps
+public import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
+public import Vegas.Game.OnePacketCompletion
+public import Vegas.Pending.ReactiveGraphSteps
+
+@[expose] public section
 
 /-! # Completion phases before the first public default -/
 

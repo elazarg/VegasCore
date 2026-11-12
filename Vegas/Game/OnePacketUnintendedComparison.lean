@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFirstActivationValue
-import Vegas.Game.OnePacketOwnIntended
-import Vegas.Game.OnePacketPrescribedSites
-import Vegas.Game.OnePacketValueTransport
-import Vegas.Game.OnePacketUnintendedValue
+public import Vegas.Game.OnePacketFirstActivationValue
+public import Vegas.Game.OnePacketOwnIntended
+public import Vegas.Game.OnePacketPrescribedSites
+public import Vegas.Game.OnePacketValueTransport
+public import Vegas.Game.OnePacketUnintendedValue
+
+@[expose] public section
 
 /-! # Unintended nonlate commitments have exclusion value -/
 

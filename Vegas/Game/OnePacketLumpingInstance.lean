@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketPendingLumping
-import Vegas.Pending.EventActivationOrigin
+public import Vegas.Game.OnePacketPendingLumping
+public import Vegas.Pending.EventActivationOrigin
+
+@[expose] public section
 
 /-! # The image kernel of the one-packet game at a pending publication
 

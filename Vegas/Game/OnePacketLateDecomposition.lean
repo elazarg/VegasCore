@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateSuccess
-import Vegas.Game.OnePacketValueTransport
-import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Game.OnePacketLateSuccess
+public import Vegas.Game.OnePacketValueTransport
+public import Vegas.Game.OnePacketIntendedProjection
+
+@[expose] public section
 
 /-! # Site values at forced sites
 

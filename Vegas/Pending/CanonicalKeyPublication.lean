@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.CanonicalKeyLaw
-import Vegas.Pending.ReactiveGraphSteps
-import Vegas.EventGraph.PublicationDecision
+public import Vegas.Pending.CanonicalKeyLaw
+public import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.EventGraph.PublicationDecision
+
+@[expose] public section
 
 /-! # Canonical key law across publication rounds
 

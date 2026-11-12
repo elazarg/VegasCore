@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Pending.ReactiveCanonicalMenu
-import Vegas.Pending.ReactiveBoundedValues
+public import Vegas.Game.RevealService
+public import Vegas.Pending.ReactiveCanonicalMenu
+public import Vegas.Pending.ReactiveBoundedValues
+
+@[expose] public section
 
 /-! # Prescribed policy support on retained service histories
 

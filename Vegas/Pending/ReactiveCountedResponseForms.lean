@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingSubmittedResponse
+public import Vegas.Pending.ReactiveBindingSubmittedResponse
+
+@[expose] public section
 
 /-! # Normal forms of counted binding and opening responses -/
 

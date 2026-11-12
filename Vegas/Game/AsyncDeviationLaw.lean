@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.AsyncDeviationChoice
-import Vegas.Game.SourceServiceAsyncStep
-import Vegas.Game.SourceServiceDeviationChoice
-import Vegas.Game.SourceServiceFactorization
+public import Vegas.Game.AsyncDeviationChoice
+public import Vegas.Game.SourceServiceAsyncStep
+public import Vegas.Game.SourceServiceDeviationChoice
+public import Vegas.Game.SourceServiceFactorization
+
+@[expose] public section
 
 /-! # Source realization of a physical deviation
 
@@ -28,7 +32,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-- Every coupled physical continuation of a source suffix has the terminal law
 of one source behavioral deviation. The simulation retains typed checkpoints,
 automatic completion paths and traffic conditional on the player's source view. -/
-private def SourceDeviationLaw {Γ : SourceCtx Player L} {names : Finset VarId}
+def SourceDeviationLaw {Γ : SourceCtx Player L} {names : Finset VarId}
     (program : SourceProgram Player L Γ names) (profile : BehavioralProfile program)
     (refs : ContextRefs (graphLayout setup.program) Γ)
     (embedding : OutputEmbedding (inputLayout setup.context) (outputLayout setup.program) program)

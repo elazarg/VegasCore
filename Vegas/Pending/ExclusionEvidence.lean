@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.PublicFailureEvidence
+public import Vegas.Pending.PublicFailureEvidence
+
+@[expose] public section
 
 /-! # Native public default provenance
 

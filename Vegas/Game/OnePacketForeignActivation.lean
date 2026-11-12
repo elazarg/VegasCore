@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketForeignFreshness
-import Vegas.Game.OnePacketClearRegularity
-import Vegas.Pending.ReactiveOwnerActivationRecall
+public import Vegas.Game.OnePacketForeignFreshness
+public import Vegas.Game.OnePacketClearRegularity
+public import Vegas.Pending.ReactiveOwnerActivationRecall
+
+@[expose] public section
 
 /-! # Native due foreign events have actual future owner first activations -/
 

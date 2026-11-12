@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.ProtocolEvaluation
-import Vegas.Source.Setup
+public import Vegas.Source.ProtocolEvaluation
+public import Vegas.Source.Setup
+
+@[expose] public section
 
 /-! # Private setup in the source protocol
 

@@ -1,18 +1,22 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
-import Vegas.Game.OnePacketStoppedSourceLaw
-import Vegas.Game.SourceServiceContinuation
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.EventGraph.OwnedStep
-import Vegas.Game.OnePacketCompletion
-import Vegas.Game.OnePacketSourceTurn
-import Vegas.Game.OnePacketRetention
-import Vegas.Game.RevealServiceCalendarState
-import Vegas.Game.SourceServiceFirstTurnMixture
-import Vegas.Game.IntendedOpeningContinuation
-import Vegas.EventGraph.ResolutionProvenance
-import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
-import Interaction.ReactiveOwnPlay
-import Interaction.ReactiveLocalContinuation
+public import Vegas.Game.OnePacketStoppedSourceLaw
+public import Vegas.Game.SourceServiceContinuation
+public import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.EventGraph.OwnedStep
+public import Vegas.Game.OnePacketCompletion
+public import Vegas.Game.OnePacketSourceTurn
+public import Vegas.Game.OnePacketRetention
+public import Vegas.Game.RevealServiceCalendarState
+public import Vegas.Game.SourceServiceFirstTurnMixture
+public import Vegas.Game.IntendedOpeningContinuation
+public import Vegas.EventGraph.ResolutionProvenance
+public import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
+public import Interaction.ReactiveOwnPlay
+public import Interaction.ReactiveLocalContinuation
+
+@[expose] public section
 /-! # Source continuation kernels of prescribed packets
 
 A transmitting canonical packet at a genuine first callback is a supported owned

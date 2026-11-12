@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketPeriodInvariant
-import Vegas.Game.OnePacketCompletionContent
-import Vegas.Game.OnePacketReplayInputs
-import Vegas.Game.OnePacketDecodedActor
-import Vegas.Game.SourcePrefixPublications
-import Vegas.Game.SourceServiceFacts
+public import Vegas.Game.OnePacketPeriodInvariant
+public import Vegas.Game.OnePacketCompletionContent
+public import Vegas.Game.OnePacketReplayInputs
+public import Vegas.Game.OnePacketDecodedActor
+public import Vegas.Game.SourcePrefixPublications
+public import Vegas.Game.SourceServiceFacts
+
+@[expose] public section
 
 /-! # Actor completions match along forced histories
 

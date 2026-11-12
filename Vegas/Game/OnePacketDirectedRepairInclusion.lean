@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDirectedRepairOpeningInclusion
-import Vegas.Pending.ReactiveBindingCountedInclusion
+public import Vegas.Game.OnePacketDirectedRepairOpeningInclusion
+public import Vegas.Pending.ReactiveBindingCountedInclusion
+
+@[expose] public section
 
 /-! # Actual complete pending inclusion through directed repair -/
 

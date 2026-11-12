@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingFrame
-import Vegas.Pending.EventSampleObservation
+public import Vegas.Pending.ReactiveBindingFrame
+public import Vegas.Pending.EventSampleObservation
+
+@[expose] public section
 
 /-! # Service constructors of the concrete binding-repair frame
 

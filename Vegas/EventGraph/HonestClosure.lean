@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.LastKeyTarget
-import Vegas.EventGraph.PrefixRestriction
+public import Vegas.EventGraph.LastKeyTarget
+public import Vegas.EventGraph.PrefixRestriction
+
+@[expose] public section
 
 /-! # The closure of the determined reveals
 

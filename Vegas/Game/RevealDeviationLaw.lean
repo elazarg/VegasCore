@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealDeviationSimulation
-import Vegas.Pending.EventInitialObservation
+public import Vegas.Game.RevealDeviationSimulation
+public import Vegas.Pending.EventInitialObservation
+
+@[expose] public section
 
 /-! # The ledger law of a deviation with concurrent reveals
 

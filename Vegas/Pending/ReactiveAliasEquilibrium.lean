@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveAliasEquilibrium
-import Vegas.Pending.ReactiveResponseAliases
+public import Interaction.ReactiveAliasEquilibrium
+public import Vegas.Pending.ReactiveResponseAliases
+
+@[expose] public section
 
 /-! # Sequential equilibrium with private native response aliases
 

@@ -1,14 +1,18 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.IntendedCommitGain
-import Vegas.Game.OnePacketDecodedActor
-import Vegas.Game.OnePacketCompletionPotential
-import Vegas.Game.OnePacketLateDecomposition
-import Vegas.Game.OnePacketProjectedDecision
-import Vegas.Game.OnePacketReplayInputs
-import Vegas.Game.OnePacketBeliefWiring
-import Vegas.Game.OnePacketForcedPrefix
-import Vegas.Game.IntendedChoiceReach
+public import Vegas.Game.IntendedCommitGain
+public import Vegas.Game.OnePacketDecodedActor
+public import Vegas.Game.OnePacketCompletionPotential
+public import Vegas.Game.OnePacketLateDecomposition
+public import Vegas.Game.OnePacketProjectedDecision
+public import Vegas.Game.OnePacketReplayInputs
+public import Vegas.Game.OnePacketBeliefWiring
+public import Vegas.Game.OnePacketForcedPrefix
+public import Vegas.Game.IntendedChoiceReach
+
+@[expose] public section
 
 /-! # Source gains of committed values
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.PaymentPreservation
-import Vegas.Examples.OddsEvensRawEquilibrium
+public import Vegas.Game.PaymentPreservation
+public import Vegas.Examples.OddsEvensRawEquilibrium
+
+@[expose] public section
 
 /-! # The uniform semantic compiler under a checked two-player service
 
@@ -20,7 +24,7 @@ open Vegas Vegas.SourceProgram Vegas.EventGraphRuntime Interaction
 open Vegas.Examples.OddsEvensService
 open Vegas.Examples.OddsEvensRaw
 
-private def compiled (intended : fixture.intendedModel.BehavioralAssessment)
+def compiled (intended : fixture.intendedModel.BehavioralAssessment)
     (equilibrium : fixture.IntendedSequentialEquilibrium
       (fun _ => ()) Vegas.Examples.OddsEvens.sourceUtility intended) :=
   specification.compile intended equilibrium
@@ -70,7 +74,7 @@ example (intended : fixture.intendedModel.BehavioralAssessment)
         Vegas.Examples.OddsEvens.sourceUtility (fun _ => 0)) :=
   (compiled intended equilibrium).ledgerClients_outcomeLaw (by intro _ _; rfl)
 
-private def fairCompilation := compiled Vegas.Examples.OddsEvens.uniformAssessment
+def fairCompilation := compiled Vegas.Examples.OddsEvens.uniformAssessment
   Vegas.Examples.OddsEvens.uniformAssessment_equilibrium
 
 example : (app.finish initial horizon scheduler fairCompilation.ledgerClients none).bind

@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceTurnPolicy
-import Vegas.Game.SourceServiceCompletion
-import Vegas.Pending.ReactiveGraphSteps
-import Interaction.ReactiveRawRoundTrace
-import GameTheoryExtensions.Math.Probability.TotalVariation
+public import Vegas.Game.SourceServiceTurnPolicy
+public import Vegas.Game.SourceServiceCompletion
+public import Vegas.Pending.ReactiveGraphSteps
+public import Interaction.ReactiveRawRoundTrace
+public import GameTheoryExtensions.Math.Probability.TotalVariation
+
+@[expose] public section
 
 /-! # Boundary continuations of the service
 

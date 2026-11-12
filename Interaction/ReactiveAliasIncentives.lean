@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveAliasStrategy
-import Interaction.ReactiveAliasAdmissibility
-import Interaction.ReactiveResponseEvaluation
+public import Interaction.ReactiveAliasStrategy
+public import Interaction.ReactiveAliasAdmissibility
+public import Interaction.ReactiveResponseEvaluation
+
+@[expose] public section
 
 /-! # Continuation incentives under private response normalization
 

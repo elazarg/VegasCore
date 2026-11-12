@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketForcedRegular
-import Vegas.Game.OnePacketFailureBridge
+public import Vegas.Game.OnePacketForcedRegular
+public import Vegas.Game.OnePacketFailureBridge
+
+@[expose] public section
 
 /-! # Accepted handles for completed debt-free bindings
 

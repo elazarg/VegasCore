@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapFiberSum
-import Vegas.Game.OnePacketOwnerSwap
-import Vegas.Pending.ReactiveBoundedValues
+public import Vegas.Game.OnePacketSwapFiberSum
+public import Vegas.Game.OnePacketOwnerSwap
+public import Vegas.Pending.ReactiveBoundedValues
+
+@[expose] public section
 
 /-! # The owner swap keeps the message bounds
 

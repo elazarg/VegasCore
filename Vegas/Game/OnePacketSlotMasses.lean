@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSlotVisibility
+public import Vegas.Game.OnePacketSlotVisibility
+
+@[expose] public section
 
 /-! # Masses of slot-trembled laws at a realized commitment
 

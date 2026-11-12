@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCommonCompletion
-import Vegas.Game.OnePacketOwingOptimality
-import GameTheoryExtensions.Analysis.Protocol.AffineKeyedPools
+public import Vegas.Game.OnePacketCommonCompletion
+public import Vegas.Game.OnePacketOwingOptimality
+public import GameTheoryExtensions.Analysis.Protocol.AffineKeyedPools
+
+@[expose] public section
 
 /-! # Native pooled gains from common affine component values -/
 

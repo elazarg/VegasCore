@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealBlockTraffic
-import Vegas.Game.RevealServiceEffectiveTimely
-import Vegas.Pending.DrainOutputs
-import Vegas.Pending.ReactiveCompletion
+public import Vegas.Game.RevealBlockTraffic
+public import Vegas.Game.RevealServiceEffectiveTimely
+public import Vegas.Pending.DrainOutputs
+public import Vegas.Pending.ReactiveCompletion
+
+@[expose] public section
 
 /-! # Records of a block of concurrent reveals
 

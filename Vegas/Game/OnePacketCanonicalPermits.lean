@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Pending.ReactiveAssociationEvidence
-import Vegas.Pending.ReactiveGuardedResponse
-import Vegas.Pending.ReactiveOnePacketMenu
-import Vegas.Pending.ReactiveOpeningWindow
-import Vegas.Pending.ReactiveSignedCommitments
+public import Vegas.Game.RevealService
+public import Vegas.Pending.ReactiveAssociationEvidence
+public import Vegas.Pending.ReactiveGuardedResponse
+public import Vegas.Pending.ReactiveOnePacketMenu
+public import Vegas.Pending.ReactiveOpeningWindow
+public import Vegas.Pending.ReactiveSignedCommitments
+
+@[expose] public section
 
 /-! # Canonical decisions are permitted first packets
 

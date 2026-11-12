@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateRecords
-import Vegas.Game.OnePacketCertificateLumping
+public import Vegas.Game.OnePacketLateRecords
+public import Vegas.Game.OnePacketCertificateLumping
+
+@[expose] public section
 
 /-! # Keyed primitive failure under assembled native assessments -/
 

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveDefaultCompletion
+public import Vegas.Pending.ReactiveDefaultCompletion
+
+@[expose] public section
 
 /-! # Native information fibers before public default
 

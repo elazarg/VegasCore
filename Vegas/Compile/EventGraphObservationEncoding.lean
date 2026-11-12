@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphObservation
-import Vegas.Compile.EventGraphSuffix
-import Vegas.EventGraph.CanonicalStep
+public import Vegas.Compile.EventGraphObservation
+public import Vegas.Compile.EventGraphSuffix
+public import Vegas.EventGraph.CanonicalStep
+
+@[expose] public section
 
 /-! # Constructive encoding of source observations
 
@@ -20,7 +24,7 @@ variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 
 /-- Write one value through a typed graph-field reference. -/
-private def writeField {Field : Type} [DecidableEq Field]
+def writeField {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}
     {kind : Vegas.EventGraph.EventField Player L}
     (ref : Vegas.EventGraph.FieldRef layout kind) (value : kind.Value)
@@ -29,7 +33,7 @@ private def writeField {Field : Type} [DecidableEq Field]
     (some (cast (congrArg Vegas.EventGraph.EventField.Value ref.layout_eq.symm) value))
 
 /-- Restrict an observation past its context head. -/
-private def observationTail {name : VarId} {cell : CellTy Player L}
+def observationTail {name : VarId} {cell : CellTy Player L}
     {Γ : SourceCtx Player L} {who : Player}
     (observation : SourceObservation L who ((name, cell) :: Γ)) :
     SourceObservation L who Γ :=

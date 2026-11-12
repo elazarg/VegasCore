@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveResponseEvaluation
-import Interaction.ReactiveOwnPlay
-import GameTheoryExtensions.Analysis.Protocol.OneShotDeviation
+public import Interaction.ReactiveResponseEvaluation
+public import Interaction.ReactiveOwnPlay
+public import GameTheoryExtensions.Analysis.Protocol.OneShotDeviation
+
+@[expose] public section
 
 /-! # A local behavioral deviation followed by the native continuation
 

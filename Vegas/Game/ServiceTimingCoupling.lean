@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceAsyncStep
-import Interaction.ReactiveMixtureRounds
-import Interaction.ScheduledOpening
-import GameTheoryExtensions.Math.Probability.Expectation
-import Mathlib.Algebra.BigOperators.Ring.Finset
+public import Vegas.Game.SourceServiceAsyncStep
+public import Interaction.ReactiveMixtureRounds
+public import Interaction.ScheduledOpening
+public import GameTheoryExtensions.Math.Probability.Expectation
+public import Mathlib.Algebra.BigOperators.Ring.Finset
+
+@[expose] public section
 
 /-! # Turn timings cost at most their deferral weight, in every dependency mode
 

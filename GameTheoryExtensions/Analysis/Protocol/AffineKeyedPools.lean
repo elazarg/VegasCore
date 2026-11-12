@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
+public import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
+
+@[expose] public section
 
 /-! # Common keyed parts from affine payoff scores -/
 

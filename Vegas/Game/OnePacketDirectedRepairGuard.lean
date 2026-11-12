@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketForcedRegular
+public import Vegas.Game.OnePacketForcedRegular
+
+@[expose] public section
 
 /-! # Public default evidence at forced information sets
 

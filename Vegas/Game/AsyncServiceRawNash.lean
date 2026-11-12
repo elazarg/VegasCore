@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.AsyncServiceDeviationBound
-import Vegas.Game.SourceServiceTurnSettlement
+public import Vegas.Game.AsyncServiceDeviationBound
+public import Vegas.Game.SourceServiceTurnSettlement
+
+@[expose] public section
 
 /-! # Approximate Nash correspondence on the bounded raw ledger
 

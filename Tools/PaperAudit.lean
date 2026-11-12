@@ -1,5 +1,9 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
-import Lean
+public import Lean
+
+@[expose] public section
 
 open Lean Elab
 
@@ -295,6 +299,7 @@ private partial def PaperAudit.loop (state : IO.Ref PaperAudit) : PaperAudit.Ela
   loop state
 
 /-- Audit a file in a separately loaded import environment, without loader trust overrides. -/
+@[no_expose]
 def PaperAudit.run (env : Environment) (opts : Options) (file : String) : IO PaperAudit.Report := do
   let inputCtx := Parser.mkInputContext (← IO.FS.readFile file) file
   let (_, ps, messages) ← Parser.parseHeader inputCtx

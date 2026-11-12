@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourcePrefixPublications
-import Vegas.Game.OnePacketEventFailure
-import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Game.SourcePrefixPublications
+public import Vegas.Game.OnePacketEventFailure
+public import Vegas.Pending.ReactiveGraphSteps
+
+@[expose] public section
 
 /-! # Source debt recorded by failed compiled event outputs -/
 

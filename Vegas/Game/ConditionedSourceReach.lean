@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.ConditionedInitialFiber
-import Vegas.Source.ConditionedInitialPolicy
-import GameTheory.Analysis.Protocol.CounterfactualReach
+public import Vegas.Source.ConditionedInitialFiber
+public import Vegas.Source.ConditionedInitialPolicy
+public import GameTheory.Analysis.Protocol.CounterfactualReach
+
+@[expose] public section
 
 /-! # Behavioral source reach under initial-law conditioning -/
 

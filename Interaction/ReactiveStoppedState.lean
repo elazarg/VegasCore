@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveLocalContinuation
-import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
+public import Interaction.ReactiveLocalContinuation
+public import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
+
+@[expose] public section
 
 /-! # Play until a stopping set reads only the state it starts from
 

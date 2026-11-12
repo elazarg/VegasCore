@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketResponseBound
-import Vegas.Game.OnePacketSlotLawForced
+public import Vegas.Game.OnePacketResponseBound
+public import Vegas.Game.OnePacketSlotLawForced
+
+@[expose] public section
 
 /-! # Response likelihoods under directed binding repair
 

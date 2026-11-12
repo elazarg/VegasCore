@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.DecisionTwin
+public import Vegas.EventGraph.DecisionTwin
+
+@[expose] public section
 
 /-! # Profiles that are twins up to erasure
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.StoppedHonestResponseCount
-import Vegas.Game.OnePacketLawApproximation
-import GameTheoryExtensions.Protocol.ContinuationHorizon
+public import Vegas.Game.StoppedHonestResponseCount
+public import Vegas.Game.OnePacketLawApproximation
+public import GameTheoryExtensions.Protocol.ContinuationHorizon
+
+@[expose] public section
 
 /-! # Terminal honest-law approximation by actual response opportunities -/
 

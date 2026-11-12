@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketExclusionPayoff
-import Vegas.Compile.EventGraphReadoutComplete
-import Vegas.Game.RevealServicePayoffs
-import Vegas.Game.SourceServiceDecodedDebt
-import Vegas.Game.OnePacketForced
+public import Vegas.Game.OnePacketExclusionPayoff
+public import Vegas.Compile.EventGraphReadoutComplete
+public import Vegas.Game.RevealServicePayoffs
+public import Vegas.Game.SourceServiceDecodedDebt
+public import Vegas.Game.OnePacketForced
+
+@[expose] public section
 
 /-! # Owed failures in full terminal source readouts -/
 

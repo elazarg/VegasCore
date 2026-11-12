@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveServiceConformance
-import Vegas.Pending.ReactiveEventStability
+public import Vegas.Pending.ReactiveServiceConformance
+public import Vegas.Pending.ReactiveEventStability
+
+@[expose] public section
 
 /-! # Native-acceptable fresh calls
 

@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.IntendedCommitGain
-import Vegas.Game.OnePacketDecodedActor
-import Vegas.Game.OnePacketNonLateChoices
-import Vegas.Game.OnePacketUnintendedCommitment
-import Vegas.Game.OnePacketBeliefWiring
+public import Vegas.Game.IntendedCommitGain
+public import Vegas.Game.OnePacketDecodedActor
+public import Vegas.Game.OnePacketNonLateChoices
+public import Vegas.Game.OnePacketUnintendedCommitment
+public import Vegas.Game.OnePacketBeliefWiring
+
+@[expose] public section
 
 /-! # One source policy for an intended native commitment -/
 

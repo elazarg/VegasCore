@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSlotChoiceMasses
-import Vegas.Game.OnePacketSourceTurn
-import Vegas.Game.SourceServiceFacts
-import Vegas.Pending.ReactiveOnePacketFreshness
+public import Vegas.Game.OnePacketSlotChoiceMasses
+public import Vegas.Game.OnePacketSourceTurn
+public import Vegas.Game.SourceServiceFacts
+public import Vegas.Pending.ReactiveOnePacketFreshness
+
+@[expose] public section
 
 /-! # Covered pending bindings along one-packet histories
 

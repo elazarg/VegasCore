@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourcePrefixPublications
-import Vegas.Pending.ReactiveAcceptedOutput
-import Vegas.Pending.ReactiveCompletion
-import Vegas.Pending.ReactiveOnePacketMenu
+public import Vegas.Game.SourcePrefixPublications
+public import Vegas.Pending.ReactiveAcceptedOutput
+public import Vegas.Pending.ReactiveCompletion
+public import Vegas.Pending.ReactiveOnePacketMenu
+
+@[expose] public section
 
 /-! # Source actions and accepted packet certificates for owned completions -/
 

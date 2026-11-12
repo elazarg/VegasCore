@@ -11,6 +11,22 @@ SPEC.loader.exec_module(INVENTORY)
 
 
 class ProofInventoryTests(unittest.TestCase):
+    def test_module_headers_preserve_import_inventory_and_definition_surfaces(self):
+        text = ('module\npublic import Vegas.First Vegas.Second\n'
+                'import Vegas.Third\n@[expose] public section\n'
+                'public theorem result : True := by\n  trivial\n')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / 'Example.lean'
+            path.write_text(text, encoding='utf-8')
+            modules, declarations, _ = INVENTORY.inventory(root, ['Example.lean'], 2)
+            self.assertEqual(modules[0]['imports'], ['Vegas.First', 'Vegas.Second', 'Vegas.Third'])
+            self.assertEqual([item['name'] for item in declarations], ['result'])
+            surface = '\n'.join(INVENTORY.DEFS.process_file(path))
+            self.assertNotIn('import ', surface)
+            self.assertNotIn('trivial', surface)
+            self.assertIn('public theorem result : True', surface)
+
     def test_blank_lines_do_not_truncate_proofs(self):
         text = "theorem first : True := by\n  have h : True := trivial\n\n  exact h\n\ntheorem second : True := trivial\n"
         rows = list(INVENTORY.proof_bodies(text))

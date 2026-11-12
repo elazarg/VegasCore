@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealClosureBoundary
-import Vegas.Game.RevealPhaseBoundary
+public import Vegas.Game.RevealClosureBoundary
+public import Vegas.Game.RevealPhaseBoundary
+
+@[expose] public section
 
 /-! # Points inside a run of reveals
 

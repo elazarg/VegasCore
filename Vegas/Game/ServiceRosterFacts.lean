@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Pending.ReactiveAsyncContract
-import Vegas.Pending.ReactiveStateInvariant
-import Interaction.ReactiveOwnerSelection
-import Interaction.ReactiveRecallInvariant
-import Interaction.ReactiveReceipts
+public import Vegas.Game.RevealService
+public import Vegas.Pending.ReactiveAsyncContract
+public import Vegas.Pending.ReactiveStateInvariant
+public import Interaction.ReactiveOwnerSelection
+public import Interaction.ReactiveRecallInvariant
+public import Interaction.ReactiveReceipts
+
+@[expose] public section
 
 /-! # Packet selection and receipts in initialized services
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.LateLeak.SettleLateIntended
-import GameTheory.Analysis.Protocol.SequentialExistence
+public import Vegas.Examples.LateLeak.SettleLateIntended
+public import GameTheory.Analysis.Protocol.SequentialExistence
+
+@[expose] public section
 
 /-! # Decision recall and equilibrium existence in the settle-late game
 

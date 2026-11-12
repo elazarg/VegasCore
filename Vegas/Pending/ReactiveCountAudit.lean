@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveCountVerdict
-import Interaction.ReactiveTrafficContinuation
-import Interaction.ReactiveInputOrder
-import Interaction.ChallengeWindow
-import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
+public import Vegas.Pending.ReactiveCountVerdict
+public import Interaction.ReactiveTrafficContinuation
+public import Interaction.ReactiveInputOrder
+public import Interaction.ChallengeWindow
+public import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
+
+@[expose] public section
 
 /-! # The count audit: sampled signed traffic judged by the count verdict
 

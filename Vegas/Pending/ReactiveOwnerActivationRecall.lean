@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveOwnerOpportunity
-import Vegas.Pending.ReactiveServiceConditions
+public import Vegas.Pending.ReactiveOwnerOpportunity
+public import Vegas.Pending.ReactiveServiceConditions
+
+@[expose] public section
 
 /-! # Actual owner callback records before a clear readiness deadline -/
 

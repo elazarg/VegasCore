@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.LastOwnedPhase
-import Vegas.Game.RevealBlockJoint
-import Vegas.Game.RevealBlockGraph
+public import Vegas.Game.LastOwnedPhase
+public import Vegas.Game.RevealBlockJoint
+public import Vegas.Game.RevealBlockGraph
+
+@[expose] public section
 
 /-! # The phase of a block of concurrent reveals
 

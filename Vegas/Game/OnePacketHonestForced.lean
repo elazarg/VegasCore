@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLawApproximation
-import Vegas.Source.IntendedDeparture
+public import Vegas.Game.OnePacketLawApproximation
+public import Vegas.Source.IntendedDeparture
+
+@[expose] public section
 
 /-! # The intended-or-owed region
 

@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.FailedBindingDeviation
-import Vegas.Source.IntendedForPlayer
-import Vegas.Source.DefaultControl
-import Vegas.Source.PublicObservation
+public import Vegas.Source.FailedBindingDeviation
+public import Vegas.Source.IntendedForPlayer
+public import Vegas.Source.DefaultControl
+public import Vegas.Source.PublicObservation
+
+@[expose] public section
 
 /-! # Public exclusion and available failure choices
 

@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceMenu
-import Vegas.Game.ServiceRosterAsync
-import Vegas.Game.AsyncServiceSpec
-import Vegas.Game.RevealServicePayoffs
-import Vegas.Pending.ReactiveBoundedValues
-import Vegas.Source.SetupProtocol
+public import Vegas.Game.SourceServiceMenu
+public import Vegas.Game.ServiceRosterAsync
+public import Vegas.Game.AsyncServiceSpec
+public import Vegas.Game.RevealServicePayoffs
+public import Vegas.Pending.ReactiveBoundedValues
+public import Vegas.Source.SetupProtocol
+
+@[expose] public section
 
 /-! # The fixed full-source native service
 

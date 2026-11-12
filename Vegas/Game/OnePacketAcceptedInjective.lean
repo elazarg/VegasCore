@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCertificateField
-import Vegas.Game.OnePacketSwapGuard
+public import Vegas.Game.OnePacketCertificateField
+public import Vegas.Game.OnePacketSwapGuard
+
+@[expose] public section
 
 /-! # Accepted handles of the one-packet game are injective
 

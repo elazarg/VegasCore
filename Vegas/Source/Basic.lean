@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Foundation.Guard
+public import Vegas.Foundation.Guard
+
+@[expose] public section
 
 /-! # Failure-aware source language
 

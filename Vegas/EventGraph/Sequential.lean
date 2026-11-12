@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.RevealRelaxation
+public import Vegas.EventGraph.RevealRelaxation
+
+@[expose] public section
 
 /-! # Sequential dependency specialization
 

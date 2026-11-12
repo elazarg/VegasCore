@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLocalCompletionValue
-import Vegas.Game.OnePacketPendingPhaseValue
-import Vegas.Game.OnePacketPendingFailure
+public import Vegas.Game.OnePacketLocalCompletionValue
+public import Vegas.Game.OnePacketPendingPhaseValue
+public import Vegas.Game.OnePacketPendingFailure
+
+@[expose] public section
 
 /-! # Affine source continuation values at pending events -/
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OwnedPhaseJoint
-import Vegas.Game.RevealBlockStart
+public import Vegas.Game.OwnedPhaseJoint
+public import Vegas.Game.RevealBlockStart
+
+@[expose] public section
 
 /-! # The joint law of a block of concurrent reveals
 

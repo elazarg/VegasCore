@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketInitializedLaw
-import Vegas.Game.OnePacketHonestTerminalApproximation
-import Vegas.Game.OnePacketSequentialPreservation
-import Vegas.Game.OnePacketSlotLaw
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketInitializedLaw
+public import Vegas.Game.OnePacketHonestTerminalApproximation
+public import Vegas.Game.OnePacketSequentialPreservation
+public import Vegas.Game.OnePacketSlotLaw
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # The common comparison strategy retains honest boundary continuations -/
 

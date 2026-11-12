@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnerBase
-import Vegas.Game.OnePacketPublicInitialSignal
-import Vegas.Compile.EventGraphObservationEncoding
+public import Vegas.Game.OnePacketOwnerBase
+public import Vegas.Game.OnePacketPublicInitialSignal
+public import Vegas.Compile.EventGraphObservationEncoding
+
+@[expose] public section
 
 /-! # Owner swaps within an observed public prior fiber
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketBeliefPartsWiring
-import Vegas.Game.OnePacketCertificateCounterpart
-import Vegas.Game.OnePacketCounterpartRatio
+public import Vegas.Game.OnePacketBeliefPartsWiring
+public import Vegas.Game.OnePacketCertificateCounterpart
+public import Vegas.Game.OnePacketCounterpartRatio
+
+@[expose] public section
 
 /-! # Honest counterparts from domination
 

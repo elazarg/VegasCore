@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketBeliefWiring
-import Vegas.Game.OnePacketNonLateChoices
-import Vegas.Game.OnePacketUnintendedCommitment
-import Vegas.Game.OnePacketLateSuccess
-import Vegas.Game.OnePacketEventPhaseLaw
-import Vegas.Game.OnePacketComparisonContinuationValue
-import GameTheoryExtensions.Math.Probability.ExpectationContraction
+public import Vegas.Game.OnePacketBeliefWiring
+public import Vegas.Game.OnePacketNonLateChoices
+public import Vegas.Game.OnePacketUnintendedCommitment
+public import Vegas.Game.OnePacketLateSuccess
+public import Vegas.Game.OnePacketEventPhaseLaw
+public import Vegas.Game.OnePacketComparisonContinuationValue
+public import GameTheoryExtensions.Math.Probability.ExpectationContraction
+
+@[expose] public section
 
 /-! # Exclusion value of an unintended current commitment -/
 

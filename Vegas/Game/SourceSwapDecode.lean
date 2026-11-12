@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServicePrefix
-import Vegas.Source.CellSwap
+public import Vegas.Game.SourceServicePrefix
+public import Vegas.Source.CellSwap
+
+@[expose] public section
 
 /-! # Decoding commutes with corresponding swaps
 

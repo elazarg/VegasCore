@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.Code
+public import Vegas.EventGraph.Code
+
+@[expose] public section
 
 /-! # The commitment field consumed by a resolution node -/
 

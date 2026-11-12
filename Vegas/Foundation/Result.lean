@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Mathlib.Data.Fintype.Option
+public import Mathlib.Data.Fintype.Option
+
+@[expose] public section
 
 /-!
 # Publication results

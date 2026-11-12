@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingFrameOpening
+public import Vegas.Pending.ReactiveBindingFrameOpening
+
+@[expose] public section
 
 /-! # Response windows in the actual repaired implementation
 

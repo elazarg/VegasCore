@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.LateLeak.Consistency
+public import Vegas.Examples.LateLeak.Consistency
+
+@[expose] public section
 
 /-! # No sequential equilibrium of the late-turn game has the intended outcome
 

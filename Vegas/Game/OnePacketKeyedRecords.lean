@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFactorization
-import GameTheoryExtensions.Math.Probability.SwapTransport
+public import Vegas.Game.OnePacketFactorization
+public import GameTheoryExtensions.Math.Probability.SwapTransport
+
+@[expose] public section
 
 /-! # Record laws at sites with a common late-delivery key
 

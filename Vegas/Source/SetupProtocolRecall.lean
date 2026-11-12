@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.ObservationRecall
-import Vegas.Source.SetupProtocol
-import GameTheory.Protocol.DecisionRecall
+public import Vegas.Source.ObservationRecall
+public import Vegas.Source.SetupProtocol
+public import GameTheory.Protocol.DecisionRecall
+
+@[expose] public section
 
 /-! # Perfect recall of the source protocol
 

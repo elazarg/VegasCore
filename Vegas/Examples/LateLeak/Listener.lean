@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.LateLeak.Incentives
+public import Vegas.Examples.LateLeak.Incentives
+
+@[expose] public section
 
 /-! # The listener's rational answers
 

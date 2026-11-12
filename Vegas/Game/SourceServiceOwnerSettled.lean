@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceSettledSound
-import Vegas.Game.ServiceSettledEvidence
-import Vegas.Game.SourceServiceAsyncTimeliness
-import Interaction.ReactiveReceipts
+public import Vegas.Game.SourceServiceSettledSound
+public import Vegas.Game.ServiceSettledEvidence
+public import Vegas.Game.SourceServiceAsyncTimeliness
+public import Interaction.ReactiveReceipts
+
+@[expose] public section
 
 /-! # Settled packet soundness for one prescribed owner
 

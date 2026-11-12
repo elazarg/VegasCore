@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphEvaluation
-import Vegas.EventGraph.Information
-import Vegas.Foundation.PartialEnvironment
+public import Vegas.Compile.EventGraphEvaluation
+public import Vegas.EventGraph.Information
+public import Vegas.Foundation.PartialEnvironment
+
+@[expose] public section
 
 /-! # Source observations decoded from event-graph stores
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveProvenance
-import Interaction.ReactivePublication
+public import Interaction.ReactiveProvenance
+public import Interaction.ReactivePublication
+
+@[expose] public section
 
 /-! # Owner selection from recalled output
 

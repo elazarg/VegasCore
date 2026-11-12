@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ConditionedSourceReach
-import GameTheoryExtensions.Analysis.Protocol.ProportionalBeliefTransport
+public import Vegas.Game.ConditionedSourceReach
+public import GameTheoryExtensions.Analysis.Protocol.ProportionalBeliefTransport
+
+@[expose] public section
 
 /-! # Exact Bayes beliefs on actual conditional source components
 

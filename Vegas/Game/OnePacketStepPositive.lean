@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSlotLawForced
-import Vegas.Game.OnePacketIrregularBound
+public import Vegas.Game.OnePacketSlotLawForced
+public import Vegas.Game.OnePacketIrregularBound
+
+@[expose] public section
 
 /-! # Responses have positive step response
 

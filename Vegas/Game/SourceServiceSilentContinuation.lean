@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceFirstTurnMixture
-import Vegas.Game.SourceServiceCompletion
-import Vegas.Game.SourceServiceFacts
-import Vegas.Pending.ExclusionPolicyLaw
-import Vegas.Pending.PublicFailureEvidence
-import Vegas.Pending.EventCommandFrame
-import Vegas.Pending.AcceptedEventOwnership
-import Interaction.ReactiveRawRoundTrace
+public import Vegas.Game.SourceServiceFirstTurnMixture
+public import Vegas.Game.SourceServiceCompletion
+public import Vegas.Game.SourceServiceFacts
+public import Vegas.Pending.ExclusionPolicyLaw
+public import Vegas.Pending.PublicFailureEvidence
+public import Vegas.Pending.EventCommandFrame
+public import Vegas.Pending.AcceptedEventOwnership
+public import Interaction.ReactiveRawRoundTrace
+
+@[expose] public section
 
 
 /-! # Native continuation at a silent source instruction

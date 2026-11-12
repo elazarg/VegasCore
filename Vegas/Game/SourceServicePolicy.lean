@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ServiceInformation
-import Vegas.Pending.ReactivePolicy
+public import Vegas.Game.ServiceInformation
+public import Vegas.Pending.ReactivePolicy
+
+@[expose] public section
 
 /-! # Source decisions in the sequential native service
 

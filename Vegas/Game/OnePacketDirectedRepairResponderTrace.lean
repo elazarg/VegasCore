@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDirectedRepairResponse
-import Vegas.Game.OnePacketPendingLumping
+public import Vegas.Game.OnePacketDirectedRepairResponse
+public import Vegas.Game.OnePacketPendingLumping
+
+@[expose] public section
 
 /-! # Actual responder traces through directed binding repair
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnDisclosure
-import Vegas.Game.OnePacketBindingSite
-import Vegas.Game.OnePacketRetention
+public import Vegas.Game.OnePacketOwnDisclosure
+public import Vegas.Game.OnePacketBindingSite
+public import Vegas.Game.OnePacketRetention
+
+@[expose] public section
 
 /-! # Genuine debt-free main responses transmit successful canonical calls -/
 

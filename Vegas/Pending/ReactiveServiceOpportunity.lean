@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionActivationOrigin
-import Vegas.Pending.ReactiveStateInvariant
-import Vegas.Pending.ReactiveServiceProgress
+public import Vegas.Pending.ExclusionActivationOrigin
+public import Vegas.Pending.ReactiveStateInvariant
+public import Vegas.Pending.ReactiveServiceProgress
+
+@[expose] public section
 
 /-! # Activation origins in the reactive application
 

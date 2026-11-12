@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketHonestContinuation
-import Vegas.Game.HonestContinuationIntended
+public import Vegas.Game.OnePacketHonestContinuation
+public import Vegas.Game.HonestContinuationIntended
+
+@[expose] public section
 
 /-! # Honest continuations do not stop at exclusion or latent debt -/
 

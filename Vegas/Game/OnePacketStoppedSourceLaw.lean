@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketStoppedAcceptance
-import Vegas.Game.SourceServiceCheckpoint
-import Vegas.Compile.EventGraphLaw
+public import Vegas.Game.OnePacketStoppedAcceptance
+public import Vegas.Game.SourceServiceCheckpoint
+public import Vegas.Compile.EventGraphLaw
+
+@[expose] public section
 
 /-! # Source continuation law at counted packet boundaries
 

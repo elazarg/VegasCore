@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.MessagePublication
-import Interaction.ReactiveEnvironmentStep
-import Interaction.ReactiveServiceInvariant
+public import Interaction.MessagePublication
+public import Interaction.ReactiveEnvironmentStep
+public import Interaction.ReactiveServiceInvariant
+
+@[expose] public section
 
 /-! # At-most-once inclusion as a service contract
 

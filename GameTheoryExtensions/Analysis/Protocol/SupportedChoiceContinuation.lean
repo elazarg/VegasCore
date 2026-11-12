@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Math.Probability.TotalVariation
-import GameTheory.Analysis.Protocol.RestrictionDomination
+public import GameTheoryExtensions.Math.Probability.TotalVariation
+public import GameTheory.Analysis.Protocol.RestrictionDomination
+
+@[expose] public section
 
 /-! # Continuations under choices dominated along the reference play
 

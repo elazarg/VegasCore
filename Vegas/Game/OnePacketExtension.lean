@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Math.Probability.ExpectationBind
-import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
-import Vegas.Pending.ReactiveOnePacketMenu
-import Vegas.Pending.ReactiveAliasEquilibrium
-import Interaction.ReactiveLocalContinuation
-import GameTheoryExtensions.Protocol.ContinuationHorizon
-import Interaction.ReactiveAuditContinuation
+public import GameTheory.Math.Probability.ExpectationBind
+public import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
+public import Vegas.Pending.ReactiveOnePacketMenu
+public import Vegas.Pending.ReactiveAliasEquilibrium
+public import Interaction.ReactiveLocalContinuation
+public import GameTheoryExtensions.Protocol.ContinuationHorizon
+public import Interaction.ReactiveAuditContinuation
+
+@[expose] public section
 
 /-! # Sequential equilibria of the one-packet game under the count audit
 

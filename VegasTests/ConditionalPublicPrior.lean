@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketPublicInitialSignal
-import Vegas.Expr.Simple
-import GameTheory.Math.Probability.Mixture
+public import Vegas.Game.OnePacketPublicInitialSignal
+public import Vegas.Expr.Simple
+public import GameTheory.Math.Probability.Mixture
+
+@[expose] public section
 
 /-! # A source prior with private correlation explained by a public bit
 

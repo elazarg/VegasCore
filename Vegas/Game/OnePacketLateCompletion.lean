@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOpenableCommitment
+public import Vegas.Game.OnePacketOpenableCommitment
+
+@[expose] public section
 
 /-! # The completion point after a commitment to an openable value
 

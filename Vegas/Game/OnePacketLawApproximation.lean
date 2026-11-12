@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketTrembles
-import Vegas.Game.OnePacketExclusionPayoff
-import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceContinuation
-import GameTheoryExtensions.Protocol.ContinuationHorizon
+public import Vegas.Game.OnePacketTrembles
+public import Vegas.Game.OnePacketExclusionPayoff
+public import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceContinuation
+public import GameTheoryExtensions.Protocol.ContinuationHorizon
+
+@[expose] public section
 
 /-! # The one-packet law under trembles
 

@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveInvariant
-import Interaction.ReactiveEnvironmentStep
-import Interaction.ReactiveStopping
-import Vegas.Pending.ReactiveRuntime
-import Vegas.EventGraph.OwnedStep
+public import Interaction.ReactiveInvariant
+public import Interaction.ReactiveEnvironmentStep
+public import Interaction.ReactiveStopping
+public import Vegas.Pending.ReactiveRuntime
+public import Vegas.EventGraph.OwnedStep
+
+@[expose] public section
 
 /-! # Finite graph paths for raw ledger transitions
 

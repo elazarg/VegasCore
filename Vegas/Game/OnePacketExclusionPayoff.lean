@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.IntendedPreservation
-import Vegas.Game.RevealServicePayoffs
-import Vegas.Pending.ReactiveNormalization
-import Vegas.Game.SourceTerminalReadout
-import Vegas.Game.SourceStateKernel
-import Interaction.ReactiveNormalHistory
-import GameTheory.Math.Probability.ExpectationComposition
-import GameTheoryExtensions.Math.FiniteIntervalBounds
+public import Vegas.Game.IntendedPreservation
+public import Vegas.Game.RevealServicePayoffs
+public import Vegas.Pending.ReactiveNormalization
+public import Vegas.Game.SourceTerminalReadout
+public import Vegas.Game.SourceStateKernel
+public import Interaction.ReactiveNormalHistory
+public import GameTheory.Math.Probability.ExpectationComposition
+public import GameTheoryExtensions.Math.FiniteIntervalBounds
+
+@[expose] public section
 
 /-! # The exclusion payoff on the supplied runtime
 

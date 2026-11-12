@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketKeyedFailure
-import Vegas.Game.OnePacketLateUniform
-import Vegas.Game.OnePacketPendingValueAffine
-import Vegas.Game.OnePacketCompletionPotential
-import GameTheoryExtensions.Math.Probability.AffineDecorrelation
+public import Vegas.Game.OnePacketKeyedFailure
+public import Vegas.Game.OnePacketLateUniform
+public import Vegas.Game.OnePacketPendingValueAffine
+public import Vegas.Game.OnePacketCompletionPotential
+public import GameTheoryExtensions.Math.Probability.AffineDecorrelation
+
+@[expose] public section
 
 /-! # Affine keyed values on the actual native assessment sequence -/
 

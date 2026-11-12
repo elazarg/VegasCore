@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Mathlib.Data.Finset.Image
+public import Mathlib.Data.Finset.Image
+
+@[expose] public section
 
 /-! # Public default history
 

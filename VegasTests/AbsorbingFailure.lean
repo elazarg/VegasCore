@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Expr.Simple
-import Vegas.Source.Semantics
-import Vegas.Compile.EventGraphScheduling
+public import Vegas.Expr.Simple
+public import Vegas.Source.Semantics
+public import Vegas.Compile.EventGraphScheduling
+
+@[expose] public section
 
 /-! # Whole-run absorbing failure and hidden unopenable bindings -/
 
@@ -12,10 +16,10 @@ namespace VegasTests
 
 open Vegas Vegas.SourceProgram GameTheory.Math.Probability
 
-private abbrev sourceBindings : SourceCtx Unit simpleExpr :=
+abbrev sourceBindings : SourceCtx Unit simpleExpr :=
   [(1, .commitment () .bool), (0, .commitment () .bool)]
 
-private def openGuard {Γ : SourceCtx Unit simpleExpr} (bindingName : VarId) :
+def openGuard {Γ : SourceCtx Unit simpleExpr} (bindingName : VarId) :
     SourceGuard simpleExpr Γ () bindingName .bool where
   schema := []
   schemaNames := by decide
@@ -23,18 +27,18 @@ private def openGuard {Γ : SourceCtx Unit simpleExpr} (bindingName : VarId) :
   code := .constBool true
   reads := fun member => nomatch member
 
-private def twoOpenings : SourceProgram Unit simpleExpr sourceBindings {0, 1} :=
+def twoOpenings : SourceProgram Unit simpleExpr sourceBindings {0, 1} :=
   .reveal 2 () 0 (by decide) (.there .here) (by decide) <|
   .reveal 3 () 1 (by decide) (.there .here) (by decide) <|
   .ret []
 
-private def withholdThenOpen : BehavioralProfile twoOpenings :=
+def withholdThenOpen : BehavioralProfile twoOpenings :=
   fun _ => (fun _ _ _ => PMF.pure false, fun _ _ _ => PMF.pure true, PUnit.unit)
 
-private def initialBindings : State simpleExpr sourceBindings :=
+def initialBindings : State simpleExpr sourceBindings :=
   Env.cons (.success true) (Env.cons (.success false) (Env.empty (CellVal simpleExpr)))
 
-private def openingSummary (final : Config Unit simpleExpr twoOpenings.terminalCtx) :=
+def openingSummary (final : Config Unit simpleExpr twoOpenings.terminalCtx) :=
   (final.state.get (.there .here), final.state.get .here, final.defaulted, final.history ())
 
 /-- A second prescribed disclosure never runs after the first public failure. -/
@@ -48,19 +52,19 @@ private theorem withholding_run :
     Config.defaulted, DecisionView.defaulted, DefaultHistory.defaulted, DefaultHistory.record]
   simp [PMF.pure_map, openingSummary, Config.defaulted, DefaultHistory.defaulted]
 
-private def twoBindings : SourceProgram Unit simpleExpr [] ∅ :=
+def twoBindings : SourceProgram Unit simpleExpr [] ∅ :=
   .commit 0 () (by decide) (openGuard 0) <|
   .commit 1 () (by decide) (openGuard 1) <|
   .reveal 2 () 0 (by decide) (.there .here) (by decide) <|
   .reveal 3 () 1 (by decide) (.there .here) (by decide) <|
   .ret []
 
-private def omitThenBind : BehavioralProfile twoBindings :=
+def omitThenBind : BehavioralProfile twoBindings :=
   fun _ => (fun _ _ _ => PMF.pure none,
     fun _ _ _ => PMF.pure (some (.success true)),
     fun _ _ _ => PMF.pure true, fun _ _ _ => PMF.pure true, PUnit.unit)
 
-private def bindingSummary (final : Config Unit simpleExpr twoBindings.terminalCtx) :=
+def bindingSummary (final : Config Unit simpleExpr twoBindings.terminalCtx) :=
   (final.state.get (.there (.there (.there .here))),
     final.state.get (.there (.there .here)), final.state.get (.there .here),
     final.state.get .here, final.defaulted, final.history ())
@@ -77,7 +81,7 @@ private theorem omission_run :
     Config.defaulted, DecisionView.defaulted, DefaultHistory.defaulted, DefaultHistory.record]
   simp [PMF.pure_map, bindingSummary, Config.defaulted, DefaultHistory.defaulted]
 
-private def unusableThenBind : BehavioralProfile twoBindings :=
+def unusableThenBind : BehavioralProfile twoBindings :=
   fun _ => (fun _ _ _ => PMF.pure (some .failure),
     fun _ _ _ => PMF.pure (some (.success true)),
     fun _ _ _ => PMF.pure true, fun _ _ _ => PMF.pure true, PUnit.unit)
@@ -160,7 +164,7 @@ namespace VegasTests
 
 open Vegas Vegas.SourceProgram
 
-private def acceptGuard {Γ : SourceCtx Bool simpleExpr} (owner : Bool) (binding : VarId) :
+def acceptGuard {Γ : SourceCtx Bool simpleExpr} (owner : Bool) (binding : VarId) :
     SourceGuard simpleExpr Γ owner binding .bool where
   schema := []
   schemaNames := by decide
@@ -168,22 +172,22 @@ private def acceptGuard {Γ : SourceCtx Bool simpleExpr} (owner : Bool) (binding
   code := .constBool true
   reads := fun member => nomatch member
 
-private abbrev AliceCtx : SourceCtx Bool simpleExpr := [(0, .commitment false .bool)]
-private abbrev BobCtx : SourceCtx Bool simpleExpr :=
+abbrev AliceCtx : SourceCtx Bool simpleExpr := [(0, .commitment false .bool)]
+abbrev BobCtx : SourceCtx Bool simpleExpr :=
   [(1, .commitment true .bool), (0, .commitment false .bool)]
-private abbrev OpenCtx : SourceCtx Bool simpleExpr :=
+abbrev OpenCtx : SourceCtx Bool simpleExpr :=
   [(2, .publication .bool), (1, .commitment true .bool), (0, .commitment false .bool)]
 
-private def aliceBinding (choice : Option (PublicationResult Bool)) :
+def aliceBinding (choice : Option (PublicationResult Bool)) :
     Config Bool simpleExpr AliceCtx :=
   commitSuccessor 0 (acceptGuard false 0)
     (Config.initial (Env.empty (CellVal simpleExpr))) choice
 
-private def bobBinding (choice : Option (PublicationResult Bool)) :
+def bobBinding (choice : Option (PublicationResult Bool)) :
     Config Bool simpleExpr BobCtx :=
   commitSuccessor 1 (acceptGuard true 1) (aliceBinding choice) (some (.success false))
 
-private def bobAfterOpening (choice : Option (PublicationResult Bool)) :
+def bobAfterOpening (choice : Option (PublicationResult Bool)) :
     DecisionView true OpenCtx :=
   (revealSuccessor 2 (.there .here) (bobBinding choice) true).view true
 
@@ -222,7 +226,7 @@ namespace VegasTests
 
 open Vegas Vegas.SourceProgram GameTheory.Math.Probability
 
-private def observedDefaultGuard {Γ : SourceCtx Bool simpleExpr}
+def observedDefaultGuard {Γ : SourceCtx Bool simpleExpr}
     (owner : Bool) (binding : VarId) : SourceGuard simpleExpr Γ owner binding .bool where
   schema := []
   schemaNames := by decide
@@ -230,19 +234,19 @@ private def observedDefaultGuard {Γ : SourceCtx Bool simpleExpr}
   code := .constBool true
   reads := fun member => nomatch member
 
-private def foreignOmission : SourceProgram Bool simpleExpr [] ∅ :=
+def foreignOmission : SourceProgram Bool simpleExpr [] ∅ :=
   .commit 0 false (by decide) (observedDefaultGuard false 0) <|
   .commit 1 true (by decide) (observedDefaultGuard true 1) <|
   .reveal 2 false 0 (by decide) (.there .here) (by decide) <|
   .reveal 3 true 1 (by decide) (.there .here) (by decide) <|
   .ret []
 
-private def respondToOmission : BehavioralProfile foreignOmission :=
+def respondToOmission : BehavioralProfile foreignOmission :=
   fun _ => (fun _ _ _ => PMF.pure none,
     fun _ view _ => PMF.pure (some (.success (decide (false ∈ view.defaulted)))),
     fun _ _ _ => PMF.pure true, fun _ _ _ => PMF.pure true, PUnit.unit)
 
-private def bobChosenBinding (final : Config Bool simpleExpr foreignOmission.terminalCtx) :
+def bobChosenBinding (final : Config Bool simpleExpr foreignOmission.terminalCtx) :
     PublicationResult Bool :=
   final.state.get (.there (.there .here))
 

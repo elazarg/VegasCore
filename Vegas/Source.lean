@@ -1,58 +1,62 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Accounting
-import Vegas.Source.Basic
-import Vegas.Source.BindingNormalization
-import Vegas.Source.CellSwap
-import Vegas.Source.CellSwapDebt
-import Vegas.Source.CommitmentInterface
-import Vegas.Source.ConditionedInitialFiber
-import Vegas.Source.ConditionedInitialHistory
-import Vegas.Source.ConditionedInitialLaw
-import Vegas.Source.ConditionedInitialPolicy
-import Vegas.Source.DebtObservation
-import Vegas.Source.Disclosure
-import Vegas.Source.DefaultControl
-import Vegas.Source.DisclosureAliases
-import Vegas.Source.DisclosureBehavioral
-import Vegas.Source.DisclosureOpening
-import Vegas.Source.DisclosureSupport
-import Vegas.Source.AuthenticOpening
-import Vegas.Source.Exclusion
-import Vegas.Source.FailedBinding
-import Vegas.Source.FailedBindingDeviation
-import Vegas.Source.FiniteSupport
-import Vegas.Source.Forfeit
-import Vegas.Source.GuardPrediction
-import Vegas.Source.Honest
-import Vegas.Source.InitialState
-import Vegas.Source.IntendedBetween
-import Vegas.Source.IntendedDeparture
-import Vegas.Source.IntendedForPlayer
-import Vegas.Source.IntendedGame
-import Vegas.Source.IntendedPlay
-import Vegas.Source.IntendedPrefixSwap
-import Vegas.Source.Metadata
-import Vegas.Source.ObservationRecall
-import Vegas.Source.PrivateInputs
-import Vegas.Source.PrivateInputsIndependent
-import Vegas.Source.PublicObservation
-import Vegas.Source.Protocol
-import Vegas.Source.ProtocolBehavioralEvaluation
-import Vegas.Source.ProtocolBehavioralPolicy
-import Vegas.Source.ProtocolChoiceFiniteness
-import Vegas.Source.ProtocolEvaluation
-import Vegas.Source.ProtocolState
-import Vegas.Source.ProtocolTermination
-import Vegas.Source.Purification
-import Vegas.Source.RevealSequence
-import Vegas.Source.Safety
-import Vegas.Source.Semantics
-import Vegas.Source.Utility
-import Vegas.Source.Setup
-import Vegas.Source.SetupProtocol
-import Vegas.Source.SetupProtocolBehavioral
-import Vegas.Source.SetupProtocolEvaluation
-import Vegas.Source.SetupProtocolRecall
-import Vegas.Source.ValueBinding
-import Vegas.Source.ValueBindingAdmission
+public import Vegas.Source.Accounting
+public import Vegas.Source.Basic
+public import Vegas.Source.BindingNormalization
+public import Vegas.Source.CellSwap
+public import Vegas.Source.CellSwapDebt
+public import Vegas.Source.CommitmentInterface
+public import Vegas.Source.ConditionedInitialFiber
+public import Vegas.Source.ConditionedInitialHistory
+public import Vegas.Source.ConditionedInitialLaw
+public import Vegas.Source.ConditionedInitialPolicy
+public import Vegas.Source.DebtObservation
+public import Vegas.Source.Disclosure
+public import Vegas.Source.DefaultControl
+public import Vegas.Source.DisclosureAliases
+public import Vegas.Source.DisclosureBehavioral
+public import Vegas.Source.DisclosureOpening
+public import Vegas.Source.DisclosureSupport
+public import Vegas.Source.AuthenticOpening
+public import Vegas.Source.Exclusion
+public import Vegas.Source.FailedBinding
+public import Vegas.Source.FailedBindingDeviation
+public import Vegas.Source.FiniteSupport
+public import Vegas.Source.Forfeit
+public import Vegas.Source.GuardPrediction
+public import Vegas.Source.Honest
+public import Vegas.Source.InitialState
+public import Vegas.Source.IntendedBetween
+public import Vegas.Source.IntendedDeparture
+public import Vegas.Source.IntendedForPlayer
+public import Vegas.Source.IntendedGame
+public import Vegas.Source.IntendedPlay
+public import Vegas.Source.IntendedPrefixSwap
+public import Vegas.Source.Metadata
+public import Vegas.Source.ObservationRecall
+public import Vegas.Source.PrivateInputs
+public import Vegas.Source.PrivateInputsIndependent
+public import Vegas.Source.PublicObservation
+public import Vegas.Source.Protocol
+public import Vegas.Source.ProtocolBehavioralEvaluation
+public import Vegas.Source.ProtocolBehavioralPolicy
+public import Vegas.Source.ProtocolChoiceFiniteness
+public import Vegas.Source.ProtocolEvaluation
+public import Vegas.Source.ProtocolState
+public import Vegas.Source.ProtocolTermination
+public import Vegas.Source.Purification
+public import Vegas.Source.RevealSequence
+public import Vegas.Source.Safety
+public import Vegas.Source.Semantics
+public import Vegas.Source.Utility
+public import Vegas.Source.Setup
+public import Vegas.Source.SetupProtocol
+public import Vegas.Source.SetupProtocolBehavioral
+public import Vegas.Source.SetupProtocolEvaluation
+public import Vegas.Source.SetupProtocolRecall
+public import Vegas.Source.ValueBinding
+public import Vegas.Source.ValueBindingAdmission
+
+@[expose] public section

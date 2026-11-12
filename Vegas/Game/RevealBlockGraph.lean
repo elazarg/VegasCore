@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealBlockClosure
+public import Vegas.Game.RevealBlockClosure
+
+@[expose] public section
 
 /-! # A block of concurrent reveals on the graph
 

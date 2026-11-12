@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Pending.ReactiveCompiledMenu
+public import Vegas.Game.RevealService
+public import Vegas.Pending.ReactiveCompiledMenu
+
+@[expose] public section
 
 /-! # Finite source-service choices
 

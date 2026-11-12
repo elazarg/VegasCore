@@ -2,6 +2,7 @@ name = "VegasCore"
 version = "0.1.0"
 buildDir = ".lake/build-stable"
 keywords = ["math"]
+requiresModuleSystem = true
 defaultTargets = ["GameTheoryExtensions", "GameTheoryExtensionsTests", "Interaction", "InteractionTests", "Vegas", "VegasTests", "Paper", "Tools"]
 
 [leanOptions]

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Honest
+public import Vegas.Source.Honest
+
+@[expose] public section
 
 /-! # Sequences of revelations of initialized commitments
 

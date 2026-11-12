@@ -1,19 +1,23 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Game.SourceServiceFreshCall
-import Vegas.EventGraph.SolitaryEvent
-import Vegas.Pending.ReactiveSignedCommitments
-import Vegas.Pending.ReactiveEventStability
-import Vegas.Pending.ReactiveAssociationEvidence
-import Vegas.Pending.ReactivePacketEvidence
-import Vegas.Pending.ReactiveStateInvariant
-import Vegas.Pending.ReactiveSubmissionRecall
-import Vegas.Pending.EventCommandFrame
-import Interaction.ReactiveProvenance
-import Interaction.ReactiveMessageIdentity
-import Interaction.ReactiveAllocation
-import Interaction.ReactiveReceipts
+public import Vegas.Game.RevealService
+public import Vegas.Game.SourceServiceFreshCall
+public import Vegas.EventGraph.SolitaryEvent
+public import Vegas.Pending.ReactiveSignedCommitments
+public import Vegas.Pending.ReactiveEventStability
+public import Vegas.Pending.ReactiveAssociationEvidence
+public import Vegas.Pending.ReactivePacketEvidence
+public import Vegas.Pending.ReactiveStateInvariant
+public import Vegas.Pending.ReactiveSubmissionRecall
+public import Vegas.Pending.EventCommandFrame
+public import Interaction.ReactiveProvenance
+public import Interaction.ReactiveMessageIdentity
+public import Interaction.ReactiveAllocation
+public import Interaction.ReactiveReceipts
+
+@[expose] public section
 
 /-! # Raw initialized service-history facts
 

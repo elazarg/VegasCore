@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphAssembly
-import Vegas.Compile.EventGraphEvaluation
-import Vegas.EventGraph.Execution
+public import Vegas.Compile.EventGraphAssembly
+public import Vegas.Compile.EventGraphEvaluation
+public import Vegas.EventGraph.Execution
+
+@[expose] public section
 
 /-! # Source-state agreement across event-graph writes
 

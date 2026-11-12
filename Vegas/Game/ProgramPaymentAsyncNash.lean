@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.AsyncServiceRawNash
-import Vegas.Game.ProgramPayoffs
+public import Vegas.Game.AsyncServiceRawNash
+public import Vegas.Game.ProgramPayoffs
+
+@[expose] public section
 
 /-! # Program payments on the audited asynchronous service
 

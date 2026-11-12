@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventApplication
-import Vegas.EventGraph.RevealRelaxation
+public import Vegas.Pending.EventApplication
+public import Vegas.EventGraph.RevealRelaxation
+
+@[expose] public section
 
 /-! # Public tests for event readiness and commitment inclusion -/
 

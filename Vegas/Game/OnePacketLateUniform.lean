@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketBaseAssembly
-import Vegas.Game.OnePacketSwapDecorrelationLimit
+public import Vegas.Game.OnePacketBaseAssembly
+public import Vegas.Game.OnePacketSwapDecorrelationLimit
+
+@[expose] public section
 
 /-! # Uniform decorrelation at late deliveries
 

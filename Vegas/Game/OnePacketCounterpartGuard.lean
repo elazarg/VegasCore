@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapGuardSite
-import Vegas.Game.OnePacketPublishedBindings
-import Vegas.Game.OnePacketProjectedDecision
-import Vegas.Source.CellSwapDebt
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketSwapGuardSite
+public import Vegas.Game.OnePacketPublishedBindings
+public import Vegas.Game.OnePacketProjectedDecision
+public import Vegas.Source.CellSwapDebt
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # The swap guard toward a forced witness
 

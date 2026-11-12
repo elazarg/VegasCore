@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLocalCompletionValue
-import Vegas.Game.OnePacketPendingPhaseValue
-import Vegas.Game.OnePacketFirstActivationValue
-import Vegas.Game.OnePacketValueTransport
-import Vegas.Game.OnePacketOwnIntended
-import Vegas.Game.OnePacketPrescribedSites
-import Vegas.Game.OnePacketRecordedSilence
+public import Vegas.Game.OnePacketLocalCompletionValue
+public import Vegas.Game.OnePacketPendingPhaseValue
+public import Vegas.Game.OnePacketFirstActivationValue
+public import Vegas.Game.OnePacketValueTransport
+public import Vegas.Game.OnePacketOwnIntended
+public import Vegas.Game.OnePacketPrescribedSites
+public import Vegas.Game.OnePacketRecordedSilence
+
+@[expose] public section
 
 /-! # The gain from silence at a fresh native decision -/
 

@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDirectedRepairInclusion
-import Vegas.Game.OnePacketDirectedRepairPassive
-import Vegas.Game.OnePacketDirectedRepairChance
-import Vegas.Pending.ReactiveBindingExpiryAccepted
-import Vegas.Pending.ReactiveBindingExpiry
+public import Vegas.Game.OnePacketDirectedRepairInclusion
+public import Vegas.Game.OnePacketDirectedRepairPassive
+public import Vegas.Game.OnePacketDirectedRepairChance
+public import Vegas.Pending.ReactiveBindingExpiryAccepted
+public import Vegas.Pending.ReactiveBindingExpiry
+
+@[expose] public section
 
 /-! # Complete actual environment dispatcher for directed binding repair -/
 

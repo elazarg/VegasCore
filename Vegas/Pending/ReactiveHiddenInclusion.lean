@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveHiddenResponse
-import Vegas.Pending.EventPublicState
-import Vegas.Pending.EventCompletionObservation
+public import Vegas.Pending.ReactiveHiddenResponse
+public import Vegas.Pending.EventPublicState
+public import Vegas.Pending.EventCompletionObservation
+
+@[expose] public section
 
 /-! # Inclusion steps that preserve a private binding repair
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.LateLeak.SettleLateGame
-import Vegas.Examples.LateLeak.Play
+public import Vegas.Examples.LateLeak.SettleLateGame
+public import Vegas.Examples.LateLeak.Play
+
+@[expose] public section
 
 /-! # Play of the settle-late game
 

@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFirstActivation
-import Vegas.Game.SourceServiceCanonicalAcceptance
-import Vegas.Pending.ReactiveAcceptedOutput
-import Vegas.Pending.ReactiveGraphSteps
-import Vegas.EventGraph.ObservationStep
-import Interaction.ReactiveMessageIdentity
-import Interaction.ReactiveReceiptIdentity
-import Vegas.Pending.ReactiveStateInvariant
+public import Vegas.Game.OnePacketFirstActivation
+public import Vegas.Game.SourceServiceCanonicalAcceptance
+public import Vegas.Pending.ReactiveAcceptedOutput
+public import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.EventGraph.ObservationStep
+public import Interaction.ReactiveMessageIdentity
+public import Interaction.ReactiveReceiptIdentity
+public import Vegas.Pending.ReactiveStateInvariant
+
+@[expose] public section
 
 
 /-! # Exact results of accepted canonical packets

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ServiceRoster
+public import Vegas.Game.ServiceRoster
+
+@[expose] public section
 
 /-! # Positions and public block-entry observations in roster plans
 

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapRecord
+public import Vegas.Game.OnePacketSwapRecord
+
+@[expose] public section
 
 /-! # The information state of a swapped history
 

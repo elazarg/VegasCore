@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketResponseBound
-import Vegas.Game.OnePacketInitialFloor
+public import Vegas.Game.OnePacketResponseBound
+public import Vegas.Game.OnePacketInitialFloor
+
+@[expose] public section
 
 /-! # The comparison factor of honest counterparts
 

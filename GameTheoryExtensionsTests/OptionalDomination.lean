@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Math.Probability.OptionalDomination
-import Mathlib.Probability.Distributions.Geometric
+public import GameTheoryExtensions.Math.Probability.OptionalDomination
+public import Mathlib.Probability.Distributions.Geometric
+
+@[expose] public section
 
 /-! # An infinite-support comparison without an attained payoff minimum
 
@@ -16,15 +20,15 @@ namespace GameTheoryExtensionsTests.OptionalDomination
 
 open GameTheory.Math.Probability
 
-private def half : unitInterval := ⟨1 / 2, by norm_num, by norm_num⟩
+def half : unitInterval := ⟨1 / 2, by norm_num, by norm_num⟩
 
-private def reference : PMF ℕ := (ProbabilityTheory.geometricMeasure half).toPMF
+def reference : PMF ℕ := (ProbabilityTheory.geometricMeasure half).toPMF
 
-private def payoff (number : ℕ) : ℝ := 1 / ((number : ℝ) + 1)
+def payoff (number : ℕ) : ℝ := 1 / ((number : ℝ) + 1)
 
-private def value (outcome : Option ℕ) : ℝ := outcome.elim (-1) payoff
+def value (outcome : Option ℕ) : ℝ := outcome.elim (-1) payoff
 
-private def law : PMF (Option ℕ) :=
+def law : PMF (Option ℕ) :=
   mix (1 / 2) (by norm_num) (by norm_num) (reference.map some) (PMF.pure none)
 
 theorem reference_full_support (number : ℕ) : number ∈ reference.support := by

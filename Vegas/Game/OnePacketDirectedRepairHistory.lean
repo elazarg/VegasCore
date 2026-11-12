@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDirectedRepairEnvironment
-import Vegas.Game.OnePacketDirectedRepairEnvironmentTrace
-import Vegas.Game.OnePacketDirectedRepairOwnerResponse
-import Vegas.Game.OnePacketDirectedRepairDelivery
-import Vegas.Game.OnePacketFilteredPrefix
+public import Vegas.Game.OnePacketDirectedRepairEnvironment
+public import Vegas.Game.OnePacketDirectedRepairEnvironmentTrace
+public import Vegas.Game.OnePacketDirectedRepairOwnerResponse
+public import Vegas.Game.OnePacketDirectedRepairDelivery
+public import Vegas.Game.OnePacketFilteredPrefix
+
+@[expose] public section
 
 /-! # Concrete repaired whole histories at forced information -/
 

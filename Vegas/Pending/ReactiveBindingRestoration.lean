@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingShadowStep
+public import Vegas.Pending.ReactiveBindingShadowStep
+
+@[expose] public section
 
 /-! # Owner reconstruction through commitment inclusion
 

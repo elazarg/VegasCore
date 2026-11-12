@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketBeliefPartsWiring
-import Vegas.Game.OnePacketOwnIntended
-import Vegas.Game.OnePacketBindingRepairAssembly
-import Vegas.Game.OnePacketRetention
-import Vegas.Game.OnePacketSwapFiberSum
+public import Vegas.Game.OnePacketBeliefPartsWiring
+public import Vegas.Game.OnePacketOwnIntended
+public import Vegas.Game.OnePacketBindingRepairAssembly
+public import Vegas.Game.OnePacketRetention
+public import Vegas.Game.OnePacketSwapFiberSum
+
+@[expose] public section
 
 /-! # Assembling the own and replay inputs of the one-packet certificate
 

@@ -1,17 +1,21 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnDisclosure
-import Vegas.Game.OnePacketBeliefWiring
-import Vegas.Game.OnePacketPooledMemberGains
-import Vegas.Game.OnePacketKeyedCommitmentComparisons
-import Vegas.Game.OnePacketStoppedValueComparison
-import Vegas.Game.OnePacketUnintendedValue
-import Vegas.Game.OnePacketIrregularBeliefBounds
-import GameTheoryExtensions.Analysis.Protocol.GainComparison
-import Vegas.Game.OnePacketOpeningUnique
-import Vegas.Game.OnePacketOpeningLaw
-import Vegas.Game.OnePacketPrescribedCompletion
-import Vegas.Game.OnePacketPooledGains
+public import Vegas.Game.OnePacketOwnDisclosure
+public import Vegas.Game.OnePacketBeliefWiring
+public import Vegas.Game.OnePacketPooledMemberGains
+public import Vegas.Game.OnePacketKeyedCommitmentComparisons
+public import Vegas.Game.OnePacketStoppedValueComparison
+public import Vegas.Game.OnePacketUnintendedValue
+public import Vegas.Game.OnePacketIrregularBeliefBounds
+public import GameTheoryExtensions.Analysis.Protocol.GainComparison
+public import Vegas.Game.OnePacketOpeningUnique
+public import Vegas.Game.OnePacketOpeningLaw
+public import Vegas.Game.OnePacketPrescribedCompletion
+public import Vegas.Game.OnePacketPooledGains
+
+@[expose] public section
 
 /-! # Native keyed local comparisons
 

@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveGraphSteps
-import Vegas.Game.RevealServicePayoffs
-import Vegas.Game.SourceServicePrefix
-import GameTheoryExtensions.Analysis.Protocol.StoppedReadout
-import GameTheoryExtensions.Protocol.ContinuationHorizon
+public import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Game.RevealServicePayoffs
+public import Vegas.Game.SourceServicePrefix
+public import GameTheoryExtensions.Analysis.Protocol.StoppedReadout
+public import GameTheoryExtensions.Protocol.ContinuationHorizon
+
+@[expose] public section
 
 /-! # Completed native source cuts freeze their configuration
 

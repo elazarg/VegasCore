@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceCanonicalPolicy
-import Vegas.Game.RevealServicePayoffs
-import Interaction.ReactivePolicyMixture
-import Interaction.ReactiveRecovery
-import Interaction.ReactiveRoundReachability
-import Interaction.ScheduledOpening
+public import Vegas.Game.SourceServiceCanonicalPolicy
+public import Vegas.Game.RevealServicePayoffs
+public import Interaction.ReactivePolicyMixture
+public import Interaction.ReactiveRecovery
+public import Interaction.ReactiveRoundReachability
+public import Interaction.ScheduledOpening
+
+@[expose] public section
 
 /-! # Turn-counted prescribed policy for every scheduler
 

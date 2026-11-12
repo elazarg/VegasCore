@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCompletionCases
-import Vegas.Game.OnePacketForced
-import Interaction.MessageNetworkIdentity
-import Interaction.ReactiveMessageIdentity
-import Vegas.Game.ServiceSettledEvidence
+public import Vegas.Game.OnePacketCompletionCases
+public import Vegas.Game.OnePacketForced
+public import Interaction.MessageNetworkIdentity
+public import Interaction.ReactiveMessageIdentity
+public import Vegas.Game.ServiceSettledEvidence
+
+@[expose] public section
 
 /-! # Pending packets at forced one-packet histories
 

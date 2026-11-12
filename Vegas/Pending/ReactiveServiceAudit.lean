@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveSettledVerdict
-import Interaction.ReactiveTrafficState
-import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
+public import Vegas.Pending.ReactiveSettledVerdict
+public import Interaction.ReactiveTrafficState
+public import GameTheoryExtensions.Analysis.Protocol.TerminalAudit
+
+@[expose] public section
 
 /-! # Collected charges for signed-traffic protocol violations
 

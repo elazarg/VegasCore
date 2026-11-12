@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensService
-import Interaction.ReactiveTrafficState
-import Interaction.ReactivePublication
+public import Vegas.Examples.OddsEvensService
+public import Interaction.ReactiveTrafficState
+public import Interaction.ReactivePublication
+
+@[expose] public section
 
 /-! # Raw traffic counted by owner opportunities, independently of processing slots -/
 

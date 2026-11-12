@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveAsyncContract
+public import Vegas.Pending.ReactiveAsyncContract
+
+@[expose] public section
 
 /-! # Service conditions at a fixed native execution -/
 

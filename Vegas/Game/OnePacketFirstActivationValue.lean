@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketComparisonContinuationValue
-import Vegas.Game.OnePacketSuccessorBoundary
+public import Vegas.Game.OnePacketComparisonContinuationValue
+public import Vegas.Game.OnePacketSuccessorBoundary
+
+@[expose] public section
 
 /-! # The common continuation value at a fresh source decision -/
 

@@ -1,14 +1,18 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensService
-import Interaction.ReactivePendingProcessing
-import Vegas.Examples.OddsEvensServiceCapacity
-import Vegas.Examples.OddsEvensServiceClock
-import Interaction.ReactiveRecallInvariant
-import Interaction.ReactiveAnchoredTrace
-import Interaction.ReactiveReceiptIdentity
-import Interaction.ReactivePublication
-import Interaction.ReactiveMonitoring
+public import Vegas.Examples.OddsEvensService
+public import Interaction.ReactivePendingProcessing
+public import Vegas.Examples.OddsEvensServiceCapacity
+public import Vegas.Examples.OddsEvensServiceClock
+public import Interaction.ReactiveRecallInvariant
+public import Interaction.ReactiveAnchoredTrace
+public import Interaction.ReactiveReceiptIdentity
+public import Interaction.ReactivePublication
+public import Interaction.ReactiveMonitoring
+
+@[expose] public section
 
 /-! # Actual queue processing in the forced-exit service -/
 

@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceClientPolicy
-import Vegas.Game.SourceServiceSiteBridge
-import Vegas.Game.ServiceHonestLaw
-import Vegas.Compile.EventGraphCanonical
-import Interaction.ReactiveRestrictedContinuation
+public import Vegas.Game.SourceServiceClientPolicy
+public import Vegas.Game.SourceServiceSiteBridge
+public import Vegas.Game.ServiceHonestLaw
+public import Vegas.Compile.EventGraphCanonical
+public import Interaction.ReactiveRestrictedContinuation
+
+@[expose] public section
 
 /-! # Ordinary correctness of the bounded message compiler
 

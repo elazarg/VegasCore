@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceReachedDecoding
-import Vegas.Compile.EventGraphLaw
+public import Vegas.Game.SourceServiceReachedDecoding
+public import Vegas.Compile.EventGraphLaw
+
+@[expose] public section
 
 /-! # Full source continuations at compiled graph checkpoints
 

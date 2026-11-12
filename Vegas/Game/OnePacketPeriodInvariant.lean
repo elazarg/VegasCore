@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCompletion
-import Vegas.Game.OnePacketSilence
-import Vegas.Game.OnePacketReplayWeight
-import Vegas.Game.OnePacketForcedPrefix
+public import Vegas.Game.OnePacketCompletion
+public import Vegas.Game.OnePacketSilence
+public import Vegas.Game.OnePacketReplayWeight
+public import Vegas.Game.OnePacketForcedPrefix
+
+@[expose] public section
 
 /-! # Unsettled content along forced histories
 

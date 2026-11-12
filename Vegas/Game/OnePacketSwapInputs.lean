@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapReplay
-import Vegas.Game.OnePacketSwapSymmetry
-import Vegas.Pending.OnePacketValueSwap
+public import Vegas.Game.OnePacketSwapReplay
+public import Vegas.Game.OnePacketSwapSymmetry
+public import Vegas.Pending.OnePacketValueSwap
+
+@[expose] public section
 
 /-! # Inputs closed under a hidden swap
 

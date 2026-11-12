@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Disclosure
+public import Vegas.Source.Disclosure
+
+@[expose] public section
 
 /-! # Honest play publishes what it bound
 

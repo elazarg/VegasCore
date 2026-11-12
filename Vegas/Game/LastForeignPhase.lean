@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ReferenceForeignTraffic
-import Vegas.Game.RevealServiceSoleSegment
+public import Vegas.Game.ReferenceForeignTraffic
+public import Vegas.Game.RevealServiceSoleSegment
+
+@[expose] public section
 
 /-! # An honest binding, served last
 

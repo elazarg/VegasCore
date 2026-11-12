@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateCompletion
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Game.OnePacketForcedPrefix
-import Vegas.Game.OnePacketHonestForced
-import Vegas.Game.OnePacketProjectedDecision
+public import Vegas.Game.OnePacketLateCompletion
+public import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Game.OnePacketForcedPrefix
+public import Vegas.Game.OnePacketHonestForced
+public import Vegas.Game.OnePacketProjectedDecision
+
+@[expose] public section
 
 /-! # Forced debt-free first activations
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.AsyncDeviationLaw
-import Vegas.Source.DisclosureBehavioral
-import Mathlib.Tactic.Convert
+public import Vegas.Game.AsyncDeviationLaw
+public import Vegas.Source.DisclosureBehavioral
+public import Mathlib.Tactic.Convert
+
+@[expose] public section
 
 /-! # Typed outcome of arbitrary physical unilateral deviations
 

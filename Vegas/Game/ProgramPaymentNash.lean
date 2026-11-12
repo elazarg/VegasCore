@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.EventCompilation
-import Vegas.Game.ProgramPayoffs
-import Vegas.Game.SourceProtocolNash
+public import Vegas.Game.EventCompilation
+public import Vegas.Game.ProgramPayoffs
+public import Vegas.Game.SourceProtocolNash
+
+@[expose] public section
 
 /-! # Nash correspondence for executable program payments
 

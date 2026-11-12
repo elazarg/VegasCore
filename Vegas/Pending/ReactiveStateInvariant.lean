@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveInvariant
-import Vegas.Pending.ReactiveRuntime
-import Vegas.Pending.EventStore
-import Vegas.Pending.ExclusionInvariant
-import Vegas.Pending.ReactiveGraphSteps
+public import Interaction.ReactiveInvariant
+public import Vegas.Pending.ReactiveRuntime
+public import Vegas.Pending.EventStore
+public import Vegas.Pending.ExclusionInvariant
+public import Vegas.Pending.ReactiveGraphSteps
+
+@[expose] public section
 
 /-! # Reachability and stored values in reactive continuations -/
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveCanonicalDecision
-import Vegas.Pending.ReactiveCompiledMenu
-import Vegas.Pending.ReactivePolicyFacts
+public import Vegas.Pending.ReactiveCanonicalDecision
+public import Vegas.Pending.ReactiveCompiledMenu
+public import Vegas.Pending.ReactivePolicyFacts
+
+@[expose] public section
 
 /-! # Canonical retained responses under an arbitrary scheduler
 

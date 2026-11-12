@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDirectedRepairHistory
-import Vegas.Game.OnePacketDirectedRepairPrefixSuccess
-import Vegas.Game.OnePacketAcceptedPrefix
-import Vegas.Game.OnePacketBindingRepairCounterparts
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketDirectedRepairHistory
+public import Vegas.Game.OnePacketDirectedRepairPrefixSuccess
+public import Vegas.Game.OnePacketAcceptedPrefix
+public import Vegas.Game.OnePacketBindingRepairCounterparts
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # Actual binding repair from an intended witness -/
 

@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCounterpartImage
-import Vegas.Game.OnePacketOwnerPriorSite
-import Vegas.Game.OnePacketSplicePoint
-import Vegas.Game.AsyncDeviationForeign
+public import Vegas.Game.OnePacketCounterpartImage
+public import Vegas.Game.OnePacketOwnerPriorSite
+public import Vegas.Game.OnePacketSplicePoint
+public import Vegas.Game.AsyncDeviationForeign
+
+@[expose] public section
 
 /-! # Regular counterparts from successful foreign binding fields
 

@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCanonicalAcceptance
-import Vegas.Game.OnePacketFreshSlots
-import Vegas.Game.SourceServiceFacts
-import Mathlib.Combinatorics.Enumerative.DoubleCounting
+public import Vegas.Game.OnePacketCanonicalAcceptance
+public import Vegas.Game.OnePacketFreshSlots
+public import Vegas.Game.SourceServiceFacts
+public import Mathlib.Combinatorics.Enumerative.DoubleCounting
+
+@[expose] public section
 
 /-! # Retention of first canonical packets from bounds adequacy
 

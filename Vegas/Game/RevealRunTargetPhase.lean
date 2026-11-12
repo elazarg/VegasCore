@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealRunTarget
-import Vegas.Game.RevealBlockPhase
-import Vegas.Game.RevealRunCoupling
+public import Vegas.Game.RevealRunTarget
+public import Vegas.Game.RevealBlockPhase
+public import Vegas.Game.RevealRunCoupling
+
+@[expose] public section
 
 /-! # A step to the deviator's next reveal as a phase
 

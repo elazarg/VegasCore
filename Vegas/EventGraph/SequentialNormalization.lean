@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.NormalizedPolicy
-import Vegas.EventGraph.PolicyCongruence
+public import Vegas.EventGraph.NormalizedPolicy
+public import Vegas.EventGraph.PolicyCongruence
+
+@[expose] public section
 
 /-! # Normalization is invisible on totally ordered graphs
 

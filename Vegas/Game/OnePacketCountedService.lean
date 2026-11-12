@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveDecisionPredecessor
-import Vegas.Game.OnePacketFirstActivation
-import Vegas.Game.SourceServiceAsyncTimeliness
-import Vegas.Pending.ReactiveFirstOpportunity
-import Vegas.Pending.ExclusionNativeFailure
+public import Interaction.ReactiveDecisionPredecessor
+public import Vegas.Game.OnePacketFirstActivation
+public import Vegas.Game.SourceServiceAsyncTimeliness
+public import Vegas.Pending.ReactiveFirstOpportunity
+public import Vegas.Pending.ExclusionNativeFailure
+
+@[expose] public section
 
 /-! # Native clock and settlement facts on actual clear counted histories
 

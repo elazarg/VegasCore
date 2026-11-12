@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketComponents
-import Vegas.Game.OnePacketSlotLaw
-import Vegas.Game.OnePacketExtension
-import Vegas.Game.OnePacketLawApproximation
-import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
-import Vegas.Game.OnePacketDelivery
-import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Game.OnePacketComponents
+public import Vegas.Game.OnePacketSlotLaw
+public import Vegas.Game.OnePacketExtension
+public import Vegas.Game.OnePacketLawApproximation
+public import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
+public import Vegas.Game.OnePacketDelivery
+public import Vegas.Game.OnePacketIntendedProjection
+
+@[expose] public section
 
 /-! # The pooled components of the one-packet certificate
 

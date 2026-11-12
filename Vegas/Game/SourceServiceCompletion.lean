@@ -1,16 +1,20 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServicePrefix
-import Vegas.Game.SourceServiceReachedDecoding
-import Vegas.Game.SourceServiceFacts
-import Vegas.Source.SetupProtocolEvaluation
-import Vegas.Game.RevealServicePayoffs
-import Vegas.Pending.ReactiveGraphSteps
-import Vegas.Pending.ReactiveStateInvariant
-import Vegas.EventGraph.CanonicalStep
-import Interaction.ReactiveRoundReachability
-import Interaction.ReactiveStopping
-import Interaction.ReactiveRecallInvariant
+public import Vegas.Game.SourceServicePrefix
+public import Vegas.Game.SourceServiceReachedDecoding
+public import Vegas.Game.SourceServiceFacts
+public import Vegas.Source.SetupProtocolEvaluation
+public import Vegas.Game.RevealServicePayoffs
+public import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Pending.ReactiveStateInvariant
+public import Vegas.EventGraph.CanonicalStep
+public import Interaction.ReactiveRoundReachability
+public import Interaction.ReactiveStopping
+public import Interaction.ReactiveRecallInvariant
+
+@[expose] public section
 
 /-! # Completed prefixes and completion boundaries
 

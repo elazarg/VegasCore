@@ -1,15 +1,19 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ServiceRosterPosition
-import Vegas.Game.ServiceRosterFacts
-import Vegas.EventGraph.CanonicalStep
-import Vegas.Pending.ReactiveEventStability
-import Vegas.Pending.ReactiveServiceProgress
-import Vegas.Pending.ReactiveServiceOpportunity
-import Vegas.Pending.ReactiveStateInvariant
-import Interaction.ReactiveRecallInvariant
-import Interaction.ReactiveHistory
-import Interaction.ReactiveResponseAccounting
+public import Vegas.Game.ServiceRosterPosition
+public import Vegas.Game.ServiceRosterFacts
+public import Vegas.EventGraph.CanonicalStep
+public import Vegas.Pending.ReactiveEventStability
+public import Vegas.Pending.ReactiveServiceProgress
+public import Vegas.Pending.ReactiveServiceOpportunity
+public import Vegas.Pending.ReactiveStateInvariant
+public import Interaction.ReactiveRecallInvariant
+public import Interaction.ReactiveHistory
+public import Interaction.ReactiveResponseAccounting
+
+@[expose] public section
 
 /-! # Public calendar invariants through automatic completion
 

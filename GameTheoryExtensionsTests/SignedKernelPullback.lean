@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Math.Probability.ExpectationContraction
-import Mathlib.Probability.Distributions.Geometric
+public import GameTheoryExtensions.Math.Probability.ExpectationContraction
+public import Mathlib.Probability.Distributions.Geometric
+
+@[expose] public section
 
 /-! # Why real kernel pullback retains integration guards
 
@@ -40,9 +44,9 @@ theorem unrestricted_expect_not_monotone (law : PMF ℕ)
   rw [expect_constant, expect_of_not_payoffIntegrable notIntegrable] at compared
   norm_num at compared
 
-private def half : unitInterval := ⟨1 / 2, by norm_num, by norm_num⟩
+def half : unitInterval := ⟨1 / 2, by norm_num, by norm_num⟩
 
-private def law : PMF ℕ := (ProbabilityTheory.geometricMeasure half).toPMF
+def law : PMF ℕ := (ProbabilityTheory.geometricMeasure half).toPMF
 
 theorem geometric_expect_not_monotone :
     ¬ Monotone (fun observable : ℕ → ℝ => expect law observable) := by

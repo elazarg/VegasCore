@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapReplay
-import Vegas.Game.OnePacketForcedRegular
+public import Vegas.Game.OnePacketSwapReplay
+public import Vegas.Game.OnePacketForcedRegular
+
+@[expose] public section
 
 /-! # Swapped histories are regular
 

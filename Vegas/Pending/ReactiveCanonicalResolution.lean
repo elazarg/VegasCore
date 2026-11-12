@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveCanonicalDecision
-import Vegas.Pending.ReactiveCompiledResolution
+public import Vegas.Pending.ReactiveCanonicalDecision
+public import Vegas.Pending.ReactiveCompiledResolution
+
+@[expose] public section
 
 /-! # Canonical resolution responses
 

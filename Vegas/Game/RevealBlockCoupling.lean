@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealBlockRecords
+public import Vegas.Game.RevealBlockRecords
+
+@[expose] public section
 
 /-! # Coupling a block of concurrent reveals
 

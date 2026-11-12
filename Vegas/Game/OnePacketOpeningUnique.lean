@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketRevealStep
-import Vegas.Pending.ReactivePolicyFacts
+public import Vegas.Game.OnePacketRevealStep
+public import Vegas.Pending.ReactivePolicyFacts
+
+@[expose] public section
 
 /-! # The offered opening at a reveal is the canonical disclosure
 

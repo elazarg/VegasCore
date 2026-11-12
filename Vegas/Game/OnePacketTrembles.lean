@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketForced
-import Vegas.Compile.EventGraphBacktranslation
-import Vegas.Pending.ReactiveOnePacketMenu
-import Interaction.ReactiveFiniteAssessment
-import GameTheory.Math.Probability.Mixture
+public import Vegas.Game.OnePacketForced
+public import Vegas.Compile.EventGraphBacktranslation
+public import Vegas.Pending.ReactiveOnePacketMenu
+public import Interaction.ReactiveFiniteAssessment
+public import GameTheory.Math.Probability.Mixture
+
+@[expose] public section
 
 /-! # Trembles and components of the one-packet game
 

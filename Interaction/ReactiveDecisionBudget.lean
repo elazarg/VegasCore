@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveRawRoundTrace
-import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceContinuation
+public import Interaction.ReactiveRawRoundTrace
+public import GameTheoryExtensions.Analysis.Protocol.SupportedChoiceContinuation
+
+@[expose] public section
 
 /-! # Remaining player-response opportunities in the actual reactive protocol -/
 

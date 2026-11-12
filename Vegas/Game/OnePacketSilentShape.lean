@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateCertificate
+public import Vegas.Game.OnePacketLateCertificate
+
+@[expose] public section
 
 /-! # The owner shape after a response at a first activation
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveContinuationObservation
-import Vegas.Pending.EvidenceNormalization
+public import Vegas.Pending.ReactiveContinuationObservation
+public import Vegas.Pending.EvidenceNormalization
+
+@[expose] public section
 
 /-! # Opponent responses during a private binding repair
 

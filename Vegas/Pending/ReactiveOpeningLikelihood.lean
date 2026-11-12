@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingSchedule
-import Vegas.Pending.ReactiveContinuationObservation
+public import Vegas.Pending.ReactiveBindingSchedule
+public import Vegas.Pending.ReactiveContinuationObservation
+
+@[expose] public section
 
 /-! # Opening windows after private binding histories
 

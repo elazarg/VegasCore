@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveSafety
-import Vegas.Pending.ReactiveStateInvariant
+public import Vegas.Pending.ReactiveSafety
+public import Vegas.Pending.ReactiveStateInvariant
+
+@[expose] public section
 
 /-! # Compiled bindings across arbitrary intervening interaction
 

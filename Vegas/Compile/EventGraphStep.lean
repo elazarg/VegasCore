@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphEvaluation
-import Vegas.EventGraph.Execution
+public import Vegas.Compile.EventGraphEvaluation
+public import Vegas.EventGraph.Execution
+
+@[expose] public section
 
 /-! # Compiled source kernels in the graph executor
 

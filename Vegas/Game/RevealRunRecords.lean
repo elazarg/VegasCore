@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealRunPath
+public import Vegas.Game.RevealRunPath
+
+@[expose] public section
 
 /-! # The records a round adds
 

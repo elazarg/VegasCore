@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ServiceTimingCoupling
-import Vegas.Game.SourceServiceOwnerSettled
-import Vegas.Game.SourceServiceAudit
-import Interaction.ReactiveRestrictedContinuation
-import Interaction.ReactiveRecovery
+public import Vegas.Game.ServiceTimingCoupling
+public import Vegas.Game.SourceServiceOwnerSettled
+public import Vegas.Game.SourceServiceAudit
+public import Interaction.ReactiveRestrictedContinuation
+public import Interaction.ReactiveRecovery
+
+@[expose] public section
 
 /-! # Settlement laws of turn-counted source clients
 

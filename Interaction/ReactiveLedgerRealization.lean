@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveLedgerPolicy
-import Interaction.MessageNetworkObservation
-import Interaction.ReactiveRecallInvariant
-import Interaction.ReactiveEnvironmentStep
+public import Interaction.ReactiveLedgerPolicy
+public import Interaction.MessageNetworkObservation
+public import Interaction.ReactiveRecallInvariant
+public import Interaction.ReactiveEnvironmentStep
+
+@[expose] public section
 
 /-! # Ledger policies at every legal decision without pending delivery
 
@@ -22,7 +26,7 @@ open GameTheory.Protocol GameTheory.Math.Probability
 variable {Principal : Type} [DecidableEq Principal] (app : ReactiveApplication Principal)
   (unobserved : app.observePending.DeliversNothing)
 
-private def noPendingKnowledge (execution : app.Execution) : Prop :=
+def noPendingKnowledge (execution : app.Execution) : Prop :=
   ∀ who, execution.network.leaked who = []
 
 include unobserved

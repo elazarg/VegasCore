@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketEventSuccess
-import Vegas.Game.SourceServiceFreshCall
-import GameTheoryExtensions.Protocol.TracePrefix
+public import Vegas.Game.OnePacketEventSuccess
+public import Vegas.Game.SourceServiceFreshCall
+public import GameTheoryExtensions.Protocol.TracePrefix
+
+@[expose] public section
 
 /-! # Exact canonical response results under native settlement
 

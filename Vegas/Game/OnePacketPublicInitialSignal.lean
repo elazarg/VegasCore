@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnerPriorSite
-import Vegas.Compile.EventGraphObservationEncoding
+public import Vegas.Game.OnePacketOwnerPriorSite
+public import Vegas.Compile.EventGraphObservationEncoding
+
+@[expose] public section
 
 /-! # The actual late key retains every public initial input -/
 

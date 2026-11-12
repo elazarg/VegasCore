@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSourceTurn
-import Vegas.Game.OnePacketFactorization
-import Vegas.Game.IntendedAuthenticOpening
-import Vegas.Game.SourceServiceFacts
+public import Vegas.Game.OnePacketSourceTurn
+public import Vegas.Game.OnePacketFactorization
+public import Vegas.Game.IntendedAuthenticOpening
+public import Vegas.Game.SourceServiceFacts
+
+@[expose] public section
 
 /-! # Transmissions with positive content
 

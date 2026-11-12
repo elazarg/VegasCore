@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketRevealStep
+public import Vegas.Game.OnePacketRevealStep
+
+@[expose] public section
 
 /-! # Masses of a response step in every case
 

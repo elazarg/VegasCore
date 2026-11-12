@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveRestrictedContinuation
-import Interaction.ReactiveFiniteAssessment
+public import Interaction.ReactiveRestrictedContinuation
+public import Interaction.ReactiveFiniteAssessment
+
+@[expose] public section
 
 /-! # Whole-continuation rationality against admissible physical policies
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.AsyncDeviationForeign
-import Vegas.Game.LastOwnedPhase
+public import Vegas.Game.AsyncDeviationForeign
+public import Vegas.Game.LastOwnedPhase
+
+@[expose] public section
 
 /-! # Foreign bindings of reference clients, in every mode
 

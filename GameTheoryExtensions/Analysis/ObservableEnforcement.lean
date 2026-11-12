@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Enforcement
-import GameTheory.Analysis.IncentiveCone
+public import GameTheoryExtensions.Analysis.Enforcement
+public import GameTheory.Analysis.IncentiveCone
+
+@[expose] public section
 
 /-! # When observable violations admit a sound deterrent
 

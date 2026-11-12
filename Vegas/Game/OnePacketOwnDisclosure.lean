@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDisclosureResolves
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Game.OnePacketHonestDecision
-import Vegas.Game.RevealServiceCalendarState
+public import Vegas.Game.OnePacketDisclosureResolves
+public import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Game.OnePacketHonestDecision
+public import Vegas.Game.RevealServiceCalendarState
+
+@[expose] public section
 
 /-! # The player's own disclosure resolves at its debt-free forced states
 

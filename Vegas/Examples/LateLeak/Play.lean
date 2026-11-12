@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.LateLeak.Game
-import GameTheory.Protocol.StateKernel
-import GameTheoryExtensions.Analysis.Protocol.ContinuationDecision
-import GameTheoryExtensions.Analysis.Protocol.ReachBounds
+public import Vegas.Examples.LateLeak.Game
+public import GameTheory.Protocol.StateKernel
+public import GameTheoryExtensions.Analysis.Protocol.ContinuationDecision
+public import GameTheoryExtensions.Analysis.Protocol.ReachBounds
+
+@[expose] public section
 
 /-! # Play of the late-turn game
 

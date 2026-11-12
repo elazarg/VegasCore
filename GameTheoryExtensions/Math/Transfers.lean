@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Mathlib.Algebra.BigOperators.Group.List.Basic
-import Mathlib.Data.Int.Basic
+public import Mathlib.Algebra.BigOperators.Group.List.Basic
+public import Mathlib.Data.Int.Basic
+
+@[expose] public section
 
 /-! # Aggregating integer transfer instructions
 

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Math.Probability.ConditionalObservation
+public import GameTheory.Math.Probability.ConditionalObservation
+
+@[expose] public section
 
 /-! # Choices drawn from an auxiliary observation
 

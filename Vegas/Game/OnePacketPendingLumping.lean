@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketPathwise
-import Vegas.Game.OnePacketActorRecord
-import Vegas.Game.OnePacketEventFailure
-import Vegas.Game.OnePacketEnvironmentSteps
-import Vegas.Game.OnePacketPendingPool
-import Vegas.Pending.ReactiveHiddenInclusion
-import Vegas.Pending.ReactiveAssociationEvidence
+public import Vegas.Game.OnePacketPathwise
+public import Vegas.Game.OnePacketActorRecord
+public import Vegas.Game.OnePacketEventFailure
+public import Vegas.Game.OnePacketEnvironmentSteps
+public import Vegas.Game.OnePacketPendingPool
+public import Vegas.Pending.ReactiveHiddenInclusion
+public import Vegas.Pending.ReactiveAssociationEvidence
+
+@[expose] public section
 
 /-! # One step of the native kernel while a forced owner's event is pending
 

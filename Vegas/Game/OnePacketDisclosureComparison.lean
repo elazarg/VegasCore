@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFirstActivationValue
-import Vegas.Game.OnePacketPhasePotential
-import Vegas.Game.OnePacketLocalCompletionValue
-import Vegas.Game.OnePacketEventPhaseLaw
-import Vegas.Game.OnePacketValueTransport
+public import Vegas.Game.OnePacketFirstActivationValue
+public import Vegas.Game.OnePacketPhasePotential
+public import Vegas.Game.OnePacketLocalCompletionValue
+public import Vegas.Game.OnePacketEventPhaseLaw
+public import Vegas.Game.OnePacketValueTransport
+
+@[expose] public section
 
 /-! # Source incentive comparison for a fresh disclosure -/
 

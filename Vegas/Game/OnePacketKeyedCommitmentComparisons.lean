@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketKeyedValueBounds
-import Vegas.Game.OnePacketCommittedValueAffine
-import Vegas.Game.OnePacketLateCommitFailure
-import Vegas.Game.OnePacketLateCommitments
-import Vegas.Game.OnePacketSourceBeliefBounds
-import Vegas.Game.OnePacketCommitmentSourcePolicy
+public import Vegas.Game.OnePacketKeyedValueBounds
+public import Vegas.Game.OnePacketCommittedValueAffine
+public import Vegas.Game.OnePacketLateCommitFailure
+public import Vegas.Game.OnePacketLateCommitments
+public import Vegas.Game.OnePacketSourceBeliefBounds
+public import Vegas.Game.OnePacketCommitmentSourcePolicy
+
+@[expose] public section
 
 /-! # Intended keyed commitments on the actual native assessment sequence -/
 

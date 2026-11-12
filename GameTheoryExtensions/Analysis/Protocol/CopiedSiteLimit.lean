@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.Protocol.RestrictionIncentives
-import GameTheory.Analysis.Protocol.ComponentCompletion
-import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
+public import GameTheory.Analysis.Protocol.RestrictionIncentives
+public import GameTheory.Analysis.Protocol.ComponentCompletion
+public import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
+
+@[expose] public section
 
 /-! # Sequential equilibrium from comparisons at copied sites
 

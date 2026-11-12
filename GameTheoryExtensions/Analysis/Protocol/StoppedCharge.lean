@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
+public import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
+
+@[expose] public section
 
 /-! # Automatic stopped potentials from bounded history-dependent charges
 

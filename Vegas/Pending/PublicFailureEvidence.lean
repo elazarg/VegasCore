@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionInvariant
-import Vegas.Pending.ReactiveBindingOmission
-import Vegas.Pending.ReactiveRuntime
-import Interaction.ReactiveInvariant
+public import Vegas.Pending.ExclusionInvariant
+public import Vegas.Pending.ReactiveBindingOmission
+public import Vegas.Pending.ReactiveRuntime
+public import Interaction.ReactiveInvariant
+
+@[expose] public section
 
 /-! # Public failure and receipt provenance along native completion traces
 

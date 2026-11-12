@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketExclusionPayoff
-import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Game.OnePacketExclusionPayoff
+public import Vegas.Pending.ReactiveGraphSteps
+
+@[expose] public section
 
 /-! # Fixed native exit utility under arbitrary continuations
 

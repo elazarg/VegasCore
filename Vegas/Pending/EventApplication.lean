@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.Validation
-import Interaction.CommitmentCandidates
-import Interaction.MessagePool
-import GameTheory.Math.Probability.Mixture
-import GameTheory.Math.Probability.Product
+public import Vegas.EventGraph.Validation
+public import Interaction.CommitmentCandidates
+public import Interaction.MessagePool
+public import GameTheory.Math.Probability.Mixture
+public import GameTheory.Math.Probability.Product
+
+@[expose] public section
 
 /-! # Event-addressed runtime contract
 
@@ -227,17 +231,17 @@ omit R in theorem candidateOfValue_binding_success (kind : EventField Player L)
   simp only [candidateOfValue, ↓reduceIte]
 
 /-- Candidate meaning installed for one initial binding input. -/
-private def initialCandidate (inputs : graph.Inputs) (owner : Player)
+def initialCandidate (inputs : graph.Inputs) (owner : Player)
     (input : graph.InputId) : CommitmentCandidate (Raw L) :=
   candidateOfValue owner (graph.inputLayout input) (inputs input)
 
-private def initialCandidates (inputs : graph.Inputs) :
+def initialCandidates (inputs : graph.Inputs) :
     CommitmentCandidates Player (CandidateSlot graph) (Raw L) where
   table owner slot := match slot with
     | .initial input => initialCandidate inputs owner input
     | .prepared _ => .fresh
 
-private def initialAccepted : AcceptedHandles graph := fun field =>
+def initialAccepted : AcceptedHandles graph := fun field =>
   match field with
   | .inr _ => none
   | .inl input =>
@@ -509,7 +513,7 @@ theorem submitStep_commitment_fixed (state : State graph) (who : Player)
 /-- Install a binding handle and complete the bind with the immutable meaning
 already associated with that handle. Wrong-typed and unprepared candidates
 produce genuine binding failure without changing packet shape. -/
-private def acceptBinding (state : State graph) (event : graph.EventId)
+def acceptBinding (state : State graph) (event : graph.EventId)
     (ready : state.config.cut.Ready event) (owner : Player) (payload : L.Ty)
     (outputEq : graph.outputLayout event = .binding owner payload)
     (handle : Handle graph) :
@@ -526,7 +530,7 @@ private def acceptBinding (state : State graph) (event : graph.EventId)
 
 /-- Complete one resolution through the deterministic evaluator retained by
 `EventCode`; no handler-local copy of deferred validation exists. -/
-private def acceptResolution (state : State graph) (event : graph.EventId)
+def acceptResolution (state : State graph) (event : graph.EventId)
     (ready : state.config.cut.Ready event) (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
     (checks : List (GuardCheck graph.layout payload))
@@ -722,7 +726,7 @@ private theorem resolve_complete_mem_step (state : State graph)
     rfl
 
 omit [DecidableEq Player] in
-private theorem resolveOutput?_false_eq_failure_of_ready (state : State graph)
+theorem resolveOutput?_false_eq_failure_of_ready (state : State graph)
     (event : graph.EventId) (ready : state.config.cut.Ready event)
     (owner : Player) (payload : L.Ty)
     (binding : FieldRef graph.layout (.binding owner payload))
@@ -1228,7 +1232,7 @@ theorem handle_clock_activated (timeouts : EventTimeouts graph)
 
 /-- A sample command runs the retained chance kernel once when the addressed
 event is ready. Other event kinds stutter. -/
-private def executeSample (state : State graph) (event : graph.EventId) :
+def executeSample (state : State graph) (event : graph.EventId) :
     PMF (State graph) :=
   if ready : state.config.cut.Ready event then
     match nodeView graph event with
@@ -1243,7 +1247,7 @@ private def executeSample (state : State graph) (event : graph.EventId) :
 
 /-- Expiry is local to one ready strategic event and consumes no other event's
 budget. It completes binds with failure and resolutions with `false`. -/
-private def expire (timeouts : EventTimeouts graph) (state : State graph)
+def expire (timeouts : EventTimeouts graph) (state : State graph)
     (event : graph.EventId) : State graph :=
   if ready : state.config.cut.Ready event then
     match _activated : state.activatedAt event with

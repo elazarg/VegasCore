@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.IntendedBetween
-import GameTheoryExtensions.Protocol.TracePrefix
+public import Vegas.Source.IntendedBetween
+public import GameTheoryExtensions.Protocol.TracePrefix
+
+@[expose] public section
 
 /-! # Prefixes of intended histories and the swap between their ends
 
@@ -320,7 +324,7 @@ section CellLookup
 variable [DecidableEq (CellTy Player L)]
 
 /-- The value of a cell at a setup state; nothing before setup. -/
-private def foundAt (name : VarId) (kind : CellTy Player L) (state : setup.ProtocolState) :
+def foundAt (name : VarId) (kind : CellTy Player L) (state : setup.ProtocolState) :
     Option (CellVal L kind) :=
   state.bind fun point => ProtocolState.cell? setup.program point name kind
 

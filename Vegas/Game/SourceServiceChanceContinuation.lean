@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceAsyncStep
-import Vegas.Pending.ExclusionPolicyLaw
+public import Vegas.Game.SourceServiceAsyncStep
+public import Vegas.Pending.ExclusionPolicyLaw
+
+@[expose] public section
 
 /-! # Native continuation while waiting for public chance
 

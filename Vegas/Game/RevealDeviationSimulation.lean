@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealPhaseBoundary
-import Vegas.Game.DeviationSimulation
+public import Vegas.Game.RevealPhaseBoundary
+public import Vegas.Game.DeviationSimulation
+
+@[expose] public section
 
 /-! # Simulating a deviation on the ledger with concurrent reveals
 

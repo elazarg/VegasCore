@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealRunClosure
+public import Vegas.Game.RevealRunClosure
+
+@[expose] public section
 
 /-! # The closure along a run of reveals
 

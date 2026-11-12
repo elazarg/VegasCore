@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceAsyncTimeliness
-import Vegas.Pending.ExclusionPolicyLaw
-import Vegas.Pending.ReactiveSignedCommitments
-import Interaction.ReactiveRawRoundTrace
-import Interaction.ReactiveStopping
+public import Vegas.Game.SourceServiceAsyncTimeliness
+public import Vegas.Pending.ExclusionPolicyLaw
+public import Vegas.Pending.ReactiveSignedCommitments
+public import Interaction.ReactiveRawRoundTrace
+public import Interaction.ReactiveStopping
+
+@[expose] public section
 
 /-! # Accepted source continuation through native automatic service -/
 

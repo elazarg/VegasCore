@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.FailedBindingDeviation
-import GameTheory.Math.Probability.Convergence
+public import Vegas.Source.FailedBindingDeviation
+public import GameTheory.Math.Probability.Convergence
+
+@[expose] public section
 
 /-! # Play intended for one player
 

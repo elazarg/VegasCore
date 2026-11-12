@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSlotChoiceMasses
-import Vegas.Game.OnePacketContentSupport
-import Vegas.Game.OnePacketActorRecord
-import Vegas.Game.SourcePrefixPublications
-import Vegas.Game.OnePacketFreshSlots
-import Vegas.Pending.ReactiveUnusableBinding
+public import Vegas.Game.OnePacketSlotChoiceMasses
+public import Vegas.Game.OnePacketContentSupport
+public import Vegas.Game.OnePacketActorRecord
+public import Vegas.Game.SourcePrefixPublications
+public import Vegas.Game.OnePacketFreshSlots
+public import Vegas.Pending.ReactiveUnusableBinding
+
+@[expose] public section
 
 /-! # Realized commitments with positive content
 

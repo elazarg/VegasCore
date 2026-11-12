@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealClosureSimulation
-import Vegas.Game.ConcurrentRevealForfeit
-import Vegas.Game.RevealServiceEffectiveOutcomeLaw
+public import Vegas.Game.RevealClosureSimulation
+public import Vegas.Game.ConcurrentRevealForfeit
+public import Vegas.Game.RevealServiceEffectiveOutcomeLaw
+
+@[expose] public section
 
 /-! # Nash equilibria of effective-opening clients with concurrent reveals
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.NormalizedRestriction
-import Vegas.EventGraph.SchedulerErasure
-import Vegas.EventGraph.CanonicalStep
+public import Vegas.EventGraph.NormalizedRestriction
+public import Vegas.EventGraph.SchedulerErasure
+public import Vegas.EventGraph.CanonicalStep
+
+@[expose] public section
 
 /-! # Prefix configurations are restrictions of their successors
 

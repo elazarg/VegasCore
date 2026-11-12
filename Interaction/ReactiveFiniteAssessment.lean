@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveResponseMenu
-import GameTheoryExtensions.Analysis.Protocol.Perturbation
-import GameTheoryExtensions.Math.Probability.Uniform
-import GameTheory.Math.Probability.FiniteUniform
+public import Interaction.ReactiveResponseMenu
+public import GameTheoryExtensions.Analysis.Protocol.Perturbation
+public import GameTheoryExtensions.Math.Probability.Uniform
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 

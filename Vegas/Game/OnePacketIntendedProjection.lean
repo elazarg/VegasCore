@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketForced
-import Vegas.Pending.ReactiveOnePacketMenu
-import Vegas.Game.IntendedPreservation
-import Vegas.Source.Exclusion
+public import Vegas.Game.OnePacketForced
+public import Vegas.Pending.ReactiveOnePacketMenu
+public import Vegas.Game.IntendedPreservation
+public import Vegas.Source.Exclusion
+
+@[expose] public section
 
 /-! # Current native endpoints and partial intended replay
 

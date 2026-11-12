@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLocalPhaseValue
-import Vegas.Game.OnePacketCompletionPotential
-import Vegas.Game.OnePacketEventPhaseLaw
+public import Vegas.Game.OnePacketLocalPhaseValue
+public import Vegas.Game.OnePacketCompletionPotential
+public import Vegas.Game.OnePacketEventPhaseLaw
+
+@[expose] public section
 
 /-! # Physical completion values for native local responses -/
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveCountAudit
-import Vegas.Pending.ReactiveRiskMenu
+public import Vegas.Pending.ReactiveCountAudit
+public import Vegas.Pending.ReactiveRiskMenu
+
+@[expose] public section
 
 /-! # The one-packet menu
 

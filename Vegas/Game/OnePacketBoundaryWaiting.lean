@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnSubmissions
-import Vegas.Game.SourceServiceFacts
-import Vegas.Game.OnePacketFirstActivation
-import Vegas.Game.OnePacketPrescribedSupport
-import Vegas.Game.SourceServiceCompletion
-import Vegas.Game.RevealServiceCalendarState
-import Vegas.Pending.ReactiveOwnerActivationRecall
-import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
+public import Vegas.Game.OnePacketOwnSubmissions
+public import Vegas.Game.SourceServiceFacts
+public import Vegas.Game.OnePacketFirstActivation
+public import Vegas.Game.OnePacketPrescribedSupport
+public import Vegas.Game.SourceServiceCompletion
+public import Vegas.Game.RevealServiceCalendarState
+public import Vegas.Pending.ReactiveOwnerActivationRecall
+public import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
+
+@[expose] public section
 
 /-! # Waiting for the first owner callback under counted native service -/
 

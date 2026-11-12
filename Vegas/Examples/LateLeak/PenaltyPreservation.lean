@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.LateLeak.Intended
-import GameTheory.Analysis.Protocol.SequentialExistence
-import GameTheory.Analysis.Protocol.BeliefTransport
+public import Vegas.Examples.LateLeak.Intended
+public import GameTheory.Analysis.Protocol.SequentialExistence
+public import GameTheory.Analysis.Protocol.BeliefTransport
+
+@[expose] public section
 
 /-! # Preservation under sufficiently large failure costs
 
@@ -193,7 +197,7 @@ private theorem opening_eq_pure (profile : LateLeakProfile G true) (secret : Lat
   exact pmf_eq_pure_of_support_subset_singleton _ _
     (le_of_eq ((PMF.apply_eq_one_iff _ _).mp one))
 
-private def protectedMember (secret : LateLeakType) :
+def protectedMember (secret : LateLeakType) :
     (lateLeakModel G true).InformationHistory .listener (.asked (.protectedSuccess secret.1)) :=
   lateLeakListenerMember G true (lateLeakOpenedHistory G true secret)
     (.protectedSuccess secret.1) rfl

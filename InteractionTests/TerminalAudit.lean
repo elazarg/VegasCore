@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveAuditContinuation
-import Interaction.ReactiveResponseMenu
+public import Interaction.ReactiveAuditContinuation
+public import Interaction.ReactiveResponseMenu
+
+@[expose] public section
 
 /-! # Terminal audit bounds allow unbounded nonterminal rewards -/
 
@@ -14,13 +18,13 @@ open Interaction GameTheory GameTheory.Protocol GameTheory.Math.Probability
 
 variable (app : ReactiveApplication Unit)
 
-private def base (state : app.ProtocolState) (_ : Unit) : ℝ :=
+def base (state : app.ProtocolState) (_ : Unit) : ℝ :=
   match state with
   | none => 0
   | some control =>
       if control.remaining = 0 ∧ control.actor = none then 7 else control.remaining
 
-private def audit (_ : List app.TrafficRecord) : PMF (Unit → Bool) :=
+def audit (_ : List app.TrafficRecord) : PMF (Unit → Bool) :=
   PMF.pure fun _ => true
 
 /-- Every terminal state is covered, including horizon exhaustion with no

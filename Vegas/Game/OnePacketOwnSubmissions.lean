@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketActorRecord
-import Vegas.Game.SourceServiceFacts
-import Vegas.Game.SourceServiceCompletion
-import Vegas.Pending.ReactiveSignedCommitments
-import Vegas.Source.FailedBindingDeviation
+public import Vegas.Game.OnePacketActorRecord
+public import Vegas.Game.SourceServiceFacts
+public import Vegas.Game.SourceServiceCompletion
+public import Vegas.Pending.ReactiveSignedCommitments
+public import Vegas.Source.FailedBindingDeviation
+
+@[expose] public section
 
 /-! # Own submissions on one-packet histories are made at the owner's turns
 

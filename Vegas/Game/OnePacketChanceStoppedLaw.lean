@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSuccessorBoundary
-import Vegas.Pending.EventCommandFrame
-import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Game.OnePacketSuccessorBoundary
+public import Vegas.Pending.EventCommandFrame
+public import Vegas.Pending.ReactiveGraphSteps
+
+@[expose] public section
 
 /-! # Finite stopped chance phases of the native counted model -/
 

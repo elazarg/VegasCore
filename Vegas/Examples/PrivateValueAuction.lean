@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.CommitRevealAuction
-import Vegas.Source.InitialState
-import Vegas.Compile.EventGraphLayout
+public import Vegas.Examples.CommitRevealAuction
+public import Vegas.Source.InitialState
+public import Vegas.Compile.EventGraphLayout
+
+@[expose] public section
 
 /-! # An auction with persistent private valuations
 
@@ -21,7 +25,7 @@ open CommitRevealAuction (Player)
 def context : SourceCtx Player simpleExpr :=
   [(4, .privateInput .alice .int), (5, .privateInput .bob .int)]
 
-private def acceptGuard {Γ : SourceCtx Player simpleExpr} (who : Player) (name : VarId) :
+def acceptGuard {Γ : SourceCtx Player simpleExpr} (who : Player) (name : VarId) :
     SourceGuard simpleExpr Γ who name .int where
   schema := []
   schemaNames := by decide

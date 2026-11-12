@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFactorization
-import Vegas.Pending.ReactiveBindingFrameRounds
+public import Vegas.Game.OnePacketFactorization
+public import Vegas.Pending.ReactiveBindingFrameRounds
+
+@[expose] public section
 
 /-! # Operational projections of directed hidden-binding repair
 

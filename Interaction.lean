@@ -1,96 +1,100 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ChallengeWindow
-import Interaction.CommitmentCandidates
-import Interaction.IdealCommitments
-import Interaction.MessageInvariant
-import Interaction.MessageMonitoring
-import Interaction.MessageNetwork
-import Interaction.MessageNetworkCounters
-import Interaction.MessageNetworkIdentity
-import Interaction.MessageNetworkInvariant
-import Interaction.MessageNetworkObservation
-import Interaction.MessagePool
-import Interaction.MessagePublication
-import Interaction.MessageRetention
-import Interaction.ReactiveAliasAdmissibility
-import Interaction.ReactiveAliasBayes
-import Interaction.ReactiveAliasConsistency
-import Interaction.ReactiveAliasEquilibrium
-import Interaction.ReactiveAliasImplementation
-import Interaction.ReactiveAliasIncentives
-import Interaction.ReactiveAliasLaw
-import Interaction.ReactiveAliasSelector
-import Interaction.ReactiveAliasStrategy
-import Interaction.ReactiveAllocation
-import Interaction.ReactiveAnchoredPolicy
-import Interaction.ReactiveAnchoredTrace
-import Interaction.ReactiveApplication
-import Interaction.ReactiveAuditCollection
-import Interaction.ReactiveAuditContinuation
-import Interaction.ReactiveDecisionBudget
-import Interaction.ReactiveDecisionInformation
-import Interaction.ReactiveDecisionPredecessor
-import Interaction.ReactiveEnvironmentStep
-import Interaction.ReactiveEvaluation
-import Interaction.ReactiveFiniteAssessment
-import Interaction.ReactiveHistory
-import Interaction.ReactiveImplementation
-import Interaction.ReactiveImplementationContinuation
-import Interaction.ReactiveInputOrder
-import Interaction.ReactiveInvariant
-import Interaction.ReactiveLedgerAssessment
-import Interaction.ReactiveLedgerPolicy
-import Interaction.ReactiveLedgerRealization
-import Interaction.ReactiveLocalContinuation
-import Interaction.ReactiveLumping
-import Interaction.ReactiveMenuInvariant
-import Interaction.ReactiveMenuPolicy
-import Interaction.ReactiveMenuRationality
-import Interaction.ReactiveMenuRestriction
-import Interaction.ReactiveMessageIdentity
-import Interaction.ReactiveMessageReadout
-import Interaction.ReactiveMixtureRounds
-import Interaction.ReactiveMonitoring
-import Interaction.ReactiveNormalHistory
-import Interaction.ReactiveNormalRecall
-import Interaction.ReactiveOwnPlay
-import Interaction.ReactiveOwnerSelection
-import Interaction.ReactivePacketEvidence
-import Interaction.ReactivePendingProcessing
-import Interaction.ReactivePolicy
-import Interaction.ReactivePolicyInvariant
-import Interaction.ReactivePolicyMixture
-import Interaction.ReactiveProtocol
-import Interaction.ReactiveProvenance
-import Interaction.ReactivePublication
-import Interaction.ReactiveRawRoundTrace
-import Interaction.ReactiveRecall
-import Interaction.ReactiveRecallEntries
-import Interaction.ReactiveRecallInvariant
-import Interaction.ReactiveReceiptIdentity
-import Interaction.ReactiveReceipts
-import Interaction.ReactiveRecordedEnvironment
-import Interaction.ReactiveRecovery
-import Interaction.ReactiveResponseAccounting
-import Interaction.ReactiveResponseBudget
-import Interaction.ReactiveResponseCount
-import Interaction.ReactiveResponseEmbedding
-import Interaction.ReactiveResponseEvaluation
-import Interaction.ReactiveResponseMenu
-import Interaction.ReactiveResponseNormalization
-import Interaction.ReactiveRestrictedContinuation
-import Interaction.ReactiveRoundCongruence
-import Interaction.ReactiveRoundReachability
-import Interaction.ReactiveRoundTrace
-import Interaction.ReactiveRounds
-import Interaction.ReactiveServiceInvariant
-import Interaction.ReactiveServiceRounds
-import Interaction.ReactiveStoppedState
-import Interaction.ReactiveStopping
-import Interaction.ReactiveSubmissionSerial
-import Interaction.ReactiveTrafficAudit
-import Interaction.ReactiveTrafficContinuation
-import Interaction.ReactiveTrafficState
-import Interaction.ScheduledOpening
-import Interaction.ThinnedEvidenceService
+public import Interaction.ChallengeWindow
+public import Interaction.CommitmentCandidates
+public import Interaction.IdealCommitments
+public import Interaction.MessageInvariant
+public import Interaction.MessageMonitoring
+public import Interaction.MessageNetwork
+public import Interaction.MessageNetworkCounters
+public import Interaction.MessageNetworkIdentity
+public import Interaction.MessageNetworkInvariant
+public import Interaction.MessageNetworkObservation
+public import Interaction.MessagePool
+public import Interaction.MessagePublication
+public import Interaction.MessageRetention
+public import Interaction.ReactiveAliasAdmissibility
+public import Interaction.ReactiveAliasBayes
+public import Interaction.ReactiveAliasConsistency
+public import Interaction.ReactiveAliasEquilibrium
+public import Interaction.ReactiveAliasImplementation
+public import Interaction.ReactiveAliasIncentives
+public import Interaction.ReactiveAliasLaw
+public import Interaction.ReactiveAliasSelector
+public import Interaction.ReactiveAliasStrategy
+public import Interaction.ReactiveAllocation
+public import Interaction.ReactiveAnchoredPolicy
+public import Interaction.ReactiveAnchoredTrace
+public import Interaction.ReactiveApplication
+public import Interaction.ReactiveAuditCollection
+public import Interaction.ReactiveAuditContinuation
+public import Interaction.ReactiveDecisionBudget
+public import Interaction.ReactiveDecisionInformation
+public import Interaction.ReactiveDecisionPredecessor
+public import Interaction.ReactiveEnvironmentStep
+public import Interaction.ReactiveEvaluation
+public import Interaction.ReactiveFiniteAssessment
+public import Interaction.ReactiveHistory
+public import Interaction.ReactiveImplementation
+public import Interaction.ReactiveImplementationContinuation
+public import Interaction.ReactiveInputOrder
+public import Interaction.ReactiveInvariant
+public import Interaction.ReactiveLedgerAssessment
+public import Interaction.ReactiveLedgerPolicy
+public import Interaction.ReactiveLedgerRealization
+public import Interaction.ReactiveLocalContinuation
+public import Interaction.ReactiveLumping
+public import Interaction.ReactiveMenuInvariant
+public import Interaction.ReactiveMenuPolicy
+public import Interaction.ReactiveMenuRationality
+public import Interaction.ReactiveMenuRestriction
+public import Interaction.ReactiveMessageIdentity
+public import Interaction.ReactiveMessageReadout
+public import Interaction.ReactiveMixtureRounds
+public import Interaction.ReactiveMonitoring
+public import Interaction.ReactiveNormalHistory
+public import Interaction.ReactiveNormalRecall
+public import Interaction.ReactiveOwnPlay
+public import Interaction.ReactiveOwnerSelection
+public import Interaction.ReactivePacketEvidence
+public import Interaction.ReactivePendingProcessing
+public import Interaction.ReactivePolicy
+public import Interaction.ReactivePolicyInvariant
+public import Interaction.ReactivePolicyMixture
+public import Interaction.ReactiveProtocol
+public import Interaction.ReactiveProvenance
+public import Interaction.ReactivePublication
+public import Interaction.ReactiveRawRoundTrace
+public import Interaction.ReactiveRecall
+public import Interaction.ReactiveRecallEntries
+public import Interaction.ReactiveRecallInvariant
+public import Interaction.ReactiveReceiptIdentity
+public import Interaction.ReactiveReceipts
+public import Interaction.ReactiveRecordedEnvironment
+public import Interaction.ReactiveRecovery
+public import Interaction.ReactiveResponseAccounting
+public import Interaction.ReactiveResponseBudget
+public import Interaction.ReactiveResponseCount
+public import Interaction.ReactiveResponseEmbedding
+public import Interaction.ReactiveResponseEvaluation
+public import Interaction.ReactiveResponseMenu
+public import Interaction.ReactiveResponseNormalization
+public import Interaction.ReactiveRestrictedContinuation
+public import Interaction.ReactiveRoundCongruence
+public import Interaction.ReactiveRoundReachability
+public import Interaction.ReactiveRoundTrace
+public import Interaction.ReactiveRounds
+public import Interaction.ReactiveServiceInvariant
+public import Interaction.ReactiveServiceRounds
+public import Interaction.ReactiveStoppedState
+public import Interaction.ReactiveStopping
+public import Interaction.ReactiveSubmissionSerial
+public import Interaction.ReactiveTrafficAudit
+public import Interaction.ReactiveTrafficContinuation
+public import Interaction.ReactiveTrafficState
+public import Interaction.ScheduledOpening
+public import Interaction.ThinnedEvidenceService
+
+@[expose] public section

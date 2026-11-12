@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOpeningLaw
+public import Vegas.Game.OnePacketOpeningLaw
+
+@[expose] public section
 
 /-! # States consistent with a late-delivery site
 

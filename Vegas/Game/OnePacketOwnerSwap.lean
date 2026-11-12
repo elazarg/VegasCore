@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Pending.ValueSwapPairs
-import Vegas.Pending.ReactiveAcceptedOutput
+public import Vegas.Game.RevealService
+public import Vegas.Pending.ValueSwapPairs
+public import Vegas.Pending.ReactiveAcceptedOutput
+
+@[expose] public section
 
 /-! # The swap between two views of one owner
 

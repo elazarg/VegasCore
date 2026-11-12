@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Foundation.Guard
+public import Vegas.Foundation.Guard
+
+@[expose] public section
 
 /-! # Typed node code for dependency-driven event graphs
 
@@ -158,7 +162,7 @@ theorem get?_isSome {Field : Type} {layout : Field → EventField Player L}
 
 end PublicRead
 
-private def collectPublicReads {Field : Type} {layout : Field → EventField Player L}
+def collectPublicReads {Field : Type} {layout : Field → EventField Player L}
     (deps : Finset VarId) (schema : Ctx L.Ty)
     (reads : ∀ {name payload}, HasVar schema name payload → PublicRead (R := R) layout payload)
     (store : Store layout) :=
@@ -449,7 +453,7 @@ structure GuardCheck {Field : Type} [DecidableEq Field]
 
 namespace GuardCheck
 
-private def collectReads {Field : Type} {layout : Field → EventField Player L}
+def collectReads {Field : Type} {layout : Field → EventField Player L}
     {currentPayload : L.Ty} (store : Store layout)
     (proposal : PublicationResult (L.Val currentPayload))
     (deps : Finset VarId) (schema : Ctx L.Ty)

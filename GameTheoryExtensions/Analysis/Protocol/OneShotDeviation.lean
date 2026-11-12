@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.Protocol.CounterfactualDecomposition
-import GameTheory.Protocol.DecisionRecall
+public import GameTheory.Analysis.Protocol.CounterfactualDecomposition
+public import GameTheory.Protocol.DecisionRecall
+
+@[expose] public section
 
 /-! # One deviating step followed by the original continuation
 

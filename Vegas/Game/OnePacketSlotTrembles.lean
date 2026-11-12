@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketTrembles
-import GameTheory.Math.Probability.FiniteUniform
-import GameTheoryExtensions.Math.Probability.Uniform
+public import Vegas.Game.OnePacketTrembles
+public import GameTheory.Math.Probability.FiniteUniform
+public import GameTheoryExtensions.Math.Probability.Uniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 

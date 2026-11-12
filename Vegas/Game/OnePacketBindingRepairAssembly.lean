@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCounterpartAssembly
-import Vegas.Game.OnePacketRepairCertificateCounterpart
+public import Vegas.Game.OnePacketCounterpartAssembly
+public import Vegas.Game.OnePacketRepairCertificateCounterpart
+
+@[expose] public section
 
 /-! # Counterpart inputs from actual private-binding repairs
 

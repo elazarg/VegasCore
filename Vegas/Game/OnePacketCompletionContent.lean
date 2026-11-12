@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCompletionCases
+public import Vegas.Game.OnePacketCompletionCases
+
+@[expose] public section
 
 /-! # The content of a completing packet
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFactorization
-import Vegas.Pending.ReactiveAssociationEvidence
-import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Game.OnePacketFactorization
+public import Vegas.Pending.ReactiveAssociationEvidence
+public import Vegas.Pending.ReactiveGraphSteps
+
+@[expose] public section
 
 /-! # The public table of accepted binding handles
 

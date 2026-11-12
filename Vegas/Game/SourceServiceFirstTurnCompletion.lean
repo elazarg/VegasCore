@@ -1,14 +1,18 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceFirstTurnOpportunity
-import Vegas.Game.SourceServiceTurnSubmissions
-import Vegas.Game.SourceServiceCanonicalAcceptance
-import Vegas.Game.SourceServiceAcceptedContinuation
-import Vegas.Game.SourceServiceSilentContinuation
-import Vegas.Game.SourceServiceChanceContinuation
-import Vegas.Game.SourceServiceSiteBridge
-import Vegas.Compile.EventGraphCanonical
-import Interaction.ReactiveMixtureRounds
+public import Vegas.Game.SourceServiceFirstTurnOpportunity
+public import Vegas.Game.SourceServiceTurnSubmissions
+public import Vegas.Game.SourceServiceCanonicalAcceptance
+public import Vegas.Game.SourceServiceAcceptedContinuation
+public import Vegas.Game.SourceServiceSilentContinuation
+public import Vegas.Game.SourceServiceChanceContinuation
+public import Vegas.Game.SourceServiceSiteBridge
+public import Vegas.Compile.EventGraphCanonical
+public import Interaction.ReactiveMixtureRounds
+
+@[expose] public section
 
 /-! # First-turn source continuation
 

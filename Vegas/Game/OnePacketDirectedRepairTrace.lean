@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDirectedRepairSteps
-import Vegas.Game.OnePacketDirectedRepairMenu
-import Vegas.Pending.ReactiveOnePacketFreshness
+public import Vegas.Game.OnePacketDirectedRepairSteps
+public import Vegas.Game.OnePacketDirectedRepairMenu
+public import Vegas.Pending.ReactiveOnePacketFreshness
+
+@[expose] public section
 
 /-! # Actual one-packet traces through directed binding repair
 

@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketMainActivation
-import Vegas.Game.OnePacketForeignActivation
-import Vegas.Game.OnePacketMainResponseSafety
-import Vegas.Game.OnePacketCountedService
-import Vegas.Game.OnePacketForeignSubmission
-import Vegas.Pending.ReactiveCompletion
-import Vegas.Game.OnePacketFilteredPrefix
+public import Vegas.Game.OnePacketMainActivation
+public import Vegas.Game.OnePacketForeignActivation
+public import Vegas.Game.OnePacketMainResponseSafety
+public import Vegas.Game.OnePacketCountedService
+public import Vegas.Game.OnePacketForeignSubmission
+public import Vegas.Pending.ReactiveCompletion
+public import Vegas.Game.OnePacketFilteredPrefix
+
+@[expose] public section
 
 /-! # First foreign failures under native counted pointwise service
 

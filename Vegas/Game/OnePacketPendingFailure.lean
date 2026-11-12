@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateLumping
-import Vegas.Game.OnePacketLateSuccess
-import Vegas.Game.OnePacketEventPhaseLaw
-import Vegas.Pending.ReactiveAcceptedOutput
+public import Vegas.Game.OnePacketLateLumping
+public import Vegas.Game.OnePacketLateSuccess
+public import Vegas.Game.OnePacketEventPhaseLaw
+public import Vegas.Pending.ReactiveAcceptedOutput
+
+@[expose] public section
 
 /-! # Primitive failure at the current native completion stop -/
 

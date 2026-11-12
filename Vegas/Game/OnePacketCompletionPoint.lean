@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateSuccess
-import Vegas.Game.SourceFailureRecord
+public import Vegas.Game.OnePacketLateSuccess
+public import Vegas.Game.SourceFailureRecord
+
+@[expose] public section
 
 /-! # Intended completion points in native histories -/
 

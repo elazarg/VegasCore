@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactivePacketEvidence
-import Vegas.Pending.ReactiveRuntime
-import Vegas.Pending.EventCommitmentBinding
+public import Interaction.ReactivePacketEvidence
+public import Vegas.Pending.ReactiveRuntime
+public import Vegas.Pending.EventCommitmentBinding
+
+@[expose] public section
 
 /-! # Sound carried opening evidence in the native reactive runtime
 

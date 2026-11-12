@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealServiceEffectiveHonestLaw
-import Vegas.Game.RevealServiceOutcomeLaw
+public import Vegas.Game.RevealServiceEffectiveHonestLaw
+public import Vegas.Game.RevealServiceOutcomeLaw
+
+@[expose] public section
 
 /-! # Effective-opening clients have the source law
 

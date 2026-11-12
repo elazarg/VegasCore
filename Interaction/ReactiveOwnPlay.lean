@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveResponseMenu
-import GameTheory.Analysis.Protocol.CounterfactualRegret
-import GameTheory.Protocol.DecisionRecall
+public import Interaction.ReactiveResponseMenu
+public import GameTheory.Analysis.Protocol.CounterfactualRegret
+public import GameTheory.Protocol.DecisionRecall
+
+@[expose] public section
 
 /-! # Own play is determined by reactive decision recall
 

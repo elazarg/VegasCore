@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketClearRecord
-import Vegas.Game.OnePacketMainContent
-import Vegas.Game.OnePacketStepGlue
-import Vegas.Game.OnePacketOwnIntended
+public import Vegas.Game.OnePacketClearRecord
+public import Vegas.Game.OnePacketMainContent
+public import Vegas.Game.OnePacketStepGlue
+public import Vegas.Game.OnePacketOwnIntended
+
+@[expose] public section
 
 /-! # Regularity before public exclusion and focal source debt -/
 

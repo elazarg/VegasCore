@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServicePolicy
-import Vegas.Pending.ReactiveCanonicalDecision
-import Vegas.Pending.ReactiveSubmissionRecall
-import Vegas.Compile.EventGraphPolicyLaw
-import Vegas.Game.SourceServiceFacts
-import GameTheoryExtensions.Math.Probability.Support
+public import Vegas.Game.SourceServicePolicy
+public import Vegas.Pending.ReactiveCanonicalDecision
+public import Vegas.Pending.ReactiveSubmissionRecall
+public import Vegas.Compile.EventGraphPolicyLaw
+public import Vegas.Game.SourceServiceFacts
+public import GameTheoryExtensions.Math.Probability.Support
+
+@[expose] public section
 
 /-! # Source decisions at the audit's canonical slot
 

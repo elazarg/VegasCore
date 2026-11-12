@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.IncentiveCone
+public import GameTheory.Analysis.IncentiveCone
+
+@[expose] public section
 
 /-! # Incentive implication can use a joint restriction on players' utilities
 

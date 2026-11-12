@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnerPrior
-import Vegas.Game.OnePacketForcedInputs
-import Vegas.Game.OnePacketOwnerGuard
+public import Vegas.Game.OnePacketOwnerPrior
+public import Vegas.Game.OnePacketForcedInputs
+public import Vegas.Game.OnePacketOwnerGuard
+
+@[expose] public section
 
 /-! # The owner swap keeps the prior's support at a site
 

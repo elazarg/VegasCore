@@ -1,14 +1,18 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.IntendedHistory
-import Vegas.Game.RevealService
-import Vegas.Game.IntendedAuthenticOpening
-import Vegas.Source.InitialState
-import Vegas.Source.SetupProtocolBehavioral
-import Vegas.Expr.Simple
-import GameTheory.Analysis.Protocol.SequentialExistence
-import GameTheory.Protocol.BehavioralTerminal
-import GameTheoryExtensions.Math.Probability.Expectation
+public import Vegas.Game.IntendedHistory
+public import Vegas.Game.RevealService
+public import Vegas.Game.IntendedAuthenticOpening
+public import Vegas.Source.InitialState
+public import Vegas.Source.SetupProtocolBehavioral
+public import Vegas.Expr.Simple
+public import GameTheory.Analysis.Protocol.SequentialExistence
+public import GameTheory.Protocol.BehavioralTerminal
+public import GameTheoryExtensions.Math.Probability.Expectation
+
+@[expose] public section
 
 /-! # A hidden immutable bit and two Boolean commitments
 
@@ -240,7 +244,7 @@ theorem honest_decisionRecall : setup.intendedModel.DecisionRecall :=
   setup.intendedModel.decisionRecall_of_perfectRecall
     ((setup.informationModel _).restrictMenu_perfectRecall _ _ (setup.protocol_perfectRecall _))
 
-private theorem honestMenu_nonempty (who : Player) (info : setup.ProtocolView who) :
+theorem honestMenu_nonempty (who : Player) (info : setup.ProtocolView who) :
     ∃ choice, choice ∈ setup.intendedMenu who info := by
   classical
   cases info with
@@ -341,13 +345,13 @@ theorem run_alice_payoff (profile : BehavioralProfile program)
       subst disclosedAlice
   all_goals cases disclosedBob <;> rfl
 
-private def liftedHonestProfile
+def liftedHonestProfile
     (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) :
     ∀ who, (setup.informationModel (CommitmentInterface.values program)).BehavioralPolicy who :=
   fun who info => (profile who info).map
     ((setup.intendedRestriction (CommitmentInterface.values program)).choice who info)
 
-private def honestSourceProfile
+def honestSourceProfile
     (profile : ∀ who, setup.intendedModel.BehavioralPolicy who) : BehavioralProfile program :=
   fun who => ((setup.behavioralPolicyEquiv (CommitmentInterface.values program) who).symm
     (liftedHonestProfile profile who)).1

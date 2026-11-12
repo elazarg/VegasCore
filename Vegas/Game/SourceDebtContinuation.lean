@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceFailureReadout
-import GameTheoryExtensions.Analysis.Protocol.SourceGainTransport
+public import Vegas.Game.SourceServiceFailureReadout
+public import GameTheoryExtensions.Analysis.Protocol.SourceGainTransport
+
+@[expose] public section
 
 /-! # Fixed exit utility for continuations carrying source debt
 

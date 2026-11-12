@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDisclosureCompletion
-import Vegas.Game.OnePacketStoppedSettlement
-import Vegas.Game.OnePacketPendingClear
+public import Vegas.Game.OnePacketDisclosureCompletion
+public import Vegas.Game.OnePacketStoppedSettlement
+public import Vegas.Game.OnePacketPendingClear
+
+@[expose] public section
 
 /-! # Full continuations through counted native acceptance boundaries -/
 

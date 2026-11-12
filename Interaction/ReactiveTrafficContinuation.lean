@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveTrafficState
+public import Interaction.ReactiveTrafficState
+
+@[expose] public section
 
 /-! # Traffic evidence through actual runtime continuations
 

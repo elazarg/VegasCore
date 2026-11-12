@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.Semantics
+public import Vegas.EventGraph.Semantics
+
+@[expose] public section
 
 /-! # The public scheduler that serves one player last
 

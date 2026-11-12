@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.AuthenticOpening
-import Vegas.Game.IntendedOpeningExtension
-import Vegas.Game.IntendedPreservation
+public import Vegas.Source.AuthenticOpening
+public import Vegas.Game.IntendedOpeningExtension
+public import Vegas.Game.IntendedPreservation
+
+@[expose] public section
 
 /-! # The intended law through authentic openings
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketZeroContent
-import Vegas.Game.OnePacketSlotLawDischarge
-import Vegas.Game.OnePacketIrregularBound
+public import Vegas.Game.OnePacketZeroContent
+public import Vegas.Game.OnePacketSlotLawDischarge
+public import Vegas.Game.OnePacketIrregularBound
+
+@[expose] public section
 
 /-! # Irregular responses from forced states are cube-small
 

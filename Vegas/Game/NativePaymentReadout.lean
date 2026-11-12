@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketExclusionPayoff
-import Vegas.Game.ProgramPayoffs
-import GameTheoryExtensions.Analysis.QuasilinearSettlement
+public import Vegas.Game.OnePacketExclusionPayoff
+public import Vegas.Game.ProgramPayoffs
+public import GameTheoryExtensions.Analysis.QuasilinearSettlement
+
+@[expose] public section
 
 /-! # Valuation and actual receipts under native public default
 

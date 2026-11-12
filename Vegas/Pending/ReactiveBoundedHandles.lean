@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveMenuInvariant
-import Interaction.ReactivePublication
-import Vegas.Pending.ReactiveFiniteResponses
+public import Interaction.ReactiveMenuInvariant
+public import Interaction.ReactivePublication
+public import Vegas.Pending.ReactiveFiniteResponses
+
+@[expose] public section
 
 /-! # Accepted handles stay inside the finite message domain
 

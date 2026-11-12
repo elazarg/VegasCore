@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSlotMasses
-import GameTheoryExtensions.Math.Probability.Uniform
+public import Vegas.Game.OnePacketSlotMasses
+public import GameTheoryExtensions.Math.Probability.Uniform
+
+@[expose] public section
 
 /-! # Masses of the as-if-honest, slot and silence laws at offered commitments
 

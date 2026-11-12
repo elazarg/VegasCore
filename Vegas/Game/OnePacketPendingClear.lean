@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketEventSuccess
-import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
+public import Vegas.Game.OnePacketEventSuccess
+public import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
+
+@[expose] public section
 
 /-! # Pending committed events retain public clarity -/
 

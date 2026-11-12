@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingCoupling
-import Vegas.EventGraph.BindingRefinement
-import Vegas.Pending.ReactiveSubmissionRecall
+public import Vegas.Pending.ReactiveBindingCoupling
+public import Vegas.EventGraph.BindingRefinement
+public import Vegas.Pending.ReactiveSubmissionRecall
+
+@[expose] public section
 
 /-! # The concrete frame carried by a repaired native continuation
 

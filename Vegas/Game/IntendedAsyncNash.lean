@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.IntendedNash
-import Vegas.Game.SourceServiceTurnSettlement
-import Vegas.Game.AsyncServiceNash
+public import Vegas.Game.IntendedNash
+public import Vegas.Game.SourceServiceTurnSettlement
+public import Vegas.Game.AsyncServiceNash
+
+@[expose] public section
 
 /-! # Approximate Nash equilibria of the intended game under a contract builder
 

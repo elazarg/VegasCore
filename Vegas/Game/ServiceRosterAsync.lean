@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ServiceRosterHistory
-import Vegas.Game.ServiceRosterContract
+public import Vegas.Game.ServiceRosterHistory
+public import Vegas.Game.ServiceRosterContract
+
+@[expose] public section
 
 /-! # The public roster scheduler satisfies the asynchronous contract
 

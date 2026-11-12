@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSplicePoint
-import Vegas.Game.OnePacketSwapFiberSum
-import Vegas.Game.OnePacketSwapBaseWeight
-import Vegas.Game.OnePacketCellObservation
-import Vegas.Game.SourceDebtObservation
-import Vegas.Source.FailedBindingDeviation
-import Vegas.Source.IntendedPrefixSwap
+public import Vegas.Game.OnePacketSplicePoint
+public import Vegas.Game.OnePacketSwapFiberSum
+public import Vegas.Game.OnePacketSwapBaseWeight
+public import Vegas.Game.OnePacketCellObservation
+public import Vegas.Game.SourceDebtObservation
+public import Vegas.Source.FailedBindingDeviation
+public import Vegas.Source.IntendedPrefixSwap
+
+@[expose] public section
 
 /-! # Responders along a history at a forced site are forced
 

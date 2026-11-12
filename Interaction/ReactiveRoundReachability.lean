@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveRounds
-import Interaction.ReactiveResponseMenu
-import GameTheoryExtensions.Math.Probability.Uniform
+public import Interaction.ReactiveRounds
+public import Interaction.ReactiveResponseMenu
+public import GameTheoryExtensions.Math.Probability.Uniform
+
+@[expose] public section
 
 /-! # Legal histories occur in the round evaluator
 

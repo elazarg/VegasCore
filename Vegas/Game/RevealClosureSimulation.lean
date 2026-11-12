@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealClosureSolitary
-import Vegas.Game.RevealDeviationLaw
+public import Vegas.Game.RevealClosureSolitary
+public import Vegas.Game.RevealDeviationLaw
+
+@[expose] public section
 
 /-! # Simulating a deviation through the closure
 

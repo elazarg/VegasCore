@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventCompletionObservation
+public import Vegas.Pending.EventCompletionObservation
+
+@[expose] public section
 
 /-! # Focal observation of focal-authored packet handling -/
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.LastScheduler
-import Vegas.EventGraph.SchedulerErasure
-import Vegas.EventGraph.RevealRelaxedScheduling
+public import Vegas.EventGraph.LastScheduler
+public import Vegas.EventGraph.SchedulerErasure
+public import Vegas.EventGraph.RevealRelaxedScheduling
+
+@[expose] public section
 
 /-! # Taking other players' events early under the last scheduler
 

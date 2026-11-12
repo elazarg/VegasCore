@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketBoundaryWaiting
-import Vegas.Game.SourceTerminalReadout
-import Vegas.Game.OnePacketDecodedActor
-import Vegas.Game.OnePacketChanceStoppedLaw
-import Vegas.Game.OnePacketLawApproximation
+public import Vegas.Game.OnePacketBoundaryWaiting
+public import Vegas.Game.SourceTerminalReadout
+public import Vegas.Game.OnePacketDecodedActor
+public import Vegas.Game.OnePacketChanceStoppedLaw
+public import Vegas.Game.OnePacketLawApproximation
+
+@[expose] public section
 
 /-! # Honest source continuation under counted native service -/
 

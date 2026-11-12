@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.CommutationRecall
-import Vegas.EventGraph.Semantics
+public import Vegas.EventGraph.CommutationRecall
+public import Vegas.EventGraph.Semantics
+
+@[expose] public section
 
 /-! # Rank-normalized event-graph policies
 
@@ -90,7 +94,7 @@ section Actual
 variable {graph}
 
 omit [DecidableEq Player] in
-private theorem find?_filter_of_nodup (history : List graph.Completion)
+theorem find?_filter_of_nodup (history : List graph.Completion)
     (nodup : (history.map EventCompletion.event).Nodup) (keep : graph.Completion → Bool)
     (event : graph.EventId) :
     (history.filter keep).find? (fun completion => completion.event = event) =
@@ -111,7 +115,7 @@ private theorem find?_filter_of_nodup (history : List graph.Completion)
       · cases kept : keep head <;> simp [kept, hit, ih tailNodup]
 
 omit [DecidableEq Player] in
-private theorem find?_zip_map (history : List graph.Completion) (event : graph.EventId) :
+theorem find?_zip_map (history : List graph.Completion) (event : graph.EventId) :
     ((history.map EventCompletion.event).zip (history.map EventCompletion.defaultEvent)).find?
         (fun entry => entry.1 = event) =
       (history.find? fun completion => completion.event = event).map

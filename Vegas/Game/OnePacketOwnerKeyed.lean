@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketConditionalPrior
-import Vegas.Game.OnePacketKeyedScaling
-import Vegas.Game.OnePacketSwapBaseWeight
-import Vegas.Game.OnePacketSwapInfo
+public import Vegas.Game.OnePacketConditionalPrior
+public import Vegas.Game.OnePacketKeyedScaling
+public import Vegas.Game.OnePacketSwapBaseWeight
+public import Vegas.Game.OnePacketSwapInfo
+
+@[expose] public section
 
 /-! # Agreeing base laws at two sites with one late key
 

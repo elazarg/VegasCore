@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveProvenance
-import Interaction.ReactiveServiceInvariant
-import Interaction.ReactiveResponseBudget
-import Vegas.Pending.ReactivePolicy
+public import Interaction.ReactiveProvenance
+public import Interaction.ReactiveServiceInvariant
+public import Interaction.ReactiveResponseBudget
+public import Vegas.Pending.ReactivePolicy
+
+@[expose] public section
 
 /-! # Finite candidate supply from actual response counts
 

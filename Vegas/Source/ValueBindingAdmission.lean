@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.ValueBinding
-import Vegas.Source.ProtocolBehavioralPolicy
+public import Vegas.Source.ValueBinding
+public import Vegas.Source.ProtocolBehavioralPolicy
+
+@[expose] public section
 
 /-! # The value interface admits exactly the value-binding policies
 

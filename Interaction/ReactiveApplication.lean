@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.MessageNetwork
-import GameTheory.Math.Probability.Mixture
-import GameTheory.Math.Probability.Product
+public import Interaction.MessageNetwork
+public import GameTheory.Math.Probability.Mixture
+public import GameTheory.Math.Probability.Product
+
+@[expose] public section
 
 /-! # One optional transmission per player activation
 

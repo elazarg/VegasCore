@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketUnpendingSites
-import Vegas.Game.OnePacketComponents
-import Vegas.Game.OnePacketHonestForced
-import Vegas.Game.OnePacketOwnSubmissions
-import Vegas.Game.OnePacketSilenceMasses
-import Vegas.Game.OnePacketSureFailure
+public import Vegas.Game.OnePacketUnpendingSites
+public import Vegas.Game.OnePacketComponents
+public import Vegas.Game.OnePacketHonestForced
+public import Vegas.Game.OnePacketOwnSubmissions
+public import Vegas.Game.OnePacketSilenceMasses
+public import Vegas.Game.OnePacketSureFailure
+
+@[expose] public section
 
 /-! # Legal response choices at debt-free native decision inputs -/
 

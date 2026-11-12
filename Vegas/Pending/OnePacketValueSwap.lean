@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveValueSwap
-import Vegas.Pending.ReactiveOnePacketMenu
-import Vegas.Pending.ValueSwapPairs
+public import Vegas.Pending.ReactiveValueSwap
+public import Vegas.Pending.ReactiveOnePacketMenu
+public import Vegas.Pending.ValueSwapPairs
+
+@[expose] public section
 
 /-! # Hidden swaps keep one-packet responses available
 

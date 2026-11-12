@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingRepair
+public import Vegas.Pending.ReactiveBindingRepair
+
+@[expose] public section
 
 /-! # Inclusion of arbitrary private commitment material
 

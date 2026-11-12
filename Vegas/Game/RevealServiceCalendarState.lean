@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ServiceObservation
-import Vegas.Pending.RevealTranscript
+public import Vegas.Game.ServiceObservation
+public import Vegas.Pending.RevealTranscript
+
+@[expose] public section
 
 /-! # Public calendar metadata at revelation checkpoints
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveOnePacketMenu
-import Vegas.Pending.ReactiveSignedCommitments
+public import Vegas.Pending.ReactiveOnePacketMenu
+public import Vegas.Pending.ReactiveSignedCommitments
+
+@[expose] public section
 
 /-! # Fresh prepared slots in the one-packet game
 

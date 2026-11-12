@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnerLaws
-import Vegas.Game.OnePacketOpeningUnique
+public import Vegas.Game.OnePacketOwnerLaws
+public import Vegas.Game.OnePacketOpeningUnique
+
+@[expose] public section
 
 /-! # The owner's opening law for slot-trembled late components
 

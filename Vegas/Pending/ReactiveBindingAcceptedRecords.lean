@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingSubmittedRecords
-import Vegas.Pending.ReactiveAcceptedOutput
+public import Vegas.Pending.ReactiveBindingSubmittedRecords
+public import Vegas.Pending.ReactiveAcceptedOutput
+
+@[expose] public section
 
 /-! # Successful accepted outputs from submitted binding records
 

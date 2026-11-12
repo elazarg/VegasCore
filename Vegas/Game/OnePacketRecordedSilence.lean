@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSiteConsistent
+public import Vegas.Game.OnePacketSiteConsistent
+
+@[expose] public section
 
 /-! # Components keep silence once the owner has sent for its event
 

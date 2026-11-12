@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveCompiledMenu
-import Vegas.Pending.ReactiveDisclosure
+public import Vegas.Pending.ReactiveCompiledMenu
+public import Vegas.Pending.ReactiveDisclosure
+
+@[expose] public section
 
 /-! # Authentic opening responses in the full-source retained menu
 

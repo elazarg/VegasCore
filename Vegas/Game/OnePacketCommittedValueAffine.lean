@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCommittedContinuationValue
-import Vegas.Game.OnePacketCommitDecisionFailure
-import Vegas.Game.OnePacketCompletionPotential
-import Vegas.Game.OnePacketCertificateLumping
-import GameTheoryExtensions.Math.Probability.AffineDecorrelation
+public import Vegas.Game.OnePacketCommittedContinuationValue
+public import Vegas.Game.OnePacketCommitDecisionFailure
+public import Vegas.Game.OnePacketCompletionPotential
+public import Vegas.Game.OnePacketCertificateLumping
+public import GameTheoryExtensions.Math.Probability.AffineDecorrelation
+
+@[expose] public section
 
 /-! # Commitment values under the supplied native posterior -/
 

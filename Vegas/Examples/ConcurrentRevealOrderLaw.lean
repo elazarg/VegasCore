@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.CommitRevealAuction
-import Vegas.Compile.EventGraphPolicy
-import Vegas.EventGraph.SequentialLaw
-import Vegas.EventGraph.CanonicalStep
+public import Vegas.Examples.CommitRevealAuction
+public import Vegas.Compile.EventGraphPolicy
+public import Vegas.EventGraph.SequentialLaw
+public import Vegas.EventGraph.CanonicalStep
+
+@[expose] public section
 
 /-! # Withholding decisions depend on the order of concurrent reveals
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveAliasStrategy
-import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
+public import Interaction.ReactiveAliasStrategy
+public import GameTheoryExtensions.Analysis.Protocol.ConsistencyCompletion
+
+@[expose] public section
 
 /-! # Consistency from compatible alias perturbations
 

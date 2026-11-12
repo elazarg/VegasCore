@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveService
+public import Vegas.Pending.ReactiveService
+
+@[expose] public section
 
 /-! # Watcher observation rounds and packets outside the current public event
 

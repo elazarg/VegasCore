@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Expr.Simple
-import Vegas.Compile.EventGraphInputs
-import Vegas.Pending.ReactiveRuntime
-import Vegas.Game.ServiceRoster
+public import Vegas.Expr.Simple
+public import Vegas.Compile.EventGraphInputs
+public import Vegas.Pending.ReactiveRuntime
+public import Vegas.Game.ServiceRoster
+
+@[expose] public section
 
 /-! # Automatic completion and roster clock service
 
@@ -19,7 +23,7 @@ namespace VegasTests
 open Vegas Vegas.SourceProgram Vegas.EventGraphRuntime
   GameTheory.Math.Probability Interaction
 
-private def acceptBinding {Γ : SourceCtx Bool simpleExpr} (owner : Bool) (name : VarId) :
+def acceptBinding {Γ : SourceCtx Bool simpleExpr} (owner : Bool) (name : VarId) :
     SourceGuard simpleExpr Γ owner name .bool where
   schema := []
   schemaNames := by decide
@@ -27,7 +31,7 @@ private def acceptBinding {Γ : SourceCtx Bool simpleExpr} (owner : Bool) (name 
   code := .constBool true
   reads := fun member => nomatch member
 
-private def consecutiveBindings : SourceProgram Bool simpleExpr [] ∅ :=
+def consecutiveBindings : SourceProgram Bool simpleExpr [] ∅ :=
   .commit 0 false (by decide) (acceptBinding false 0) <|
   .commit 1 false (by decide) (acceptBinding false 1) <|
   .commit 2 false (by decide) (acceptBinding false 2) <|
@@ -38,31 +42,31 @@ private def consecutiveBindings : SourceProgram Bool simpleExpr [] ∅ :=
   .reveal 7 true 3 (by decide) (.there (.there (.there .here))) (by decide) <|
   .ret []
 
-private abbrev compiled := toEventGraph consecutiveBindings
+abbrev compiled := toEventGraph consecutiveBindings
 
-private def rankedTimeouts : EventTimeouts compiled where
+def rankedTimeouts : EventTimeouts compiled where
   duration event := event.val + 1
 
-private def initialLedger : State compiled :=
+def initialLedger : State compiled :=
   State.initial (encodeInputs (Env.empty (CellVal simpleExpr)))
 
-private abbrev first : compiled.EventId := ⟨0, by decide⟩
-private abbrev second : compiled.EventId := ⟨1, by decide⟩
-private abbrev third : compiled.EventId := ⟨2, by decide⟩
-private abbrev bob : compiled.EventId := ⟨3, by decide⟩
+abbrev first : compiled.EventId := ⟨0, by decide⟩
+abbrev second : compiled.EventId := ⟨1, by decide⟩
+abbrev third : compiled.EventId := ⟨2, by decide⟩
+abbrev bob : compiled.EventId := ⟨3, by decide⟩
 
-private theorem firstReady : initialLedger.config.cut.Ready first := by decide
+theorem firstReady : initialLedger.config.cut.Ready first := by decide
 
-private def omission : State compiled :=
+def omission : State compiled :=
   ({ initialLedger with clock := 1 } : State compiled).complete first firstReady none .failure
 
-private theorem secondReady : omission.config.cut.Ready second := by decide
+theorem secondReady : omission.config.cut.Ready second := by decide
 
-private def afterSecond : State compiled := omission.completeFailure second secondReady
+def afterSecond : State compiled := omission.completeFailure second secondReady
 
-private theorem thirdReady : afterSecond.config.cut.Ready third := by decide
+theorem thirdReady : afterSecond.config.cut.Ready third := by decide
 
-private def afterThird : State compiled := afterSecond.completeFailure third thirdReady
+def afterThird : State compiled := afterSecond.completeFailure third thirdReady
 
 private theorem secondAutomatic : omission.AutomaticReady second := by decide
 private theorem thirdAutomatic : afterSecond.AutomaticReady third := by decide
@@ -92,7 +96,7 @@ private theorem rawExpiry :
   exact environmentStep_expire_bind_eq rankedTimeouts { initialLedger with clock := 1 }
     first firstReady 0 rfl (by decide) false .bool rfl rfl rfl
 
-private def atClock (clock : Nat) : State compiled := { afterThird with clock }
+def atClock (clock : Nat) : State compiled := { afterThird with clock }
 
 /-- The actual native expiry/drain exposes Bob's event at clock one. -/
 private theorem earlyReadyAfterExpiry

@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketBindingRepairIteration
-import Vegas.Game.OnePacketDirectedRepairGuard
-import Vegas.Game.OnePacketOwnerSettled
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketBindingRepairIteration
+public import Vegas.Game.OnePacketDirectedRepairGuard
+public import Vegas.Game.OnePacketOwnerSettled
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # Counterparts from finite actual hidden-binding repairs
 

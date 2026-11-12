@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnerKeyedLate
-import Vegas.Game.OnePacketBaseAssembly
-import GameTheoryExtensions.Math.Probability.ApproximateLumping
+public import Vegas.Game.OnePacketOwnerKeyedLate
+public import Vegas.Game.OnePacketBaseAssembly
+public import GameTheoryExtensions.Math.Probability.ApproximateLumping
+
+@[expose] public section
 
 /-! # Record laws at late deliveries with a common key
 

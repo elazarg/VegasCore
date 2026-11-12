@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Expr.Simple
-import Vegas.Game.ProgramPaymentNash
+public import Vegas.Expr.Simple
+public import Vegas.Game.ProgramPaymentNash
+
+@[expose] public section
 
 /-! # An executable payment reverses a player's strict incentive
 
@@ -21,7 +25,7 @@ inductive Player where
   | alice
   deriving DecidableEq, Fintype
 
-private def acceptGuard : SourceGuard simpleExpr [] Player.alice 0 .bool where
+def acceptGuard : SourceGuard simpleExpr [] Player.alice 0 .bool where
   schema := []
   schemaNames := by decide
   subjectFresh := by simp

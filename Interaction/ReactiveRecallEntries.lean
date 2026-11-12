@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveOwnPlay
-import GameTheoryExtensions.Analysis.Protocol.OwnPlayReach
+public import Interaction.ReactiveOwnPlay
+public import GameTheoryExtensions.Analysis.Protocol.OwnPlayReach
+
+@[expose] public section
 
 /-! # Each recalled response was legal and supported at its recorded view -/
 

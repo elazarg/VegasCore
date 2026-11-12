@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFactorization
-import Vegas.Game.SourceServiceCanonicalAcceptance
+public import Vegas.Game.OnePacketFactorization
+public import Vegas.Game.SourceServiceCanonicalAcceptance
+
+@[expose] public section
 
 /-! # Positive source content of honest responses
 

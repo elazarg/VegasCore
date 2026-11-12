@@ -1,143 +1,147 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.AcceptedEventOwnership
-import Vegas.Pending.CanonicalKeyLaw
-import Vegas.Pending.CanonicalKeyPublication
-import Vegas.Pending.CanonicalOutcomePublication
-import Vegas.Pending.CanonicalOutcomeHead
-import Vegas.Pending.LastKeyLaw
-import Vegas.Pending.LastErasedKeyLaw
-import Vegas.Pending.EffectiveOpening
-import Vegas.Pending.CanonicalOutcomeAccepted
-import Vegas.Pending.DrainOutputs
-import Vegas.Pending.EventActivationOrigin
-import Vegas.Pending.EventApplication
-import Vegas.Pending.EventAssociationInvariant
-import Vegas.Pending.EventBindingInvariant
-import Vegas.Pending.EventCommandFrame
-import Vegas.Pending.EventCommitmentBinding
-import Vegas.Pending.EventCompletionObservation
-import Vegas.Pending.EventExpiryObservation
-import Vegas.Pending.EventHandleObservation
-import Vegas.Pending.EventInitialObservation
-import Vegas.Pending.EventInvariant
-import Vegas.Pending.EventPrivateObservation
-import Vegas.Pending.EventProgress
-import Vegas.Pending.EventPublicState
-import Vegas.Pending.EventSampleObservation
-import Vegas.Pending.EventStore
-import Vegas.Pending.EventSubmission
-import Vegas.Pending.EventValueSwap
-import Vegas.Pending.EvidenceNormalization
-import Vegas.Pending.ExclusionAcceptedOutput
-import Vegas.Pending.ExclusionActivationOrigin
-import Vegas.Pending.ExclusionCompletion
-import Vegas.Pending.ExclusionEvidence
-import Vegas.Pending.ExclusionFailureOwners
-import Vegas.Pending.ExclusionFiniteNature
-import Vegas.Pending.ExclusionInformationHistory
-import Vegas.Pending.ExclusionInvariant
-import Vegas.Pending.ExclusionNativeFailure
-import Vegas.Pending.ExclusionPolicyLaw
-import Vegas.Pending.ExclusionStoppedBoundary
-import Vegas.Pending.GraphRefinement
-import Vegas.Pending.OnePacketValueSwap
-import Vegas.Pending.OpeningEvidence
-import Vegas.Pending.PublicFailureEvidence
-import Vegas.Pending.ReactiveAcceptedOutput
-import Vegas.Pending.ReactiveAliasEquilibrium
-import Vegas.Pending.ReactiveAssociationEvidence
-import Vegas.Pending.ReactiveAsyncContract
-import Vegas.Pending.ReactiveBinding
-import Vegas.Pending.ReactiveBindingAcceptedRecords
-import Vegas.Pending.ReactiveBindingAllocation
-import Vegas.Pending.ReactiveBindingCountedInclusion
-import Vegas.Pending.ReactiveBindingCoupling
-import Vegas.Pending.ReactiveBindingExpiry
-import Vegas.Pending.ReactiveBindingExpiryAccepted
-import Vegas.Pending.ReactiveBindingFrame
-import Vegas.Pending.ReactiveBindingFrameForeign
-import Vegas.Pending.ReactiveBindingFrameOpening
-import Vegas.Pending.ReactiveBindingFrameRounds
-import Vegas.Pending.ReactiveBindingFrameStep
-import Vegas.Pending.ReactiveBindingGuardedStep
-import Vegas.Pending.ReactiveBindingLikelihood
-import Vegas.Pending.ReactiveBindingOmission
-import Vegas.Pending.ReactiveBindingPreparationRecord
-import Vegas.Pending.ReactiveBindingRejectedInclusion
-import Vegas.Pending.ReactiveBindingRepair
-import Vegas.Pending.ReactiveBindingRestoration
-import Vegas.Pending.ReactiveBindingSchedule
-import Vegas.Pending.ReactiveBindingShadow
-import Vegas.Pending.ReactiveBindingShadowInvariant
-import Vegas.Pending.ReactiveBindingShadowStep
-import Vegas.Pending.ReactiveBindingSubmissionFrame
-import Vegas.Pending.ReactiveBindingSubmittedInclusion
-import Vegas.Pending.ReactiveBindingSubmittedRecords
-import Vegas.Pending.ReactiveBindingSubmittedRepair
-import Vegas.Pending.ReactiveBindingSubmittedResponse
-import Vegas.Pending.ReactiveBindingWindowLaw
-import Vegas.Pending.ReactiveBoundedHandles
-import Vegas.Pending.ReactiveBoundedValues
-import Vegas.Pending.ReactiveCandidateBudget
-import Vegas.Pending.ReactiveCanonicalDecision
-import Vegas.Pending.ReactiveCanonicalMenu
-import Vegas.Pending.ReactiveCanonicalResolution
-import Vegas.Pending.ReactiveCompiledMenu
-import Vegas.Pending.ReactiveCompiledResolution
-import Vegas.Pending.ReactiveCompletion
-import Vegas.Pending.ReactiveContinuationObservation
-import Vegas.Pending.ReactiveCountAudit
-import Vegas.Pending.ReactiveCountVerdict
-import Vegas.Pending.ReactiveCountedResponseForms
-import Vegas.Pending.ReactiveDefaultCompletion
-import Vegas.Pending.ReactiveDisclosure
-import Vegas.Pending.ReactiveEntryStability
-import Vegas.Pending.ReactiveEventStability
-import Vegas.Pending.ReactiveFiniteCompiler
-import Vegas.Pending.ReactiveFiniteResponses
-import Vegas.Pending.ReactiveFirstOpportunity
-import Vegas.Pending.ReactiveFreshCallAcceptance
-import Vegas.Pending.ReactiveGraphSteps
-import Vegas.Pending.ReactiveGuardConformance
-import Vegas.Pending.ReactiveGuardedResponse
-import Vegas.Pending.ReactiveHiddenInclusion
-import Vegas.Pending.ReactiveHiddenResponse
-import Vegas.Pending.ReactiveMonitoring
-import Vegas.Pending.ReactiveNormalization
-import Vegas.Pending.ReactiveOnePacketFreshness
-import Vegas.Pending.ReactiveOnePacketMenu
-import Vegas.Pending.ReactiveOpeningConformance
-import Vegas.Pending.ReactiveOpeningLikelihood
-import Vegas.Pending.ReactiveOpeningWindow
-import Vegas.Pending.ReactiveOwnerActivationRecall
-import Vegas.Pending.ReactiveOwnerOpportunity
-import Vegas.Pending.ReactiveOwnerWindow
-import Vegas.Pending.ReactivePacketEvidence
-import Vegas.Pending.ReactivePolicy
-import Vegas.Pending.ReactivePolicyFacts
-import Vegas.Pending.ReactiveRawBindingFrame
-import Vegas.Pending.ReactiveResponseAliases
-import Vegas.Pending.ReactiveRevealBlock
-import Vegas.Pending.ReactiveRiskMenu
-import Vegas.Pending.ReactiveRuntime
-import Vegas.Pending.ReactiveSafety
-import Vegas.Pending.ReactiveSampleLikelihood
-import Vegas.Pending.ReactiveSelectionObservation
-import Vegas.Pending.ReactiveService
-import Vegas.Pending.ReactiveServiceAudit
-import Vegas.Pending.ReactiveServiceConditions
-import Vegas.Pending.ReactiveServiceConformance
-import Vegas.Pending.ReactiveServiceOpportunity
-import Vegas.Pending.ReactiveServiceProgress
-import Vegas.Pending.ReactiveSettledStability
-import Vegas.Pending.ReactiveSettledVerdict
-import Vegas.Pending.ReactiveSignedCommitments
-import Vegas.Pending.ReactiveStateInvariant
-import Vegas.Pending.ReactiveSubmissionRecall
-import Vegas.Pending.ReactiveUnusableBinding
-import Vegas.Pending.ReactiveValueSwap
-import Vegas.Pending.RevealTranscript
-import Vegas.Pending.ServicePlan
-import Vegas.Pending.ThinnedCountCollection
-import Vegas.Pending.ValueSwapPairs
+public import Vegas.Pending.AcceptedEventOwnership
+public import Vegas.Pending.CanonicalKeyLaw
+public import Vegas.Pending.CanonicalKeyPublication
+public import Vegas.Pending.CanonicalOutcomePublication
+public import Vegas.Pending.CanonicalOutcomeHead
+public import Vegas.Pending.LastKeyLaw
+public import Vegas.Pending.LastErasedKeyLaw
+public import Vegas.Pending.EffectiveOpening
+public import Vegas.Pending.CanonicalOutcomeAccepted
+public import Vegas.Pending.DrainOutputs
+public import Vegas.Pending.EventActivationOrigin
+public import Vegas.Pending.EventApplication
+public import Vegas.Pending.EventAssociationInvariant
+public import Vegas.Pending.EventBindingInvariant
+public import Vegas.Pending.EventCommandFrame
+public import Vegas.Pending.EventCommitmentBinding
+public import Vegas.Pending.EventCompletionObservation
+public import Vegas.Pending.EventExpiryObservation
+public import Vegas.Pending.EventHandleObservation
+public import Vegas.Pending.EventInitialObservation
+public import Vegas.Pending.EventInvariant
+public import Vegas.Pending.EventPrivateObservation
+public import Vegas.Pending.EventProgress
+public import Vegas.Pending.EventPublicState
+public import Vegas.Pending.EventSampleObservation
+public import Vegas.Pending.EventStore
+public import Vegas.Pending.EventSubmission
+public import Vegas.Pending.EventValueSwap
+public import Vegas.Pending.EvidenceNormalization
+public import Vegas.Pending.ExclusionAcceptedOutput
+public import Vegas.Pending.ExclusionActivationOrigin
+public import Vegas.Pending.ExclusionCompletion
+public import Vegas.Pending.ExclusionEvidence
+public import Vegas.Pending.ExclusionFailureOwners
+public import Vegas.Pending.ExclusionFiniteNature
+public import Vegas.Pending.ExclusionInformationHistory
+public import Vegas.Pending.ExclusionInvariant
+public import Vegas.Pending.ExclusionNativeFailure
+public import Vegas.Pending.ExclusionPolicyLaw
+public import Vegas.Pending.ExclusionStoppedBoundary
+public import Vegas.Pending.GraphRefinement
+public import Vegas.Pending.OnePacketValueSwap
+public import Vegas.Pending.OpeningEvidence
+public import Vegas.Pending.PublicFailureEvidence
+public import Vegas.Pending.ReactiveAcceptedOutput
+public import Vegas.Pending.ReactiveAliasEquilibrium
+public import Vegas.Pending.ReactiveAssociationEvidence
+public import Vegas.Pending.ReactiveAsyncContract
+public import Vegas.Pending.ReactiveBinding
+public import Vegas.Pending.ReactiveBindingAcceptedRecords
+public import Vegas.Pending.ReactiveBindingAllocation
+public import Vegas.Pending.ReactiveBindingCountedInclusion
+public import Vegas.Pending.ReactiveBindingCoupling
+public import Vegas.Pending.ReactiveBindingExpiry
+public import Vegas.Pending.ReactiveBindingExpiryAccepted
+public import Vegas.Pending.ReactiveBindingFrame
+public import Vegas.Pending.ReactiveBindingFrameForeign
+public import Vegas.Pending.ReactiveBindingFrameOpening
+public import Vegas.Pending.ReactiveBindingFrameRounds
+public import Vegas.Pending.ReactiveBindingFrameStep
+public import Vegas.Pending.ReactiveBindingGuardedStep
+public import Vegas.Pending.ReactiveBindingLikelihood
+public import Vegas.Pending.ReactiveBindingOmission
+public import Vegas.Pending.ReactiveBindingPreparationRecord
+public import Vegas.Pending.ReactiveBindingRejectedInclusion
+public import Vegas.Pending.ReactiveBindingRepair
+public import Vegas.Pending.ReactiveBindingRestoration
+public import Vegas.Pending.ReactiveBindingSchedule
+public import Vegas.Pending.ReactiveBindingShadow
+public import Vegas.Pending.ReactiveBindingShadowInvariant
+public import Vegas.Pending.ReactiveBindingShadowStep
+public import Vegas.Pending.ReactiveBindingSubmissionFrame
+public import Vegas.Pending.ReactiveBindingSubmittedInclusion
+public import Vegas.Pending.ReactiveBindingSubmittedRecords
+public import Vegas.Pending.ReactiveBindingSubmittedRepair
+public import Vegas.Pending.ReactiveBindingSubmittedResponse
+public import Vegas.Pending.ReactiveBindingWindowLaw
+public import Vegas.Pending.ReactiveBoundedHandles
+public import Vegas.Pending.ReactiveBoundedValues
+public import Vegas.Pending.ReactiveCandidateBudget
+public import Vegas.Pending.ReactiveCanonicalDecision
+public import Vegas.Pending.ReactiveCanonicalMenu
+public import Vegas.Pending.ReactiveCanonicalResolution
+public import Vegas.Pending.ReactiveCompiledMenu
+public import Vegas.Pending.ReactiveCompiledResolution
+public import Vegas.Pending.ReactiveCompletion
+public import Vegas.Pending.ReactiveContinuationObservation
+public import Vegas.Pending.ReactiveCountAudit
+public import Vegas.Pending.ReactiveCountVerdict
+public import Vegas.Pending.ReactiveCountedResponseForms
+public import Vegas.Pending.ReactiveDefaultCompletion
+public import Vegas.Pending.ReactiveDisclosure
+public import Vegas.Pending.ReactiveEntryStability
+public import Vegas.Pending.ReactiveEventStability
+public import Vegas.Pending.ReactiveFiniteCompiler
+public import Vegas.Pending.ReactiveFiniteResponses
+public import Vegas.Pending.ReactiveFirstOpportunity
+public import Vegas.Pending.ReactiveFreshCallAcceptance
+public import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Pending.ReactiveGuardConformance
+public import Vegas.Pending.ReactiveGuardedResponse
+public import Vegas.Pending.ReactiveHiddenInclusion
+public import Vegas.Pending.ReactiveHiddenResponse
+public import Vegas.Pending.ReactiveMonitoring
+public import Vegas.Pending.ReactiveNormalization
+public import Vegas.Pending.ReactiveOnePacketFreshness
+public import Vegas.Pending.ReactiveOnePacketMenu
+public import Vegas.Pending.ReactiveOpeningConformance
+public import Vegas.Pending.ReactiveOpeningLikelihood
+public import Vegas.Pending.ReactiveOpeningWindow
+public import Vegas.Pending.ReactiveOwnerActivationRecall
+public import Vegas.Pending.ReactiveOwnerOpportunity
+public import Vegas.Pending.ReactiveOwnerWindow
+public import Vegas.Pending.ReactivePacketEvidence
+public import Vegas.Pending.ReactivePolicy
+public import Vegas.Pending.ReactivePolicyFacts
+public import Vegas.Pending.ReactiveRawBindingFrame
+public import Vegas.Pending.ReactiveResponseAliases
+public import Vegas.Pending.ReactiveRevealBlock
+public import Vegas.Pending.ReactiveRiskMenu
+public import Vegas.Pending.ReactiveRuntime
+public import Vegas.Pending.ReactiveSafety
+public import Vegas.Pending.ReactiveSampleLikelihood
+public import Vegas.Pending.ReactiveSelectionObservation
+public import Vegas.Pending.ReactiveService
+public import Vegas.Pending.ReactiveServiceAudit
+public import Vegas.Pending.ReactiveServiceConditions
+public import Vegas.Pending.ReactiveServiceConformance
+public import Vegas.Pending.ReactiveServiceOpportunity
+public import Vegas.Pending.ReactiveServiceProgress
+public import Vegas.Pending.ReactiveSettledStability
+public import Vegas.Pending.ReactiveSettledVerdict
+public import Vegas.Pending.ReactiveSignedCommitments
+public import Vegas.Pending.ReactiveStateInvariant
+public import Vegas.Pending.ReactiveSubmissionRecall
+public import Vegas.Pending.ReactiveUnusableBinding
+public import Vegas.Pending.ReactiveValueSwap
+public import Vegas.Pending.RevealTranscript
+public import Vegas.Pending.ServicePlan
+public import Vegas.Pending.ThinnedCountCollection
+public import Vegas.Pending.ValueSwapPairs
+
+@[expose] public section

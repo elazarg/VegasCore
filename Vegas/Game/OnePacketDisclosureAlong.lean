@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDisclosureResolves
-import Vegas.Game.OnePacketSpliceForced
+public import Vegas.Game.OnePacketDisclosureResolves
+public import Vegas.Game.OnePacketSpliceForced
+
+@[expose] public section
 
 /-! # Disclosures resolve along a history at a forced site
 

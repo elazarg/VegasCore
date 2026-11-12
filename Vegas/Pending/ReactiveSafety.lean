@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveRuntime
-import Vegas.Pending.EventCommitmentBinding
+public import Vegas.Pending.ReactiveRuntime
+public import Vegas.Pending.EventCommitmentBinding
+
+@[expose] public section
 
 /-! # Binding under arbitrary reactive continuations
 

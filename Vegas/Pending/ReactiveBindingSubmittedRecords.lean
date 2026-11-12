@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingPreparationRecord
-import Vegas.Pending.ReactiveOnePacketMenu
-import Vegas.Pending.ReactiveBinding
+public import Vegas.Pending.ReactiveBindingPreparationRecord
+public import Vegas.Pending.ReactiveOnePacketMenu
+public import Vegas.Pending.ReactiveBinding
+
+@[expose] public section
 
 /-! # Original records of submitted owned bindings -/
 

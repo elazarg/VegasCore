@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketChanceMass
-import Vegas.EventGraph.OwnedStep
+public import Vegas.Game.OnePacketChanceMass
+public import Vegas.EventGraph.OwnedStep
+
+@[expose] public section
 
 /-! # Completions of events with an actor in the intended replay
 

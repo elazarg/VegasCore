@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensServiceClock
-import Interaction.ReactiveAnchoredTrace
+public import Vegas.Examples.OddsEvensServiceClock
+public import Interaction.ReactiveAnchoredTrace
+
+@[expose] public section
 
 /-! # Expiry gives a finite completion budget for the forced-exit service -/
 

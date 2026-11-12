@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveCanonicalMenu
-import Vegas.Pending.ReactiveServiceConformance
-import Interaction.ReactiveSubmissionSerial
+public import Vegas.Pending.ReactiveCanonicalMenu
+public import Vegas.Pending.ReactiveServiceConformance
+public import Interaction.ReactiveSubmissionSerial
+
+@[expose] public section
 
 /-! # A candidate continuation menu after locally visible service risk
 

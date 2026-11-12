@@ -1,15 +1,19 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Game.SourceServiceTurnPolicy
-import Vegas.Game.SourceContinuation
-import Vegas.Source.DisclosureBehavioral
-import Interaction.ReactiveMenuPolicy
-import Vegas.Pending.ReactiveBoundedValues
-import Vegas.Pending.ReactiveCompiledMenu
-import Vegas.Pending.ReactiveAsyncContract
-import Vegas.Pending.ExclusionFiniteNature
-import Interaction.ReactiveResponseEvaluation
+public import Vegas.Game.RevealService
+public import Vegas.Game.SourceServiceTurnPolicy
+public import Vegas.Game.SourceContinuation
+public import Vegas.Source.DisclosureBehavioral
+public import Interaction.ReactiveMenuPolicy
+public import Vegas.Pending.ReactiveBoundedValues
+public import Vegas.Pending.ReactiveCompiledMenu
+public import Vegas.Pending.ReactiveAsyncContract
+public import Vegas.Pending.ExclusionFiniteNature
+public import Interaction.ReactiveResponseEvaluation
+
+@[expose] public section
 
 /-! # Full-source services under an asynchronous scheduler
 

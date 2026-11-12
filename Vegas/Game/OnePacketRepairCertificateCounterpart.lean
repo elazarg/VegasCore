@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCertificateCounterpart
-import Vegas.Game.OnePacketRepairedResponderForced
-import Vegas.Game.OnePacketPairedLikelihoodWeight
-import Vegas.Game.OnePacketCounterpartBound
-import Vegas.Game.OnePacketDisclosureAlong
-import Vegas.Game.OnePacketOwnIntended
-import Vegas.Game.OnePacketStepPositive
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketCertificateCounterpart
+public import Vegas.Game.OnePacketRepairedResponderForced
+public import Vegas.Game.OnePacketPairedLikelihoodWeight
+public import Vegas.Game.OnePacketCounterpartBound
+public import Vegas.Game.OnePacketDisclosureAlong
+public import Vegas.Game.OnePacketOwnIntended
+public import Vegas.Game.OnePacketStepPositive
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # Certificate reach comparisons from actual binding repairs -/
 

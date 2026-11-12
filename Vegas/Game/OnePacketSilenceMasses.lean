@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketBindingMasses
+public import Vegas.Game.OnePacketBindingMasses
+
+@[expose] public section
 
 /-! # Silence masses of the as-if-honest and slot laws
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveInvariant
-import Vegas.Pending.EventBindingInvariant
-import Vegas.Pending.ReactiveRuntime
+public import Interaction.ReactiveInvariant
+public import Vegas.Pending.EventBindingInvariant
+public import Vegas.Pending.ReactiveRuntime
+
+@[expose] public section
 
 /-! # Immutable binding provenance in raw ledger histories
 

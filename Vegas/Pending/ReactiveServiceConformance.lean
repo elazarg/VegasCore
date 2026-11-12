@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveGuardConformance
-import Vegas.Pending.EventPublicState
+public import Vegas.Pending.ReactiveGuardConformance
+public import Vegas.Pending.EventPublicState
+
+@[expose] public section
 
 /-! # Public conformance for binding and guarded disclosure phases
 

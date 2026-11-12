@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketKeyedRecords
-import Interaction.ReactiveLumping
+public import Vegas.Game.OnePacketKeyedRecords
+public import Interaction.ReactiveLumping
+
+@[expose] public section
 
 /-! # Pathwise late-delivery failure from lumping
 

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingFrame
+public import Vegas.Pending.ReactiveBindingFrame
+
+@[expose] public section
 
 /-! # Rejected pending inclusion through a binding repair -/
 

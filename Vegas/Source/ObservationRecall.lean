@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Protocol
-import Vegas.Source.ProtocolTermination
-import GameTheory.Math.Probability.ConditionalObservation
+public import Vegas.Source.Protocol
+public import Vegas.Source.ProtocolTermination
+public import GameTheory.Math.Probability.ConditionalObservation
+
+@[expose] public section
 
 /-! # Recovering earlier source observations
 

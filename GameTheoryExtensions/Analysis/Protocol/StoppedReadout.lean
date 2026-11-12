@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
+public import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
+
+@[expose] public section
 
 /-! # Terminal readouts stable after an earlier stopping time -/
 

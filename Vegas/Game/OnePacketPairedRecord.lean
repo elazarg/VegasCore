@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFactorization
-import GameTheoryExtensions.Protocol.TracePrefix
+public import Vegas.Game.OnePacketFactorization
+public import GameTheoryExtensions.Protocol.TracePrefix
+
+@[expose] public section
 
 /-! # Operational records at paired history prefixes -/
 

@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceFailureReadout
-import Vegas.Game.IntendedOpeningContinuation
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Game.OnePacketLawApproximation
-import Vegas.Game.OnePacketHonestForced
+public import Vegas.Game.SourceServiceFailureReadout
+public import Vegas.Game.IntendedOpeningContinuation
+public import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Game.OnePacketLawApproximation
+public import Vegas.Game.OnePacketHonestForced
+
+@[expose] public section
 
 /-! # Honest continuation laws exclude latent source failures -/
 

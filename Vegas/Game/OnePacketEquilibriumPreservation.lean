@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketNonLateComparisons
-import Vegas.Game.OnePacketKeyedComparisons
-import Vegas.Game.OnePacketCommonCompletion
-import Vegas.Game.OnePacketComparisonRetention
-import Vegas.Game.OnePacketOwingOptimality
-import Vegas.Game.OnePacketExclusionPayoff
-import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
-import GameTheoryExtensions.Analysis.Protocol.GainComparison
+public import Vegas.Game.OnePacketNonLateComparisons
+public import Vegas.Game.OnePacketKeyedComparisons
+public import Vegas.Game.OnePacketCommonCompletion
+public import Vegas.Game.OnePacketComparisonRetention
+public import Vegas.Game.OnePacketOwingOptimality
+public import Vegas.Game.OnePacketExclusionPayoff
+public import GameTheoryExtensions.Analysis.Protocol.LocalSimulationLimit
+public import GameTheoryExtensions.Analysis.Protocol.GainComparison
+
+@[expose] public section
 
 /-! # Intended sequential equilibria in the native one-packet runtime
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.Protocol.Sequential
-import GameTheory.Protocol.FiniteHorizon
+public import GameTheory.Analysis.Protocol.Sequential
+public import GameTheory.Protocol.FiniteHorizon
+
+@[expose] public section
 
 /-! # A late-turn game with leaked openings
 

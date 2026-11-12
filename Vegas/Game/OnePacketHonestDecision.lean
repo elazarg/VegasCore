@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCanonicalPermits
-import Vegas.Compile.EventGraphBacktranslation
+public import Vegas.Game.OnePacketCanonicalPermits
+public import Vegas.Compile.EventGraphBacktranslation
+
+@[expose] public section
 
 /-! # Committed values and emitted transmissions
 

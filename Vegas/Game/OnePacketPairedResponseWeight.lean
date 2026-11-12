@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketRepairResponseBound
+public import Vegas.Game.OnePacketRepairResponseBound
+
+@[expose] public section
 
 /-! # Irregular source factors under paired response likelihood bounds
 

@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCounterpartGuard
-import Vegas.Game.OnePacketDebtFreeRegular
-import Vegas.Game.OnePacketSwapFiberSum
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketCounterpartGuard
+public import Vegas.Game.OnePacketDebtFreeRegular
+public import Vegas.Game.OnePacketSwapFiberSum
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # Regular counterparts by a swap toward a forced witness
 

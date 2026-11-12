@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.PublicFailureEvidence
-import Vegas.Pending.ExclusionEvidence
-import Vegas.Pending.AcceptedEventOwnership
-import Vegas.Pending.EventCommandFrame
-import Interaction.ReactiveMessageIdentity
+public import Vegas.Pending.PublicFailureEvidence
+public import Vegas.Pending.ExclusionEvidence
+public import Vegas.Pending.AcceptedEventOwnership
+public import Vegas.Pending.EventCommandFrame
+public import Interaction.ReactiveMessageIdentity
+
+@[expose] public section
 
 /-! # Factual origins of native completion records
 

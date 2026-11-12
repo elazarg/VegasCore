@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveRevealBlock
+public import Vegas.Pending.ReactiveRevealBlock
+
+@[expose] public section
 
 /-! # Public transcript of canonical reveal service
 

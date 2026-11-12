@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphReadout
-import Vegas.EventGraph.ConcurrentRevealNash
-import Vegas.EventGraph.SequentialNormalization
-import Vegas.EventGraph.SequentialLaw
-import Vegas.EventGraph.PublicationDecision
-import Vegas.Compile.EventGraphPolicy
-import Vegas.Source.Disclosure
-import Vegas.EventGraph.SchedulerReplay
+public import Vegas.Compile.EventGraphReadout
+public import Vegas.EventGraph.ConcurrentRevealNash
+public import Vegas.EventGraph.SequentialNormalization
+public import Vegas.EventGraph.SequentialLaw
+public import Vegas.EventGraph.PublicationDecision
+public import Vegas.Compile.EventGraphPolicy
+public import Vegas.Source.Disclosure
+public import Vegas.EventGraph.SchedulerReplay
+
+@[expose] public section
 
 /-! # The compiled graph with concurrent reveals
 

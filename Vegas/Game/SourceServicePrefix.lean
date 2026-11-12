@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceCheckpoint
-import Vegas.Compile.EventGraphReadout
-import Vegas.Compile.EventGraphPolicy
-import Vegas.Source.SetupProtocolEvaluation
-import Vegas.Source.DefaultControl
+public import Vegas.Game.SourceServiceCheckpoint
+public import Vegas.Compile.EventGraphReadout
+public import Vegas.Compile.EventGraphPolicy
+public import Vegas.Source.SetupProtocolEvaluation
+public import Vegas.Source.DefaultControl
+
+@[expose] public section
 
 /-! # Reading full source protocol positions from native checkpoints
 

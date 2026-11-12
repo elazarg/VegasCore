@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCompletion
-import Vegas.Game.OnePacketForced
-import Vegas.Game.SourceServiceFacts
-import Vegas.Pending.ReactiveOnePacketMenu
-import Interaction.ReactivePublication
+public import Vegas.Game.OnePacketCompletion
+public import Vegas.Game.OnePacketForced
+public import Vegas.Game.SourceServiceFacts
+public import Vegas.Pending.ReactiveOnePacketMenu
+public import Interaction.ReactivePublication
+
+@[expose] public section
 
 /-! # Completed events with an actor and the silence of other players
 

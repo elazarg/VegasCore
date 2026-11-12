@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingSubmittedRecords
+public import Vegas.Pending.ReactiveBindingSubmittedRecords
+
+@[expose] public section
 
 /-! # Submitted binding provenance through other responses -/
 

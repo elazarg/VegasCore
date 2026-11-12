@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCompletionLaw
-import Vegas.Game.OnePacketLateBadMass
-import Vegas.Game.OnePacketLateLumping
-import Vegas.Game.OnePacketLateSuccess
+public import Vegas.Game.OnePacketCompletionLaw
+public import Vegas.Game.OnePacketLateBadMass
+public import Vegas.Game.OnePacketLateLumping
+public import Vegas.Game.OnePacketLateSuccess
+
+@[expose] public section
 
 /-! # Completion potentials for actual current-event laws -/
 

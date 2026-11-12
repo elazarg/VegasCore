@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingFrame
-import Vegas.Pending.ReactiveBindingAllocation
-import Vegas.Pending.ReactiveRawBindingFrame
-import Vegas.Pending.ReactiveHiddenInclusion
+public import Vegas.Pending.ReactiveBindingFrame
+public import Vegas.Pending.ReactiveBindingAllocation
+public import Vegas.Pending.ReactiveRawBindingFrame
+public import Vegas.Pending.ReactiveHiddenInclusion
+
+@[expose] public section
 
 /-! # Binding repair before delayed inclusion
 

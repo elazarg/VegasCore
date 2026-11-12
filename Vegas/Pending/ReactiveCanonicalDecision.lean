@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactivePolicyFacts
-import Vegas.Pending.EventPublicState
+public import Vegas.Pending.ReactivePolicyFacts
+public import Vegas.Pending.EventPublicState
+
+@[expose] public section
 
 /-! # Prescribed decisions at the audit's canonical slot
 

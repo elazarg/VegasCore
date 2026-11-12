@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketBeliefWiring
+public import Vegas.Game.OnePacketBeliefWiring
+
+@[expose] public section
 
 /-! # The certificate's side of the two parts of the forced-belief inputs
 

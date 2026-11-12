@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveUnusableBinding
+public import Vegas.Pending.ReactiveUnusableBinding
+
+@[expose] public section
 
 /-! # Public allocation of canonical commitment handles
 

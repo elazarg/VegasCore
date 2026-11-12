@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDirectedRepairOpeningCandidates
-import Vegas.Game.OnePacketDirectedRepairResponseTurn
-import Vegas.Game.OnePacketDirectedRepairTrace
-import Vegas.Pending.ReactiveCountedResponseForms
-import Vegas.Pending.ReactiveBindingSubmittedRepair
+public import Vegas.Game.OnePacketDirectedRepairOpeningCandidates
+public import Vegas.Game.OnePacketDirectedRepairResponseTurn
+public import Vegas.Game.OnePacketDirectedRepairTrace
+public import Vegas.Pending.ReactiveCountedResponseForms
+public import Vegas.Pending.ReactiveBindingSubmittedRepair
+
+@[expose] public section
 
 /-! # Every actual response has a directed repaired trace extension -/
 

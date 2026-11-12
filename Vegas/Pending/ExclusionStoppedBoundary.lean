@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveStateInvariant
-import Interaction.ReactiveResponseMenu
-import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
-import GameTheoryExtensions.Protocol.TracePrefix
+public import Vegas.Pending.ReactiveStateInvariant
+public import Interaction.ReactiveResponseMenu
+public import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryInvariant
+public import GameTheoryExtensions.Protocol.TracePrefix
+
+@[expose] public section
 
 /-! # Actual environment prefixes at the first public exclusion -/
 

@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveLedgerPolicy
-import Vegas.Examples.OddsEvensService
-import Vegas.Pending.ReactiveCanonicalDecision
-import GameTheory.Math.Probability.FiniteUniform
+public import Interaction.ReactiveLedgerPolicy
+public import Vegas.Examples.OddsEvensService
+public import Vegas.Pending.ReactiveCanonicalDecision
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 
@@ -29,7 +33,7 @@ open OddsEvens EventGraphRuntime Interaction GameTheory.Math.Probability
 abbrev timeouts := OddsEvensService.timeouts
 abbrev app := OddsEvensService.app
 
-private abbrev eventId (n : Fin 4) : compiled.EventId := n
+abbrev eventId (n : Fin 4) : compiled.EventId := n
 
 /-- Inspect only authenticated certificates for the accepted handle. The call
 carrying a certificate can itself have been rejected. -/
@@ -51,7 +55,7 @@ def ordinaryResponse (who : Player) (past : List app.PlayerEntry)
     app.Action :=
   (canonicalServiceDecision timeouts) OddsEvensService.leaks who past view event choice
 
-private def respond (who : Player) : app.Policy := fun past view =>
+def respond (who : Player) : app.Policy := fun past view =>
   if who ∈ view.application.publicView.observation.defaulted then PMF.pure ⟨none⟩
   else match view.application.publicView.ownTurn? who with
     | none => PMF.pure ⟨none⟩

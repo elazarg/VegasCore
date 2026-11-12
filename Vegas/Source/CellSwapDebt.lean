@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.DebtObservation
+public import Vegas.Source.DebtObservation
+
+@[expose] public section
 
 /-! # Owing a failure after a cell swap
 

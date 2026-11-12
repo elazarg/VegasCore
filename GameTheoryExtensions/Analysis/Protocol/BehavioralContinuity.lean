@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Protocol.FiniteInformation
-import GameTheory.Analysis.Protocol.CounterfactualReach
-import GameTheory.Math.Probability.Convergence
-import GameTheory.Analysis.Protocol.BeliefTransport
-import GameTheoryExtensions.Math.Probability.Expectation
+public import GameTheory.Protocol.FiniteInformation
+public import GameTheory.Analysis.Protocol.CounterfactualReach
+public import GameTheory.Math.Probability.Convergence
+public import GameTheory.Analysis.Protocol.BeliefTransport
+public import GameTheoryExtensions.Math.Probability.Expectation
+
+@[expose] public section
 
 /-! # Continuity of finite behavioral continuation values
 

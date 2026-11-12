@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactivePolicyFacts
-import Vegas.Pending.EventCompletionObservation
-import Vegas.Pending.EventPublicState
-import Vegas.EventGraph.ObservationStep
+public import Vegas.Pending.ReactivePolicyFacts
+public import Vegas.Pending.EventCompletionObservation
+public import Vegas.Pending.EventPublicState
+public import Vegas.EventGraph.ObservationStep
+
+@[expose] public section
 
 /-! # Allocation and transport during a hidden binding repair
 

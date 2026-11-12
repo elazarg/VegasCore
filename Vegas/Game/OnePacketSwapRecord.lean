@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapSymmetry
-import Vegas.Game.OnePacketFactorization
-import Interaction.ReactiveRecallEntries
-import Interaction.ReactiveRecallInvariant
+public import Vegas.Game.OnePacketSwapSymmetry
+public import Vegas.Game.OnePacketFactorization
+public import Interaction.ReactiveRecallEntries
+public import Interaction.ReactiveRecallInvariant
+
+@[expose] public section
 
 /-! # Hidden swaps keep operational records and the observer's information
 

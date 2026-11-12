@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCounterpartDomination
-import GameTheoryExtensions.Protocol.TracePrefix
+public import Vegas.Game.OnePacketCounterpartDomination
+public import GameTheoryExtensions.Protocol.TracePrefix
+
+@[expose] public section
 
 /-! # Source-weight comparison along paired actual histories
 

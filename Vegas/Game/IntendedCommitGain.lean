@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketPrescribedCompletion
-import Vegas.Game.AsyncDeviationForeign
-import Vegas.Game.OnePacketExclusionPayoff
-import Vegas.Game.IntendedAuthenticOpening
-import GameTheoryExtensions.Analysis.Protocol.SourceGainTransport
+public import Vegas.Game.OnePacketPrescribedCompletion
+public import Vegas.Game.AsyncDeviationForeign
+public import Vegas.Game.OnePacketExclusionPayoff
+public import Vegas.Game.IntendedAuthenticOpening
+public import GameTheoryExtensions.Analysis.Protocol.SourceGainTransport
+
+@[expose] public section
 
 /-! # The gain of a commitment in the intended game
 

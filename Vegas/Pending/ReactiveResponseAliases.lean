@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveNormalRecall
-import Vegas.Pending.ReactiveFiniteResponses
+public import Interaction.ReactiveNormalRecall
+public import Vegas.Pending.ReactiveFiniteResponses
+
+@[expose] public section
 
 /-! # The finite native menus ignore private response aliases
 

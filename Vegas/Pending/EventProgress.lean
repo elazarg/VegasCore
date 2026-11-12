@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventInvariant
+public import Vegas.Pending.EventInvariant
+
+@[expose] public section
 
 /-! # Application progress independent of the service driver
 

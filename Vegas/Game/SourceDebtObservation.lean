@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Source.DebtObservation
+public import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Source.DebtObservation
+
+@[expose] public section
 
 /-! # Own source debt over native information fibers
 

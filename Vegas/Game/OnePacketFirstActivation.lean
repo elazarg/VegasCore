@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCanonicalAcceptance
-import Vegas.Game.SourceServiceFacts
-import Vegas.Game.SourceServiceFreshCall
-import Vegas.Pending.ReactiveFirstOpportunity
-import Interaction.ReactiveDecisionPredecessor
+public import Vegas.Game.OnePacketCanonicalAcceptance
+public import Vegas.Game.SourceServiceFacts
+public import Vegas.Game.SourceServiceFreshCall
+public import Vegas.Pending.ReactiveFirstOpportunity
+public import Interaction.ReactiveDecisionPredecessor
+
+@[expose] public section
 
 /-! # Recorded response entries
 

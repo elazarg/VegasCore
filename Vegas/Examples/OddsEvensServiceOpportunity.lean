@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensServiceClock
-import Vegas.Pending.ReactiveServiceOpportunity
+public import Vegas.Examples.OddsEvensServiceClock
+public import Vegas.Pending.ReactiveServiceOpportunity
+
+@[expose] public section
 
 /-! # Recorded owner opportunities on the actual forced-exit execution -/
 

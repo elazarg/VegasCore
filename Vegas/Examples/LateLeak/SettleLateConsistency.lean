@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.LateLeak.SettleLateDeferral
+public import Vegas.Examples.LateLeak.SettleLateDeferral
+
+@[expose] public section
 
 /-! # Consistent beliefs after late inclusions in the settle-late game
 

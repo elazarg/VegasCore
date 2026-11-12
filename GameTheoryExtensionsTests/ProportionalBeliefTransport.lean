@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.ProportionalBeliefTransport
+public import GameTheoryExtensions.Analysis.Protocol.ProportionalBeliefTransport
+
+@[expose] public section
 
 /-! # Exact Bayes projection is multiplier-one proportional transport -/
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.MessageNetworkIdentity
-import Interaction.ReactiveAllocation
-import Interaction.ReactiveEnvironmentStep
+public import Interaction.MessageNetworkIdentity
+public import Interaction.ReactiveAllocation
+public import Interaction.ReactiveEnvironmentStep
+
+@[expose] public section
 
 /-! # Envelope identity at every raw runtime history -/
 

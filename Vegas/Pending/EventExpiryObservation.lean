@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventHandleObservation
+public import Vegas.Pending.EventHandleObservation
+
+@[expose] public section
 
 /-! # Deadline expiry introduces no private-data-dependent observation -/
 

@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLocalPhaseValue
-import Vegas.Game.OnePacketFirstActivationValue
-import Vegas.Game.OnePacketEventPhaseLaw
-import Vegas.Game.IntendedChoiceReach
-import Vegas.Game.OnePacketSourcePhase
+public import Vegas.Game.OnePacketLocalPhaseValue
+public import Vegas.Game.OnePacketFirstActivationValue
+public import Vegas.Game.OnePacketEventPhaseLaw
+public import Vegas.Game.IntendedChoiceReach
+public import Vegas.Game.OnePacketSourcePhase
+
+@[expose] public section
 
 /-! # Source incentive comparison for an intended first-callback commitment -/
 

@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceFacts
-import Vegas.Game.SourceServiceFreshCall
-import Vegas.Pending.ReactiveServiceConditions
-import Vegas.Pending.ReactiveGraphSteps
-import Vegas.Pending.EventCommandFrame
-import Vegas.Pending.ExclusionInvariant
-import Vegas.Pending.PublicFailureEvidence
-import Interaction.ReactiveReceipts
+public import Vegas.Game.SourceServiceFacts
+public import Vegas.Game.SourceServiceFreshCall
+public import Vegas.Pending.ReactiveServiceConditions
+public import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Pending.EventCommandFrame
+public import Vegas.Pending.ExclusionInvariant
+public import Vegas.Pending.PublicFailureEvidence
+public import Interaction.ReactiveReceipts
+
+@[expose] public section
 
 /-! # Protected-call settlement in the native runtime
 

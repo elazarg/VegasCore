@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventPublicState
+public import Vegas.Pending.EventPublicState
+
+@[expose] public section
 
 /-! # Public evidence of an omitted required binding
 

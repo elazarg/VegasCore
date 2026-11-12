@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensService
-import Vegas.Pending.ReactiveServiceProgress
-import Interaction.ReactiveRecordedEnvironment
+public import Vegas.Examples.OddsEvensService
+public import Vegas.Pending.ReactiveServiceProgress
+public import Interaction.ReactiveRecordedEnvironment
+
+@[expose] public section
 
 /-! # Clock accounting for the concrete two-player forced-exit service -/
 

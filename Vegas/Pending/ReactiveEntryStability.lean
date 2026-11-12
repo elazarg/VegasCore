@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveStateInvariant
-import Interaction.ReactiveRecallInvariant
-import Vegas.Pending.PublicFailureEvidence
+public import Vegas.Pending.ReactiveStateInvariant
+public import Interaction.ReactiveRecallInvariant
+public import Vegas.Pending.PublicFailureEvidence
+
+@[expose] public section
 
 /-! # Recorded public views stay current until an event completes
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Setup
-import Vegas.Expr.Simple
-import GameTheoryExtensions.Math.Probability.Support
+public import Vegas.Source.Setup
+public import Vegas.Expr.Simple
+public import GameTheoryExtensions.Math.Probability.Support
+
+@[expose] public section
 
 /-! Mixed fixtures and execution regressions for the source language.
 
@@ -21,19 +25,19 @@ inductive Player where
   | alice
   deriving DecidableEq
 
-private abbrev flag : VarId := 10
-private abbrev seed : VarId := 11
-private abbrev choice : VarId := 12
-private abbrev choiceOut : VarId := 13
-private abbrev seedOut : VarId := 14
-private abbrev coin : VarId := 15
+abbrev flag : VarId := 10
+abbrev seed : VarId := 11
+abbrev choice : VarId := 12
+abbrev choiceOut : VarId := 13
+abbrev seedOut : VarId := 14
+abbrev coin : VarId := 15
 
-private abbrev InitialCtx : SourceCtx Player simpleExpr :=
+abbrev InitialCtx : SourceCtx Player simpleExpr :=
   [(seed, .commitment .alice .bool), (flag, .publicData .bool)]
 
 /-- `choice` is checked against an earlier public flag and Alice's retained
 private seed. The guard is checked when the last of its inputs is revealed. -/
-private def choiceGuard :
+def choiceGuard :
     SourceGuard simpleExpr InitialCtx .alice choice (.option .bool) where
   schema := [(flag, .bool), (seed, .bool)]
   schemaNames := by decide
@@ -47,20 +51,20 @@ private def choiceGuard :
     | .here => .publicData (.there .here)
     | .there .here => .commitment .here
 
-private abbrev AfterRevealsPublicCtx : CtxSimple :=
+abbrev AfterRevealsPublicCtx : CtxSimple :=
   [(seedOut, .result .bool), (choiceOut, .result (.option .bool)), (flag, .bool)]
 
-private def choiceResult :
+def choiceResult :
     Expr AfterRevealsPublicCtx (.result (.option .bool)) :=
   .var choiceOut (.there .here)
 
-private def fairBool : RationalLaw Bool where
+def fairBool : RationalLaw Bool where
   entries := [(false, 1 / 2), (true, 1 / 2)]
   normalized := by norm_num
 
 /-- Total dependent chance: failure, successful `none`, and successful
 `some b` all select an ordinary Boolean law. -/
-private def dependentCoin : DistExpr AfterRevealsPublicCtx .bool :=
+def dependentCoin : DistExpr AfterRevealsPublicCtx .bool :=
   .ite (.isFailure choiceResult)
     (.weighted (.pure false))
     (.ite (.isNone (.getResultD choiceResult .none))
@@ -68,13 +72,13 @@ private def dependentCoin : DistExpr AfterRevealsPublicCtx .bool :=
       (.ite (.getD (.getResultD choiceResult .none) (.constBool false))
         (.weighted (.pure true)) (.weighted (.pure false))))
 
-private abbrev TerminalPublicCtx : CtxSimple :=
+abbrev TerminalPublicCtx : CtxSimple :=
   [(coin, .bool), (seedOut, .result .bool),
     (choiceOut, .result (.option .bool)), (flag, .bool)]
 
 /-- Failure-sensitive settlement explicitly inspects both publication results.
 No failed result is coerced to an ordinary payload or winning comparison. -/
-private def payoff : Expr TerminalPublicCtx .int :=
+def payoff : Expr TerminalPublicCtx .int :=
   .ite
     (.isFailure (.var choiceOut (.there (.there .here))))
     (.constInt (-10))
@@ -96,20 +100,20 @@ def mixedState : State simpleExpr InitialCtx :=
   Env.cons (x := seed) (.success true) <|
     Env.cons (x := flag) true (Env.empty (CellVal simpleExpr))
 
-private abbrev ChoiceCtx : SourceCtx Player simpleExpr :=
+abbrev ChoiceCtx : SourceCtx Player simpleExpr :=
   (choice, .commitment .alice (.option .bool)) :: InitialCtx
 
-private abbrev ChoiceOutCtx : SourceCtx Player simpleExpr :=
+abbrev ChoiceOutCtx : SourceCtx Player simpleExpr :=
   (choiceOut, .publication (.option .bool)) :: ChoiceCtx
 
-private def choiceObligation : SourceProgram.Registry ChoiceCtx :=
+def choiceObligation : SourceProgram.Registry ChoiceCtx :=
   [{ owner := .alice, subject := choice, payload := .option .bool, source := .here,
      guard := choiceGuard.weaken }]
 
-private def afterCommit : Revelations ChoiceCtx :=
+def afterCommit : Revelations ChoiceCtx :=
   Revelations.weaken (Revelations.initial InitialCtx)
 
-private def choiceRevealed : Revelations ChoiceOutCtx :=
+def choiceRevealed : Revelations ChoiceOutCtx :=
   Revelations.reveal (published := choiceOut) afterCommit .here
 
 /-- Revealing `choice` completes no check: its guard also reads `seed`. -/
@@ -122,7 +126,7 @@ example : (choiceObligation.weaken.completedBy (published := seedOut) choiceReve
   rfl
 
 /-- Evaluate the guard on `choice` at the reveal of `seed`. -/
-private def acceptsAtSeed (published : PublicationResult (Option Bool))
+def acceptsAtSeed (published : PublicationResult (Option Bool))
     (proposal : PublicationResult Bool) : Bool :=
   (choiceObligation.weaken.completedBy (published := seedOut) choiceRevealed
     (.there (.there .here))).all fun obligation =>
@@ -147,10 +151,10 @@ def mixedSetup : SourceProgram.Setup (Player := Player) (L := simpleExpr) where
   accounts := rfl
   exitTransfers := fun _ => 0
 
-private abbrev doomed : VarId := 20
-private abbrev doomedOut : VarId := 21
+abbrev doomed : VarId := 20
+abbrev doomedOut : VarId := 21
 
-private def falseGuard :
+def falseGuard :
     SourceGuard (Player := Player) simpleExpr [] Player.alice doomed .bool where
   schema := []
   schemaNames := by decide
@@ -178,7 +182,7 @@ def falseGuardProgram : SourceProgram Player simpleExpr [] ∅ :=
       .ite (.isFailure (.var doomedOut .here))
         (.constInt (-1)) (.constInt 1))]
 
-private def mixedProfile (bound : PublicationResult (Option Bool))
+def mixedProfile (bound : PublicationResult (Option Bool))
     (discloseChoice : Bool) : mixedProgram.BehavioralProfile :=
   fun
     | .alice =>
@@ -186,7 +190,7 @@ private def mixedProfile (bound : PublicationResult (Option Bool))
         (fun _ _ _ => PMF.pure discloseChoice,
           (fun _ _ _ => PMF.pure true, PUnit.unit)))
 
-private def successfulState (sample : Bool) : State simpleExpr (mixedProgram.terminalCtx) :=
+def successfulState (sample : Bool) : State simpleExpr (mixedProgram.terminalCtx) :=
   Env.cons (x := coin) sample <|
   Env.cons (x := seedOut) (PublicationResult.success true) <|
   Env.cons (x := choiceOut) (PublicationResult.success Option.none) <|
@@ -194,7 +198,7 @@ private def successfulState (sample : Bool) : State simpleExpr (mixedProgram.ter
   Env.cons (x := seed) (PublicationResult.success true) <|
   Env.cons (x := flag) true (Env.empty (CellVal simpleExpr))
 
-private def invalidState : State simpleExpr (mixedProgram.terminalCtx) :=
+def invalidState : State simpleExpr (mixedProgram.terminalCtx) :=
   Env.cons (x := coin) false <|
   Env.cons (x := seedOut) (PublicationResult.failure) <|
   Env.cons (x := choiceOut) (PublicationResult.success (some false)) <|
@@ -202,7 +206,7 @@ private def invalidState : State simpleExpr (mixedProgram.terminalCtx) :=
   Env.cons (x := seed) (PublicationResult.success true) <|
   Env.cons (x := flag) true (Env.empty (CellVal simpleExpr))
 
-private def unopenableState : State simpleExpr (mixedProgram.terminalCtx) :=
+def unopenableState : State simpleExpr (mixedProgram.terminalCtx) :=
   Env.cons (x := coin) false <|
   Env.cons (x := seedOut) PublicationResult.failure <|
   Env.cons (x := choiceOut) (PublicationResult.failure) <|
@@ -210,7 +214,7 @@ private def unopenableState : State simpleExpr (mixedProgram.terminalCtx) :=
   Env.cons (x := seed) (PublicationResult.success true) <|
   Env.cons (x := flag) true (Env.empty (CellVal simpleExpr))
 
-private def withheldState : State simpleExpr (mixedProgram.terminalCtx) :=
+def withheldState : State simpleExpr (mixedProgram.terminalCtx) :=
   Env.cons (x := coin) false <|
   Env.cons (x := seedOut) PublicationResult.failure <|
   Env.cons (x := choiceOut) (PublicationResult.failure) <|
@@ -322,13 +326,13 @@ example :
   rw [withholding_run, PMF.pure_map]
   rfl
 
-private def falseProfile : falseGuardProgram.BehavioralProfile :=
+def falseProfile : falseGuardProgram.BehavioralProfile :=
   fun
     | .alice =>
       (fun _ _ _ => PMF.pure (some (.success true)),
         (fun _ _ _ => PMF.pure true, PUnit.unit))
 
-private def falseGuardState : State simpleExpr (falseGuardProgram.terminalCtx) :=
+def falseGuardState : State simpleExpr (falseGuardProgram.terminalCtx) :=
   Env.cons (x := doomedOut) PublicationResult.failure <|
   Env.cons (x := doomed) (PublicationResult.success true) <|
   Env.empty (CellVal simpleExpr)

@@ -1,14 +1,18 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketMainActivationRegularity
-import Vegas.Game.OnePacketForeignFailure
-import Vegas.Game.OnePacketRareMainMass
-import Vegas.Game.OnePacketBaseAssembly
-import Vegas.Game.OnePacketSequentialPreservation
-import Vegas.Pending.ExclusionStoppedBoundary
-import Vegas.Pending.ExclusionEvidence
-import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
-import GameTheoryExtensions.Protocol.JointDistribution
+public import Vegas.Game.OnePacketMainActivationRegularity
+public import Vegas.Game.OnePacketForeignFailure
+public import Vegas.Game.OnePacketRareMainMass
+public import Vegas.Game.OnePacketBaseAssembly
+public import Vegas.Game.OnePacketSequentialPreservation
+public import Vegas.Pending.ExclusionStoppedBoundary
+public import Vegas.Pending.ExclusionEvidence
+public import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
+public import GameTheoryExtensions.Protocol.JointDistribution
+
+@[expose] public section
 
 /-! # Rare foreign first failures under actual assembled native counted play
 

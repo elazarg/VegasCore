@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealServiceRankedReadout
-import Vegas.Pending.CanonicalKeyPublication
-import Vegas.EventGraph.DecisionTwin
-import Vegas.Source.InitialState
-import Vegas.EventGraph.RevealRelaxedScheduling
+public import Vegas.Game.RevealServiceRankedReadout
+public import Vegas.Pending.CanonicalKeyPublication
+public import Vegas.EventGraph.DecisionTwin
+public import Vegas.Source.InitialState
+public import Vegas.EventGraph.RevealRelaxedScheduling
+
+@[expose] public section
 
 /-! # The order-blind reference profile of concurrent reveals
 

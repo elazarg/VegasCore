@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Protocol.OwnPlayPrefix
-import Vegas.Game.OnePacketSpliceForced
+public import GameTheoryExtensions.Protocol.OwnPlayPrefix
+public import Vegas.Game.OnePacketSpliceForced
+
+@[expose] public section
 
 /-! # Actual prefix witnesses from retained native recall -/
 

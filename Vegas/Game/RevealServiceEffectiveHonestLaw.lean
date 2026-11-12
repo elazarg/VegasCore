@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealServiceHonestLaw
-import Vegas.Game.RevealServiceEffectiveTimely
-import Vegas.Pending.CanonicalOutcomeAccepted
+public import Vegas.Game.RevealServiceHonestLaw
+public import Vegas.Game.RevealServiceEffectiveTimely
+public import Vegas.Pending.CanonicalOutcomeAccepted
+
+@[expose] public section
 
 /-! # The honest outcome law of effective-opening clients
 

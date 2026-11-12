@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketBindingRepairWitness
-import Vegas.Game.OnePacketRecallPrefix
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketBindingRepairWitness
+public import Vegas.Game.OnePacketRecallPrefix
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # Forced responder inputs from responder-preserving repairs
 

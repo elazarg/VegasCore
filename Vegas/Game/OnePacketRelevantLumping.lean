@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSiteLaws
+public import Vegas.Game.OnePacketSiteLaws
+
+@[expose] public section
 
 /-! # One-step lumping at relevant sites
 

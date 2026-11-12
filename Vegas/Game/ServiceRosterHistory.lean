@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ServiceRosterInvariant
-import Vegas.Game.SourceServiceFacts
+public import Vegas.Game.ServiceRosterInvariant
+public import Vegas.Game.SourceServiceFacts
+
+@[expose] public section
 
 /-! # The public roster calendar at every initialized history
 

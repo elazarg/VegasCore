@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ExclusionPolicyLaw
-import Vegas.EventGraph.SchedulerErasure
+public import Vegas.Pending.ExclusionPolicyLaw
+public import Vegas.EventGraph.SchedulerErasure
+
+@[expose] public section
 
 /-! # Canonical key law under native automatic completion
 

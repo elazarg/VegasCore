@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactivePolicyFacts
+public import Vegas.Pending.ReactivePolicyFacts
+
+@[expose] public section
 
 /-! # Authentic prescribed resolution responses
 

@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateCompletion
-import Vegas.Game.OnePacketCompletionLaw
-import Vegas.Game.OnePacketDecodedActor
-import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
-import Interaction.ReactiveStoppedState
-import Vegas.Game.OnePacketLateSending
+public import Vegas.Game.OnePacketLateCompletion
+public import Vegas.Game.OnePacketCompletionLaw
+public import Vegas.Game.OnePacketDecodedActor
+public import GameTheoryExtensions.Analysis.Protocol.StoppedExitBound
+public import Interaction.ReactiveStoppedState
+public import Vegas.Game.OnePacketLateSending
+
+@[expose] public section
 
 /-! # The completion-point law at a late binding
 

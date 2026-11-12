@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketBindingSilence
+public import Vegas.Game.OnePacketBindingSilence
+
+@[expose] public section
 
 /-! # Reading own submissions from emitted envelopes
 

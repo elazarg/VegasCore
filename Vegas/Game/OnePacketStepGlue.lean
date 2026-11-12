@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFactorization
+public import Vegas.Game.OnePacketFactorization
+
+@[expose] public section
 
 /-! # Response steps of the one-packet game
 

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDirectedRepairContinuation
+public import Vegas.Game.OnePacketDirectedRepairContinuation
+
+@[expose] public section
 
 /-! # Supported passive environment steps of directed binding repair
 

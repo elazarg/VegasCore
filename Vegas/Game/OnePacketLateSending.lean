@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDelivery
-import GameTheoryExtensions.Math.Probability.Uniform
+public import Vegas.Game.OnePacketDelivery
+public import GameTheoryExtensions.Math.Probability.Uniform
+
+@[expose] public section
 
 /-! # Value-free sending of a slot-trembled late component
 

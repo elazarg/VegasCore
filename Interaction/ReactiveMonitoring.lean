@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactivePublication
-import Interaction.ReactivePolicyInvariant
-import Interaction.MessageMonitoring
-import Interaction.ReactiveReceipts
-import Interaction.ReactiveMessageReadout
-import GameTheory.Math.Probability.Bounds
-import GameTheoryExtensions.Math.Probability.Expectation
+public import Interaction.ReactivePublication
+public import Interaction.ReactivePolicyInvariant
+public import Interaction.MessageMonitoring
+public import Interaction.ReactiveReceipts
+public import Interaction.ReactiveMessageReadout
+public import GameTheory.Math.Probability.Bounds
+public import GameTheoryExtensions.Math.Probability.Expectation
+
+@[expose] public section
 
 /-! # Passive observation by a watcher
 

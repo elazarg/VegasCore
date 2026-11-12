@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketEventSuccess
+public import Vegas.Game.OnePacketEventSuccess
+
+@[expose] public section
 
 /-! # The owner's one packet at a binding
 

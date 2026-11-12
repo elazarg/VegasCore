@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphLayout
+public import Vegas.Compile.EventGraphLayout
+
+@[expose] public section
 
 /-! # Full source-node lowering to dependency-driven event code
 
@@ -18,7 +22,7 @@ open SourceProgram
 variable {Player : Type} [DecidableEq Player]
 variable {L : IExpr} [R : IExpr.ResultTypes L]
 
-private def publicReadFields {Field : Type} [DecidableEq Field]
+def publicReadFields {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}
     (deps : Finset VarId) :
     (schema : Ctx L.Ty) →
@@ -32,7 +36,7 @@ private def publicReadFields {Field : Type} [DecidableEq Field]
       else rest
 
 omit [DecidableEq Player] in
-private theorem publicReadFields_mem {Field : Type} [DecidableEq Field]
+theorem publicReadFields_mem {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}
     (deps : Finset VarId) (schema : Ctx L.Ty)
     (reads : ∀ {name payload}, HasVar schema name payload →
@@ -122,7 +126,7 @@ def compileGuardRead {Field : Type} [DecidableEq Field]
       | .unrevealed => absurd isRevealed (by
           simp [SourceGuardRead.revealed, revelation, Revelation.isRevealed])
 
-private def operandField {Field : Type} [DecidableEq Field]
+def operandField {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}
     {currentPayload payload : L.Ty}
     (operand : Vegas.EventGraph.GuardOperand layout currentPayload payload) : Finset Field :=
@@ -130,7 +134,7 @@ private def operandField {Field : Type} [DecidableEq Field]
   | none => ∅
   | some field => {field}
 
-private def guardReadFields {Field : Type} [DecidableEq Field]
+def guardReadFields {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}
     {currentPayload : L.Ty} (deps : Finset VarId) :
     (schema : Ctx L.Ty) →
@@ -142,7 +146,7 @@ private def guardReadFields {Field : Type} [DecidableEq Field]
         guardReadFields deps tail (fun source read => reads (.there source) read)
 
 omit [DecidableEq Player] R in
-private theorem operandField_mem {Field : Type} [DecidableEq Field]
+theorem operandField_mem {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}
     {currentPayload payload : L.Ty}
     (operand : Vegas.EventGraph.GuardOperand layout currentPayload payload)
@@ -162,7 +166,7 @@ private theorem mem_operandField_iff {Field : Type} [DecidableEq Field]
   | some result => simp [operandField, found, eq_comm]
 
 omit [DecidableEq Player] R in
-private theorem guardReadFields_mem {Field : Type} [DecidableEq Field]
+theorem guardReadFields_mem {Field : Type} [DecidableEq Field]
     {layout : Field → Vegas.EventGraph.EventField Player L}
     {currentPayload : L.Ty} (deps : Finset VarId) (schema : Ctx L.Ty)
     (reads : ∀ {name payload}, HasVar schema name payload → name ∈ deps →
@@ -422,7 +426,7 @@ private theorem compileGuard_before {inputCount eventCount : Nat}
     exact compileGuardRead_before target refs refsBefore revealed _ _ field found
 
 omit [DecidableEq Player] R in
-private theorem compileChecks_before {inputCount eventCount : Nat}
+theorem compileChecks_before {inputCount eventCount : Nat}
     {inputs : Fin inputCount → Vegas.EventGraph.EventField Player L}
     {outputs : Fin eventCount → Vegas.EventGraph.EventField Player L}
     {Γ : SourceCtx Player L} {published name : VarId} {owner : Player} {payload : L.Ty}

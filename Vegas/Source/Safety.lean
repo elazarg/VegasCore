@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Accounting
+public import Vegas.Source.Accounting
+
+@[expose] public section
 
 /-! # Safety of source publication execution
 

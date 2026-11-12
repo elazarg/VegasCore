@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.PublicationDecision
+public import Vegas.EventGraph.PublicationDecision
+
+@[expose] public section
 
 /-! # Every default ends in a failed publication
 

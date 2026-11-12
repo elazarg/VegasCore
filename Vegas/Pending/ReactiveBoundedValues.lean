@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBoundedHandles
-import Vegas.Pending.EventBindingInvariant
+public import Vegas.Pending.ReactiveBoundedHandles
+public import Vegas.Pending.EventBindingInvariant
+
+@[expose] public section
 
 /-! # Reachable commitment values stay in the message alphabet
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.CanonicalOutcomePublication
-import Vegas.Pending.CanonicalKeyLaw
-import Vegas.EventGraph.CanonicalStep
+public import Vegas.Pending.CanonicalOutcomePublication
+public import Vegas.Pending.CanonicalKeyLaw
+public import Vegas.EventGraph.CanonicalStep
+
+@[expose] public section
 
 /-! # The canonical outcome law at its head event
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDecodedCells
-import Vegas.Game.OnePacketDirectedRepairPrefix
-import Vegas.EventGraph.BarrierBlocks
+public import Vegas.Game.OnePacketDecodedCells
+public import Vegas.Game.OnePacketDirectedRepairPrefix
+public import Vegas.EventGraph.BarrierBlocks
+
+@[expose] public section
 
 /-! # Successful reveal bindings along a forced information history -/
 

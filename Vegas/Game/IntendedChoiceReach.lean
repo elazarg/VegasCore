@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.IntendedCommitGain
-import Vegas.Game.OnePacketValueTransport
+public import Vegas.Game.IntendedCommitGain
+public import Vegas.Game.OnePacketValueTransport
+
+@[expose] public section
 
 /-! # Source points reached by one legal intended commitment -/
 

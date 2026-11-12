@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.EventAssociationInvariant
-import Vegas.Pending.ExclusionCompletion
+public import Vegas.Pending.EventAssociationInvariant
+public import Vegas.Pending.ExclusionCompletion
+
+@[expose] public section
 
 /-! # Binding-handle provenance for the event pending runtime
 

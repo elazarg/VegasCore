@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateCertificate
-import Vegas.Game.OnePacketCertificateLumping
-import Vegas.Game.OnePacketNonLateChoices
-import Vegas.Game.AsyncDeviationForeign
+public import Vegas.Game.OnePacketLateCertificate
+public import Vegas.Game.OnePacketCertificateLumping
+public import Vegas.Game.OnePacketNonLateChoices
+public import Vegas.Game.AsyncDeviationForeign
+
+@[expose] public section
 
 /-! # Primitive failure after a prepared-slot commitment
 

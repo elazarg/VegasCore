@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCommitDecisionFailure
+public import Vegas.Game.OnePacketCommitDecisionFailure
+
+@[expose] public section
 
 /-! # Mixture comparisons for commitments at prepared slots
 

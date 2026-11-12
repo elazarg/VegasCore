@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.ProtocolBehavioralPolicy
-import Vegas.Source.ProtocolEvaluation
-import GameTheory.Protocol.SingleMover
-import GameTheory.Protocol.ContinuationLaw
+public import Vegas.Source.ProtocolBehavioralPolicy
+public import Vegas.Source.ProtocolEvaluation
+public import GameTheory.Protocol.SingleMover
+public import GameTheory.Protocol.ContinuationLaw
+
+@[expose] public section
 
 /-! # Behavioral continuation laws
 

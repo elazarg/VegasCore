@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceFailureRecord
-import Vegas.Pending.ReactiveEventStability
+public import Vegas.Game.SourceFailureRecord
+public import Vegas.Pending.ReactiveEventStability
+
+@[expose] public section
 
 /-! # A failed binding output is an owed failure
 

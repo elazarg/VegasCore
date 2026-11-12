@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphBacktranslation
-import Vegas.Compile.EventGraphObservationEncoding
-import Vegas.EventGraph.Recall
+public import Vegas.Compile.EventGraphBacktranslation
+public import Vegas.Compile.EventGraphObservationEncoding
+public import Vegas.EventGraph.Recall
+
+@[expose] public section
 
 /-! # Canonical event-graph policy backtranslation
 

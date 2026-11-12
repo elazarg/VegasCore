@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Game.SourceServicePrefix
-import Vegas.Game.SourceServiceFacts
-import Vegas.Game.SourcePrefixPublications
-import GameTheoryExtensions.Analysis.Protocol.SingleMoverReach
-import GameTheory.Math.Probability.Support
+public import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Game.SourceServicePrefix
+public import Vegas.Game.SourceServiceFacts
+public import Vegas.Game.SourcePrefixPublications
+public import GameTheoryExtensions.Analysis.Protocol.SingleMoverReach
+public import GameTheory.Math.Probability.Support
+
+@[expose] public section
 
 /-! # Public default control at decoded actors
 

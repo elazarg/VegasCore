@@ -1,14 +1,18 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.ValueBinding
-import Vegas.Source.PublicObservation
-import Vegas.Source.ObservationRecall
-import GameTheory.Math.Probability.Support
-import Vegas.Source.Purification
-import Vegas.Source.InitialState
-import Vegas.Source.FiniteSupport
-import GameTheory.Math.Probability.ExpectationAlgebra
-import GameTheory.Math.Probability.ExpectationBind
+public import Vegas.Source.ValueBinding
+public import Vegas.Source.PublicObservation
+public import Vegas.Source.ObservationRecall
+public import GameTheory.Math.Probability.Support
+public import Vegas.Source.Purification
+public import Vegas.Source.InitialState
+public import Vegas.Source.FiniteSupport
+public import GameTheory.Math.Probability.ExpectationAlgebra
+public import GameTheory.Math.Probability.ExpectationBind
+
+@[expose] public section
 
 /-! # Normalizing accepted unusable bindings
 
@@ -118,7 +122,7 @@ def PurePolicy.revealChoice {who : Player} {Γ : SourceCtx Player L} (unpatch : 
     else none
   else none
 
-private def normalizeBindingChoice (payload : L.Ty) :
+def normalizeBindingChoice (payload : L.Ty) :
     Option (PublicationResult (L.Val payload)) → Option (PublicationResult (L.Val payload))
   | some .failure => some (.success (L.someValue payload))
   | choice => choice

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.CanonicalOutcomePublication
-import Vegas.Pending.EffectiveOpening
+public import Vegas.Pending.CanonicalOutcomePublication
+public import Vegas.Pending.EffectiveOpening
+
+@[expose] public section
 
 /-! # Publication rounds when only accepted openings are timely
 

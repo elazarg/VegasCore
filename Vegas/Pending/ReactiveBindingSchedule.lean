@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingLikelihood
-import Interaction.ReactiveMessageReadout
+public import Vegas.Pending.ReactiveBindingLikelihood
+public import Interaction.ReactiveMessageReadout
+
+@[expose] public section
 
 /-! # Scheduled opaque bindings under passive observation
 

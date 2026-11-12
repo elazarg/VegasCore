@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Setup
-import GameTheory.Math.Probability.Mixture
-import GameTheory.Math.Probability.Product
-import GameTheoryExtensions.Math.Probability.SiteDraw
+public import Vegas.Source.Setup
+public import GameTheory.Math.Probability.Mixture
+public import GameTheory.Math.Probability.Product
+public import GameTheoryExtensions.Math.Probability.SiteDraw
+
+@[expose] public section
 
 /-! # Every policy is a mixture of pure ones
 
@@ -41,7 +45,7 @@ variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 /-! ## Every policy is a mixture of pure ones -/
 
 /-- The finitely many values of a finitely supported law, listed. -/
-private def supportList {α : Type*} (law : PMF α) (finite : law.support.Finite) : List α :=
+def supportList {α : Type*} (law : PMF α) (finite : law.support.Finite) : List α :=
   finite.toFinset.toList
 
 private theorem mem_supportList {α : Type*} {law : PMF α} (finite : law.support.Finite)
@@ -75,7 +79,7 @@ theorem BehavioralPolicy.hasFiniteSupport_of_finiteBindingTypes {who : Player} :
   | _, _, .reveal _ _ _ _ _ _ next, finite, policy =>
       hasFiniteSupport_of_finiteBindingTypes next finite policy.2
 
-private def RealizesPureMixtures {who : Player} {Γ : SourceCtx Player L}
+def RealizesPureMixtures {who : Player} {Γ : SourceCtx Player L}
     {O : Finset VarId} (program : SourceProgram Player L Γ O) : Prop :=
   ∀ (profile : BehavioralProfile program) (policy : BehavioralPolicy who program),
     (∀ player, (profile player).HasFiniteSupport program) → policy.HasFiniteSupport program →

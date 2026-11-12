@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealRunRecords
-import Vegas.Game.RevealPhaseBoundary
+public import Vegas.Game.RevealRunRecords
+public import Vegas.Game.RevealPhaseBoundary
+
+@[expose] public section
 
 /-! # A step of a run of reveals on the ledger
 

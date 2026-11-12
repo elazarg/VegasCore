@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveStopping
-import GameTheoryExtensions.Math.Probability.Support
+public import Interaction.ReactiveStopping
+public import GameTheoryExtensions.Math.Probability.Support
+
+@[expose] public section
 
 /-! # Simulating a deviation phase by phase
 

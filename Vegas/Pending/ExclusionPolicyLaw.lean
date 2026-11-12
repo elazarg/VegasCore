@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.CanonicalStep
-import Vegas.EventGraph.OwnedStep
-import Vegas.EventGraph.Sequential
-import Vegas.Pending.ExclusionCompletion
-import Vegas.Pending.ReactiveAcceptedOutput
+public import Vegas.EventGraph.CanonicalStep
+public import Vegas.EventGraph.OwnedStep
+public import Vegas.EventGraph.Sequential
+public import Vegas.Pending.ExclusionCompletion
+public import Vegas.Pending.ReactiveAcceptedOutput
+
+@[expose] public section
 
 /-! # Policy continuation through automatic default completion
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Game.OnePacketFactorization
-import Vegas.Game.OnePacketPrescribedSupport
+public import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Game.OnePacketFactorization
+public import Vegas.Game.OnePacketPrescribedSupport
+
+@[expose] public section
 
 /-! # Forced states along native histories
 

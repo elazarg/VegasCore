@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketHonestRecall
-import Vegas.Game.SourceServiceSiteBridge
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketHonestRecall
+public import Vegas.Game.SourceServiceSiteBridge
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # Initialized source laws under the counted native service -/
 

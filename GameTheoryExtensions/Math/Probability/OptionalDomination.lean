@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Math.Probability.Expectation
-import GameTheoryExtensions.Math.Probability.Support
+public import GameTheoryExtensions.Math.Probability.Expectation
+public import GameTheoryExtensions.Math.Probability.Support
+
+@[expose] public section
 
 /-! # Dominated optional readouts and integrable payoff comparisons
 

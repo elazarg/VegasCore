@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveLocalContinuation
-import GameTheoryExtensions.Math.Probability.ApproximateLumping
+public import Interaction.ReactiveLocalContinuation
+public import GameTheoryExtensions.Math.Probability.ApproximateLumping
+
+@[expose] public section
 
 /-! # Lumping the native run through a map of protocol states
 

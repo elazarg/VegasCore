@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ReferenceForeignTraffic
-import Vegas.Pending.CanonicalKeyPublication
-import Vegas.Pending.EffectiveOpening
+public import Vegas.Game.ReferenceForeignTraffic
+public import Vegas.Pending.CanonicalKeyPublication
+public import Vegas.Pending.EffectiveOpening
+
+@[expose] public section
 
 /-! # Deviator traffic across a block of concurrent reveals
 

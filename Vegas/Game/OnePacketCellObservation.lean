@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.CellSwapDebt
-import Vegas.Game.OnePacketForced
+public import Vegas.Source.CellSwapDebt
+public import Vegas.Game.OnePacketForced
+
+@[expose] public section
 
 /-! # Debts read only the observed cells
 

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphCompiler
+public import Vegas.Compile.EventGraphCompiler
+
+@[expose] public section
 
 /-! # Local evaluation correctness for event-graph lowering
 

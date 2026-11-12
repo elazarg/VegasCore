@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveRuntime
-import Interaction.ReactivePublication
-import Interaction.MessageNetworkIdentity
-import Vegas.Pending.ServicePlan
+public import Vegas.Pending.ReactiveRuntime
+public import Interaction.ReactivePublication
+public import Interaction.MessageNetworkIdentity
+public import Vegas.Pending.ServicePlan
+
+@[expose] public section
 
 /-! # Reserved service with one owner activation
 

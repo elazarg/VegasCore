@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceCanonicalConformance
-import Vegas.Pending.ReactiveServiceAudit
-import Vegas.Pending.ReactiveSettledStability
-import GameTheory.Analysis.Protocol.CounterfactualDecomposition
-import Interaction.ReactiveReceipts
+public import Vegas.Game.SourceServiceCanonicalConformance
+public import Vegas.Pending.ReactiveServiceAudit
+public import Vegas.Pending.ReactiveSettledStability
+public import GameTheory.Analysis.Protocol.CounterfactualDecomposition
+public import Interaction.ReactiveReceipts
+
+@[expose] public section
 
 /-! # Good packets and retained play
 

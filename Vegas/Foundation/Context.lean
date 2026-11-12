@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Mathlib.Data.Finset.Basic
+public import Mathlib.Data.Finset.Basic
+
+@[expose] public section
 
 /-!
 # Plain typed contexts

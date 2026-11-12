@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceFirstTurnCompletion
-import Vegas.Game.SourceServiceDeviationChoice
-import Vegas.Game.SourceServiceCanonicalSlots
-import Interaction.ReactiveRoundCongruence
-import Vegas.Pending.EventActivationOrigin
-import Vegas.Pending.EventBindingInvariant
-import Vegas.Pending.ReactiveGuardedResponse
+public import Vegas.Game.SourceServiceFirstTurnCompletion
+public import Vegas.Game.SourceServiceDeviationChoice
+public import Vegas.Game.SourceServiceCanonicalSlots
+public import Interaction.ReactiveRoundCongruence
+public import Vegas.Pending.EventActivationOrigin
+public import Vegas.Pending.EventBindingInvariant
+public import Vegas.Pending.ReactiveGuardedResponse
+
+@[expose] public section
 
 /-! # Foreign source choices and native traffic
 

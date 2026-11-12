@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketStepFactors
+public import Vegas.Game.OnePacketStepFactors
+
+@[expose] public section
 
 /-! # Masses of a response step
 

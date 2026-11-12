@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveHistory
+public import Interaction.ReactiveHistory
+
+@[expose] public section
 
 /-! # Response counts under a scheduler horizon
 

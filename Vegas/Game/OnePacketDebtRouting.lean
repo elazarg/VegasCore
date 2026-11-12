@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # Own source debt at native decision inputs
 

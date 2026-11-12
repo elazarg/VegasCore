@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFactorBounds
-import Vegas.Game.OnePacketSequentialPreservation
-import Vegas.Game.OnePacketContentFloor
-import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Game.OnePacketFactorBounds
+public import Vegas.Game.OnePacketSequentialPreservation
+public import Vegas.Game.OnePacketContentFloor
+public import Vegas.Game.OnePacketIntendedProjection
+
+@[expose] public section
 
 /-! # The slot law of the certificate's profile
 

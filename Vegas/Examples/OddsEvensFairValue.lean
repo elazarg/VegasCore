@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.OddsEvensSetup
-import Vegas.Examples.OddsEvensFairDecode
-import Vegas.Examples.OddsEvensFairSequential
-import Vegas.Game.IntendedAuthenticOpening
-import GameTheory.Math.Probability.FiniteUniform
+public import Vegas.Examples.OddsEvensSetup
+public import Vegas.Examples.OddsEvensFairDecode
+public import Vegas.Examples.OddsEvensFairSequential
+public import Vegas.Game.IntendedAuthenticOpening
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.CanonicalKeyPublication
-import Vegas.EventGraph.DecisionTwin
+public import Vegas.Pending.CanonicalKeyPublication
+public import Vegas.EventGraph.DecisionTwin
+
+@[expose] public section
 
 /-! # Canonical outcome law across publication rounds
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphHistory
-import Vegas.Compile.EventGraphSuffix
+public import Vegas.Compile.EventGraphHistory
+public import Vegas.Compile.EventGraphSuffix
+
+@[expose] public section
 
 /-! # Policy alignment along compiled source suffixes
 

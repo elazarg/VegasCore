@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDebtFreeResponse
-import Vegas.Game.OnePacketCanonicalSafety
-import Vegas.Game.OnePacketClearRegularity
-import Vegas.Game.OnePacketDisclosureResolves
-import Vegas.Pending.ExclusionAcceptedOutput
+public import Vegas.Game.OnePacketDebtFreeResponse
+public import Vegas.Game.OnePacketCanonicalSafety
+public import Vegas.Game.OnePacketClearRegularity
+public import Vegas.Game.OnePacketDisclosureResolves
+public import Vegas.Pending.ExclusionAcceptedOutput
+
+@[expose] public section
 
 /-! # First public failures exclude actual source-main counted responses
 

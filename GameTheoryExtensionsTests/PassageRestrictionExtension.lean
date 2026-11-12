@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.PassageRestrictionExtension
+public import GameTheoryExtensions.Analysis.Protocol.PassageRestrictionExtension
+
+@[expose] public section
 
 /-! # The depth-free restriction extension subsumes the clocked one
 

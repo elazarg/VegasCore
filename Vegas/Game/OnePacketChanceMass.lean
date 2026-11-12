@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketReplaySteps
-import Vegas.Game.OnePacketEnvironmentSteps
+public import Vegas.Game.OnePacketReplaySteps
+public import Vegas.Game.OnePacketEnvironmentSteps
+
+@[expose] public section
 
 /-! # Chance completions and the source chance law
 

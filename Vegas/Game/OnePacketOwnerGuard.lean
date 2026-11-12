@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnerRecall
-import Vegas.Game.OnePacketFailureBridge
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Game.OnePacketCertificateField
-import Vegas.Game.OnePacketSwapSymmetry
-import Vegas.EventGraph.ResolutionProvenance
+public import Vegas.Game.OnePacketOwnerRecall
+public import Vegas.Game.OnePacketFailureBridge
+public import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Game.OnePacketCertificateField
+public import Vegas.Game.OnePacketSwapSymmetry
+public import Vegas.EventGraph.ResolutionProvenance
+
+@[expose] public section
 
 /-! # The swap guard of the owner swap
 
@@ -193,7 +197,7 @@ end Initial
 section Clean
 
 omit [Fintype Player] in
-private theorem get?_of_store {kind : EventGraph.EventField Player L}
+theorem get?_of_store {kind : EventGraph.EventField Player L}
     (ref : EventGraph.FieldRef (graph setup).layout kind)
     {store : EventGraph.Store (graph setup).layout} {value : ((graph setup).layout ref.field).Value}
     (stored : store ref.field = some value) :

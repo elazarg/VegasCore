@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphScheduling
-import GameTheory.Core.MixtureSimulation
+public import Vegas.Compile.EventGraphScheduling
+public import GameTheory.Core.MixtureSimulation
+
+@[expose] public section
 
 /-! # Exact scheduling equivalence for compiler-generated graphs -/
 

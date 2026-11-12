@@ -1,23 +1,27 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Safety
-import Vegas.Game.IntendedNash
-import Vegas.Game.ConcurrentRevealPreservation
-import Vegas.Game.IntendedOpeningExtension
-import Vegas.Game.SourceProtocolNash
-import Vegas.Compile.EventGraphScheduling
-import Vegas.Game.EventCompilation
-import Vegas.Pending.GraphRefinement
-import Vegas.Game.SourceServiceFirstTurnCompletion
-import Vegas.Game.AsyncServiceRawNash
-import Vegas.Game.AsyncClientObservables
-import Vegas.Game.ProgramPaymentAsyncNash
-import Vegas.Game.ClientCompiler
-import Vegas.Game.PaymentPreservation
-import Vegas.Examples.OddsEvensRawEquilibrium
-import Vegas.Examples.OddsEvensFullSource
-import Vegas.Examples.CommitRevealAuction
-import Vegas.Examples.LateLeak
+public import Vegas.Source.Safety
+public import Vegas.Game.IntendedNash
+public import Vegas.Game.ConcurrentRevealPreservation
+public import Vegas.Game.IntendedOpeningExtension
+public import Vegas.Game.SourceProtocolNash
+public import Vegas.Compile.EventGraphScheduling
+public import Vegas.Game.EventCompilation
+public import Vegas.Pending.GraphRefinement
+public import Vegas.Game.SourceServiceFirstTurnCompletion
+public import Vegas.Game.AsyncServiceRawNash
+public import Vegas.Game.AsyncClientObservables
+public import Vegas.Game.ProgramPaymentAsyncNash
+public import Vegas.Game.ClientCompiler
+public import Vegas.Game.PaymentPreservation
+public import Vegas.Examples.OddsEvensRawEquilibrium
+public import Vegas.Examples.OddsEvensFullSource
+public import Vegas.Examples.CommitRevealAuction
+public import Vegas.Examples.LateLeak
+
+@[expose] public section
 
 /-! # Claims of the maintained paper
 

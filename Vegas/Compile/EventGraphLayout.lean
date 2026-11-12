@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Accounting
-import Vegas.EventGraph.Basic
+public import Vegas.Source.Accounting
+public import Vegas.EventGraph.Basic
+
+@[expose] public section
 
 /-! # Source layouts for dependency-driven event graphs
 

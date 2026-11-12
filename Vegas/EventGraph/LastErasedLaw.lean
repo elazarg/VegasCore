@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.LastSchedulerErasure
-import Vegas.EventGraph.DecisionTwin
-import Vegas.EventGraph.PolicyPatch
+public import Vegas.EventGraph.LastSchedulerErasure
+public import Vegas.EventGraph.DecisionTwin
+public import Vegas.EventGraph.PolicyPatch
+
+@[expose] public section
 
 /-! # The last-served law of erased keys
 

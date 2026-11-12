@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ClientSpecification
-import Vegas.Game.OnePacketEquilibriumPreservation
-import Vegas.Game.OnePacketRawLaw
+public import Vegas.Game.ClientSpecification
+public import Vegas.Game.OnePacketEquilibriumPreservation
+public import Vegas.Game.OnePacketRawLaw
+
+@[expose] public section
 
 /-! # Intended sequential equilibria in the audited native raw runtime
 

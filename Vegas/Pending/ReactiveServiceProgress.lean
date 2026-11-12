@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveService
-import Vegas.Pending.EventProgress
-import Vegas.Pending.ExclusionInvariant
+public import Vegas.Pending.ReactiveService
+public import Vegas.Pending.EventProgress
+public import Vegas.Pending.ExclusionInvariant
+
+@[expose] public section
 
 /-! # Progress under arbitrary reactive player and network policies
 

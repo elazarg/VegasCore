@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketComparisonRetention
-import Vegas.Game.OnePacketStoppedContinuationValue
-import Vegas.Game.OnePacketSiteLinearity
+public import Vegas.Game.OnePacketComparisonRetention
+public import Vegas.Game.OnePacketStoppedContinuationValue
+public import Vegas.Game.OnePacketSiteLinearity
+
+@[expose] public section
 
 /-! # Source continuation values of the common native comparison profile -/
 

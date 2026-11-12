@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceCanonicalSlots
-import Vegas.Game.SourceServiceCanonicalAcceptance
-import Vegas.Pending.ReactiveCompiledResolution
+public import Vegas.Game.SourceServiceCanonicalSlots
+public import Vegas.Game.SourceServiceCanonicalAcceptance
+public import Vegas.Pending.ReactiveCompiledResolution
+
+@[expose] public section
 
 /-! # Prescribed fresh calls conform to the audit
 

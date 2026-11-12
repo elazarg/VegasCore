@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceFreshCall
-import Vegas.Pending.ReactiveAssociationEvidence
-import Vegas.Pending.ReactiveGuardedResponse
-import Vegas.Pending.ReactiveAcceptedOutput
-import Vegas.Pending.ReactiveCanonicalMenu
-import Vegas.Pending.ReactiveOpeningWindow
+public import Vegas.Game.SourceServiceFreshCall
+public import Vegas.Pending.ReactiveAssociationEvidence
+public import Vegas.Pending.ReactiveGuardedResponse
+public import Vegas.Pending.ReactiveAcceptedOutput
+public import Vegas.Pending.ReactiveCanonicalMenu
+public import Vegas.Pending.ReactiveOpeningWindow
+
+@[expose] public section
 
 /-! # Canonical source packets and their exact native effects
 

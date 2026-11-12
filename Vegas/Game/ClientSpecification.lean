@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketExclusionPayoff
-import Vegas.Game.OnePacketPublicInitialSignal
-import Vegas.Game.OnePacketRetention
-import Vegas.Game.OnePacketSwapFiberSum
-import Vegas.Pending.ReactiveAsyncContract
-import Vegas.Pending.ReactiveOnePacketMenu
-import Vegas.Source.PrivateInputsIndependent
-import Interaction.ReactiveResponseEvaluation
+public import Vegas.Game.OnePacketExclusionPayoff
+public import Vegas.Game.OnePacketPublicInitialSignal
+public import Vegas.Game.OnePacketRetention
+public import Vegas.Game.OnePacketSwapFiberSum
+public import Vegas.Pending.ReactiveAsyncContract
+public import Vegas.Pending.ReactiveOnePacketMenu
+public import Vegas.Source.PrivateInputsIndependent
+public import Interaction.ReactiveResponseEvaluation
+
+@[expose] public section
 
 /-! # Specifications and artifacts for native sequential compilation
 

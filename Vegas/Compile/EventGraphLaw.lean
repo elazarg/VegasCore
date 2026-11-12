@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphPolicyLaw
-import Vegas.Compile.EventGraphReadout
-import Vegas.Compile.EventGraphStep
-import Vegas.EventGraph.CanonicalStep
-import GameTheory.Math.Probability.ConditionalObservation
-import GameTheory.Math.Probability.ExpectationConditioning
+public import Vegas.Compile.EventGraphPolicyLaw
+public import Vegas.Compile.EventGraphReadout
+public import Vegas.Compile.EventGraphStep
+public import Vegas.EventGraph.CanonicalStep
+public import GameTheory.Math.Probability.ConditionalObservation
+public import GameTheory.Math.Probability.ExpectationConditioning
+
+@[expose] public section
 
 /-! # Exact source-order law for event-graph compilation
 

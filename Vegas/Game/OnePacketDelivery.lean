@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSlotTrembles
-import Vegas.Game.OnePacketPrescribedSupport
-import Vegas.Game.RevealServicePayoffs
+public import Vegas.Game.OnePacketSlotTrembles
+public import Vegas.Game.OnePacketPrescribedSupport
+public import Vegas.Game.RevealServicePayoffs
+
+@[expose] public section
 
 /-! # Late-delivery options
 

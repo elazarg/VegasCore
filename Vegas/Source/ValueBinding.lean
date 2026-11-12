@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Setup
+public import Vegas.Source.Setup
+
+@[expose] public section
 
 /-! # Binding policies without opaque unusable candidates
 

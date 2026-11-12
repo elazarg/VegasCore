@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Game.OnePacketFactorization
-import Vegas.Pending.ReactiveStateInvariant
-import GameTheoryExtensions.Analysis.Protocol.SingleMoverReach
+public import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Game.OnePacketFactorization
+public import Vegas.Pending.ReactiveStateInvariant
+public import GameTheoryExtensions.Analysis.Protocol.SingleMoverReach
+
+@[expose] public section
 
 /-! # Source weights against the counterfactual reach of the intended replay
 

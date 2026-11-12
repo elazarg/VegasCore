@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealBlockPhase
-import Vegas.Game.RevealPhasing
-import Vegas.Game.LastForeignPhase
-import Vegas.Game.LastChancePhase
-import Vegas.Game.RevealServiceHonestLaw
+public import Vegas.Game.RevealBlockPhase
+public import Vegas.Game.RevealPhasing
+public import Vegas.Game.LastForeignPhase
+public import Vegas.Game.LastChancePhase
+public import Vegas.Game.RevealServiceHonestLaw
+
+@[expose] public section
 
 /-! # Phase boundaries of a ledger run with concurrent reveals
 

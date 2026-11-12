@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketExclusionPayoff
-import Vegas.Pending.ReactiveAcceptedOutput
-import Vegas.Pending.ReactiveOnePacketMenu
+public import Vegas.Game.OnePacketExclusionPayoff
+public import Vegas.Pending.ReactiveAcceptedOutput
+public import Vegas.Pending.ReactiveOnePacketMenu
+
+@[expose] public section
 
 /-! # Event-level failure read through the typed readout
 

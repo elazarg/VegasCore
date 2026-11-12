@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketComponents
-import Vegas.Game.OnePacketExclusionPayoff
-import GameTheory.Analysis.Protocol.ComponentCompletion
+public import Vegas.Game.OnePacketComponents
+public import Vegas.Game.OnePacketExclusionPayoff
+public import GameTheory.Analysis.Protocol.ComponentCompletion
+
+@[expose] public section
 
 /-! # A common consistent completion of native operational components
 

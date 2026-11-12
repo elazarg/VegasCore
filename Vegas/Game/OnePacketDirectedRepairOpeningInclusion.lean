@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingRejectedInclusion
-import Vegas.Pending.ReactiveBindingFrameOpening
-import Vegas.Game.OnePacketPendingLumping
+public import Vegas.Pending.ReactiveBindingRejectedInclusion
+public import Vegas.Pending.ReactiveBindingFrameOpening
+public import Vegas.Game.OnePacketPendingLumping
+
+@[expose] public section
 
 /-! # Complete opening-inclusion cases through a binding repair -/
 

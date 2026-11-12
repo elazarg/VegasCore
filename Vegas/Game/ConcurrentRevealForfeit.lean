@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ConcurrentRevealNash
-import Vegas.Compile.BindingReveal
-import Vegas.Compile.RevealFailureReadout
+public import Vegas.Game.ConcurrentRevealNash
+public import Vegas.Compile.BindingReveal
+public import Vegas.Compile.RevealFailureReadout
+
+@[expose] public section
 
 /-! # Intended-game Nash under concurrent reveals with the forfeit pass
 

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.MessageRetention
+public import Interaction.MessageRetention
+
+@[expose] public section
 
 /-! # Known envelopes remain pending or published
 

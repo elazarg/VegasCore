@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Protocol.History
+public import GameTheory.Protocol.History
+
+@[expose] public section
 
 /-! # Prefixes of histories
 

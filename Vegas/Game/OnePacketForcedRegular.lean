@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCompletionCases
-import Vegas.Game.OnePacketReplayExists
-import Vegas.Game.OnePacketOwnSubmissions
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Game.SourceServiceDecodedDebt
-import Vegas.Pending.ExclusionEvidence
-import Vegas.Game.SourcePrefixPublications
+public import Vegas.Game.OnePacketCompletionCases
+public import Vegas.Game.OnePacketReplayExists
+public import Vegas.Game.OnePacketOwnSubmissions
+public import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Game.SourceServiceDecodedDebt
+public import Vegas.Pending.ExclusionEvidence
+public import Vegas.Game.SourcePrefixPublications
+
+@[expose] public section
 
 /-! # Regular histories with public default evidence
 

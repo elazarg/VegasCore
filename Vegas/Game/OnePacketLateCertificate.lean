@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateBadMass
-import Vegas.Game.OnePacketCertificateLumping
+public import Vegas.Game.OnePacketLateBadMass
+public import Vegas.Game.OnePacketCertificateLumping
+
+@[expose] public section
 
 /-! # The certificate's late bindings
 

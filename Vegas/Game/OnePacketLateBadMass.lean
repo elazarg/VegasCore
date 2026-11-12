@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketLateSuccessFree
+public import Vegas.Game.OnePacketLateSuccessFree
+
+@[expose] public section
 
 /-! # Unfailed completions without a completion point at a late binding
 

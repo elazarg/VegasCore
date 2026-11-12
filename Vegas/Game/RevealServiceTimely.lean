@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceAsyncTimeliness
-import Vegas.Game.SourceServiceFirstTurnOpportunity
-import Vegas.Game.SourceServiceCanonicalAcceptance
-import Vegas.Game.SourceServiceCanonicalSlots
-import Vegas.Game.SourceServiceTurnSubmissions
-import Vegas.Game.SourceServiceFirstTurnMixture
-import Vegas.Pending.CanonicalOutcomePublication
+public import Vegas.Game.SourceServiceAsyncTimeliness
+public import Vegas.Game.SourceServiceFirstTurnOpportunity
+public import Vegas.Game.SourceServiceCanonicalAcceptance
+public import Vegas.Game.SourceServiceCanonicalSlots
+public import Vegas.Game.SourceServiceTurnSubmissions
+public import Vegas.Game.SourceServiceFirstTurnMixture
+public import Vegas.Pending.CanonicalOutcomePublication
+
+@[expose] public section
 
 /-! # Honest publications never expire
 

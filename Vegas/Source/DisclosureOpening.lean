@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.DisclosureBehavioral
-import Vegas.Source.Disclosure
+public import Vegas.Source.DisclosureBehavioral
+public import Vegas.Source.Disclosure
+
+@[expose] public section
 
 /-! # Opening every effective binding
 

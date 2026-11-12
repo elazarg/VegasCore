@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketReplayExists
-import Vegas.Game.OnePacketOwnIntended
-import Vegas.Game.OnePacketHonestForced
-import Vegas.Game.SourceDebtObservation
-import Vegas.Pending.ReactiveServiceConditions
+public import Vegas.Game.OnePacketReplayExists
+public import Vegas.Game.OnePacketOwnIntended
+public import Vegas.Game.OnePacketHonestForced
+public import Vegas.Game.SourceDebtObservation
+public import Vegas.Pending.ReactiveServiceConditions
+
+@[expose] public section
 
 /-! # Projected views of debt-free sites are intended decisions
 

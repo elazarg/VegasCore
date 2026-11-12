@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactivePolicy
-import GameTheory.Protocol.SingleMover
-import GameTheory.Protocol.StateKernel
-import GameTheory.Protocol.BehavioralTerminal
-import GameTheory.Protocol.Strategic
+public import Interaction.ReactivePolicy
+public import GameTheory.Protocol.SingleMover
+public import GameTheory.Protocol.StateKernel
+public import GameTheory.Protocol.BehavioralTerminal
+public import GameTheory.Protocol.Strategic
+
+@[expose] public section
 
 /-! # The canonical protocol executes the reactive policy interface
 

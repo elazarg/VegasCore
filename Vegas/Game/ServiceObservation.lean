@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ServiceInformation
-import Vegas.Compile.EventGraphPolicyBacktranslation
+public import Vegas.Game.ServiceInformation
+public import Vegas.Compile.EventGraphPolicyBacktranslation
+
+@[expose] public section
 
 /-! # Reconstructing native checkpoint observations
 

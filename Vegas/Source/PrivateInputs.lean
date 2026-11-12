@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.InitialState
+public import Vegas.Source.InitialState
+
+@[expose] public section
 
 /-! # Persistent private inputs
 

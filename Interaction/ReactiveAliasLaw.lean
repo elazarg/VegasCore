@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveAliasStrategy
-import GameTheory.Protocol.Randomized
-import GameTheory.Protocol.Information
-import GameTheoryExtensions.Protocol.JointDistribution
+public import Interaction.ReactiveAliasStrategy
+public import GameTheory.Protocol.Randomized
+public import GameTheory.Protocol.Information
+public import GameTheoryExtensions.Protocol.JointDistribution
+
+@[expose] public section
 
 /-! # Exact history laws for response normalization
 

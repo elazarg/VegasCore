@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketEventSuccess
-import Vegas.Game.OnePacketFreshSlots
+public import Vegas.Game.OnePacketEventSuccess
+public import Vegas.Game.OnePacketFreshSlots
+
+@[expose] public section
 
 /-! # Fresh slots and the acceptance invariant after a one-packet commitment
 

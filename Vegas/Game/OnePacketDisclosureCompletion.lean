@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketEventSuccess
-import Vegas.Pending.ExclusionPolicyLaw
-import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
+public import Vegas.Game.OnePacketEventSuccess
+public import Vegas.Pending.ExclusionPolicyLaw
+public import GameTheoryExtensions.Analysis.Protocol.StoppedHistoryAtom
+
+@[expose] public section
 
 
 /-! # Full continuations at packet-completion boundaries

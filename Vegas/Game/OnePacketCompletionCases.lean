@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCompletion
-import Vegas.Game.SourceServiceFacts
-import Vegas.Pending.ExclusionEvidence
+public import Vegas.Game.OnePacketCompletion
+public import Vegas.Game.SourceServiceFacts
+public import Vegas.Pending.ExclusionEvidence
+
+@[expose] public section
 
 /-! # Accepted, expired and automatic owned completion records
 

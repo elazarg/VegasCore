@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.KeyedPools
+public import GameTheoryExtensions.Analysis.Protocol.KeyedPools
+
+@[expose] public section
 
 /-! # Free agents beside keyed pools
 

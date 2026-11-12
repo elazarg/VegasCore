@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceFirstTurnCompletion
-import Mathlib.Tactic.Convert
+public import Vegas.Game.SourceServiceFirstTurnCompletion
+public import Mathlib.Tactic.Convert
+
+@[expose] public section
 
 /-! # Sequential source law of the first-turn compiler
 

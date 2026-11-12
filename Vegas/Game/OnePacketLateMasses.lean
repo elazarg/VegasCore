@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketRevealMasses
-import Vegas.Game.OnePacketDelivery
+public import Vegas.Game.OnePacketRevealMasses
+public import Vegas.Game.OnePacketDelivery
+
+@[expose] public section
 
 /-! # Mixtures of slot-trembled components
 

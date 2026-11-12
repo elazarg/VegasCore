@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveMenuPolicy
-import Interaction.ReactiveRounds
+public import Interaction.ReactiveMenuPolicy
+public import Interaction.ReactiveRounds
+
+@[expose] public section
 
 /-! # Complete native evaluation of finite-menu behavioral profiles -/
 

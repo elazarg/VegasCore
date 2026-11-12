@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingSubmittedRecords
-import Vegas.Pending.ReactiveBindingFrame
-import Vegas.Pending.ReactiveBindingSubmissionFrame
+public import Vegas.Pending.ReactiveBindingSubmittedRecords
+public import Vegas.Pending.ReactiveBindingFrame
+public import Vegas.Pending.ReactiveBindingSubmissionFrame
+
+@[expose] public section
 
 /-! # Actual pending inclusion from recorded submission provenance -/
 

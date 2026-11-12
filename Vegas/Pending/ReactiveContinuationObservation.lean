@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveStateInvariant
-import Vegas.Pending.EventExpiryObservation
-import Vegas.Pending.EventPrivateObservation
+public import Vegas.Pending.ReactiveStateInvariant
+public import Vegas.Pending.EventExpiryObservation
+public import Vegas.Pending.EventPrivateObservation
+
+@[expose] public section
 
 /-! # Owner-local submission and maintenance laws -/
 

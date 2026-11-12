@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFactorization
-import GameTheoryExtensions.Analysis.Protocol.ProjectedBeliefTransport
+public import Vegas.Game.OnePacketFactorization
+public import GameTheoryExtensions.Analysis.Protocol.ProjectedBeliefTransport
+
+@[expose] public section
 
 /-! # Forced beliefs of the one-packet game are honest
 

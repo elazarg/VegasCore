@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.MessageNetworkCounters
-import Interaction.MessagePublication
+public import Interaction.MessageNetworkCounters
+public import Interaction.MessagePublication
+
+@[expose] public section
 
 /-! # An envelope identifier fixes the entire message
 

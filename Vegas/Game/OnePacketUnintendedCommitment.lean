@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketReplayExists
-import Vegas.Game.OnePacketSlotMasses
-import Vegas.Game.OnePacketSureFailure
-import Vegas.Game.SourceServiceDecodedDebt
-import Vegas.Game.SourceServiceCompletion
-import Vegas.Compile.EventGraphStep
-import Vegas.Game.SourcePrefixPublications
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketReplayExists
+public import Vegas.Game.OnePacketSlotMasses
+public import Vegas.Game.OnePacketSureFailure
+public import Vegas.Game.SourceServiceDecodedDebt
+public import Vegas.Game.SourceServiceCompletion
+public import Vegas.Compile.EventGraphStep
+public import Vegas.Game.SourcePrefixPublications
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # Unintended commitments leave their owner owing
 

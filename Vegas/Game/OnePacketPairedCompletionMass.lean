@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketEnvironmentSteps
-import Vegas.Pending.EventSampleObservation
-import Vegas.EventGraph.BarrierInformation
+public import Vegas.Game.OnePacketEnvironmentSteps
+public import Vegas.Pending.EventSampleObservation
+public import Vegas.EventGraph.BarrierInformation
+
+@[expose] public section
 
 /-! # Chance mass depends only on paired public endpoints -/
 

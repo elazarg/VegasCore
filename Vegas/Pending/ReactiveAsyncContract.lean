@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveService
-import Vegas.Pending.EventPublicState
+public import Vegas.Pending.ReactiveService
+public import Vegas.Pending.EventPublicState
+
+@[expose] public section
 
 /-! # The asynchronous service contract
 

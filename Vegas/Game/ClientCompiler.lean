@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SequentialCompilation
-import Interaction.ReactiveLedgerAssessment
-import Interaction.ReactiveMenuRationality
+public import Vegas.Game.SequentialCompilation
+public import Interaction.ReactiveLedgerAssessment
+public import Interaction.ReactiveMenuRationality
+
+@[expose] public section
 
 /-! # A uniform semantic compiler for intended equilibrium clients
 

@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDelivery
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Pending.ExclusionInformationHistory
-import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
-import GameTheory.Math.Probability.FiniteUniform
+public import Vegas.Game.OnePacketDelivery
+public import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Pending.ExclusionInformationHistory
+public import GameTheoryExtensions.Analysis.Protocol.FreeKeyedPools
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 

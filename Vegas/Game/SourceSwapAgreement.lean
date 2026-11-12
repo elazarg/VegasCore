@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapRegular
+public import Vegas.Game.OnePacketSwapRegular
+
+@[expose] public section
 
 /-! # What two indistinguishable source points share
 
@@ -163,7 +167,7 @@ private theorem get_eq_of_sourceObserve {who : Player} {Γ : SourceCtx Player L}
 
 omit [DecidableEq Player] [IExpr.ResultTypes L] in
 /-- States agreeing at every witness of a cell agree on its lookup. -/
-private theorem cell?_eq_of_get_eq {name : VarId} {kind : CellTy Player L} :
+theorem cell?_eq_of_get_eq {name : VarId} {kind : CellTy Player L} :
     ∀ {Γ : SourceCtx Player L} {left right : State L Γ},
       (∀ source : HasVar Γ name kind, left.get source = right.get source) →
         State.cell? left name kind = State.cell? right name kind

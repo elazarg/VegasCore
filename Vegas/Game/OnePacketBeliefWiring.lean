@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketForcedRegular
-import Vegas.Game.OnePacketProjectedDecision
-import Vegas.Game.OnePacketLateSuccess
-import Vegas.Game.OnePacketSequentialPreservation
-import Vegas.Game.OnePacketSlotLawForced
+public import Vegas.Game.OnePacketForcedRegular
+public import Vegas.Game.OnePacketProjectedDecision
+public import Vegas.Game.OnePacketLateSuccess
+public import Vegas.Game.OnePacketSequentialPreservation
+public import Vegas.Game.OnePacketSlotLawForced
+
+@[expose] public section
 
 /-! # The operational side of the forced-belief inputs
 

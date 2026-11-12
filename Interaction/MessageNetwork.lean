@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.MessagePool
-import GameTheory.Math.Probability.Mixture
-import GameTheory.Math.Probability.Product
+public import Interaction.MessagePool
+public import GameTheory.Math.Probability.Mixture
+public import GameTheory.Math.Probability.Product
+
+@[expose] public section
 
 /-! # A message network with explicit input history
 

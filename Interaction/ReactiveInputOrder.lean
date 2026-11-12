@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveTrafficContinuation
-import Interaction.ReactiveSubmissionSerial
+public import Interaction.ReactiveTrafficContinuation
+public import Interaction.ReactiveSubmissionSerial
+
+@[expose] public section
 
 /-! # Earlier signed inputs along reactive continuations
 

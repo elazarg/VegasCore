@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveMenuRestriction
-import Interaction.ReactiveOwnPlay
-import GameTheory.Protocol.RestrictionExecution
-import GameTheoryExtensions.Math.Probability.Uniform
-import GameTheory.Math.Probability.FiniteUniform
+public import Interaction.ReactiveMenuRestriction
+public import Interaction.ReactiveOwnPlay
+public import GameTheory.Protocol.RestrictionExecution
+public import GameTheoryExtensions.Math.Probability.Uniform
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 
@@ -22,7 +26,7 @@ namespace InteractionTests.ReactiveMenuRestriction
 open Interaction GameTheory.Protocol GameTheory.Protocol.ExecutionProtocol
 open GameTheory.Math.Probability
 
-private abbrev app : ReactiveApplication Bool where
+abbrev app : ReactiveApplication Bool where
   State := Unit
   Payload := Bool
   Submission := Bool
@@ -38,20 +42,20 @@ private abbrev app : ReactiveApplication Bool where
   observePending _ pending := (uniformLaw Bool).map fun observed =>
     if observed then (pending.map Message.id).toFinset else ∅
 
-private def silent : app.Action := ⟨none⟩
-private def send (value : Bool) : app.Action := ⟨some value⟩
+def silent : app.Action := ⟨none⟩
+def send (value : Bool) : app.Action := ⟨some value⟩
 
 open Classical in
-private def smaller : app.ResponseMenu where
+def smaller : app.ResponseMenu where
   actions _ _ _ := {silent, send false}
   nonempty _ _ _ := ⟨silent, by simp⟩
 
 open Classical in
-private def larger : app.ResponseMenu where
+def larger : app.ResponseMenu where
   actions _ _ _ := {silent, send false, send true}
   nonempty _ _ _ := ⟨silent, by simp⟩
 
-private theorem included : smaller.IncludedIn larger := by
+theorem included : smaller.IncludedIn larger := by
   classical
   intro who past view response member
   change response ∈ ({silent, send false, send true} : Finset app.Action)
@@ -59,14 +63,14 @@ private theorem included : smaller.IncludedIn larger := by
   simp only [Finset.mem_insert, Finset.mem_singleton] at member ⊢
   rcases member with rfl | rfl <;> simp
 
-private def scheduler : app.Scheduler := fun past _ =>
+def scheduler : app.Scheduler := fun past _ =>
   PMF.pure (if past.length = 0 then .activate false else .activate true)
 
-private abbrev source := smaller.information (PMF.pure ()) 2 scheduler
-private abbrev target := larger.information (PMF.pure ()) 2 scheduler
-private abbrev restriction := included.actionRestriction (PMF.pure ()) 2 scheduler
+abbrev source := smaller.information (PMF.pure ()) 2 scheduler
+abbrev target := larger.information (PMF.pure ()) 2 scheduler
+abbrev restriction := included.actionRestriction (PMF.pure ()) 2 scheduler
 
-private def embed (profile : ∀ who, source.BehavioralPolicy who) :
+def embed (profile : ∀ who, source.BehavioralPolicy who) :
     ∀ who, target.BehavioralPolicy who := fun who info =>
   (profile who info).map (included.choice (PMF.pure ()) 2 scheduler who info)
 

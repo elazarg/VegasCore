@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveRoundReachability
-import Interaction.ReactiveMenuPolicy
+public import Interaction.ReactiveRoundReachability
+public import Interaction.ReactiveMenuPolicy
+
+@[expose] public section
 
 /-! # Round support yields actual legal menu histories
 

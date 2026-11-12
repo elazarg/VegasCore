@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketBaseAssembly
+public import Vegas.Game.OnePacketBaseAssembly
+
+@[expose] public section
 
 /-! # Irregular histories under assembled native profiles -/
 

@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphInputs
-import Vegas.EventGraph.Sequential
-import Vegas.Pending.ReactiveRuntime
-import Vegas.Pending.EventPublicState
-import Vegas.Source.ProtocolTermination
+public import Vegas.Compile.EventGraphInputs
+public import Vegas.EventGraph.Sequential
+public import Vegas.Pending.ReactiveRuntime
+public import Vegas.Pending.EventPublicState
+public import Vegas.Source.ProtocolTermination
+
+@[expose] public section
 
 /-! # Compiled source service configurations
 

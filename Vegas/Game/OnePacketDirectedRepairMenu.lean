@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDirectedRepairFrame
+public import Vegas.Game.OnePacketDirectedRepairFrame
+
+@[expose] public section
 
 /-! # One-packet legality under directed hidden-binding repair
 

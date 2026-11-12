@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.WithholdingCoupling
-import GameTheory.Math.Probability.ExpectationMap
-import GameTheory.Core.Approximate
+public import Vegas.EventGraph.WithholdingCoupling
+public import GameTheory.Math.Probability.ExpectationMap
+public import GameTheory.Core.Approximate
+
+@[expose] public section
 
 /-! # Deviation bounds under every public scheduler of concurrent reveals
 

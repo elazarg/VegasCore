@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketAcceptedInjective
-import Vegas.Game.OnePacketOwnerRecall
-import Vegas.Game.OnePacketSwapInputs
+public import Vegas.Game.OnePacketAcceptedInjective
+public import Vegas.Game.OnePacketOwnerRecall
+public import Vegas.Game.OnePacketSwapInputs
+
+@[expose] public section
 
 /-! # The swap guard along a replayed history
 

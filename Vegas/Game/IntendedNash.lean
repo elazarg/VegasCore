@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.IntendedPreservation
-import GameTheoryExtensions.Analysis.Protocol.RetainedDeviation
+public import Vegas.Game.IntendedPreservation
+public import GameTheoryExtensions.Analysis.Protocol.RetainedDeviation
+
+@[expose] public section
 
 /-! # Approximate Nash preservation under public default
 

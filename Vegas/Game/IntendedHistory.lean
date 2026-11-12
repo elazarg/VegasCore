@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceInformation
-import Vegas.Source.IntendedGame
+public import Vegas.Game.SourceInformation
+public import Vegas.Source.IntendedGame
+
+@[expose] public section
 
 /-! # Finite intended-game histories
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketKeyedRecords
-import Vegas.Game.OnePacketSwapRecord
+public import Vegas.Game.OnePacketKeyedRecords
+public import Vegas.Game.OnePacketSwapRecord
+
+@[expose] public section
 
 /-! # Record fibers from a correspondence scaling the base weight
 

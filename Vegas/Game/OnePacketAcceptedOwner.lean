@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFactorization
-import Vegas.Pending.ReactiveRuntime
+public import Vegas.Game.OnePacketFactorization
+public import Vegas.Pending.ReactiveRuntime
+
+@[expose] public section
 
 /-! # Accepted handles belong to the owner of their binding
 

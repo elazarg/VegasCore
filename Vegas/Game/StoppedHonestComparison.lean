@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.StoppedContinuationComparison
-import Vegas.Game.OnePacketLawApproximation
-import Interaction.ReactiveDecisionBudget
+public import GameTheoryExtensions.Analysis.Protocol.StoppedContinuationComparison
+public import Vegas.Game.OnePacketLawApproximation
+public import Interaction.ReactiveDecisionBudget
+
+@[expose] public section
 
 /-! # Stopped one-packet continuations under retained honest choices
 

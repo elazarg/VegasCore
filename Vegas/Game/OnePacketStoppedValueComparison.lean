@@ -1,14 +1,18 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceDebtContinuation
-import Vegas.Game.NativeExitContinuation
-import Vegas.Game.OnePacketComponents
-import Vegas.Game.OnePacketLateCertificate
-import Vegas.Game.OnePacketForeignFailureBound
-import Vegas.Game.OnePacketIrregularBeliefBounds
-import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
-import GameTheoryExtensions.Math.Probability.ExpectationContraction
-import GameTheory.Math.Probability.Bounds
+public import Vegas.Game.SourceDebtContinuation
+public import Vegas.Game.NativeExitContinuation
+public import Vegas.Game.OnePacketComponents
+public import Vegas.Game.OnePacketLateCertificate
+public import Vegas.Game.OnePacketForeignFailureBound
+public import Vegas.Game.OnePacketIrregularBeliefBounds
+public import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
+public import GameTheoryExtensions.Math.Probability.ExpectationContraction
+public import GameTheory.Math.Probability.Bounds
+
+@[expose] public section
 
 /-! # Native terminal values and stopping before own source debt
 

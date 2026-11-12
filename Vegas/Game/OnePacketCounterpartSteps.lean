@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketPairedCompletionMass
-import Vegas.Pending.EventValueSwap
+public import Vegas.Game.OnePacketPairedCompletionMass
+public import Vegas.Pending.EventValueSwap
+
+@[expose] public section
 
 /-! # Chance mass under a hidden swap
 

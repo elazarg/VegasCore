@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.Protocol.Incentives
+public import GameTheory.Analysis.Protocol.Incentives
+
+@[expose] public section
 
 /-! # The gain of a deviation at one history
 

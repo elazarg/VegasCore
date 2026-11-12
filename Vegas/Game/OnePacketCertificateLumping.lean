@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketBaseAssembly
-import Vegas.Game.OnePacketSlotLawDischarge
-import Vegas.Game.OnePacketRelevantLumping
+public import Vegas.Game.OnePacketBaseAssembly
+public import Vegas.Game.OnePacketSlotLawDischarge
+public import Vegas.Game.OnePacketRelevantLumping
+
+@[expose] public section
 
 /-! # The native comparison profile's keyed failure kernel -/
 

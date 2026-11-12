@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDirectedRepairOpeningTrace
-import Vegas.Game.OnePacketSwapGuardSite
-import Vegas.Pending.ReactiveBindingSubmittedResponse
+public import Vegas.Game.OnePacketDirectedRepairOpeningTrace
+public import Vegas.Game.OnePacketSwapGuardSite
+public import Vegas.Pending.ReactiveBindingSubmittedResponse
+
+@[expose] public section
 
 /-! # Authentic signed opening candidates survive directed repair -/
 

@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingFrameStep
-import Vegas.Pending.ReactiveDisclosure
-import Interaction.ReactivePublication
-import Vegas.Pending.ReactiveHiddenInclusion
+public import Vegas.Pending.ReactiveBindingFrameStep
+public import Vegas.Pending.ReactiveDisclosure
+public import Interaction.ReactivePublication
+public import Vegas.Pending.ReactiveHiddenInclusion
+
+@[expose] public section
 
 /-! # Disclosure transitions of the repaired native continuation
 

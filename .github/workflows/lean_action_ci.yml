@@ -43,8 +43,10 @@ jobs:
           path: GameTheory/.lake
           key: gametheory-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json') }}-${{ steps.gametheory.outputs.sha }}
       - uses: leanprover/lean-action@24581d74d674803a25a81b10b059c5c0cdd344c6 # v1.6.2
-      - name: Build with centralized warning-as-error options
-        run: lake build
+        with:
+          build-args: "--wfail"
+      - name: Build with compiler and Lake warnings as errors
+        run: lake --wfail build
       - name: Audit paper syntax, proof types and exact pins with Lean
         run: python scripts/check-paper-audit.py
       - name: Test native paper audits and mutations
@@ -74,6 +76,8 @@ jobs:
       # docgen-action expects the toolchain and the build of the same job; the
       # build job's caches make this build a restore.
       - uses: leanprover/lean-action@24581d74d674803a25a81b10b059c5c0cdd344c6 # v1.6.2
+        with:
+          build-args: "--wfail"
       # docgen-action builds any existing `homepage` folder as a Jekyll site.
       # `docs/` holds design notes, not a site, so the API docs get their own.
       - uses: leanprover-community/docgen-action@56dff2bb89f3e9b8c1b6d5c8410362c19de2d904 # v1

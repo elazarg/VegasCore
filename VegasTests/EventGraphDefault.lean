@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.Semantics
-import Vegas.Expr.Simple
+public import Vegas.EventGraph.Semantics
+public import Vegas.Expr.Simple
+
+@[expose] public section
 
 /-! # Binding omission, unusable admission and public default records -/
 
@@ -9,9 +13,9 @@ namespace VegasTests
 
 open Vegas Vegas.EventGraph GameTheory.Math.Probability
 
-private def bindingLayout : Unit → EventField Unit simpleExpr := fun _ => .binding () .bool
+def bindingLayout : Unit → EventField Unit simpleExpr := fun _ => .binding () .bool
 
-private def bindingCode : EventCode bindingLayout (.binding () .bool) :=
+def bindingCode : EventCode bindingLayout (.binding () .bool) :=
   .bind (L := simpleExpr) () .bool
 
 /-- Both choices store an unusable binding, but only omission is a public failure. -/
@@ -21,7 +25,7 @@ example : bindingCode.eval? none (fun _ => none) =
     bindingCode.defaultEvent (some .failure) .failure = none :=
   ⟨rfl, rfl, rfl⟩
 
-private def twoBindings : Vegas.EventGraph Unit simpleExpr where
+def twoBindings : Vegas.EventGraph Unit simpleExpr where
   inputCount := 0
   order := ⟨2, fun _ => ∅, fun {_ _} member => by simp at member⟩
   inputLayout := fun input => Fin.elim0 input
@@ -30,13 +34,13 @@ private def twoBindings : Vegas.EventGraph Unit simpleExpr where
   reads_available := fun _ _ member => by simp [EventCode.readFields] at member
   payoffs := []
 
-private def admitted : twoBindings.Completion :=
+def admitted : twoBindings.Completion :=
   EventGraph.completion twoBindings ⟨0, by decide⟩ (some (some .failure)) .failure
 
-private def omitted : twoBindings.Completion :=
+def omitted : twoBindings.Completion :=
   EventGraph.completion twoBindings ⟨1, by decide⟩ (some none) .failure
 
-private def automatic : twoBindings.Completion :=
+def automatic : twoBindings.Completion :=
   EventGraph.completion twoBindings ⟨1, by decide⟩ none .failure
 
 /-- Original unusable admission and deliberate omission remain distinguishable. -/
@@ -60,17 +64,17 @@ namespace VegasTests
 
 open Vegas Vegas.EventGraph GameTheory.Math.Probability
 
-private def bindingInitial : twoBindings.Config :=
+def bindingInitial : twoBindings.Config :=
   Config.initial (fun input => Fin.elim0 input)
 
-private theorem firstBinding_ready : bindingInitial.cut.Ready ⟨0, by decide⟩ := by decide
+theorem firstBinding_ready : bindingInitial.cut.Ready ⟨0, by decide⟩ := by decide
 
-private theorem secondBinding_ready : bindingInitial.cut.Ready ⟨1, by decide⟩ := by decide
+theorem secondBinding_ready : bindingInitial.cut.Ready ⟨1, by decide⟩ := by decide
 
-private def afterOmission : twoBindings.Config :=
+def afterOmission : twoBindings.Config :=
   bindingInitial.complete ⟨0, by decide⟩ firstBinding_ready none .failure
 
-private def afterUnusable : twoBindings.Config :=
+def afterUnusable : twoBindings.Config :=
   bindingInitial.complete ⟨0, by decide⟩ firstBinding_ready (some .failure) .failure
 
 private theorem secondBinding_ready_afterOmission : afterOmission.cut.Ready ⟨1, by decide⟩ :=
@@ -95,7 +99,7 @@ example : bindingInitial.step ⟨0, by decide⟩ firstBinding_ready (some .failu
   rw [PMF.pure_map]
   rfl
 
-private def bindingExecutionSummary (config : twoBindings.Config) :=
+def bindingExecutionSummary (config : twoBindings.Config) :=
   (config.outputs ⟨0, by decide⟩, config.outputs ⟨1, by decide⟩,
     config.defaulted, config.defaults.events,
     config.history.map (fun completion =>
@@ -136,7 +140,7 @@ example : (afterOmission.step ⟨1, by decide⟩ secondBinding_ready_afterOmissi
   rw [PMF.pure_map, PMF.pure_map]
   rfl
 
-private def afterSecondBinding : twoBindings.Config :=
+def afterSecondBinding : twoBindings.Config :=
   bindingInitial.complete ⟨1, by decide⟩ secondBinding_ready (some (.success true)) (.success true)
 
 private theorem firstBinding_ready_afterSecondBinding :

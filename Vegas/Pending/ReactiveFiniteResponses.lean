@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveNormalization
-import Interaction.ReactiveMenuRestriction
+public import Vegas.Pending.ReactiveNormalization
+public import Interaction.ReactiveMenuRestriction
+
+@[expose] public section
 
 /-! # Complete finite response syntax under explicit message bounds
 

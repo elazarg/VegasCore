@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapExchange
-import Vegas.Game.OnePacketAcceptedOwner
+public import Vegas.Game.OnePacketSwapExchange
+public import Vegas.Game.OnePacketAcceptedOwner
+
+@[expose] public section
 
 /-! # Common fibers at an own turn from the swap between two points
 

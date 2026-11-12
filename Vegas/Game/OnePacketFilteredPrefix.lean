@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketClearRegularity
-import Vegas.Game.OnePacketSpliceForced
-import Vegas.Pending.ExclusionNativeFailure
+public import Vegas.Game.OnePacketClearRegularity
+public import Vegas.Game.OnePacketSpliceForced
+public import Vegas.Pending.ExclusionNativeFailure
+
+@[expose] public section
 
 /-! # Backward guards at actual clear regular prefixes -/
 

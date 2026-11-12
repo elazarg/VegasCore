@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealBlockCoupling
-import Vegas.Game.RevealTurnRecall
+public import Vegas.Game.RevealBlockCoupling
+public import Vegas.Game.RevealTurnRecall
+
+@[expose] public section
 
 /-! # The traffic of a run of reveals from any point inside it
 

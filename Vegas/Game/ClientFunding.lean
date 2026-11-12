@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ClientCompiler
+public import Vegas.Game.ClientCompiler
+
+@[expose] public section
 
 /-! # Increasing deposits in a certified client specification
 

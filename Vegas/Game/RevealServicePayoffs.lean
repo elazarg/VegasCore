@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Compile.EventGraphReadoutComplete
-import Vegas.EventGraph.SequentialLaw
+public import Vegas.Game.RevealService
+public import Vegas.Compile.EventGraphReadoutComplete
+public import Vegas.EventGraph.SequentialLaw
+
+@[expose] public section
 
 /-! # Complete source readout and base utility
 

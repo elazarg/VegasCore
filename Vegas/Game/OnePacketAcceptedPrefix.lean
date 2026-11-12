@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCompletedBindings
-import Vegas.Game.OnePacketAcceptedTable
+public import Vegas.Game.OnePacketCompletedBindings
+public import Vegas.Game.OnePacketAcceptedTable
+
+@[expose] public section
 
 /-! # Accepted handles are fixed after completion
 

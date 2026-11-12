@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSlotLawDischarge
-import Vegas.Game.OnePacketDisclosureResolves
-import Vegas.Game.OnePacketOpeningUnique
+public import Vegas.Game.OnePacketSlotLawDischarge
+public import Vegas.Game.OnePacketDisclosureResolves
+public import Vegas.Game.OnePacketOpeningUnique
+
+@[expose] public section
 
 /-! # Operational steps of the certificate's profile
 

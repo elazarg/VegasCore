@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingLikelihood
-import Vegas.Game.SourceServiceCheckpoint
-import Vegas.Game.ServiceObservation
-import GameTheory.Math.Probability.Support
-import Vegas.Pending.EventInitialObservation
+public import Vegas.Pending.ReactiveBindingLikelihood
+public import Vegas.Game.SourceServiceCheckpoint
+public import Vegas.Game.ServiceObservation
+public import GameTheory.Math.Probability.Support
+public import Vegas.Pending.EventInitialObservation
+
+@[expose] public section
 
 /-! # Initial source and native traffic factorization
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveRounds
-import Interaction.ReactiveMessageReadout
+public import Interaction.ReactiveRounds
+public import Interaction.ReactiveMessageReadout
+
+@[expose] public section
 
 /-! # Reactive round congruence from its actual component kernels -/
 

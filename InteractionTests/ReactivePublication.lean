@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactivePublication
+public import Interaction.ReactivePublication
+
+@[expose] public section
 
 /-! # Rejection spends an identifier; a fresh envelope can retry the call -/
 
@@ -10,7 +14,7 @@ namespace InteractionTests.ReactivePublication
 
 open Interaction GameTheory.Math.Probability
 
-private abbrev app : ReactiveApplication Bool where
+abbrev app : ReactiveApplication Bool where
   State := Bool
   Payload := Nat
   Submission := Nat
@@ -25,17 +29,17 @@ private abbrev app : ReactiveApplication Bool where
   observePublic := id
   observePending _ _ := PMF.pure ∅
 
-private def sent : app.Execution :=
+def sent : app.Execution :=
   (ReactiveApplication.Execution.initial app false).respond app false
     ⟨some 7⟩
 
-private def rejected : app.Execution := sent.includePending app (false, 0)
+def rejected : app.Execution := sent.includePending app (false, 0)
 
 theorem rejection_is_published :
     rejected.network.ledger = [⟨(false, 0), 7⟩] ∧
       rejected.receipts = [((false, 0), false)] := ⟨rfl, rfl⟩
 
-private def ready : app.Execution := { rejected with application := true }
+def ready : app.Execution := { rejected with application := true }
 
 /-- A spent identifier is no longer pending: making the application ready
 does not let it be included again. -/
@@ -47,7 +51,7 @@ theorem rejected_is_not_reincluded :
 theorem rejected_service_law :
     app.atMostOnceCommand (ready.observeEnvironment app) (.include (false, 0)) = .wait := rfl
 
-private def retried : app.Execution :=
+def retried : app.Execution :=
   ready.respond app false ⟨some 7⟩
 
 /-- The payload can be identical; the retry receives a fresh identifier. -/

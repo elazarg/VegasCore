@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnerSwap
-import Vegas.Game.OnePacketTrembles
-import Vegas.Pending.ReactiveValueSwap
+public import Vegas.Game.OnePacketOwnerSwap
+public import Vegas.Game.OnePacketTrembles
+public import Vegas.Pending.ReactiveValueSwap
+
+@[expose] public section
 
 /-! # The owner swap between two settled states
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.AsyncServiceRawNash
-import Vegas.Game.SourceServiceTurnSettlement
-import Vegas.Game.TerminalObservationLaws
+public import Vegas.Game.AsyncServiceRawNash
+public import Vegas.Game.SourceServiceTurnSettlement
+public import Vegas.Game.TerminalObservationLaws
+
+@[expose] public section
 
 /-! # Client laws and observable guarantees under asynchronous service
 

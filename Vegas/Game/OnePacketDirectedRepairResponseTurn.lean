@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOffTurnPackets
-import Vegas.Game.OnePacketDirectedRepairPrefix
+public import Vegas.Game.OnePacketOffTurnPackets
+public import Vegas.Game.OnePacketDirectedRepairPrefix
+
+@[expose] public section
 
 /-! # Prefix responses occur at their own turn in a forced information history -/
 

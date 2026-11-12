@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactivePolicyInvariant
-import Interaction.ReactiveRecall
+public import Interaction.ReactivePolicyInvariant
+public import Interaction.ReactiveRecall
+
+@[expose] public section
 
 /-! # Completing a policy after its own deviations
 

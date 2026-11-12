@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketPhasePotential
-import Vegas.Game.OnePacketSourcePhase
-import Vegas.Game.OnePacketBeliefWiring
-import Vegas.Game.OnePacketLateCertificate
-import Vegas.Game.OnePacketLateDecomposition
+public import Vegas.Game.OnePacketPhasePotential
+public import Vegas.Game.OnePacketSourcePhase
+public import Vegas.Game.OnePacketBeliefWiring
+public import Vegas.Game.OnePacketLateCertificate
+public import Vegas.Game.OnePacketLateDecomposition
+
+@[expose] public section
 
 /-! # Source potentials at completed native phases -/
 

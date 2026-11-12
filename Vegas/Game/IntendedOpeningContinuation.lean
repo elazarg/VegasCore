@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.IntendedAuthenticOpening
-import Vegas.Game.SourceStateKernel
+public import Vegas.Game.IntendedAuthenticOpening
+public import Vegas.Game.SourceStateKernel
+
+@[expose] public section
 
 /-! # The intended authentic opening stays in the intended game
 

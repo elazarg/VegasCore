@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveGraphSteps
-import Vegas.Pending.ReactiveStateInvariant
+public import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Pending.ReactiveStateInvariant
+
+@[expose] public section
 
 /-! # Operational refinement of the message runtime
 

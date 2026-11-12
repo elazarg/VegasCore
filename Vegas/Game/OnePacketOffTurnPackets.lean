@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketForcedRegular
-import Vegas.Game.SourceServiceFacts
+public import Vegas.Game.OnePacketForcedRegular
+public import Vegas.Game.SourceServiceFacts
+
+@[expose] public section
 
 /-! # Foreign submissions at forced native inputs
 

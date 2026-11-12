@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSlotContent
-import Vegas.Game.OnePacketContentSupport
-import Vegas.Game.OnePacketOwnSubmissions
-import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Game.OnePacketSlotContent
+public import Vegas.Game.OnePacketContentSupport
+public import Vegas.Game.OnePacketOwnSubmissions
+public import Vegas.Game.OnePacketIntendedProjection
+
+@[expose] public section
 
 /-! # Zero-content responses are commitments at the player's turn
 

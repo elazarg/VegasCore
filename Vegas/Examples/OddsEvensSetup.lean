@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Expr.Simple
-import Vegas.Game.RevealService
-import Vegas.Game.OnePacketPublicInitialSignal
-import Vegas.Game.OnePacketSwapFiberSum
-import Vegas.Game.ProgramPayoffs
-import Vegas.Game.IntendedHistory
-import Vegas.Game.OnePacketRetention
+public import Vegas.Expr.Simple
+public import Vegas.Game.RevealService
+public import Vegas.Game.OnePacketPublicInitialSignal
+public import Vegas.Game.OnePacketSwapFiberSum
+public import Vegas.Game.ProgramPayoffs
+public import Vegas.Game.IntendedHistory
+public import Vegas.Game.OnePacketRetention
+
+@[expose] public section
 
 /-! # Two-player Odds–Evens with executable settlement -/
 

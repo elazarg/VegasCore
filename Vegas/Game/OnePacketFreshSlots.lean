@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ServiceSettledEvidence
-import Vegas.Pending.ReactiveRuntime
-import Vegas.Pending.ReactiveCanonicalDecision
-import Vegas.Pending.ReactiveSignedCommitments
+public import Vegas.Game.ServiceSettledEvidence
+public import Vegas.Pending.ReactiveRuntime
+public import Vegas.Pending.ReactiveCanonicalDecision
+public import Vegas.Pending.ReactiveSignedCommitments
+
+@[expose] public section
 
 /-! # Fresh prepared slots are public
 

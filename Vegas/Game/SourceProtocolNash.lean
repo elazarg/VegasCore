@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceContinuation
-import GameTheory.Core.Approximate
-import GameTheory.Protocol.Strategic
+public import Vegas.Game.SourceContinuation
+public import GameTheory.Core.Approximate
+public import GameTheory.Protocol.Strategic
+
+@[expose] public section
 
 /-! # Nash correspondence between source policies and protocol strategies
 

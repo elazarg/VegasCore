@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Expr.Simple
-import Vegas.Source.ValueBinding
-import GameTheory.Core.Response
+public import Vegas.Expr.Simple
+public import Vegas.Source.ValueBinding
+public import GameTheory.Core.Response
+
+@[expose] public section
 
 /-! # Conditional withholding refutes dominant truthful bidding
 
@@ -24,7 +28,7 @@ inductive Player where
   | bob
   deriving DecidableEq
 
-private def acceptGuard {Γ : SourceCtx Player simpleExpr} (who : Player) (name : VarId) :
+def acceptGuard {Γ : SourceCtx Player simpleExpr} (who : Player) (name : VarId) :
     SourceGuard simpleExpr Γ who name .int where
   schema := []
   schemaNames := by decide
@@ -96,16 +100,16 @@ def utility (values : Player → ℝ) (forfeiture : ℝ)
       | .failure => values .bob
       | .success a => if a < b then values .bob - a else 0
 
-private abbrev bound (report : Int) :=
+abbrev bound (report : Int) :=
   commitSuccessor 1 (acceptGuard Player.bob 1)
     (commitSuccessor 0 (acceptGuard Player.alice 0)
       (Config.initial (Env.empty (CellVal simpleExpr))) (some (.success report)))
     (some (.success 4))
 
-private abbrev disclosed (report : Int) :=
+abbrev disclosed (report : Int) :=
   revealSuccessor 2 (.there .here) (bound report) true
 
-private abbrev finished (report : Int) :=
+abbrev finished (report : Int) :=
   revealSuccessor 3 (.there .here) (disclosed report) (decide (report = 5))
 
 theorem play_truthful :

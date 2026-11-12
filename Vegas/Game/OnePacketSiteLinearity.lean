@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
+public import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
+
+@[expose] public section
 
 /-! # Play until a stopping set stays in the start's cone
 

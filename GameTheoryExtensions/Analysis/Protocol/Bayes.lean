@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.Protocol.BehavioralBayes
-import GameTheory.Protocol.Predraw
+public import GameTheory.Analysis.Protocol.BehavioralBayes
+public import GameTheory.Protocol.Predraw
+
+@[expose] public section
 
 /-! # Full mixing reaches every legal decision history
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketActorRecord
-import Vegas.Game.OnePacketFactorization
+public import Vegas.Game.OnePacketActorRecord
+public import Vegas.Game.OnePacketFactorization
+
+@[expose] public section
 
 /-! # Silence of other players in forced states of an observer
 

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveInputOrder
+public import Interaction.ReactiveInputOrder
+
+@[expose] public section
 
 /-! # Collection from persistent earlier-input verdicts -/
 

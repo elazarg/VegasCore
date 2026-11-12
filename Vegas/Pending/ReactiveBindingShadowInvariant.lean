@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingRestoration
+public import Vegas.Pending.ReactiveBindingRestoration
+
+@[expose] public section
 
 /-! # The domain of private binding reconstruction
 

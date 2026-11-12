@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveReceipts
-import Interaction.ReactiveMessageIdentity
+public import Interaction.ReactiveReceipts
+public import Interaction.ReactiveMessageIdentity
+
+@[expose] public section
 
 /-! # A published identifier has one permanent receipt
 

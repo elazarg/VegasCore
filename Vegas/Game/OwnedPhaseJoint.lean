@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Math.Probability.ConditionalObservation
-import GameTheoryExtensions.Math.Probability.ObservedChoice
+public import GameTheory.Math.Probability.ConditionalObservation
+public import GameTheoryExtensions.Math.Probability.ObservedChoice
+
+@[expose] public section
 
 /-! # The joint law of a phase one observer decides
 

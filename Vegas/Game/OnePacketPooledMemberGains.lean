@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketKeyedValueBounds
-import Vegas.Game.OnePacketStoppedValueComparison
-import Vegas.Game.OnePacketPooledGains
+public import Vegas.Game.OnePacketKeyedValueBounds
+public import Vegas.Game.OnePacketStoppedValueComparison
+public import Vegas.Game.OnePacketPooledGains
+
+@[expose] public section
 
 /-! # Individual component gains under the common native completion
 

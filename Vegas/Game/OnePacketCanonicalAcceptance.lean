@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketCanonicalPermits
-import Vegas.Game.SourceServiceCanonicalAcceptance
-import Vegas.Game.SourceServiceFreshCall
-import Vegas.Pending.ReactiveAsyncContract
+public import Vegas.Game.OnePacketCanonicalPermits
+public import Vegas.Game.SourceServiceCanonicalAcceptance
+public import Vegas.Game.SourceServiceFreshCall
+public import Vegas.Pending.ReactiveAsyncContract
+
+@[expose] public section
 
 /-! # Unique packets at bounded one-packet histories
 

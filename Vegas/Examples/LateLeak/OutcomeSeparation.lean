@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.LateLeak.Preservation
-import GameTheoryExtensions.Math.Probability.TotalVariation
+public import Vegas.Examples.LateLeak.Preservation
+public import GameTheoryExtensions.Math.Probability.TotalVariation
+
+@[expose] public section
 
 /-! # Quantitative outcome separation for late sends
 

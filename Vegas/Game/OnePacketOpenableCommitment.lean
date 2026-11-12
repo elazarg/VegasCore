@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSureFailure
-import Vegas.Game.OnePacketLateSuccess
-import Vegas.Compile.EventGraphStep
-import Vegas.Game.OnePacketEventFailure
-import Vegas.Game.OnePacketBindingSite
-import Vegas.Pending.ExclusionInvariant
+public import Vegas.Game.OnePacketSureFailure
+public import Vegas.Game.OnePacketLateSuccess
+public import Vegas.Compile.EventGraphStep
+public import Vegas.Game.OnePacketEventFailure
+public import Vegas.Game.OnePacketBindingSite
+public import Vegas.Pending.ExclusionInvariant
+
+@[expose] public section
 
 /-! # Persistent openable binding output and native completion
 

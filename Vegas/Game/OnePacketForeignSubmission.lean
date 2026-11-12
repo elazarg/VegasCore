@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketForeignFreshness
-import Vegas.Game.OnePacketClearRegularity
+public import Vegas.Game.OnePacketForeignFreshness
+public import Vegas.Game.OnePacketClearRegularity
+
+@[expose] public section
 
 /-! # Foreign first activations behind submitted packets -/
 

@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketFactorization
-import Vegas.Pending.ExclusionInvariant
-import Vegas.Pending.ReactiveGraphSteps
-import Interaction.ReactiveResponseAccounting
+public import Vegas.Game.OnePacketFactorization
+public import Vegas.Pending.ExclusionInvariant
+public import Vegas.Pending.ReactiveGraphSteps
+public import Interaction.ReactiveResponseAccounting
+
+@[expose] public section
 
 /-! # Scheduler rounds factor through the operational record
 

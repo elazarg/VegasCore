@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapInfo
-import Vegas.Game.OnePacketCounterpartSteps
-import Vegas.Game.OnePacketProjectedDecision
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketSwapInfo
+public import Vegas.Game.OnePacketCounterpartSteps
+public import Vegas.Game.OnePacketProjectedDecision
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # Hidden swaps scale the source weight
 

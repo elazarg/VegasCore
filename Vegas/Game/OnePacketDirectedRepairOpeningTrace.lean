@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketDirectedRepairResponderTrace
-import Vegas.Pending.ReactiveBindingGuardedStep
-import Vegas.Game.OnePacketDirectedRepairMenu
+public import Vegas.Game.OnePacketDirectedRepairResponderTrace
+public import Vegas.Pending.ReactiveBindingGuardedStep
+public import Vegas.Game.OnePacketDirectedRepairMenu
+
+@[expose] public section
 
 /-! # Actual unchanged opening traces through directed binding repair
 

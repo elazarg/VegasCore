@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Math.Probability.Product
-import Mathlib.Data.Fintype.Pi
+public import GameTheory.Math.Probability.Product
+public import Mathlib.Data.Fintype.Pi
+
+@[expose] public section
 
 /-! # Independent draws at finitely many sites
 

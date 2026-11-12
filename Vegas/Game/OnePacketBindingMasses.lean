@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketBindingSite
-import Vegas.Game.OnePacketRealizedCommitment
-import Vegas.Game.OnePacketRetention
-import GameTheoryExtensions.Math.Probability.Uniform
+public import Vegas.Game.OnePacketBindingSite
+public import Vegas.Game.OnePacketRealizedCommitment
+public import Vegas.Game.OnePacketRetention
+public import GameTheoryExtensions.Math.Probability.Uniform
+
+@[expose] public section
 
 /-! # Component masses at realized commitments
 

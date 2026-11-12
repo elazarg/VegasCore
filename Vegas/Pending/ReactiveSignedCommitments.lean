@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveRuntime
-import Interaction.ReactiveInvariant
-import Interaction.ReactiveServiceInvariant
-import Interaction.ReactiveProvenance
+public import Vegas.Pending.ReactiveRuntime
+public import Interaction.ReactiveInvariant
+public import Interaction.ReactiveServiceInvariant
+public import Interaction.ReactiveProvenance
+
+@[expose] public section
 
 /-! # Own signed data behind commitments and accepted handles
 

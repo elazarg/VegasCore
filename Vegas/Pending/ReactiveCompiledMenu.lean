@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveFiniteCompiler
-import Vegas.Pending.ReactiveSubmissionRecall
-import Vegas.Pending.EventPublicState
+public import Vegas.Pending.ReactiveFiniteCompiler
+public import Vegas.Pending.ReactiveSubmissionRecall
+public import Vegas.Pending.EventPublicState
+
+@[expose] public section
 
 /-! # Finite retained responses for every event-code constructor
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
-import GameTheoryExtensions.Math.Probability.TotalVariation
-import GameTheoryExtensions.Math.Probability.ExpectationContraction
+public import GameTheoryExtensions.Analysis.Protocol.StoppedTerminalBound
+public import GameTheoryExtensions.Math.Probability.TotalVariation
+public import GameTheoryExtensions.Math.Probability.ExpectationContraction
+
+@[expose] public section
 
 /-! # Comparing stopped continuation expectations
 

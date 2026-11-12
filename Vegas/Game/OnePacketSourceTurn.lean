@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketHonestDecision
-import Vegas.Game.OnePacketPrescribedSupport
-import Vegas.Game.IntendedAuthenticOpening
-import Vegas.Game.SourceStateKernel
-import Vegas.Game.SourceDebtObservation
+public import Vegas.Game.OnePacketHonestDecision
+public import Vegas.Game.OnePacketPrescribedSupport
+public import Vegas.Game.IntendedAuthenticOpening
+public import Vegas.Game.SourceStateKernel
+public import Vegas.Game.SourceDebtObservation
+
+@[expose] public section
 
 /-! # Source turns at decoded views
 

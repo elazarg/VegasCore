@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Pending.ReactiveSettledStability
-import Vegas.Pending.ReactiveGraphSteps
-import Interaction.ReactiveReceipts
-import Vegas.Pending.ReactiveServiceAudit
-import Interaction.ReactiveMessageIdentity
-import Vegas.Pending.ReactiveEventStability
+public import Vegas.Game.RevealService
+public import Vegas.Pending.ReactiveSettledStability
+public import Vegas.Pending.ReactiveGraphSteps
+public import Interaction.ReactiveReceipts
+public import Vegas.Pending.ReactiveServiceAudit
+public import Interaction.ReactiveMessageIdentity
+public import Vegas.Pending.ReactiveEventStability
+
+@[expose] public section
 
 /-! # Traffic facts for settled native executions
 

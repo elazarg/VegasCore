@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceReachedDecoding
-import Vegas.Pending.ReactiveOwnerWindow
-import Vegas.Pending.ReactiveSampleLikelihood
-import Vegas.Game.ServiceSettledEvidence
-import Vegas.Pending.ReactiveGraphSteps
-import Vegas.Pending.ReactiveOpeningLikelihood
+public import Vegas.Game.SourceServiceReachedDecoding
+public import Vegas.Pending.ReactiveOwnerWindow
+public import Vegas.Pending.ReactiveSampleLikelihood
+public import Vegas.Game.ServiceSettledEvidence
+public import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Pending.ReactiveOpeningLikelihood
+
+@[expose] public section
 
 /-! # One deviating player's traffic, round by round, in every dependency mode
 

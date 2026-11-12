@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceAsyncStep
-import Vegas.Game.SourceServiceContinuation
-import Vegas.Source.DisclosureBehavioral
+public import Vegas.Game.SourceServiceAsyncStep
+public import Vegas.Game.SourceServiceContinuation
+public import Vegas.Source.DisclosureBehavioral
+
+@[expose] public section
 
 /-! # Ready sites and the initialized source law
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketActorCompletion
-import Vegas.Game.SourceServiceFacts
-import Vegas.Game.OnePacketForcedBeliefs
+public import Vegas.Game.OnePacketActorCompletion
+public import Vegas.Game.SourceServiceFacts
+public import Vegas.Game.OnePacketForcedBeliefs
+
+@[expose] public section
 
 /-! # Source weights of forced beliefs from the intended replay
 

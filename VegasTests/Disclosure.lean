@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Disclosure
-import Vegas.Expr.Simple
+public import Vegas.Source.Disclosure
+public import Vegas.Expr.Simple
+
+@[expose] public section
 
 /-! # Regression for forcing disclosure
 
@@ -19,11 +23,11 @@ open Vegas Vegas.SourceProgram GameTheory.Math.Probability
 
 noncomputable section
 
-private abbrev bid : VarId := 0
-private abbrev bidOut : VarId := 1
+abbrev bid : VarId := 0
+abbrev bidOut : VarId := 1
 
 /-- A guard that accepts every opening. -/
-private def openGuard : SourceGuard (Player := Unit) simpleExpr [] () bid .bool where
+def openGuard : SourceGuard (Player := Unit) simpleExpr [] () bid .bool where
   schema := []
   schemaNames := by decide
   subjectFresh := by decide
@@ -31,22 +35,22 @@ private def openGuard : SourceGuard (Player := Unit) simpleExpr [] () bid .bool 
   reads := fun h => nomatch h
 
 /-- Bind a Boolean and open it; a published value pays, failure does not. -/
-private def openPays : SourceProgram Unit simpleExpr [] ∅ :=
+def openPays : SourceProgram Unit simpleExpr [] ∅ :=
   .commit bid () (by decide) openGuard <|
   .reveal bidOut () bid (by decide) .here (by decide) <|
   .ret [((), .ite (.isFailure (.var bidOut .here)) (.constInt 0) (.constInt 1))]
 
 /-- The same program with the payoff reversed: refusing is what pays. -/
-private def refusalPays : SourceProgram Unit simpleExpr [] ∅ :=
+def refusalPays : SourceProgram Unit simpleExpr [] ∅ :=
   .commit bid () (by decide) openGuard <|
   .reveal bidOut () bid (by decide) .here (by decide) <|
   .ret [((), .ite (.isFailure (.var bidOut .here)) (.constInt 1) (.constInt 0))]
 
 /-- Bind a value and then refuse to open it. -/
-private def withholdOpen : BehavioralPolicy (who := ()) openPays :=
+def withholdOpen : BehavioralPolicy (who := ()) openPays :=
   (fun _ _ _ => PMF.pure (some (.success false)), fun _ _ _ => PMF.pure false, PUnit.unit)
 
-private def withholdRefusal : BehavioralPolicy (who := ()) refusalPays :=
+def withholdRefusal : BehavioralPolicy (who := ()) refusalPays :=
   (fun _ _ _ => PMF.pure (some (.success false)), fun _ _ _ => PMF.pure false, PUnit.unit)
 
 /-- Refusing to open is outside the disclosing class. -/
@@ -61,7 +65,7 @@ example : ¬ Disclosing openPays withholdOpen := by
 example : Disclosing openPays (BehavioralPolicy.forceDisclose openPays withholdOpen) :=
   disclosing_forceDisclose openPays withholdOpen
 
-private def payoffLaw {p : SourceProgram Unit simpleExpr [] ∅}
+def payoffLaw {p : SourceProgram Unit simpleExpr [] ∅}
     (policy : BehavioralPolicy (who := ()) p) : PMF (List (Unit × Int)) :=
   (p.run (fun _ => policy) (Env.empty (CellVal simpleExpr))).map
     (fun terminal => p.evaluatePayoffs terminal.state)
@@ -102,19 +106,19 @@ example :
   rfl
 
 /-- A published value pays; a failure does not. -/
-private def payOnSuccess (result : PublicationResult (simpleExpr.Val BaseTy.bool)) : ℝ :=
+def payOnSuccess (result : PublicationResult (simpleExpr.Val BaseTy.bool)) : ℝ :=
   match result with
   | .failure => 0
   | .success _ => 1
 
 /-- The value of a completed run to the owner, where opening is what pays. -/
-private def publishedPays
+def publishedPays
     (state : State simpleExpr [(bidOut, CellTy.publication BaseTy.bool),
       (bid, CellTy.commitment () BaseTy.bool)]) : ℝ :=
   payOnSuccess (state.get HasVar.here)
 
 /-- The reversed reading, for the program whose payoff rewards refusing. -/
-private def refusalPaysValue
+def refusalPaysValue
     (state : State simpleExpr [(bidOut, CellTy.publication BaseTy.bool),
       (bid, CellTy.commitment () BaseTy.bool)]) : ℝ :=
   1 - payOnSuccess (state.get HasVar.here)

@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnerInfo
-import Vegas.Game.OnePacketFactorization
-import Vegas.Game.OnePacketCanonicalPermits
-import Vegas.Game.OnePacketFreshSlots
-import Vegas.Game.ServiceSettledEvidence
-import Vegas.Pending.ReactiveGraphSteps
-import Vegas.Pending.ReactiveRuntime
-import Vegas.Pending.ReactiveSignedCommitments
+public import Vegas.Game.OnePacketOwnerInfo
+public import Vegas.Game.OnePacketFactorization
+public import Vegas.Game.OnePacketCanonicalPermits
+public import Vegas.Game.OnePacketFreshSlots
+public import Vegas.Game.ServiceSettledEvidence
+public import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Pending.ReactiveRuntime
+public import Vegas.Pending.ReactiveSignedCommitments
+
+@[expose] public section
 
 /-! # What a player's recall records along one-packet histories
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSwapFiberSum
-import GameTheoryExtensions.Math.Probability.NearDecorrelation
+public import Vegas.Game.OnePacketSwapFiberSum
+public import GameTheoryExtensions.Math.Probability.NearDecorrelation
+
+@[expose] public section
 
 /-! # Records and hidden points are decorrelated at an own turn
 

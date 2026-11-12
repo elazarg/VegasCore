@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketComponents
-import Vegas.Game.OnePacketDebtRouting
-import Vegas.Game.SourceDebtContinuation
+public import Vegas.Game.OnePacketComponents
+public import Vegas.Game.OnePacketDebtRouting
+public import Vegas.Game.SourceDebtContinuation
+
+@[expose] public section
 
 /-! # Indifference at native decision sites carrying source debt
 

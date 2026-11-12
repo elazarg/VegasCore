@@ -1,13 +1,17 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.AsyncServiceSpec
-import Vegas.Game.SourceServiceTurnSettlement
-import Vegas.Game.SourceServiceClientPolicy
-import Vegas.Game.SourceServiceChoiceSupport
-import Vegas.Game.ServiceHonestLaw
-import Interaction.ReactiveRawRoundTrace
-import GameTheory.Core.Approximate
-import Vegas.Game.SourceInformation
+public import Vegas.Game.AsyncServiceSpec
+public import Vegas.Game.SourceServiceTurnSettlement
+public import Vegas.Game.SourceServiceClientPolicy
+public import Vegas.Game.SourceServiceChoiceSupport
+public import Vegas.Game.ServiceHonestLaw
+public import Interaction.ReactiveRawRoundTrace
+public import GameTheory.Core.Approximate
+public import Vegas.Game.SourceInformation
+
+@[expose] public section
 
 /-! # Player-specific best-response errors under asynchronous timing
 

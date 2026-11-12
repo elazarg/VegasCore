@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.Semantics
-import Vegas.EventGraph.Sequential
-import Mathlib.Order.Interval.Finset.Fin
+public import Vegas.EventGraph.Semantics
+public import Vegas.EventGraph.Sequential
+public import Mathlib.Order.Interval.Finset.Fin
+
+@[expose] public section
 
 /-! # Canonical step equations
 

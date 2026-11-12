@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphAssembly
+public import Vegas.Compile.EventGraphAssembly
+
+@[expose] public section
 
 /-! # Node-table agreement for compiled source suffixes
 

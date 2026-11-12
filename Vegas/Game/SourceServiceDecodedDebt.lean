@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceReachedDecoding
-import Vegas.Pending.ReactiveGraphSteps
-import Vegas.Source.FailedBindingDeviation
+public import Vegas.Game.SourceServiceReachedDecoding
+public import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Source.FailedBindingDeviation
+
+@[expose] public section
 
 /-! # Step-closed properties at actual native endpoints
 

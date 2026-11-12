@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.Honest
-import Vegas.Source.PrivateInputs
-import Vegas.Source.Utility
+public import Vegas.Source.Honest
+public import Vegas.Source.PrivateInputs
+public import Vegas.Source.Utility
+
+@[expose] public section
 
 /-! # Forfeiting failed reveals
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealServiceSoleSegment
-import Vegas.Game.RevealServiceTimely
+public import Vegas.Game.RevealServiceSoleSegment
+public import Vegas.Game.RevealServiceTimely
+
+@[expose] public section
 
 /-! # The honest outcome law with concurrent reveals
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveRecall
-import Vegas.Pending.OpeningEvidence
-import Vegas.Pending.ExclusionCompletion
+public import Interaction.ReactiveRecall
+public import Vegas.Pending.OpeningEvidence
+public import Vegas.Pending.ExclusionCompletion
+
+@[expose] public section
 
 /-! # The event application under explicit network scheduling
 

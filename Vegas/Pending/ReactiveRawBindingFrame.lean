@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingAllocation
-import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.Pending.ReactiveBindingAllocation
+public import Vegas.Pending.ReactiveGraphSteps
+
+@[expose] public section
 
 /-! # Joint binding frames for arbitrary private raw material
 

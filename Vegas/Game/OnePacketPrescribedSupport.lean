@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketTrembles
-import Vegas.Game.OnePacketFirstActivation
+public import Vegas.Game.OnePacketTrembles
+public import Vegas.Game.OnePacketFirstActivation
+
+@[expose] public section
 
 /-! # Support facts for prescribed play in the one-packet game
 

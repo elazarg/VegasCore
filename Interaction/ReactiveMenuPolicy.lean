@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveResponseEmbedding
-import Interaction.ReactivePolicy
+public import Interaction.ReactiveResponseEmbedding
+public import Interaction.ReactivePolicy
+
+@[expose] public section
 
 /-! # Representing covered policies in a finite menu
 

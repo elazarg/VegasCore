@@ -1,9 +1,13 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceContinuation
-import Vegas.Source.IntendedGame
-import Vegas.Source.Disclosure
-import GameTheory.Protocol.RestrictionProfile
+public import Vegas.Game.SourceContinuation
+public import Vegas.Source.IntendedGame
+public import Vegas.Source.Disclosure
+public import GameTheory.Protocol.RestrictionProfile
+
+@[expose] public section
 
 /-! # An opening extension of every intended profile
 

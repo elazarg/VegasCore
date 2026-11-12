@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.IntendedForPlayer
-import Vegas.Game.SourcePrefixPublications
-import Vegas.Game.OnePacketPrescribedSupport
-import Vegas.Game.OnePacketIntendedProjection
-import Vegas.Pending.ReactiveDisclosure
-import Vegas.EventGraph.ResolutionProvenance
+public import Vegas.Source.IntendedForPlayer
+public import Vegas.Game.SourcePrefixPublications
+public import Vegas.Game.OnePacketPrescribedSupport
+public import Vegas.Game.OnePacketIntendedProjection
+public import Vegas.Pending.ReactiveDisclosure
+public import Vegas.EventGraph.ResolutionProvenance
+
+@[expose] public section
 
 /-! # Disclosures resolve at states forced for the observer
 

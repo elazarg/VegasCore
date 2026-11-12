@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingFrameOpening
-import Vegas.Pending.ReactiveGuardedResponse
+public import Vegas.Pending.ReactiveBindingFrameOpening
+public import Vegas.Pending.ReactiveGuardedResponse
+
+@[expose] public section
 
 /-! # Guarded disclosures in the legal repaired continuation
 

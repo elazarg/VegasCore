@@ -99,7 +99,7 @@ def _update_comment_depth(line, depth):
 
 
 # Keywords that cause the entire block to be skipped
-SKIP_KEYWORDS = {"import", "#check", "#eval", "#print"}
+SKIP_KEYWORDS = {"module", "import", "#check", "#eval", "#print"}
 
 # Keywords for context lines — keep entire block
 CONTEXT_KEYWORDS = {
@@ -120,7 +120,7 @@ DEF_KEYWORDS = {"def", "abbrev", "instance"}
 
 # Modifiers to strip when looking for the leading keyword
 MODIFIERS = {
-    "noncomputable", "private", "protected", "partial", "unsafe",
+    "noncomputable", "private", "public", "meta", "protected", "partial", "unsafe",
     "nonrec", "@[",
 }
 
@@ -157,7 +157,7 @@ def find_keyword(block_text):
     changed = True
     while changed:
         changed = False
-        for mod in ("noncomputable", "private", "protected", "partial",
+        for mod in ("noncomputable", "private", "public", "meta", "protected", "partial",
                      "unsafe", "nonrec"):
             if text.startswith(mod) and (len(text) == len(mod) or not text[len(mod)].isalnum()):
                 text = text[len(mod):].lstrip()

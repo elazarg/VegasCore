@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveAsyncContract
-import Vegas.Pending.ReactiveCanonicalDecision
+public import Vegas.Pending.ReactiveAsyncContract
+public import Vegas.Pending.ReactiveCanonicalDecision
+
+@[expose] public section
 
 /-! # A ready owner must receive an opportunity before actual expiry -/
 

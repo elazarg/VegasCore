@@ -1,11 +1,15 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.ResolutionProvenance
-import Vegas.Source.DisclosureBehavioral
-import Vegas.Game.AsyncDeviationForeign
-import Vegas.Game.SourceServiceChanceContinuation
-import Vegas.Game.SourceServiceDeviationChoice
-import GameTheoryExtensions.Math.Probability.ObservedChoice
+public import Vegas.EventGraph.ResolutionProvenance
+public import Vegas.Source.DisclosureBehavioral
+public import Vegas.Game.AsyncDeviationForeign
+public import Vegas.Game.SourceServiceChanceContinuation
+public import Vegas.Game.SourceServiceDeviationChoice
+public import GameTheoryExtensions.Math.Probability.ObservedChoice
+
+@[expose] public section
 
 /-! # Source successors jointly with native deviation traffic
 
@@ -20,7 +24,7 @@ namespace Vegas
 open SourceProgram EventGraph Interaction GameTheory.Math.Probability EventGraphRuntime
 variable {Player : Type} [DecidableEq Player] {L : IExpr} [IExpr.ResultTypes L]
 
-private def sampledValue {compiled : Vegas.EventGraph Player L}
+def sampledValue {compiled : Vegas.EventGraph Player L}
     (event : compiled.EventId) {payload : L.Ty}
     (outputEq : compiled.outputLayout event = .publicData payload)
     (config : compiled.Config) : L.Val payload :=
@@ -79,7 +83,7 @@ private theorem chance_completed_value_law
   rw [reads] at projected
   exact projected.trans (PMF.map_id _)
 
-private def sampledTrafficValue
+def sampledTrafficValue
     (setup : Setup (Player := Player) (L := L)) {mode : EventGraph.ExecutionMode}
     {duration : (serviceGraph setup mode).EventId → Nat}
     (leaks : MessageNetwork.ObservationRule Player (WitnessedPacket (serviceGraph setup mode)))

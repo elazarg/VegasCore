@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.RevealService
-import Vegas.Pending.ReactiveGraphSteps
-import Vegas.EventGraph.ObservationStep
-import Vegas.Pending.OnePacketValueSwap
-import GameTheoryExtensions.Protocol.StateSymmetry
+public import Vegas.Game.RevealService
+public import Vegas.Pending.ReactiveGraphSteps
+public import Vegas.EventGraph.ObservationStep
+public import Vegas.Pending.OnePacketValueSwap
+public import GameTheoryExtensions.Protocol.StateSymmetry
+
+@[expose] public section
 
 /-! # Hidden swaps as symmetries of the one-packet game
 

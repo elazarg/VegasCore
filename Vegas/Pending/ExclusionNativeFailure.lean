@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.PublicFailureEvidence
-import Interaction.ReactiveHistory
+public import Vegas.Pending.PublicFailureEvidence
+public import Interaction.ReactiveHistory
+
+@[expose] public section
 
 /-! # Native failure persistence and receipt provenance -/
 

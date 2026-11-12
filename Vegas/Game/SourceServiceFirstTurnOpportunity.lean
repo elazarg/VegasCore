@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.SourceServiceCompletion
-import Vegas.Game.SourceServiceTurnPolicy
-import Vegas.Pending.ReactiveAsyncContract
+public import Vegas.Game.SourceServiceCompletion
+public import Vegas.Game.SourceServiceTurnPolicy
+public import Vegas.Pending.ReactiveAsyncContract
+
+@[expose] public section
 
 /-! # Protection of the owner's first ready turn
 

@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveSignedCommitments
-import Vegas.Pending.EventBindingInvariant
-import Vegas.Pending.ExclusionInvariant
+public import Vegas.Pending.ReactiveSignedCommitments
+public import Vegas.Pending.EventBindingInvariant
+public import Vegas.Pending.ExclusionInvariant
+
+@[expose] public section
 
 /-! # Typed results of accepted calls
 

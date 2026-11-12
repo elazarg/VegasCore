@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Examples.LateLeak.Impossibility
-import GameTheoryExtensions.Analysis.Protocol.LastDecision
-import GameTheory.Math.Probability.FiniteUniform
+public import Vegas.Examples.LateLeak.Impossibility
+public import GameTheoryExtensions.Analysis.Protocol.LastDecision
+public import GameTheory.Math.Probability.FiniteUniform
+
+@[expose] public section
 
 open GameTheory.Math.Probability
 

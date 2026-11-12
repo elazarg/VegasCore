@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.EventGraph.Execution
+public import Vegas.EventGraph.Execution
+
+@[expose] public section
 
 /-! # Local commutation of independent ready events
 

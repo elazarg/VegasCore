@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Source.ProtocolState
+public import Vegas.Source.ProtocolState
+
+@[expose] public section
 
 /-! # Swapping source cells by name
 

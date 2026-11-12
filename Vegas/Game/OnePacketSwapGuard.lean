@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.DecodedRevelations
+public import Vegas.Game.DecodedRevelations
+
+@[expose] public section
 
 /-! # The swap between two source points at accepted handles
 

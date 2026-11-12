@@ -1,10 +1,14 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketSourcePhase
-import Vegas.Game.OnePacketLocalPhaseValue
-import Vegas.Game.OnePacketPendingFailure
-import Vegas.Game.OnePacketDecodedActor
-import Vegas.Game.OnePacketCompletionPotential
+public import Vegas.Game.OnePacketSourcePhase
+public import Vegas.Game.OnePacketLocalPhaseValue
+public import Vegas.Game.OnePacketPendingFailure
+public import Vegas.Game.OnePacketDecodedActor
+public import Vegas.Game.OnePacketCompletionPotential
+
+@[expose] public section
 
 /-! # Actual stopped values of intended prepared-slot commitments -/
 

@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveOwnerActivationRecall
+public import Vegas.Pending.ReactiveOwnerActivationRecall
+
+@[expose] public section
 
 /-! # A fresh callback fits the original inclusion window
 

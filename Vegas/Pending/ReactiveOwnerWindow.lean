@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Pending.ReactiveBindingSchedule
-import Vegas.Pending.ReactiveSelectionObservation
+public import Vegas.Pending.ReactiveBindingSchedule
+public import Vegas.Pending.ReactiveSelectionObservation
+
+@[expose] public section
 
 /-! # Owner information during an unsettled service window
 

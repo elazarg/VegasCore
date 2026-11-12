@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Compile.EventGraphAssembly
-import Vegas.EventGraph.ResolutionFields
+public import Vegas.Compile.EventGraphAssembly
+public import Vegas.EventGraph.ResolutionFields
+
+@[expose] public section
 
 /-! # A compiled commitment has at most one resolution event
 

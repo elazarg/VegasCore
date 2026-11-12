@@ -1,12 +1,16 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Analysis.Protocol.RestrictionDomination
-import GameTheory.Protocol.RestrictionExecution
-import GameTheory.Protocol.RestrictionProfile
-import GameTheory.Protocol.Strategic
-import GameTheory.Core.UtilityTransfer
-import GameTheoryExtensions.Protocol.MenuRestriction
-import GameTheoryExtensions.Math.Probability.OptionalDomination
+public import GameTheory.Analysis.Protocol.RestrictionDomination
+public import GameTheory.Protocol.RestrictionExecution
+public import GameTheory.Protocol.RestrictionProfile
+public import GameTheory.Protocol.Strategic
+public import GameTheory.Core.UtilityTransfer
+public import GameTheoryExtensions.Protocol.MenuRestriction
+public import GameTheoryExtensions.Math.Probability.OptionalDomination
+
+@[expose] public section
 
 /-! # Whole-policy deviations under an action restriction
 

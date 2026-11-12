@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketForeignBindingRegularity
-import Vegas.Game.OnePacketDirectedRepairSteps
-import Vegas.Pending.ReactiveBindingAcceptedRecords
+public import Vegas.Game.OnePacketForeignBindingRegularity
+public import Vegas.Game.OnePacketDirectedRepairSteps
+public import Vegas.Pending.ReactiveBindingAcceptedRecords
+
+@[expose] public section
 
 /-! # Finite composition of actual hidden-binding repairs
 

@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Foundation.ExprInterface
-import Vegas.Foundation.PartialEnvironment
+public import Vegas.Foundation.ExprInterface
+public import Vegas.Foundation.PartialEnvironment
+
+@[expose] public section
 
 /-! # Guard code
 
@@ -29,14 +33,14 @@ namespace GuardCode
 variable {L : IExpr} {subject : VarId} {payload : L.Ty}
 
 /-- Values of the flagged inputs, or `none` if one of them failed. -/
-private def values? (deps : Finset VarId) (schema : Ctx L.Ty)
+def values? (deps : Finset VarId) (schema : Ctx L.Ty)
     (results : ∀ {name ty}, HasVar schema name ty → name ∈ deps → PublicationResult (L.Val ty)) :=
   PartialEnvironment.collect? (fun name _ => name ∈ deps) schema
     (fun ref read => PublicationResult.equivOption (results ref read))
 
 /-- A schema variable never names the subject, so the guard's dependency set
 flags it exactly when the code reads it. -/
-private theorem mem_exprDeps_of_schema (guard : GuardCode L subject payload)
+theorem mem_exprDeps_of_schema (guard : GuardCode L subject payload)
     {x : VarId} {τ : L.Ty} (h : HasVar guard.schema x τ)
     (flagged : x ∈ insert subject (L.exprDeps guard.code)) :
     x ∈ L.exprDeps guard.code := by
@@ -46,7 +50,7 @@ private theorem mem_exprDeps_of_schema (guard : GuardCode L subject payload)
 
 /-- Results for the guard's flagged context: the subject's result in front of
 the code-read schema results. -/
-private def contextResults (guard : GuardCode L subject payload)
+def contextResults (guard : GuardCode L subject payload)
     (subjectResult : PublicationResult (L.Val payload))
     (results : ∀ {x τ}, HasVar guard.schema x τ → x ∈ L.exprDeps guard.code →
       PublicationResult (L.Val τ)) :
@@ -70,7 +74,7 @@ def accepts (guard : GuardCode L subject payload)
   | some get => L.toBool (L.evalDeps guard.code fun _ _ h hx =>
       get h (Finset.mem_insert_of_mem hx))
 
-private def allFlagged (deps : Finset VarId) :
+def allFlagged (deps : Finset VarId) :
     (schema : Ctx L.Ty) → (∀ {x τ}, HasVar schema x τ → Bool) → Bool
   | [], _ => true
   | (name, _) :: tail, holds =>
@@ -108,7 +112,7 @@ theorem allReads_iff (guard : GuardCode L subject payload)
       ∀ {x τ} (h : HasVar guard.schema x τ), x ∈ L.exprDeps guard.code → holds h = true :=
   allFlagged_iff _ _ _
 
-private theorem values?_congr (deps : Finset VarId) (schema : Ctx L.Ty)
+theorem values?_congr (deps : Finset VarId) (schema : Ctx L.Ty)
     (left right : ∀ {name ty}, HasVar schema name ty → name ∈ deps → PublicationResult (L.Val ty))
     (agree : ∀ {name ty} (ref : HasVar schema name ty) (read : name ∈ deps),
       left ref read = right ref read) :
@@ -116,7 +120,7 @@ private theorem values?_congr (deps : Finset VarId) (schema : Ctx L.Ty)
   PartialEnvironment.congr _ schema _ _
     (fun ref read => congrArg PublicationResult.equivOption (agree ref read))
 
-private theorem values?_of_failure (deps : Finset VarId) (schema : Ctx L.Ty)
+theorem values?_of_failure (deps : Finset VarId) (schema : Ctx L.Ty)
     (results : ∀ {name ty}, HasVar schema name ty → name ∈ deps → PublicationResult (L.Val ty))
     {name ty} (ref : HasVar schema name ty) (read : name ∈ deps)
     (failed : results ref read = .failure) : values? deps schema results = none := by
@@ -125,7 +129,7 @@ private theorem values?_of_failure (deps : Finset VarId) (schema : Ctx L.Ty)
   rw [failed]
   rfl
 
-private theorem values?_of_success (deps : Finset VarId) (schema : Ctx L.Ty)
+theorem values?_of_success (deps : Finset VarId) (schema : Ctx L.Ty)
     (results : ∀ {name ty}, HasVar schema name ty → name ∈ deps → PublicationResult (L.Val ty))
     (values : ∀ {name ty}, HasVar schema name ty → name ∈ deps → L.Val ty)
     (agree : ∀ {name ty} (ref : HasVar schema name ty) (read : name ∈ deps),

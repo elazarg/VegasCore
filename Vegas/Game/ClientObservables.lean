@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.ClientCompiler
+public import Vegas.Game.ClientCompiler
+
+@[expose] public section
 
 /-! # Observable laws and equilibrium outcome coverage of compiled clients
 

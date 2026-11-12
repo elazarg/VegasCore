@@ -1,7 +1,11 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Vegas.Game.OnePacketOwnerKeyed
-import Vegas.Game.OnePacketOwnerInfoSite
+public import Vegas.Game.OnePacketOwnerKeyed
+public import Vegas.Game.OnePacketOwnerInfoSite
+
+@[expose] public section
 
 /-! # Agreeing base laws at two late sites with one key
 

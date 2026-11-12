@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.MessageNetworkCounters
-import Interaction.ReactiveEnvironmentStep
-import Interaction.ReactivePublication
+public import Interaction.MessageNetworkCounters
+public import Interaction.ReactiveEnvironmentStep
+public import Interaction.ReactivePublication
+
+@[expose] public section
 
 /-! # Every legal reactive prefix retains a fresh envelope identifier -/
 

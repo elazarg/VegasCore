@@ -1,8 +1,12 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import GameTheory.Math.Probability.Domination
-import GameTheory.Math.Probability.Mixture
-import Mathlib.Tactic.Linarith
+public import GameTheory.Math.Probability.Domination
+public import GameTheory.Math.Probability.Mixture
+public import Mathlib.Tactic.Linarith
+
+@[expose] public section
 
 /-! # Atom domination through pushforwards and mixtures -/
 

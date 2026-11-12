@@ -1,6 +1,10 @@
+module
+
 /- Copyright (c) 2026 VegasCore contributors. Released under the MIT license (see LICENSE). -/
 
-import Interaction.ReactiveResponseMenu
+public import Interaction.ReactiveResponseMenu
+
+@[expose] public section
 
 /-! # Exact continuation laws for an explicit response-menu instance
 
